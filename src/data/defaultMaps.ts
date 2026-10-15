@@ -1,0 +1,68 @@
+import type { MapData } from '../types/vtt';
+
+export const DEFAULT_MAPS: MapData[] = [
+  {
+    id: 'map-sanctum',
+    name: 'Sanctum of the Veil',
+    proceduralType: 'sanctum',
+    width: 2000,
+    height: 1500,
+    grid: {
+      enabled: true,
+      type: 'square',
+      size: 50,
+      color: '#6366f1',
+      opacity: 0.35,
+      snapToGrid: true,
+      scaleUnit: '5 ft',
+    },
+  },
+  {
+    id: 'map-ruins',
+    name: 'Veil Citadel Ruins',
+    proceduralType: 'veil_ruins',
+    width: 2400,
+    height: 1800,
+    grid: {
+      enabled: true,
+      type: 'square',
+      size: 60,
+      color: '#a855f7',
+      opacity: 0.4,
+      snapToGrid: true,
+      scaleUnit: '5 ft',
+    },
+  },
+  {
+    id: 'map-astral',
+    name: 'Astral Void Crossing',
+    proceduralType: 'astral_void',
+    width: 2000,
+    height: 2000,
+    grid: {
+      enabled: true,
+      type: 'hex',
+      size: 50,
+      color: '#38bdf8',
+      opacity: 0.3,
+      snapToGrid: true,
+      scaleUnit: '1 hex',
+    },
+  },
+  {
+    id: 'map-dungeon',
+    name: 'Forgotten Crypts of Old',
+    proceduralType: 'dungeon',
+    width: 1800,
+    height: 1400,
+    grid: {
+      enabled: true,
+      type: 'square',
+      size: 50,
+      color: '#94a3b8',
+      opacity: 0.3,
+      snapToGrid: true,
+      scaleUnit: '5 ft',
+    },
+  },
+];

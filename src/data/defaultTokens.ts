@@ -1,0 +1,101 @@
+import type { Token } from '../types/vtt';
+
+export const DEFAULT_TOKENS: Token[] = [
+  {
+    id: 'token-aeryn',
+    name: 'Aeryn (Veilblade)',
+    x: 450,
+    y: 350,
+    size: 1,
+    rotation: 0,
+    color: '#3b82f6', // blue
+    hp: 38,
+    maxHp: 38,
+    aether: 12,
+    maxAether: 15,
+    conditions: [],
+    isHidden: false,
+    initiative: 16,
+  },
+  {
+    id: 'token-thorne',
+    name: 'Thorne (Riftweaver)',
+    x: 400,
+    y: 400,
+    size: 1,
+    rotation: 0,
+    color: '#a855f7', // purple
+    hp: 26,
+    maxHp: 26,
+    aether: 25,
+    maxAether: 25,
+    conditions: ['Veil-Touched'],
+    isHidden: false,
+    initiative: 12,
+  },
+  {
+    id: 'token-lyra',
+    name: 'Lyra (Shadowstrider)',
+    x: 500,
+    y: 400,
+    size: 1,
+    rotation: 0,
+    color: '#10b981', // emerald
+    hp: 31,
+    maxHp: 31,
+    aether: 8,
+    maxAether: 10,
+    conditions: [],
+    isHidden: false,
+    initiative: 19,
+  },
+  {
+    id: 'token-bront',
+    name: 'Bront (Aether Bastion)',
+    x: 450,
+    y: 450,
+    size: 1,
+    rotation: 0,
+    color: '#f59e0b', // amber
+    hp: 45,
+    maxHp: 45,
+    aether: 10,
+    maxAether: 10,
+    conditions: [],
+    isHidden: false,
+    initiative: 8,
+  },
+  // Monsters / Hostiles
+  {
+    id: 'token-wraith-1',
+    name: 'Veil Wraith Alpha',
+    x: 750,
+    y: 300,
+    size: 1,
+    rotation: 180,
+    color: '#ef4444', // red
+    hp: 24,
+    maxHp: 24,
+    aether: 6,
+    maxAether: 6,
+    conditions: ['Invisible'],
+    isHidden: true, // GM hidden
+    initiative: 14,
+  },
+  {
+    id: 'token-sentinel',
+    name: 'Obsidian Golem',
+    x: 800,
+    y: 450,
+    size: 2, // Large 2x2
+    rotation: 180,
+    color: '#64748b', // slate
+    hp: 68,
+    maxHp: 68,
+    aether: 0,
+    maxAether: 0,
+    conditions: [],
+    isHidden: false,
+    initiative: 6,
+  },
+];
