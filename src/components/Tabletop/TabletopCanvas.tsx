@@ -248,6 +248,38 @@ export const TabletopCanvas: React.FC<TabletopCanvasProps> = ({
       ctx.translate(token.x, token.y);
       ctx.rotate((token.rotation * Math.PI) / 180);
 
+      // If this token is selected, draw subtle range bands around it!
+      if (isSelected) {
+        ctx.save();
+        ctx.translate(token.x, token.y);
+        
+        // Range bands: Very Close (~100px), Close (~300px), Far (~650px)
+        const bands = [
+          { r: 100, label: 'Very Close (5m)', color: 'rgba(56, 189, 248, 0.25)' },
+          { r: 300, label: 'Close (20m)', color: 'rgba(99, 102, 241, 0.2)' },
+          { r: 650, label: 'Far (100m)', color: 'rgba(168, 85, 247, 0.15)' },
+        ];
+
+        bands.forEach((b) => {
+          ctx.strokeStyle = b.color;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.arc(0, 0, b.r, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Band label
+          ctx.fillStyle = b.color;
+          ctx.font = '9px system-ui';
+          ctx.fillText(b.label, b.r - 20, 0);
+        });
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.translate(token.x, token.y);
+      ctx.rotate((token.rotation * Math.PI) / 180);
+
       // Hidden indicator (translucent for GM)
       if (token.isHidden) {
         ctx.globalAlpha = 0.55;
@@ -294,55 +326,70 @@ export const TabletopCanvas: React.FC<TabletopCanvasProps> = ({
 
       // Token Initials / Class Icon
       ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${Math.max(14, radius * 0.55)}px system-ui`;
+      ctx.font = `bold ${Math.max(13, radius * 0.5)}px system-ui`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const initial = token.name.substring(0, 2).toUpperCase();
       ctx.fillText(initial, 0, 0);
 
-      ctx.restore(); // Undo rotation for overlays like HP bar and Name
+      ctx.restore(); // Undo rotation for overlays like HP bar, Armor Slots, and Name
 
       // Non-rotated Overlays
       ctx.save();
       ctx.translate(token.x, token.y);
 
-      // HP Bar
+      // 1. Armor Slots (cyan pips above HP bar)
+      if (token.maxArmorSlots > 0) {
+        const slotWidth = Math.min(10, (radius * 2) / token.maxArmorSlots - 2);
+        const startX = -((token.maxArmorSlots * (slotWidth + 2)) / 2) + slotWidth / 2;
+        for (let i = 0; i < token.maxArmorSlots; i++) {
+          const isFilled = i < token.armorSlots;
+          ctx.fillStyle = isFilled ? '#38bdf8' : 'rgba(51, 65, 85, 0.8)';
+          ctx.fillRect(startX + i * (slotWidth + 2) - slotWidth / 2, -radius - 22, slotWidth, 4);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(startX + i * (slotWidth + 2) - slotWidth / 2, -radius - 22, slotWidth, 4);
+        }
+      }
+
+      // 2. HP Bar
       if (token.maxHp > 0) {
         const barWidth = radius * 2;
-        const barHeight = 6;
+        const barHeight = 5;
         const hpPct = Math.max(0, Math.min(1, token.hp / token.maxHp));
 
         // Background
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
         ctx.fillRect(-radius, -radius - 14, barWidth, barHeight);
 
-        // HP Fill (Gradient from Green to Red)
+        // HP Fill
         ctx.fillStyle = hpPct > 0.5 ? '#10b981' : hpPct > 0.25 ? '#f59e0b' : '#ef4444';
         ctx.fillRect(-radius, -radius - 14, barWidth * hpPct, barHeight);
 
         // Border
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 0.8;
         ctx.strokeRect(-radius, -radius - 14, barWidth, barHeight);
       }
 
-      // Token Name Tag
-      ctx.fillStyle = 'rgba(10, 12, 20, 0.85)';
-      ctx.font = '11px system-ui';
+      // 3. Token Name & Major/Severe Threshold Tag
+      ctx.fillStyle = 'rgba(10, 12, 20, 0.88)';
+      ctx.font = '10px system-ui';
       ctx.textAlign = 'center';
-      const textWidth = ctx.measureText(token.name).width;
-      ctx.fillRect(-textWidth / 2 - 4, radius + 4, textWidth + 8, 16);
+      const labelText = `${token.name} (${token.majorThreshold}/${token.severeThreshold})`;
+      const textWidth = ctx.measureText(labelText).width;
+      ctx.fillRect(-textWidth / 2 - 4, radius + 4, textWidth + 8, 15);
       ctx.fillStyle = token.isHidden ? '#fca5a5' : '#f1f5f9';
-      ctx.fillText(token.name, 0, radius + 16);
+      ctx.fillText(labelText, 0, radius + 15);
 
-      // Condition Badges
+      // 4. Condition Badges
       if (token.conditions && token.conditions.length > 0) {
         token.conditions.forEach((cond, idx) => {
           const badgeX = -radius + idx * 12;
           const badgeY = radius + 24;
-          ctx.fillStyle = cond === 'Veil-Touched' ? '#c084fc' : '#f59e0b';
+          ctx.fillStyle = cond === 'Dazed' ? '#f59e0b' : cond === 'Vulnerable' ? '#ef4444' : cond === 'Stunned' ? '#8b5cf6' : '#ec4899';
           ctx.beginPath();
-          ctx.arc(badgeX, badgeY, 4, 0, Math.PI * 2);
+          ctx.arc(badgeX, badgeY, 3.5, 0, Math.PI * 2);
           ctx.fill();
         });
       }

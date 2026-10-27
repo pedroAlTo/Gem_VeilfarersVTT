@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type {
   ActiveTool,
   ChatMessage,
-  DiceRollResult,
+  DualityRollResult,
   DrawingPath,
   FogOfWarData,
   MapData,
@@ -62,8 +62,15 @@ export function App() {
   });
   const [drawings, setDrawings] = useState<DrawingPath[]>([]);
   const [fog, setFog] = useState<FogOfWarData>({ enabled: false, reveals: [] });
+  
+  // Canonical Spotlight & Round Management
   const [round, setRound] = useState<number>(1);
-  const [activeInitiativeTokenId, setActiveInitiativeTokenId] = useState<string | undefined>();
+  const [activeSpotlightTokenId, setActiveSpotlightTokenId] = useState<string | undefined>('token-maren');
+  const [actedThisRound, setActedThisRound] = useState<string[]>([]);
+  
+  // Canonical Global Pools: Keeper Fear (0-12) & Crew Criminal Heat (0-10)
+  const [keeperFear, setKeeperFear] = useState<number>(4);
+  const [crewHeat, setCrewHeat] = useState<number>(0);
 
   // 4. Chat & Players Synchronized State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -100,9 +107,15 @@ export function App() {
       if (remote.tokens) setTokens(remote.tokens);
       if (remote.drawings) setDrawings(remote.drawings);
       if (remote.fog) setFog(remote.fog);
-      if (remote.initiativeRound !== undefined) setRound(remote.initiativeRound);
-      if (remote.activeInitiativeTokenId !== undefined)
-        setActiveInitiativeTokenId(remote.activeInitiativeTokenId);
+      if (remote.round !== undefined) setRound(remote.round);
+      if (remote.activeSpotlightTokenId !== undefined)
+        setActiveSpotlightTokenId(remote.activeSpotlightTokenId);
+      if (remote.actedThisRound !== undefined)
+        setActedThisRound(remote.actedThisRound);
+      if (remote.keeperFear !== undefined)
+        setKeeperFear(remote.keeperFear);
+      if (remote.crewHeat !== undefined)
+        setCrewHeat(remote.crewHeat);
     });
     return () => unsubscribe();
   }, [roomId]);
@@ -125,7 +138,7 @@ export function App() {
 
   // Broadcast current player presence
   useEffect(() => {
-    const currentName = currentUser?.displayName || 'Veilfarer ' + roomId.slice(-3);
+    const currentName = currentUser?.displayName || 'Voidwalker ' + roomId.slice(-3);
     const myUid = currentUser?.uid || 'guest-' + roomId;
 
     const myPlayer: Player = {
@@ -211,59 +224,84 @@ export function App() {
     [roomId]
   );
 
-  // Dice roll from panel/sheet
-  const handleDiceRoll = useCallback(
-    (result: DiceRollResult) => {
-      const senderName = currentUser?.displayName || 'Veilfarer';
+  // Duality Dice Roll from panel/sheet
+  const handleDualityRoll = useCallback(
+    (result: DualityRollResult) => {
+      const senderName = currentUser?.displayName || 'Voidwalker';
       const senderId = currentUser?.uid || 'guest';
+
+      // If Fear-dominant, increase Keeper Fear (max 12)
+      if (result.outcome === 'success_fear' || result.outcome === 'failure_fear') {
+        const nextFear = Math.min(12, keeperFear + 1);
+        setKeeperFear(nextFear);
+        updateRoomState(roomId, { keeperFear: nextFear });
+      }
 
       handleSendMessage({
         senderId,
         senderName,
         senderRole: userRole,
         timestamp: Date.now(),
-        content: `rolled ${result.formula}`,
+        content: `rolled Duality Dice: [${result.hopeDie} Hope | ${result.fearDie} Fear] = ${result.total}`,
         type: 'roll',
         rollDetails: result,
       });
     },
-    [currentUser, userRole, handleSendMessage]
+    [currentUser, userRole, keeperFear, roomId, handleSendMessage]
   );
 
-  // Initiative Next Turn
-  const handleNextTurn = useCallback(() => {
-    const list = Object.values(tokens)
-      .filter((t) => !t.isHidden || userRole === 'gm')
-      .sort((a, b) => (b.initiative ?? 0) - (a.initiative ?? 0));
+  // Dynamic Spotlight Passing (Veilfarers 12.06)
+  const handlePassSpotlight = useCallback(
+    (tokenId: string) => {
+      setActiveSpotlightTokenId(tokenId);
+      const nextActed = actedThisRound.includes(tokenId) ? actedThisRound : [...actedThisRound, tokenId];
+      setActedThisRound(nextActed);
+      updateRoomState(roomId, {
+        activeSpotlightTokenId: tokenId,
+        actedThisRound: nextActed,
+      });
+    },
+    [actedThisRound, roomId]
+  );
 
-    if (list.length === 0) return;
-
-    const currentIndex = list.findIndex((t) => t.id === activeInitiativeTokenId);
-    let nextIndex = currentIndex + 1;
-    let nextRound = round;
-
-    if (nextIndex >= list.length || currentIndex === -1) {
-      nextIndex = 0;
-      nextRound = round + 1;
-      setRound(nextRound);
-    }
-
-    const nextActiveId = list[nextIndex].id;
-    setActiveInitiativeTokenId(nextActiveId);
+  const handleNextRound = useCallback(() => {
+    const nextRound = round + 1;
+    setRound(nextRound);
+    setActedThisRound([]);
     updateRoomState(roomId, {
-      initiativeRound: nextRound,
-      activeInitiativeTokenId: nextActiveId,
+      round: nextRound,
+      actedThisRound: [],
     });
-  }, [tokens, activeInitiativeTokenId, round, userRole, roomId]);
+  }, [round, roomId]);
 
-  const handleResetInitiative = useCallback(() => {
+  const handleResetEncounter = useCallback(() => {
     setRound(1);
-    setActiveInitiativeTokenId(undefined);
+    setActedThisRound([]);
+    setActiveSpotlightTokenId(undefined);
     updateRoomState(roomId, {
-      initiativeRound: 1,
-      activeInitiativeTokenId: undefined,
+      round: 1,
+      actedThisRound: [],
+      activeSpotlightTokenId: undefined,
     });
   }, [roomId]);
+
+  const handleUpdateKeeperFear = useCallback(
+    (val: number) => {
+      const clamped = Math.max(0, Math.min(12, val));
+      setKeeperFear(clamped);
+      updateRoomState(roomId, { keeperFear: clamped });
+    },
+    [roomId]
+  );
+
+  const handleUpdateCrewHeat = useCallback(
+    (val: number) => {
+      const clamped = Math.max(0, Math.min(10, val));
+      setCrewHeat(clamped);
+      updateRoomState(roomId, { crewHeat: clamped });
+    },
+    [roomId]
+  );
 
   // Token Modal Save
   const handleSaveToken = useCallback(
@@ -283,11 +321,11 @@ export function App() {
     [tokens, handleUpdateTokens]
   );
 
-  const currentDisplayName = currentUser?.displayName || 'Veil Explorer';
+  const currentDisplayName = currentUser?.displayName || 'Voidwalker';
 
   return (
     <div className="flex flex-col w-screen h-screen overflow-hidden bg-slate-950 text-slate-100">
-      {/* Top Navigation */}
+      {/* Top Navigation Bar with Keeper Fear and Crew Heat */}
       <Navbar
         roomId={roomId}
         user={currentUser}
@@ -297,6 +335,8 @@ export function App() {
         onChangeTab={setActiveTab}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         players={players}
+        keeperFear={keeperFear}
+        crewHeat={crewHeat}
       />
 
       {/* Main Tabletop Area */}
@@ -313,15 +353,22 @@ export function App() {
           onOpenNewTokenModal={() =>
             setTokenModalData({
               token: {
-                name: 'New Veilfarer',
+                name: 'New Voidwalker',
                 color: userColor,
                 x: 400,
                 y: 350,
                 size: 1,
-                hp: 30,
-                maxHp: 30,
-                aether: 10,
-                maxAether: 10,
+                hp: 6,
+                maxHp: 6,
+                majorThreshold: 5,
+                severeThreshold: 11,
+                armorSlots: 3,
+                maxArmorSlots: 3,
+                evasion: 11,
+                stress: 0,
+                maxStress: 6,
+                path: 'awakened',
+                hope: 2,
               },
               isNew: true,
             })
@@ -363,33 +410,41 @@ export function App() {
               currentUserId={currentUser?.uid || 'guest'}
               currentUserName={currentDisplayName}
               currentUserRole={userRole}
+              currentPath="awakened"
               onSendMessage={handleSendMessage}
             />
           )}
 
           {activeTab === 'dice' && (
             <DiceTrayPanel
-              onRoll={handleDiceRoll}
+              onRoll={handleDualityRoll}
               characterName={currentDisplayName}
+              path="awakened"
             />
           )}
 
           {activeTab === 'initiative' && (
             <InitiativeTracker
               tokens={tokens}
-              activeTokenId={activeInitiativeTokenId}
+              activeTokenId={activeSpotlightTokenId}
               round={round}
+              actedThisRound={actedThisRound}
               userRole={userRole}
+              keeperFear={keeperFear}
+              crewHeat={crewHeat}
               onUpdateTokens={handleUpdateTokens}
-              onNextTurn={handleNextTurn}
-              onResetInitiative={handleResetInitiative}
+              onPassSpotlight={handlePassSpotlight}
+              onNextRound={handleNextRound}
+              onResetEncounter={handleResetEncounter}
+              onUpdateKeeperFear={handleUpdateKeeperFear}
+              onUpdateCrewHeat={handleUpdateCrewHeat}
               onSelectToken={(t) => setSelectedToken(t)}
             />
           )}
 
           {activeTab === 'sheet' && (
             <CharacterSheetPanel
-              onRoll={handleDiceRoll}
+              onRoll={handleDualityRoll}
               characterName={currentDisplayName}
             />
           )}

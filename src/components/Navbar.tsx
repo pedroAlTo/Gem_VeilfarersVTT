@@ -13,6 +13,7 @@ import {
   Shield,
   LogOut,
   LogIn,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -24,6 +25,8 @@ interface NavbarProps {
   onChangeTab: (tab: 'chat' | 'dice' | 'initiative' | 'sheet') => void;
   onOpenSettings: () => void;
   players: Player[];
+  keeperFear: number;
+  crewHeat: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -35,6 +38,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onChangeTab,
   onOpenSettings,
   players,
+  keeperFear,
+  crewHeat,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showAuthMenu, setShowAuthMenu] = useState(false);
@@ -73,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Flame className="w-5 h-5 text-white animate-pulse-subtle" />
           </div>
           <span className="font-extrabold tracking-tight text-slate-100 text-sm hidden sm:inline">
-            VEILFARERS <span className="text-indigo-400 font-light">VTT</span>
+            VEILFARERS <span className="text-indigo-400 font-light">12.06</span>
           </span>
         </div>
 
@@ -105,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Shield className="w-3 h-3" />
-            <span>GM</span>
+            <span>Keeper</span>
           </button>
           <button
             onClick={() => onChangeRole('player')}
@@ -120,20 +125,32 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Center: Connected Players Roster */}
-      <div className="hidden md:flex items-center space-x-1.5 bg-slate-900/60 px-2.5 py-1 rounded-full border border-slate-800">
-        <span className="text-[10px] text-slate-400 font-medium">Party:</span>
-        <div className="flex -space-x-1.5">
-          {players.map((p) => (
-            <div
-              key={p.id}
-              className="w-6 h-6 rounded-full border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
-              style={{ backgroundColor: p.color }}
-              title={`${p.name} (${p.role.toUpperCase()})`}
-            >
-              {p.name.substring(0, 1).toUpperCase()}
-            </div>
-          ))}
+      {/* Center: Live Fear & Heat status meters */}
+      <div className="hidden lg:flex items-center space-x-3 bg-slate-900/60 px-3 py-1 rounded-full border border-slate-800 text-xs">
+        <div className="flex items-center space-x-1.5 text-rose-400 font-mono" title="Keeper Fear Pool (Cap 12)">
+          <Flame className="w-3.5 h-3.5 text-rose-500" />
+          <span>Fear: <strong className="text-rose-200">{keeperFear}</strong>/12</span>
+        </div>
+        <div className="w-px h-3 bg-slate-700" />
+        <div className="flex items-center space-x-1.5 text-amber-400 font-mono" title="Crew Criminal Heat (0 to 10)">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+          <span>Heat: <strong className="text-amber-200">{crewHeat}</strong>/10</span>
+        </div>
+        <div className="w-px h-3 bg-slate-700" />
+        <div className="flex items-center space-x-1.5">
+          <span className="text-[10px] text-slate-400 font-medium">Party:</span>
+          <div className="flex -space-x-1.5">
+            {players.map((p) => (
+              <div
+                key={p.id}
+                className="w-5 h-5 rounded-full border-2 border-slate-950 flex items-center justify-center text-[9px] font-bold text-white shadow-sm"
+                style={{ backgroundColor: p.color }}
+                title={`${p.name} (${p.role.toUpperCase()})`}
+              >
+                {p.name.substring(0, 1).toUpperCase()}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -148,7 +165,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-indigo-600 text-white'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Party Chat & Roll Log"
+            title="Party Chat & Duality Roll Log"
           >
             <MessageSquare className="w-4 h-4" />
           </button>
@@ -159,7 +176,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-indigo-600 text-white'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Dice Tray"
+            title="Duality Dice Tray & Attack Calculator"
           >
             <Dices className="w-4 h-4" />
           </button>
@@ -170,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-indigo-600 text-white'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Combat Tracker"
+            title="Spotlight & Combat Tracker"
           >
             <Swords className="w-4 h-4" />
           </button>
@@ -181,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-indigo-600 text-white'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Veilfarer Character Sheet"
+            title="Veilfarer Character Sheet (Awakened / Sleeping)"
           >
             <User className="w-4 h-4" />
           </button>
@@ -251,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               ) : (
                 <>
                   <div className="p-2 text-slate-400 text-[11px] border-b border-slate-800">
-                    Sign in with Google to sync sessions and tokens across devices:
+                    Sign in with Google to sync sessions across devices:
                   </div>
                   <button
                     onClick={handleGoogleLogin}

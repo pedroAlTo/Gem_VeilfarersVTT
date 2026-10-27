@@ -1,199 +1,195 @@
 import confetti from 'canvas-confetti';
-import type { DiceRollResult, DieRoll } from '../types/vtt';
+import type { DualityOutcome, DualityRollResult, CharacterPath } from '../types/vtt';
 import { sounds } from './audio';
 
-export function rollDice(
-  formula: string,
-  options?: {
-    label?: string;
-    advantage?: 'normal' | 'advantage' | 'disadvantage';
-    veilStrain?: number;
-    archetype?: string;
-  }
-): DiceRollResult {
+export interface RollDualityOptions {
+  characterName: string;
+  path: CharacterPath;
+  traitName?: string;
+  traitModifier?: number;
+  experienceName?: string;
+  experienceBonus?: number;
+  advantageType?: 'advantage' | 'disadvantage' | 'none';
+  dc?: number;
+  label?: string;
+  
+  // Optional weapon damage evaluation
+  weapon?: {
+    name: string;
+    damageDice: string; // e.g. "2d8+2" or "1d10"
+    damageType: 'Physical' | 'Energy' | 'Void' | 'Neural';
+    proficiency?: number; // 1 to 6
+    targetMajorThreshold?: number;
+    targetSevereThreshold?: number;
+    hasReflectiveArmor?: boolean; // cancels Energy pen -2
+    hasWard?: boolean; // cancels Void pen -4
+  };
+}
+
+export function rollDuality(options: RollDualityOptions): DualityRollResult {
   sounds.playDiceRoll();
 
-  const trimmed = formula.trim().toLowerCase();
-  const adv = options?.advantage || 'normal';
+  const hopeDie = Math.floor(Math.random() * 12) + 1;
+  const fearDie = Math.floor(Math.random() * 12) + 1;
 
-  // Handle standard d20 with advantage/disadvantage
-  if ((trimmed === 'd20' || trimmed === '1d20') && adv !== 'normal') {
-    const roll1 = Math.floor(Math.random() * 20) + 1;
-    const roll2 = Math.floor(Math.random() * 20) + 1;
-    let chosen: number;
-    let droppedIdx: number;
+  const traitModifier = options.traitModifier ?? 0;
+  const experienceBonus = options.experienceBonus ?? 0;
+  const dc = options.dc ?? 15; // default Challenging
+  const adv = options.advantageType ?? 'none';
 
-    if (adv === 'advantage') {
-      if (roll1 >= roll2) {
-        chosen = roll1;
-        droppedIdx = 1;
-      } else {
-        chosen = roll2;
-        droppedIdx = 0;
-      }
-    } else {
-      if (roll1 <= roll2) {
-        chosen = roll1;
-        droppedIdx = 1;
-      } else {
-        chosen = roll2;
-        droppedIdx = 0;
-      }
-    }
-
-    const dice: DieRoll[] = [
-      { sides: 20, value: roll1, dropped: droppedIdx === 0 },
-      { sides: 20, value: roll2, dropped: droppedIdx === 1 },
-    ];
-
-    const isCritSuccess = chosen === 20;
-    const isCritFail = chosen === 1;
-
-    if (isCritSuccess) {
-      sounds.playCritSuccess();
-      try {
-        confetti({
-          particleCount: 50,
-          spread: 70,
-          origin: { y: 0.7 },
-          colors: ['#a855f7', '#6366f1', '#ec4899', '#38bdf8']
-        });
-      } catch {
-        // ignore in non-browser
-      }
-    } else if (isCritFail) {
-      sounds.playCritFail();
-    }
-
-    return {
-      formula: `${formula} (${adv})`,
-      total: chosen,
-      dice,
-      modifier: 0,
-      isCritSuccess,
-      isCritFail,
-      label: options?.label,
-      veilStrain: options?.veilStrain,
-      archetype: options?.archetype,
-    };
+  let advantageModifier = 0;
+  if (adv === 'advantage') {
+    // Hope boon die: +1d6
+    advantageModifier = Math.floor(Math.random() * 6) + 1;
+  } else if (adv === 'disadvantage') {
+    // Fear bane die: -1d6
+    advantageModifier = -(Math.floor(Math.random() * 6) + 1);
   }
 
-  // General dice regex: e.g. 2d6+4, 1d20-2, 3d8, 4d6kh3
-  const regex = /^(\d*)d(\d+)(?:kh(\d+))?([+-]\d+)?$/;
-  const match = trimmed.replace(/\s+/g, '').match(regex);
+  const baseSum = hopeDie + fearDie;
+  const total = baseSum + traitModifier + experienceBonus + advantageModifier;
 
-  if (match) {
-    const count = match[1] ? parseInt(match[1], 10) : 1;
-    const sides = parseInt(match[2], 10);
-    const keepHighest = match[3] ? parseInt(match[3], 10) : undefined;
-    const modifier = match[4] ? parseInt(match[4], 10) : 0;
+  let outcome: DualityOutcome;
 
-    const rawRolls: Array<{ value: number; index: number }> = [];
-    for (let i = 0; i < count; i++) {
-      rawRolls.push({
-        value: Math.floor(Math.random() * sides) + 1,
-        index: i,
+  // Matching dice is ALWAYS a Critical Success under Veilfarers 12.06 canon!
+  if (hopeDie === fearDie) {
+    outcome = 'critical_success';
+    sounds.playCritSuccess();
+    try {
+      confetti({
+        particleCount: 60,
+        spread: 80,
+        origin: { y: 0.7 },
+        colors: ['#a855f7', '#6366f1', '#38bdf8', '#f59e0b'],
       });
+    } catch {}
+  } else if (hopeDie > fearDie) {
+    if (total >= dc) {
+      outcome = 'success_hope';
+      sounds.playTokenMove();
+    } else {
+      outcome = 'failure_hope';
+      sounds.playTokenMove();
     }
-
-    // Determine kept / dropped
-    let droppedIndices = new Set<number>();
-    if (keepHighest && keepHighest < count) {
-      const sorted = [...rawRolls].sort((a, b) => b.value - a.value);
-      const kept = sorted.slice(0, keepHighest).map((r) => r.index);
-      droppedIndices = new Set(
-        rawRolls.map((r) => r.index).filter((idx) => !kept.includes(idx))
-      );
-    }
-
-    const dice: DieRoll[] = rawRolls.map((r) => ({
-      sides,
-      value: r.value,
-      dropped: droppedIndices.has(r.index),
-    }));
-
-    const sumKept = dice
-      .filter((d) => !d.dropped)
-      .reduce((acc, d) => acc + d.value, 0);
-
-    const total = sumKept + modifier;
-
-    const isCritSuccess = sides === 20 && count === 1 && rawRolls[0].value === 20;
-    const isCritFail = sides === 20 && count === 1 && rawRolls[0].value === 1;
-
-    if (isCritSuccess) {
-      sounds.playCritSuccess();
-      try {
-        confetti({
-          particleCount: 60,
-          spread: 80,
-          origin: { y: 0.7 },
-          colors: ['#a855f7', '#6366f1', '#ec4899', '#38bdf8']
-        });
-      } catch {
-        // ignore
-      }
-    } else if (isCritFail) {
+  } else {
+    // fearDie > hopeDie
+    if (total >= dc) {
+      outcome = 'success_fear';
+      sounds.playCritFail(); // ominous tone
+    } else {
+      outcome = 'failure_fear';
       sounds.playCritFail();
     }
-
-    return {
-      formula,
-      total,
-      dice,
-      modifier,
-      isCritSuccess,
-      isCritFail,
-      label: options?.label,
-      veilStrain: options?.veilStrain,
-      archetype: options?.archetype,
-    };
   }
 
-  // Fallback: simple evaluation if custom math expression
-  try {
-    const dice: DieRoll[] = [];
-    let mod = 0;
-    // Extract any NdM occurrences
-    const diceParts = formula.match(/(\d*)d(\d+)/g) || [];
-    let sum = 0;
-    diceParts.forEach((part) => {
-      const pMatch = part.match(/(\d*)d(\d+)/);
-      if (pMatch) {
-        const c = pMatch[1] ? parseInt(pMatch[1], 10) : 1;
-        const s = parseInt(pMatch[2], 10);
-        for (let i = 0; i < c; i++) {
-          const val = Math.floor(Math.random() * s) + 1;
-          dice.push({ sides: s, value: val });
-          sum += val;
-        }
-      }
-    });
+  // Damage evaluation if weapon provided
+  let damageDealt: DualityRollResult['damageDealt'] | undefined;
+  if (options.weapon) {
+    const isCrit = outcome === 'critical_success';
+    damageDealt = calculateWeaponDamage(options.weapon, isCrit);
+  }
 
-    // Check for + or - modifier at end
-    const modMatch = formula.match(/([+-]\s*\d+)$/);
-    if (modMatch) {
-      mod = parseInt(modMatch[1].replace(/\s+/g, ''), 10);
+  return {
+    hopeDie,
+    fearDie,
+    traitName: options.traitName,
+    traitModifier,
+    experienceBonus: experienceBonus > 0 ? experienceBonus : undefined,
+    experienceName: options.experienceName,
+    advantageModifier: advantageModifier !== 0 ? advantageModifier : undefined,
+    advantageType: adv,
+    total,
+    dc,
+    outcome,
+    label: options.label,
+    characterName: options.characterName,
+    path: options.path,
+    damageDealt,
+  };
+}
+
+// Calculate weapon damage according to Veilfarers 12.06 rules
+export function calculateWeaponDamage(
+  weapon: NonNullable<RollDualityOptions['weapon']>,
+  isCritical: boolean
+): NonNullable<DualityRollResult['damageDealt']> {
+  const prof = Math.max(1, weapon.proficiency ?? 1);
+  const regex = /^(\d*)d(\d+)([+-]\d+)?$/i;
+  const match = weapon.damageDice.trim().replace(/\s+/g, '').match(regex);
+
+  let rawTotal = 0;
+  if (match) {
+    const baseCount = match[1] ? parseInt(match[1], 10) : 1;
+    const sides = parseInt(match[2], 10);
+    const flatMod = match[3] ? parseInt(match[3], 10) : 0;
+
+    // In Veilfarers 12.06:
+    // Proficiency scales the first listed die: roll the Proficiency Die once per rank,
+    // and every other listed die once.
+    // E.g. 2d8 with prof 3 -> (3)d8 + (1)d8 = 4d8.
+    const totalDiceCount = prof + (baseCount - 1);
+    const finalDiceCount = isCritical ? totalDiceCount * 2 : totalDiceCount;
+
+    for (let i = 0; i < finalDiceCount; i++) {
+      rawTotal += Math.floor(Math.random() * sides) + 1;
     }
-
-    const total = (dice.length > 0 ? sum : 0) + mod;
-
-    return {
-      formula,
-      total,
-      dice,
-      modifier: mod,
-      label: options?.label,
-      veilStrain: options?.veilStrain,
-      archetype: options?.archetype,
-    };
-  } catch {
-    return {
-      formula,
-      total: 0,
-      dice: [],
-      modifier: 0,
-      label: 'Invalid formula',
-    };
+    rawTotal += flatMod;
+  } else {
+    // Fallback if formula is simple number or custom
+    rawTotal = 8;
   }
+
+  // Penetration by damage type:
+  // Physical: 0
+  // Energy: -2 (Reflective cancels)
+  // Void: -4 (Ward cancels)
+  // Neural: -4 (+1 Stress)
+  let penetration = 0;
+  if (weapon.damageType === 'Energy' && !weapon.hasReflectiveArmor) {
+    penetration = -2;
+  } else if ((weapon.damageType === 'Void' || weapon.damageType === 'Neural') && !weapon.hasWard) {
+    penetration = -4;
+  }
+
+  // Target Thresholds
+  const baseMajor = weapon.targetMajorThreshold ?? 7;
+  const baseSevere = weapon.targetSevereThreshold ?? 14;
+
+  // Penetration lowers the target's thresholds for that hit
+  const effMajor = Math.max(1, baseMajor + penetration);
+  const effSevere = Math.max(effMajor + 1, baseSevere + penetration);
+
+  let severity: 'Minor' | 'Major' | 'Severe' | 'Overkill';
+  let hpLoss = 1;
+
+  if (rawTotal < effMajor) {
+    severity = 'Minor';
+    hpLoss = 1;
+  } else if (rawTotal < effSevere) {
+    severity = 'Major';
+    hpLoss = 2;
+  } else {
+    severity = 'Severe';
+    hpLoss = 3;
+    // Overkill: +1 HP per full 10 points over Severe
+    const excess = rawTotal - effSevere;
+    if (excess >= 10) {
+      severity = 'Overkill';
+      hpLoss += Math.floor(excess / 10);
+    }
+  }
+
+  const tags: string[] = [];
+  if (weapon.damageType === 'Neural') {
+    tags.push('+1 Stress');
+  }
+
+  return {
+    rawTotal,
+    damageType: weapon.damageType,
+    severity,
+    hpLoss,
+    penetration,
+    tags,
+  };
 }

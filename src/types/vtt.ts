@@ -1,4 +1,5 @@
 export type UserRole = 'gm' | 'player';
+export type CharacterPath = 'awakened' | 'sleeping';
 
 export interface VTTUser {
   uid: string;
@@ -27,8 +28,95 @@ export interface GridConfig {
   color: string;
   opacity: number;
   snapToGrid: boolean;
-  scaleUnit: string; // e.g. "5 ft" or "1 m"
+  scaleUnit: string; // e.g. "5 m" or "Range Band"
 }
+
+// Canonical 12.06 Traits
+export interface CoreTraits {
+  agility: number;
+  strength: number;
+  finesse: number;
+  knowledge: number;
+  instinct: number;
+  presence: number;
+}
+
+export type TraitName = keyof CoreTraits;
+export type SubtraitName = 'finesse_pilot' | 'knowledge_tech' | 'knowledge_medicine';
+
+export type AncestryType =
+  | 'Ailuran'
+  | 'Bloomstrider'
+  | 'Celestiari'
+  | 'Ethereal'
+  | 'Human'
+  | 'Kryllian'
+  | 'Kryx'
+  | 'Rift Spinner'
+  | 'Synthetic';
+
+export type CommunityType =
+  | 'Core World'
+  | 'Trade Hub'
+  | 'Frontier Colony'
+  | 'Void Station'
+  | 'Free Fleet'
+  | 'AgriSynth'
+  | 'Hidden Enclave';
+
+export type AffiliationType =
+  | 'House Amaranth'
+  | 'House Joric'
+  | 'House Kurogane'
+  | 'House Solari'
+  | 'House Valerius'
+  | 'House Volkov'
+  | 'House Kaelen'
+  | 'The Free Fleet'
+  | 'The Explorers\' Guild'
+  | 'The Solara Compact'
+  | 'The Stellar Commerce Guild'
+  | 'Independent';
+
+export type ClassType =
+  | 'Diplomat'
+  | 'Engineer'
+  | 'Explorer'
+  | 'Mystic'
+  | 'Pilot'
+  | 'Scholar'
+  | 'Scoundrel'
+  | 'Soldier'
+  | 'Vanguard';
+
+export type DomainType =
+  | 'Social'
+  | 'Void'
+  | 'Kinetic'
+  | 'Neural'
+  | 'Synthesis'
+  | 'Tech'
+  | 'Lux';
+
+export type ConditionType =
+  | 'Bleeding'
+  | 'Blinded'
+  | 'Confused'
+  | 'Cornered'
+  | 'Dazed'
+  | 'Fleeing'
+  | 'Frightened'
+  | 'Hidden'
+  | 'Incapacitated'
+  | 'Infected'
+  | 'On Fire'
+  | 'Poisoned'
+  | 'Prone'
+  | 'Restrained'
+  | 'Silenced'
+  | 'Stunned'
+  | 'Vulnerable'
+  | 'Weakened';
 
 export interface Token {
   id: string;
@@ -39,22 +127,42 @@ export interface Token {
   rotation: number; // 0 - 360
   color: string;
   avatarUrl?: string;
+  
+  // Canonical Defenses
   hp: number;
   maxHp: number;
-  aether: number;
-  maxAether: number;
-  conditions: string[];
-  isHidden: boolean; // only visible to GM
-  ownerId?: string; // UID of controlling player
+  majorThreshold: number; // Major Damage Threshold
+  severeThreshold: number; // Severe Damage Threshold
+  armorSlots: number; // Current available soak
+  maxArmorSlots: number; // Maximum soak capacity
+  evasion: number; // Target DC to hit
+  
+  // Stress and Composure
+  stress: number;
+  maxStress: number;
+  
+  // Path & Resources
+  path: CharacterPath;
+  hope?: number; // Awakened: 0 - 6
+  effort?: number; // Sleeping: 0 - 6
+  effortTrack?: number; // Sleeping: 0, 1, or 2 segments
+  resolve?: number; // Sleeping: pool of d4s (2 to 6)
+  maxResolve?: number;
+  
+  // Status and Meta
+  conditions: ConditionType[];
+  isHidden: boolean; // GM stealth
+  ownerId?: string; // controlling player UID
   elevation?: number;
-  initiative?: number;
+  isNpc?: boolean;
+  actedThisRound?: boolean;
 }
 
 export interface MapData {
   id: string;
   name: string;
   imageUrl?: string;
-  proceduralType?: 'veil_ruins' | 'astral_void' | 'dungeon' | 'sanctum';
+  proceduralType?: 'rust_belt' | 'hydros' | 'tellurian' | 'spire_verita';
   width: number;
   height: number;
   grid: GridConfig;
@@ -92,22 +200,38 @@ export interface PingMarker {
   timestamp: number;
 }
 
-export interface DieRoll {
-  sides: number;
-  value: number;
-  dropped?: boolean;
-}
+export type DualityOutcome =
+  | 'critical_success'
+  | 'success_hope'
+  | 'success_fear'
+  | 'failure_hope'
+  | 'failure_fear';
 
-export interface DiceRollResult {
-  formula: string;
+export interface DualityRollResult {
+  hopeDie: number; // 1-12
+  fearDie: number; // 1-12
+  traitName?: string;
+  traitModifier: number;
+  experienceBonus?: number;
+  experienceName?: string;
+  advantageModifier?: number; // +d6 (Boon) or -d6 (Bane)
+  advantageType?: 'advantage' | 'disadvantage' | 'none';
   total: number;
-  dice: DieRoll[];
-  modifier: number;
-  isCritSuccess?: boolean;
-  isCritFail?: boolean;
+  dc: number;
+  outcome: DualityOutcome;
   label?: string;
-  veilStrain?: number;
-  archetype?: string;
+  characterName: string;
+  path: CharacterPath;
+  
+  // Damage details if this roll was an attack or weapon damage
+  damageDealt?: {
+    rawTotal: number;
+    damageType: 'Physical' | 'Energy' | 'Void' | 'Neural';
+    severity: 'Minor' | 'Major' | 'Severe' | 'Overkill';
+    hpLoss: number;
+    penetration: number;
+    tags: string[];
+  };
 }
 
 export interface ChatMessage {
@@ -118,34 +242,63 @@ export interface ChatMessage {
   timestamp: number;
   content: string;
   type: 'chat' | 'roll' | 'system' | 'whisper';
-  rollDetails?: DiceRollResult;
+  rollDetails?: DualityRollResult;
   recipientId?: string;
 }
 
-export interface VeilfarerAttributes {
-  might: number;
-  agility: number;
-  wits: number;
-  willpower: number;
-  resonance: number;
+export interface Experience {
+  id: string;
+  name: string;
+  bonus: number; // usually +2 at creation
 }
 
 export interface CharacterSheet {
   id: string;
   ownerUid: string;
   name: string;
-  archetype: string;
+  path: CharacterPath;
+  ancestry: AncestryType;
+  community: CommunityType;
+  affiliation: AffiliationType;
+  affiliationStanding: number; // -5 to +5, start +1
+  reputationPoints: Record<string, number>; // Faction -> RP
+  class: ClassType;
+  subclass: string;
   level: number;
+  proficiency: number; // 1 - 6
+  
+  // Resources
   hp: number;
   maxHp: number;
-  aether: number;
-  maxAether: number;
-  strain: number; // Veil corruption / strain
-  maxStrain: number;
-  attributes: VeilfarerAttributes;
-  skills: Array<{ name: string; attr: keyof VeilfarerAttributes; bonus: number }>;
+  majorThreshold: number;
+  severeThreshold: number;
+  armorSlots: number;
+  maxArmorSlots: number;
+  evasion: number;
+  stress: number;
+  maxStress: number;
+  
+  // Awakened specific
+  hope: number;
+  maxHope: number; // 6
+  loadout: string[]; // Prepared powers
+  vault: string[]; // Known powers
+  
+  // Sleeping specific
+  effort: number;
+  maxEffort: number; // 6
+  effortTrack: number; // 0, 1, or 2
+  resolve: number; // d4 pool (2-6)
+  maxResolve: number;
+  honedEdge: number; // level - 1
+  recoveryAnchor: string;
+  
+  traits: CoreTraits;
+  experiences: Experience[];
+  weapons: string[];
+  armor: string;
   equipment: string[];
-  relics: string[];
+  wealthTier: number; // 0 to 5
   notes: string;
 }
 
@@ -166,7 +319,10 @@ export interface RoomState {
   tokens: Record<string, Token>;
   drawings: DrawingPath[];
   fog: FogOfWarData;
-  initiativeRound: number;
-  activeInitiativeTokenId?: string;
+  round: number;
+  activeSpotlightTokenId?: string;
+  actedThisRound: string[];
+  keeperFear: number; // 0 to 12
+  crewHeat: number; // 0 to 10
   createdAt: number;
 }
