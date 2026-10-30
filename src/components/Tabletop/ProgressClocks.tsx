@@ -308,3 +308,4 @@ export const ProgressClocks: React.FC<ProgressClocksProps> = ({
     </div>
   );
 };
+
