@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Token, UserRole, ConditionType } from '../../types/vtt';
-import { Flame, Shield, Heart, RotateCcw, AlertTriangle, ChevronRight } from 'lucide-react';
+import type { Token, UserRole, ConditionType, ProgressClock } from '../../types/vtt';
+import { Flame, Shield, Heart, RotateCcw, AlertTriangle, ChevronRight, Clock } from 'lucide-react';
 
 interface InitiativeTrackerProps {
   tokens: Record<string, Token>;
@@ -17,6 +17,8 @@ interface InitiativeTrackerProps {
   onUpdateKeeperFear: (val: number) => void;
   onUpdateCrewHeat: (val: number) => void;
   onSelectToken: (token: Token) => void;
+  clocks?: ProgressClock[];
+  onUpdateClocks?: (clocks: ProgressClock[]) => void;
 }
 
 const COMMON_CONDITIONS: ConditionType[] = [
@@ -45,6 +47,8 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   onUpdateKeeperFear,
   onUpdateCrewHeat,
   onSelectToken,
+  clocks = [],
+  onUpdateClocks,
 }) => {
   const isGM = userRole === 'gm';
   const tokenList = Object.values(tokens).filter((t) => !t.isHidden || isGM);
@@ -141,6 +145,79 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
           </div>
         )}
       </div>
+
+      {/* CLOCKS & DANGER TRACKERS */}
+      {clocks.length > 0 && (
+        <div className="px-2.5 py-1.5 bg-[#090c13] border-b border-[#1b2332] space-y-1">
+          <div className="flex items-center justify-between text-[9px] font-bold text-slate-400">
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3 text-amber-400" />
+              <span>ACTIVE CLOCKS & TENSION</span>
+            </span>
+            <span className="text-slate-500">{clocks.length} TRACKERS</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {clocks.map((c) => (
+              <div
+                key={c.id}
+                className="bg-[#0f141f] border border-[#222c3d] p-1.5 rounded-sm flex items-center justify-between"
+              >
+                <div className="min-w-0 pr-1">
+                  <div className="text-[10px] font-bold text-slate-200 truncate">{c.name}</div>
+                  <div className="flex items-center space-x-0.5 mt-0.5">
+                    {Array.from({ length: c.segments }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="w-2.5 h-1.5 rounded-xs"
+                        style={{
+                          backgroundColor: i < c.progress ? c.color : 'rgba(51, 65, 85, 0.5)',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-1 shrink-0">
+                  <span className="text-[9px] font-mono font-bold text-slate-400">
+                    {c.progress}/{c.segments}
+                  </span>
+                  {isGM && onUpdateClocks && (
+                    <div className="flex space-x-0.5">
+                      <button
+                        onClick={() => {
+                          const updated = clocks.map((clk) =>
+                            clk.id === c.id
+                              ? { ...clk, progress: Math.max(0, clk.progress - 1) }
+                              : clk
+                          );
+                          onUpdateClocks(updated);
+                        }}
+                        disabled={c.progress <= 0}
+                        className="w-3.5 h-3.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded-xs flex items-center justify-center text-[9px]"
+                      >
+                        -
+                      </button>
+                      <button
+                        onClick={() => {
+                          const updated = clocks.map((clk) =>
+                            clk.id === c.id
+                              ? { ...clk, progress: Math.min(clk.segments, clk.progress + 1) }
+                              : clk
+                          );
+                          onUpdateClocks(updated);
+                        }}
+                        disabled={c.progress >= c.segments}
+                        className="w-3.5 h-3.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 rounded-xs flex items-center justify-center text-[9px]"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* COMBATANTS TABLE / ROSTER (Styled after reference image ▲ FNC table) */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1.5">

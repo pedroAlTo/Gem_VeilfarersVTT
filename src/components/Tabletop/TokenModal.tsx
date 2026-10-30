@@ -39,6 +39,7 @@ export const TokenModal: React.FC<TokenModalProps> = ({
 }) => {
   const [name, setName] = useState(token.name || 'New Voidwalker');
   const [color, setColor] = useState(token.color || '#6366f1');
+  const [avatarUrl, setAvatarUrl] = useState<string>(token.avatarUrl || '');
   const [size, setSize] = useState<number>(token.size || 1);
   const [rotation, setRotation] = useState<number>(token.rotation || 0);
   const [path, setPath] = useState<CharacterPath>(token.path || 'awakened');
@@ -65,6 +66,19 @@ export const TokenModal: React.FC<TokenModalProps> = ({
     }
   };
 
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setAvatarUrl(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalToken: Token = {
@@ -75,6 +89,7 @@ export const TokenModal: React.FC<TokenModalProps> = ({
       size,
       rotation,
       color,
+      avatarUrl: avatarUrl.trim() || undefined,
       path,
       hp,
       maxHp,
@@ -153,6 +168,55 @@ export const TokenModal: React.FC<TokenModalProps> = ({
                 <option value="awakened">Awakened</option>
                 <option value="sleeping">Sleeping</option>
               </select>
+            </div>
+          </div>
+
+          {/* Token Portrait / Avatar */}
+          <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+            <label className="text-slate-300 font-medium block text-[11px]">
+              Token Image / Portrait
+            </label>
+            <div className="flex items-center space-x-2">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar Preview"
+                  className="w-9 h-9 rounded-full object-cover border-2 border-indigo-500 shrink-0 bg-slate-800"
+                />
+              ) : (
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white shrink-0 border border-white/30"
+                  style={{ backgroundColor: color }}
+                >
+                  {name.substring(0, 2).toUpperCase()}
+                </div>
+              )}
+              <input
+                type="text"
+                placeholder="Image URL or upload below..."
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+              />
+              <label className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg cursor-pointer text-xs font-medium border border-slate-700 shrink-0">
+                <span>Upload</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </label>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl('')}
+                  className="text-slate-400 hover:text-rose-400 px-1"
+                  title="Remove image"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 

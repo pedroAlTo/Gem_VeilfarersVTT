@@ -17,6 +17,8 @@ export const MapSelectorModal: React.FC<MapSelectorModalProps> = ({
   const [selectedPresetId, setSelectedPresetId] = useState<string>(currentMap.id);
   const [customUrl, setCustomUrl] = useState<string>(currentMap.imageUrl || '');
   const [customName, setCustomName] = useState<string>(currentMap.name);
+  const [mapWidth, setMapWidth] = useState<number>(currentMap.width);
+  const [mapHeight, setMapHeight] = useState<number>(currentMap.height);
   const [gridSize, setGridSize] = useState<number>(currentMap.grid.size);
   const [gridType, setGridType] = useState<'square' | 'hex'>(currentMap.grid.type);
   const [snapToGrid, setSnapToGrid] = useState<boolean>(currentMap.grid.snapToGrid);
@@ -29,8 +31,20 @@ export const MapSelectorModal: React.FC<MapSelectorModalProps> = ({
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setCustomUrl(event.target.result as string);
+          const dataUrl = event.target.result as string;
+          setCustomUrl(dataUrl);
           setCustomName(file.name.replace(/\.[^/.]+$/, ''));
+          setSelectedPresetId('');
+
+          // Auto-detect dimensions
+          const testImg = new Image();
+          testImg.onload = () => {
+            if (testImg.naturalWidth && testImg.naturalHeight) {
+              setMapWidth(testImg.naturalWidth);
+              setMapHeight(testImg.naturalHeight);
+            }
+          };
+          testImg.src = dataUrl;
         }
       };
       reader.readAsDataURL(file);
@@ -47,8 +61,8 @@ export const MapSelectorModal: React.FC<MapSelectorModalProps> = ({
         id: 'custom-' + Date.now(),
         name: customName || 'Custom Battlemap',
         imageUrl: customUrl,
-        width: 2400,
-        height: 1800,
+        width: mapWidth || 2400,
+        height: mapHeight || 1800,
         grid: {
           enabled: true,
           type: gridType,

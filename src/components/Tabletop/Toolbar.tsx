@@ -11,6 +11,7 @@ import {
   Map as MapIcon,
   Eraser,
   Grid,
+  Clock,
 } from 'lucide-react';
 import type { ActiveTool, UserRole } from '../../types/vtt';
 
@@ -27,6 +28,8 @@ interface ToolbarProps {
   onClearDrawings: () => void;
   fogEnabled: boolean;
   onToggleFog: () => void;
+  onToggleClocks?: () => void;
+  clocksOpen?: boolean;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -42,6 +45,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onClearDrawings,
   fogEnabled,
   onToggleFog,
+  onToggleClocks,
+  clocksOpen,
 }) => {
   const isGM = userRole === 'gm';
 
@@ -201,6 +206,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           >
             <MapIcon className="w-5 h-5" />
           </button>
+
+          {onToggleClocks && (
+            <button
+              onClick={onToggleClocks}
+              className={`p-2 rounded-lg flex items-center justify-center transition ${
+                clocksOpen
+                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                  : 'text-slate-400 hover:text-amber-400 hover:bg-slate-800'
+              }`}
+              title="Progress Clocks Tracker"
+            >
+              <Clock className="w-5 h-5" />
+            </button>
+          )}
         </>
       )}
     </div>

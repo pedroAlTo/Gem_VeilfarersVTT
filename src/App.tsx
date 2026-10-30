@@ -11,6 +11,7 @@ import type {
   Token,
   UserRole,
   VTTUser,
+  ProgressClock,
 } from './types/vtt';
 import { DEFAULT_MAPS } from './data/defaultMaps';
 import { DEFAULT_TOKENS } from './data/defaultTokens';
@@ -25,18 +26,17 @@ import {
 } from './services/firebase';
 import { Navbar } from './components/Navbar';
 import { TabletopCanvas } from './components/Tabletop/TabletopCanvas';
-import { TacticalRadarWidget } from './components/Tabletop/TacticalRadarWidget';
+import { Toolbar } from './components/Tabletop/Toolbar';
+import { ProgressClocks } from './components/Tabletop/ProgressClocks';
 import { ChatPanel } from './components/Panels/ChatPanel';
 import { DiceTrayPanel } from './components/Panels/DiceTrayPanel';
 import { InitiativeTracker } from './components/Panels/InitiativeTracker';
 import { CharacterSheetPanel } from './components/Panels/CharacterSheetPanel';
 import { StarshipPanel } from './components/Panels/StarshipPanel';
-import { StatusPumpModule } from './components/Panels/StatusPumpModule';
 import { RulesCompendiumModal } from './components/Panels/RulesCompendiumModal';
 import { MapSelectorModal } from './components/Tabletop/MapSelectorModal';
 import { TokenModal } from './components/Tabletop/TokenModal';
 import { SettingsModal } from './components/Panels/SettingsModal';
-import { BookOpen, Rocket, Palette } from 'lucide-react';
 
 export function App() {
   // 1. Room ID Resolution
@@ -76,6 +76,21 @@ export function App() {
   const [keeperFear, setKeeperFear] = useState<number>(4);
   const [crewHeat, setCrewHeat] = useState<number>(0);
 
+  // Progress Clocks (4, 6, 8, 10, 12 segment tension trackers)
+  const [clocks, setClocks] = useState<ProgressClock[]>(() => {
+    const saved = localStorage.getItem(`VEILFARERS_CLOCKS_${roomId}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return [
+      { id: 'clock-alarm', name: 'Station Alarm', segments: 4, progress: 1, color: '#f59e0b' },
+      { id: 'clock-breach', name: 'Void Fracture', segments: 6, progress: 2, color: '#a855f7' },
+    ];
+  });
+  const [isClocksOpen, setIsClocksOpen] = useState<boolean>(true);
+
   // 4. Chat & Players Synchronized State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -112,6 +127,7 @@ export function App() {
       if (remote.tokens) setTokens(remote.tokens);
       if (remote.drawings) setDrawings(remote.drawings);
       if (remote.fog) setFog(remote.fog);
+      if (remote.clocks) setClocks(remote.clocks);
       if (remote.round !== undefined) setRound(remote.round);
       if (remote.activeSpotlightTokenId !== undefined)
         setActiveSpotlightTokenId(remote.activeSpotlightTokenId);
@@ -214,6 +230,41 @@ export function App() {
       updateRoomState(roomId, { activeMap: newMap });
     },
     [roomId]
+  );
+
+  const handleUpdateClocks = useCallback(
+    (newClocks: ProgressClock[]) => {
+      setClocks(newClocks);
+      localStorage.setItem(`VEILFARERS_CLOCKS_${roomId}`, JSON.stringify(newClocks));
+      updateRoomState(roomId, { clocks: newClocks });
+    },
+    [roomId]
+  );
+
+  const handleDropImage = useCallback(
+    (file: File) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          const dataUrl = e.target.result as string;
+          const testImg = new Image();
+          testImg.onload = () => {
+            const newMap: MapData = {
+              id: 'custom-' + Date.now(),
+              name: file.name.replace(/\.[^/.]+$/, ''),
+              imageUrl: dataUrl,
+              width: testImg.naturalWidth || 2400,
+              height: testImg.naturalHeight || 1800,
+              grid: activeMap.grid,
+            };
+            handleSelectMap(newMap);
+          };
+          testImg.src = dataUrl;
+        }
+      };
+      reader.readAsDataURL(file);
+    },
+    [activeMap.grid, handleSelectMap]
   );
 
   // Ping Trigger
@@ -345,16 +396,19 @@ export function App() {
         crewHeat={crewHeat}
       />
 
-      {/* 2. MAIN COCKPIT VIEWPORT (Left Dock + Center Tactical Display + Right Telemetry Sidecar) */}
-      <div className="flex-1 flex overflow-hidden p-1.5 gap-1.5 bg-[#05060a]">
-        {/* LEFT DOCK: MATRIX KEYPAD & CIRCULAR RADAR (Directly from reference screenshot) */}
-        <aside className="w-38 shrink-0 flex flex-col space-y-2 overflow-y-auto pr-0.5">
-          <TacticalRadarWidget
+      {/* 2. MAIN TABLETOP WORKSPACE */}
+      <div className="flex-1 relative flex overflow-hidden bg-[#06080d]">
+        {/* Center Tabletop Canvas Viewport */}
+        <main className="flex-1 h-full relative overflow-hidden bg-[#07090f]">
+          {/* Floating Toolbar on Canvas (Top-Left) */}
+          <Toolbar
             activeTool={activeTool}
             onChangeTool={setActiveTool}
             userRole={userRole}
-            fogEnabled={fog.enabled}
-            onToggleFog={handleToggleFog}
+            drawColor={drawColor}
+            onChangeDrawColor={setDrawColor}
+            brushSize={brushSize}
+            onChangeBrushSize={setBrushSize}
             onOpenNewTokenModal={() =>
               setTokenModalData({
                 token: {
@@ -379,84 +433,13 @@ export function App() {
               })
             }
             onOpenMapModal={() => setIsMapModalOpen(true)}
+            onClearDrawings={handleClearDrawings}
+            fogEnabled={fog.enabled}
+            onToggleFog={handleToggleFog}
+            onToggleClocks={() => setIsClocksOpen(!isClocksOpen)}
+            clocksOpen={isClocksOpen}
           />
 
-          {/* Quick Subsystem Launchers */}
-          <div className="bg-[#0b0e14] border border-[#202736] p-1.5 rounded relative text-[10px] space-y-1">
-            <span className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-amber-500" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-amber-500" />
-            <div className="text-[9px] font-bold text-amber-500 tracking-wider mb-1">
-              ▲ SUB-SYS
-            </div>
-
-            <button
-              onClick={() => setIsCompendiumOpen(true)}
-              className="w-full py-1 px-1.5 bg-[#121620] hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-[#222a3a] rounded-sm font-bold flex items-center space-x-1 transition text-[9px]"
-              title="Open 12.06 Sacred Rules"
-            >
-              <BookOpen className="w-3 h-3 text-amber-500" />
-              <span>RULES 12.06</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('ship')}
-              className={`w-full py-1 px-1.5 rounded-sm font-bold flex items-center space-x-1 transition text-[9px] ${
-                activeTab === 'ship'
-                  ? 'bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
-                  : 'bg-[#121620] text-cyan-400 hover:text-cyan-300 border border-[#222a3a]'
-              }`}
-              title="Starship Tactical Station"
-            >
-              <Rocket className="w-3 h-3 text-cyan-400" />
-              <span>STARSHIP</span>
-            </button>
-
-            {activeTool === 'draw' && (
-              <div className="pt-1 border-t border-[#1a2230] space-y-1">
-                <div className="flex items-center justify-between text-[8px] text-slate-400">
-                  <Palette className="w-2.5 h-2.5 text-purple-400" />
-                  <span>PEN SIZE: {brushSize}px</span>
-                </div>
-                <div className="flex space-x-1">
-                  {['#f59e0b', '#10b981', '#06b6d4', '#ec4899', '#ffffff'].map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setDrawColor(c)}
-                      className={`w-4 h-4 rounded-xs border ${
-                        drawColor === c ? 'border-white scale-110 shadow' : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-                <div className="flex space-x-1">
-                  <button
-                    onClick={() => setBrushSize(Math.max(1, brushSize - 1))}
-                    className="flex-1 py-0.5 bg-[#141b26] text-slate-400 text-[8px] rounded-xs"
-                  >
-                    -
-                  </button>
-                  <button
-                    onClick={() => setBrushSize(Math.min(16, brushSize + 1))}
-                    className="flex-1 py-0.5 bg-[#141b26] text-slate-400 text-[8px] rounded-xs"
-                  >
-                    +
-                  </button>
-                  <button
-                    onClick={handleClearDrawings}
-                    className="flex-1 py-0.5 bg-rose-950/60 text-rose-300 text-[8px] rounded-xs hover:bg-rose-900"
-                    title="Clear Ink"
-                  >
-                    CLR
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {/* CENTER TACTICAL DISPLAY (▲ VLV CTRL - 02 Framed Canvas) */}
-        <main className="flex-1 h-full min-w-0 flex flex-col relative overflow-hidden">
           <TabletopCanvas
             mapData={activeMap}
             tokens={tokens}
@@ -475,14 +458,24 @@ export function App() {
             onSelectToken={setSelectedToken}
             onEditToken={(t) => setTokenModalData({ token: t, isNew: false })}
             activePings={activePings}
-            onOpenMapModal={() => setIsMapModalOpen(true)}
-            onToggleFog={handleToggleFog}
-            onChangeTool={setActiveTool}
+            onDropImage={handleDropImage}
           />
+
+          {/* Floating Progress Clocks Widget (Top-Right) */}
+          {isClocksOpen && (
+            <div className="absolute top-4 right-4 z-20">
+              <ProgressClocks
+                clocks={clocks}
+                onUpdateClocks={handleUpdateClocks}
+                userRole={userRole}
+                onClose={() => setIsClocksOpen(false)}
+              />
+            </div>
+          )}
         </main>
 
-        {/* RIGHT SIDECAR: TELEMETRY (▲ FNC), TERMINAL (▲ TRML), HERO SHEET & PUMP STP */}
-        <aside className="w-88 xl:w-96 shrink-0 h-full flex flex-col space-y-1.5 overflow-hidden">
+        {/* RIGHT SIDECAR: TELEMETRY, COMBAT, DICE, HERO SHEET & STARSHIP */}
+        <aside className="w-80 md:w-96 shrink-0 h-full border-l border-[#1c2434] bg-[#0a0d14] flex flex-col z-10 shadow-2xl overflow-hidden">
           {/* Main Upper Telemetry Viewport */}
           <div className="flex-1 min-h-0 overflow-hidden">
             {activeTab === 'initiative' && (
@@ -501,6 +494,8 @@ export function App() {
                 onUpdateKeeperFear={handleUpdateKeeperFear}
                 onUpdateCrewHeat={handleUpdateCrewHeat}
                 onSelectToken={(t) => setSelectedToken(t)}
+                clocks={clocks}
+                onUpdateClocks={handleUpdateClocks}
               />
             )}
 
@@ -547,23 +542,6 @@ export function App() {
                 }
               />
             )}
-          </div>
-
-          {/* LOWER MODULE: ▲ PUMP STP / R-02 ACTIVE (Directly from reference screenshot) */}
-          <div className="shrink-0">
-            <StatusPumpModule
-              characterName={currentDisplayName}
-              onSendActionLog={(content) =>
-                handleSendMessage({
-                  senderId: currentUser?.uid || 'guest',
-                  senderName: currentDisplayName,
-                  senderRole: userRole,
-                  timestamp: Date.now(),
-                  content,
-                  type: 'chat',
-                })
-              }
-            />
           </div>
         </aside>
       </div>

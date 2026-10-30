@@ -311,12 +311,21 @@ export type ActiveTool =
   | 'fog_reveal'
   | 'fog_hide';
 
+export interface ProgressClock {
+  id: string;
+  name: string;
+  segments: number; // 4, 6, 8, 10, 12
+  progress: number; // 0 to segments
+  color: string;
+}
+
 export interface RoomState {
   id: string;
   name: string;
   gmUid: string;
   activeMap: MapData;
   tokens: Record<string, Token>;
+  clocks?: ProgressClock[];
   drawings: DrawingPath[];
   fog: FogOfWarData;
   round: number;
