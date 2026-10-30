@@ -30,6 +30,9 @@ interface TabletopCanvasProps {
   onSelectToken: (token: Token | null) => void;
   onEditToken: (token: Token) => void;
   activePings: PingMarker[];
+  onOpenMapModal?: () => void;
+  onToggleFog?: () => void;
+  onChangeTool?: (tool: ActiveTool) => void;
 }
 
 export const TabletopCanvas: React.FC<TabletopCanvasProps> = ({
@@ -50,6 +53,9 @@ export const TabletopCanvas: React.FC<TabletopCanvasProps> = ({
   onSelectToken,
   onEditToken,
   activePings,
+  onOpenMapModal,
+  onToggleFog,
+  onChangeTool,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -63,6 +69,24 @@ export const TabletopCanvas: React.FC<TabletopCanvasProps> = ({
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Tactical Subwindow State & Armed status
+  const [isSubwindowOpen, setIsSubwindowOpen] = useState(true);
+  const [isArmed, setIsArmed] = useState(true);
+  const [canvasTimecode, setCanvasTimecode] = useState('00:01:12:040');
+
+  // Live ticking chronometer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      const ms = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, '0');
+      setCanvasTimecode(`00:${h}:${m}:${s}:${ms}`);
+    }, 75);
+    return () => clearInterval(timer);
+  }, []);
 
   // Measurement tool state
   const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null);
@@ -738,46 +762,287 @@ export const TabletopCanvas: React.FC<TabletopCanvasProps> = ({
     }
   };
 
-  return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-full overflow-hidden select-none bg-[#090b10]"
-    >
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full block cursor-crosshair"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
-        onDoubleClick={handleDoubleClick}
-        onContextMenu={(e) => e.preventDefault()}
-      />
+  const selectedToken = selectedTokenId ? tokens[selectedTokenId] : null;
 
-      {/* Floating Zoom & Center HUD Controls */}
-      <div className="absolute bottom-5 left-5 flex items-center space-x-1.5 bg-slate-900/85 backdrop-blur-md border border-slate-700/60 p-1.5 rounded-lg shadow-xl text-xs text-slate-300">
-        <button
-          onClick={() => setTransform((t) => ({ ...t, scale: Math.max(0.2, t.scale * 0.85) }))}
-          className="p-1.5 hover:bg-slate-800 rounded text-slate-200 transition"
-          title="Zoom Out"
-        >
-          -
-        </button>
-        <span className="px-2 font-mono">{Math.round(transform.scale * 100)}%</span>
-        <button
-          onClick={() => setTransform((t) => ({ ...t, scale: Math.min(3.5, t.scale * 1.15) }))}
-          className="p-1.5 hover:bg-slate-800 rounded text-slate-200 transition"
-          title="Zoom In"
-        >
-          +
-        </button>
-        <button
-          onClick={() => setTransform({ x: 100, y: 80, scale: 0.9 })}
-          className="px-2 py-1 hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 rounded font-medium ml-1 transition"
-          title="Reset View"
-        >
-          Reset
-        </button>
+  return (
+    <div className="flex flex-col w-full h-full bg-[#06080d] border border-[#1b2333] relative overflow-hidden select-none font-mono">
+      {/* 1. TOP WINDOW BAR (▲ VLV CTRL - 02) */}
+      <div className="h-8 bg-[#0a0d14] border-b border-[#1b2333] px-3 flex items-center justify-between text-[11px] z-10">
+        <div className="flex items-center space-x-2">
+          {/* Amber Chevron & Title */}
+          <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/50 text-amber-400 font-bold tracking-wider flex items-center gap-1 rounded-sm">
+            <span className="text-[9px]">▲</span> VLV CTRL - 02
+          </span>
+          <span className="text-slate-600">|</span>
+          <span className="text-amber-500/90 text-[10px] font-bold tracking-wider">▲ L-02:01</span>
+          <span className="text-slate-600">|</span>
+          <span className="text-slate-300 font-medium tracking-wide uppercase text-[10px] hidden md:inline">
+            SECTOR: {mapData.name} ({mapData.width}×{mapData.height}px)
+          </span>
+        </div>
+
+        {/* Window controls (minimize, fit, reset) */}
+        <div className="flex items-center space-x-2">
+          <span className="text-[10px] text-emerald-400 hidden lg:inline mr-2 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            TELEMETRY: STABLE
+          </span>
+          <button
+            onClick={() => setIsSubwindowOpen(!isSubwindowOpen)}
+            className="w-5 h-5 flex items-center justify-center bg-[#101520] hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-[#222c3d] rounded-sm text-[10px] transition"
+            title="Toggle Subwindow (L-02:01)"
+          >
+            _
+          </button>
+          <button
+            onClick={() => setTransform({ x: 100, y: 80, scale: 0.9 })}
+            className="w-5 h-5 flex items-center justify-center bg-[#101520] hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-[#222c3d] rounded-sm text-[10px] transition"
+            title="Reset Pan & Zoom"
+          >
+            □
+          </button>
+          <button
+            onClick={() => {
+              setSelectedTokenId(null);
+              onSelectToken(null);
+            }}
+            className="w-5 h-5 flex items-center justify-center bg-[#101520] hover:bg-rose-900/40 text-slate-400 hover:text-rose-300 border border-[#222c3d] rounded-sm text-[10px] transition"
+            title="Clear Selection"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* 2. MAIN CANVAS VIEWPORT WITH SUBWINDOW OVERLAY & VERTICAL TABS */}
+      <div ref={containerRef} className="flex-1 relative overflow-hidden bg-[#07090f]">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full block cursor-crosshair"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
+          onDoubleClick={handleDoubleClick}
+          onContextMenu={(e) => e.preventDefault()}
+        />
+
+        {/* FLOATING SUBWINDOW (▲ L-02:01 - Schematic Status Box) */}
+        {isSubwindowOpen && (
+          <div className="absolute top-3 left-3 w-64 bg-[#0a0d14]/95 border border-[#222c3e] rounded p-2.5 shadow-2xl backdrop-blur-md z-10 text-[10px]">
+            {/* Corner brackets */}
+            <span className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-amber-500" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-amber-500" />
+            <span className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-amber-500" />
+            <span className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-amber-500" />
+
+            <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#1b2332]">
+              <div className="flex items-center space-x-1.5">
+                <span className="text-amber-500 font-bold tracking-widest text-[9px]">▲ L-02:01</span>
+                <span className="text-slate-500">|</span>
+                <span className="text-slate-300 font-bold text-[9px] uppercase">
+                  {selectedToken ? 'TARGET TELEMETRY' : 'SECTOR SENSORS'}
+                </span>
+              </div>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
+
+            {selectedToken ? (
+              <div className="space-y-1.5 text-slate-300">
+                <div className="flex justify-between items-center bg-[#111722] px-1.5 py-1 rounded border border-[#1d273a]">
+                  <span className="font-bold text-amber-400">{selectedToken.name}</span>
+                  <span className="text-[9px] uppercase px-1 py-0.2 bg-indigo-900/50 text-indigo-300 rounded border border-indigo-700/50">
+                    {selectedToken.path}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1 text-[9px]">
+                  <div className="bg-[#0e131d] p-1 rounded border border-[#1c2434]">
+                    <span className="text-slate-500 block">HIT POINTS</span>
+                    <span className="font-bold text-emerald-400">
+                      {selectedToken.hp} / {selectedToken.maxHp}
+                    </span>
+                  </div>
+                  <div className="bg-[#0e131d] p-1 rounded border border-[#1c2434]">
+                    <span className="text-slate-500 block">ARMOR SLOTS</span>
+                    <span className="font-bold text-cyan-400">
+                      {selectedToken.armorSlots} / {selectedToken.maxArmorSlots}
+                    </span>
+                  </div>
+                  <div className="bg-[#0e131d] p-1 rounded border border-[#1c2434]">
+                    <span className="text-slate-500 block">THRESHOLDS</span>
+                    <span className="font-bold text-amber-400">
+                      M:{selectedToken.majorThreshold} S:{selectedToken.severeThreshold}
+                    </span>
+                  </div>
+                  <div className="bg-[#0e131d] p-1 rounded border border-[#1c2434]">
+                    <span className="text-slate-500 block">EVASION</span>
+                    <span className="font-bold text-slate-200">{selectedToken.evasion}</span>
+                  </div>
+                </div>
+
+                <div className="pt-1 border-t border-[#1a2130] flex justify-between text-[9px] text-slate-400">
+                  <span>CONDITIONS:</span>
+                  <span className="font-bold text-amber-300">
+                    {selectedToken.conditions.length > 0
+                      ? selectedToken.conditions.join(', ')
+                      : 'NOMINAL'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1 text-slate-400 text-[9px]">
+                <div className="flex justify-between">
+                  <span>ATMOSPHERE:</span>
+                  <span className="text-slate-200 font-semibold">PRESSURIZED (O2 21%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>RADIATION:</span>
+                  <span className="text-emerald-400 font-semibold">0.02 mSv/h (SAFE)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GRAVITY:</span>
+                  <span className="text-slate-200 font-semibold">0.98 G STANDARD</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GRID SYNC:</span>
+                  <span className="text-amber-400 font-bold">{mapData.grid.size}px LOCKED</span>
+                </div>
+                <div className="pt-1 border-t border-[#1a2130] text-[8px] text-slate-500">
+                  CLICK OR DRAG ANY TOKEN TO ENGAGE TARGET LOCK
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* RIGHT VERTICAL TAB STRIP (F01, F02, F03, F04 - Directly from reference HUD) */}
+        <div className="absolute right-2 top-4 flex flex-col space-y-1.5 z-10">
+          <button
+            onClick={onOpenMapModal}
+            className="w-8 h-8 rounded-sm bg-[#0b0e14]/90 border border-[#202738] hover:border-amber-500 text-slate-300 hover:text-amber-400 flex flex-col items-center justify-center transition shadow-lg group"
+            title="F01: Sector Maps"
+          >
+            <span className="text-[9px] font-black text-amber-500 group-hover:text-amber-300">F01</span>
+            <span className="text-[7px] text-slate-500">MAP</span>
+          </button>
+
+          <button
+            onClick={() => onChangeTool?.('measure')}
+            className={`w-8 h-8 rounded-sm border flex flex-col items-center justify-center transition shadow-lg group ${
+              activeTool === 'measure'
+                ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                : 'bg-[#0b0e14]/90 border-[#202738] text-slate-300 hover:text-amber-400'
+            }`}
+            title="F02: Tactical Ruler"
+          >
+            <span className={`text-[9px] font-black ${activeTool === 'measure' ? 'text-slate-950' : 'text-amber-500'}`}>
+              F02
+            </span>
+            <span className={`text-[7px] ${activeTool === 'measure' ? 'text-slate-900' : 'text-slate-500'}`}>
+              RNG
+            </span>
+          </button>
+
+          <button
+            onClick={onToggleFog}
+            className="w-8 h-8 rounded-sm bg-[#0b0e14]/90 border border-[#202738] hover:border-cyan-400 text-slate-300 hover:text-cyan-400 flex flex-col items-center justify-center transition shadow-lg group"
+            title="F03: Fog of War"
+          >
+            <span className="text-[9px] font-black text-cyan-400 group-hover:text-cyan-300">F03</span>
+            <span className="text-[7px] text-slate-500">FOG</span>
+          </button>
+
+          <button
+            onClick={() => {
+              sounds.ping();
+              onTriggerPing({
+                id: 'ping-' + Date.now(),
+                x: mapData.width / 2,
+                y: mapData.height / 2,
+                color: userColor,
+                senderName: userName,
+                timestamp: Date.now(),
+              });
+            }}
+            className="w-8 h-8 rounded-sm bg-[#0b0e14]/90 border border-[#202738] hover:border-emerald-400 text-slate-300 hover:text-emerald-400 flex flex-col items-center justify-center transition shadow-lg group"
+            title="F04: Sonar Scan Ping"
+          >
+            <span className="text-[9px] font-black text-emerald-400 group-hover:text-emerald-300">F04</span>
+            <span className="text-[7px] text-slate-500">PNG</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. BOTTOM WINDOW BAR (ARMED, RELOAD, TIME, COORDINATES, HAZARD STRIPES) */}
+      <div className="h-9 bg-[#090c13] border-t border-[#1b2333] px-3 flex items-center justify-between text-[10px] z-10">
+        {/* Left: ARMED indicator and reload buttons */}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsArmed(!isArmed)}
+            className={`px-2.5 py-1 rounded-sm font-black text-[9px] tracking-wider transition flex items-center space-x-1 ${
+              isArmed
+                ? 'bg-amber-500 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.6)]'
+                : 'bg-[#141a26] text-slate-500 border border-[#222c3d]'
+            }`}
+            title="System Armed State"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isArmed ? 'bg-slate-950 animate-pulse' : 'bg-slate-600'}`} />
+            <span>ARMED</span>
+          </button>
+
+          <button
+            onClick={() => setTransform({ x: 100, y: 80, scale: 0.9 })}
+            className="px-2 py-1 bg-[#10141e] hover:bg-slate-800 text-slate-300 hover:text-amber-400 border border-[#222c3d] rounded-sm font-bold text-[9px] transition"
+            title="Reload & Recenter Viewport"
+          >
+            RELOAD
+          </button>
+
+          <button
+            onClick={() => setTransform((t) => ({ ...t, scale: 1.0 }))}
+            className="px-2 py-1 bg-[#10141e] hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-[#222c3d] rounded-sm font-medium text-[9px] transition hidden sm:inline"
+            title="1:1 Native Pixel Scale"
+          >
+            RESET
+          </button>
+
+          {/* Zoom controls */}
+          <div className="flex items-center space-x-1 bg-[#10141e] border border-[#222c3d] px-1.5 py-0.5 rounded-sm text-[9px]">
+            <button
+              onClick={() => setTransform((t) => ({ ...t, scale: Math.max(0.2, t.scale * 0.85) }))}
+              className="px-1 text-slate-400 hover:text-slate-200"
+            >
+              -
+            </button>
+            <span className="font-bold text-amber-400 px-1">{Math.round(transform.scale * 100)}%</span>
+            <button
+              onClick={() => setTransform((t) => ({ ...t, scale: Math.min(3.5, t.scale * 1.15) }))}
+              className="px-1 text-slate-400 hover:text-slate-200"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Center: Realtime Chronometer (▲ 00:01:12:040) */}
+        <div className="hidden md:flex items-center space-x-1.5 font-bold tracking-widest text-amber-500">
+          <span className="text-[8px]">▲</span>
+          <span>{canvasTimecode}</span>
+        </div>
+
+        {/* Right: Coordinates & Hazard Stripes */}
+        <div className="flex items-center space-x-2.5">
+          <div className="hidden sm:flex items-center space-x-2 text-slate-400 font-mono text-[9px]">
+            <span>POS:</span>
+            <span className="text-slate-200 font-bold">
+              X:{Math.round(transform.x)} Y:{Math.round(transform.y)}
+            </span>
+          </div>
+
+          {/* Hazard diagonal stripes widget */}
+          <div className="w-16 h-3 bg-hazard-stripes rounded-xs border border-amber-500/30 opacity-70" />
+        </div>
       </div>
     </div>
   );

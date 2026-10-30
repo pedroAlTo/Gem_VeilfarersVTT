@@ -152,6 +152,31 @@ class SoundFX {
     osc.start(now);
     osc.stop(now + 0.04);
   }
+
+  // Aliases for intuitive call-sites
+  public tokenMove() {
+    this.playTokenMove();
+  }
+
+  public hopeChime() {
+    this.playCritSuccess();
+  }
+
+  public fanfare() {
+    this.playCritSuccess();
+  }
+
+  public ping() {
+    this.playPing();
+  }
+
+  public dice() {
+    this.playDiceRoll();
+  }
+
+  public dread() {
+    this.playCritFail();
+  }
 }
 
 export const sounds = new SoundFX();

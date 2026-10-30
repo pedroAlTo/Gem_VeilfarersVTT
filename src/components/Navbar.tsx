@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Player, UserRole, VTTUser } from '../types/vtt';
 import { loginWithGoogle, logoutUser, loginAsGuest } from '../services/firebase';
 import {
-  Flame,
   Copy,
   Check,
   Settings,
@@ -10,10 +9,10 @@ import {
   Dices,
   Swords,
   User,
-  Shield,
   LogOut,
   LogIn,
-  AlertTriangle,
+  BookOpen,
+  Rocket,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -21,9 +20,10 @@ interface NavbarProps {
   user: VTTUser | null;
   userRole: UserRole;
   onChangeRole: (role: UserRole) => void;
-  activeTab: 'chat' | 'dice' | 'initiative' | 'sheet';
-  onChangeTab: (tab: 'chat' | 'dice' | 'initiative' | 'sheet') => void;
+  activeTab: 'chat' | 'dice' | 'initiative' | 'sheet' | 'ship';
+  onChangeTab: (tab: 'chat' | 'dice' | 'initiative' | 'sheet' | 'ship') => void;
   onOpenSettings: () => void;
+  onOpenCompendium: () => void;
   players: Player[];
   keeperFear: number;
   crewHeat: number;
@@ -37,12 +37,27 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onChangeTab,
   onOpenSettings,
+  onOpenCompendium,
   players,
   keeperFear,
   crewHeat,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showAuthMenu, setShowAuthMenu] = useState(false);
+  const [timestamp, setTimestamp] = useState('00:01:12:031');
+
+  // Sci-fi microsecond ticking chronometer like the reference image
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      const ms = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, '0');
+      setTimestamp(`00:${h}:${m}:${s}:${ms}`);
+    }, 80);
+    return () => clearInterval(timer);
+  }, []);
 
   const copyInvite = () => {
     const url = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
@@ -62,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleGuestLogin = async () => {
     try {
-      await loginAsGuest('Veil Explorer');
+      await loginAsGuest('Voidwalker');
       setShowAuthMenu(false);
     } catch (err) {
       console.error(err);
@@ -70,25 +85,40 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="h-14 bg-slate-950/95 border-b border-slate-800/80 px-4 flex items-center justify-between z-30 select-none backdrop-blur-md">
-      {/* Brand & Room Info */}
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-600/30">
-            <Flame className="w-5 h-5 text-white animate-pulse-subtle" />
-          </div>
-          <span className="font-extrabold tracking-tight text-slate-100 text-sm hidden sm:inline">
-            VEILFARERS <span className="text-indigo-400 font-light">12.06</span>
+    <header className="h-13 bg-[#0a0c10] border-b border-[#1c2330] px-3.5 flex items-center justify-between z-30 select-none font-mono text-xs">
+      {/* LEFT CLUSTER: PWR-C Rack, Channel Button, Room ID */}
+      <div className="flex items-center space-x-2.5">
+        {/* PWR-C Label & Brand */}
+        <div className="flex items-center space-x-2 bg-[#10141c] border border-[#222c3d] px-2.5 py-1 rounded">
+          <span className="text-[10px] text-amber-500 font-bold tracking-widest flex items-center gap-1">
+            <span className="text-[8px]">▲</span> PWR-C
+          </span>
+          <span className="text-slate-600">|</span>
+          <span className="font-extrabold text-slate-200 tracking-wider text-[11px]">
+            VEILFARERS <span className="text-amber-500 text-[10px] font-normal">v12.06</span>
           </span>
         </div>
 
-        {/* Room Code & Copy Link */}
-        <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
-          <span className="text-slate-400">Room:</span>
-          <span className="font-mono font-bold text-slate-200">{roomId}</span>
+        {/* Lit Channel Amber Button (from screenshot 'CH-1') */}
+        <div className="hidden sm:flex items-center bg-[#10141c] border border-[#232c3d] p-0.5 rounded">
+          <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black text-[10px] tracking-wider rounded-sm shadow-[0_0_8px_rgba(245,158,11,0.4)]">
+            CH-1
+          </span>
+          <span className="px-2 py-0.5 text-slate-400 text-[9px] tracking-wider font-semibold">
+            REC
+          </span>
+          <span className="px-1.5 py-0.5 text-slate-500 text-[9px]">
+            LVL
+          </span>
+        </div>
+
+        {/* Room Code with Copy Link */}
+        <div className="flex items-center space-x-1.5 bg-[#10141c] border border-[#222c3d] px-2 py-1 rounded text-[11px]">
+          <span className="text-slate-500 text-[10px]">ROOM:</span>
+          <span className="font-bold text-amber-400 tracking-wider">{roomId}</span>
           <button
             onClick={copyInvite}
-            className="p-1 hover:text-indigo-400 text-slate-400 transition"
+            className="p-0.5 hover:text-amber-300 text-slate-400 transition ml-0.5"
             title="Copy Invite Link"
           >
             {copied ? (
@@ -99,51 +129,69 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Role Switcher */}
-        <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
+        {/* Role Switcher: Keeper vs Player */}
+        <div className="hidden md:flex bg-[#10141c] border border-[#232c3d] p-0.5 rounded text-[10px]">
           <button
             onClick={() => onChangeRole('gm')}
-            className={`px-2 py-0.5 rounded font-medium flex items-center space-x-1 transition ${
+            className={`px-2 py-0.5 rounded-sm font-bold tracking-wider transition ${
               userRole === 'gm'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Shield className="w-3 h-3" />
-            <span>Keeper</span>
+            ▲ KEEPER
           </button>
           <button
             onClick={() => onChangeRole('player')}
-            className={`px-2 py-0.5 rounded font-medium transition ${
+            className={`px-2 py-0.5 rounded-sm font-bold tracking-wider transition ${
               userRole === 'player'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Player
+            PLAYER
           </button>
         </div>
       </div>
 
-      {/* Center: Live Fear & Heat status meters */}
-      <div className="hidden lg:flex items-center space-x-3 bg-slate-900/60 px-3 py-1 rounded-full border border-slate-800 text-xs">
-        <div className="flex items-center space-x-1.5 text-rose-400 font-mono" title="Keeper Fear Pool (Cap 12)">
-          <Flame className="w-3.5 h-3.5 text-rose-500" />
-          <span>Fear: <strong className="text-rose-200">{keeperFear}</strong>/12</span>
+      {/* CENTER CLUSTER: Amber Chronometer & Telemetry Indicators */}
+      <div className="hidden xl:flex items-center space-x-3 bg-[#0d1017] border border-[#1e2634] px-3.5 py-1 rounded">
+        {/* Chrono Counter (from screenshot) */}
+        <div className="flex items-center space-x-1.5 text-amber-400 font-bold tracking-widest text-[11px]">
+          <span className="text-[8px] text-amber-500">▲</span>
+          <span className="text-telemetry-amber font-mono">{timestamp}</span>
         </div>
-        <div className="w-px h-3 bg-slate-700" />
-        <div className="flex items-center space-x-1.5 text-amber-400 font-mono" title="Crew Criminal Heat (0 to 10)">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-          <span>Heat: <strong className="text-amber-200">{crewHeat}</strong>/10</span>
+
+        <span className="text-slate-700">|</span>
+
+        {/* Keeper Fear Pool */}
+        <div className="flex items-center space-x-1 text-[11px]" title="Keeper Fear Pool (Cap 12)">
+          <span className="text-rose-400 font-bold tracking-wider">▲ FEAR:</span>
+          <span className="px-1.5 py-0.2 rounded bg-rose-950/80 border border-rose-800 text-rose-300 font-black">
+            {String(keeperFear).padStart(2, '0')}/12
+          </span>
         </div>
-        <div className="w-px h-3 bg-slate-700" />
-        <div className="flex items-center space-x-1.5">
-          <span className="text-[10px] text-slate-400 font-medium">Party:</span>
-          <div className="flex -space-x-1.5">
+
+        <span className="text-slate-700">|</span>
+
+        {/* Criminal Heat */}
+        <div className="flex items-center space-x-1 text-[11px]" title="Crew Criminal Heat (0-10)">
+          <span className="text-amber-400 font-bold tracking-wider">▲ HEAT:</span>
+          <span className="px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-700 text-amber-300 font-black">
+            {String(crewHeat).padStart(2, '0')}/10
+          </span>
+        </div>
+
+        <span className="text-slate-700">|</span>
+
+        {/* Active Party */}
+        <div className="flex items-center space-x-1.5 text-[10px]">
+          <span className="text-slate-500">CREW:</span>
+          <div className="flex -space-x-1">
             {players.map((p) => (
               <div
                 key={p.id}
-                className="w-5 h-5 rounded-full border-2 border-slate-950 flex items-center justify-center text-[9px] font-bold text-white shadow-sm"
+                className="w-5 h-5 rounded-sm border border-[#0d1017] flex items-center justify-center text-[9px] font-black text-slate-950 shadow"
                 style={{ backgroundColor: p.color }}
                 title={`${p.name} (${p.role.toUpperCase()})`}
               >
@@ -154,151 +202,158 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Right Controls: Panel Tabs, Settings, User Login */}
+      {/* RIGHT CLUSTER: Tactical Function Buttons & User Profile */}
       <div className="flex items-center space-x-2">
-        {/* Panel Tab Selectors */}
-        <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+        {/* Function Modules (CHAT, 2D12, SPTL, SHEET, NAV) */}
+        <div className="flex bg-[#10141c] border border-[#222c3d] p-0.5 rounded">
           <button
             onClick={() => onChangeTab('chat')}
-            className={`p-1.5 rounded transition ${
+            className={`px-2 py-1 rounded-sm font-bold text-[10px] tracking-wider transition flex items-center space-x-1 ${
               activeTab === 'chat'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Party Chat & Duality Roll Log"
+            title="Party Log & Duality Rolls"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">LOG</span>
           </button>
           <button
             onClick={() => onChangeTab('dice')}
-            className={`p-1.5 rounded transition ${
+            className={`px-2 py-1 rounded-sm font-bold text-[10px] tracking-wider transition flex items-center space-x-1 ${
               activeTab === 'dice'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Duality Dice Tray & Attack Calculator"
+            title="Duality Dice Launcher"
           >
-            <Dices className="w-4 h-4" />
+            <Dices className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">2D12</span>
           </button>
           <button
             onClick={() => onChangeTab('initiative')}
-            className={`p-1.5 rounded transition ${
+            className={`px-2 py-1 rounded-sm font-bold text-[10px] tracking-wider transition flex items-center space-x-1 ${
               activeTab === 'initiative'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
             title="Spotlight & Combat Tracker"
           >
-            <Swords className="w-4 h-4" />
+            <Swords className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">SPTL</span>
           </button>
           <button
             onClick={() => onChangeTab('sheet')}
-            className={`p-1.5 rounded transition ${
+            className={`px-2 py-1 rounded-sm font-bold text-[10px] tracking-wider transition flex items-center space-x-1 ${
               activeTab === 'sheet'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Veilfarer Character Sheet (Awakened / Sleeping)"
+            title="Character Dossier"
           >
-            <User className="w-4 h-4" />
+            <User className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">CHAR</span>
+          </button>
+          <button
+            onClick={() => onChangeTab('ship')}
+            className={`px-2 py-1 rounded-sm font-bold text-[10px] tracking-wider transition flex items-center space-x-1 ${
+              activeTab === 'ship'
+                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_8px_rgba(6,182,212,0.4)]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Starship Operations (Chapter 17)"
+          >
+            <Rocket className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">SHIP</span>
           </button>
         </div>
 
-        {/* Settings button */}
+        {/* Compendium Rules Button */}
         <button
-          onClick={onOpenSettings}
-          className="p-1.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition"
-          title="VTT & Firebase Settings"
+          onClick={onOpenCompendium}
+          className="p-1.5 bg-[#10141c] border border-[#222c3d] text-slate-400 hover:text-amber-400 hover:border-amber-500/50 rounded transition"
+          title="Veilfarers 12.06 Rules Compendium"
         >
-          <Settings className="w-4 h-4" />
+          <BookOpen className="w-3.5 h-3.5" />
         </button>
 
-        {/* User Auth Profile / Login */}
+        {/* Settings Button */}
+        <button
+          onClick={onOpenSettings}
+          className="p-1.5 bg-[#10141c] border border-[#222c3d] text-slate-400 hover:text-slate-200 hover:border-slate-600 rounded transition"
+          title="Terminal Settings & Cloud Sync"
+        >
+          <Settings className="w-3.5 h-3.5" />
+        </button>
+
+        {/* User Auth Profile (Rightmost Green/Amber Pill) */}
         <div className="relative">
           {user ? (
             <button
               onClick={() => setShowAuthMenu(!showAuthMenu)}
-              className="flex items-center space-x-1.5 bg-slate-900 border border-slate-800 rounded-lg p-1 pr-2 hover:border-slate-700 transition"
+              className="flex items-center space-x-1.5 bg-[#10141c] border border-[#222c3d] p-1 pr-2 hover:border-amber-500/60 rounded transition"
             >
               {user.photoURL ? (
                 <img
                   src={user.photoURL}
                   alt={user.displayName}
-                  className="w-6 h-6 rounded-full object-cover"
+                  className="w-5 h-5 rounded-sm object-cover"
                 />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                <div className="w-5 h-5 rounded-sm bg-amber-500 text-slate-950 flex items-center justify-center font-black text-[10px]">
                   {user.displayName.substring(0, 1).toUpperCase()}
                 </div>
               )}
-              <span className="text-xs text-slate-200 font-medium max-w-[100px] truncate hidden sm:inline">
+              <span className="text-[11px] text-slate-200 font-bold max-w-[90px] truncate hidden sm:inline">
                 {user.displayName}
               </span>
             </button>
           ) : (
             <button
               onClick={() => setShowAuthMenu(!showAuthMenu)}
-              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-indigo-600/30 flex items-center space-x-1.5 transition"
+              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black tracking-wider rounded shadow-[0_0_8px_rgba(245,158,11,0.3)] flex items-center space-x-1 transition"
             >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Log In</span>
+              <LogIn className="w-3 h-3" />
+              <span>AUTH</span>
             </button>
           )}
 
           {/* Auth Dropdown */}
           {showAuthMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-2 z-50 text-xs space-y-1">
+            <div className="absolute right-0 mt-2 w-56 bg-[#0e1219] border border-amber-500/40 rounded shadow-2xl p-2 z-50 text-xs space-y-1">
               {user ? (
                 <>
-                  <div className="p-2 border-b border-slate-800">
-                    <div className="font-semibold text-slate-100 truncate">{user.displayName}</div>
-                    <div className="text-[10px] text-slate-400 truncate">{user.email || 'Guest Explorer'}</div>
+                  <div className="p-2 border-b border-[#222c3d]">
+                    <div className="font-bold text-amber-300 truncate">{user.displayName}</div>
+                    <div className="text-[10px] text-slate-400 truncate">{user.email || 'Voidwalker'}</div>
                   </div>
                   <button
                     onClick={() => {
                       logoutUser();
                       setShowAuthMenu(false);
                     }}
-                    className="w-full flex items-center space-x-2 p-2 hover:bg-slate-800 text-rose-400 rounded-lg transition"
+                    className="w-full flex items-center space-x-2 p-2 hover:bg-[#18202c] text-rose-400 rounded transition"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>Log Out</span>
+                    <span>Disconnect</span>
                   </button>
                 </>
               ) : (
                 <>
-                  <div className="p-2 text-slate-400 text-[11px] border-b border-slate-800">
-                    Sign in with Google to sync sessions across devices:
+                  <div className="p-2 text-slate-400 text-[10px] border-b border-[#222c3d]">
+                    Authenticate with Google credentials:
                   </div>
                   <button
                     onClick={handleGoogleLogin}
-                    className="w-full flex items-center space-x-2 p-2 hover:bg-slate-800 text-slate-200 rounded-lg transition font-medium"
+                    className="w-full flex items-center space-x-2 p-2 hover:bg-[#18202c] text-slate-200 rounded transition font-bold"
                   >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                      />
-                    </svg>
                     <span>Google Sign In</span>
                   </button>
                   <button
                     onClick={handleGuestLogin}
-                    className="w-full flex items-center space-x-2 p-2 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg transition"
+                    className="w-full flex items-center space-x-2 p-2 hover:bg-[#18202c] text-slate-400 hover:text-slate-200 rounded transition"
                   >
-                    <span>Play as Guest</span>
+                    <span>Guest Mode</span>
                   </button>
                 </>
               )}

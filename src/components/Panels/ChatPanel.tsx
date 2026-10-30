@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { ChatMessage, UserRole, CharacterPath, DualityRollResult } from '../../types/vtt';
 import { rollDuality } from '../../services/dice';
-import { Send, Sparkles, Shield, AlertTriangle, CheckCircle, Skull, Heart } from 'lucide-react';
+import { Send, Sparkles, Shield, AlertTriangle, CheckCircle, Skull, Heart, Terminal } from 'lucide-react';
 
 interface ChatPanelProps {
   messages: ChatMessage[];
@@ -79,53 +79,72 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     switch (outcome) {
       case 'critical_success':
         return (
-          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 font-extrabold text-[10px] tracking-wider uppercase">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-xs bg-amber-500 text-slate-950 font-black text-[9px] tracking-wider uppercase shadow-[0_0_8px_rgba(245,158,11,0.6)]">
+            <Sparkles className="w-3 h-3 text-slate-950" />
             <span>CRITICAL SUCCESS (DOUBLES MATCH!)</span>
           </div>
         );
       case 'success_hope':
         return (
-          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500 text-emerald-300 font-bold text-[10px] tracking-wider uppercase">
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Success with Hope (+1 Path Resource)</span>
+          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-xs bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-bold text-[9px] tracking-wider uppercase">
+            <CheckCircle className="w-3 h-3 text-emerald-400" />
+            <span>SUCCESS WITH HOPE (+1 RESOURCE)</span>
           </div>
         );
       case 'success_fear':
         return (
-          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-600 text-amber-300 font-bold text-[10px] tracking-wider uppercase">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-            <span>Success with Fear (+1 Keeper Fear)</span>
+          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-xs bg-amber-500/20 border border-amber-500 text-amber-300 font-bold text-[9px] tracking-wider uppercase">
+            <AlertTriangle className="w-3 h-3 text-amber-500" />
+            <span>SUCCESS WITH FEAR (+1 KEEPER FEAR)</span>
           </div>
         );
       case 'failure_hope':
         return (
-          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-500 text-sky-300 font-bold text-[10px] tracking-wider uppercase">
-            <CheckCircle className="w-3.5 h-3.5 text-sky-400" />
-            <span>Failure with Hope (Opening Remains)</span>
+          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-xs bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-bold text-[9px] tracking-wider uppercase">
+            <CheckCircle className="w-3 h-3 text-cyan-400" />
+            <span>FAILURE WITH HOPE (OPENING REMAINS)</span>
           </div>
         );
       case 'failure_fear':
         return (
-          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-600 text-rose-300 font-bold text-[10px] tracking-wider uppercase">
-            <Skull className="w-3.5 h-3.5 text-rose-500" />
-            <span>Failure with Fear (+1 Keeper Fear)</span>
+          <div className="flex items-center space-x-1 px-2 py-0.5 rounded-xs bg-rose-500/20 border border-rose-500 text-rose-300 font-bold text-[9px] tracking-wider uppercase">
+            <Skull className="w-3 h-3 text-rose-500" />
+            <span>FAILURE WITH FEAR (+1 KEEPER FEAR)</span>
           </div>
         );
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900/60 select-none">
+    <div className="flex flex-col h-full bg-[#080a10] border border-[#1b2333] select-none font-mono relative">
+      {/* Corner Brackets */}
+      <span className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-amber-500 z-10" />
+      <span className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-amber-500 z-10" />
+
+      {/* TOP HEADER: ▲ TRML / TERMINAL & LINK-01 */}
+      <div className="p-2.5 border-b border-[#1b2333] bg-[#0c1018] flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/50 text-amber-400 font-bold tracking-wider text-[10px] flex items-center gap-1 rounded-sm">
+            <span className="text-[8px]">▲</span> TRML
+          </span>
+          <span className="text-slate-600">|</span>
+          <span className="text-slate-200 font-bold tracking-wider text-[10px]">
+            LINK-01 COMMS
+          </span>
+        </div>
+        <div className="flex items-center space-x-1.5 text-[9px] text-emerald-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>CONNECTED</span>
+        </div>
+      </div>
+
       {/* Messages Scroll Area */}
-      <div ref={scrollRef} className="flex-1 p-3 overflow-y-auto space-y-3 select-text">
+      <div ref={scrollRef} className="flex-1 p-2.5 overflow-y-auto space-y-2 select-text text-xs">
         {messages.length === 0 && (
-          <div className="text-center py-8 text-slate-500 text-xs">
-            <Sparkles className="w-6 h-6 mx-auto mb-2 opacity-40 text-indigo-400" />
-            <p>The Stellar Veil hums quietly. Roll Duality Dice or speak!</p>
-            <p className="text-[10px] text-slate-600 mt-1">
-              Tip: Use &apos;/r instinct 15&apos; to roll from chat
-            </p>
+          <div className="text-center py-6 text-slate-600 text-[10px] space-y-1">
+            <Terminal className="w-5 h-5 mx-auto opacity-30 text-emerald-400" />
+            <p>[ TERMINAL READY // DUALITY PROTOCOL ACTIVE ]</p>
+            <p className="text-[9px] text-slate-700">Type a message or &apos;/r instinct 15&apos; to roll</p>
           </div>
         )}
 
@@ -138,22 +157,22 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             return (
               <div
                 key={msg.id}
-                className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 shadow-lg space-y-2.5"
+                className="bg-[#0b0e15] border border-[#1d273a] rounded-sm p-2 shadow-md space-y-1.5"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <div className="flex items-center space-x-1.5 font-medium">
+                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <div className="flex items-center space-x-1.5">
                     {msg.senderRole === 'gm' && (
-                      <span className="px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 font-bold text-[9px] border border-indigo-800/60">
+                      <span className="px-1 py-0.2 rounded-xs bg-amber-500 text-slate-950 font-black text-[8px]">
                         KEEPER
                       </span>
                     )}
-                    <span className="text-slate-200">{msg.senderName}</span>
-                    <span className="text-[10px] text-slate-500 capitalize">
+                    <span className="text-slate-200 font-bold">{msg.senderName}</span>
+                    <span className="text-[9px] text-slate-500 uppercase">
                       ({rd.path})
                     </span>
                   </div>
-                  <span className="font-mono text-slate-500 text-[10px]">
+                  <span className="font-mono text-slate-500 text-[9px]">
                     {new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -163,37 +182,37 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
                 {/* Roll Label */}
                 {rd.label && (
-                  <div className="text-xs font-semibold text-slate-300">{rd.label}</div>
+                  <div className="text-[10px] font-bold text-amber-400">{rd.label}</div>
                 )}
 
-                {/* Duality Dice Cards (Hope & Fear Display) */}
-                <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                {/* Duality Dice Cards (Hope & Fear) */}
+                <div className="bg-[#0e131d] p-2 rounded-xs border border-[#1b2434] flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     {/* Hope Die */}
                     <div className="flex flex-col items-center">
-                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 border border-amber-300 flex items-center justify-center text-slate-950 font-black text-sm shadow">
+                      <div className="w-8 h-8 rounded-xs bg-amber-500 border border-amber-300 flex items-center justify-center text-slate-950 font-black text-sm shadow-[0_0_6px_rgba(245,158,11,0.5)]">
                         {rd.hopeDie}
                       </div>
-                      <span className="text-[9px] font-bold text-amber-300 mt-0.5">HOPE</span>
+                      <span className="text-[8px] font-bold text-amber-400 mt-0.5">HOPE</span>
                     </div>
 
-                    <span className="text-slate-500 font-bold">+</span>
+                    <span className="text-slate-600 font-bold">+</span>
 
                     {/* Fear Die */}
                     <div className="flex flex-col items-center">
-                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-700 to-slate-950 border border-rose-500 flex items-center justify-center text-rose-100 font-black text-sm shadow">
+                      <div className="w-8 h-8 rounded-xs bg-slate-950 border border-rose-500 flex items-center justify-center text-rose-400 font-black text-sm shadow-[0_0_6px_rgba(244,63,94,0.3)]">
                         {rd.fearDie}
                       </div>
-                      <span className="text-[9px] font-bold text-rose-400 mt-0.5">FEAR</span>
+                      <span className="text-[8px] font-bold text-rose-500 mt-0.5">FEAR</span>
                     </div>
 
                     {/* Modifiers breakdown */}
-                    <div className="text-[10px] text-slate-400 font-mono ml-1">
+                    <div className="text-[9px] text-slate-400 font-mono pl-1">
                       {rd.traitModifier !== 0 && (
                         <div>Trait: {rd.traitModifier >= 0 ? `+${rd.traitModifier}` : rd.traitModifier}</div>
                       )}
                       {Boolean(rd.experienceBonus) && (
-                        <div className="text-indigo-400">Exp: +{rd.experienceBonus}</div>
+                        <div className="text-cyan-400">Exp: +{rd.experienceBonus}</div>
                       )}
                       {Boolean(rd.advantageModifier) && (
                         <div className={rd.advantageModifier! > 0 ? 'text-emerald-400' : 'text-rose-400'}>
@@ -205,33 +224,28 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
                   {/* Total vs DC */}
                   <div className="text-right">
-                    <div className="text-2xl font-black font-mono tracking-tight text-slate-100">
+                    <div className="text-xl font-black font-mono tracking-tight text-slate-100">
                       {rd.total}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono">vs DC {rd.dc}</div>
+                    <div className="text-[9px] text-slate-500 font-mono">DC {rd.dc}</div>
                   </div>
                 </div>
 
                 {/* Outcome Banner */}
                 <div>{renderOutcomeBadge(rd.outcome)}</div>
 
-                {/* Weapon Damage Box if Present */}
+                {/* Damage Dealt Banner */}
                 {rd.damageDealt && (
-                  <div className="p-2 rounded-lg bg-slate-950 border border-rose-900/40 text-[11px] space-y-1">
+                  <div className="p-1.5 rounded-xs bg-[#120a10] border border-rose-900/50 text-[10px] space-y-0.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-rose-300 font-bold flex items-center space-x-1">
-                        <Heart className="w-3.5 h-3.5 text-rose-400" />
-                        <span>Damage: {rd.damageDealt.rawTotal} ({rd.damageDealt.damageType})</span>
+                      <span className="text-rose-400 font-bold flex items-center space-x-1">
+                        <Heart className="w-3 h-3 text-rose-500" />
+                        <span>DAMAGE: {rd.damageDealt.rawTotal} ({rd.damageDealt.damageType})</span>
                       </span>
-                      <span className="px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 font-bold text-[10px]">
-                        Severity: {rd.damageDealt.severity} ({rd.damageDealt.hpLoss} HP marked)
+                      <span className="px-1 py-0.2 rounded-xs bg-rose-950 text-rose-300 font-bold text-[9px]">
+                        {rd.damageDealt.severity.toUpperCase()} ({rd.damageDealt.hpLoss} HP)
                       </span>
                     </div>
-                    {rd.damageDealt.penetration !== 0 && (
-                      <div className="text-[10px] text-slate-400">
-                        Penetration: {rd.damageDealt.penetration} to target thresholds
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -244,12 +258,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               key={msg.id}
               className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
             >
-              <div className="flex items-center space-x-1 text-[10px] text-slate-400 mb-0.5">
+              <div className="flex items-center space-x-1 text-[9px] text-slate-500 mb-0.5">
                 {msg.senderRole === 'gm' && (
-                  <Shield className="w-3 h-3 text-indigo-400 inline" />
+                  <Shield className="w-2.5 h-2.5 text-amber-500 inline" />
                 )}
-                <span className="font-medium text-slate-300">{msg.senderName}</span>
-                <span className="text-slate-500 font-mono">
+                <span className="font-bold text-slate-400">{msg.senderName}</span>
+                <span>•</span>
+                <span>
                   {new Date(msg.timestamp).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -257,10 +272,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 </span>
               </div>
               <div
-                className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs break-words ${
+                className={`px-2.5 py-1.5 rounded-sm max-w-[85%] text-[11px] leading-relaxed break-words font-mono ${
                   isMe
-                    ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-600/20'
-                    : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700/60'
+                    ? 'bg-amber-500/15 border border-amber-500/40 text-amber-100'
+                    : 'bg-[#101520] border border-[#1d273a] text-slate-200'
                 }`}
               >
                 {msg.content}
@@ -270,23 +285,25 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         })}
       </div>
 
-      {/* Chat Input Bar */}
-      <form onSubmit={handleSubmit} className="p-3 border-t border-slate-800 bg-slate-950/90">
-        <div className="flex items-center space-x-2">
-          <input
-            type="text"
-            placeholder="Type message or /r instinct 15..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-          />
-          <button
-            type="submit"
-            className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-md shadow-indigo-600/30 transition flex items-center justify-center"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
+      {/* Input Command Line Prompt (Terminal style) */}
+      <form
+        onSubmit={handleSubmit}
+        className="p-2 border-t border-[#1b2333] bg-[#0a0d14] flex items-center space-x-1.5"
+      >
+        <span className="text-emerald-400 text-xs font-bold pl-1">&gt;</span>
+        <input
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Enter command or message..."
+          className="flex-1 bg-[#10141f] border border-[#1e273a] focus:border-amber-500 rounded-xs px-2.5 py-1 text-slate-100 placeholder-slate-600 text-xs font-mono outline-hidden transition"
+        />
+        <button
+          type="submit"
+          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xs text-xs transition flex items-center space-x-1"
+        >
+          <Send className="w-3 h-3" />
+        </button>
       </form>
     </div>
   );

@@ -25,14 +25,18 @@ import {
 } from './services/firebase';
 import { Navbar } from './components/Navbar';
 import { TabletopCanvas } from './components/Tabletop/TabletopCanvas';
-import { Toolbar } from './components/Tabletop/Toolbar';
+import { TacticalRadarWidget } from './components/Tabletop/TacticalRadarWidget';
 import { ChatPanel } from './components/Panels/ChatPanel';
 import { DiceTrayPanel } from './components/Panels/DiceTrayPanel';
 import { InitiativeTracker } from './components/Panels/InitiativeTracker';
 import { CharacterSheetPanel } from './components/Panels/CharacterSheetPanel';
+import { StarshipPanel } from './components/Panels/StarshipPanel';
+import { StatusPumpModule } from './components/Panels/StatusPumpModule';
+import { RulesCompendiumModal } from './components/Panels/RulesCompendiumModal';
 import { MapSelectorModal } from './components/Tabletop/MapSelectorModal';
 import { TokenModal } from './components/Tabletop/TokenModal';
 import { SettingsModal } from './components/Panels/SettingsModal';
+import { BookOpen, Rocket, Palette } from 'lucide-react';
 
 export function App() {
   // 1. Room ID Resolution
@@ -49,7 +53,7 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<VTTUser | null>(null);
   const [userRole, setUserRole] = useState<UserRole>('gm');
   const [userColor] = useState<string>(() => {
-    const colors = ['#6366f1', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+    const colors = ['#f59e0b', '#10b981', '#06b6d4', '#8b5cf6', '#ec4899', '#3b82f6'];
     return colors[Math.floor(Math.random() * colors.length)];
   });
 
@@ -62,12 +66,12 @@ export function App() {
   });
   const [drawings, setDrawings] = useState<DrawingPath[]>([]);
   const [fog, setFog] = useState<FogOfWarData>({ enabled: false, reveals: [] });
-  
+
   // Canonical Spotlight & Round Management
   const [round, setRound] = useState<number>(1);
   const [activeSpotlightTokenId, setActiveSpotlightTokenId] = useState<string | undefined>('token-maren');
   const [actedThisRound, setActedThisRound] = useState<string[]>([]);
-  
+
   // Canonical Global Pools: Keeper Fear (0-12) & Crew Criminal Heat (0-10)
   const [keeperFear, setKeeperFear] = useState<number>(4);
   const [crewHeat, setCrewHeat] = useState<number>(0);
@@ -79,12 +83,13 @@ export function App() {
 
   // 5. Active Tools & UI Panels
   const [activeTool, setActiveTool] = useState<ActiveTool>('select');
-  const [activeTab, setActiveTab] = useState<'chat' | 'dice' | 'initiative' | 'sheet'>('chat');
-  const [drawColor, setDrawColor] = useState<string>('#c084fc');
+  const [activeTab, setActiveTab] = useState<'initiative' | 'chat' | 'dice' | 'sheet' | 'ship'>('initiative');
+  const [drawColor, setDrawColor] = useState<string>('#f59e0b');
   const [brushSize, setBrushSize] = useState<number>(4);
 
   // 6. Modals
   const [isMapModalOpen, setIsMapModalOpen] = useState<boolean>(false);
+  const [isCompendiumOpen, setIsCompendiumOpen] = useState<boolean>(false);
   const [tokenModalData, setTokenModalData] = useState<{
     token: Partial<Token>;
     isNew: boolean;
@@ -324,8 +329,8 @@ export function App() {
   const currentDisplayName = currentUser?.displayName || 'Voidwalker';
 
   return (
-    <div className="flex flex-col w-screen h-screen overflow-hidden bg-slate-950 text-slate-100">
-      {/* Top Navigation Bar with Keeper Fear and Crew Heat */}
+    <div className="flex flex-col w-screen h-screen overflow-hidden bg-[#06080d] text-slate-100 font-mono select-none">
+      {/* 1. TOP HUD CONSOLE RACK (▲ PWR-C, CH-1, Chronometer, Keeper Fear, Crew Heat) */}
       <Navbar
         roomId={roomId}
         user={currentUser}
@@ -334,53 +339,124 @@ export function App() {
         activeTab={activeTab}
         onChangeTab={setActiveTab}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenCompendium={() => setIsCompendiumOpen(true)}
         players={players}
         keeperFear={keeperFear}
         crewHeat={crewHeat}
       />
 
-      {/* Main Tabletop Area */}
-      <div className="flex-1 relative flex overflow-hidden">
-        {/* Floating Toolbar on Canvas */}
-        <Toolbar
-          activeTool={activeTool}
-          onChangeTool={setActiveTool}
-          userRole={userRole}
-          drawColor={drawColor}
-          onChangeDrawColor={setDrawColor}
-          brushSize={brushSize}
-          onChangeBrushSize={setBrushSize}
-          onOpenNewTokenModal={() =>
-            setTokenModalData({
-              token: {
-                name: 'New Voidwalker',
-                color: userColor,
-                x: 400,
-                y: 350,
-                size: 1,
-                hp: 6,
-                maxHp: 6,
-                majorThreshold: 5,
-                severeThreshold: 11,
-                armorSlots: 3,
-                maxArmorSlots: 3,
-                evasion: 11,
-                stress: 0,
-                maxStress: 6,
-                path: 'awakened',
-                hope: 2,
-              },
-              isNew: true,
-            })
-          }
-          onOpenMapModal={() => setIsMapModalOpen(true)}
-          onClearDrawings={handleClearDrawings}
-          fogEnabled={fog.enabled}
-          onToggleFog={handleToggleFog}
-        />
+      {/* 2. MAIN COCKPIT VIEWPORT (Left Dock + Center Tactical Display + Right Telemetry Sidecar) */}
+      <div className="flex-1 flex overflow-hidden p-1.5 gap-1.5 bg-[#05060a]">
+        {/* LEFT DOCK: MATRIX KEYPAD & CIRCULAR RADAR (Directly from reference screenshot) */}
+        <aside className="w-38 shrink-0 flex flex-col space-y-2 overflow-y-auto pr-0.5">
+          <TacticalRadarWidget
+            activeTool={activeTool}
+            onChangeTool={setActiveTool}
+            userRole={userRole}
+            fogEnabled={fog.enabled}
+            onToggleFog={handleToggleFog}
+            onOpenNewTokenModal={() =>
+              setTokenModalData({
+                token: {
+                  name: 'New Voidwalker',
+                  color: userColor,
+                  x: 400,
+                  y: 350,
+                  size: 1,
+                  hp: 6,
+                  maxHp: 6,
+                  majorThreshold: 5,
+                  severeThreshold: 11,
+                  armorSlots: 3,
+                  maxArmorSlots: 3,
+                  evasion: 11,
+                  stress: 0,
+                  maxStress: 6,
+                  path: 'awakened',
+                  hope: 2,
+                },
+                isNew: true,
+              })
+            }
+            onOpenMapModal={() => setIsMapModalOpen(true)}
+          />
 
-        {/* The Interactive Canvas */}
-        <div className="flex-1 h-full relative">
+          {/* Quick Subsystem Launchers */}
+          <div className="bg-[#0b0e14] border border-[#202736] p-1.5 rounded relative text-[10px] space-y-1">
+            <span className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-amber-500" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-amber-500" />
+            <div className="text-[9px] font-bold text-amber-500 tracking-wider mb-1">
+              ▲ SUB-SYS
+            </div>
+
+            <button
+              onClick={() => setIsCompendiumOpen(true)}
+              className="w-full py-1 px-1.5 bg-[#121620] hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-[#222a3a] rounded-sm font-bold flex items-center space-x-1 transition text-[9px]"
+              title="Open 12.06 Sacred Rules"
+            >
+              <BookOpen className="w-3 h-3 text-amber-500" />
+              <span>RULES 12.06</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ship')}
+              className={`w-full py-1 px-1.5 rounded-sm font-bold flex items-center space-x-1 transition text-[9px] ${
+                activeTab === 'ship'
+                  ? 'bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                  : 'bg-[#121620] text-cyan-400 hover:text-cyan-300 border border-[#222a3a]'
+              }`}
+              title="Starship Tactical Station"
+            >
+              <Rocket className="w-3 h-3 text-cyan-400" />
+              <span>STARSHIP</span>
+            </button>
+
+            {activeTool === 'draw' && (
+              <div className="pt-1 border-t border-[#1a2230] space-y-1">
+                <div className="flex items-center justify-between text-[8px] text-slate-400">
+                  <Palette className="w-2.5 h-2.5 text-purple-400" />
+                  <span>PEN SIZE: {brushSize}px</span>
+                </div>
+                <div className="flex space-x-1">
+                  {['#f59e0b', '#10b981', '#06b6d4', '#ec4899', '#ffffff'].map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setDrawColor(c)}
+                      className={`w-4 h-4 rounded-xs border ${
+                        drawColor === c ? 'border-white scale-110 shadow' : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+                <div className="flex space-x-1">
+                  <button
+                    onClick={() => setBrushSize(Math.max(1, brushSize - 1))}
+                    className="flex-1 py-0.5 bg-[#141b26] text-slate-400 text-[8px] rounded-xs"
+                  >
+                    -
+                  </button>
+                  <button
+                    onClick={() => setBrushSize(Math.min(16, brushSize + 1))}
+                    className="flex-1 py-0.5 bg-[#141b26] text-slate-400 text-[8px] rounded-xs"
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={handleClearDrawings}
+                    className="flex-1 py-0.5 bg-rose-950/60 text-rose-300 text-[8px] rounded-xs hover:bg-rose-900"
+                    title="Clear Ink"
+                  >
+                    CLR
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* CENTER TACTICAL DISPLAY (▲ VLV CTRL - 02 Framed Canvas) */}
+        <main className="flex-1 h-full min-w-0 flex flex-col relative overflow-hidden">
           <TabletopCanvas
             mapData={activeMap}
             tokens={tokens}
@@ -399,57 +475,104 @@ export function App() {
             onSelectToken={setSelectedToken}
             onEditToken={(t) => setTokenModalData({ token: t, isNew: false })}
             activePings={activePings}
+            onOpenMapModal={() => setIsMapModalOpen(true)}
+            onToggleFog={handleToggleFog}
+            onChangeTool={setActiveTool}
           />
-        </div>
+        </main>
 
-        {/* Right Sidebar Panels */}
-        <aside className="w-80 md:w-96 h-full bg-slate-950/95 border-l border-slate-800/80 flex flex-col z-20 shadow-2xl backdrop-blur-md">
-          {activeTab === 'chat' && (
-            <ChatPanel
-              messages={messages}
-              currentUserId={currentUser?.uid || 'guest'}
-              currentUserName={currentDisplayName}
-              currentUserRole={userRole}
-              currentPath="awakened"
-              onSendMessage={handleSendMessage}
-            />
-          )}
+        {/* RIGHT SIDECAR: TELEMETRY (▲ FNC), TERMINAL (▲ TRML), HERO SHEET & PUMP STP */}
+        <aside className="w-88 xl:w-96 shrink-0 h-full flex flex-col space-y-1.5 overflow-hidden">
+          {/* Main Upper Telemetry Viewport */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {activeTab === 'initiative' && (
+              <InitiativeTracker
+                tokens={tokens}
+                activeTokenId={activeSpotlightTokenId}
+                round={round}
+                actedThisRound={actedThisRound}
+                userRole={userRole}
+                keeperFear={keeperFear}
+                crewHeat={crewHeat}
+                onUpdateTokens={handleUpdateTokens}
+                onPassSpotlight={handlePassSpotlight}
+                onNextRound={handleNextRound}
+                onResetEncounter={handleResetEncounter}
+                onUpdateKeeperFear={handleUpdateKeeperFear}
+                onUpdateCrewHeat={handleUpdateCrewHeat}
+                onSelectToken={(t) => setSelectedToken(t)}
+              />
+            )}
 
-          {activeTab === 'dice' && (
-            <DiceTrayPanel
-              onRoll={handleDualityRoll}
+            {activeTab === 'chat' && (
+              <ChatPanel
+                messages={messages}
+                currentUserId={currentUser?.uid || 'guest'}
+                currentUserName={currentDisplayName}
+                currentUserRole={userRole}
+                currentPath="awakened"
+                onSendMessage={handleSendMessage}
+              />
+            )}
+
+            {activeTab === 'dice' && (
+              <DiceTrayPanel
+                onRoll={handleDualityRoll}
+                characterName={currentDisplayName}
+                path="awakened"
+              />
+            )}
+
+            {activeTab === 'sheet' && (
+              <CharacterSheetPanel
+                onRoll={handleDualityRoll}
+                characterName={currentDisplayName}
+              />
+            )}
+
+            {activeTab === 'ship' && (
+              <StarshipPanel
+                userRole={userRole}
+                characterName={currentDisplayName}
+                path="awakened"
+                onSendActionLog={(content) =>
+                  handleSendMessage({
+                    senderId: currentUser?.uid || 'guest',
+                    senderName: currentDisplayName,
+                    senderRole: userRole,
+                    timestamp: Date.now(),
+                    content,
+                    type: 'chat',
+                  })
+                }
+              />
+            )}
+          </div>
+
+          {/* LOWER MODULE: ▲ PUMP STP / R-02 ACTIVE (Directly from reference screenshot) */}
+          <div className="shrink-0">
+            <StatusPumpModule
               characterName={currentDisplayName}
-              path="awakened"
+              onSendActionLog={(content) =>
+                handleSendMessage({
+                  senderId: currentUser?.uid || 'guest',
+                  senderName: currentDisplayName,
+                  senderRole: userRole,
+                  timestamp: Date.now(),
+                  content,
+                  type: 'chat',
+                })
+              }
             />
-          )}
-
-          {activeTab === 'initiative' && (
-            <InitiativeTracker
-              tokens={tokens}
-              activeTokenId={activeSpotlightTokenId}
-              round={round}
-              actedThisRound={actedThisRound}
-              userRole={userRole}
-              keeperFear={keeperFear}
-              crewHeat={crewHeat}
-              onUpdateTokens={handleUpdateTokens}
-              onPassSpotlight={handlePassSpotlight}
-              onNextRound={handleNextRound}
-              onResetEncounter={handleResetEncounter}
-              onUpdateKeeperFear={handleUpdateKeeperFear}
-              onUpdateCrewHeat={handleUpdateCrewHeat}
-              onSelectToken={(t) => setSelectedToken(t)}
-            />
-          )}
-
-          {activeTab === 'sheet' && (
-            <CharacterSheetPanel
-              onRoll={handleDualityRoll}
-              characterName={currentDisplayName}
-            />
-          )}
+          </div>
         </aside>
       </div>
+
+      {/* 3. MODALS */}
+      {/* Rules Compendium Modal */}
+      {isCompendiumOpen && (
+        <RulesCompendiumModal onClose={() => setIsCompendiumOpen(false)} />
+      )}
 
       {/* Map Selector Modal */}
       {isMapModalOpen && (
