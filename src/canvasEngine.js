@@ -158,12 +158,14 @@ export class CanvasEngine {
     const state = store.getState();
     const map = store.getActiveMap() || {};
 
+    const excludeSet = Array.isArray(excludeWallId) ? new Set(excludeWallId) : (excludeWallId ? new Set([excludeWallId]) : null);
+
     // 1. Snap to Anchor points (Vertices of walls, doors, windows)
     if (state.snapToAnchors !== false) {
       let nearestAnchor = null;
       let minDist = threshold;
       for (const w of (map.walls || [])) {
-        if (excludeWallId && w.id === excludeWallId) continue;
+        if (excludeSet && excludeSet.has(w.id)) continue;
         const d1 = Math.hypot(x - w.x1, y - w.y1);
         if (d1 < minDist) {
           minDist = d1;
@@ -497,26 +499,66 @@ export class CanvasEngine {
 
       // --- KEEPER ELEMENT HANDLES (Walls, Anomalies, Water) ---
       if (isKeeper) {
-        // A. Check Endpoints First: "si el doble click es sobre un punto final empieza un lado nuevo"
+        // A. Check Endpoints: si dos puntos están juntos unelos en un trazado compuesto, haciendo doble click se separan
         // 1. Walls Endpoints
+        const nearEndpoints = [];
         for (const w of (map.walls || [])) {
           const d1 = Math.hypot(world.x - w.x1, world.y - w.y1);
           const d2 = Math.hypot(world.x - w.x2, world.y - w.y2);
           if (d1 <= 16) {
-            // Start new wall segment from endpoint 1
-            this.wallStart = { x: w.x1, y: w.y1 };
-            this.wallCurrent = { x: Math.round(world.x), y: Math.round(world.y) };
-            store.update({ activeTool: 'wall', selectedWallId: w.id });
-            audio.playClockTick();
-            return;
+            nearEndpoints.push({ wall: w, pt: 'p1', x: w.x1, y: w.y1, otherX: w.x2, otherY: w.y2 });
           } else if (d2 <= 16) {
-            // Start new wall segment from endpoint 2
-            this.wallStart = { x: w.x2, y: w.y2 };
-            this.wallCurrent = { x: Math.round(world.x), y: Math.round(world.y) };
-            store.update({ activeTool: 'wall', selectedWallId: w.id });
-            audio.playClockTick();
-            return;
+            nearEndpoints.push({ wall: w, pt: 'p2', x: w.x2, y: w.y2, otherX: w.x1, otherY: w.y1 });
           }
+        }
+
+        if (nearEndpoints.length >= 2) {
+          // SEPARATE COMPOUND JOINT ON DOUBLE CLICK
+          undoManager.pushCurrentState('Separar Muros Compuestos');
+
+          for (const ep of nearEndpoints) {
+            const dx = ep.otherX - ep.x;
+            const dy = ep.otherY - ep.y;
+            const len = Math.hypot(dx, dy);
+            if (len > 0) {
+              const sepDist = Math.max(10, Math.min(26, len * 0.35));
+              const newX = Math.round(ep.x + (dx / len) * sepDist);
+              const newY = Math.round(ep.y + (dy / len) * sepDist);
+              if (ep.pt === 'p1') {
+                ep.wall.x1 = newX;
+                ep.wall.y1 = newY;
+              } else {
+                ep.wall.x2 = newX;
+                ep.wall.y2 = newY;
+              }
+              store.updateWall(ep.wall.id, {
+                x1: ep.wall.x1,
+                y1: ep.wall.y1,
+                x2: ep.wall.x2,
+                y2: ep.wall.y2
+              });
+              network.broadcast({
+                type: 'WALL_UPDATE',
+                wallId: ep.wall.id,
+                data: { x1: ep.wall.x1, y1: ep.wall.y1, x2: ep.wall.x2, y2: ep.wall.y2 }
+              });
+            }
+          }
+          audio.playClockTick();
+          store.addCombatLog({
+            type: 'SYSTEM',
+            title: '✂️ MUROS SEPARADOS',
+            details: `Vértice compuesto separado. Se han independizado ${nearEndpoints.length} extremos de muro.`
+          });
+          return;
+        } else if (nearEndpoints.length === 1) {
+          // Single standalone endpoint: double click starts drawing a new wall segment from it
+          const ep = nearEndpoints[0];
+          this.wallStart = { x: ep.x, y: ep.y };
+          this.wallCurrent = { x: Math.round(world.x), y: Math.round(world.y) };
+          store.update({ activeTool: 'wall', selectedWallId: ep.wall.id });
+          audio.playClockTick();
+          return;
         }
 
         // 2. Line Anomalies & Lasers Endpoints (Point A or Point B)
@@ -1177,15 +1219,43 @@ export class CanvasEngine {
               }
             }
 
-            // Check Wall selection / vertices (Keeper Mode)
+            // Check Wall vertices first (Compound joints or single endpoints)
+            const clickedWallPoints = [];
             for (const wall of (map.walls || [])) {
               const d1 = Math.hypot(world.x - wall.x1, world.y - wall.y1);
               const d2 = Math.hypot(world.x - wall.x2, world.y - wall.y2);
+              if (d1 <= 15) {
+                clickedWallPoints.push({ wall, pt: 'p1', origX: wall.x1, origY: wall.y1 });
+              } else if (d2 <= 15) {
+                clickedWallPoints.push({ wall, pt: 'p2', origX: wall.x2, origY: wall.y2 });
+              }
+            }
+
+            if (clickedWallPoints.length > 0) {
+              this.activeTemplate = null;
+              store.update({
+                selectedWallId: clickedWallPoints[0].wall.id,
+                selectedLightId: null,
+                selectedEffectId: null,
+                selectedWaterId: null,
+                selectedTemplateId: null
+              });
+              this.draggedWall = {
+                handle: 'joint',
+                jointPoints: clickedWallPoints,
+                wall: clickedWallPoints[0].wall,
+                startX: world.x,
+                startY: world.y
+              };
+              return;
+            }
+
+            // If no vertex clicked, check wall midpoints or segment bodies for selection / moving
+            for (const wall of (map.walls || [])) {
               const midX = (wall.x1 + wall.x2) / 2;
               const midY = (wall.y1 + wall.y2) / 2;
               const distMid = Math.hypot(world.x - midX, world.y - midY);
 
-              // Distance to line segment check so clicking anywhere on the wall selects it
               const lenSq = (wall.x2 - wall.x1) ** 2 + (wall.y2 - wall.y1) ** 2;
               let distSeg = Infinity;
               if (lenSq > 0) {
@@ -1195,20 +1265,19 @@ export class CanvasEngine {
                 distSeg = Math.hypot(world.x - projX, world.y - projY);
               }
 
-              if (d1 <= 14) {
+              if (distMid <= 16 || distSeg <= 12) {
                 this.activeTemplate = null;
                 store.update({ selectedWallId: wall.id, selectedLightId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
-                this.draggedWall = { wall, handle: 'p1' };
-                return;
-              } else if (d2 <= 14) {
-                this.activeTemplate = null;
-                store.update({ selectedWallId: wall.id, selectedLightId: null, selectedEffectId: null, selectedTemplateId: null });
-                this.draggedWall = { wall, handle: 'p2' };
-                return;
-              } else if (distMid <= 16 || distSeg <= 12) {
-                this.activeTemplate = null;
-                store.update({ selectedWallId: wall.id, selectedLightId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
-                this.draggedWall = { wall, handle: 'mid', startX: world.x, startY: world.y, origX1: wall.x1, origY1: wall.y1, origX2: wall.x2, origY2: wall.y2 };
+                this.draggedWall = {
+                  wall,
+                  handle: 'mid',
+                  startX: world.x,
+                  startY: world.y,
+                  origX1: wall.x1,
+                  origY1: wall.y1,
+                  origX2: wall.x2,
+                  origY2: wall.y2
+                };
                 return;
               }
             }
@@ -1421,7 +1490,19 @@ export class CanvasEngine {
           wy = Math.round(wy / (map.gridSize / 2)) * (map.gridSize / 2);
         }
 
-        if (dw.handle === 'p1') {
+        if (dw.handle === 'joint' && dw.jointPoints) {
+          const excludeIds = dw.jointPoints.map(jp => jp.wall.id);
+          const snapped = this.snapPoint(wx, wy, 16, excludeIds);
+          for (const jp of dw.jointPoints) {
+            if (jp.pt === 'p1') {
+              jp.wall.x1 = snapped.x;
+              jp.wall.y1 = snapped.y;
+            } else {
+              jp.wall.x2 = snapped.x;
+              jp.wall.y2 = snapped.y;
+            }
+          }
+        } else if (dw.handle === 'p1') {
           const snapped = this.snapPoint(wx, wy, 16, dw.wall.id);
           dw.wall.x1 = snapped.x;
           dw.wall.y1 = snapped.y;
@@ -1675,16 +1756,86 @@ export class CanvasEngine {
       }
 
       if (this.draggedWall) {
+        const dw = this.draggedWall;
+        const map = store.getActiveMap();
         if (this.preDragSnapshot) {
           store._skipNextUndoSnapshot = true;
-          undoManager.pushSnapshot(this.preDragSnapshot, 'Ajustar Muro');
+          const desc = dw.handle === 'joint' && dw.jointPoints && dw.jointPoints.length > 1
+            ? 'Mover Vértice Compuesto de Muros'
+            : 'Ajustar Muro';
+          undoManager.pushSnapshot(this.preDragSnapshot, desc);
         }
-        store.updateWall(this.draggedWall.wall.id, {
-          x1: this.draggedWall.wall.x1,
-          y1: this.draggedWall.wall.y1,
-          x2: this.draggedWall.wall.x2,
-          y2: this.draggedWall.wall.y2
-        });
+
+        if (dw.handle === 'joint' && dw.jointPoints) {
+          const first = dw.jointPoints[0];
+          let jx = first.pt === 'p1' ? first.wall.x1 : first.wall.x2;
+          let jy = first.pt === 'p1' ? first.wall.y1 : first.wall.y2;
+
+          // Auto-weld with any existing wall endpoint <= 16px
+          const excludeIds = new Set(dw.jointPoints.map(jp => jp.wall.id));
+          for (const otherW of (map?.walls || [])) {
+            if (excludeIds.has(otherW.id)) continue;
+            if (Math.hypot(jx - otherW.x1, jy - otherW.y1) <= 16) {
+              jx = otherW.x1;
+              jy = otherW.y1;
+              break;
+            } else if (Math.hypot(jx - otherW.x2, jy - otherW.y2) <= 16) {
+              jx = otherW.x2;
+              jy = otherW.y2;
+              break;
+            }
+          }
+
+          for (const jp of dw.jointPoints) {
+            if (jp.pt === 'p1') {
+              jp.wall.x1 = jx;
+              jp.wall.y1 = jy;
+            } else {
+              jp.wall.x2 = jx;
+              jp.wall.y2 = jy;
+            }
+            store.updateWall(jp.wall.id, {
+              x1: jp.wall.x1,
+              y1: jp.wall.y1,
+              x2: jp.wall.x2,
+              y2: jp.wall.y2
+            });
+            network.broadcast({
+              type: 'WALL_UPDATE',
+              wallId: jp.wall.id,
+              data: { x1: jp.wall.x1, y1: jp.wall.y1, x2: jp.wall.x2, y2: jp.wall.y2 }
+            });
+          }
+        } else if (dw.handle === 'mid') {
+          for (const otherW of (map?.walls || [])) {
+            if (otherW.id === dw.wall.id) continue;
+            if (Math.hypot(dw.wall.x1 - otherW.x1, dw.wall.y1 - otherW.y1) <= 16) {
+              dw.wall.x1 = otherW.x1;
+              dw.wall.y1 = otherW.y1;
+            } else if (Math.hypot(dw.wall.x1 - otherW.x2, dw.wall.y1 - otherW.y2) <= 16) {
+              dw.wall.x1 = otherW.x2;
+              dw.wall.y1 = otherW.y2;
+            }
+            if (Math.hypot(dw.wall.x2 - otherW.x1, dw.wall.y2 - otherW.y1) <= 16) {
+              dw.wall.x2 = otherW.x1;
+              dw.wall.y2 = otherW.y1;
+            } else if (Math.hypot(dw.wall.x2 - otherW.x2, dw.wall.y2 - otherW.y2) <= 16) {
+              dw.wall.x2 = otherW.x2;
+              dw.wall.y2 = otherW.y2;
+            }
+          }
+          store.updateWall(dw.wall.id, {
+            x1: dw.wall.x1,
+            y1: dw.wall.y1,
+            x2: dw.wall.x2,
+            y2: dw.wall.y2
+          });
+          network.broadcast({
+            type: 'WALL_UPDATE',
+            wallId: dw.wall.id,
+            data: { x1: dw.wall.x1, y1: dw.wall.y1, x2: dw.wall.x2, y2: dw.wall.y2 }
+          });
+        }
         this.draggedWall = null;
       }
 
@@ -1754,12 +1905,25 @@ export class CanvasEngine {
             store._skipNextUndoSnapshot = true;
             undoManager.pushSnapshot(this.preDragSnapshot, 'Construir Muro');
           }
+          let x1 = Math.round(startSnap.x);
+          let y1 = Math.round(startSnap.y);
+          let x2 = Math.round(endSnap.x);
+          let y2 = Math.round(endSnap.y);
+
+          // Auto-weld with any existing wall endpoint <= 16px into a compound path
+          for (const other of (map.walls || [])) {
+            if (Math.hypot(x1 - other.x1, y1 - other.y1) <= 16) { x1 = other.x1; y1 = other.y1; }
+            else if (Math.hypot(x1 - other.x2, y1 - other.y2) <= 16) { x1 = other.x2; y1 = other.y2; }
+            if (Math.hypot(x2 - other.x1, y2 - other.y1) <= 16) { x2 = other.x1; y2 = other.y1; }
+            else if (Math.hypot(x2 - other.x2, y2 - other.y2) <= 16) { x2 = other.x2; y2 = other.y2; }
+          }
+
           const newWall = {
             id: 'wall_' + Date.now(),
-            x1: Math.round(startSnap.x),
-            y1: Math.round(startSnap.y),
-            x2: Math.round(endSnap.x),
-            y2: Math.round(endSnap.y),
+            x1,
+            y1,
+            x2,
+            y2,
             isDoor: false,
             isOpen: false
           };
@@ -2615,12 +2779,42 @@ export class CanvasEngine {
 
       // Vertex Handles (Editor mode only)
       if (isEditor) {
-        let vertexColor = isSelected ? '#00f3ff' : (isDoor ? (isSecret ? '#c084fc' : (isOpen ? '#10b981' : (isLocked ? '#ef4444' : '#f59e0b'))) : (isWindow ? '#38bdf8' : '#ff2a5f'));
-        ctx.fillStyle = vertexColor;
-        ctx.beginPath();
-        ctx.arc(w.x1, w.y1, 5, 0, Math.PI * 2);
-        ctx.arc(w.x2, w.y2, 5, 0, Math.PI * 2);
-        ctx.fill();
+        const drawVertexNode = (vx, vy, isSelectedWall) => {
+          let connectedCount = 0;
+          for (const other of walls) {
+            if (Math.hypot(vx - other.x1, vy - other.y1) <= 6) connectedCount++;
+            if (Math.hypot(vx - other.x2, vy - other.y2) <= 6) connectedCount++;
+          }
+          const isCompoundJoint = connectedCount >= 2;
+
+          ctx.save();
+          if (isCompoundJoint) {
+            // Compound joint indicator: outer glowing cyan ring with white center
+            ctx.beginPath();
+            ctx.arc(vx, vy, 7.5, 0, Math.PI * 2);
+            ctx.strokeStyle = '#00f3ff';
+            ctx.lineWidth = 2.2;
+            ctx.shadowColor = '#00f3ff';
+            ctx.shadowBlur = 8;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(vx, vy, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+          } else {
+            // Standalone endpoint: standard circle
+            let vertexColor = isSelectedWall ? '#00f3ff' : (isDoor ? (isSecret ? '#c084fc' : (isOpen ? '#10b981' : (isLocked ? '#ef4444' : '#f59e0b'))) : (isWindow ? '#38bdf8' : '#ff2a5f'));
+            ctx.fillStyle = vertexColor;
+            ctx.beginPath();
+            ctx.arc(vx, vy, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        };
+
+        drawVertexNode(w.x1, w.y1, isSelected);
+        drawVertexNode(w.x2, w.y2, isSelected);
       }
 
       // Midpoint Handle / Door / Window Badge

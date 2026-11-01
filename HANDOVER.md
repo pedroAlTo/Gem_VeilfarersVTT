@@ -104,11 +104,14 @@ Gem_VeilfarersVTT / VeilVTT
   2. ⚓ **Snap a Puntos de Anclaje** (`snapToAnchors`): ancla a extremos y vértices de muros, puertas y ventanas.
   3. 🎯 **Snap a Objetos** (`snapToObjects`): ancla a centros de tokens, emisores de luz y anomalías.
 
-### 3. Muros Continuos sin Fisuras y Soldadura de Vértices (`canvasEngine.js` + `lightingEngine.js`)
-- Renderizado de esquinas y empalmes con `ctx.lineCap = 'round'` y `ctx.lineJoin = 'round'` para evitar muescas visuales.
-- Soldadura algorítmica de vértices contiguos (distancia <= 12px) en `computeVisibilityPolygon`, eliminando micro-huecos y fugas de luz.
-- Tokens de jugadores no pueden atravesar muros físicamente.
-- Las líneas de muros, puertas y ventanas solo son visibles para el Keeper; los jugadores perciben el mapa y los obstáculos de forma inmersiva sin trazados de depuración.
+### 3. Muros Continuos, Trazados Compuestos y Separación Rápida (`canvasEngine.js` + `inspectorHUD.js` + `lightingEngine.js`)
+- **Trazados Compuestos Automáticos:** Si dos extremos de muro se encuentran juntos (a distancia <= 16px durante creación, snap o arrastre), se unen automáticamente en un vértice compuesto (*compound path*).
+- **Arrastre Sincronizado de Vértices:** Al arrastrar un punto de unión compartido por varios muros, todos los tramos conectados se mueven al unísono manteniendo la continuidad geométrica.
+- **Indicador Visual de Vértice Compuesto:** Los nodos compartidos se renderizan con un anillo exterior cian resplandeciente (`#00f3ff`) y núcleo blanco sólido, diferenciándose a simple vista de los extremos abiertos.
+- **Separación con Doble Clic:** Al hacer **doble clic sobre un vértice compuesto**, los puntos unidos se separan de inmediato, retrayéndose de forma limpia a lo largo de sus respectivos tramos para independizarse.
+- **Separación desde Inspector HUD:** Si un muro seleccionado forma parte de un trazado compuesto, el Inspector muestra el distintivo `🔗 TRAZADO COMPUESTO (N tramos)` y un botón dedicado `✂️ SEPARAR`.
+- **Soldadura de Vértices sin Fisuras:** Renderizado con `ctx.lineCap = 'round'` y `ctx.lineJoin = 'round'` y soldadura algorítmica en `computeVisibilityPolygon` para eliminar fugas de luz.
+- Bloqueo físico estricto para tokens de jugadores en muros opacos, compuertas cerradas y ventanas blindadas.
 
 ### 4. Agua Poligonal y Pintura Libre de Zonas Inundadas (`canvasEngine.js` + `inspectorHUD.js`)
 - Menú flyout de agua con selector de modo: **🟦 Caja Rectangular** vs. **📐 Polígono**.
@@ -180,6 +183,9 @@ Gem_VeilfarersVTT / VeilVTT
 | **`Shift + G`** | Abrir Calibrador Interactivo de Casillas del Mapa |
 | **`Ctrl + D`** | Tirar Dados Rápidos (Hope & Fear 2d12 de Dualidad) |
 | **`Enter`** | Cerrar y guardar trazado de polígono de agua en curso |
+| **Doble Clic en Vértice Compuesto** | Separar los extremos de muros unidos en puntos independientes |
+| **Doble Clic en Extremo Abierto** | Iniciar nuevo tramo de muro continuo desde dicho anclaje |
+| **Doble Clic en Línea de Muro** | Insertar nuevo punto de anclaje y dividir en dos tramos |
 | **`Escape`** | Cancelar selección, trazados de muro, agua o plantillas activas |
 | **`Delete` / `Backspace`** | Eliminar token, muro, luz, agua o anomalía seleccionada |
 

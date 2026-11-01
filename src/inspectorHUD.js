@@ -6,6 +6,7 @@ import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { WATER_DEPTH_NAMES } from './canvasEngine.js';
 import { openColorPickerPopover } from './tokenSheet.js';
+import { undoManager } from './undoManager.js';
 
 export class ElementInspectorHUD {
   constructor(containerElement) {
@@ -230,6 +231,17 @@ export class ElementInspectorHUD {
     const isSecret = !!wall.isSecret;
     const visionPercent = wall.visionPercent ?? 80;
 
+    const map = store.getActiveMap();
+    const connectedNeighbours = (map?.walls || []).filter(other =>
+      other.id !== wall.id && (
+        Math.hypot(wall.x1 - other.x1, wall.y1 - other.y1) <= 6 ||
+        Math.hypot(wall.x1 - other.x2, wall.y1 - other.y2) <= 6 ||
+        Math.hypot(wall.x2 - other.x1, wall.y2 - other.y1) <= 6 ||
+        Math.hypot(wall.x2 - other.x2, wall.y2 - other.y2) <= 6
+      )
+    );
+    const isCompound = connectedNeighbours.length > 0;
+
     const icon = isDoor ? (isSecret ? '🕵️' : '🚪') : (isWindow ? '🪟' : '🧱');
     const title = isDoor ? (isSecret ? 'PUERTA SECRETA // OCULTA' : 'PUERTA / ESCOTILLA // PORTAL') : (isWindow ? 'VENTANA / CRISTAL BLINDADO' : 'MURO NORMAL // BARRERA OPACA');
 
@@ -258,6 +270,13 @@ export class ElementInspectorHUD {
               </button>
             </div>
           </div>
+
+          ${isCompound ? `
+            <div class="insp-row" style="margin-bottom: 8px; padding: 5px 8px; background: rgba(0, 243, 255, 0.08); border: 1px solid rgba(0, 243, 255, 0.25); border-radius: var(--radius-xs); font-size: 11px; color: var(--cyan-pearl); display: flex; align-items: center; justify-content: space-between;">
+              <span>🔗 TRAZADO COMPUESTO (${connectedNeighbours.length + 1} tramos)</span>
+              <button class="hud-btn hud-btn-xs hud-btn-secondary" id="insp_separate_wall_btn" title="Separa los extremos de este muro del trazado compuesto">✂️ SEPARAR</button>
+            </div>
+          ` : ''}
 
           <!-- Dynamic Controls per Type -->
           ${isDoor ? `
@@ -312,6 +331,32 @@ export class ElementInspectorHUD {
     `;
 
     this.container.querySelector('#insp_close').onclick = () => store.update({ selectedWallId: null });
+
+    const sepBtn = this.container.querySelector('#insp_separate_wall_btn');
+    if (sepBtn) {
+      sepBtn.onclick = () => {
+        undoManager.pushCurrentState('Separar Muro de Trazado');
+        const dx1 = wall.x2 - wall.x1;
+        const dy1 = wall.y2 - wall.y1;
+        const len = Math.hypot(dx1, dy1);
+        if (len > 0) {
+          const sep = Math.max(8, Math.min(24, len * 0.35));
+          const nx1 = Math.round(wall.x1 + (dx1 / len) * sep);
+          const ny1 = Math.round(wall.y1 + (dy1 / len) * sep);
+          const nx2 = Math.round(wall.x2 - (dx1 / len) * sep);
+          const ny2 = Math.round(wall.y2 - (dy1 / len) * sep);
+          store.updateWall(wall.id, { x1: nx1, y1: ny1, x2: nx2, y2: ny2 });
+          audio.playClockTick();
+          store.addCombatLog({
+            type: 'SYSTEM',
+            title: '✂️ MURO SEPARADO',
+            details: 'El tramo ha sido separado del trazado compuesto.'
+          });
+          const updated = (store.getActiveMap()?.walls || []).find(w => w.id === wall.id);
+          if (updated) this.renderWallInspector(updated);
+        }
+      };
+    }
 
     // Wall Type Switchers
     this.container.querySelector('#btn_type_wall').onclick = () => {
