@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#060913" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>VEILFARERS VTT // Pearl Era Tactical Platform</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app_root">
+      <div class="scanlines-overlay"></div>
+
+      <!-- HEADER HUD -->
+      <header class="header-hud glass-panel">
+        <div class="header-left">
+          <div class="brand-badge">
+            <div class="brand-logo-icon">✦</div>
+            <span class="brand-title">VEILFARERS</span>
+            <span class="brand-version">CANON 12.06</span>
+          </div>
+
+          <!-- Scene Quick Switcher -->
+          <div class="scene-quick-picker">
+            <select id="quick_scene_select" class="hud-select" style="min-width: 220px;">
+              <!-- Populated by script -->
+            </select>
+          </div>
+        </div>
+
+        <!-- CENTER: GLOBAL FEAR METER -->
+        <div class="header-center" id="fear_meter_container">
+          <!-- Rendered by fearMeter.js -->
+        </div>
+
+        <!-- HEADER RIGHT -->
+        <div class="header-right">
+          <!-- Role Toggle -->
+          <div class="role-toggle-group">
+            <button class="hud-btn hud-btn-xs active" id="role_keeper_btn">KEEPER</button>
+            <button class="hud-btn hud-btn-xs" id="role_player_btn">PLAYER</button>
+          </div>
+
+          <!-- Multiplayer Network -->
+          <button class="hud-btn hud-btn-xs hud-btn-primary" id="network_modal_btn">
+            <span id="net_status_dot">●</span> MULTIPLAYER
+          </button>
+
+          <!-- Audio Toggle -->
+          <button class="hud-btn hud-btn-xs" id="audio_toggle_btn" title="Toggle Sound FX">🔊</button>
+
+          <!-- Sacred Rules Compendium -->
+          <button class="hud-btn hud-btn-xs hud-btn-amber" id="rules_modal_btn" title="Sacred Rules Compendium (12.06)">📖 RULES 12.06</button>
+
+          <!-- Campaign Storage Export/Import -->
+          <button class="hud-btn hud-btn-xs" id="data_menu_btn" title="Export/Import Campaign">💾</button>
+
+          <!-- Mobile & Tablet Sidebar Drawer Toggle -->
+          <button class="hud-btn hud-btn-xs hud-btn-primary tablet-sidebar-toggle" id="btn_toggle_sidebar" title="Abrir Paneles Tácticos (Dados, Relojes, Naves, Dossiers)">
+            <span>📑 <span class="hide-xs">PANELES</span></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- MAIN WORKSPACE -->
+      <main class="workspace-container">
+        <!-- LEFT TOOLBAR -->
+        <aside class="left-toolbar glass-panel" id="main_left_toolbar">
+          <button class="tool-btn mobile-only-toggle" id="toggle_mobile_toolbar" title="Colapsar / Desplegar Herramientas">
+            <span>🛠️</span>
+          </button>
+          <button class="tool-btn active" id="tool_select" data-tool="select" title="Select & Move Tokens, Elements, or Pan Stage [M / V]">
+            <span>✥</span>
+          </button>
+          <button class="tool-btn" id="tool_measure" data-tool="measure" title="Laser Ruler / System Range Bands [R]">
+            <span>📏</span>
+          </button>
+          <button class="tool-btn" id="tool_template" data-tool="template" title="Area Blast Template (Drag to Resize) [T]">
+            <span>◎</span>
+          </button>
+          <button class="tool-btn" id="tool_fx" data-tool="fx" title="Special FX Particle Trigger [X]">
+            <span>💥</span>
+          </button>
+          <button class="tool-btn" id="tool_ping" data-tool="ping" title="Tactical Radar Ping [P / Alt+Click]">
+            <span>📍</span>
+          </button>
+
+          <!-- Flyout Sub-Toolbars for Template & FX -->
+          <div class="tool-flyout-panel" id="template_flyout">
+            <button class="flyout-btn active" data-shape="circle" title="Circle Blast (Radius)">⭕</button>
+            <button class="flyout-btn" data-shape="cone" title="Cone Spray (Angle & Length)">📐</button>
+            <button class="flyout-btn" data-shape="line" title="Line Beam (Length & Width)">➖</button>
+            <button class="flyout-btn" data-shape="box" title="Box Zone (Width & Height)">⏹️</button>
+          </div>
+
+          <div class="tool-flyout-panel" id="fx_flyout">
+            <button class="flyout-btn active" data-fx="lightning" title="Arc Lightning / Electrical Shock">⚡</button>
+            <button class="flyout-btn" data-fx="laser" title="Haz Láser Táctico (Línea Directa)">🔴</button>
+            <button class="flyout-btn" data-fx="sparkle" title="Bioluminescent Sparkle / Motes">✨</button>
+            <button class="flyout-btn" data-fx="explosion" title="Fiery Plasma Explosion">💥</button>
+            <button class="flyout-btn" data-fx="radiant" title="Radiant Light Burst / Estallido de Luz">☀️</button>
+            <button class="flyout-btn" data-fx="void_rift" title="Cosmic Black Hole Singularity">🌌</button>
+            <button class="flyout-btn" data-fx="emp" title="EMP Electromagnetic Wave">📡</button>
+            <button class="flyout-btn" id="btn_fx_quality" title="Rendimiento de Efectos: Equilibrado (Alternar Eco / Equilibrado / Ultra)" style="font-size: 11px; padding: 2px 6px;">⚡ Eco</button>
+          </div>
+
+          <div class="toolbar-divider"></div>
+
+          <!-- Keeper Exclusive Tools -->
+          <button class="tool-btn keeper-only-tool" id="tool_wall" data-tool="wall" title="[Keeper] Draw Barrier Wall / Door Portal [W]">
+            <span>🧱</span>
+          </button>
+          <button class="tool-btn keeper-only-tool" id="tool_light" data-tool="light" title="[Keeper] Place Dynamic Light Source [L]">
+            <span>💡</span>
+          </button>
+          <button class="tool-btn keeper-only-tool" id="tool_fx_emitter" data-tool="fx_emitter" title="[Keeper] Place Anomaly Emitter Element (Black Hole, Fire, Arc Storm, Radiant) [E]">
+            <span>🌀</span>
+          </button>
+          <button class="tool-btn keeper-only-tool" id="tool_water" data-tool="water" title="[Keeper] Draw Aquatic Hazard / Water Zone (Depths 0-5) [U]">
+            <span>🌊</span>
+          </button>
+          <div class="tool-flyout-panel" id="water_flyout" style="top: 350px;">
+            <button class="flyout-btn active" id="water_btn_box" data-water-shape="box" title="Zona Rectangular (Arrastrar ancho y alto)">🟦 Caja</button>
+            <button class="flyout-btn" id="water_btn_poly" data-water-shape="polygon" title="Trazado Poligonal / Pintura Libre (Clics sucesivos para vértices)">📐 Polígono</button>
+          </div>
+          <button class="tool-btn keeper-only-tool" id="tool_grid_scale" title="[Keeper] Escalar y Calibrar Rejilla en el Mapa [Shift+G]">
+            <span>📐</span>
+          </button>
+          <button class="tool-btn keeper-only-tool active" id="toggle_gm_vision" title="[Keeper] Toggle GM Vision / Player Perspective">
+            <span>👁️</span>
+          </button>
+          <button class="tool-btn keeper-only-tool active" id="toggle_fog_of_war" title="[Keeper] Toggle Fog of War / Niebla de Exploración [Shift+F]">
+            <span>🌫️</span>
+          </button>
+
+          <div class="toolbar-divider"></div>
+
+          <!-- Grid Toggle -->
+          <button class="tool-btn active" id="toggle_grid" title="Toggle Tactical Grid Overlay">
+            <span>⊞</span>
+          </button>
+          <button class="tool-btn active" id="toggle_snap" title="Configurar Snapping (Rejilla, Vértices, Objetos)">
+            <span>🧲</span>
+          </button>
+
+          <!-- Snapping Sub-Toolbar Flyout -->
+          <div class="tool-flyout-panel snap-flyout-panel" id="snap_flyout">
+            <div class="flyout-header-title">AJUSTE / SNAPPING</div>
+            <button class="flyout-toggle-btn active" id="snap_toggle_grid" title="Ajustar a Rejilla (Intersecciones y medias casillas)">
+              <span>🔲 Rejilla (Grid)</span>
+              <span class="flyout-check">✓</span>
+            </button>
+            <button class="flyout-toggle-btn active" id="snap_toggle_anchors" title="Ajustar a Vértices (Muros, compuertas y ventanas)">
+              <span>⚓ Vértices (Anchors)</span>
+              <span class="flyout-check">✓</span>
+            </button>
+            <button class="flyout-toggle-btn active" id="snap_toggle_objects" title="Ajustar a Objetos (Tokens, luces y anomalías)">
+              <span>🎯 Objetos (Objects)</span>
+              <span class="flyout-check">✓</span>
+            </button>
+          </div>
+        </aside>
+
+        <!-- CANVAS VIEWPORT -->
+        <section class="canvas-viewport" id="canvas_viewport_root">
+          <canvas id="tactical_canvas"></canvas>
+
+          <!-- Floating Tactical Layers HUD -->
+          <div class="layer-hud-container" id="layer_hud_container">
+            <!-- Rendered by layerManager.js -->
+          </div>
+
+          <!-- Floating Progress Clocks Overlay -->
+          <div class="clocks-layer-overlay" id="clocks_layer_overlay">
+            <!-- Rendered by clocksManager.js -->
+          </div>
+
+          <!-- Floating Token Quickbar -->
+          <div class="token-quickbar-container hidden" id="token_quickbar_root">
+            <!-- Rendered by tokenSheet.js -->
+          </div>
+
+          <!-- Floating Element Inspector (Walls, Lights, Water, Anomalies) -->
+          <div class="element-inspector-container hidden" id="element_inspector_root">
+            <!-- Rendered by inspectorHUD.js -->
+          </div>
+
+          <!-- Floating Tactical Grid Scaler & Alignment HUD -->
+          <div class="grid-scaler-container hidden" id="grid_scaler_root">
+            <!-- Rendered by gridScalerHUD.js -->
+          </div>
+        </section>
+
+        <!-- Mobile & Tablet Sidebar Backdrop -->
+        <div class="sidebar-backdrop hidden" id="sidebar_backdrop"></div>
+
+        <!-- RIGHT SIDEBAR HUD -->
+        <aside class="right-sidebar glass-panel" id="main_right_sidebar">
+          <div class="sidebar-mobile-header">
+            <span class="sidebar-mobile-title">✦ TACTICAL PANELS</span>
+            <button class="sidebar-close-btn" id="sidebar_close_btn" title="Cerrar Panel">&times;</button>
+          </div>
+          <nav class="sidebar-tab-nav">
+            <button class="tab-nav-btn active" data-tab="dice">DICE</button>
+            <button class="tab-nav-btn" data-tab="clocks">CLOCKS</button>
+            <button class="tab-nav-btn" data-tab="ship">STARSHIP</button>
+            <button class="tab-nav-btn" data-tab="roster">ROSTER</button>
+            <button class="tab-nav-btn" data-tab="scenes">SCENES</button>
+            <button class="tab-nav-btn" data-tab="handouts">DOSSIERS</button>
+            <button class="tab-nav-btn" data-tab="log">LOG</button>
+          </nav>
+
+          <div class="sidebar-tab-content-area" id="sidebar_content_root">
+            <!-- Tab contents dynamically mounted -->
+            <div id="tab_pane_dice"></div>
+            <div id="tab_pane_clocks" style="display: none;"></div>
+            <div id="tab_pane_ship" style="display: none;"></div>
+            <div id="tab_pane_roster" style="display: none;"></div>
+            <div id="tab_pane_scenes" style="display: none;"></div>
+            <div id="tab_pane_handouts" style="display: none;"></div>
+            <div id="tab_pane_log" style="display: none;"></div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
