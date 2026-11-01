@@ -6,6 +6,8 @@ import { INITIAL_MAPS, INITIAL_TOKENS, INITIAL_CLOCKS, INITIAL_HANDOUTS } from '
 class StateStore {
   constructor() {
     this.listeners = new Set();
+    this.undoManager = null;
+    this._skipNextUndoSnapshot = false;
 
     // Initial Fear: 1d4 + 2 (Rolls at session start)
     const initialFear = Math.floor(Math.random() * 4) + 1 + 2;
@@ -122,6 +124,37 @@ class StateStore {
     this.notify(Object.keys(partialState));
   }
 
+  _beforeTacticalMutation(description, groupKey = null) {
+    if (this._skipNextUndoSnapshot) {
+      this._skipNextUndoSnapshot = false;
+      return;
+    }
+    if (this.undoManager && !this.undoManager.isRestoring) {
+      this.undoManager.pushCurrentState(description, groupKey);
+    }
+  }
+
+  validateSelections() {
+    const map = this.getActiveMap();
+    if (this.state.selectedTokenId && !this.state.tokens.some(t => t.id === this.state.selectedTokenId)) {
+      this.state.selectedTokenId = null;
+    }
+    if (map) {
+      if (this.state.selectedWallId && !(map.walls || []).some(w => w.id === this.state.selectedWallId)) {
+        this.state.selectedWallId = null;
+      }
+      if (this.state.selectedLightId && !(map.lights || []).some(l => l.id === this.state.selectedLightId)) {
+        this.state.selectedLightId = null;
+      }
+      if (this.state.selectedWaterId && !(map.waterZones || []).some(w => w.id === this.state.selectedWaterId)) {
+        this.state.selectedWaterId = null;
+      }
+      if (this.state.selectedEffectId && !(map.effects || []).some(e => e.id === this.state.selectedEffectId)) {
+        this.state.selectedEffectId = null;
+      }
+    }
+  }
+
   getActiveMap() {
     return this.state.maps.find(m => m.id === this.state.activeMapId) || this.state.maps[0];
   }
@@ -163,15 +196,18 @@ class StateStore {
 
   // --- Fear Management ---
   setFear(newVal) {
+    this._beforeTacticalMutation('Ajustar Miedo / Fear', 'fear_change');
     const clamped = Math.max(0, Math.min(this.state.fearMax, newVal));
     this.update({ fear: clamped });
   }
 
   addFear(delta = 1) {
+    this._beforeTacticalMutation(delta > 0 ? 'Aumentar Miedo' : 'Reducir Miedo', 'fear_change');
     this.setFear(this.state.fear + delta);
   }
 
   spendFear(amount, moveName = 'Keeper Move') {
+    this._beforeTacticalMutation('Gasto de Miedo: ' + moveName);
     if (this.state.fear >= amount) {
       this.setFear(this.state.fear - amount);
       this.addLog({
@@ -186,6 +222,7 @@ class StateStore {
   }
 
   resetFearSession() {
+    this._beforeTacticalMutation('Reiniciar Miedo de Sesión');
     const rolled = Math.floor(Math.random() * 4) + 1 + 2;
     this.setFear(rolled);
     this.addLog({
@@ -198,6 +235,7 @@ class StateStore {
 
   // --- Clocks Management ---
   addClock(clockData) {
+    this._beforeTacticalMutation('Añadir Reloj de Misión');
     const newClock = {
       id: 'clock_' + Date.now(),
       title: clockData.title || 'New Mission Clock',
@@ -214,6 +252,7 @@ class StateStore {
   }
 
   updateClock(clockId, partial) {
+    this._beforeTacticalMutation('Modificar Reloj', 'clock_' + clockId);
     const clocks = this.state.clocks.map(c => {
       if (c.id === clockId) {
         return { ...c, ...partial };
@@ -224,6 +263,7 @@ class StateStore {
   }
 
   advanceClock(clockId, delta = 1) {
+    this._beforeTacticalMutation('Avanzar Reloj', 'clock_' + clockId);
     const clock = this.state.clocks.find(c => c.id === clockId);
     if (!clock) return;
     const newFilled = Math.max(0, Math.min(clock.segments, clock.filled + delta));
@@ -240,11 +280,13 @@ class StateStore {
   }
 
   deleteClock(clockId) {
+    this._beforeTacticalMutation('Eliminar Reloj');
     this.update({ clocks: this.state.clocks.filter(c => c.id !== clockId) });
   }
 
   // --- Token Management ---
   updateToken(tokenId, partial) {
+    this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
     const tokens = this.state.tokens.map(t => {
       if (t.id === tokenId) {
         return { ...t, ...partial };
@@ -255,6 +297,7 @@ class StateStore {
   }
 
   addToken(tokenData) {
+    this._beforeTacticalMutation('Crear Operativo: ' + (tokenData?.name || 'Nuevo Token'));
     const newToken = {
       id: 'tok_' + Date.now(),
       mapId: this.state.activeMapId,
@@ -292,6 +335,7 @@ class StateStore {
   }
 
   deleteToken(tokenId) {
+    this._beforeTacticalMutation('Eliminar Operativo');
     this.update({
       tokens: this.state.tokens.filter(t => t.id !== tokenId),
       selectedTokenId: this.state.selectedTokenId === tokenId ? null : this.state.selectedTokenId
@@ -300,6 +344,7 @@ class StateStore {
 
   // --- Sleeping Character Mechanics ---
   spendEffort(tokenId, amount, moveName) {
+    this._beforeTacticalMutation('Gasto de Esfuerzo');
     const token = this.state.tokens.find(t => t.id === tokenId);
     if (!token) return false;
     
@@ -337,6 +382,7 @@ class StateStore {
   }
 
   markEffortSegment(tokenId) {
+    this._beforeTacticalMutation('Marcar Esfuerzo');
     const token = this.state.tokens.find(t => t.id === tokenId);
     if (!token || token.path !== 'Sleeping') return;
 
@@ -359,6 +405,7 @@ class StateStore {
   }
 
   spendResolve(tokenId, count = 1, moveName = 'Bear Down') {
+    this._beforeTacticalMutation('Gasto de Temple (Resolve)');
     const token = this.state.tokens.find(t => t.id === tokenId);
     if (!token) return { success: false, totalBonus: 0 };
     if ((token.resolve?.current || 0) >= count) {
@@ -385,6 +432,7 @@ class StateStore {
 
   // --- Water Zones ---
   addWaterZone(zoneData) {
+    this._beforeTacticalMutation('Añadir Zona Acuática');
     const map = this.getActiveMap();
     const newZone = {
       id: 'water_' + Date.now(),
@@ -404,12 +452,14 @@ class StateStore {
   }
 
   updateWaterZone(zoneId, partial) {
+    this._beforeTacticalMutation('Modificar Zona Acuática', 'water_' + zoneId);
     const map = this.getActiveMap();
     const waterZones = (map.waterZones || []).map(w => w.id === zoneId ? { ...w, ...partial } : w);
     this.updateActiveMap({ waterZones });
   }
 
   deleteWaterZone(zoneId) {
+    this._beforeTacticalMutation('Eliminar Zona Acuática');
     const map = this.getActiveMap();
     const waterZones = (map.waterZones || []).filter(w => w.id !== zoneId);
     this.updateActiveMap({ waterZones });
@@ -418,12 +468,14 @@ class StateStore {
 
   // --- Walls & Lights Interactive ---
   updateWall(wallId, partial) {
+    this._beforeTacticalMutation('Modificar Muro', 'wall_' + wallId);
     const map = this.getActiveMap();
     const walls = (map.walls || []).map(w => w.id === wallId ? { ...w, ...partial } : w);
     this.updateActiveMap({ walls });
   }
 
   deleteWall(wallId) {
+    this._beforeTacticalMutation('Eliminar Muro');
     const map = this.getActiveMap();
     const walls = (map.walls || []).filter(w => w.id !== wallId);
     this.updateActiveMap({ walls });
@@ -431,12 +483,14 @@ class StateStore {
   }
 
   updateLight(lightId, partial) {
+    this._beforeTacticalMutation('Modificar Luz', 'light_' + lightId);
     const map = this.getActiveMap();
     const lights = (map.lights || []).map(l => l.id === lightId ? { ...l, ...partial } : l);
     this.updateActiveMap({ lights });
   }
 
   deleteLight(lightId) {
+    this._beforeTacticalMutation('Eliminar Luz');
     const map = this.getActiveMap();
     const lights = (map.lights || []).filter(l => l.id !== lightId);
     this.updateActiveMap({ lights });
@@ -445,6 +499,7 @@ class StateStore {
 
   // --- Persistent Particle FX Emitter Elements ---
   addEffect(fxData) {
+    this._beforeTacticalMutation('Crear Anomalía FX');
     const map = this.getActiveMap();
     const isLaser = fxData.type === 'laser';
     const newFx = {
@@ -475,6 +530,7 @@ class StateStore {
   }
 
   updateEffect(fxId, partial) {
+    this._beforeTacticalMutation('Modificar Anomalía FX', 'fx_' + fxId);
     const map = this.getActiveMap();
     const current = (map.effects || []).find(f => f.id === fxId);
     if (current && (partial.type && partial.type !== current.type || partial.active === false)) {
@@ -487,6 +543,7 @@ class StateStore {
   }
 
   deleteEffect(fxId) {
+    this._beforeTacticalMutation('Eliminar Anomalía FX');
     const map = this.getActiveMap();
     const effects = (map.effects || []).filter(f => f.id !== fxId);
     this.updateActiveMap({ effects });
@@ -549,6 +606,7 @@ class StateStore {
 
   // --- Map Management (Up to 6000x6000px) ---
   addMap(mapData) {
+    this._beforeTacticalMutation('Añadir Mapa Táctico');
     const newMap = {
       id: 'map_' + Date.now(),
       name: mapData.name || 'New Tactical Map',
@@ -572,6 +630,7 @@ class StateStore {
   }
 
   updateActiveMap(partial) {
+    this._beforeTacticalMutation('Modificar Mapa Activo');
     const maps = this.state.maps.map(m => {
       if (m.id === this.state.activeMapId) {
         return { ...m, ...partial };
@@ -592,8 +651,13 @@ class StateStore {
     this.update({ logs });
   }
 
+  addCombatLog(entry) {
+    return this.addLog(entry);
+  }
+
   // --- Storage ---
   saveToStorage() {
+    if (typeof localStorage === 'undefined') return;
     try {
       const dataToSave = {
         campaignName: this.state.campaignName,
@@ -609,6 +673,7 @@ class StateStore {
   }
 
   loadFromStorage() {
+    if (typeof localStorage === 'undefined') return;
     try {
       const saved = localStorage.getItem('veilvtt_campaign_data_v1207');
       if (saved) {

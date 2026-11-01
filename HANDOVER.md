@@ -1,6 +1,6 @@
 # 🚀 HANDOVER DE DESARROLLO — VEILFARERS VTT
 
-> **Fecha:** 31 de Octubre de 2026  
+> **Fecha:** 1 de Noviembre de 2026  
 > **Proyecto:** Veilfarers Virtual Tabletop (VTT Táctico Sci-Fi / Espacial para Veilfarers 12.06)  
 > **Repositorio Oficial en GitHub:** [https://github.com/pedroAlTo/Gem_VeilfarersVTT.git](https://github.com/pedroAlTo/Gem_VeilfarersVTT.git)  
 > **Rama Principal:** `master`  
@@ -42,7 +42,7 @@ El repositorio en GitHub contiene la versión completa, optimizada y avanzada de
    ```bash
    npm run build
    ```
-   Genera el bundle estático en `dist/` en ~1 segundo.
+   Genera el bundle estático en `dist/` en ~1-2 segundos sin errores de compilación.
 
 ---
 
@@ -68,6 +68,7 @@ Gem_VeilfarersVTT / VeilVTT
     ├── fxEngine.js         # Efectos visuales AAA (agujero negro relativista Kerr, Doppler, rayos, fuego)
     ├── audioEngine.js      # Sonido procedimental con Web Audio API (FX tácticos sin sonido intrusivo)
     │
+    ├── undoManager.js      # Gestor de Deshacer / Rehacer táctico (hasta 20 pasos de historial, snapshots y toast)
     ├── inspectorHUD.js     # Inspector contextual para Muros, Puertas, Ventanas, Luces, Anomalías y Agua
     ├── tokenSheet.js       # HUD rápido inferior + Ficha Holográfica + Indicadores Canónicos Veilfarers
     ├── gridScalerHUD.js    # Herramienta de calibración visual interactiva de casillas
@@ -145,12 +146,30 @@ Gem_VeilfarersVTT / VeilVTT
 - Modales holográficos (ficha de token, compendio) con scroll táctil suave (`-webkit-overflow-scrolling: touch`) y barra de acciones inferior fija (`sticky`), asegurando acceso permanente al botón "Aplicar Dossier".
 - Aislamiento de gestos touch para evitar scroll elástico en navegadores móviles.
 
+### 9. Sistema de Deshacer y Rehacer Táctico (Hasta 20 Pasos de Historial) (`undoManager.js`)
+- **Historial Profundo de 20 Pasos:** Registro completo y secuencial de hasta 20 modificaciones en el escenario táctico, incluyendo:
+  - Movimiento y rotación de peanas / operativos.
+  - Creación, modificación, apertura/cierre y eliminación de muros y compuertas.
+  - Despliegue, ajuste de radio y borrado de luminarias.
+  - Trazado, redimensionado y eliminación de zonas de agua y riesgos ambientales.
+  - Colocación y edición de anomalías gravitacionales / efectos de partículas.
+  - Despliegue y transformación geométrica de plantillas de área táctica.
+  - Modificaciones en relojes de misión, reserva de Miedo (Fear) y escalas de rejilla.
+- **Deduplicación Inteligente y Agrupamiento:** Filtra operaciones redundantes y agrupa deslizadores rápidos (debounce) para optimizar memoria y evitar pasos vacíos.
+- **Controles Visuales en Header y Barra de Herramientas:**
+  - Botón holográfico en cabecera con contador dinámico `(X/20)`.
+  - Botones dedicados en la barra vertical izquierda (`↶` / `↷`).
+  - Notificaciones flotantes en el HUD (`tactical-undo-toast`) con retroalimentación sonora (`clockTick`).
+- **Atajos Universales:** `Ctrl+Z` / `Cmd+Z` para Deshacer, y `Ctrl+Y` / `Ctrl+Shift+Z` / `Cmd+Shift+Z` para Rehacer.
+
 ---
 
 ## 4. ⌨️ Atajos de Teclado Tácticos
 
 | Tecla | Acción |
 |:---:|---|
+| **`Ctrl + Z` / `Cmd + Z`** | Deshacer última acción táctica (hasta 20 pasos de historial) |
+| **`Ctrl + Y` / `Ctrl + Shift + Z`** | Rehacer acción táctica previamente deshecha |
 | **`M` / `V`** | Herramienta de Selección, Movimiento y Paneo del Escenario |
 | **`R`** | Regla de Medición Láser (Bandas de Alcance canónicas en m y km) |
 | **`T`** | Plantilla de Área Táctica (Círculo, Cono, Caja, Línea) |
@@ -168,4 +187,4 @@ Gem_VeilfarersVTT / VeilVTT
 
 ## 5. 🚀 Sincronización y Despliegue
 
-Ambos directorios locales (`c:\VeildarersVTT\Gem_VeilfarersVTT` y `C:\Users\iomis\VeilVTT`) se encuentran completamente sincronizados y verificados con `npm run build`. Los cambios están preparados para la rama `master` del repositorio oficial.
+El proyecto se encuentra completamente verificado con `npm run build` produciendo cero errores de empaquetado. Todos los módulos respetan la codificación pura UTF-8 y se encuentran listos en la rama `master` del repositorio oficial.

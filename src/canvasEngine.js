@@ -8,6 +8,7 @@ import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
+import { undoManager } from './undoManager.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -55,6 +56,7 @@ export class CanvasEngine {
     this.draggedEffect = null; // { effect, handle: 'center'|'radius', startX, startY }
     this.draggedWater = null; // { zone, handle: 'center'|'se', startX, startY }
     this.draggedTemplate = null; // { template, handle: 'transform'|'move'|'aperture'|'width' }
+    this.preDragSnapshot = null;
 
     this.dragOffsetX = 0;
     this.dragOffsetY = 0;
@@ -413,6 +415,7 @@ export class CanvasEngine {
       // Delete key deletes active area template or selected wall/light/water zone
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (this.activeTemplate) {
+          undoManager.pushCurrentState('Eliminar Plantilla de Área');
           this.templates = this.templates.filter(t => t.id !== this.activeTemplate.id);
           this.activeTemplate = null;
           audio.playClockTick();
@@ -769,6 +772,7 @@ export class CanvasEngine {
       }
 
       if (e.button === 0) {
+        this.preDragSnapshot = undoManager.captureSnapshot('Acción Táctica');
         // Alt + Click triggers tactical ping
         if (e.altKey || state.activeTool === 'ping') {
           this.triggerPing(world.x, world.y, isKeeper ? '#ff3366' : '#00f3ff');
@@ -1015,6 +1019,7 @@ export class CanvasEngine {
 
           // If activeTool is 'template' and user clicked OUTSIDE existing template handles: Create new template
           if (state.activeTool === 'template') {
+            undoManager.pushCurrentState('Crear Plantilla de Área');
             const tmplShape = state.templateShape || state.activeTemplateType || 'circle';
             const newTmpl = {
               id: 'template_' + Date.now(),
@@ -1583,6 +1588,9 @@ export class CanvasEngine {
       }
 
       if (this.draggedTokenFacing) {
+        if (this.preDragSnapshot) {
+          undoManager.pushSnapshot(this.preDragSnapshot, 'Rotar Operativo');
+        }
         store.updateToken(this.draggedTokenFacing.id, { facingAngle: this.draggedTokenFacing.facingAngle });
         network.broadcast({
           type: 'TOKEN_UPDATE',
@@ -1655,6 +1663,10 @@ export class CanvasEngine {
           });
         }
 
+        if (this.preDragSnapshot && !isBlocked) {
+          store._skipNextUndoSnapshot = true;
+          undoManager.pushSnapshot(this.preDragSnapshot, `Mover ${this.draggedToken.name || 'Operativo'}`);
+        }
         store.updateToken(this.draggedToken.id, { x: finalX, y: finalY });
         network.broadcast({ type: 'TOKEN_MOVE', tokenId: this.draggedToken.id, x: finalX, y: finalY });
         this.draggedToken = null;
@@ -1663,6 +1675,10 @@ export class CanvasEngine {
       }
 
       if (this.draggedWall) {
+        if (this.preDragSnapshot) {
+          store._skipNextUndoSnapshot = true;
+          undoManager.pushSnapshot(this.preDragSnapshot, 'Ajustar Muro');
+        }
         store.updateWall(this.draggedWall.wall.id, {
           x1: this.draggedWall.wall.x1,
           y1: this.draggedWall.wall.y1,
@@ -1673,6 +1689,10 @@ export class CanvasEngine {
       }
 
       if (this.draggedLight) {
+        if (this.preDragSnapshot) {
+          store._skipNextUndoSnapshot = true;
+          undoManager.pushSnapshot(this.preDragSnapshot, 'Ajustar Luz');
+        }
         store.updateLight(this.draggedLight.light.id, {
           x: this.draggedLight.light.x,
           y: this.draggedLight.light.y,
@@ -1682,6 +1702,10 @@ export class CanvasEngine {
       }
 
       if (this.draggedEffect) {
+        if (this.preDragSnapshot) {
+          store._skipNextUndoSnapshot = true;
+          undoManager.pushSnapshot(this.preDragSnapshot, 'Ajustar Anomalía FX');
+        }
         store.updateEffect(this.draggedEffect.effect.id, {
           x: this.draggedEffect.effect.x,
           y: this.draggedEffect.effect.y,
@@ -1694,6 +1718,10 @@ export class CanvasEngine {
       }
 
       if (this.draggedWater) {
+        if (this.preDragSnapshot) {
+          store._skipNextUndoSnapshot = true;
+          undoManager.pushSnapshot(this.preDragSnapshot, 'Ajustar Zona Acuática');
+        }
         store.updateWaterZone(this.draggedWater.zone.id, {
           x: this.draggedWater.zone.x,
           y: this.draggedWater.zone.y,
@@ -1705,6 +1733,9 @@ export class CanvasEngine {
       }
 
       if (this.draggedTemplate) {
+        if (this.preDragSnapshot) {
+          undoManager.pushSnapshot(this.preDragSnapshot, 'Ajustar Plantilla de Área');
+        }
         this.draggedTemplate = null;
       }
 
@@ -1719,6 +1750,10 @@ export class CanvasEngine {
         const endSnap = this.snapPoint(this.wallCurrent.x, this.wallCurrent.y, 16);
         const dist = Math.hypot(endSnap.x - startSnap.x, endSnap.y - startSnap.y);
         if (dist > 15) {
+          if (this.preDragSnapshot) {
+            store._skipNextUndoSnapshot = true;
+            undoManager.pushSnapshot(this.preDragSnapshot, 'Construir Muro');
+          }
           const newWall = {
             id: 'wall_' + Date.now(),
             x1: Math.round(startSnap.x),
@@ -1742,6 +1777,10 @@ export class CanvasEngine {
         const h = Math.abs(this.waterCurrent.y - this.waterStart.y);
 
         if (w > 30 && h > 30) {
+          if (this.preDragSnapshot) {
+            store._skipNextUndoSnapshot = true;
+            undoManager.pushSnapshot(this.preDragSnapshot, 'Definir Zona Acuática');
+          }
           store.addWaterZone({
             name: 'Water Hazard',
             x: Math.round(x1),
@@ -1754,6 +1793,7 @@ export class CanvasEngine {
         this.waterStart = null;
         this.waterCurrent = null;
       }
+      this.preDragSnapshot = null;
     });
 
     // Zoom
@@ -1788,6 +1828,7 @@ export class CanvasEngine {
         const tmpl = this.templates[i];
         const dist = Math.hypot(world.x - tmpl.x, world.y - tmpl.y);
         if (dist <= tmpl.radius + 30) {
+          undoManager.pushCurrentState('Eliminar Plantilla de Área');
           this.templates.splice(i, 1);
           if (this.activeTemplate?.id === tmpl.id) {
             this.activeTemplate = null;

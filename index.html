@@ -43,6 +43,17 @@
             <button class="hud-btn hud-btn-xs" id="role_player_btn">PLAYER</button>
           </div>
 
+          <!-- Undo & Redo Tactical History Controls (Up to 20 steps) -->
+          <div class="undo-header-group">
+            <button class="hud-btn hud-btn-xs" id="header_btn_undo" title="Deshacer última acción táctica [Ctrl+Z] (0/20)" disabled>
+              <span>↶ DESHACER</span>
+              <span class="undo-counter-badge" id="header_undo_badge">0/20</span>
+            </button>
+            <button class="hud-btn hud-btn-xs" id="header_btn_redo" title="Rehacer acción táctica [Ctrl+Y / Ctrl+Shift+Z]" disabled style="display: none;">
+              <span>↷ REHACER</span>
+            </button>
+          </div>
+
           <!-- Multiplayer Network -->
           <button class="hud-btn hud-btn-xs hud-btn-primary" id="network_modal_btn">
             <span id="net_status_dot">●</span> MULTIPLAYER
@@ -161,6 +172,16 @@
               <span class="flyout-check">✓</span>
             </button>
           </div>
+
+          <div class="toolbar-divider"></div>
+
+          <!-- Tactical Undo & Redo Controls (Up to 20 steps) -->
+          <button class="tool-btn" id="tool_undo" title="Deshacer última acción táctica [Ctrl+Z] (0/20)" disabled>
+            <span>↶</span>
+          </button>
+          <button class="tool-btn" id="tool_redo" title="Rehacer acción táctica [Ctrl+Y / Ctrl+Shift+Z]" disabled style="display: none;">
+            <span>↷</span>
+          </button>
         </aside>
 
         <!-- CANVAS VIEWPORT -->

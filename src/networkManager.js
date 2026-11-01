@@ -1,7 +1,8 @@
 // src/networkManager.js
 // P2P WebRTC Multiplayer using PeerJS + Local BroadcastChannel sync
 
-import { Peer } from 'peerjs';
+import PeerJS from 'peerjs';
+const Peer = PeerJS?.Peer || PeerJS?.default || PeerJS;
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 

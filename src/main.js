@@ -18,6 +18,7 @@ import { ElementInspectorHUD } from './inspectorHUD.js';
 import { GridScalerHUD } from './gridScalerHUD.js';
 import { StarshipManager } from './starshipManager.js';
 import { RulesCompendiumModal } from './rulesCompendium.js';
+import { undoManager } from './undoManager.js';
 
 window.addEventListener('DOMContentLoaded', () => {
   // 1. Initialize Canvas Engine
@@ -81,6 +82,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 8. Setup UI Event Listeners
+  setupUndoRedoEvents();
   setupHeaderEvents();
   setupToolbarEvents();
   setupSidebarTabNavigation();
@@ -598,6 +600,22 @@ function setupKeyboardShortcuts() {
     }
 
     const key = e.key.toLowerCase();
+    // Undo & Redo Shortcuts (up to 20 steps)
+    if ((e.ctrlKey || e.metaKey) && key === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        undoManager.redo();
+      } else {
+        undoManager.undo();
+      }
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && key === 'y') {
+      e.preventDefault();
+      undoManager.redo();
+      return;
+    }
+
     if (key === 'm' || key === 'v') document.getElementById('tool_select')?.click();
     if (key === 'r') document.getElementById('tool_measure')?.click();
     if (key === 't') document.getElementById('tool_template')?.click();
@@ -785,4 +803,84 @@ function openDataModal() {
       reader.readAsText(file);
     }
   };
+}
+
+// --- Undo & Redo System (Up to 20 Tactical Steps) ---
+function setupUndoRedoEvents() {
+  const headerUndoBtn = document.getElementById('header_btn_undo');
+  const headerRedoBtn = document.getElementById('header_btn_redo');
+  const headerBadge = document.getElementById('header_undo_badge');
+  const toolUndoBtn = document.getElementById('tool_undo');
+  const toolRedoBtn = document.getElementById('tool_redo');
+
+  const handleUndo = () => {
+    undoManager.undo();
+  };
+
+  const handleRedo = () => {
+    undoManager.redo();
+  };
+
+  if (headerUndoBtn) headerUndoBtn.onclick = handleUndo;
+  if (headerRedoBtn) headerRedoBtn.onclick = handleRedo;
+  if (toolUndoBtn) toolUndoBtn.onclick = handleUndo;
+  if (toolRedoBtn) toolRedoBtn.onclick = handleRedo;
+
+  function updateUndoRedoUI(e) {
+    const detail = e?.detail || {
+      undoCount: undoManager.getUndoCount(),
+      redoCount: undoManager.getRedoCount(),
+      maxSteps: undoManager.maxSteps,
+      canUndo: undoManager.canUndo(),
+      canRedo: undoManager.canRedo(),
+      lastUndoDesc: undoManager.getLastUndoDescription()
+    };
+
+    const undoCount = detail.undoCount;
+    const redoCount = detail.redoCount;
+    const canUndo = detail.canUndo;
+    const canRedo = detail.canRedo;
+    const max = detail.maxSteps || 20;
+
+    const undoTitle = canUndo
+      ? `Deshacer: ${detail.lastUndoDesc || 'Acción táctica'} [Ctrl+Z] (${undoCount}/${max})`
+      : `Deshacer [Ctrl+Z] (0/${max})`;
+
+    const redoTitle = canRedo
+      ? `Rehacer: ${detail.lastRedoDesc || 'Acción táctica'} [Ctrl+Y / Ctrl+Shift+Z] (${redoCount})`
+      : `Rehacer [Ctrl+Y / Ctrl+Shift+Z]`;
+
+    if (headerUndoBtn) {
+      headerUndoBtn.disabled = !canUndo;
+      headerUndoBtn.title = undoTitle;
+      headerUndoBtn.classList.toggle('has-undo-actions', canUndo);
+    }
+
+    if (headerBadge) {
+      headerBadge.textContent = `${undoCount}/${max}`;
+      headerBadge.classList.toggle('active', canUndo);
+    }
+
+    if (headerRedoBtn) {
+      headerRedoBtn.disabled = !canRedo;
+      headerRedoBtn.title = redoTitle;
+      headerRedoBtn.style.display = canRedo ? 'inline-flex' : 'none';
+    }
+
+    if (toolUndoBtn) {
+      toolUndoBtn.disabled = !canUndo;
+      toolUndoBtn.title = undoTitle;
+      toolUndoBtn.classList.toggle('disabled', !canUndo);
+    }
+
+    if (toolRedoBtn) {
+      toolRedoBtn.disabled = !canRedo;
+      toolRedoBtn.title = redoTitle;
+      toolRedoBtn.style.display = canRedo ? 'inline-flex' : 'none';
+      toolRedoBtn.classList.toggle('disabled', !canRedo);
+    }
+  }
+
+  window.addEventListener('veil:undo_stack_changed', updateUndoRedoUI);
+  updateUndoRedoUI();
 }
