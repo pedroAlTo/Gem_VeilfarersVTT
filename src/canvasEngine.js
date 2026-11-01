@@ -407,6 +407,7 @@ export class CanvasEngine {
 
     // Keyboard Hotkeys
     window.addEventListener('keydown', (e) => {
+    if(e.defaultPrevented || e.target.closest?.('vf-select,.orbital-listbox,.veil-modal-backdrop,[contenteditable="true"]'))return;
       if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
 
       if (e.code === 'Space' && !e.repeat) {
@@ -1344,7 +1345,7 @@ export class CanvasEngine {
           }
 
           if (clickedToken) {
-            const canMove = isKeeper || clickedToken.isPlayer;
+            const canMove = store.canEditToken(clickedToken.id);
             if (canMove) {
               this.draggedToken = clickedToken;
               this.draggedTokenOrigX = clickedToken.x;
@@ -1723,8 +1724,8 @@ export class CanvasEngine {
 
             if (barrierBlocks && this.checkLineIntersection(this.draggedTokenOrigX, this.draggedTokenOrigY, finalX, finalY, wall.x1, wall.y1, wall.x2, wall.y2)) {
               isBlocked = true;
-              blockedReason = isWindow 
-                ? 'No puedes atravesar ventanas de cristal reforzado.' 
+              blockedReason = isWindow
+                ? 'No puedes atravesar ventanas de cristal reforzado.'
                 : (isDoor ? 'La compuerta está cerrada.' : 'No puedes atravesar muros opacos.');
               break;
             }

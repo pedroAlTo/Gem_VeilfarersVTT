@@ -1,6 +1,8 @@
+import { sanitizeHTML, confirmAction, notify } from './ui.js';
 // src/main.js
 // Application entry point for VEILVTT
 
+import { initOrbitalUI } from './orbitalUI.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
@@ -20,7 +22,9 @@ import { StarshipManager } from './starshipManager.js';
 import { RulesCompendiumModal } from './rulesCompendium.js';
 import { undoManager } from './undoManager.js';
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  await store.ready;
+  initOrbitalUI();
   // 1. Initialize Canvas Engine
   const canvasEl = document.getElementById('tactical_canvas');
   const canvasEngine = new CanvasEngine(canvasEl);
@@ -97,7 +101,7 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
     const isKeeper = state.userRole === 'keeper';
     const visibleClocks = state.clocks.filter(c => isKeeper || !c.isKeeperOnly);
 
-    paneEl.innerHTML = `
+    paneEl.innerHTML = sanitizeHTML(`
       <div class="clocks-sidebar-content">
         <div class="sidebar-header-row">
           <span class="sidebar-title">MISSION CLOCKS (${visibleClocks.length})</span>
@@ -107,7 +111,7 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
         </div>
 
         <p class="modal-intro" style="margin: 8px 0;">
-          Clocks track impending complications, countdowns, and project breaches. Drag them anywhere across the tactical viewport.
+          Clocks track impending complications, countdowns, and projects. Expand an instrument above the map to adjust its progress.
         </p>
 
         <div class="scene-cards-list">
@@ -136,7 +140,7 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
           `).join('')}
         </div>
       </div>
-    `;
+    `);
 
     if (isKeeper) {
       const deployBtn = paneEl.querySelector('#deploy_new_clock_btn');
@@ -164,8 +168,8 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
       });
 
       paneEl.querySelectorAll('.clock-sidebar-del').forEach(btn => {
-        btn.onclick = () => {
-          if (confirm('Delete this progress clock?')) {
+        btn.onclick = async () => {
+          if (await confirmAction('Delete this progress clock?')) {
             store.deleteClock(btn.dataset.id);
           }
         };
@@ -193,11 +197,11 @@ function setupHeaderEvents() {
   // Populate Scenes dropdown
   function updateScenesList() {
     const state = store.getState();
-    sceneSelect.innerHTML = state.maps.map(m => `
+    sceneSelect.innerHTML = sanitizeHTML(state.maps.map(m => `
       <option value="${m.id}" ${m.id === state.activeMapId ? 'selected' : ''}>
         SCENE: ${m.name}
       </option>
-    `).join('');
+    `).join(''));
   }
   updateScenesList();
 
@@ -215,6 +219,7 @@ function setupHeaderEvents() {
 
   // Role toggle
   roleKeeperBtn.onclick = () => {
+    if(store.sessionRole==='player'){notify('Only the host can use Keeper controls.');return;}
     roleKeeperBtn.classList.add('active');
     rolePlayerBtn.classList.remove('active');
     store.update({ userRole: 'keeper', gmVision: true });
@@ -595,6 +600,7 @@ function setupSidebarTabNavigation() {
 // --- Keyboard Shortcuts ---
 function setupKeyboardShortcuts() {
   window.addEventListener('keydown', (e) => {
+    if(e.defaultPrevented || e.target.closest?.('vf-select,.orbital-listbox,.veil-modal-backdrop,[contenteditable="true"]'))return;
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT') {
       return;
     }
@@ -642,7 +648,7 @@ function openMultiplayerModal() {
   const state = store.getState();
   const modal = document.createElement('div');
   modal.className = 'veil-modal-backdrop';
-  modal.innerHTML = `
+  modal.innerHTML = sanitizeHTML(`
     <div class="veil-modal-box">
       <div class="veil-modal-header">
         <h3>QUANTUM CARRIER LINK // MULTIPLAYER</h3>
@@ -650,7 +656,7 @@ function openMultiplayerModal() {
       </div>
       <div class="veil-modal-body">
         <p class="modal-intro">
-          Connect the Keeper and Voidwalker players across direct P2P data channels with zero server requirement.
+          Invite your crew to an encrypted peer session. The Keeper assigns character control. A signalling service establishes the connection.
         </p>
 
         <!-- Current Status -->
@@ -667,7 +673,7 @@ function openMultiplayerModal() {
 
         <!-- Host Option -->
         <div class="form-group" style="padding: 12px; background: rgba(15, 23, 42, 0.7); border-radius: var(--radius-sm); border: 1px solid rgba(0, 243, 255, 0.2);">
-          <label style="color: var(--cyan-pearl);">HOST NEW SESSION (AS KEEPER)</label>
+          <label style="color: var(--cyan-pearl);">HOST NEW SESSION (AS KEEPER)</label><label class="hud-checkbox-label"><input type="checkbox" id="optional_efforts" ${state.optionalEfforts?'checked':''} ${state.isConnected?'disabled':''} /> Optional Efforts: Second Wind + Seize the Moment</label>
           <p style="font-size: 11px; color: var(--text-dim); margin-bottom: 8px;">
             Generates a room frequency code. Players who join will sync token positions, Fear meter, and shared clocks in real-time.
           </p>
@@ -679,8 +685,8 @@ function openMultiplayerModal() {
         <!-- Join Option -->
         <div class="form-group" style="padding: 12px; background: rgba(15, 23, 42, 0.7); border-radius: var(--radius-sm); border: 1px solid rgba(255, 170, 0, 0.2); margin-top: 12px;">
           <label style="color: var(--amber-warn);">JOIN SESSION (AS PLAYER)</label>
-          <div class="form-row">
-            <input type="text" id="join_room_code" class="hud-input" placeholder="e.g. VEIL-9A4B" style="text-transform: uppercase;" />
+          <div class="form-row session-join-fields">
+            <input type="text" id="join_room_code" class="hud-input" placeholder="VEIL-…" style="text-transform: uppercase;" /><label>Invitation key</label><input type="text" id="join_invite_key" class="hud-input" placeholder="Key from your Keeper" />
             <input type="text" id="join_player_name" class="hud-input" placeholder="Operative Call-sign" value="Voidwalker" />
           </div>
           <button class="hud-btn hud-btn-amber" id="btn_join_game" style="width: 100%; margin-top: 8px;">
@@ -692,15 +698,27 @@ function openMultiplayerModal() {
           <div class="form-group" style="margin-top: 14px;">
             <label>Direct Join Link</label>
             <div class="form-row">
-              <input type="text" id="share_link_input" class="hud-input" readonly value="${window.location.origin + window.location.pathname}?room=${state.roomCode}" />
+              <input type="text" id="share_link_input" class="hud-input" readonly value="${window.location.origin + window.location.pathname}?room=${state.roomCode}#invite=${network.invite}" />
               <button class="hud-btn hud-btn-secondary" id="copy_link_btn">COPY</button>
             </div>
           </div>
         ` : ''}
       </div>
     </div>
-  `;
+  `);
 
+  if(state.isHosting){
+    const group=document.createElement('div');group.className='session-assignments';
+    for(const [peerId,info] of network.members){
+      const row=document.createElement('div');row.className='form-group';const label=document.createElement('label');label.textContent=info.name;row.append(label);
+      const picker=document.createElement('vf-select');picker.className='hud-select';
+      const empty=document.createElement('option');empty.value='';empty.textContent='Observer · assign a character';picker.append(empty);
+      for(const t of state.tokens.filter(t=>t.isPlayer)){const option=document.createElement('option');option.value=t.id;option.textContent=t.name;picker.append(option);if(t.ownerId===peerId)picker.value=t.id;}
+      picker.onchange=()=>network.assignToken(peerId,picker.value);row.append(picker);group.append(row);
+    }
+    const end=document.createElement('button');end.className='hud-btn';end.textContent='Close session';end.onclick=()=>{network.disconnect();modal.remove();};group.append(end);
+    modal.querySelector('.veil-modal-body').append(group);
+  }
   document.body.appendChild(modal);
 
   modal.querySelector('.modal-close-btn').onclick = () => modal.remove();
@@ -708,11 +726,12 @@ function openMultiplayerModal() {
     if (e.target === modal) modal.remove();
   };
 
+  const optional=modal.querySelector('#optional_efforts');if(optional)optional.onchange=()=>{if(!store.state.isConnected&&store.sessionRole!=='player')store.update({optionalEfforts:optional.checked});};
   // Host Action
   modal.querySelector('#btn_host_game').onclick = async () => {
-    const code = await network.hostSession();
+    let code; try { code=await network.hostSession(); } catch(e){notify(e.message,'error');return;}
     modal.remove();
-    alert(`Quantum link open! Room code: ${code}. Share this code or URL with your players.`);
+    notify(`Quantum link open! Room code: ${code}. Share this code or URL with your players.`);
   };
 
   // Join Action
@@ -720,20 +739,20 @@ function openMultiplayerModal() {
     const code = modal.querySelector('#join_room_code').value.trim().toUpperCase();
     const name = modal.querySelector('#join_player_name').value.trim() || 'Voidwalker';
     if (!code) {
-      alert('Enter a valid room code.');
+      notify('Enter a valid room code.');
       return;
     }
-    await network.joinSession(code, name);
+    try { await network.joinSession(code, name,modal.querySelector('#join_invite_key').value.trim()); } catch(e){notify(e.message,'error');}
     modal.remove();
   };
 
   // Copy Link
   const copyBtn = modal.querySelector('#copy_link_btn');
   if (copyBtn) {
-    copyBtn.onclick = () => {
+    copyBtn.onclick = async () => {
       const input = modal.querySelector('#share_link_input');
       input.select();
-      navigator.clipboard.writeText(input.value);
+      try { if(navigator.clipboard)await navigator.clipboard.writeText(input.value);else if(!document.execCommand('copy'))throw new Error('Copy unavailable'); }catch{notify('The link is selected. Use Ctrl+C or Cmd+C to copy.');return;}
       copyBtn.textContent = 'COPIED!';
       setTimeout(() => copyBtn.textContent = 'COPY', 1500);
     };
@@ -745,7 +764,7 @@ function setupAutoJoinFromURL() {
   const urlParams = new URLSearchParams(window.location.search);
   const roomCode = urlParams.get('room');
   if (roomCode) {
-    network.joinSession(roomCode, 'Voidwalker');
+    network.joinSession(roomCode, 'Voidwalker',new URLSearchParams(location.hash.slice(1)).get('invite')||'').catch(e=>notify(e.message,'error'));
   }
 }
 
@@ -753,7 +772,7 @@ function setupAutoJoinFromURL() {
 function openDataModal() {
   const modal = document.createElement('div');
   modal.className = 'veil-modal-backdrop';
-  modal.innerHTML = `
+  modal.innerHTML = sanitizeHTML(`
     <div class="veil-modal-box">
       <div class="veil-modal-header">
         <h3>CAMPAIGN STATE ARCHIVE</h3>
@@ -774,7 +793,7 @@ function openDataModal() {
         </div>
       </div>
     </div>
-  `;
+  `);
 
   document.body.appendChild(modal);
 
@@ -794,10 +813,10 @@ function openDataModal() {
       const reader = new FileReader();
       reader.onload = (re) => {
         if (store.importCampaignJSON(re.target.result)) {
-          alert('Campaign state successfully imported!');
+          notify('Campaign state successfully imported!');
           modal.remove();
         } else {
-          alert('Error importing JSON. File format invalid.');
+          notify('Error importing JSON. File format invalid.');
         }
       };
       reader.readAsText(file);

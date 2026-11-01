@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/layerManager.js
 // Multi-Layer Workflow System for VeilVTT with Draggable & Minimizable HUD
 
@@ -15,7 +16,7 @@ export const LAYERS = [
 export class LayerManagerHUD {
   constructor(containerElement) {
     this.container = containerElement;
-    this.isMinimized = false;
+    this.isMinimized = true;
     this.initDrag();
     this.render();
     store.subscribe((state, keys) => {
@@ -104,7 +105,7 @@ export class LayerManagerHUD {
     const activeLayer = state.activeLayer;
     const isKeeper = state.userRole === 'keeper';
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="layer-bar glass-panel ${this.isMinimized ? 'layer-bar-minimized' : ''}">
         <div class="layer-bar-header" style="cursor: grab; user-select: none;" title="Arrastrar para mover panel">
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -171,7 +172,7 @@ export class LayerManagerHUD {
           ` : ''}
         </div>
       </div>
-    `;
+    `);
 
     this.initEvents();
   }

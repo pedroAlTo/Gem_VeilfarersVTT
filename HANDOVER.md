@@ -1,3 +1,5 @@
+> **Actualización Orbital:** consultar [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) para el estado actual, cambios, validación y límites. Rama: `fix/vtt-session-integrity-and-orbital-ui`. La conexión WebRTC completa sigue pendiente de validación y no se ha publicado esta versión.
+
 # 🚀 HANDOVER DE DESARROLLO — VEILFARERS VTT
 
 > **Fecha:** 1 de Noviembre de 2026  

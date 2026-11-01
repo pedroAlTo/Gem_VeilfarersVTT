@@ -1,3 +1,4 @@
+import { sanitizeHTML, confirmAction } from './ui.js';
 // src/sceneManager.js
 // Tactical Scene & Multi-Map Manager for VeilVTT
 
@@ -20,7 +21,7 @@ export class SceneManager {
     const activeMap = store.getActiveMap();
     const isKeeper = state.userRole === 'keeper';
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="scenes-sidebar-content">
         <div class="sidebar-header-row">
           <span class="sidebar-title">TACTICAL SCENES (${state.maps.length})</span>
@@ -108,7 +109,7 @@ export class SceneManager {
           </div>
         ` : ''}
       </div>
-    `;
+    `);
 
     this.initEvents();
   }
@@ -195,8 +196,8 @@ export class SceneManager {
       // Clear Walls / Lights
       const clearWalls = this.container.querySelector('#clear_walls_btn');
       if (clearWalls) {
-        clearWalls.onclick = () => {
-          if (confirm('Clear all dynamic lighting barrier walls in this scene?')) {
+        clearWalls.onclick = async () => {
+          if (await confirmAction('Clear all dynamic lighting barrier walls in this scene?')) {
             store.updateActiveMap({ walls: [] });
           }
         };
@@ -204,8 +205,8 @@ export class SceneManager {
 
       const clearLights = this.container.querySelector('#clear_lights_btn');
       if (clearLights) {
-        clearLights.onclick = () => {
-          if (confirm('Clear all placed light sources in this scene?')) {
+        clearLights.onclick = async () => {
+          if (await confirmAction('Clear all placed light sources in this scene?')) {
             store.updateActiveMap({ lights: [] });
           }
         };
@@ -216,7 +217,7 @@ export class SceneManager {
   openAddMapModal() {
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
-    modal.innerHTML = `
+    modal.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box">
         <div class="veil-modal-header">
           <h3>LOAD HIGH-RESOLUTION MAP // UP TO 6000x6000PX</h3>
@@ -253,12 +254,12 @@ export class SceneManager {
             </div>
             <div class="form-group">
               <label>Ambient Light</label>
-              <select id="new_map_ambient" class="hud-select">
+              <vf-select id="new_map_ambient" class="hud-select">
                 <option value="0.1">Deep Void Pitch Black (10%)</option>
                 <option value="0.25" selected>Dim Derelict Facility (25%)</option>
                 <option value="0.5">Emergency Power (50%)</option>
                 <option value="0.8">Fully Powered Hub (80%)</option>
-              </select>
+              </vf-select>
             </div>
           </div>
 
@@ -268,7 +269,7 @@ export class SceneManager {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(modal);
 
@@ -289,9 +290,9 @@ export class SceneManager {
         resStatus.style.display = 'block';
 
         if (detectedWidth > 6000 || detectedHeight > 6000) {
-          resStatus.innerHTML = `<span style="color: var(--amber-warn);">⚠️ Ultra-high resolution: ${detectedWidth}x${detectedHeight}px. Exceeds standard 6000px max; will be supported via viewport virtualization.</span>`;
+          resStatus.innerHTML = sanitizeHTML(`<span style="color: var(--amber-warn);">⚠️ Ultra-high resolution: ${detectedWidth}x${detectedHeight}px. Exceeds standard 6000px max; will be supported via viewport virtualization.</span>`);
         } else {
-          resStatus.innerHTML = `<span>✓ Validated Resolution: ${detectedWidth} x ${detectedHeight} px (High Detail Enabled)</span>`;
+          resStatus.innerHTML = sanitizeHTML(`<span>✓ Validated Resolution: ${detectedWidth} x ${detectedHeight} px (High Detail Enabled)</span>`);
         }
       };
       testImg.src = src;

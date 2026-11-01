@@ -1,6 +1,10 @@
 // src/state.js
 // Centralized reactive state store for VeilVTT with Layers, Water, Handouts, and Sleeping Moves
 
+import { activeCampaignId, readCampaign, writeCampaign, selectCampaign, newId } from './persistence.js';
+import { CAMPAIGN_KEYS, validateCampaign } from './validation.js';
+import { confirmAction, notify } from './ui.js';
+
 import { INITIAL_MAPS, INITIAL_TOKENS, INITIAL_CLOCKS, INITIAL_HANDOUTS } from './defaultData.js';
 
 class StateStore {
@@ -14,14 +18,17 @@ class StateStore {
 
     this.state = {
       // Game Data
+      campaignId: activeCampaignId(),
+      saveStatus: 'loading',
       campaignName: 'USC Vagrant Star // Frontier Expedition',
+      optionalEfforts:false,
       fear: initialFear, // 0 to 12
       fearMax: 12,
       activeMapId: 'map_bridge_01',
-      maps: [...INITIAL_MAPS],
-      tokens: [...INITIAL_TOKENS],
-      clocks: [...INITIAL_CLOCKS],
-      handouts: [...INITIAL_HANDOUTS],
+      maps: structuredClone(INITIAL_MAPS),
+      tokens: structuredClone(INITIAL_TOKENS),
+      clocks: structuredClone(INITIAL_CLOCKS),
+      handouts: structuredClone(INITIAL_HANDOUTS),
       activeTransmission: null, // Broadcasted handout currently popped up
       logs: [],
 
@@ -53,7 +60,7 @@ class StateStore {
       selectedWaterId: null,
       selectedEffectId: null,
       selectedTemplateId: null,
-      
+
       // UI / Interaction
       activeTool: 'select', // 'select', 'measure', 'template', 'wall', 'light', 'water', 'fx', 'ping'
       activeFxType: 'lightning', // 'lightning', 'sparkle', 'explosion', 'radiant', 'void_rift', 'emp'
@@ -87,6 +94,10 @@ class StateStore {
         mountRating: 2,
         heat: 0,
         heatCap: 10,
+        systems: { 'Primary Drive':3, 'FTL Drive':3, 'Sensor Array':3, 'Comms Array':3, 'Life Support':3, 'Weapons':3 },
+        firedThisRound:false,
+        visible:false,
+        heatCheckPending:false,
         rangeBand: 'Engagement', // 'Adjacent' | 'Engagement' | 'Standard' | 'Long' | 'Extreme'
         pearls: 3,
         shieldArcs: {
@@ -100,7 +111,10 @@ class StateStore {
     };
 
     // Load persisted state if exists
-    this.loadFromStorage();
+    this.sessionRole = 'local';
+    this.remoteApplying = false;
+    this.saveQueue = Promise.resolve();
+    this.ready = this.loadFromStorage();
   }
 
   getState() {
@@ -113,13 +127,17 @@ class StateStore {
   }
 
   notify(changedKeys = []) {
-    this.saveToStorage();
+    if (changedKeys.some(k=>CAMPAIGN_KEYS.includes(k))) this.saveToStorage();
     for (const listener of this.listeners) {
       listener(this.state, changedKeys);
     }
   }
 
   update(partialState) {
+    if (this.sessionRole === 'player' && !this.remoteApplying) {
+      if (Object.keys(partialState).some(k=>CAMPAIGN_KEYS.includes(k))) return false;
+      if (partialState.userRole === 'keeper') return false;
+    }
     Object.assign(this.state, partialState);
     this.notify(Object.keys(partialState));
   }
@@ -197,7 +215,7 @@ class StateStore {
   // --- Fear Management ---
   setFear(newVal) {
     this._beforeTacticalMutation('Ajustar Miedo / Fear', 'fear_change');
-    const clamped = Math.max(0, Math.min(this.state.fearMax, newVal));
+    const clamped = Math.max(0, Math.min(12, Number.isFinite(newVal) ? Math.round(newVal) : this.state.fear));
     this.update({ fear: clamped });
   }
 
@@ -268,7 +286,7 @@ class StateStore {
     if (!clock) return;
     const newFilled = Math.max(0, Math.min(clock.segments, clock.filled + delta));
     this.updateClock(clockId, { filled: newFilled });
-    
+
     if (newFilled === clock.segments) {
       this.addLog({
         sender: 'System',
@@ -285,7 +303,16 @@ class StateStore {
   }
 
   // --- Token Management ---
+  canEditToken(tokenId) {
+    if (this.sessionRole !== 'player') return this.state.userRole === 'keeper' || !!this.state.tokens.find(t=>t.id===tokenId && t.isPlayer);
+    return !!this.state.tokens.find(t=>t.id===tokenId && t.ownerId===this.peerId && t.isPlayer);
+  }
+
   updateToken(tokenId, partial) {
+    if (this.sessionRole === 'player' && !this.remoteApplying) {
+      if (this.canEditToken(tokenId)) this.sendTokenPatch?.(tokenId, partial);
+      return;
+    }
     this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
     const tokens = this.state.tokens.map(t => {
       if (t.id === tokenId) {
@@ -343,11 +370,11 @@ class StateStore {
   }
 
   // --- Sleeping Character Mechanics ---
-  spendEffort(tokenId, amount, moveName) {
+  async spendEffort(tokenId, amount, moveName) {
     this._beforeTacticalMutation('Gasto de Esfuerzo');
     const token = this.state.tokens.find(t => t.id === tokenId);
     if (!token) return false;
-    
+
     if (token.effort >= amount) {
       const newEffort = token.effort - amount;
       this.updateToken(tokenId, { effort: newEffort });
@@ -360,7 +387,7 @@ class StateStore {
       return true;
     } else if (token.effort === 0) {
       // Burnout option: Pay 1 HP instead
-      if (confirm(`At 0 Effort: Spend 1 HP to enter BURNOUT and activate [${moveName}]? (Reduces max stress by 1 until recovery)`)) {
+      if (await confirmAction(`At 0 Effort: Spend 1 HP to enter BURNOUT and activate [${moveName}]? (Reduces max stress by 1 until recovery)`)) {
         const newHp = Math.max(0, token.hp.current - 1);
         const curMaxStress = token.stress?.max || 6;
         const newMaxStress = Math.max(1, curMaxStress - 1);
@@ -655,76 +682,36 @@ class StateStore {
     return this.addLog(entry);
   }
 
-  // --- Storage ---
-  saveToStorage() {
-    if (typeof localStorage === 'undefined') return;
-    try {
-      const dataToSave = {
-        campaignName: this.state.campaignName,
-        fear: this.state.fear,
-        activeMapId: this.state.activeMapId,
-        maps: this.state.maps,
-        tokens: this.state.tokens,
-        clocks: this.state.clocks,
-        handouts: this.state.handouts
-      };
-      localStorage.setItem('veilvtt_campaign_data_v1207', JSON.stringify(dataToSave));
-    } catch (e) {}
+  // Complete versioned snapshots; guest replicas never overwrite a local campaign.
+  serializeCampaign() {
+    const data={schemaVersion:2};
+    for(const key of CAMPAIGN_KEYS)data[key]=structuredClone(this.state[key]);
+    return data;
   }
-
-  loadFromStorage() {
-    if (typeof localStorage === 'undefined') return;
-    try {
-      const saved = localStorage.getItem('veilvtt_campaign_data_v1207');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.maps && parsed.maps.length) this.state.maps = parsed.maps;
-        if (parsed.tokens && parsed.tokens.length) this.state.tokens = parsed.tokens;
-        if (parsed.clocks && parsed.clocks.length) this.state.clocks = parsed.clocks;
-        if (parsed.handouts && parsed.handouts.length) this.state.handouts = parsed.handouts;
-        if (parsed.fear !== undefined) this.state.fear = parsed.fear;
-        if (parsed.activeMapId) this.state.activeMapId = parsed.activeMapId;
-        if (parsed.campaignName) this.state.campaignName = parsed.campaignName;
-      }
-    } catch (e) {
-      console.warn('Could not load saved campaign, using defaults', e);
-    }
+  async saveToStorage() {
+    if(this.sessionRole==='player'||this.remoteApplying||this.storageReadFailed)return;
+    const data=this.serializeCampaign(); this.state.saveStatus='saving'; this._storageEvent();
+    const write=this.saveQueue.catch(()=>{}).then(()=>writeCampaign(data.campaignId,data));this.saveQueue=write;
+    try{await write;if(this.saveQueue===write){this.state.saveStatus='saved';delete this.state.saveError;}}
+    catch(e){this.state.saveStatus='error';this.state.saveError=e.message;}
+    this._storageEvent();
   }
-
-  exportCampaignJSON() {
-    const data = {
-      campaignName: this.state.campaignName,
-      fear: this.state.fear,
-      maps: this.state.maps,
-      tokens: this.state.tokens,
-      clocks: this.state.clocks,
-      handouts: this.state.handouts
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `veilfarers_campaign_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  _storageEvent(){if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('veil:save-status',{detail:{status:this.state.saveStatus,error:this.state.saveError}}));}
+  async loadFromStorage(){
+    try{const saved=await readCampaign(this.state.campaignId);if(saved){const merged=validateCampaign({...this.serializeCampaign(),...saved});merged.starship={...this.state.starship,...merged.starship};for(const key of CAMPAIGN_KEYS)if(key in merged)this.state[key]=merged[key];}this.state.saveStatus='saved';if(!saved)await this.saveToStorage();}
+    catch(e){this.storageReadFailed=true;this.state.saveStatus='error';this.state.saveError=e.message;notify(`Saved campaign unavailable: ${e.message} Original data has not been overwritten.`,'error');}
+    this._storageEvent();
   }
-
-  importCampaignJSON(jsonString) {
-    try {
-      const parsed = JSON.parse(jsonString);
-      if (parsed.maps) this.state.maps = parsed.maps;
-      if (parsed.tokens) this.state.tokens = parsed.tokens;
-      if (parsed.clocks) this.state.clocks = parsed.clocks;
-      if (parsed.handouts) this.state.handouts = parsed.handouts;
-      if (parsed.fear !== undefined) this.state.fear = parsed.fear;
-      if (parsed.maps && parsed.maps.length > 0) this.state.activeMapId = parsed.maps[0].id;
-      this.notify(['maps', 'tokens', 'clocks', 'handouts', 'fear', 'activeMapId']);
-      return true;
-    } catch (e) {
-      console.error('Invalid campaign JSON', e);
-      return false;
-    }
+  exportCampaignJSON(){
+    const blob=new Blob([JSON.stringify(this.serializeCampaign(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');
+    a.href=url;a.download=`veilfarers_campaign_${Date.now()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  importCampaignJSON(jsonString){
+    if(this.sessionRole==='player')return false;
+    try{const input=JSON.parse(jsonString);const parsed=validateCampaign({...this.serializeCampaign(),...input,starship:{...this.state.starship,...input.starship},campaignId:newId()});
+      if(!parsed.maps.some(m=>m.id===parsed.activeMapId))parsed.activeMapId=parsed.maps[0].id;
+      this.storageReadFailed=false;selectCampaign(parsed.campaignId);for(const key of CAMPAIGN_KEYS)this.state[key]=parsed[key];this.validateSelections();this.undoManager?.clear?.();this.notify(CAMPAIGN_KEYS);return true;
+    }catch(e){notify(`Import failed: ${e.message}`,'error');return false;}
   }
 }
-
-export const store = new StateStore();
+export const store=new StateStore();

@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/rulesCompendium.js
 // Sacred Rules Compendium & Mechanics Reference (Release 12.06)
 
@@ -11,7 +12,7 @@ export class RulesCompendiumModal {
 
     this.modal = document.createElement('div');
     this.modal.className = 'veil-modal-backdrop';
-    this.modal.innerHTML = `
+    this.modal.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box" style="max-width: 860px; max-height: 88vh; display: flex; flex-direction: column;">
         <div class="veil-modal-header">
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -37,7 +38,7 @@ export class RulesCompendiumModal {
           <!-- Populated by renderEntries -->
         </div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(this.modal);
 
@@ -79,11 +80,11 @@ export class RulesCompendiumModal {
     });
 
     if (filtered.length === 0) {
-      body.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 30px;">No rules found matching query "${query}".</div>`;
+      body.innerHTML = sanitizeHTML(`<div style="text-align: center; color: var(--text-dim); padding: 30px;">No rules found matching query "${query}".</div>`);
       return;
     }
 
-    body.innerHTML = filtered.map(item => `
+    body.innerHTML = sanitizeHTML(filtered.map(item => `
       <div class="glass-panel" style="padding: 12px 14px; border-left: 3px solid ${item.color || 'var(--cyan-pearl)'};">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <span style="font-family: var(--font-hud); font-size: 13px; font-weight: 800; color: #fff;">${item.title}</span>
@@ -95,7 +96,7 @@ export class RulesCompendiumModal {
           ${item.text}
         </div>
       </div>
-    `).join('');
+    `).join(''));
   }
 }
 

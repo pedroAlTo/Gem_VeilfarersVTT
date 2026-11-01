@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/combatLog.js
 // Real-time Tactical Action and Roll Log for VeilVTT
 
@@ -17,7 +18,7 @@ export class CombatLogView {
   render() {
     const logs = store.getState().logs || [];
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="combat-log-content">
         <div class="sidebar-header-row">
           <span class="sidebar-title">TACTICAL CHRONICLE (${logs.length})</span>
@@ -42,7 +43,7 @@ export class CombatLogView {
           }).join('')}
         </div>
       </div>
-    `;
+    `);
 
     const clearBtn = this.container.querySelector('#clear_log_btn');
     if (clearBtn) {

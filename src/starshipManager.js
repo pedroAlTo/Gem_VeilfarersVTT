@@ -1,8 +1,10 @@
+import { sanitizeHTML, notify } from './ui.js';
 // src/starshipManager.js
 // Starship Naval Combat HUD & Tactical Station (Veilfarers Canon 12.06 Chapter 17)
 
 import { store } from './state.js';
 import { network } from './networkManager.js';
+import { rollVeilfarersCheck } from './rulesEngine.js';
 import { audio } from './audioEngine.js';
 
 export class StarshipManager {
@@ -43,13 +45,17 @@ export class StarshipManager {
     const hullPct = Math.max(0, Math.min(100, (ship.hull / ship.maxHull) * 100));
     const heatPct = Math.max(0, Math.min(100, (ship.heat / ship.heatCap) * 100));
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="starship-sidebar-content">
         <div class="sidebar-header-row">
           <span class="sidebar-title">STARSHIP TACTICAL HUB // [${ship.name.toUpperCase()}]</span>
           <span class="badge badge-cyan">${ship.hullClass}</span>
         </div>
 
+        <div class="ship-instruments">
+          ${[{label:'HULL',value:ship.hull,max:ship.maxHull,color:'#78cfdf'},{label:'HEAT',value:ship.heat,max:ship.heatCap,color:'#c885c1'},{label:'PEARLS',value:ship.pearls,max:Math.max(3,ship.pearls),color:'#8fa4e7'}].map(m=>`<div class="instrument"><div class="instrument-ring" style="--value:${Math.min(100,m.value/m.max*100)};--ring:${m.color}"><div class="instrument-value">${m.value}<small>/ ${m.max}</small></div></div><span>${m.label}</span></div>`).join('')}
+        </div>
+        ${!isKeeper?'<p class="field-help">Ship systems are managed by the Keeper. Select your character to roll a station check.</p>':''}
         <!-- Hull Points & Range Band -->
         <div class="glass-panel" style="padding: 10px; margin-bottom: 12px; border-color: rgba(0, 243, 255, 0.3);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -90,8 +96,8 @@ export class StarshipManager {
         <!-- Shield Arcs (4 Compass Points) -->
         <div class="glass-panel" style="padding: 10px; margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-family: var(--font-hud); font-size: 10px; font-weight: 700; color: var(--cyan-pearl);">SHIELD ARCS // ARMOR SLOTS</span>
-            <button class="hud-btn hud-btn-xs hud-btn-secondary" id="regen_shields_btn" title="End of Round: Regenerate 2 Slots per Arc">REGEN ARCS (+2)</button>
+            <span style="font-family: var(--font-hud); font-size: 10px; font-weight: 700; color: var(--cyan-pearl);">SHIELD ARCS // ABSORPTION</span>
+            <button class="hud-btn hud-btn-xs hud-btn-secondary" id="regen_shields_btn" title="End of Round: Regenerate 2 Slots per Arc">END ROUND</button>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
@@ -134,6 +140,21 @@ export class StarshipManager {
           </div>
         </div>
 
+        <div class="glass-panel" style="padding:14px;margin-bottom:14px">
+          <span class="sidebar-title">SYSTEM INTEGRITY</span>
+          ${Object.entries(ship.systems||{}).map(([name,value])=>`<div class="system-row"><span>${name}</span><span>${value}/3 <button class="hud-btn system-repair" data-system="${name}" title="Keeper adjustment: restore 1 Integrity after resolving repair">+</button></span></div>`).join('')}
+          ${ship.heatCheckPending?'<button class="hud-btn hud-btn-danger" id="resolve_overheat">Resolve overheat · Pilot DC 15</button>':''}
+          <label class="hud-checkbox-label" style="margin-top:12px"><input type="checkbox" id="ship_fired" ${ship.firedThisRound?'checked':''} /> Weapons fired this round</label>
+          <p class="field-help">${ship.visible?'VISIBLE · +2 to incoming attack rolls.':'Signature stable.'}</p>
+        </div>
+        <div class="glass-panel" style="padding:14px;margin-bottom:14px">
+          <span class="sidebar-title">INCOMING NAVAL DAMAGE</span>
+          <p class="field-help">Enter final damage after Mount Rating. Shields absorb points before Hull conversion. Core Ch.17.</p>
+          <div class="naval-damage-form"><input id="naval_raw" class="hud-input" type="number" min="0" value="0" aria-label="Incoming naval damage" /><vf-select id="naval_arc" class="hud-select">${['fore','aft','port','starboard'].map(a=>`<option value="${a}">${a}</option>`).join('')}</vf-select>
+          <vf-select id="naval_system" class="hud-select"><option value="">No declared system</option>${Object.keys(ship.systems||{}).map(n=>`<option value="${n}">${n}</option>`).join('')}</vf-select>
+          <label class="hud-checkbox-label"><input type="checkbox" id="naval_critical" /> Critical hit</label></div>
+          <button class="hud-btn hud-btn-danger" id="apply_naval_damage">Apply to this ship</button>
+        </div>
         <!-- FTL Emergency Jump -->
         <div class="glass-panel" style="padding: 10px; margin-bottom: 12px; border-color: rgba(168, 85, 247, 0.4);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -182,9 +203,10 @@ export class StarshipManager {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     this.attachEvents(ship);
+    if(store.sessionRole==='player')this.container.querySelectorAll('button:not(.maneuver-btn),input,vf-select').forEach(el=>el.disabled=true);
   }
 
   attachEvents(ship) {
@@ -225,7 +247,7 @@ export class StarshipManager {
       btn.onclick = () => {
         const arc = btn.dataset.arc;
         const curSlots = ship.shieldArcs[arc];
-        const nextHeat = Math.min(ship.heatCap, ship.heat + 2);
+        const nextHeat = ship.heat + 2;
         const updatedArcs = { ...ship.shieldArcs, [arc]: curSlots + 2 };
         this.updateShip({ shieldArcs: updatedArcs, heat: nextHeat });
         store.addLog({
@@ -249,13 +271,13 @@ export class StarshipManager {
           starboard: Math.min(ship.shieldArcs.maxPerArc, ship.shieldArcs.starboard + 2),
           maxPerArc: ship.shieldArcs.maxPerArc
         };
-        const nextHeat = Math.max(0, ship.heat - 1);
-        this.updateShip({ shieldArcs: nextArcs, heat: nextHeat });
+        const nextHeat = Math.max(0, ship.heat - (ship.firedThisRound ? 0 : 1));
+        this.updateShip({ shieldArcs: nextArcs, heat: nextHeat, firedThisRound:false, visible:false });
         store.addLog({
           sender: ship.name,
           type: 'ROUND_RESET',
           title: `End of Starship Round: Shields Regenerated`,
-          details: `All shield arcs restored up to +2 Armor Slots. Core heat passively dissipated by -1.`
+          details: `All shield arcs restored up to +2 Armor Slots. ${ship.firedThisRound?'No passive cooling: weapons fired.':'Core heat dissipated by 1.'}`
         });
         audio.playClockTick();
       };
@@ -282,7 +304,7 @@ export class StarshipManager {
     if (ventBtn) {
       ventBtn.onclick = () => {
         const nextHeat = Math.max(0, ship.heat - 5);
-        this.updateShip({ heat: nextHeat });
+        this.updateShip({ heat: nextHeat, visible:true });
         store.addLog({
           sender: ship.name,
           type: 'ENGINEER_ACTION',
@@ -298,7 +320,7 @@ export class StarshipManager {
     if (ftlBtn) {
       ftlBtn.onclick = () => {
         if (ship.pearls <= 0) {
-          alert('No Quantum Pearls remaining! Jumping into the raw Veil without a Pearl is lethal.');
+          notify('No Quantum Pearls remaining! Jumping into the raw Veil without a Pearl is lethal.');
           return;
         }
         const nextPearls = ship.pearls - 1;
@@ -313,23 +335,29 @@ export class StarshipManager {
       };
     }
 
-    // Pilot Maneuver Buttons
-    this.container.querySelectorAll('.maneuver-btn').forEach(btn => {
-      btn.onclick = () => {
-        const name = btn.dataset.name;
-        const dc = parseInt(btn.dataset.dc, 10);
-        // Roll Pilot Instinct check
-        const roll = Math.floor(Math.random() * 12) + 1 + Math.floor(Math.random() * 12) + 1 + 2;
-        const success = roll >= dc;
-        store.addLog({
-          sender: ship.name,
-          type: 'PILOT_MOVE',
-          title: `Pilot Maneuver: [${name}] // ${success ? 'SUCCESS' : 'FAILURE'}`,
-          details: `Check Roll: ${roll} vs DC ${dc} (Duality +2 Instinct).`
-        });
-        audio.playClockTick();
+    // Use the same canonical check and the selected pilot's real Instinct.
+    this.container.querySelectorAll('.maneuver-btn').forEach(btn=>{
+      btn.onclick=async()=>{
+        const actor=store.getSelectedToken();if(!actor){notify('Select the pilot first.');return;}
+        try{const result=await network.requestAction({type:'CHECK',actorId:actor.id,options:{traitId:'instinct',dc:Number(btn.dataset.dc),criticalChoice:'resolve'}});window.veilDiceRoller?.showResult(result);notify(`${btn.dataset.name}: ${result.outcomeTitle}. Resolve the printed maneuver effect (Core Ch.17).`);}
+        catch(e){notify(e.message,'error');}
       };
     });
+
+    const fired=this.container.querySelector('#ship_fired');if(fired)fired.onchange=()=>this.updateShip({firedThisRound:fired.checked});
+    this.container.querySelectorAll('.system-repair').forEach(btn=>btn.onclick=()=>{const s=store.state.starship;this.updateShip({systems:{...s.systems,[btn.dataset.system]:Math.min(3,(s.systems[btn.dataset.system]||0)+1)}});});
+    const overheat=this.container.querySelector('#resolve_overheat');if(overheat)overheat.onclick=async()=>{
+      if(store.sessionRole==='player'){notify('The Keeper resolves ship damage.');return;}
+      const actor=store.getSelectedToken();if(!actor){notify('Select the pilot first.');return;}
+      try{const r=await network.requestAction({type:'CHECK',actorId:actor.id,options:{traitId:'instinct',dc:15,criticalChoice:'resolve'}});const s=store.state.starship,systems={...s.systems};if(!r.isCritical&&r.total<15)systems['Primary Drive']=Math.max(0,(systems['Primary Drive']||0)-1);this.updateShip({systems,heatCheckPending:false});window.veilDiceRoller?.showResult(r);}catch(e){notify(e.message,'error');}
+    };
+    const damage=this.container.querySelector('#apply_naval_damage');if(damage)damage.onclick=()=>{
+      const raw=Number(this.container.querySelector('#naval_raw').value);if(!Number.isFinite(raw)||raw<0||raw>100000){notify('Enter a valid damage total.');return;}
+      const arc=this.container.querySelector('#naval_arc').value,system=this.container.querySelector('#naval_system').value,critical=this.container.querySelector('#naval_critical').checked;
+      const s=store.state.starship,left=Math.max(0,raw-s.shieldArcs[arc]);const loss=left===0?0:left<=5?1:left<=12?2:left<=20?3:left<=30?4:5+Math.floor((left-30)/10);
+      const systems={...s.systems};if(critical&&loss>0&&system in systems)systems[system]=Math.max(0,systems[system]-1);
+      this.updateShip({shieldArcs:{...s.shieldArcs,[arc]:Math.max(0,s.shieldArcs[arc]-raw)},hull:Math.max(0,s.hull-loss),systems});notify(`Naval hit · ${loss} Hull lost.`);
+    };
 
     // Class Action Buttons
     this.container.querySelectorAll('.class-action-btn').forEach(btn => {
@@ -348,10 +376,9 @@ export class StarshipManager {
   }
 
   updateShip(partial) {
-    const cur = store.getState().starship || {};
-    const updated = { ...cur, ...partial };
-    store.update({ starship: updated });
-    network.broadcast({ type: 'STARSHIP_UPDATE', starship: updated });
+    if(store.sessionRole==='player'){notify('Ship systems are managed by the Keeper.');return;}
+    const cur=store.state.starship,updated={...cur,...partial};
+    if(cur.heat<=cur.heatCap&&updated.heat>updated.heatCap){updated.systems=Object.fromEntries(Object.entries(updated.systems||{}).map(([key,value])=>[key,Math.max(0,value-1)]));updated.visible=true;updated.heatCheckPending=true;notify('Heat cap exceeded: every system loses 1 Integrity. Select the pilot and resolve Instinct DC 15.','error');}
+    store._beforeTacticalMutation('Update starship');store.update({starship:updated});network.broadcast({type:'STARSHIP_UPDATE',starship:updated});
   }
 }
-

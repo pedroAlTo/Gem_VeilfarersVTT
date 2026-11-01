@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/inspectorHUD.js
 // Tactical Element Inspector for Editable Walls, Dynamic Lights, and Water Zones
 
@@ -64,7 +65,7 @@ export class ElementInspectorHUD {
 
     // Only visible if Keeper and an element is selected
     if (!isKeeper) {
-      this.container.innerHTML = '';
+      this.container.innerHTML = sanitizeHTML('');
       this.container.classList.add('hidden');
       return;
     }
@@ -96,12 +97,12 @@ export class ElementInspectorHUD {
       }
     }
 
-    this.container.innerHTML = '';
+    this.container.innerHTML = sanitizeHTML('');
     this.container.classList.add('hidden');
   }
 
   renderLightInspector(light) {
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="element-inspector glass-panel">
         <div class="inspector-header">
           <div class="insp-title-group">
@@ -134,14 +135,14 @@ export class ElementInspectorHUD {
             </div>
             <div class="insp-col">
               <label>Dynamic FX Effect</label>
-              <select id="insp_light_effect" class="hud-select hud-select-xs">
+              <vf-select id="insp_light_effect" class="hud-select hud-select-xs">
                 <option value="steady" ${light.effect === 'steady' ? 'selected' : ''}>Steady (Continuous)</option>
                 <option value="pulse" ${light.effect === 'pulse' ? 'selected' : ''}>Pulse (Breathing Glow)</option>
                 <option value="flicker" ${light.effect === 'flicker' ? 'selected' : ''}>Flicker (Malfunctioning Neon)</option>
                 <option value="siren" ${light.effect === 'siren' ? 'selected' : ''}>Siren / Dual Alert (2 Colores)</option>
                 <option value="quantum" ${light.effect === 'quantum' ? 'selected' : ''}>Quantum Flux (Pearl Resin)</option>
                 <option value="spark" ${light.effect === 'spark' ? 'selected' : ''}>Electric Spark (Arc Discharge)</option>
-              </select>
+              </vf-select>
             </div>
             <div class="insp-col insp-actions" style="max-width: 90px; justify-content: flex-end;">
               <button class="hud-btn hud-btn-xs hud-btn-danger" id="insp_delete_btn">DELETE</button>
@@ -164,7 +165,7 @@ export class ElementInspectorHUD {
           ` : ''}
         </div>
       </div>
-    `;
+    `);
 
     this.container.querySelector('#insp_close').onclick = () => store.update({ selectedLightId: null });
 
@@ -245,7 +246,7 @@ export class ElementInspectorHUD {
     const icon = isDoor ? (isSecret ? '🕵️' : '🚪') : (isWindow ? '🪟' : '🧱');
     const title = isDoor ? (isSecret ? 'PUERTA SECRETA // OCULTA' : 'PUERTA / ESCOTILLA // PORTAL') : (isWindow ? 'VENTANA / CRISTAL BLINDADO' : 'MURO NORMAL // BARRERA OPACA');
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="element-inspector glass-panel">
         <div class="inspector-header">
           <div class="insp-title-group">
@@ -300,8 +301,8 @@ export class ElementInspectorHUD {
             <div class="insp-row" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
               ${isSecret
                 ? '🕵️ Puerta Secreta activada: Los jugadores la ven como un muro normal opaco y no pueden detectarla ni abrirla.'
-                : (isLocked 
-                  ? '⚠️ Cerrojo echado. Los jugadores la ven pero no pueden abrirla desde el mapa.' 
+                : (isLocked
+                  ? '⚠️ Cerrojo echado. Los jugadores la ven pero no pueden abrirla desde el mapa.'
                   : '✓ Visible y desbloqueada. Cualquier jugador o Keeper puede abrir y cerrar esta puerta con 1 clic en el mapa.')}
             </div>
           ` : isWindow ? `
@@ -328,7 +329,7 @@ export class ElementInspectorHUD {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     this.container.querySelector('#insp_close').onclick = () => store.update({ selectedWallId: null });
 
@@ -443,7 +444,7 @@ export class ElementInspectorHUD {
     const map = store.getActiveMap();
     const isRain = !!(map.showRain || state.showRain);
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="element-inspector glass-panel">
         <div class="inspector-header">
           <div class="insp-title-group">
@@ -462,13 +463,13 @@ export class ElementInspectorHUD {
 
             <div class="insp-col" style="flex: 3;">
               <label>Water Depth: Level ${depth}</label>
-              <select id="insp_water_depth" class="hud-select hud-select-xs">
+              <vf-select id="insp_water_depth" class="hud-select hud-select-xs">
                 ${WATER_DEPTH_NAMES.map((name, idx) => `
                   <option value="${idx}" ${idx === depth ? 'selected' : ''}>
                     Depth ${idx}: ${name}
                   </option>
                 `).join('')}
-              </select>
+              </vf-select>
             </div>
 
             <div class="insp-col" style="flex: 2;">
@@ -491,7 +492,7 @@ export class ElementInspectorHUD {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     this.container.querySelector('#insp_close').onclick = () => store.update({ selectedWaterId: null });
 
@@ -564,7 +565,7 @@ export class ElementInspectorHUD {
     const shape = effect.shape || 'circle';
     const type = effect.type || 'void_rift';
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="element-inspector glass-panel">
         <div class="inspector-header">
           <div class="insp-title-group">
@@ -578,7 +579,7 @@ export class ElementInspectorHUD {
           <div class="insp-row">
             <div class="insp-col" style="flex: 2;">
               <label>Anomaly Type</label>
-              <select id="insp_fx_type" class="hud-select hud-select-xs">
+              <vf-select id="insp_fx_type" class="hud-select hud-select-xs">
                 <option value="laser" ${type === 'laser' ? 'selected' : ''}>🔴 Tactical Laser Beam (Haz Láser)</option>
                 <option value="void_rift" ${type === 'void_rift' ? 'selected' : ''}>🌌 Black Hole Singularity</option>
                 <option value="toxic" ${type === 'toxic' ? 'selected' : ''}>☣️ Toxic Hazard (Bubbles & Skulls)</option>
@@ -588,11 +589,11 @@ export class ElementInspectorHUD {
                 <option value="emp" ${type === 'emp' ? 'selected' : ''}>📡 EMP Wave Generator</option>
                 <option value="radiant" ${type === 'radiant' ? 'selected' : ''}>☀️ Radiant Light Core</option>
                 <option value="sparkle" ${type === 'sparkle' ? 'selected' : ''}>✨ Stardust Bioluminescence</option>
-              </select>
+              </vf-select>
             </div>
             <div class="insp-col" style="flex: 1.5;">
               <label>Shape</label>
-              <select id="insp_fx_shape" class="hud-select hud-select-xs" ${type === 'laser' ? 'disabled title="Haz Láser es exclusivamente de sólo línea recta"' : ''}>
+              <vf-select id="insp_fx_shape" class="hud-select hud-select-xs" ${type === 'laser' ? 'disabled title="Haz Láser es exclusivamente de sólo línea recta"' : ''}>
                 ${type === 'laser' ? `
                   <option value="line" selected>➖ Straight Line A-B (Solo Línea)</option>
                 ` : `
@@ -600,7 +601,7 @@ export class ElementInspectorHUD {
                   <option value="polygon" ${shape === 'polygon' ? 'selected' : ''}>📐 Polygon Area</option>
                   <option value="line" ${shape === 'line' ? 'selected' : ''}>➖ Straight Line A-B</option>
                 `}
-              </select>
+              </vf-select>
             </div>
             <div class="insp-col" style="flex: 2;">
               <label>Label</label>
@@ -646,11 +647,11 @@ export class ElementInspectorHUD {
             <div class="insp-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.15);">
               <div class="insp-col" style="flex: 1.5;">
                 <label>Lightning Mode</label>
-                <select id="insp_fx_lightning_mode" class="hud-select hud-select-xs">
+                <vf-select id="insp_fx_lightning_mode" class="hud-select hud-select-xs">
                   <option value="circle" ${(effect.lightningMode || 'circle') === 'circle' ? 'selected' : ''}>Center to Rim Emitter</option>
                   <option value="polygon" ${effect.lightningMode === 'polygon' ? 'selected' : ''}>Electrified Area Nodes</option>
                   <option value="line" ${effect.lightningMode === 'line' ? 'selected' : ''}>Direct Arc Point A to B</option>
-                </select>
+                </vf-select>
               </div>
               <div class="insp-col" style="flex: 1.5;">
                 <label>Frequency (${(effect.frequency ?? 1.0).toFixed(1)}x)</label>
@@ -658,7 +659,7 @@ export class ElementInspectorHUD {
               </div>
               <div class="insp-col" style="max-width: 80px;">
                 <label>Color</label>
-                <input type="color" id="insp_fx_color" value="${effect.color || '#00f3ff'}" style="width: 100%; height: 26px; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: transparent;" />
+                <input type="text" id="insp_fx_color" value="${effect.color || '#00f3ff'}" style="width: 100%; height: 26px; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: transparent;" />
               </div>
             </div>
           ` : ''}
@@ -675,7 +676,7 @@ export class ElementInspectorHUD {
               </div>
               <div class="insp-col" style="max-width: 80px;">
                 <label>Beam Color</label>
-                <input type="color" id="insp_fx_color" value="${effect.color || '#ef4444'}" style="width: 100%; height: 26px; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: transparent;" />
+                <input type="text" id="insp_fx_color" value="${effect.color || '#ef4444'}" style="width: 100%; height: 26px; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: transparent;" />
               </div>
             </div>
             <div class="insp-row" style="margin-top: 4px; display: flex; gap: 6px; align-items: center;">
@@ -689,7 +690,7 @@ export class ElementInspectorHUD {
           ` : ''}
         </div>
       </div>
-    `;
+    `);
 
     this.container.querySelector('#insp_close').onclick = () => store.update({ selectedEffectId: null });
 
@@ -827,7 +828,7 @@ export class ElementInspectorHUD {
     const coneDeg = Math.round(((tmpl.coneAngle || Math.PI / 3) * 180) / Math.PI);
     const widthMeters = (((tmpl.width || 48) / gridSize) * scaleMeters).toFixed(1);
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="element-inspector glass-panel">
         <div class="inspector-header">
           <div class="insp-title-group">
@@ -899,7 +900,7 @@ export class ElementInspectorHUD {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     this.container.querySelector('#insp_close').onclick = () => {
       if (window.veilCanvas) window.veilCanvas.activeTemplate = null;

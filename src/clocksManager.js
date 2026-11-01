@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/clocksManager.js
 // Movable Transparent HUD Progress Clocks with Keeper-Only / Shared Visibility
 
@@ -9,6 +10,7 @@ export class ClocksManager {
   constructor(overlayContainer) {
     this.container = overlayContainer;
     this.draggedWidget = null;
+    this.expanded = new Set();
     this.dragStart = { x: 0, y: 0 };
     this.widgetStart = { x: 0, y: 0 };
 
@@ -67,11 +69,12 @@ export class ClocksManager {
       return !c.isKeeperOnly;
     });
 
-    this.container.innerHTML = visibleClocks.map(clock => this.renderClockWidget(clock, isKeeper)).join('');
+    this.container.innerHTML = sanitizeHTML(visibleClocks.map(clock => this.renderClockWidget(clock, isKeeper)).join(''));
     this.attachWidgetListeners();
   }
 
   renderClockWidget(clock, isKeeper) {
+    const collapsed = !this.expanded.has(clock.id);
     const radius = 36;
     const center = 44;
     const segments = clock.segments;
@@ -106,8 +109,8 @@ export class ClocksManager {
     }
 
     return `
-      <div 
-        class="clock-widget glass-panel ${categoryClass} ${clock.collapsed ? 'collapsed' : ''} ${isCompleted ? 'completed' : ''}"
+      <div
+        class="clock-widget glass-panel ${categoryClass} ${collapsed ? 'collapsed' : ''} ${isCompleted ? 'completed' : ''}"
         id="widget_${clock.id}"
         data-id="${clock.id}"
         style="left: ${clock.posX || 60}px; top: ${clock.posY || 120}px;"
@@ -116,22 +119,22 @@ export class ClocksManager {
         <div class="clock-drag-handle">
           <div class="clock-title-group">
             <span class="clock-category-pip"></span>
-            <span class="clock-title" title="${clock.title}">${clock.title}</span>
+            <span class="clock-title" title="${clock.title}">${clock.title}</span><span class="clock-inline-count" style="--clock-progress:${Math.round(filled/segments*100)}%"><span>${filled}/${segments}</span></span>
           </div>
           <div class="clock-badges">
             ${isKeeper ? `
               <button class="clock-badge-btn ${clock.isKeeperOnly ? 'clock-badge-keeper' : 'clock-badge-shared'} clock-visibility-toggle" title="Click to Toggle GM Private vs Shared with Players">
-                ${clock.isKeeperOnly ? '🔒 PRIVATE' : '📡 SHARED'}
+                ${clock.isKeeperOnly ? 'PRIVATE' : 'SHARED'}
               </button>
             ` : `
               <span class="clock-badge-shared">SHARED</span>
             `}
-            <button class="clock-collapse-btn" title="Toggle Compact View">${clock.collapsed ? '▼' : '▲'}</button>
+            <button class="clock-collapse-btn" title="Toggle Compact View">${collapsed ? '▼' : '▲'}</button>
           </div>
         </div>
 
         <!-- Clock Body -->
-        <div class="clock-body ${clock.collapsed ? 'hidden' : ''}">
+        <div class="clock-body ${collapsed ? 'hidden' : ''}">
           <div class="clock-dial-wrapper">
             <svg class="clock-svg-dial" viewBox="0 0 88 88" width="88" height="88">
               <!-- Background Outer Ring -->
@@ -170,6 +173,7 @@ export class ClocksManager {
 
       // Dragging by handle (Mouse & Touch)
       const onStart = (clientX, clientY, target) => {
+        if (!this.expanded.has(widget.dataset.id)) return;
         if (target.classList.contains('clock-collapse-btn') || target.classList.contains('clock-visibility-toggle')) return;
         this.draggedWidget = widget;
         this.dragStart = { x: clientX, y: clientY };
@@ -215,7 +219,8 @@ export class ClocksManager {
           e.stopPropagation();
           const clock = store.getState().clocks.find(c => c.id === clockId);
           if (clock) {
-            store.updateClock(clockId, { collapsed: !clock.collapsed });
+            if(this.expanded.has(clockId))this.expanded.delete(clockId);else this.expanded.add(clockId);
+            this.render();
           }
         };
       }
@@ -271,7 +276,7 @@ export class ClocksManager {
   openCreateModal() {
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
-    modal.innerHTML = `
+    modal.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box">
         <div class="veil-modal-header">
           <h3>DEPLOY PROGRESS CLOCK // NARRATIVE ENGINE</h3>
@@ -286,23 +291,23 @@ export class ClocksManager {
           <div class="form-row">
             <div class="form-group">
               <label>Segments</label>
-              <select id="new_clock_segments" class="hud-select">
+              <vf-select id="new_clock_segments" class="hud-select">
                 <option value="4">4 Segments (Fast / Urgent)</option>
                 <option value="6" selected>6 Segments (Standard / Tactical)</option>
                 <option value="8">8 Segments (Complex / Resilient)</option>
                 <option value="10">10 Segments (Epic / Campaign)</option>
                 <option value="12">12 Segments (Substrate Resonance)</option>
-              </select>
+              </vf-select>
             </div>
 
             <div class="form-group">
               <label>Category Theme</label>
-              <select id="new_clock_category" class="hud-select">
+              <vf-select id="new_clock_category" class="hud-select">
                 <option value="danger">Danger // Threat (Crimson)</option>
                 <option value="countdown">Countdown // Timer (Amber)</option>
                 <option value="project">Project // Breach (Cyan)</option>
                 <option value="faction">Faction // Void (Purple)</option>
-              </select>
+              </vf-select>
             </div>
           </div>
 
@@ -319,7 +324,7 @@ export class ClocksManager {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(modal);
 

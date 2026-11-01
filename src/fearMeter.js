@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/fearMeter.js
 // Futuristic 12-Cell Global Fear Meter Widget with GSAP High-Impact Animations
 
@@ -19,7 +20,7 @@ export class FearMeterHUD {
   }
 
   render() {
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="fear-meter-wrapper" id="fear_meter_root">
         <div class="fear-header">
           <div class="fear-label">
@@ -42,7 +43,7 @@ export class FearMeterHUD {
           `).join('')}
         </div>
       </div>
-    `;
+    `);
 
     this.initEvents();
     this.updateView();
@@ -50,7 +51,7 @@ export class FearMeterHUD {
 
   initEvents() {
     const track = this.container.querySelector('#fear_cells_track');
-    
+
     // Keeper can click segments to directly set Fear
     track.addEventListener('click', (e) => {
       const state = store.getState();
@@ -103,12 +104,12 @@ export class FearMeterHUD {
     const controlsEl = this.container.querySelector('#fear_controls');
     if (controlsEl) {
       if (isKeeper) {
-        controlsEl.innerHTML = `
+        controlsEl.innerHTML = sanitizeHTML(`
           <button class="hud-btn hud-btn-xs" id="fear_minus_btn" title="Decrease Fear">-1</button>
           <button class="hud-btn hud-btn-xs hud-btn-danger" id="fear_plus_btn" title="Increase Fear">+1</button>
           <button class="hud-btn hud-btn-xs hud-btn-amber" id="fear_spend_menu_btn" title="Spend Fear on Keeper Move">SPEND FEAR</button>
           <button class="hud-btn hud-btn-xs" id="fear_session_reset_btn" title="Session Reset: Roll 1d4+2">RESET</button>
-        `;
+        `);
 
         controlsEl.querySelector('#fear_minus_btn').onclick = () => {
           store.addFear(-1);
@@ -128,7 +129,7 @@ export class FearMeterHUD {
           audio.playFearAlert();
         };
       } else {
-        controlsEl.innerHTML = `<span class="hud-role-badge">OBSERVER</span>`;
+        controlsEl.innerHTML = sanitizeHTML(`<span class="hud-role-badge">OBSERVER</span>`);
       }
     }
   }
@@ -144,7 +145,7 @@ export class FearMeterHUD {
     const state = store.getState();
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
-    modal.innerHTML = `
+    modal.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box">
         <div class="veil-modal-header">
           <h3>KEEPER'S VOID SPEND // FEAR POOL (${state.fear}/12)</h3>
@@ -170,7 +171,7 @@ export class FearMeterHUD {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(modal);
 

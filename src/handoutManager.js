@@ -1,3 +1,4 @@
+import { sanitizeHTML, confirmAction } from './ui.js';
 // src/handoutManager.js
 // Classified Transmissions, Dossiers, and Enriched Text Handouts with Images
 
@@ -30,7 +31,7 @@ export class HandoutManager {
     const isKeeper = state.userRole === 'keeper';
     const handouts = state.handouts || [];
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="handouts-sidebar-content">
         <div class="sidebar-header-row">
           <span class="sidebar-title">TRANSMISSIONS & DOSSIERS (${handouts.length})</span>
@@ -70,7 +71,7 @@ export class HandoutManager {
           `).join('')}
         </div>
       </div>
-    `;
+    `);
 
     this.initEvents();
   }
@@ -105,8 +106,8 @@ export class HandoutManager {
 
       // Delete Handout
       this.container.querySelectorAll('.delete-handout-btn').forEach(btn => {
-        btn.onclick = () => {
-          if (confirm('Delete this classified transmission?')) {
+        btn.onclick = async () => {
+          if (await confirmAction('Delete this classified transmission?')) {
             store.deleteHandout(btn.dataset.id);
           }
         };
@@ -140,7 +141,7 @@ export class HandoutManager {
     const isEdit = !!existingDoc;
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
-    modal.innerHTML = `
+    modal.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box sheet-modal-box">
         <div class="veil-modal-header">
           <h3>${isEdit ? 'EDIT TRANSMISSION FILE' : 'CREATE CLASSIFIED DOSSIER'}</h3>
@@ -182,7 +183,7 @@ export class HandoutManager {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(modal);
 
@@ -242,7 +243,7 @@ export class HandoutManager {
     const popup = document.createElement('div');
     popup.id = 'active_transmission_popup';
     popup.className = 'veil-modal-backdrop';
-    popup.innerHTML = `
+    popup.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box transmission-popup-box">
         <div class="veil-modal-header" style="background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 100%); border-bottom: 2px solid var(--cyan-pearl);">
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -273,7 +274,7 @@ export class HandoutManager {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(popup);
 

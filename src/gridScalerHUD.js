@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/gridScalerHUD.js
 // Tactical Grid Scaler & Scale Calibration HUD for VeilVTT
 // Allows live scaling of grid cells, physical scale (meters/sq), and fine offset alignment
@@ -49,7 +50,7 @@ export class GridScalerHUD {
     const isKeeper = state.userRole === 'keeper';
 
     if (!isKeeper || (!this.isOpen && state.activeTool !== 'grid_scale')) {
-      this.container.innerHTML = '';
+      this.container.innerHTML = sanitizeHTML('');
       this.container.classList.add('hidden');
       return;
     }
@@ -63,7 +64,7 @@ export class GridScalerHUD {
     const gridAlpha = map.gridAlpha !== undefined ? map.gridAlpha : 0.2;
 
     this.container.classList.remove('hidden');
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="element-inspector glass-panel grid-scaler-panel" style="max-width: 580px;">
         <div class="inspector-header">
           <div class="insp-title-group">
@@ -177,13 +178,13 @@ export class GridScalerHUD {
 
             <div style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 10px; color: var(--text-dim);">Color:</span>
-              <input type="color" id="grid_color_picker" value="${gridColor.startsWith('#') ? gridColor : '#00f3ff'}" class="hud-color-input" style="width: 28px; height: 22px;" />
+              <input type="text" id="grid_color_picker" value="${gridColor.startsWith('#') ? gridColor : '#00f3ff'}" class="hud-color-input" style="width: 28px; height: 22px;" />
               <button class="hud-btn hud-btn-xs hud-btn-secondary" id="grid_apply_done_btn" style="margin-left: 8px;">GUARDAR Y CERRAR</button>
             </div>
           </div>
         </div>
       </div>
-    `;
+    `);
 
     this.bindEvents(map);
   }

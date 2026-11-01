@@ -2,6 +2,7 @@
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
 import { rollVeilfarersCheck, resolveDamage, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { notify, sanitizeHTML } from './ui.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
@@ -13,6 +14,7 @@ export class DiceRollerSidebar {
     this.selectedSubtraitId = '';
     this.currentActor = null;
     this.render();
+    this.syncWithSelectedToken();
     window.veilDiceRoller = this;
 
     store.subscribe((state, keys) => {
@@ -24,6 +26,11 @@ export class DiceRollerSidebar {
 
   syncWithSelectedToken() {
     const token = store.getSelectedToken();
+    const actorChanged=this.currentActor?.id!==token?.id;
+    this.currentActor = token;
+    const resolve=this.container.querySelector('#dice_use_resolve');resolve.disabled=token?.path!=='Sleeping';if(resolve.disabled)resolve.checked=false;
+    this.container.querySelector('.critical-choice-row').style.display=token?.path==='Sleeping'?'grid':'none';
+    if(actorChanged){this.container.querySelector('#dmg_honed').value=token?.path==='Sleeping'?(token.honedEdgeBonus??Math.max(0,(token.level||1)-1)):0;this.container.querySelector('#dmg_proficiency').value=token?.proficiency||1;}
     if (token) {
       this.currentActor = token;
       const actorLabel = this.container.querySelector('#dice_actor_name');
@@ -55,7 +62,7 @@ export class DiceRollerSidebar {
   }
 
   render() {
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="dice-sidebar-content">
         <!-- Tab Navigation -->
         <div class="sidebar-subtabs">
@@ -86,24 +93,24 @@ export class DiceRollerSidebar {
           <!-- Subtrait Selector -->
           <div class="dice-input-block">
             <label class="dice-label">SUBTRAIT / SPECIALTY</label>
-            <select id="dice_subtrait_select" class="hud-select">
+            <vf-select id="dice_subtrait_select" class="hud-select">
               <option value="">None / General Trait</option>
               ${SUBTRAITS.map(st => `
                 <option value="${st.id}">${st.name} (Parent: ${st.parent.toUpperCase()})</option>
               `).join('')}
-            </select>
+            </vf-select>
           </div>
 
           <!-- DC Ladder -->
           <div class="dice-input-block">
             <label class="dice-label">TARGET DIFFICULTY (DC LADDER)</label>
-            <select id="dice_dc_select" class="hud-select">
+            <vf-select id="dice_dc_select" class="hud-select">
               ${DC_LADDER.map(l => `
                 <option value="${l.dc}" ${l.dc === 15 ? 'selected' : ''}>
                   DC ${l.dc} - ${l.name}
                 </option>
               `).join('')}
-            </select>
+            </vf-select>
           </div>
 
           <!-- Roll Modifiers -->
@@ -122,6 +129,7 @@ export class DiceRollerSidebar {
             </label>
           </div>
 
+          <div class="form-row critical-choice-row"><div class="form-group"><label>Sleeping critical · extra point</label><vf-select id="critical_resource" class="hud-select"><option value="effort">Effort (Resolve if full)</option><option value="resolve">Resolve</option></vf-select></div><label class="hud-checkbox-label"><input type="checkbox" id="meaningful_roll" checked /> Meaningful roll</label></div>
           <!-- Flat Modifier & Experience -->
           <div class="form-row" style="margin-top: 10px;">
             <div class="form-group">
@@ -180,21 +188,23 @@ export class DiceRollerSidebar {
         <div class="dice-section" id="section_damage_calc" style="display: none;">
           <div class="dice-actor-bar">
             <span class="actor-tag">TARGET:</span>
-            <select id="dmg_target_select" class="hud-select" style="max-width: 200px;">
+            <vf-select id="dmg_target_select" class="hud-select" style="max-width: 200px;">
               <!-- Target tokens populated -->
-            </select>
+            </vf-select>
           </div>
 
+          <div class="form-row"><div class="form-group"><label>Proficiency</label><input type="number" id="dmg_proficiency" value="1" min="1" max="6" class="hud-input" /></div><div class="form-group"><label>Honed Edge (Sleeping)</label><input type="number" id="dmg_honed" value="0" min="0" max="20" class="hud-input" /></div></div><p class="field-help">Enter the printed dice. Proficiency expands one die; Honed Edge is added once. For naval targets use Starship.</p>
           <div class="form-group">
             <label>Weapon Damage Dice Expression</label>
             <div class="form-row">
               <input type="number" id="dmg_dice_count" class="hud-input" value="2" min="1" max="10" title="Dice count" />
-              <select id="dmg_dice_sides" class="hud-select">
+              <vf-select id="dmg_dice_sides" class="hud-select">
+                <option value="4">d4</option>
                 <option value="6">d6</option>
                 <option value="8" selected>d8</option>
                 <option value="10">d10</option>
                 <option value="12">d12</option>
-              </select>
+              </vf-select>
               <input type="number" id="dmg_flat_mod" class="hud-input" value="2" title="Flat modifier" />
             </div>
           </div>
@@ -217,7 +227,7 @@ export class DiceRollerSidebar {
             </label>
             <label class="hud-checkbox-label">
               <input type="checkbox" id="dmg_is_critical" />
-              <span>Critical Hit (Double Dice)</span>
+              <span>Critical Hit</span>
             </label>
             <label class="hud-checkbox-label">
               <input type="checkbox" id="dmg_is_direct" />
@@ -226,12 +236,12 @@ export class DiceRollerSidebar {
           </div>
 
           <div class="form-group" style="margin-top: 10px;">
-            <label>Mount Rating (Ship MR)</label>
-            <select id="dmg_mount_rating" class="hud-select">
-              <option value="1" selected>MR x1 (Personal Scale / T1 Craft)</option>
-              <option value="2">MR x2 (Tier 2-3 Vessels)</option>
-              <option value="3">MR x3 (Tier 4-5 Capital Ships)</option>
-            </select>
+            <label>Damage scale · personal targets</label>
+            <vf-select id="dmg_mount_rating" class="hud-select">
+              <option value="1" selected>Personal scale · x1</option>
+
+
+            </vf-select>
           </div>
 
           <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn" id="roll_damage_btn" style="margin-top: 16px;">
@@ -261,7 +271,7 @@ export class DiceRollerSidebar {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     this.initEvents();
     this.syncWithSelectedToken();
@@ -320,9 +330,9 @@ export class DiceRollerSidebar {
     const select = this.container.querySelector('#dmg_target_select');
     if (!select) return;
     const tokens = store.getTokensForActiveMap();
-    select.innerHTML = tokens.map(t => `
+    select.innerHTML = sanitizeHTML(tokens.map(t => `
       <option value="${t.id}">${t.name} (HP ${t.hp.current}/${t.hp.max})</option>
-    `).join('');
+    `).join(''));
 
     select.onchange = () => {
       const tok = tokens.find(t => t.id === select.value);
@@ -337,7 +347,7 @@ export class DiceRollerSidebar {
     }
   }
 
-  executeActionCheck() {
+  async executeActionCheck() {
     const actor = this.currentActor || store.getSelectedToken() || {
       name: 'Voidwalker',
       path: 'Awakened',
@@ -361,22 +371,15 @@ export class DiceRollerSidebar {
     // Animate Dice
     audio.playDiceRoll();
 
-    const result = rollVeilfarersCheck({
-      actorName: actor.name,
-      path: actor.path || 'Awakened',
-      traitName,
-      traitMod,
-      subtraitName: subtraitId,
-      subtraitMod,
-      dc,
-      hasAdvantage,
-      hasDisadvantage,
-      useResolve,
-      resolveDieType: actor.resolve?.dieType || 'd4',
-      experienceMod: expMod,
-      customMod
-    });
+    let result;
+    try {
+      result = await network.requestAction({type:'CHECK',actorId:actor.id,options:{traitId:this.selectedTraitId,subtraitId,dc,hasAdvantage,hasDisadvantage,useResolve,experienceMod:expMod,customMod,criticalChoice:this.container.querySelector('#critical_resource').value,meaningful:this.container.querySelector('#meaningful_roll').checked}});
+    } catch(e) { notify(e.message,'error'); return; }
+    this.lastResult=result;
+    this.showResult(result);
+  }
 
+  showResult(result) {
     // Display Results
     const display = this.container.querySelector('#dice_result_display');
     display.style.display = 'block';
@@ -407,32 +410,13 @@ export class DiceRollerSidebar {
     if (result.disadvVal) extraStr += `<span class="extra-die disadv">-${result.disadvVal} (Disadv)</span> `;
     if (result.resolveVal) extraStr += `<span class="extra-die resolve">+${result.resolveVal} (Res)</span> `;
     if (result.totalMod) extraStr += `<span class="extra-die mod">${result.totalMod >= 0 ? '+' : ''}${result.totalMod} Mod</span>`;
-    extraDiceEl.innerHTML = extraStr;
+    extraDiceEl.innerHTML = sanitizeHTML(extraStr);
 
     // Sound FX on Critical
     if (result.isCritical) {
       audio.playCritical();
     }
 
-    // Auto Fear management according to Veilfarers Canon:
-    // "Success with Fear and Failure with Fear add 1 Fear to Keeper's pool"
-    if (result.fearGain > 0) {
-      store.addFear(result.fearGain);
-      network.broadcast({ type: 'FEAR_UPDATE', fear: store.getState().fear });
-      audio.playFearAlert();
-    }
-
-    // Log to game history & broadcast
-    const logEntry = {
-      sender: actor.name,
-      type: 'CHECK',
-      title: `${actor.name}: ${result.outcomeTitle}`,
-      details: `Rolled Hope d12 [${result.hopeVal}] + Fear d12 [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}. ${result.outcomeDesc}`,
-      resultType: result.resultType
-    };
-
-    store.addLog(logEntry);
-    network.broadcast({ type: 'DICE_ROLL', logEntry });
   }
 
   executeDamageCalc() {
@@ -448,15 +432,19 @@ export class DiceRollerSidebar {
     const useArmor = this.container.querySelector('#dmg_use_armor').checked;
     const isCritical = this.container.querySelector('#dmg_is_critical').checked;
     const isDirect = this.container.querySelector('#dmg_is_direct').checked;
-    const mr = parseInt(this.container.querySelector('#dmg_mount_rating').value, 10);
+    const mr = 1;
+    const proficiency=parseInt(this.container.querySelector('#dmg_proficiency').value,10),honed=parseInt(this.container.querySelector('#dmg_honed').value,10);
+    if(!Number.isInteger(proficiency)||proficiency<1||proficiency>10||!Number.isInteger(honed)||honed<0||honed>9){notify('Check Proficiency (1–10) and Honed Edge (0–9).','error');return;}
 
+    if (![diceCount,diceSides,flatMod,major,severe,mr].every(Number.isFinite) || diceCount<1 || diceCount>100 || major<1 || severe<major) { notify('Check the damage dice and thresholds.','error'); return; }
     const dmgResult = resolveDamage({
       attackerName: this.currentActor?.name || 'Attacker',
       targetName: targetToken?.name || 'Target',
-      diceCount,
+      diceCount: diceCount + Math.max(0, (parseInt(this.container.querySelector('#dmg_proficiency').value,10)||1)-1),
       diceSides,
-      flatModifier: flatMod,
-      isCritical,
+      flatModifier: flatMod + (parseInt(this.container.querySelector('#dmg_honed').value,10)||0),
+      isCritical: isCritical && this.currentActor?.isPlayer !== false,
+      isKeeperCritical: isCritical && this.currentActor?.isPlayer === false,
       isDirectDamage: isDirect,
       targetMajorThreshold: major,
       targetSevereThreshold: severe,
@@ -479,13 +467,24 @@ export class DiceRollerSidebar {
 
     // Apply button
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
+    let applied=false;
+    applyBtn.disabled=false;applyBtn.textContent="APPLY DAMAGE TO TARGET";
     applyBtn.onclick = () => {
-      if (targetToken) {
-        const newHp = Math.max(0, targetToken.hp.current - dmgResult.finalHpDamage);
-        const newArmor = dmgResult.armorSlotSpent ? Math.max(0, targetToken.armor.current - 1) : targetToken.armor.current;
+      if(applied)return;
+      if(store.sessionRole==='player'){notify('The Keeper applies incoming damage.','error');return;}
+      const currentTarget=store.state.tokens.find(t=>t.id===targetId);
+      if (currentTarget) {
+        applied=true;applyBtn.disabled=true;applyBtn.textContent='DAMAGE APPLIED';
+        const targetToken=currentTarget;
+        // Preserve the original dice; use current armor and thresholds when the hit lands.
+        const currentDamage=resolveDamage({diceCount:0,flatModifier:dmgResult.rawDamage,targetMajorThreshold:targetToken.hp.majorThreshold??major,targetSevereThreshold:targetToken.hp.severeThreshold??severe,isDirectDamage:isDirect,useArmorSlot:useArmor,currentArmorSlots:targetToken.armor?.current||0});
+        if(targetToken.pendingBrace&&!isDirect){currentDamage.finalHpDamage=Math.max(0,currentDamage.finalHpDamage-1);currentDamage.finalSeverity+=' · Brace';}
+        const newHp = Math.max(0, targetToken.hp.current - currentDamage.finalHpDamage);
+        const newArmor = currentDamage.armorSlotSpent ? Math.max(0, (targetToken.armor?.current||0) - 1) : (targetToken.armor?.current||0);
 
         store.updateToken(targetToken.id, {
           hp: { ...targetToken.hp, current: newHp },
+          pendingBrace:isDirect?targetToken.pendingBrace:false,
           armor: { ...targetToken.armor, current: newArmor }
         });
 
@@ -507,7 +506,7 @@ export class DiceRollerSidebar {
           sender: 'Combat',
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${targetToken.name}`,
-          details: `Suffered ${dmgResult.finalHpDamage} HP damage (${dmgResult.finalSeverity}). Current HP: ${newHp}/${targetToken.hp.max}.`
+          details: `Suffered ${currentDamage.finalHpDamage} HP damage (${currentDamage.finalSeverity}). Current HP: ${newHp}/${targetToken.hp.max}.`
         });
       }
     };

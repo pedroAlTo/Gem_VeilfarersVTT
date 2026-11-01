@@ -1,6 +1,7 @@
 // src/tokenSheet.js
 // Token HUD Quickbar and Holographic Character Sheet Editor
 
+import { notify, confirmAction, sanitizeHTML } from './ui.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { TRAITS, SUBTRAITS } from './rulesEngine.js';
@@ -47,7 +48,7 @@ export function openColorPickerPopover(anchorEl, currentColor = '#00f3ff', onCol
 
   let selectedColor = currentColor;
 
-  popover.innerHTML = `
+  popover.innerHTML = sanitizeHTML(`
     <div class="pop-header">
       <span>🎨 SELECTOR DE COLOR TÁCTICO</span>
       <button type="button" class="pop-close-btn">&times;</button>
@@ -58,7 +59,7 @@ export function openColorPickerPopover(anchorEl, currentColor = '#00f3ff', onCol
       `).join('')}
     </div>
     <div class="pop-custom-row">
-      <input type="color" class="pop-native-color" value="${selectedColor.startsWith('#') && selectedColor.length === 7 ? selectedColor : '#00f3ff'}" />
+      <input type="text" class="pop-native-color" value="${selectedColor.startsWith('#') && selectedColor.length === 7 ? selectedColor : '#00f3ff'}" />
       <input type="text" class="pop-hex-input hud-input hud-input-xs" value="${selectedColor}" />
       <div class="pop-preview" style="background: ${selectedColor};"></div>
     </div>
@@ -66,7 +67,7 @@ export function openColorPickerPopover(anchorEl, currentColor = '#00f3ff', onCol
       <span class="pop-hint">Interactúa y prueba</span>
       <button type="button" class="hud-btn hud-btn-xs hud-btn-primary pop-ok-btn">✓ OK / APLICAR</button>
     </div>
-  `;
+  `);
 
   document.body.appendChild(popover);
 
@@ -147,7 +148,7 @@ export class TokenHUD {
   render() {
     const token = store.getSelectedToken();
     if (!token) {
-      this.container.innerHTML = '';
+      this.container.innerHTML = sanitizeHTML('');
       this.container.classList.add('hidden');
       return;
     }
@@ -165,7 +166,7 @@ export class TokenHUD {
 
     // --- COMPACT MINIMIZED QUICKBAR (DEFAULT) ---
     if (!this.isExpanded) {
-      this.container.innerHTML = `
+      this.container.innerHTML = sanitizeHTML(`
         <div class="token-quickbar glass-panel tok-qb-compact">
           <!-- Token Avatar & Name -->
           <div class="tok-qb-avatar-group">
@@ -210,13 +211,13 @@ export class TokenHUD {
             <button class="hud-btn hud-btn-xs hud-btn-primary" id="toggle_expand_btn" title="Expandir Panel Completo">▲ EXPANDIR</button>
           </div>
         </div>
-      `;
+      `);
       this.attachEvents(token);
       return;
     }
 
     // --- FULL EXPANDED QUICKBAR ---
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="token-quickbar glass-panel tok-qb-expanded">
         <!-- Token Header / Avatar -->
         <div class="tok-qb-avatar-group">
@@ -339,7 +340,7 @@ export class TokenHUD {
                   <button class="effort-move-btn" data-cost="1" data-move="Read the Room" title="Spend 1 Effort: Read emotional temperature, lies, or hidden motives">
                     <span class="em-cost">1E</span> Read Room
                   </button>
-                  <button class="effort-move-btn" data-cost="1" data-move="Push Through" title="Spend 1 Effort: Ignore the effect of 1 Condition for 1 round">
+                  <button class="effort-move-btn" data-cost="1" data-move="Push Through" title="Spend 1 Effort: Ignore one minor penalty on your next action">
                     <span class="em-cost">1E</span> Push Through
                   </button>
                   <button class="effort-move-btn" data-cost="2" data-move="The Opening" title="Spend 2 Effort: Roll check with Advantage">
@@ -357,12 +358,12 @@ export class TokenHUD {
                   <button class="effort-move-btn" data-cost="3" data-move="Second Wind" title="Spend 3 Effort: Immediately clear 2 Stress">
                     <span class="em-cost">3E</span> Second Wind
                   </button>
-                  <button class="effort-move-btn" data-cost="3" data-move="Seize the Moment" title="Spend 3 Effort: Act immediately, seizing initiative">
+                  <button class="effort-move-btn" data-cost="3" data-move="Seize the Moment" title="Spend 3 Effort: Optional: after a success, add a favorable consequence validated by the Keeper">
                     <span class="em-cost">3E</span> Seize Moment
                   </button>
                 </div>
                 <div class="tok-qb-honed-edge" style="font-size: 10px; color: var(--amber-warn); margin-top: 6px;">
-                  ✦ Honed Edge: +${token.honedEdgeBonus || 1} Flat Damage Bonus
+                  ✦ Honed Edge: +${token.honedEdgeBonus ?? Math.max(0,(token.level||1)-1)} Flat Damage Bonus
                 </div>
               </div>
             ` : ''}
@@ -392,7 +393,7 @@ export class TokenHUD {
         <!-- Minimize Button -->
         <button class="hud-btn hud-btn-xs hud-btn-secondary" id="toggle_expand_btn" title="Minimizar barra a modo compacto">▼ MINIMIZAR</button>
       </div>
-    `;
+    `);
 
     this.attachEvents(token);
   }
@@ -497,40 +498,21 @@ export class TokenHUD {
     // Bear Down Resolve Button
     const bearDownBtn = this.container.querySelector('#bear_down_btn');
     if (bearDownBtn) {
-      bearDownBtn.onclick = () => {
-        const res = store.spendResolve(token.id, 1, 'Bear Down');
-        if (res.success && window.veilDiceRoller) {
-          // If a check is pending in dice roller, add modifier
-          const modInput = document.getElementById('dice_mod_input');
-          if (modInput) {
-            const curVal = parseInt(modInput.value, 10) || 0;
-            modInput.value = curVal + res.totalBonus;
-          }
-        }
+      bearDownBtn.onclick = async () => {
+        try { const result=await network.requestAction({type:'RESOLVE',actorId:token.id});window.veilDiceRoller?.showResult(result); }
+        catch(e){notify(e.message,'error');}
       };
     }
 
-    // Burnout Button
     const burnoutBtn = this.container.querySelector('#burnout_btn');
-    if (burnoutBtn) {
-      burnoutBtn.onclick = () => {
-        store.spendEffort(token.id, 1, 'Burnout Override');
-      };
-    }
-
-    // Common Effort Moves click
-    this.container.querySelectorAll('.effort-move-btn').forEach(btn => {
-      btn.onclick = () => {
-        const cost = parseInt(btn.dataset.cost, 10);
-        const move = btn.dataset.move;
-        const spent = store.spendEffort(token.id, cost, move);
-        if (spent && move.includes('Steady Hands') && window.veilDiceRoller) {
-          const modInput = document.getElementById('dice_mod_input');
-          if (modInput) {
-            const curVal = parseInt(modInput.value, 10) || 0;
-            modInput.value = curVal + 2;
-          }
-        }
+    if (burnoutBtn) burnoutBtn.onclick=()=>notify('At 0 Effort, choose a Common Effort to invoke it using Burnout.');
+    this.container.querySelectorAll('.effort-move-btn').forEach(btn=>{
+      btn.onclick=async()=>{
+        const fresh=store.state.tokens.find(t=>t.id===token.id);
+        const burnout=fresh?.effort===0;
+        if(burnout&&!await confirmAction(`Invoke ${btn.dataset.move} with Burnout? Pay 1 HP, mark 1 Stress and reduce Stress maximum by 1 until Recovery.`))return;
+        try{await network.requestAction({type:'EFFORT',actorId:token.id,move:btn.dataset.move,burnout});notify(`${btn.dataset.move} · cost applied. See the session log for its effect.`);}
+        catch(e){notify(e.message,'error');}
       };
     });
 
@@ -547,7 +529,7 @@ export class TokenHUD {
             details: `Remaining Hope: ${token.hope - 1} / 6`
           });
         } else {
-          alert('Not enough Hope remaining (Requires 1 Hope).');
+          notify('Not enough Hope remaining (Requires 1 Hope).');
         }
       };
     });
@@ -558,7 +540,7 @@ export class TokenHUD {
         const traitId = btn.dataset.traitId;
         const traitName = btn.dataset.traitName;
         const mod = parseInt(btn.dataset.mod, 10);
-        
+
         // Populate and trigger roll in Dice Roller sidebar
         if (window.veilDiceRoller) {
           window.veilDiceRoller.setCheckData({
@@ -573,9 +555,10 @@ export class TokenHUD {
   }
 
   openCharacterSheetModal(token) {
+    if(store.sessionRole==='player'){notify('The Keeper manages character dossiers. Use your assigned character’s quick controls.');return;}
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
-    modal.innerHTML = `
+    modal.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box sheet-modal-box">
         <div class="veil-modal-header">
           <h3>OPERATIVE DOSSIER // [${token.name.toUpperCase()}]</h3>
@@ -612,11 +595,11 @@ export class TokenHUD {
 
               <div class="form-group">
                 <label>Tipo de Actor / Token</label>
-                <select id="sheet_actor_type" class="hud-select">
+                <vf-select id="sheet_actor_type" class="hud-select">
                   <option value="player" ${(token.actorType || (token.isPlayer !== false ? 'player' : 'npc')) === 'player' ? 'selected' : ''}>👤 Personaje Jugador (PJ)</option>
                   <option value="npc" ${(token.actorType || (token.isPlayer !== false ? 'player' : 'npc')) === 'npc' ? 'selected' : ''}>🤝 PNJ Aliado / Neutral</option>
                   <option value="adversary" ${(token.actorType || (token.isPlayer !== false ? 'player' : 'npc')) === 'adversary' ? 'selected' : ''}>👾 Adversario / Enemigo Hostil</option>
-                </select>
+                </vf-select>
               </div>
 
               <div class="form-group checkbox-group" style="margin-top: 6px;">
@@ -628,19 +611,19 @@ export class TokenHUD {
 
               <div class="form-group">
                 <label>Cosmological Path</label>
-                <select id="sheet_path" class="hud-select">
+                <vf-select id="sheet_path" class="hud-select">
                   <option value="Awakened" ${token.path === 'Awakened' ? 'selected' : ''}>Awakened (Hope Engine)</option>
                   <option value="Sleeping" ${token.path === 'Sleeping' ? 'selected' : ''}>Sleeping (Effort & Resolve)</option>
-                </select>
+                </vf-select>
               </div>
 
               <div class="form-group">
                 <label>Grid Size (Cells)</label>
-                <select id="sheet_size" class="hud-select">
+                <vf-select id="sheet_size" class="hud-select">
                   <option value="1" ${token.size === 1 ? 'selected' : ''}>Medium (1x1 sq)</option>
                   <option value="2" ${token.size === 2 ? 'selected' : ''}>Large (2x2 sq)</option>
                   <option value="3" ${token.size === 3 ? 'selected' : ''}>Huge / Ship (3x3 sq)</option>
-                </select>
+                </vf-select>
               </div>
             </div>
 
@@ -701,10 +684,10 @@ export class TokenHUD {
                   </div>
                   <div class="form-group">
                     <label>Resolve Die Type</label>
-                    <select id="sheet_resolve_die" class="hud-select">
+                    <vf-select id="sheet_resolve_die" class="hud-select">
                       <option value="d4" ${token.resolve?.dieType === 'd4' ? 'selected' : ''}>d4 (Standard)</option>
                       <option value="d6" ${token.resolve?.dieType === 'd6' ? 'selected' : ''}>d6 (Honed Tier)</option>
-                    </select>
+                    </vf-select>
                   </div>
                   <div class="form-group">
                     <label>Honed Edge (+Dmg)</label>
@@ -744,12 +727,12 @@ export class TokenHUD {
               <div class="form-row" style="gap: 10px; flex-wrap: wrap;">
                 <div class="form-group" style="flex: 1.2; min-width: 140px;">
                   <label>Modo de Visión</label>
-                  <select id="sheet_vision_mode" class="hud-select">
+                  <vf-select id="sheet_vision_mode" class="hud-select">
                     <option value="normal" ${(token.visionMode || 'normal') === 'normal' ? 'selected' : ''}>Visión Normal (Estándar)</option>
                     <option value="night_vision" ${token.visionMode === 'night_vision' ? 'selected' : ''}>Visión Nocturna (Haz Verde)</option>
                     <option value="sensory" ${token.visionMode === 'sensory' ? 'selected' : ''}>Visión Sensorial (Tremorsense Acústico)</option>
                     <option value="chromatic" ${token.visionMode === 'chromatic' ? 'selected' : ''}>Visión Cromática (B&N Ailurean)</option>
-                  </select>
+                  </vf-select>
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 100px;">
                   <label>Alcance Visión (px)</label>
@@ -757,13 +740,13 @@ export class TokenHUD {
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 110px;">
                   <label>Ángulo FOV</label>
-                  <select id="sheet_vision_angle" class="hud-select">
+                  <vf-select id="sheet_vision_angle" class="hud-select">
                     <option value="360" ${(token.visionAngle ?? 360) === 360 ? 'selected' : ''}>360° Omnidireccional</option>
                     <option value="180" ${token.visionAngle === 180 ? 'selected' : ''}>180° Frontal Amplio</option>
                     <option value="120" ${token.visionAngle === 120 ? 'selected' : ''}>120° Cono Táctico</option>
                     <option value="90" ${token.visionAngle === 90 ? 'selected' : ''}>90° Estándar</option>
                     <option value="60" ${token.visionAngle === 60 ? 'selected' : ''}>60° Enfocado</option>
-                  </select>
+                  </vf-select>
                 </div>
                 <div class="form-group checkbox-group" style="flex: 1.2; min-width: 140px; margin-top: 18px;">
                   <label class="hud-checkbox-label">
@@ -808,14 +791,14 @@ export class TokenHUD {
               <div class="form-row" style="margin-top: 8px;">
                 <div class="form-group">
                   <label>Efecto Dinámico FX</label>
-                  <select id="sheet_light_fx" class="hud-select">
+                  <vf-select id="sheet_light_fx" class="hud-select">
                     <option value="steady" ${token.lightEffect === 'steady' ? 'selected' : ''}>Steady (Normal Torch)</option>
                     <option value="pulse" ${token.lightEffect === 'pulse' ? 'selected' : ''}>Pulse (Breathing Beacon)</option>
                     <option value="flicker" ${token.lightEffect === 'flicker' ? 'selected' : ''}>Flicker (Damaged Circuit)</option>
                     <option value="siren" ${token.lightEffect === 'siren' ? 'selected' : ''}>Siren / Strobe (Alert Warning)</option>
                     <option value="quantum" ${token.lightEffect === 'quantum' ? 'selected' : ''}>Quantum (Pearl Glow)</option>
                     <option value="spark" ${token.lightEffect === 'spark' ? 'selected' : ''}>Spark (Arcing Filament)</option>
-                  </select>
+                  </vf-select>
                 </div>
                 <div class="form-group checkbox-group" style="margin-top: 18px;">
                   <label class="hud-checkbox-label">
@@ -847,7 +830,7 @@ export class TokenHUD {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(modal);
 
@@ -885,26 +868,26 @@ export class TokenHUD {
 
     const overlaysListEl = modal.querySelector('#sheet_overlays_list');
     const renderOverlayCards = () => {
-      overlaysListEl.innerHTML = '';
+      overlaysListEl.innerHTML = sanitizeHTML('');
       currentOverlays.forEach((ov, index) => {
         const card = document.createElement('div');
         card.className = 'overlay-indicator-card';
-        card.innerHTML = `
+        card.innerHTML = sanitizeHTML(`
           <div style="flex: 1.5; min-width: 140px;">
             <label style="font-size: 9px; color: var(--text-dim); display: block; margin-bottom: 2px;">Elemento de Ficha</label>
-            <select class="overlay-stat hud-select hud-select-xs">
+            <vf-select class="overlay-stat hud-select hud-select-xs">
               ${AVAILABLE_STATS.map(st => `
                 <option value="${st.id}" ${ov.statKey === st.id ? 'selected' : ''}>${st.name}</option>
               `).join('')}
-            </select>
+            </vf-select>
           </div>
           <div style="flex: 1.2; min-width: 130px;">
             <label style="font-size: 9px; color: var(--text-dim); display: block; margin-bottom: 2px;">Tipo Visual</label>
-            <select class="overlay-type hud-select hud-select-xs">
+            <vf-select class="overlay-type hud-select hud-select-xs">
               <option value="bar" ${ov.type === 'bar' ? 'selected' : ''}>█ Barra Superior</option>
               <option value="linear" ${ov.type === 'linear' ? 'selected' : ''}>🏷️ Contador Linear</option>
               <option value="circular" ${ov.type === 'circular' ? 'selected' : ''}>⏱️ Contador Circular / Reloj</option>
-            </select>
+            </vf-select>
           </div>
           <div style="display: flex; flex-direction: column; align-items: center; width: 36px;">
             <label style="font-size: 9px; color: var(--text-dim); margin-bottom: 2px;">Color</label>
@@ -917,7 +900,7 @@ export class TokenHUD {
           <div style="display: flex; align-items: flex-end;">
             <button type="button" class="hud-btn hud-btn-xs hud-btn-danger overlay-del" title="Eliminar Indicador" style="margin-top: 14px;">✕</button>
           </div>
-        `;
+        `);
 
         const statSel = card.querySelector('.overlay-stat');
         const typeSel = card.querySelector('.overlay-type');
@@ -989,8 +972,8 @@ export class TokenHUD {
     };
 
     // Delete token
-    modal.querySelector('#sheet_delete_btn').onclick = () => {
-      if (confirm(`Confirm termination of token [${token.name}]?`)) {
+    modal.querySelector('#sheet_delete_btn').onclick = async () => {
+      if (await confirmAction(`Confirm termination of token [${token.name}]?`)) {
         store.deleteToken(token.id);
         network.broadcast({ type: 'TOKEN_DELETE', tokenId: token.id });
         modal.remove();

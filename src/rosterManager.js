@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/rosterManager.js
 // Operative Roster and NPC/Adversary Manager
 
@@ -20,7 +21,7 @@ export class RosterManager {
     const tokens = store.getTokensForActiveMap();
     const isKeeper = state.userRole === 'keeper';
 
-    this.container.innerHTML = `
+    this.container.innerHTML = sanitizeHTML(`
       <div class="roster-sidebar-content">
         <div class="sidebar-header-row">
           <span class="sidebar-title">TACTICAL ROSTER (${tokens.length})</span>
@@ -61,7 +62,7 @@ export class RosterManager {
           }).join('')}
         </div>
       </div>
-    `;
+    `);
 
     this.initEvents();
   }
@@ -118,7 +119,7 @@ export class RosterManager {
   openDeployModal() {
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
-    modal.innerHTML = `
+    modal.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box">
         <div class="veil-modal-header">
           <h3>DEPLOY OPERATIVE OR THREAT TO MAP</h3>
@@ -127,13 +128,13 @@ export class RosterManager {
         <div class="veil-modal-body">
           <div class="form-group">
             <label>Template Archetype</label>
-            <select id="deploy_archetype" class="hud-select">
+            <vf-select id="deploy_archetype" class="hud-select">
               <option value="scout">Awakened Scout / Infiltrator (HP 14, High Agility)</option>
               <option value="soldier">Awakened Marine / Vanguard (HP 18, Armor 4)</option>
               <option value="synthetic">Sleeping Heavy Synthetic (HP 24, Armor 5, Max Stress 7)</option>
               <option value="drone">Autonomous Defense Drone (HP 8, Armor 2, Flying)</option>
               <option value="void_beast">Void Horror Adversary (HP 32, Armor 4, Stealth)</option>
-            </select>
+            </vf-select>
           </div>
 
           <div class="form-group">
@@ -147,7 +148,7 @@ export class RosterManager {
           </div>
         </div>
       </div>
-    `;
+    `);
 
     document.body.appendChild(modal);
 

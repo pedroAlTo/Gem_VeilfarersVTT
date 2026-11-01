@@ -1,3 +1,4 @@
+import { sanitizeHTML } from './ui.js';
 // src/undoManager.js
 // Tactical Undo & Redo Manager for Veilfarers VTT
 // Supports up to 20 undo steps across all tactical elements:
@@ -115,6 +116,7 @@ class UndoManager {
    * @returns {boolean} True if an action was undone, false otherwise.
    */
   undo() {
+    if(store.sessionRole==='player')return false;
     if (this.undoStack.length === 0 || this.isRestoring) {
       return false;
     }
@@ -160,6 +162,7 @@ class UndoManager {
    * @returns {boolean} True if an action was redone, false otherwise.
    */
   redo() {
+    if(store.sessionRole==='player')return false;
     if (this.redoStack.length === 0 || this.isRestoring) {
       return false;
     }
@@ -248,17 +251,7 @@ class UndoManager {
 
       // Multiplayer synchronization if hosting
       if (store.state.isHosting) {
-        network.broadcast({
-          type: 'INITIAL_STATE',
-          state: {
-            campaignName: store.state.campaignName,
-            fear: store.state.fear,
-            activeMapId: store.state.activeMapId,
-            maps: store.state.maps,
-            tokens: store.state.tokens,
-            clocks: store.state.clocks
-          }
-        });
+        network.syncAll();
       }
     } finally {
       this.isRestoring = false;
@@ -339,11 +332,11 @@ export function showTacticalNotification(text, type = 'undo', count = 0) {
   }
 
   const icon = type === 'undo' ? '↶' : '↷';
-  toast.innerHTML = `
+  toast.innerHTML = sanitizeHTML(`
     <span class="toast-icon">${icon}</span>
     <span class="toast-text">${text}</span>
     <span class="toast-count">(${count}/20)</span>
-  `;
+  `);
 
   toast.classList.remove('show');
   void toast.offsetWidth; // Force layout reflow for animation replay
