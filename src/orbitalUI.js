@@ -1,6 +1,8 @@
+import { LOCAL_ONLY } from './runtimeMode.js';
 import { store } from './state.js';
 import { sanitizeHTML, notify } from './ui.js';
 import './orbital.css';
+import './orbital-v2.css';
 const icons = {
   select: 'M4 3l15 9-7 1-3 7z',
   measure: 'M4 18L18 4l3 3L7 21z M8 14l3 3 M12 10l3 3 M16 6l3 3',
@@ -47,6 +49,12 @@ export function initOrbitalUI() {
   document.querySelector('.brand-version').textContent = 'TACTICAL SYSTEM / 12.06';
   document.getElementById('network_modal_btn').innerHTML =
     '<span id="net_status_dot">●</span> SESSION';
+  if (LOCAL_ONLY) {
+    const session = document.getElementById('network_modal_btn');
+    session.disabled = true;
+    session.innerHTML = '<span id="net_status_dot">●</span> LOCAL TEST';
+    session.title = 'Local test mode. Multiplayer is disabled.';
+  }
   document.getElementById('rules_modal_btn').textContent = 'CODEX';
   document.getElementById('data_menu_btn').textContent = 'ARCHIVE';
   const sidebar = document.getElementById('main_right_sidebar');
@@ -77,6 +85,12 @@ export function initOrbitalUI() {
   hud.innerHTML =
     '<div><span class="eyebrow">LIVE TACTICAL FIELD</span><h1 id="orbital_scene_name"></h1></div><div class="field-coordinates"><span class="live-dot"></span><span id="orbital_view_mode">KEEPER VIEW</span></div>';
   viewport.append(hud);
+  const frame = document.createElement('div');
+  frame.className = 'orbital-map-frame'; frame.setAttribute('aria-hidden','true');
+  viewport.append(frame);
+  const readout = document.createElement('div');
+  readout.className = 'orbital-field-readout';
+  viewport.append(readout);
   const footer = document.createElement('footer');
   footer.className = 'orbital-statusbar';
   footer.innerHTML =
@@ -84,6 +98,8 @@ export function initOrbitalUI() {
   document.getElementById('app_root').append(footer);
   const update = () => {
     const s = store.state;
+    const currentMap = store.getActiveMap();
+    readout.innerHTML = `<span>OPERATIVES <b>${store.getTokensForActiveMap().filter(t => s.userRole === 'keeper' || !t.hidden).length}</b></span><span>GRID <b>${currentMap?.gridSize || 0}</b></span><span>SCENE / LOCAL</span>`;
     document.getElementById('orbital_scene_name').textContent =
       store.getActiveMap()?.name || 'No active scene';
     document.getElementById('orbital_view_mode').textContent =

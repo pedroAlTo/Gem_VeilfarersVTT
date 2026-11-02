@@ -1,3 +1,4 @@
+import { drawBlackHole } from './surfaceFX.js';
 // src/fxEngine.js
 // High-Performance AAA Tactical FX & Particle Simulation Engine for VeilVTT
 // Optimized with strict particle budgets, viewport culling, zero CPU shadowBlur in inner loops,
@@ -14,6 +15,7 @@ export class FXEngine {
 
     // Quality performance modes: 'eco' | 'balanced' | 'ultra'
     this.quality = 'balanced';
+    this.reducedMotion = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') : null;
     this.maxParticles = 140;
     this.maxShockwaves = 6;
     this.maxLightning = 4;
@@ -295,6 +297,7 @@ export class FXEngine {
       }
       this.voidRifts.push({
         id: riftId,
+        persistent: params.decay === 0,
         x,
         y,
         radius,
@@ -593,7 +596,7 @@ export class FXEngine {
     );
     for (let i = this.voidRifts.length - 1; i >= 0; i--) {
       const rift = this.voidRifts[i];
-      if (!activeVoidRiftIds.has(rift.id) && (rift.decay === 0 || rift.id.startsWith('fx_') || !mapEffects.some(e => e.id === rift.id))) {
+      if (rift.persistent && !activeVoidRiftIds.has(rift.id)) {
         this.voidRifts.splice(i, 1);
       }
     }
@@ -673,7 +676,7 @@ export class FXEngine {
       else if (eff.type === 'void_rift') {
         if (timer >= 0.14 * rate) {
           timer = 0;
-          if (this.particles.length < this.maxParticles) {
+          {
             this.createVoidRift(eff.x, eff.y, {
               id: eff.id,
               radius: eff.radius || 110,
@@ -1240,12 +1243,12 @@ export class FXEngine {
     for (let i = this.voidRifts.length - 1; i >= 0; i--) {
       const rift = this.voidRifts[i];
       // Do not render or keep dead or deleted persistent rifts
-      if (!activeVoidRiftIds.has(rift.id) && (rift.decay === 0 || rift.id.startsWith('fx_') || !(mapEffects || []).some(e => e.id === rift.id))) {
+      if (rift.persistent && !activeVoidRiftIds.has(rift.id)) {
         this.voidRifts.splice(i, 1);
         continue;
       }
       rift.rotation += rift.rotSpeed * dt;
-      rift.life -= rift.decay;
+      rift.life -= rift.decay * Math.min(dt, 0.05) * 60;
 
       if (rift.life <= 0) {
         this.voidRifts.splice(i, 1);
@@ -1254,128 +1257,13 @@ export class FXEngine {
 
       // Viewport culling
       if (viewport) {
-        if (rift.x + rift.radius < viewport.minX || rift.x - rift.radius > viewport.maxX ||
-            rift.y + rift.radius < viewport.minY || rift.y - rift.radius > viewport.maxY) {
+        if (rift.x + rift.radius * 1.5 < viewport.minX || rift.x - rift.radius * 1.5 > viewport.maxX ||
+            rift.y + rift.radius * 1.5 < viewport.minY || rift.y - rift.radius * 1.5 > viewport.maxY) {
           continue;
         }
       }
 
-      ctx.save();
-      ctx.translate(rift.x, rift.y);
-
-      // --- A. Relativistic Gravitational Lensing Halo (Cold Azure / Violet Void Glow) ---
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const lensGrad = ctx.createRadialGradient(0, 0, rift.singularityRadius, 0, 0, rift.radius * 1.45);
-      lensGrad.addColorStop(0, `rgba(240, 253, 255, ${0.75 * rift.life})`);
-      lensGrad.addColorStop(0.18, `rgba(0, 243, 255, ${0.45 * rift.life})`);
-      lensGrad.addColorStop(0.45, `rgba(56, 189, 248, ${0.22 * rift.life})`);
-      lensGrad.addColorStop(0.75, `rgba(99, 102, 241, ${0.08 * rift.life})`);
-      lensGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = lensGrad;
-      ctx.beginPath();
-      ctx.arc(0, 0, rift.radius * 1.45, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // --- B. Upper & Lower Gravitational Lensing Arches (Light bending over/under horizon) ---
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      // Upper Einstein Lensing Arc
-      ctx.strokeStyle = `rgba(186, 230, 253, ${0.5 * rift.life})`;
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.ellipse(0, -rift.singularityRadius * 0.45, rift.radius * 0.95, rift.singularityRadius * 1.35, 0, Math.PI * 0.85, Math.PI * 2.15);
-      ctx.stroke();
-
-      ctx.strokeStyle = `rgba(0, 243, 255, ${0.25 * rift.life})`;
-      ctx.lineWidth = 8.0;
-      ctx.stroke();
-
-      // Lower Einstein Lensing Arc
-      ctx.strokeStyle = `rgba(186, 230, 253, ${0.35 * rift.life})`;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.ellipse(0, rift.singularityRadius * 0.45, rift.radius * 0.95, rift.singularityRadius * 1.35, 0, -Math.PI * 0.15, Math.PI * 1.15);
-      ctx.stroke();
-      ctx.restore();
-
-      // --- C. Inward Contracting Gravitational Implosion Rings ---
-      for (const dw of rift.distortionWaves) {
-        dw.r -= dw.speed * dt;
-        if (dw.r <= rift.singularityRadius + 2) {
-          dw.r = dw.maxR;
-        }
-        const prog = Math.max(0, Math.min(1, (dw.r - rift.singularityRadius) / (dw.maxR - rift.singularityRadius)));
-        const ringAlpha = (1 - prog * 0.5) * rift.life * 0.55;
-
-        ctx.strokeStyle = `rgba(224, 242, 254, ${ringAlpha})`;
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.arc(0, 0, Math.max(0, dw.r), 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // --- D. Multi-Strand Relativistic Accretion Disk with Doppler Beaming ---
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const numArms = 6;
-      for (let a = 0; a < numArms; a++) {
-        const baseAngle = rift.rotation + (a * (Math.PI * 2 / numArms));
-        ctx.beginPath();
-        for (let step = 0; step <= 28; step++) {
-          const t = step / 28;
-          const r = rift.singularityRadius + t * (rift.radius * 1.25 - rift.singularityRadius);
-          const theta = baseAngle + t * 2.8;
-          const px = Math.cos(theta) * r;
-          const py = Math.sin(theta) * r * 0.42; // Relativistic perspective tilt
-          if (step === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-
-        // Relativistic Doppler beaming: approaching side (cos > 0) glows blazing cyan-white
-        const cosA = Math.cos(baseAngle);
-        const doppler = Math.pow((cosA + 1) * 0.5, 1.6);
-        const armAlpha = (0.2 + 0.8 * doppler) * rift.life;
-
-        // Core bright stream
-        ctx.strokeStyle = `rgba(240, 253, 255, ${0.7 * armAlpha})`;
-        ctx.lineWidth = 3.0;
-        ctx.stroke();
-
-        // Neon cyan mid plasma
-        ctx.strokeStyle = `rgba(0, 243, 255, ${0.45 * armAlpha})`;
-        ctx.lineWidth = 7.0;
-        ctx.stroke();
-
-        // Deep blue outer aura
-        ctx.strokeStyle = `rgba(56, 189, 248, ${0.2 * armAlpha})`;
-        ctx.lineWidth = 14.0;
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // --- E. Singularity Event Horizon Core (ABSOLUTE PITCH BLACK #000000) ---
-      ctx.fillStyle = '#000000';
-      ctx.beginPath();
-      ctx.arc(0, 0, rift.singularityRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // --- F. Brilliant Relativistic Photon Sphere Rim (Innermost Photon Orbit) ---
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, rift.singularityRadius * 1.04, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.strokeStyle = 'rgba(0, 243, 255, 0.7)';
-      ctx.lineWidth = 5.0;
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.restore();
+      drawBlackHole(ctx, rift, this.quality, this.reducedMotion?.matches);
     }
 
     // 2.5. RENDER TACTICAL LASER BEAMS & LINE CONDUITS
@@ -1561,6 +1449,8 @@ export class FXEngine {
         ctx.fill();
       } else if (p.type === 'singularity_inflow') {
         // Gravitational inward spiral implosion towards singularity
+        const parent = this.voidRifts.find(r => r.id === p.riftId);
+        if (parent) { p.riftX = parent.x; p.riftY = parent.y; p.singularityRadius = parent.singularityRadius; }
         const singularityR = p.singularityRadius || 24;
         const accel = Math.max(1.0, 95 / (p.dist || 1));
         p.dist -= p.radialSpeed * accel * dt;

@@ -1,4 +1,4 @@
-import { sanitizeHTML } from './ui.js';
+import { sanitizeHTML, escapeHTML } from './ui.js';
 // src/clocksManager.js
 // Movable Transparent HUD Progress Clocks with Keeper-Only / Shared Visibility
 
@@ -14,49 +14,80 @@ export class ClocksManager {
     this.dragStart = { x: 0, y: 0 };
     this.widgetStart = { x: 0, y: 0 };
 
+    this.localPositions = new Map();
+    this.pendingRender = false;
     this.render();
     store.subscribe((state, keys) => {
       if (keys.includes('clocks') || keys.includes('userRole')) {
-        this.render();
+        if (this.draggedWidget) this.pendingRender = true;
+        else this.render();
       }
     });
 
     this.initGlobalEvents();
   }
 
+  // Positions are relative to the map viewport, independent of collapsed state.
+  constrain(widget, x, y) {
+    const bounds = this.container.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(x, Math.max(0, bounds.width - widget.offsetWidth))),
+      y: Math.max(0, Math.min(y, Math.max(0, bounds.height - widget.offsetHeight)))
+    };
+  }
+
+  placeWidget(widget, x, y) {
+    const p = this.constrain(widget, x, y);
+    widget.style.left = `${p.x}px`;
+    widget.style.top = `${p.y}px`;
+    return p;
+  }
+
+  savePosition(clockId, position) {
+    // Player arrangements are local; moving a display must never change clock progress.
+    if (store.sessionRole === 'player') this.localPositions.set(clockId, position);
+    else store.updateClock(clockId, { posX: position.x, posY: position.y });
+  }
+
   initGlobalEvents() {
-    const handleMove = (clientX, clientY) => {
-      if (this.draggedWidget) {
-        const dx = clientX - this.dragStart.x;
-        const dy = clientY - this.dragStart.y;
-        const newX = Math.max(10, this.widgetStart.x + dx);
-        const newY = Math.max(60, this.widgetStart.y + dy);
-
-        this.draggedWidget.style.left = newX + 'px';
-        this.draggedWidget.style.top = newY + 'px';
-      }
+    this.onPointerMove = (event) => {
+      if (!this.draggedWidget || event.pointerId !== this.activePointer) return;
+      event.preventDefault();
+      this.placeWidget(this.draggedWidget,
+        this.widgetStart.x + event.clientX - this.dragStart.x,
+        this.widgetStart.y + event.clientY - this.dragStart.y);
     };
-
-    const handleEnd = () => {
-      if (this.draggedWidget) {
-        const clockId = this.draggedWidget.dataset.id;
-        const x = parseInt(this.draggedWidget.style.left, 10);
-        const y = parseInt(this.draggedWidget.style.top, 10);
-        store.updateClock(clockId, { posX: x, posY: y });
-        this.draggedWidget = null;
+    this.endDrag = (event, cancel = false) => {
+      const widget = this.draggedWidget;
+      if (!widget || (event.pointerId !== undefined && event.pointerId !== this.activePointer)) return;
+      const position = cancel ? this.widgetStart : {
+        x: parseFloat(widget.style.left), y: parseFloat(widget.style.top)
+      };
+      this.draggedWidget = null;
+      widget.classList.remove('dragging');
+      const handle = widget.querySelector('.clock-drag-handle');
+      if (handle.hasPointerCapture?.(this.activePointer)) handle.releasePointerCapture(this.activePointer);
+      if (!cancel && (position.x !== this.widgetStart.x || position.y !== this.widgetStart.y)) {
+        this.savePosition(widget.dataset.id, position);
       }
+      this.pendingRender = false;
+      this.render();
     };
-
-    window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
-    window.addEventListener('mouseup', handleEnd);
-
-    window.addEventListener('touchmove', (e) => {
-      if (this.draggedWidget && e.touches.length === 1) {
-        handleMove(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: true });
-    window.addEventListener('touchend', handleEnd);
-    window.addEventListener('touchcancel', handleEnd);
+    window.addEventListener('pointermove', this.onPointerMove, { passive: false });
+    window.addEventListener('pointerup', event => this.endDrag(event));
+    window.addEventListener('pointercancel', event => this.endDrag(event, true));
+    window.addEventListener('blur', () => this.endDrag({}, true));
+    this.onResize = () => {
+      if (this.draggedWidget) this.endDrag({}, true);
+      this.container.querySelectorAll('.clock-widget').forEach(widget => {
+        this.placeWidget(widget, parseFloat(widget.style.left), parseFloat(widget.style.top));
+      });
+    };
+    window.addEventListener('resize', this.onResize);
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(this.onResize);
+      this.resizeObserver.observe(this.container);
+    }
   }
 
   render() {
@@ -71,10 +102,15 @@ export class ClocksManager {
 
     this.container.innerHTML = sanitizeHTML(visibleClocks.map(clock => this.renderClockWidget(clock, isKeeper)).join(''));
     this.attachWidgetListeners();
+    this.container.querySelectorAll('.clock-widget').forEach(widget => {
+      this.placeWidget(widget, parseFloat(widget.style.left), parseFloat(widget.style.top));
+    });
   }
 
   renderClockWidget(clock, isKeeper) {
     const collapsed = !this.expanded.has(clock.id);
+    const safeTitle = escapeHTML(clock.title);
+    const position = this.localPositions.get(clock.id) || { x: clock.posX ?? 60, y: clock.posY ?? 120 };
     const radius = 36;
     const center = 44;
     const segments = clock.segments;
@@ -90,13 +126,12 @@ export class ClocksManager {
       const startAngle = i * angleStep - Math.PI / 2;
       const endAngle = (i + 1) * angleStep - Math.PI / 2;
 
-      const x1 = center + radius * Math.cos(startAngle);
-      const y1 = center + radius * Math.sin(startAngle);
-      const x2 = center + radius * Math.cos(endAngle);
-      const y2 = center + radius * Math.sin(endAngle);
-
       const largeArc = angleStep > Math.PI ? 1 : 0;
-      const pathData = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+      const inner = 24;
+      const gap = 0.045;
+      const a = startAngle + gap, b = endAngle - gap;
+      const point = (r, angle) => `${center + r * Math.cos(angle)} ${center + r * Math.sin(angle)}`;
+      const pathData = `M ${point(radius,a)} A ${radius} ${radius} 0 ${largeArc} 1 ${point(radius,b)} L ${point(inner,b)} A ${inner} ${inner} 0 ${largeArc} 0 ${point(inner,a)} Z`;
 
       const isSegmentFilled = i < filled;
       svgPaths += `
@@ -113,13 +148,13 @@ export class ClocksManager {
         class="clock-widget glass-panel ${categoryClass} ${collapsed ? 'collapsed' : ''} ${isCompleted ? 'completed' : ''}"
         id="widget_${clock.id}"
         data-id="${clock.id}"
-        style="left: ${clock.posX || 60}px; top: ${clock.posY || 120}px;"
+        style="left: ${position.x}px; top: ${position.y}px;"
       >
         <!-- Header / Drag Bar -->
-        <div class="clock-drag-handle">
+        <div class="clock-drag-handle" tabindex="0" aria-label="Move clock: ${safeTitle}. Drag or use arrow keys." title="Drag to move · Arrow keys: 10 px · Shift: 1 px">
           <div class="clock-title-group">
             <span class="clock-category-pip"></span>
-            <span class="clock-title" title="${clock.title}">${clock.title}</span><span class="clock-inline-count" style="--clock-progress:${Math.round(filled/segments*100)}%"><span>${filled}/${segments}</span></span>
+            <span class="clock-title" title="${safeTitle}">${safeTitle}</span><span class="clock-inline-count" style="--clock-progress:${Math.round(filled/segments*100)}%"><span><b>${filled}<small>/${segments}</small></b><em>PROGRESS</em></span></span>
           </div>
           <div class="clock-badges">
             ${isKeeper ? `
@@ -129,7 +164,7 @@ export class ClocksManager {
             ` : `
               <span class="clock-badge-shared">SHARED</span>
             `}
-            <button class="clock-collapse-btn" title="Toggle Compact View">${collapsed ? '▼' : '▲'}</button>
+            <button class="clock-collapse-btn" aria-expanded="${!collapsed}" title="${collapsed ? 'Expand clock' : 'Collapse clock'}">${collapsed ? '▼' : '▲'}</button>
           </div>
         </div>
 
@@ -171,29 +206,28 @@ export class ClocksManager {
       const clockId = widget.dataset.id;
       const handle = widget.querySelector('.clock-drag-handle');
 
-      // Dragging by handle (Mouse & Touch)
-      const onStart = (clientX, clientY, target) => {
-        if (!this.expanded.has(widget.dataset.id)) return;
-        if (target.classList.contains('clock-collapse-btn') || target.classList.contains('clock-visibility-toggle')) return;
+      handle.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0 || event.target.closest('button')) return;
+        event.preventDefault();
+        event.stopPropagation();
         this.draggedWidget = widget;
-        this.dragStart = { x: clientX, y: clientY };
-        this.widgetStart = {
-          x: parseInt(widget.style.left, 10) || 60,
-          y: parseInt(widget.style.top, 10) || 120
-        };
-      };
-
-      handle.addEventListener('mousedown', (e) => {
-        onStart(e.clientX, e.clientY, e.target);
-        e.stopPropagation();
+        this.activePointer = event.pointerId;
+        this.dragStart = { x: event.clientX, y: event.clientY };
+        this.widgetStart = { x: parseFloat(widget.style.left) || 0, y: parseFloat(widget.style.top) || 0 };
+        widget.classList.add('dragging');
+        handle.setPointerCapture?.(event.pointerId);
       });
-
-      handle.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-          onStart(e.touches[0].clientX, e.touches[0].clientY, e.target);
-          e.stopPropagation();
-        }
-      }, { passive: true });
+      handle.addEventListener('keydown', (event) => {
+        if (event.target !== handle) return;
+        const directions = { ArrowLeft: [-1,0], ArrowRight: [1,0], ArrowUp: [0,-1], ArrowDown: [0,1] };
+        if (!directions[event.key]) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const step = event.shiftKey ? 1 : 10, [dx,dy] = directions[event.key];
+        const p = this.placeWidget(widget, parseFloat(widget.style.left) + dx * step, parseFloat(widget.style.top) + dy * step);
+        this.savePosition(clockId, p);
+        [...this.container.querySelectorAll('.clock-widget')].find(el => el.dataset.id === clockId)?.querySelector('.clock-drag-handle')?.focus();
+      });
 
       // Visibility toggle (Keeper only)
       if (isKeeper) {
@@ -271,6 +305,23 @@ export class ClocksManager {
         });
       }
     });
+  }
+
+  arrangeClocks() {
+    this.expanded.clear();
+    const visible = store.state.clocks.filter(c => store.state.userRole === 'keeper' || !c.isKeeperOnly);
+    const { width, height } = this.container.getBoundingClientRect();
+    this.render();
+    const cardWidth = this.container.querySelector('.clock-widget')?.offsetWidth || 218;
+    const columns = Math.max(1, Math.floor((width - 24) / (cardWidth + 10)));
+    const positions = new Map(visible.map((clock,index) => [clock.id, {
+      x: Math.max(0, Math.min(12 + (index % columns) * (cardWidth + 10), width-cardWidth)),
+      y: Math.max(0, Math.min(82 + Math.floor(index / columns) * 106, height-100))
+    }]));
+    if (store.sessionRole === 'player') this.localPositions = positions;
+    else store.update({clocks: store.state.clocks.map(c => positions.has(c.id)
+      ? {...c,posX:positions.get(c.id).x,posY:positions.get(c.id).y} : c)});
+    this.render();
   }
 
   openCreateModal() {

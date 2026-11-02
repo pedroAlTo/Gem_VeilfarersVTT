@@ -4,6 +4,7 @@ export default defineConfig({
   server: { allowedHosts: ['terminal.local'] },
   build: {
     rollupOptions: {
+      input: { main: 'index.html', fxLab: 'fx-lab.html' },
       output: {
         manualChunks: {
           animation: ['gsap'],

@@ -1,3 +1,4 @@
+import { requireNetworkMode } from './runtimeMode.js';
 // Keeper-authoritative replication. No cross-room BroadcastChannel.
 import PeerJS from 'peerjs';
 import { store } from './state.js';
@@ -29,6 +30,7 @@ export class NetworkManager {
     return { ...message, room: this.room, messageId: message.messageId || id() };
   }
   async hostSession(customCode) {
+    requireNetworkMode();
     this.disconnect();
     this.room = customCode || `VEIL-${id().slice(0, 8).toUpperCase()}`;
     this.invite = id();
@@ -59,6 +61,7 @@ export class NetworkManager {
     });
   }
   async joinSession(roomCode, playerName = 'Player', invite = '') {
+    requireNetworkMode();
     if (!invite) throw new Error('An invitation key from the Keeper is required.');
     this.disconnect();
     await store.saveQueue;

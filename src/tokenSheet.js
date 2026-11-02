@@ -1,3 +1,4 @@
+import { statGaugeHTML } from './tokenVitals.js';
 // src/tokenSheet.js
 // Token HUD Quickbar and Holographic Character Sheet Editor
 
@@ -179,31 +180,12 @@ export class TokenHUD {
 
           <div class="tok-qb-divider"></div>
 
-          <!-- Compact HP Bar -->
-          <div class="tok-qb-stat-group" style="min-width: 85px;">
-            <div class="tok-qb-stat-label">
-              <span>HP</span>
-              <span class="tok-qb-num">${token.hp.current} / ${token.hp.max}</span>
-            </div>
-            <div class="tok-qb-hp-bar">
-              <div class="tok-qb-hp-fill" style="width: ${Math.max(0, Math.min(100, (token.hp.current / token.hp.max) * 100))}%;"></div>
-            </div>
+          <div class="token-telemetry-grid">
+            ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
+            ${statGaugeHTML('ARMOR', token.armor?.current, token.armor?.max, 'armor')}
+            ${statGaugeHTML('STRESS', token.stress?.current, maxStress, 'stress')}
+            ${statGaugeHTML(token.path === 'Sleeping' ? 'EFFORT' : 'HOPE', token.path === 'Sleeping' ? token.effort : token.hope, 6, 'path')}
           </div>
-
-          <div class="tok-qb-divider"></div>
-
-          <!-- Compact Defenses & Path -->
-          <div class="tok-qb-stat-group" style="min-width: 90px;">
-            <div class="tok-qb-stat-label">
-              <span>DEF / STR</span>
-              <span class="tok-qb-num">🛡️${token.armor?.current ?? 0} ⚡${token.stress?.current ?? 0}</span>
-            </div>
-            <div style="font-size: 10px; font-weight: 700; color: ${token.path === 'Sleeping' ? 'var(--amber-warn)' : 'var(--cyan-pearl)'}; margin-top: 3px;">
-              ${token.path === 'Sleeping' ? `EFFORT ${token.effort ?? 0}/6` : `HOPE ${token.hope ?? 0}/6`}
-            </div>
-          </div>
-
-          <div class="tok-qb-divider"></div>
 
           <!-- Compact Action Controls -->
           <div class="tok-qb-actions" style="display: flex; gap: 6px; align-items: center;">
@@ -233,13 +215,7 @@ export class TokenHUD {
 
         <!-- HP & Thresholds -->
         <div class="tok-qb-stat-group">
-          <div class="tok-qb-stat-label">
-            <span>HP</span>
-            <span class="tok-qb-num">${token.hp.current} / ${token.hp.max}</span>
-          </div>
-          <div class="tok-qb-hp-bar">
-            <div class="tok-qb-hp-fill" style="width: ${Math.max(0, Math.min(100, (token.hp.current / token.hp.max) * 100))}%;"></div>
-          </div>
+          ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
           <div class="tok-qb-stat-actions">
             <button class="hud-btn hud-btn-xs" id="hp_minus_btn">-1</button>
             <button class="hud-btn hud-btn-xs hud-btn-primary" id="hp_plus_btn">+1</button>
@@ -257,7 +233,7 @@ export class TokenHUD {
           </div>
           <div class="tok-qb-pips" id="armor_pips_row">
             ${Array.from({ length: token.armor?.max || 0 }, (_, i) => `
-              <span class="pip pip-armor ${i < (token.armor?.current || 0) ? 'active' : ''}" data-idx="${i}"></span>
+              <button type="button" class="pip pip-armor ${i < (token.armor?.current || 0) ? 'active' : ''}" data-idx="${i}" aria-label="Set pip-armor to ${i + 1}"></button>
             `).join('')}
           </div>
 
@@ -267,7 +243,7 @@ export class TokenHUD {
           </div>
           <div class="tok-qb-pips" id="stress_pips_row">
             ${Array.from({ length: maxStress }, (_, i) => `
-              <span class="pip pip-stress ${i < (token.stress?.current || 0) ? 'active' : ''}" data-idx="${i}"></span>
+              <button type="button" class="pip pip-stress ${i < (token.stress?.current || 0) ? 'active' : ''}" data-idx="${i}" aria-label="Set pip-stress to ${i + 1}"></button>
             `).join('')}
           </div>
         </div>
@@ -283,7 +259,7 @@ export class TokenHUD {
             </div>
             <div class="tok-qb-pips" id="hope_pips_row">
               ${Array.from({ length: 6 }, (_, i) => `
-                <span class="pip pip-hope ${i < (token.hope || 0) ? 'active' : ''}" data-idx="${i}"></span>
+                <button type="button" class="pip pip-hope ${i < (token.hope || 0) ? 'active' : ''}" data-idx="${i}" aria-label="Set pip-hope to ${i + 1}"></button>
               `).join('')}
             </div>
             <div class="tok-qb-path-actions" style="margin-top: 5px;">
@@ -297,7 +273,7 @@ export class TokenHUD {
             </div>
             <div class="tok-qb-pips" id="effort_pips_row">
               ${Array.from({ length: 6 }, (_, i) => `
-                <span class="pip pip-effort ${i < (token.effort || 0) ? 'active' : ''}" data-idx="${i}"></span>
+                <button type="button" class="pip pip-effort ${i < (token.effort || 0) ? 'active' : ''}" data-idx="${i}" aria-label="Set pip-effort to ${i + 1}"></button>
               `).join('')}
             </div>
 

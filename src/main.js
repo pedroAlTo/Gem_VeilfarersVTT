@@ -1,3 +1,4 @@
+import { LOCAL_ONLY } from './runtimeMode.js';
 import { sanitizeHTML, confirmAction, notify } from './ui.js';
 // src/main.js
 // Application entry point for VEILVTT
@@ -111,9 +112,10 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
         </div>
 
         <p class="modal-intro" style="margin: 8px 0;">
-          Clocks track impending complications, countdowns, and projects. Expand an instrument above the map to adjust its progress.
+          Drag any clock freely. Use arrow keys for precise movement. Expand it to adjust progress.
         </p>
 
+        <button class="hud-btn clock-arrange-btn" id="arrange_clocks_btn">ARRANGE ON MAP</button>
         <div class="scene-cards-list">
           ${visibleClocks.map(c => `
             <div class="log-card glass-panel" style="border-left: 3px solid ${c.isKeeperOnly ? 'var(--purple-void)' : 'var(--cyan-pearl)'};">
@@ -142,6 +144,7 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
       </div>
     `);
 
+    paneEl.querySelector('#arrange_clocks_btn').onclick = () => clocksManager.arrangeClocks();
     if (isKeeper) {
       const deployBtn = paneEl.querySelector('#deploy_new_clock_btn');
       if (deployBtn) {
@@ -352,7 +355,9 @@ function setupToolbarEvents() {
     // FX Performance Quality Toggle (Eco / Balanced / Ultra)
     const fxQualityBtn = document.getElementById('btn_fx_quality');
     if (fxQualityBtn) {
-      let currentQuality = 'balanced';
+      let currentQuality = store.getState().fxQuality || 'balanced';
+      window.veilCanvas?.fx.setQuality(currentQuality);
+      fxQualityBtn.textContent = currentQuality === 'eco' ? 'Eco' : currentQuality === 'ultra' ? 'Ultra' : 'Balanced';
       fxQualityBtn.onclick = (e) => {
         e.stopPropagation();
         if (currentQuality === 'balanced') currentQuality = 'eco';
@@ -363,8 +368,8 @@ function setupToolbarEvents() {
         store.update({ fxQuality: currentQuality });
         const labels = {
           eco: '⚡ Eco (Mínimo Consumo de CPU/GPU)',
-          balanced: '⚡ Bal (Equilibrado 60 FPS)',
-          ultra: '⚡ Max (Ultra AAA Máxima Densidad)'
+          balanced: 'Balanced (Equilibrado)',
+          ultra: 'Ultra (Mayor detalle)'
         };
         fxQualityBtn.textContent = currentQuality === 'eco' ? '⚡ Eco' : currentQuality === 'balanced' ? '⚡ Bal' : '⚡ Max';
         fxQualityBtn.title = `Rendimiento de Efectos: ${labels[currentQuality]}`;
@@ -761,6 +766,7 @@ function openMultiplayerModal() {
 
 // --- Auto Join from URL query string ?room=VEIL-XXXX ---
 function setupAutoJoinFromURL() {
+  if (LOCAL_ONLY) return;
   const urlParams = new URLSearchParams(window.location.search);
   const roomCode = urlParams.get('room');
   if (roomCode) {

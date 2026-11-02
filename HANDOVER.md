@@ -1,3 +1,13 @@
+## Actualización — Orbital II, 2 de noviembre de 2026
+
+- Rama de trabajo: `fix/vtt-session-integrity-and-orbital-ui`.
+- Clocks libres, compactos y abiertos: Pointer Events, teclado, persistencia, límites y ordenación manual.
+- HUD Orbital II y telemetría de tokens; agua poligonal/rectangular y agujero negro redibujados en `surfaceFX.js`.
+- Arranque Windows: `INICIAR_VTT_LOCAL.bat`; guía: `PRUEBAS_LOCALES.md`; pruebas visuales aisladas: `/fx-lab.html`.
+- 52 pruebas y builds normal/local verificados. Batch revisado, pendiente de ejecución real en Windows.
+- Alcance de esta fase: pruebas locales. Sin integración Firebase, sin pruebas multijugador ni despliegue.
+- El siguiente paso es probar esta versión en el equipo de Pedro y valorar el acabado y rendimiento con sus mapas.
+
 > **Actualización Orbital:** consultar [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) para el estado actual, cambios, validación y límites. Rama: `fix/vtt-session-integrity-and-orbital-ui`. La conexión WebRTC completa sigue pendiente de validación y no se ha publicado esta versión.
 
 # 🚀 HANDOVER DE DESARROLLO — VEILFARERS VTT

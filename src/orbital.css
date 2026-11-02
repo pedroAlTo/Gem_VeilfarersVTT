@@ -1018,8 +1018,7 @@ textarea {
 }
 .clock-widget {
   position: relative !important;
-  left: auto !important;
-  top: auto !important;
+
   width: 220px !important;
   pointer-events: auto;
   border-radius: 7px;

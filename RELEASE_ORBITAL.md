@@ -1,5 +1,17 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Orbital II — 2 de noviembre de 2026
+
+Los clocks compactos estaban forzados a una fila por CSS y solo admitían arrastre al expandirse. Ahora vuelven a posicionarse libremente en el mapa con Pointer Events, captura del puntero y persistencia de coordenadas, incluidos los valores cero. Añade movimiento por teclado, límites de pantalla, cancelación segura y ordenación manual desde el panel Clocks.
+
+La segunda pasada visual refuerza la referencia [Sci-fi User Interface Dashboard](https://www.behance.net/gallery/87887291/Sci-fi-User-Interface-Dashboard): instrumentos con anillos segmentados, vidrio oscuro, detalles cian/magenta, bordes finos y jerarquía de controles. Se han creado gráficos propios en CSS, SVG y Canvas; no se han copiado recursos del proyecto de referencia.
+
+Las barras de tokens muestran etiquetas, cantidades, segmentos y estados de peligro; el panel seleccionado reúne HP, Armor, Stress y Hope/Effort. El agua comparte superficie animada y máscara entre rectángulos y polígonos, con cáusticas, profundidad y orillas. El agujero negro utiliza disco de acreción por capas, halo y horizonte oscuro; se corrige la eliminación prematura de los efectos puntuales y se mantiene la anomalía aunque el presupuesto de partículas esté lleno.
+
+Incluye `INICIAR_VTT_LOCAL.bat`, `PRUEBAS_LOCALES.md` y un laboratorio independiente en `fx-lab.html`. El batch desactiva las conexiones con `VITE_LOCAL_ONLY=1`, instala dependencias cuando hace falta y permite ejecutar pruebas, compilar y abrir la aplicación o el laboratorio. No se añade Firebase ni se modifica el protocolo multijugador.
+
+Validación: **52 pruebas pasan**, compilación de producción en modo local correcta; revisión visual de escritorio, móvil/tableta, arrastre y recarga. El batch no se ha ejecutado en Windows porque el entorno disponible es Linux. Detalles y pasos reproducibles en `PRUEBAS_LOCALES.md`.
+
 ## Descripción para GitHub / PR
 
 Esta actualización corrige pérdidas de sincronización y de datos de campaña, limita las acciones remotas a las fichas asignadas por el Keeper y renueva la interfaz tomando como referencia el HUD oscuro con detalles cian y magenta proporcionado por Pedro.

@@ -3,6 +3,8 @@
 // Drag-Resizable Templates, Expanded Particle FX, and Multi-Layer Support
 
 import { LightingEngine } from './lightingEngine.js';
+import { drawWaterSurface, traceWater, waterBounds } from './surfaceFX.js';
+import { drawTokenGauge } from './tokenVitals.js';
 import { FXEngine } from './fxEngine.js';
 import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
@@ -76,6 +78,7 @@ export class CanvasEngine {
 
     // AAA Particle FX & Pings
     this.fx = new FXEngine();
+    this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     this.pings = [];
 
     // Loop
@@ -2332,88 +2335,29 @@ export class CanvasEngine {
     const state = store.getState();
     const isWaterLayer = state.activeLayer === 'water' && state.userRole === 'keeper';
 
+    const viewport = { minX: -this.panX / this.zoom, minY: -this.panY / this.zoom,
+      maxX: (this.displayWidth - this.panX) / this.zoom, maxY: (this.displayHeight - this.panY) / this.zoom };
     for (const w of waterZones) {
       const isSelected = w.id === state.selectedWaterId;
+      if (!drawWaterSurface(ctx, w, time, { viewport, quality: this.fx.quality,
+        reducedMotion: this.reducedMotion?.matches })) continue;
+      if (!(isWaterLayer || isSelected)) continue;
       const depth = Math.max(0, Math.min(5, w.depth ?? 2));
-      const depthColor = WATER_DEPTH_COLORS[depth];
-
+      const bounds = waterBounds(w);
       ctx.save();
-
-      if (w.shape === 'polygon' && w.points && w.points.length >= 3) {
-        // Polygon Water Surface
-        ctx.fillStyle = depthColor;
-        ctx.beginPath();
-        ctx.moveTo(w.points[0].x, w.points[0].y);
-        for (let i = 1; i < w.points.length; i++) ctx.lineTo(w.points[i].x, w.points[i].y);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.strokeStyle = isSelected ? '#00f3ff' : 'rgba(56, 189, 248, 0.5)';
-        ctx.lineWidth = isSelected ? 3 : 1.5;
-        ctx.stroke();
-
-        // Polygon vertex handles for editor
-        if (isWaterLayer || isSelected) {
-          ctx.fillStyle = '#00f3ff';
-          for (const pt of w.points) {
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-      } else {
-        // Base rectangular water surface
-        ctx.fillStyle = depthColor;
-        ctx.fillRect(w.x, w.y, w.width, w.height);
-
-        // Animated wave caustics
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-        ctx.lineWidth = 1.5;
-        const flow = (time * (w.flowSpeed || 1.0) * 30) % 40;
-
-        ctx.beginPath();
-        for (let y = w.y + flow; y < w.y + w.height; y += 30) {
-          ctx.moveTo(w.x, y);
-          for (let x = w.x; x <= w.x + w.width; x += 20) {
-            const waveY = y + Math.sin((x + time * 60) * 0.05) * 4;
-            ctx.lineTo(x, waveY);
-          }
-        }
-        ctx.stroke();
-
-        // Border
-        ctx.strokeStyle = isSelected ? '#00f3ff' : 'rgba(56, 189, 248, 0.5)';
-        ctx.lineWidth = isSelected ? 3 : 1.5;
-        ctx.strokeRect(w.x, w.y, w.width, w.height);
-
-        // Water Depth Badge
-        ctx.fillStyle = 'rgba(5, 8, 16, 0.85)';
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
-        ctx.lineWidth = 1;
-        const badgeText = `WATER [DEPTH ${depth}]: ${WATER_DEPTH_NAMES[depth].split(' ')[0].toUpperCase()}`;
-        ctx.font = 'bold 10px "Rajdhani", sans-serif';
-        const textW = ctx.measureText(badgeText).width;
-
-        ctx.beginPath();
-        ctx.roundRect(w.x + 8, w.y + 8, textW + 12, 18, 3);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillText(badgeText, w.x + 14, w.y + 21);
-
-        // SE Resize Handle (if on water layer or selected)
-        if (isWaterLayer || isSelected) {
-          ctx.fillStyle = '#00f3ff';
-          ctx.beginPath();
-          ctx.arc(w.x + w.width, w.y + w.height, 7, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        }
+      traceWater(ctx,w);
+      ctx.strokeStyle = isSelected ? '#a5f4ff' : 'rgba(94,211,231,0.65)';
+      ctx.lineWidth = (isSelected ? 2 : 1) / this.zoom; ctx.stroke();
+      const handles = w.shape === 'polygon' ? w.points : [{ x: w.x+w.width, y: w.y+w.height }];
+      for(const p of handles) {
+        ctx.beginPath();ctx.arc(p.x,p.y,5/this.zoom,0,Math.PI*2);
+        ctx.fillStyle='#06151f';ctx.fill();ctx.stroke();
       }
-
+      ctx.font = '10px monospace';
+      const label = `WATER / DEPTH ${depth}`;
+      const labelW = ctx.measureText(label).width + 16;
+      ctx.fillStyle='#071621e8';ctx.fillRect(bounds.minX+8,bounds.minY+8,labelW,22);
+      ctx.fillStyle='#a0e6ed';ctx.fillText(label,bounds.minX+16,bounds.minY+23);
       ctx.restore();
     }
 
@@ -3299,7 +3243,7 @@ export class CanvasEngine {
     if (key === 'stress') return mode === 'current' ? (tok.stress?.current ?? 0) : (tok.stress?.max ?? 6);
     if (key === 'armor') return mode === 'current' ? (tok.armor?.current ?? 0) : (tok.armor?.max ?? 2);
     if (key === 'hope') return mode === 'current' ? (tok.hope ?? 0) : 6;
-    if (key === 'effort') return mode === 'current' ? (tok.effort ?? 0) : 5;
+    if (key === 'effort') return mode === 'current' ? (tok.effort ?? 0) : 6;
     if (key === 'resolve') return mode === 'current' ? (tok.resolve?.current ?? 0) : (tok.resolve?.max ?? 4);
     if (key === 'clock') return mode === 'current' ? (tok.displayConfig?.clockProgress ?? 0) : (tok.displayConfig?.clockSegments ?? 4);
     if (key.startsWith('trait_')) {
@@ -3312,40 +3256,20 @@ export class CanvasEngine {
   renderTokenVitals(ctx, tok, radius) {
     ctx.save();
     const cfg = tok.displayConfig || {};
+    const gaugeScale = Math.max(1, Math.min(2, 0.9 / this.zoom));
     const overlays = tok.displayOverlays || [];
 
     // If custom modular overlays are defined, render them
     if (overlays.length > 0) {
-      let barY = -radius - 10;
-      const barWidth = Math.max(radius * 2, 60);
-
-      // 1. Stacked Bars
+      let barY = -radius - 12 * gaugeScale;
+      const barWidth = Math.max(radius * 2, 86 * gaugeScale);
       for (const item of overlays) {
         if (item.type !== 'bar') continue;
-        const cur = item.current ?? this.resolveTokenStat(tok, item.statKey, 'current') ?? 10;
-        const max = item.max ?? this.resolveTokenStat(tok, item.statKey, 'max') ?? 10;
-        const pct = Math.max(0, Math.min(1, max > 0 ? cur / max : 0));
-        const color = item.color || '#10b981';
-
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-        ctx.fillRect(-barWidth / 2, barY, barWidth, 6);
-
-        ctx.fillStyle = color;
-        ctx.fillRect(-barWidth / 2, barY, barWidth * pct, 6);
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-barWidth / 2, barY, barWidth, 6);
-
-        if (item.label) {
-          ctx.fillStyle = '#fff';
-          ctx.font = 'bold 8px "Rajdhani", sans-serif';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(item.label, -barWidth / 2 + 2, barY + 3);
-        }
-
-        barY -= 8;
+        drawTokenGauge(ctx, { x: -barWidth / 2, y: barY, width: barWidth,
+          current: item.current ?? this.resolveTokenStat(tok, item.statKey, 'current'),
+          max: item.max ?? this.resolveTokenStat(tok, item.statKey, 'max'),
+          key: item.statKey, label: item.label, color: item.color, scale: gaugeScale });
+        barY -= 25 * gaugeScale;
       }
 
       // Nameplate below token
@@ -3465,49 +3389,14 @@ export class CanvasEngine {
 
     // Default Legacy Fallback using displayConfig
 
-    // 1. Stacked Bars (HP Bar & Stress Bar) above token
-    let barY = -radius - 10;
-
-    // HP Bar (Default enabled if not explicitly false)
-    if (cfg.showHpBar !== false && tok.hp && tok.hp.max) {
-      const barWidth = radius * 2;
-      const barHeight = 6;
-      const hpPct = Math.max(0, Math.min(1, tok.hp.current / tok.hp.max));
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-      ctx.fillRect(-barWidth / 2, barY, barWidth, barHeight);
-
-      let hpColor = '#10b981';
-      if (hpPct <= 0.25) hpColor = '#ef4444';
-      else if (hpPct <= 0.5) hpColor = '#f59e0b';
-
-      ctx.fillStyle = hpColor;
-      ctx.fillRect(-barWidth / 2, barY, barWidth * hpPct, barHeight);
-
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.strokeRect(-barWidth / 2, barY, barWidth, barHeight);
-
-      barY -= 8;
+    let barY = -radius - 12 * gaugeScale;
+    const width = Math.max(radius * 2, 86 * gaugeScale);
+    if (cfg.showHpBar !== false && tok.hp?.max) {
+      drawTokenGauge(ctx, { x: -width / 2, y: barY, width, scale: gaugeScale, key: 'hp', current: tok.hp.current, max: tok.hp.max });
+      barY -= 25 * gaugeScale;
     }
-
-    // Stress Bar (If enabled)
     if (cfg.showStressBar) {
-      const barWidth = radius * 2;
-      const barHeight = 5;
-      const maxStress = tok.stress?.max || 6;
-      const curStress = tok.stress?.current ?? 0;
-      const strPct = Math.max(0, Math.min(1, curStress / maxStress));
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-      ctx.fillRect(-barWidth / 2, barY, barWidth, barHeight);
-
-      ctx.fillStyle = '#d946ef'; // Vibrant magenta
-      ctx.fillRect(-barWidth / 2, barY, barWidth * strPct, barHeight);
-
-      ctx.strokeStyle = 'rgba(217, 70, 239, 0.4)';
-      ctx.strokeRect(-barWidth / 2, barY, barWidth, barHeight);
-
-      barY -= 7;
+      drawTokenGauge(ctx, { x: -width / 2, y: barY, width, scale: gaugeScale, key: 'stress', current: tok.stress?.current ?? 0, max: tok.stress?.max ?? 6 });
     }
 
     // 2. Nameplate below token
