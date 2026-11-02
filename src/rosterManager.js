@@ -43,7 +43,7 @@ export class RosterManager {
                   <div class="roster-name-row">
                     <span class="roster-name">${escapeHTML(tok.name)}</span>
                     <span class="roster-badge ${tok.isPlayer ? 'badge-pc' : 'badge-npc'}">
-                      ${tok.isPlayer ? 'PC' : 'THREAT'}
+                      ${tok.isPlayer ? 'PC' : tok.actorType === 'drone' ? 'DRONE' : tok.actorType === 'npc' ? 'NPC' : 'THREAT'}
                     </span>
                   </div>
                   <div class="roster-stats-row">
@@ -125,7 +125,7 @@ export class RosterManager {
       <p class="dossier-muted">Introduce los valores de tu ficha. Los valores iniciales son editables, no una plantilla de clase o especie. Para una ficha del creador, usa Importar personajes JSON.</p>
       <form id="manual_actor"><div class="dossier-identity">
         <label class="dossier-field"><span>Nombre</span><input class="hud-input" name="name" required value="Nuevo actor"></label>
-        <label class="dossier-field"><span>Tipo</span><vf-select name="kind" id="manual_kind" class="hud-select"><option value="player">Personaje</option><option value="npc">PNJ</option><option value="adversary">Adversario</option></vf-select></label>
+        <label class="dossier-field"><span>Tipo</span><vf-select name="kind" id="manual_kind" class="hud-select"><option value="player">Personaje</option><option value="npc">PNJ</option><option value="drone">Drone · shared control</option><option value="adversary">Adversario</option></vf-select></label>
         ${[['hp', 'HP máximo', 6, 1], ['stress', 'Stress máximo', 6, 0], ['armor', 'Armor máximo', 0, 0], ['evasion', 'Evasion', 10, 0], ['major', 'Umbral Major', 5, 0], ['severe', 'Umbral Severe', 10, 0]].map(([key, label, value, min]) => `<label class="dossier-field"><span>${label}</span><input name="${key}" class="hud-input" type="number" required min="${min}" max="100" value="${value}"></label>`).join('')}
       </div><p class="dossier-error" role="alert"></p><footer class="dossier-footer"><button class="hud-btn hud-btn-primary">Crear y abrir ficha</button></footer></form>
     `);

@@ -3,6 +3,7 @@
 
 import { activeCampaignId, readCampaign, writeCampaign, selectCampaign, newId, listCampaigns } from './persistence.js';
 import { createActor, replaceActorSheet } from './actors.js';
+import { controlsToken, assignControls, movePartyToScene } from './tokenPermissions.js';
 import { CAMPAIGN_KEYS, validateCampaign } from './validation.js';
 import { confirmAction, notify } from './ui.js';
 
@@ -83,6 +84,7 @@ class StateStore {
       isConnected: false,
       roomCode: '',
       connectedPeers: [],
+      players: [],
 
       // Starship State (Veilfarers Chapter 17 Naval Combat)
       starship: {
@@ -308,7 +310,7 @@ class StateStore {
   // --- Token Management ---
   canEditToken(tokenId) {
     if (this.sessionRole !== 'player') return this.state.userRole === 'keeper' || !!this.state.tokens.find(t=>t.id===tokenId && t.isPlayer);
-    return !!this.state.tokens.find(t=>t.id===tokenId && t.ownerId===this.peerId && t.isPlayer);
+    return this.state.isConnected && !!this.state.tokens.find(t=>t.id===tokenId && controlsToken(t, this.memberId || this.peerId));
   }
 
   updateToken(tokenId, partial) {
@@ -335,7 +337,7 @@ class StateStore {
   }
 
   importActors(entries) {
-    if (this.sessionRole !== 'local' || this.state.isHosting || this.state.isConnected || this.sessionBusy) throw new Error('Importa personajes en una sesión local.');
+    if (this.sessionRole === 'player' || this.sessionBusy) throw new Error('Only the Keeper can import directly.');
     // Validate the whole batch before a single live mutation or undo snapshot.
     let tokens = structuredClone(this.state.tokens);
     const seen = new Set();
@@ -630,10 +632,30 @@ class StateStore {
   }
 
   // --- Map Management (Up to 6000x6000px) ---
+  assignTokenControllers(tokenId, playerIds) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') throw new Error('Only the Keeper can assign tokens.');
+    const tokens = assignControls(this.state.tokens, tokenId, playerIds, (this.state.players || []).map(p => p.id));
+    this._beforeTacticalMutation('Assign token control');
+    this.update({ tokens });
+  }
+
+  switchScene(mapId) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper' || this.sessionBusy) return false;
+    const map = this.state.maps.find(m => m.id === mapId);
+    if (!map) throw new Error('Scene no longer exists.');
+    if (mapId === this.state.activeMapId) return true;
+    this._beforeTacticalMutation('Move party to ' + map.name);
+    this.update({ activeMapId: mapId, tokens: movePartyToScene(this.state.tokens, map), selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null });
+    this.validateSelections();
+    return true;
+  }
+
   addMap(mapData) {
+    if (this.sessionRole === 'player' || this.sessionBusy) return null;
     this._beforeTacticalMutation('Añadir Mapa Táctico');
     const newMap = {
-      id: 'map_' + Date.now(),
+      id: 'map_' + newId(),
+      storagePath: mapData.storagePath || '',
       name: mapData.name || 'New Tactical Map',
       imageUrl: mapData.imageUrl,
       width: mapData.width || 2000,
@@ -649,7 +671,8 @@ class StateStore {
     };
     this.update({
       maps: [...this.state.maps, newMap],
-      activeMapId: newMap.id
+      activeMapId: newMap.id,
+      tokens: movePartyToScene(this.state.tokens, newMap)
     });
     return newMap;
   }

@@ -12,6 +12,7 @@ export const CAMPAIGN_KEYS = [
   'fogExploredOpacity',
   'optionalEfforts',
   'logs',
+  'players',
 ];
 export const finite = (x, min = -1e6, max = 1e6) =>
   typeof x === 'number' && Number.isFinite(x) && x >= min && x <= max;
@@ -23,6 +24,10 @@ const resource = (r, label) =>
 
 // Validate complete imports and network snapshots before mutating live state.
 export function validateCampaign(data) {
+  if (data.players !== undefined) {
+    assert(Array.isArray(data.players) && data.players.length <= 100 && data.players.every(p => p && typeof p.id === 'string' && p.id.length <= 200 && typeof p.name === 'string' && p.name.length <= 80), 'Invalid player roster.');
+    assert(new Set(data.players.map(p => p.id)).size === data.players.length, 'Duplicate player.');
+  }
   assert(
     data &&
       typeof data === 'object' &&
@@ -183,7 +188,10 @@ export function validateActor(t) {
   if (t.hp.majorThreshold !== undefined && t.hp.severeThreshold !== undefined) assert(t.hp.severeThreshold >= t.hp.majorThreshold, 'Severe debe ser igual o mayor que Major.');
   for (const key of ['level', 'proficiency', 'evasion', 'attackModifier', 'honedEdgeBonus']) if (t[key] !== undefined) assert(finite(t[key], key === 'attackModifier' ? -100 : 0, 100), `Invalid ${key}.`);
   for (const key of ['name', 'species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes']) if (t[key] !== undefined) assert(typeof t[key] === 'string' && t[key].length <= 100000, `Invalid ${key}.`);
-  if (t.actorType !== undefined) assert(['player', 'npc', 'adversary'].includes(t.actorType), 'Invalid actor type.');
+  if (t.actorType !== undefined) assert(['player', 'npc', 'adversary', 'drone'].includes(t.actorType), 'Invalid actor type.');
+  if (t.ownerId !== undefined) assert(typeof t.ownerId === 'string' && t.ownerId.length <= 200, 'Invalid owner.');
+  if (t.controllerIds !== undefined) assert(Array.isArray(t.controllerIds) && t.controllerIds.length <= 100 && t.controllerIds.every(x => typeof x === 'string' && x.length <= 200), 'Invalid controllers.');
+  if (t.scenePositions !== undefined) assert(t.scenePositions && typeof t.scenePositions === 'object' && Object.keys(t.scenePositions).length <= 100 && Object.values(t.scenePositions).every(p => p && finite(p.x) && finite(p.y)), 'Invalid scene positions.');
   if (t.isPlayer === true && t.path !== undefined) assert(['Awakened', 'Sleeping'].includes(t.path), 'Invalid character Path.');
   if (t.resolve?.dieType !== undefined) assert(['d4', 'd6'].includes(t.resolve.dieType), 'Invalid Resolve die.');
   if (t.size !== undefined) assert(finite(t.size, 0.1, 20), 'Invalid token size.');

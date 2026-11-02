@@ -1,3 +1,4 @@
+import { openSceneCreator } from './sceneCreator.js';
 import { sanitizeHTML, confirmAction } from './ui.js';
 // src/sceneManager.js
 // Tactical Scene & Multi-Map Manager for VeilVTT
@@ -121,7 +122,7 @@ export class SceneManager {
     this.container.querySelectorAll('.switch-scene-btn').forEach(btn => {
       btn.onclick = () => {
         const targetId = btn.dataset.id;
-        store.update({ activeMapId: targetId });
+        store.switchScene(targetId);
         network.broadcast({ type: 'MAP_CHANGE', mapId: targetId });
       };
     });
@@ -214,126 +215,5 @@ export class SceneManager {
     }
   }
 
-  openAddMapModal() {
-    const modal = document.createElement('div');
-    modal.className = 'veil-modal-backdrop';
-    modal.innerHTML = sanitizeHTML(`
-      <div class="veil-modal-box">
-        <div class="veil-modal-header">
-          <h3>LOAD HIGH-RESOLUTION MAP // UP TO 6000x6000PX</h3>
-          <button class="modal-close-btn">&times;</button>
-        </div>
-        <div class="veil-modal-body">
-          <p class="modal-intro" style="margin-bottom: 10px;">
-            Supports high-detail tactical battlemaps up to 6000 x 6000 pixels with automatic DPI scaling and sub-pixel texture filtering.
-          </p>
-
-          <div class="form-group">
-            <label>Scene / Sector Name</label>
-            <input type="text" id="new_map_name" class="hud-input" placeholder="e.g. Alien Hive Chamber, Pearl Dock 09..." value="Sector Encounter Map" />
-          </div>
-
-          <div class="form-group">
-            <label>Map Image File (Upload from Computer)</label>
-            <input type="file" id="new_map_file" accept="image/*" class="hud-file-input" />
-          </div>
-
-          <div class="form-group">
-            <label>Or Web Image URL</label>
-            <input type="text" id="new_map_url" class="hud-input" placeholder="https://..." />
-          </div>
-
-          <div id="map_resolution_status" style="font-size: 11px; color: var(--cyan-pearl); margin-bottom: 12px; display: none;">
-            <!-- Dynamically populated -->
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Initial Grid Size (px)</label>
-              <input type="number" id="new_map_grid" class="hud-input" value="70" />
-            </div>
-            <div class="form-group">
-              <label>Ambient Light</label>
-              <vf-select id="new_map_ambient" class="hud-select">
-                <option value="0.1">Deep Void Pitch Black (10%)</option>
-                <option value="0.25" selected>Dim Derelict Facility (25%)</option>
-                <option value="0.5">Emergency Power (50%)</option>
-                <option value="0.8">Fully Powered Hub (80%)</option>
-              </vf-select>
-            </div>
-          </div>
-
-          <div class="modal-actions-row">
-            <button class="hud-btn hud-btn-secondary modal-cancel-btn">CANCEL</button>
-            <button class="hud-btn hud-btn-primary" id="confirm_map_create">DEPLOY SCENE</button>
-          </div>
-        </div>
-      </div>
-    `);
-
-    document.body.appendChild(modal);
-
-    modal.querySelector('.modal-close-btn').onclick = () => modal.remove();
-    modal.querySelector('.modal-cancel-btn').onclick = () => modal.remove();
-
-    let loadedDataUrl = '';
-    let detectedWidth = 2000;
-    let detectedHeight = 2000;
-    const fileInput = modal.querySelector('#new_map_file');
-    const resStatus = modal.querySelector('#map_resolution_status');
-
-    function validateDimensions(src) {
-      const testImg = new Image();
-      testImg.onload = () => {
-        detectedWidth = testImg.naturalWidth;
-        detectedHeight = testImg.naturalHeight;
-        resStatus.style.display = 'block';
-
-        if (detectedWidth > 6000 || detectedHeight > 6000) {
-          resStatus.innerHTML = sanitizeHTML(`<span style="color: var(--amber-warn);">⚠️ Ultra-high resolution: ${detectedWidth}x${detectedHeight}px. Exceeds standard 6000px max; will be supported via viewport virtualization.</span>`);
-        } else {
-          resStatus.innerHTML = sanitizeHTML(`<span>✓ Validated Resolution: ${detectedWidth} x ${detectedHeight} px (High Detail Enabled)</span>`);
-        }
-      };
-      testImg.src = src;
-    }
-
-    fileInput.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (re) => {
-          loadedDataUrl = re.target.result;
-          validateDimensions(loadedDataUrl);
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-
-    const urlInput = modal.querySelector('#new_map_url');
-    urlInput.onchange = () => {
-      if (urlInput.value.trim()) {
-        validateDimensions(urlInput.value.trim());
-      }
-    };
-
-    modal.querySelector('#confirm_map_create').onclick = () => {
-      const name = modal.querySelector('#new_map_name').value.trim() || 'Tactical Scene';
-      const imageUrl = loadedDataUrl || urlInput.value.trim() || '/assets/maps/starship_bridge.jpg';
-      const gridSize = parseInt(modal.querySelector('#new_map_grid').value, 10) || 70;
-      const ambientLight = parseFloat(modal.querySelector('#new_map_ambient').value);
-
-      const newMap = store.addMap({
-        name,
-        imageUrl,
-        width: Math.min(6000, detectedWidth),
-        height: Math.min(6000, detectedHeight),
-        gridSize,
-        ambientLight
-      });
-
-      network.broadcast({ type: 'MAP_CHANGE', mapId: newMap.id });
-      modal.remove();
-    };
-  }
+  openAddMapModal() { return openSceneCreator(); }
 }

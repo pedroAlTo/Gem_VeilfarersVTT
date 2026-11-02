@@ -10,9 +10,12 @@
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
+    "cannon-es": "^0.20.0",
     "dompurify": "^3.4.17",
+    "firebase": "^13.1.0",
     "gsap": "^3.15.0",
-    "peerjs": "^1.5.4"
+    "peerjs": "^1.5.4",
+    "three": "^0.187.0"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.7",

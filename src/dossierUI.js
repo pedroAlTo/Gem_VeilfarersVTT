@@ -58,17 +58,19 @@ export function openDossier(token, openSettings) {
       </div>
       ${imported ? `<div data-panel="source" hidden><p class="dossier-muted">Original íntegro para consulta, incluidos campos de otras sendas. Exportar al creador conserva esos campos y actualiza los valores editables de esta ficha.</p><pre class="dossier-json">${e(JSON.stringify(token.sourceCharacter.document, null, 2))}</pre></div>` : ''}
       <p class="dossier-error" role="alert"></p>
-      <footer class="dossier-footer"><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
+      <footer class="dossier-footer"><button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
     </form>
   `);
   modal.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => {
     modal.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b === button));
     modal.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== button.dataset.tab; });
   });
+  modal.querySelector('#dossier_controls').onclick = async () => { const { openTokenControl } = await import('./sessionLobby.js'); openTokenControl(token.id); };
   modal.querySelector('#dossier_token').onclick = () => { modal.remove(); openSettings(store.state.tokens.find(t => t.id === token.id) || token); };
   const read = () => {
     const current = store.state.tokens.find(t => t.id === token.id);
     if (!current) throw new Error('Este actor ya no existe.');
+    if (store.sessionRole === 'player') return structuredClone(current);
     const form = modal.querySelector('form');
     if (!form.reportValidity()) throw new Error('Revisa los campos de la ficha.');
     const data = Object.fromEntries(new FormData(form)), updated = structuredClone(current);
@@ -90,5 +92,6 @@ export function openDossier(token, openSettings) {
   };
   modal.querySelector('#dossier_export').onclick = () => run(() => downloadJSON(exportNativeCharacter(read()), `${token.name}-VTT.json`));
   if (imported) modal.querySelector('#dossier_system').onclick = () => run(() => downloadJSON(exportSystemCharacter(read()), `${token.name}.json`));
+  if (store.sessionRole === 'player') modal.querySelectorAll('form input, form textarea, form vf-select, form button[type=submit], #dossier_token').forEach(el => el.disabled = true);
   return modal;
 }

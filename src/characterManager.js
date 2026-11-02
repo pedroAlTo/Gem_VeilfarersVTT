@@ -4,11 +4,11 @@ import { parseCharacterJSON, characterKey, initializeImportedResources } from '.
 import { createActor } from './actors.js';
 import { store } from './state.js';
 
-export function openCharacterImport() {
+export function openCharacterImport({ onImport, single = false } = {}) {
   const modal = dossierDialog('IMPORTAR PERSONAJES', `
-    <span class="dossier-eyebrow">INGESTA DE FICHAS / SOLO LOCAL</span><h2 class="dossier-heading">Tu tripulación, con sus datos reales.</h2>
+    <span class="dossier-eyebrow">INGESTA DE FICHAS / VEILFARERS</span><h2 class="dossier-heading">Tu tripulación, con sus datos reales.</h2>
     <p class="dossier-muted">Admite varios JSON de Veilfarers Character Sheet y actores exportados por este VTT, incluidos PNJ y adversarios. Se añadirán a la escena activa.</p>
-    <label class="dossier-drop"><strong>Seleccionar fichas JSON</strong><span>Hasta 30 archivos · 2 MB por ficha</span><input type="file" accept=".json,application/json" multiple id="actor_files"></label>
+    <label class="dossier-drop"><strong>Seleccionar fichas JSON</strong><span>Hasta 30 archivos · 2 MB por ficha</span><input type="file" accept=".json,application/json" ${single ? "" : "multiple"} id="actor_files"></label>
     <div id="actor_preview" aria-live="polite"></div><p class="dossier-error" role="alert"></p>
     <footer class="dossier-footer"><span id="actor_count">Sin archivos seleccionados</span><button class="hud-btn hud-btn-primary" id="actor_import" disabled>Importar selección</button></footer>
   `);
@@ -18,7 +18,7 @@ export function openCharacterImport() {
     const ticket = ++generation, files = [...event.target.files];
     rows = []; button.disabled = true; error.textContent = ''; preview.textContent = 'Leyendo fichas…';
     try {
-      if (!files.length || files.length > 30) throw new Error('Selecciona entre 1 y 30 fichas.');
+      if (!files.length || files.length > (single ? 1 : 30)) throw new Error('Selecciona entre 1 y 30 fichas.');
       const found = new Map();
       const results = await Promise.all(files.map(async file => {
         if (file.size > 2 * 1024 * 1024) throw new Error(`${file.name}: supera 2 MB.`);
@@ -51,7 +51,7 @@ export function openCharacterImport() {
       preview.textContent = ''; error.textContent = err.message; modal.querySelector('#actor_count').textContent = 'No se ha importado ningún archivo.';
     }
   };
-  button.onclick = () => {
+  button.onclick = async () => {
     try {
       const cv = window.veilCanvas, center = cv?.screenToWorld(cv.displayWidth / 2, cv.displayHeight / 2) || { x: 600, y: 400 };
       const entries = [];
@@ -65,9 +65,10 @@ export function openCharacterImport() {
         entries.push({ token, updateId: action === 'new' ? null : action });
       });
       if (!entries.length) throw new Error('No hay personajes seleccionados para importar.');
-      const count = store.importActors(entries);
+      button.disabled = true; modal.dataset.busy = "1";
+      const count = onImport ? await onImport(entries) : store.importActors(entries);
       modal.remove(); notify(`${count} personaje${count === 1 ? '' : 's'} importado${count === 1 ? '' : 's'}.`);
-    } catch (err) { error.textContent = err.message; }
+    } catch (err) { error.textContent = err.message; } finally { button.disabled = false; delete modal.dataset.busy; }
   };
   return modal;
 }

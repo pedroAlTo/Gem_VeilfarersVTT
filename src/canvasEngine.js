@@ -2229,14 +2229,14 @@ export class CanvasEngine {
     if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
       let viewers = [];
       if (state.userRole === 'player') {
-        viewers = activeTokens.filter(t => t.isPlayer);
+        viewers = activeTokens.filter(t => t.isPlayer || (t.actorType === 'drone' && t.controllerIds?.length));
         if (viewers.length === 0) {
           const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
           if (claimed) viewers = [claimed];
         }
       } else {
         // Keeper mode: use player tokens to stamp exploration and show visibility
-        viewers = activeTokens.filter(t => t.isPlayer);
+        viewers = activeTokens.filter(t => t.isPlayer || (t.actorType === 'drone' && t.controllerIds?.length));
         if (viewers.length === 0 && state.selectedTokenId) {
           const sel = activeTokens.find(t => t.id === state.selectedTokenId);
           if (sel) viewers = [sel];
@@ -2544,13 +2544,13 @@ export class CanvasEngine {
   isTokenVisibleToPlayers(targetTok, allTokens, map) {
     const state = store.getState();
     // 1. Friendly player tokens are always visible to players
-    if (targetTok.isPlayer) return true;
+    if (targetTok.isPlayer || (targetTok.actorType === 'drone' && targetTok.controllerIds?.length)) return true;
 
     // 2. If Keeper has GM Vision active, all tokens are visible to Keeper
     if (state.userRole === 'keeper' && state.gmVision) return true;
 
     // 3. Find viewing tokens: all friendly player characters
-    let viewers = allTokens.filter(t => t.isPlayer);
+    let viewers = allTokens.filter(t => t.isPlayer || (t.actorType === 'drone' && t.controllerIds?.length));
     if (viewers.length === 0) {
       const sel = allTokens.find(t => t.id === state.selectedTokenId || t.id === state.claimedTokenId);
       if (sel) viewers = [sel];
@@ -2978,7 +2978,7 @@ export class CanvasEngine {
       ctx.save();
       let rimColor = '#00f3ff';
       if (tok.path === 'Sleeping') rimColor = '#ffaa00';
-      if (!tok.isPlayer) rimColor = '#ef4444';
+      if (!tok.isPlayer) rimColor = tok.actorType === 'drone' ? '#72dfce' : '#ef4444';
       if (tok.hidden) rimColor = '#a855f7';
 
       ctx.strokeStyle = rimColor;

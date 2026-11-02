@@ -1,3 +1,6 @@
+import './sessionUI.css';
+import './diceTray.css';
+import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import './dossiers.css';
 import { openSessionManager } from './sessionManager.js';
 import { LOCAL_ONLY } from './runtimeMode.js';
@@ -94,6 +97,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupToolbarEvents();
   setupSidebarTabNavigation();
   setupKeyboardShortcuts();
+  initSessionBar();
+  window.addEventListener("veil:remote-roll", event => { if (store.state.dice3d !== false && event.detail.actorId !== store.state.claimedTokenId) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(event.detail)).catch(() => {}); });
   setupAutoJoinFromURL();
 });
 
@@ -212,7 +217,7 @@ function setupHeaderEvents() {
 
   sceneSelect.onchange = (e) => {
     const id = e.target.value;
-    store.update({ activeMapId: id });
+    store.switchScene(id);
     network.broadcast({ type: 'MAP_CHANGE', mapId: id });
   };
 
@@ -651,129 +656,12 @@ function setupKeyboardShortcuts() {
 }
 
 // --- Multiplayer Modal ---
-function openMultiplayerModal() {
-  const state = store.getState();
-  const modal = document.createElement('div');
-  modal.className = 'veil-modal-backdrop';
-  modal.innerHTML = sanitizeHTML(`
-    <div class="veil-modal-box">
-      <div class="veil-modal-header">
-        <h3>QUANTUM CARRIER LINK // MULTIPLAYER</h3>
-        <button class="modal-close-btn">&times;</button>
-      </div>
-      <div class="veil-modal-body">
-        <p class="modal-intro">
-          Invite your crew to an encrypted peer session. The Keeper assigns character control. A signalling service establishes the connection.
-        </p>
-
-        <!-- Current Status -->
-        <div class="log-card glass-panel" style="margin-bottom: 16px;">
-          <div class="log-card-header">
-            <span>NETWORK STATUS</span>
-            <span class="${state.isConnected ? 'text-cyan' : 'text-amber'}">${state.isConnected ? 'TRANSMITTING ONLINE' : 'LOCAL OFFLINE'}</span>
-          </div>
-          <div style="margin-top: 6px;">
-            ${state.roomCode ? `ROOM CODE: <strong class="text-cyan">${state.roomCode}</strong>` : 'No carrier frequency open yet.'}
-          </div>
-          ${state.connectedPeers?.length ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Connected crew: ${state.connectedPeers.length} players</div>` : ''}
-        </div>
-
-        <!-- Host Option -->
-        <div class="form-group" style="padding: 12px; background: rgba(15, 23, 42, 0.7); border-radius: var(--radius-sm); border: 1px solid rgba(0, 243, 255, 0.2);">
-          <label style="color: var(--cyan-pearl);">HOST NEW SESSION (AS KEEPER)</label><label class="hud-checkbox-label"><input type="checkbox" id="optional_efforts" ${state.optionalEfforts?'checked':''} ${state.isConnected?'disabled':''} /> Optional Efforts: Second Wind + Seize the Moment</label>
-          <p style="font-size: 11px; color: var(--text-dim); margin-bottom: 8px;">
-            Generates a room frequency code. Players who join will sync token positions, Fear meter, and shared clocks in real-time.
-          </p>
-          <button class="hud-btn hud-btn-primary" id="btn_host_game" style="width: 100%;">
-            BROADCAST NEW ROOM FREQUENCY
-          </button>
-        </div>
-
-        <!-- Join Option -->
-        <div class="form-group" style="padding: 12px; background: rgba(15, 23, 42, 0.7); border-radius: var(--radius-sm); border: 1px solid rgba(255, 170, 0, 0.2); margin-top: 12px;">
-          <label style="color: var(--amber-warn);">JOIN SESSION (AS PLAYER)</label>
-          <div class="form-row session-join-fields">
-            <input type="text" id="join_room_code" class="hud-input" placeholder="VEIL-…" style="text-transform: uppercase;" /><label>Invitation key</label><input type="text" id="join_invite_key" class="hud-input" placeholder="Key from your Keeper" />
-            <input type="text" id="join_player_name" class="hud-input" placeholder="Operative Call-sign" value="Voidwalker" />
-          </div>
-          <button class="hud-btn hud-btn-amber" id="btn_join_game" style="width: 100%; margin-top: 8px;">
-            CONNECT TO CARRIER
-          </button>
-        </div>
-
-        ${state.roomCode ? `
-          <div class="form-group" style="margin-top: 14px;">
-            <label>Direct Join Link</label>
-            <div class="form-row">
-              <input type="text" id="share_link_input" class="hud-input" readonly value="${window.location.origin + window.location.pathname}?room=${state.roomCode}#invite=${network.invite}" />
-              <button class="hud-btn hud-btn-secondary" id="copy_link_btn">COPY</button>
-            </div>
-          </div>
-        ` : ''}
-      </div>
-    </div>
-  `);
-
-  if(state.isHosting){
-    const group=document.createElement('div');group.className='session-assignments';
-    for(const [peerId,info] of network.members){
-      const row=document.createElement('div');row.className='form-group';const label=document.createElement('label');label.textContent=info.name;row.append(label);
-      const picker=document.createElement('vf-select');picker.className='hud-select';
-      const empty=document.createElement('option');empty.value='';empty.textContent='Observer · assign a character';picker.append(empty);
-      for(const t of state.tokens.filter(t=>t.isPlayer)){const option=document.createElement('option');option.value=t.id;option.textContent=t.name;picker.append(option);if(t.ownerId===peerId)picker.value=t.id;}
-      picker.onchange=()=>network.assignToken(peerId,picker.value);row.append(picker);group.append(row);
-    }
-    const end=document.createElement('button');end.className='hud-btn';end.textContent='Close session';end.onclick=()=>{network.disconnect();modal.remove();};group.append(end);
-    modal.querySelector('.veil-modal-body').append(group);
-  }
-  document.body.appendChild(modal);
-
-  modal.querySelector('.modal-close-btn').onclick = () => modal.remove();
-  modal.onclick = (e) => {
-    if (e.target === modal) modal.remove();
-  };
-
-  const optional=modal.querySelector('#optional_efforts');if(optional)optional.onchange=()=>{if(!store.state.isConnected&&store.sessionRole!=='player')store.update({optionalEfforts:optional.checked});};
-  // Host Action
-  modal.querySelector('#btn_host_game').onclick = async () => {
-    let code; try { code=await network.hostSession(); } catch(e){notify(e.message,'error');return;}
-    modal.remove();
-    notify(`Quantum link open! Room code: ${code}. Share this code or URL with your players.`);
-  };
-
-  // Join Action
-  modal.querySelector('#btn_join_game').onclick = async () => {
-    const code = modal.querySelector('#join_room_code').value.trim().toUpperCase();
-    const name = modal.querySelector('#join_player_name').value.trim() || 'Voidwalker';
-    if (!code) {
-      notify('Enter a valid room code.');
-      return;
-    }
-    try { await network.joinSession(code, name,modal.querySelector('#join_invite_key').value.trim()); } catch(e){notify(e.message,'error');}
-    modal.remove();
-  };
-
-  // Copy Link
-  const copyBtn = modal.querySelector('#copy_link_btn');
-  if (copyBtn) {
-    copyBtn.onclick = async () => {
-      const input = modal.querySelector('#share_link_input');
-      input.select();
-      try { if(navigator.clipboard)await navigator.clipboard.writeText(input.value);else if(!document.execCommand('copy'))throw new Error('Copy unavailable'); }catch{notify('The link is selected. Use Ctrl+C or Cmd+C to copy.');return;}
-      copyBtn.textContent = 'COPIED!';
-      setTimeout(() => copyBtn.textContent = 'COPY', 1500);
-    };
-  }
-}
-
-// --- Auto Join from URL query string ?room=VEIL-XXXX ---
+function openMultiplayerModal() { return openSessionLobby(); }
 function setupAutoJoinFromURL() {
   if (LOCAL_ONLY) return;
-  const urlParams = new URLSearchParams(window.location.search);
-  const roomCode = urlParams.get('room');
-  if (roomCode) {
-    network.joinSession(roomCode, 'Voidwalker',new URLSearchParams(location.hash.slice(1)).get('invite')||'').catch(e=>notify(e.message,'error'));
-  }
+  const room = new URLSearchParams(location.search).get('room');
+  const invite = new URLSearchParams(location.hash.slice(1)).get('invite');
+  if (room && invite) openSessionLobby(`${room}.${invite}`);
 }
 
 // --- Data Export / Import Modal ---

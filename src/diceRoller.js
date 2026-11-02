@@ -30,7 +30,7 @@ export class DiceRollerSidebar {
     const actorChanged=this.currentActor?.id!==token?.id;
     this.currentActor = token;
     const isPC = token && token.isPlayer !== false;
-    this.container.querySelector('#roll_check_btn').disabled = !token;
+    this.container.querySelector('#roll_check_btn').disabled = !token || !store.canEditToken(token.id);
     if (!token) this.container.querySelector('#dice_actor_name').textContent = 'Selecciona un actor';
     this.container.querySelector('#dice_exp_mod').disabled = !isPC;
     const experiences = token ? characterDetails(token).experiences : [];
@@ -82,7 +82,7 @@ export class DiceRollerSidebar {
 
   render() {
     this.container.innerHTML = sanitizeHTML(`
-      <div class="dice-sidebar-content">
+      <div class="dice-sidebar-content"><div class="tray-launcher"><div><span>ORBITAL DICE ARRAY</span><strong>3D Hope &amp; Fear</strong></div><button class="hud-btn" id="open_dice_tray">Open tray</button></div>
         <!-- Tab Navigation -->
         <div class="sidebar-subtabs">
           <button class="subtab-btn active" id="tab_check_btn">HOPE & FEAR CHECK</button>
@@ -298,6 +298,7 @@ export class DiceRollerSidebar {
   }
 
   initEvents() {
+    this.container.querySelector("#open_dice_tray").onclick = async () => { const { openDiceTray } = await import("./diceTray3d.js"); openDiceTray(); };
     // Subtabs toggle
     const checkTab = this.container.querySelector('#tab_check_btn');
     const damageTab = this.container.querySelector('#tab_damage_btn');
@@ -394,6 +395,7 @@ export class DiceRollerSidebar {
     try {
       result = await network.requestAction({type:'CHECK',actorId:actor.id,options:{traitId:this.selectedTraitId,subtraitId,dc,hasAdvantage,hasDisadvantage,useResolve,experienceMod:expMod,customMod,criticalChoice:this.container.querySelector('#critical_resource').value,meaningful:this.container.querySelector('#meaningful_roll').checked}});
     } catch(e) { notify(e.message,'error'); return; }
+    if (store.state.dice3d !== false) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(result)).catch(() => notify("3D dice unavailable; your roll is shown below."));
     this.lastResult=result;
     this.showResult(result);
   }

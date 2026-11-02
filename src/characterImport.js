@@ -19,7 +19,7 @@ export function parseCharacterJSON(input) {
     const token = structuredClone(doc.token);
     if (!text(token.name).trim() || !object(token.hp) || !object(token.stress) || !object(token.armor)) throw new Error('El actor VTT debe incluir nombre, HP, Armor y Stress.');
     // Native exports are portable actors, never a tactical ID or a campaign snapshot.
-    for (const k of ['id', 'mapId', 'x', 'y', 'ownerId']) delete token[k];
+    for (const k of ['id', 'mapId', 'x', 'y', 'ownerId', 'controllerIds', 'scenePositions']) delete token[k];
     return { token, missing: [], warnings: [], format: 'VTT Actor 1' };
   }
   if (doc.app !== 'Veilfarers Character Sheet' || !object(doc.fields) || !object(doc.tracks?.max) || !object(doc.tracks?.current))
@@ -117,7 +117,7 @@ export function exportSystemCharacter(token) {
 }
 export function exportNativeCharacter(token) {
   const portable = structuredClone(token);
-  for (const key of ['id', 'mapId', 'x', 'y', 'ownerId']) delete portable[key];
+  for (const key of ['id', 'mapId', 'x', 'y', 'ownerId', 'controllerIds', 'scenePositions']) delete portable[key];
   return { app: 'Veilfarers VTT Actor', version: 1, token: portable };
 }
 export function downloadJSON(data, filename) {

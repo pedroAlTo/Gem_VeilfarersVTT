@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    match /users/{uid}/characters/{characterId} {
+      allow read, delete: if owner(uid);
+      allow create: if owner(uid) && request.resource.data.keys().hasOnly(['name', 'payload', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 200
+        && request.resource.data.payload is string && request.resource.data.payload.size() <= 500000
+        && request.resource.data.updatedAt is number;
+    }
+    match /users/{uid}/settings/preferences {
+      allow read, delete: if owner(uid);
+      allow create, update: if owner(uid)
+        && request.resource.data.keys().hasOnly(['userName', 'audioMuted', 'showGrid', 'gridSnap', 'diceTheme', 'dice3d', 'reducedMotion'])
+        && request.resource.data.userName is string && request.resource.data.userName.size() <= 80
+        && request.resource.data.audioMuted is bool && request.resource.data.showGrid is bool
+        && request.resource.data.gridSnap is bool && request.resource.data.dice3d is bool
+        && request.resource.data.reducedMotion is bool
+        && request.resource.data.diceTheme in ['crystal', 'panels', 'circuits', 'galaxy'];
+    }
+    match /users/{uid}/scenes/{sceneId} {
+      allow read, delete: if owner(uid);
+      allow create: if owner(uid)
+        && request.resource.data.keys().hasOnly(['name', 'gridSize', 'ambientLight', 'width', 'height', 'imageUrl', 'storagePath', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 200
+        && request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() < 4000
+        && request.resource.data.storagePath.matches('users/' + uid + '/maps/[^/]+')
+        && request.resource.data.gridSize is number && request.resource.data.gridSize >= 24 && request.resource.data.gridSize <= 250
+        && request.resource.data.ambientLight is number && request.resource.data.ambientLight >= 0 && request.resource.data.ambientLight <= 1
+        && request.resource.data.width is number && request.resource.data.width > 0 && request.resource.data.width <= 6000
+        && request.resource.data.height is number && request.resource.data.height > 0 && request.resource.data.height <= 6000
+        && request.resource.data.updatedAt is number;
+    }
+  }
+}

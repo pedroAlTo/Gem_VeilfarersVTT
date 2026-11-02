@@ -22,7 +22,7 @@ export function createActor(data = {}, mapId) {
 
 // Only sheet data changes on reimport. The existing token keeps its tactical presentation.
 export function replaceActorSheet(existing, imported) {
-  const tactical = ['id', 'mapId', 'x', 'y', 'size', 'rotation', 'ownerId', 'hidden', 'hideName', 'avatarUrl', 'displayConfig', 'displayOverlays', 'conditions', 'visionRadius', 'visionMode', 'visionRange', 'visionAngle', 'hasLight', 'lightRadius', 'lightColor', 'lightEffect', 'hasVibrationVision', 'vibrationRadius', 'isFlying'];
+  const tactical = ['id', 'mapId', 'x', 'y', 'size', 'rotation', 'ownerId', 'controllerIds', 'scenePositions', 'hidden', 'hideName', 'avatarUrl', 'displayConfig', 'displayOverlays', 'conditions', 'visionRadius', 'visionMode', 'visionRange', 'visionAngle', 'hasLight', 'lightRadius', 'lightColor', 'lightEffect', 'hasVibrationVision', 'vibrationRadius', 'isFlying'];
   const next = { ...existing, ...imported };
   for (const key of tactical) {
     if (key in existing) next[key] = structuredClone(existing[key]);

@@ -1,5 +1,17 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Orbital IV — crew, accounts, scenes and 3D dice · 2 November 2026
+
+Adds a guided host/join flow, permanent session status and copyable invitation, player roster, character submissions, one non-drone token per player, and shared drone control. Rejoining the same live room retains a browser-session seat and its assignments. The Keeper can broadcast announcements; guests cannot publish arbitrary state or control other players' tokens.
+
+Separate Firebase email/password accounts store private character versions and preferences. Scene uploads use resumable Firebase Storage transfers and account-owned scene metadata, with cancellation and failure cleanup. The Firebase project is not configured in this checkout; follow `FIREBASE_SETUP.md` before using account/cloud features. Local-only mode keeps cloud and multiplayer disabled.
+
+Scene selection and creation move the party and shared drones atomically while preserving resources, IDs and controllers; returning restores saved positions. Encounter enemies stay in their original scenes, including legacy tokens owned by `keeper`.
+
+Three.js d12 dice use four procedural sci-fi finishes with distinct Hope/Fear palettes, a textured raised mat, physical collision and bounce via cannon-es, reduced motion, and a compatibility renderer for WebGL-disabled devices. The top faces match the actual game result; cosmetic test throws do not alter the game. Three.js and Firebase are loaded in separate chunks as needed.
+
+Validation: 86 automated tests, production and local-mode builds, browser checks for scene creation, live hosting, copying invitations, and all four dice finishes. Two-client join, assignments, character submission, scene sync and leave pass over an in-memory PeerJS transport. A live second-player browser connection timed out, so real WebRTC gameplay remains unverified. The browser used for QA has WebGL disabled; compatibility rendering and CPU physics were checked, but hardware WebGL rendering needs a local GPU check. Firebase authentication, security-rule evaluation and server uploads require a configured project and remain unverified against a live backend. Windows batch launchers were not run on Windows. No production deployment.
+
 ## Orbital III — fichas reales y sesiones locales · 2 de noviembre de 2026
 
 Las fichas anteriores omitían clase, Evasion, experiencias y equipo del creador, y `addToken` descartaba los HP, Armor y Traits recibidos. Esta versión importa JSON de Character Sheet 2.80-RC3.2, preserva el documento completo y emplea sus valores finales sin duplicar bonificaciones. Las fichas y los bloques de adversario tienen una presentación nueva, con exportación individual, revisión de recursos ausentes y actualización de personajes sin mover sus tokens.

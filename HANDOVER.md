@@ -1,3 +1,11 @@
+# Current state — Orbital IV
+
+The current implementation and setup are described in `README.md`, `RELEASE_ORBITAL.md`, and `FIREBASE_SETUP.md`. Branch: `fix/vtt-session-integrity-and-orbital-ui`.
+
+New modules: `sessionLobby.js` (host/join/roster), `tokenPermissions.js` (assignment and scene travel), `cloudAccount.js` + `accountUI.js` (Firebase archives), `sceneCreator.js` (server uploads), `diceTray3d.js` + `dicePhysics.js` + `diceSoftwareRenderer.js` (3D dice and compatibility renderer). Firebase remains unconfigured. No production deployment. Historical notes below describe earlier releases and do not override this status.
+
+---
+
 # Estado actual — Orbital III · fichas y sesiones locales
 
 - Rama de trabajo: `fix/vtt-session-integrity-and-orbital-ui`; no se modifica `master`.

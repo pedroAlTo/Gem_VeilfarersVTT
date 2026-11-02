@@ -2,12 +2,16 @@ import { requireNetworkMode } from './runtimeMode.js';
 // Keeper-authoritative replication. No cross-room BroadcastChannel.
 import PeerJS from 'peerjs';
 import { store } from './state.js';
+import { controlsToken, isDrone } from './tokenPermissions.js';
+import { createActor, replaceActorSheet } from './actors.js';
+import { portableCharacter } from './cloudAccount.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
 import { notify } from './ui.js';
 const Peer = PeerJS?.Peer || PeerJS?.default || PeerJS;
 import { newId as id } from './persistence.js';
 export class NetworkManager {
-  constructor() {
+  constructor({ stateStore = store, peerFactory = (...args) => new Peer(...args) } = {}) {
+    this.store = stateStore; this.peerFactory = peerFactory; this.seats = new Map();
     this.peer = null;
     this.connections = new Map();
     this.members = new Map();
@@ -17,9 +21,9 @@ export class NetworkManager {
     this.invite = '';
     this.room = '';
     this.revision = 0;
-    store.sendTokenPatch = (tokenId, partial) =>
+    this.store.sendTokenPatch = (tokenId, partial) =>
       this.sendToHost({ type: 'TOKEN_UPDATE', tokenId, partial });
-    store.subscribe((s, keys) => {
+    this.store.subscribe((s, keys) => {
       if (s.isHosting && keys.some((k) => CAMPAIGN_KEYS.includes(k))) {
         clearTimeout(this.syncTimer);
         this.syncTimer = setTimeout(() => this.syncAll(), 60);
@@ -31,31 +35,38 @@ export class NetworkManager {
   }
   async hostSession(customCode) {
     requireNetworkMode();
+    await this.store.ready;
     this.disconnect();
     this.room = customCode || `VEIL-${id().slice(0, 8).toUpperCase()}`;
     this.invite = id();
-    this.peer = new Peer(this.room, { debug: 0 });
+    this.lastRevision = -1;
+    this.peer = this.peerFactory(this.room, { debug: 0 });
+    const peer = this.peer;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
+        if (this.peer !== peer) return;
         this.disconnect();
         reject(new Error('Session connection timed out.'));
       }, 15000);
       this.peer.on('open', (peerId) => {
+        if (this.peer !== peer) return;
         clearTimeout(timer);
-        store.sessionRole = 'host';
-        store.peerId = peerId;
-        store.update({ isHosting: true, isConnected: true, roomCode: peerId, userRole: 'keeper' });
+        this.store.sessionRole = 'host';
+        this.store.peerId = peerId;
+        this.store.update({ isHosting: true, isConnected: true, roomCode: peerId, userRole: 'keeper' });
         resolve(peerId);
       });
-      this.peer.on('connection', (conn) => this.setupConnection(conn));
+      this.peer.on('connection', (conn) => { if (this.peer === peer) this.setupConnection(conn); else conn.close(); });
       this.peer.on('error', (err) => {
+        if (this.peer !== peer) return;
         clearTimeout(timer);
+        this.disconnect();
         notify(`Connection: ${err.message}`, 'error');
         reject(err);
       });
       this.peer.on('disconnected', () => {
-        if (!this.peer || this.closing) return;
-        store.update({ isConnected: false });
+        if (this.peer !== peer || this.closing) return;
+        this.store.update({ isConnected: false });
         notify('Signalling disconnected. Reopen the session to reconnect.', 'error');
       });
     });
@@ -64,12 +75,17 @@ export class NetworkManager {
     requireNetworkMode();
     if (!invite) throw new Error('An invitation key from the Keeper is required.');
     this.disconnect();
-    await store.saveQueue;
-    this.localCampaign = store.serializeCampaign();
+    await this.store.ready;
+    await this.store.saveQueue;
+    this.localCampaign = this.store.serializeCampaign();
     this.room = roomCode;
     this.invite = invite;
-    store.sessionRole = 'player';
-    store.update({
+    this.lastRevision = -1;
+    const seatKey = 'veil.resume.' + roomCode + '.' + invite;
+    let resume = id();
+    try { resume = window.sessionStorage.getItem(seatKey) || resume; window.sessionStorage.setItem(seatKey, resume); } catch {}
+    this.store.sessionRole = 'player';
+    this.store.update({
       userRole: 'player',
       gmVision: false,
       userName: playerName,
@@ -77,32 +93,41 @@ export class NetworkManager {
       isConnected: false,
       roomCode,
     });
-    this.peer = new Peer({ debug: 0 });
+    this.peer = this.peerFactory({ debug: 0 });
+    const peer = this.peer;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
+        if (this.peer !== peer) return;
         this.disconnect();
         notify('Connection timed out. Check the invitation and try again.', 'error');
         reject(new Error('Connection timed out'));
       }, 15000);
+      this.joinFailed = error => { clearTimeout(timer); reject(error); };
       this.joinReady = () => {
+        this.joinFailed = null;
         clearTimeout(timer);
         resolve(roomCode);
       };
       this.peer.on('open', (peerId) => {
-        store.peerId = peerId;
+        if (this.peer !== peer) return;
+        this.store.peerId = peerId;
         const conn = this.peer.connect(roomCode, { reliable: true });
         this.hostConn = conn;
         conn.on('open', () =>
-          conn.send(this.envelope({ type: 'HELLO', invite, playerName: playerName.slice(0, 80) }))
+          conn.send(this.envelope({ type: 'HELLO', invite, resume, playerName: playerName.slice(0, 80) }))
         );
-        conn.on('data', (data) => this.handleIncomingMessage(data, conn.peer));
+        conn.on('data', (data) => { if (this.hostConn === conn) this.handleIncomingMessage(data, conn.peer); });
         conn.on('close', () => {
-          store.update({ isConnected: false });
+          if (this.closing || this.hostConn !== conn || this.peer !== peer) return;
+          if (this.joinFailed) { this.disconnect(); return; }
+          this.store.update({ isConnected: false });
           notify('Keeper disconnected. Your local campaign is preserved.', 'error');
         });
       });
       this.peer.on('error', (err) => {
+        if (this.peer !== peer) return;
         clearTimeout(timer);
+        this.disconnect();
         notify(err.message, 'error');
         reject(err);
       });
@@ -123,8 +148,14 @@ export class NetworkManager {
           return;
         }
         clearTimeout(expiry);
+        const resume = typeof data.resume === 'string' && /^[a-zA-Z0-9-]{20,100}$/.test(data.resume) ? data.resume : id();
+        const memberId = this.seats.get(resume) || 'player_' + id();
+        if ([...this.members.values()].some(m => m.id === memberId)) { conn.close(); return; }
         this.connections.set(conn.peer, conn);
-        this.members.set(conn.peer, { name: String(data.playerName || 'Player').slice(0, 80) });
+        this.seats.set(resume, memberId);
+        const name = String(data.playerName || 'Player').slice(0, 80);
+        this.members.set(conn.peer, { id: memberId, name });
+        this.store.update({ players: [...(this.store.state.players || []).filter(p => p.id !== memberId), { id: memberId, name }] });
         this.updatePeersList();
         this.syncPeer(conn);
         notify(`${data.playerName || 'Player'} joined. Assign their character in Session.`);
@@ -140,11 +171,13 @@ export class NetworkManager {
     });
   }
   updatePeersList() {
-    store.update({ connectedPeers: [...this.members].map(([id, m]) => ({ id, name: m.name })) });
+    if (this.closing) return;
+    this.store.update({ connectedPeers: [...this.members].map(([peerId, m]) => ({ id: m.id || peerId, name: m.name })) });
+    this.syncAll();
   }
   snapshotFor(peerId) {
-    const s = store.getState(),
-      map = structuredClone(store.getActiveMap());
+    const s = this.store.getState(),
+      map = structuredClone(this.store.getActiveMap());
     map.walls = (map.walls || []).map((w) =>
       w.isSecret
         ? {
@@ -160,8 +193,10 @@ export class NetworkManager {
           }
         : w
     );
+    const memberId = this.members.get(peerId)?.id || peerId;
     return {
-      ...store.serializeCampaign(),
+      ...this.store.serializeCampaign(),
+      memberId, connectedPeers: this.store.state.connectedPeers || [],
       maps: [map],
       tokens: s.tokens
         .filter((t) => t.mapId === s.activeMapId && !t.hidden)
@@ -171,12 +206,13 @@ export class NetworkManager {
             copy.name = 'Unknown contact';
             copy.roleTag = 'Unidentified';
             copy.species = '';
+            delete copy.sourceCharacter; delete copy.featureNotes;
           }
           return copy;
         }),
       clocks: s.clocks.filter((c) => !c.isKeeperOnly),
       handouts: s.handouts.filter((h) => h.sharedWithPlayers),
-      claimedTokenId: s.tokens.find((t) => t.ownerId === peerId)?.id || null,
+      claimedTokenId: s.tokens.find((t) => !isDrone(t) && t.ownerId === memberId)?.id || null,
     };
   }
   syncPeer(conn) {
@@ -190,23 +226,50 @@ export class NetworkManager {
       );
   }
   syncAll() {
-    if (!store.state.isHosting) return;
+    if (!this.store.state.isHosting) return;
     for (const conn of this.connections.values()) this.syncPeer(conn);
   }
-  assignToken(peerId, tokenId) {
-    if (!store.state.isHosting || !this.members.has(peerId)) return;
-    for (const token of store.state.tokens)
-      if (token.ownerId === peerId) store.updateToken(token.id, { ownerId: '' });
-    const t = store.state.tokens.find((t) => t.id === tokenId && t.isPlayer);
-    if (t) store.updateToken(t.id, { ownerId: peerId });
+  assignToken(playerId, tokenId) {
+    if (!this.store.state.isHosting) return;
+    const memberId = this.members.get(playerId)?.id || playerId;
+    if (!tokenId) {
+      this.store.update({ tokens: this.store.state.tokens.map(t => !isDrone(t) && t.ownerId === memberId ? { ...t, ownerId: '' } : t) });
+    } else this.store.assignTokenControllers(tokenId, [memberId]);
     this.syncAll();
   }
+  async importCharacter(token) {
+    if (this.store.sessionRole !== 'player') throw new Error('Join a game first.');
+    return this.request('IMPORT_CHARACTER', { token: portableCharacter(token) });
+  }
+  request(type, payload) {
+    if (!this.store.state.isConnected) return Promise.reject(new Error('Not connected to the Keeper.'));
+    const requestId = id();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this.pending.delete(requestId); reject(new Error('Request timed out. Check your connection.')); }, 10000);
+      this.pending.set(requestId, { resolve, reject, timer });
+      this.sendToHost({ type, requestId, ...payload });
+    });
+  }
+  acceptCharacter(token, playerId) {
+    if (!token || JSON.stringify(token).length > 500000) throw new Error('Character must be smaller than 500 KB.');
+    const safe = portableCharacter(token);
+    if (safe.actorType !== 'player' && safe.isPlayer !== true) throw new Error('Import a player character. The Keeper creates drones and NPCs.');
+    safe.actorType = 'player'; safe.isPlayer = true;
+    const created = createActor(safe, this.store.state.activeMapId);
+    const existing = this.store.state.tokens.find(t => !isDrone(t) && t.ownerId === playerId);
+    const actor = existing ? replaceActorSheet(existing, created) : { ...created, ownerId: playerId };
+    const tokens = existing ? this.store.state.tokens.map(t => t.id === actor.id ? actor : t) : [...this.store.state.tokens, actor];
+    validateCampaign({ ...this.store.serializeCampaign(), tokens });
+    this.store.update({ tokens });
+    this.syncAll();
+    return { tokenId: actor.id };
+  }
   broadcast(message) {
-    if (store.sessionRole === 'player') {
+    if (this.store.sessionRole === 'player') {
       this.sendToHost(message);
       return;
     }
-    if (!store.state.isHosting) return;
+    if (!this.store.state.isHosting) return;
     // State changes are replicated from the authoritative store, always filtered.
     if (
       [
@@ -225,7 +288,7 @@ export class NetworkManager {
       this.syncAll();
       return;
     }
-    if (['DICE_ROLL', 'PING', 'SPECIAL_FX', 'TRANSMISSION'].includes(message.type))
+    if (['DICE_ROLL', 'PING', 'SPECIAL_FX', 'TRANSMISSION', 'ANNOUNCEMENT'].includes(message.type))
       for (const conn of this.connections.values())
         if (conn.open) conn.send(this.envelope(message));
   }
@@ -234,8 +297,8 @@ export class NetworkManager {
     else notify('Not connected to the Keeper.', 'error');
   }
   async requestAction(action) {
-    if (store.sessionRole !== 'player') return this.performAction(action);
-    if (!store.state.isConnected) throw new Error('Not connected to the Keeper.');
+    if (this.store.sessionRole !== 'player') return this.performAction(action);
+    if (!this.store.state.isConnected) throw new Error('Not connected to the Keeper.');
     const requestId = id();
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -249,7 +312,7 @@ export class NetworkManager {
   async performAction(action) {
     const { performGameAction } = await import('./gameActions.js');
     const result = performGameAction(action);
-    if (result.log) this.broadcast({ type: 'DICE_ROLL', logEntry: result.log });
+    if (result.log) this.broadcast({ type: 'DICE_ROLL', logEntry: result.log, result: { id: result.id, actorId: result.actorId, hopeVal: result.hopeVal, fearVal: result.fearVal, total: result.total } });
     return result;
   }
   async handleIncomingMessage(data, senderId) {
@@ -262,29 +325,32 @@ export class NetworkManager {
       return;
     this.seen.add(data.messageId);
     if (this.seen.size > 2000) this.seen.delete(this.seen.values().next().value);
-    if (store.sessionRole === 'player') {
+    if (this.store.sessionRole === 'player') {
       if (senderId !== this.hostConn?.peer) return;
       if (data.type === 'INITIAL_STATE') {
         try {
+          if (Number.isFinite(data.revision) && data.revision <= this.lastRevision) return;
           const s = validateCampaign(data.state);
-          store.remoteApplying = true;
-          store.update({
+          this.lastRevision = data.revision;
+          this.store.memberId = data.state.memberId || this.store.peerId;
+          this.store.remoteApplying = true;
+          this.store.update({
             ...s,
             userRole: 'player',
             gmVision: false,
             isConnected: true,
             claimedTokenId: data.state.claimedTokenId,
-            selectedTokenId: s.tokens.some((t) => t.id === store.state.selectedTokenId)
-              ? store.state.selectedTokenId
+            selectedTokenId: s.tokens.some((t) => t.id === this.store.state.selectedTokenId && controlsToken(t, this.store.memberId))
+              ? this.store.state.selectedTokenId
               : data.state.claimedTokenId,
           });
-          store.validateSelections();
+          this.store.validateSelections();
           this.joinReady?.();
           this.joinReady = null;
         } catch (e) {
           notify(`Invalid session state: ${e.message}`, 'error');
         } finally {
-          store.remoteApplying = false;
+          this.store.remoteApplying = false;
         }
       } else if (data.type === 'ACTION_RESULT') {
         const p = this.pending.get(data.requestId);
@@ -296,15 +362,23 @@ export class NetworkManager {
       } else this.ephemeral(data);
       return;
     }
-    if (!store.state.isHosting || !this.members.has(senderId)) return;
+    if (!this.store.state.isHosting || !this.members.has(senderId)) return;
     const owns = (tokenId) =>
-      store.state.tokens.some(
-        (t) => t.id === tokenId && t.isPlayer && t.ownerId === senderId && !t.hidden
+      this.store.state.tokens.some(
+        (t) => t.id === tokenId && controlsToken(t, this.members.get(senderId)?.id || senderId)
       );
+    if (data.type === 'IMPORT_CHARACTER') {
+      const conn = this.connections.get(senderId);
+      try {
+        const result = this.acceptCharacter(data.token, this.members.get(senderId)?.id || senderId);
+        conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, result }));
+      } catch (error) { conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error: error.message })); }
+      return;
+    }
     if (data.type === 'TOKEN_UPDATE' || data.type === 'TOKEN_MOVE') {
       const partial = data.type === 'TOKEN_MOVE' ? { x: data.x, y: data.y } : data.partial;
       if (owns(data.tokenId) && validTokenPatch(partial)) {
-        const token = store.state.tokens.find((t) => t.id === data.tokenId);
+        const token = this.store.state.tokens.find((t) => t.id === data.tokenId);
         for (const k of ['hp', 'armor', 'stress', 'resolve'])
           if (partial[k]) {
             if (partial[k].max !== token[k]?.max) return;
@@ -312,7 +386,7 @@ export class NetworkManager {
               if (field !== 'current' && partial[k][field] !== token[k]?.[field]) return;
             partial[k] = { ...token[k], current: partial[k].current };
           }
-        store.updateToken(data.tokenId, partial);
+        this.store.updateToken(data.tokenId, partial);
         this.syncAll();
       }
       return;
@@ -341,7 +415,9 @@ export class NetworkManager {
     }
   }
   ephemeral(data) {
-    if (data.type === 'DICE_ROLL' && data.logEntry) store.addLog(data.logEntry);
+    // The authoritative snapshot contains logs; the event is only for presentation.
+    if (data.type === 'DICE_ROLL' && data.result) window.dispatchEvent(new CustomEvent('veil:remote-roll', { detail: data.result }));
+    if (data.type === 'ANNOUNCEMENT' && typeof data.text === 'string') window.dispatchEvent(new CustomEvent('veil:announcement', { detail: data.text.slice(0, 2000) }));
     if (data.type === 'PING' && finite(data.x) && finite(data.y))
       window.veilCanvas?.triggerPing(data.x, data.y, '#72d9f5');
     if (data.type === 'TRANSMISSION' && data.handout)
@@ -357,7 +433,6 @@ export class NetworkManager {
     const peer = this.peer;
     this.peer = null;
     peer?.destroy();
-    this.closing = false;
     this.hostConn = null;
     this.connections.clear();
     this.members.clear();
@@ -368,12 +443,14 @@ export class NetworkManager {
     this.pending.clear();
     this.seen.clear();
     this.joinReady = null;
-    store.sessionRole = 'local';
+    this.joinFailed?.(new Error('Session closed. Check the invitation and try again.')); this.joinFailed = null;
+    this.seats.clear(); this.room = ''; this.invite = ''; this.store.memberId = null;
+    this.store.sessionRole = 'local';
     if (this.localCampaign) {
-      store.update(this.localCampaign);
+      this.store.update(this.localCampaign);
       this.localCampaign = null;
     }
-    store.update({
+    this.store.update({
       isHosting: false,
       isConnected: false,
       roomCode: '',
@@ -381,6 +458,8 @@ export class NetworkManager {
       userRole: 'keeper',
       gmVision: true,
     });
+    this.store.validateSelections();
+    this.closing = false;
   }
 }
 export const network = new NetworkManager();

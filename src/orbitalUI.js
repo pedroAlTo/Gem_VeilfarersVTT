@@ -51,7 +51,7 @@ export function initOrbitalUI() {
     '<span id="net_status_dot">●</span> SESSION';
   if (LOCAL_ONLY) {
     const session = document.getElementById('network_modal_btn');
-    session.disabled = true;
+    session.disabled = false;
     session.innerHTML = '<span id="net_status_dot">●</span> LOCAL TEST';
     session.title = 'Local test mode. Multiplayer is disabled.';
   }
