@@ -49,7 +49,7 @@ function database() {
     };
   }));
 }
-export async function readCampaign(id) {
+export async function readCampaign(id, { migrateLegacy = false } = {}) {
   const db = await database();
   let found;
   if (db)
@@ -73,8 +73,37 @@ export async function readCampaign(id) {
     if (s) found = JSON.parse(s);
   }
   if (found) return found;
-  const old = globalThis.localStorage?.getItem('veilvtt_campaign_data_v1207');
+  const old = migrateLegacy && globalThis.localStorage?.getItem('veilvtt_campaign_data_v1207');
   return old ? JSON.parse(old) : null;
+}
+export async function listCampaigns() {
+  const db = await database();
+  let rows = [];
+  if (db) {
+    rows = await new Promise((resolve, reject) => {
+      const result = [], tx = db.transaction('campaigns');
+      const request = tx.objectStore('campaigns').openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) { result.push(summary(cursor.key, cursor.value)); cursor.continue(); }
+      };
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('No se pudo leer la lista de sesiones.'));
+    });
+  } else {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('veilvtt.campaign.')) {
+        try { rows.push(summary(key.slice('veilvtt.campaign.'.length), JSON.parse(localStorage.getItem(key)))); }
+        catch { rows.push({ id: key.slice('veilvtt.campaign.'.length), name: 'Sesión dañada · conserva una copia', damaged: true }); }
+      }
+    }
+  }
+  return rows.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+}
+function summary(id, data) {
+  return { id, name: data.campaignName || 'Sin nombre', savedAt: data.savedAt, tokens: data.tokens?.length || 0, maps: data.maps?.length || 0, clocks: data.clocks?.length || 0 };
 }
 export async function writeCampaign(id, data) {
   const db = await database();

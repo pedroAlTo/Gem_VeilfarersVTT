@@ -1,3 +1,13 @@
+# Estado actual — Orbital III · fichas y sesiones locales
+
+- Rama de trabajo: `fix/vtt-session-integrity-and-orbital-ui`; no se modifica `master`.
+- Importación Character Sheet 2.80-RC3.2 y VTT Actor v1, revisión de recursos ausentes, deduplicación y exportación sin perder campos desconocidos. Adaptador: `src/characterImport.js`.
+- Ficha nueva: `dossierUI.js`; importación: `characterManager.js`; gestión de sesiones: `sessionManager.js`. Los ajustes tácticos anteriores siguen accesibles desde la ficha.
+- `addToken` conserva los valores recibidos; UUID por actor. NPC: Evasion, Attack, expresión de daño y habilidades propias. La importación no automatiza el texto libre de habilidades.
+- Sesiones locales independientes y guardado antes de cambiar. `importCampaignJSON` ahora es asíncrono; llamar con `await` y revisar su resultado. El registro se incluye en schemaVersion 3.
+- 70 pruebas automatizadas y build local. Los cuatro JSON aportados se usaron para validar sin incorporarlos al repositorio. Batch Windows existente; no ejecutado en Windows.
+- Historial de exploración de niebla no persistido entre recargas; mediciones y FX puntuales transitorios. Firebase y multijugador siguen fuera del alcance de esta fase.
+
 ## Actualización — Orbital II, 2 de noviembre de 2026
 
 - Rama de trabajo: `fix/vtt-session-integrity-and-orbital-ui`.

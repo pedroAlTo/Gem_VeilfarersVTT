@@ -32,9 +32,25 @@ Antes de probar con una partida importante, expórtala desde **Archive**. `local
 - **Calidad:** compara Eco, Balanced y Ultra en el laboratorio (`/fx-lab.html`). Puedes pausar la animación. El laboratorio no lee ni guarda campañas. Respeta la preferencia de movimiento reducido.
 - **Móvil/tableta:** comprueba los controles de abrir/cerrar paneles, las barras de stats y que puedas recolocar los clocks.
 
+## Fichas JSON y sesiones guardadas (Orbital III)
+
+1. Abre **SESIONES** y crea una sesión con **Nueva vacía**. Conserva la campaña anterior con su propia identidad. Puedes duplicar una sesión preparada, renombrarla y abrirla después.
+2. En **ROSTER → IMPORTAR PERSONAJES JSON** (también disponible en SESIONES), selecciona los archivos del creador. Admite hasta 30 JSON de 2 MB cada uno.
+3. Revisa el resumen y los valores actuales ausentes. En los archivos de Asha y Juno no se exportaron esos valores: la interfaz propone HP/Armor al máximo y Stress/Hope en 0, pero exige revisarlos y confirmarlos. Puedes indicar Hope 2 si corresponde a la situación de partida. Silas conserva los valores de su archivo.
+4. La copia repetida de Asha se omite por defecto. Al reimportar, elige **Actualizar** para reemplazar los datos de la ficha conservando el token, su posición, retrato, visibilidad y overlays; o **Crear otra copia** si lo necesitas. Los archivos con `character_id` se emparejan por ese ID; los demás por nombre, clase, especie y senda, por lo que conviene revisar los posibles duplicados.
+5. Selecciona el token y pulsa **FICHA**. Comprueba identidad, Evasion, Traits finales, recursos y umbrales. En **Rasgos y equipo**, comprueba las experiencias de la senda activa, armas, poderes y equipo. Asha conserva Stress máximo 6 y su Net Launcher muestra `n/a`.
+6. Guarda una nota, cambia a otra sesión y vuelve; después recarga el navegador. La ficha, las escenas, clocks, nave, documentos y el registro (últimas 150 entradas) deben recuperarse. Se guardan los ajustes de niebla, pero no su historial de exploración al cerrar el navegador; las plantillas de medida y los efectos puntuales son transitorios.
+7. **Exportar actor VTT** conserva toda la ficha local y sirve también para PNJ/adversarios. **Exportar al creador** conserva el JSON original y actualiza los datos editables y recursos; no recalcula reglas de avance ni modifica automáticamente las descripciones de poderes. Comprueba los campos derivados al abrirlo en tu creador.
+8. **Exportar sesión JSON** crea una copia transportable; **Importar sesión JSON** la abre con una identidad nueva sin sobrescribir las sesiones guardadas. El autoguardado pertenece al navegador y a su dirección (mantén `http://127.0.0.1:5173` con el batch). Exporta antes de cambiar de navegador o limpiar sus datos.
+9. Para enemigos, crea un **ACTOR → Adversario**, introduce HP/Stress/Armor/Evasion/umbrales y completa Attack, daño, alcance y habilidades en su ficha. Las tiradas de adversario utilizan su Attack, no un Trait de PJ. Puedes exportarlo y reimportarlo en formato VTT Actor v1.
+
+Compatibilidad comprobada: **Veilfarers Character Sheet 2.80-RC3.2**, con los cuatro JSON aportados (tres personajes únicos), y **Veilfarers VTT Actor v1**. No se ha recibido un JSON externo de enemigo para validar otro esquema. Las habilidades, costes especiales y expresiones de daño compuestas se conservan como referencia y no se automatizan a partir de texto libre. Las experiencias importadas se pueden seleccionar en el panel de dados; las reglas existentes aplican su coste cuando se tira.
+
+La importación valida el lote completo antes de modificar la sesión. Si falla el guardado, cambiar de sesión se bloquea y el estado actual sigue abierto. La lista de sesiones ofrece una copia de recuperación si no puede leerse el almacenamiento.
+
 ## Validación y límites
 
-Se han ejecutado **52 pruebas automatizadas** y la compilación Vite, incluida la variante `VITE_LOCAL_ONLY=1`. La revisión visual se realizó a 1363, 820 y 390 px; se comprobó arrastre real, persistencia tras recarga, expansión, ordenación y apertura/cierre del panel móvil. Se revisaron el agua rectangular/poligonal y el agujero negro en el laboratorio.
+Se han ejecutado **70 pruebas automatizadas** y la compilación Vite, incluida la variante `VITE_LOCAL_ONLY=1`. La revisión visual se realizó a 1363, 820 y 390 px; se comprobó arrastre real, persistencia tras recarga, expansión, ordenación y apertura/cierre del panel móvil. Se revisaron el agua rectangular/poligonal y el agujero negro en el laboratorio.
 
 El entorno de desarrollo es Linux: el `.bat` se ha revisado, pero **no se ha ejecutado en Windows**. El arranque con `npm ci` requiere acceso al registro de paquetes. No se han realizado pruebas multijugador ni se ha incorporado Firebase en esta iteración. Los efectos son una representación artística en Canvas 2D, no una simulación física.
 

@@ -2,7 +2,8 @@
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
 import { rollVeilfarersCheck, resolveDamage, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
-import { notify, sanitizeHTML } from './ui.js';
+import { notify, sanitizeHTML, escapeHTML } from './ui.js';
+import { characterDetails } from './characterImport.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
@@ -28,6 +29,24 @@ export class DiceRollerSidebar {
     const token = store.getSelectedToken();
     const actorChanged=this.currentActor?.id!==token?.id;
     this.currentActor = token;
+    const isPC = token && token.isPlayer !== false;
+    this.container.querySelector('#roll_check_btn').disabled = !token;
+    if (!token) this.container.querySelector('#dice_actor_name').textContent = 'Selecciona un actor';
+    this.container.querySelector('#dice_exp_mod').disabled = !isPC;
+    const experiences = token ? characterDetails(token).experiences : [];
+    const signature = JSON.stringify([token?.id, experiences]);
+    if (signature !== this.experiencesSignature) {
+      this.experiencesSignature = signature;
+      const select = this.container.querySelector('#dice_experience_select');
+      select.innerHTML = sanitizeHTML('<option value="">Sin experiencia</option>' + experiences.map((x, i) => `<option value="${i}">${escapeHTML(x.name)} (${escapeHTML(x.bonus)})</option>`).join(''));
+      select.disabled = !isPC || !experiences.length;
+      select.onchange = () => { this.container.querySelector('#dice_exp_mod').value = Number(experiences[Number(select.value)]?.bonus) || 0; if (select.value === '') this.container.querySelector('#dice_exp_mod').value = 0; };
+    }
+    if (actorChanged) { this.container.querySelector('#dice_exp_mod').value = 0; this.container.querySelector('#dice_custom_mod').value = 0; }
+    this.container.querySelectorAll('.trait-select-pill').forEach(b => { b.disabled = !token || (!isPC && token.attackModifier !== undefined); });
+    this.container.querySelector('#dice_subtrait_select').disabled = !isPC;
+    if (!isPC) this.container.querySelector('#dice_subtrait_select').value = '';
+    this.updateTraitButtons();
     const resolve=this.container.querySelector('#dice_use_resolve');resolve.disabled=token?.path!=='Sleeping';if(resolve.disabled)resolve.checked=false;
     this.container.querySelector('.critical-choice-row').style.display=token?.path==='Sleeping'?'grid':'none';
     if(actorChanged){this.container.querySelector('#dmg_honed').value=token?.path==='Sleeping'?(token.honedEdgeBonus??Math.max(0,(token.level||1)-1)):0;this.container.querySelector('#dmg_proficiency').value=token?.proficiency||1;}
@@ -39,7 +58,7 @@ export class DiceRollerSidebar {
         const isHorror = token.hideName || (!token.isPlayer && (token.actorType === 'adversary' || /horror|stalker|abomination|threat|alien|beast|monster/i.test(token.name || '')));
         const isMasked = !isKeeper && isHorror;
         const actorName = isMasked ? '?????' : (isKeeper && isHorror ? `${token.name} [?????]` : token.name);
-        actorLabel.textContent = `${actorName} (${token.path || 'Unknown'})`;
+        actorLabel.textContent = isPC ? `${actorName} (${token.path || 'Unknown'})` : `${actorName} · Attack ${token.attackModifier ?? '—'} · Evasion ${token.evasion ?? '—'}`;
       }
       this.updateTraitButtons();
     }
@@ -131,10 +150,11 @@ export class DiceRollerSidebar {
 
           <div class="form-row critical-choice-row"><div class="form-group"><label>Sleeping critical · extra point</label><vf-select id="critical_resource" class="hud-select"><option value="effort">Effort (Resolve if full)</option><option value="resolve">Resolve</option></vf-select></div><label class="hud-checkbox-label"><input type="checkbox" id="meaningful_roll" checked /> Meaningful roll</label></div>
           <!-- Flat Modifier & Experience -->
+          <div class="form-group"><label>Experiencia de la ficha</label><vf-select id="dice_experience_select" class="hud-select"><option value="">Sin experiencia</option></vf-select></div>
           <div class="form-row" style="margin-top: 10px;">
             <div class="form-group">
               <label>Experience Mod</label>
-              <input type="number" id="dice_exp_mod" class="hud-input" value="0" min="0" max="3" />
+              <input type="number" id="dice_exp_mod" class="hud-input" value="0" min="0" max="10" />
             </div>
             <div class="form-group">
               <label>Custom Modifier</label>
@@ -316,11 +336,10 @@ export class DiceRollerSidebar {
   }
 
   updateTraitButtons() {
-    if (!this.currentActor) return;
     TRAITS.forEach(t => {
       const modEl = this.container.querySelector(`#trait_mod_${t.id}`);
       if (modEl) {
-        const val = this.currentActor.traits?.[t.id] ?? 0;
+        const val = this.currentActor?.traits?.[t.id] ?? 0;
         modEl.textContent = val >= 0 ? `+${val}` : `${val}`;
       }
     });

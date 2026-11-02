@@ -1,8 +1,10 @@
+import { openDossier } from './dossierUI.js';
+import { validateActor } from './validation.js';
 import { statGaugeHTML } from './tokenVitals.js';
 // src/tokenSheet.js
 // Token HUD Quickbar and Holographic Character Sheet Editor
 
-import { notify, confirmAction, sanitizeHTML } from './ui.js';
+import { notify, confirmAction, sanitizeHTML, escapeHTML } from './ui.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { TRAITS, SUBTRAITS } from './rulesEngine.js';
@@ -161,8 +163,8 @@ export class TokenHUD {
     const isMasked = !isKeeper && isHorror;
     const displayName = isMasked ? '?????' : (isKeeper && isHorror ? `${token.name} [?????]` : token.name);
     const displayRole = isMasked ? 'Amenaza Desconocida // ?????' : (token.roleTag || 'Voidfarer');
-    const isSynth = token.name.includes('HE-09') || token.roleTag?.includes('Synthetic');
-    const maxStress = isSynth ? 7 : (token.stress?.max || 6);
+    const isPC = token.actorType === 'player' || (!token.actorType && token.isPlayer);
+    const maxStress = token.stress?.max ?? 6;
     const isOverwhelmed = (token.stress?.current || 0) >= maxStress;
 
     // --- COMPACT MINIMIZED QUICKBAR (DEFAULT) ---
@@ -171,10 +173,10 @@ export class TokenHUD {
         <div class="token-quickbar glass-panel tok-qb-compact">
           <!-- Token Avatar & Name -->
           <div class="tok-qb-avatar-group">
-            <img src="${token.avatarUrl || '/assets/tokens/captain_harker.jpg'}" class="tok-qb-avatar" />
+            <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" class="tok-qb-avatar" />
             <div class="tok-qb-meta">
-              <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${displayName}</span>
-              <span class="tok-qb-role">${displayRole}</span>
+              <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
+              <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
             </div>
           </div>
 
@@ -184,7 +186,7 @@ export class TokenHUD {
             ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
             ${statGaugeHTML('ARMOR', token.armor?.current, token.armor?.max, 'armor')}
             ${statGaugeHTML('STRESS', token.stress?.current, maxStress, 'stress')}
-            ${statGaugeHTML(token.path === 'Sleeping' ? 'EFFORT' : 'HOPE', token.path === 'Sleeping' ? token.effort : token.hope, 6, 'path')}
+            ${isPC ? statGaugeHTML(token.path === 'Sleeping' ? 'EFFORT' : 'HOPE', token.path === 'Sleeping' ? token.effort : token.hope, 6, 'path') : `<div class="dossier-eyebrow">EVASION ${token.evasion ?? '—'}<br>ATTACK ${token.attackModifier ?? '—'}</div>`}
           </div>
 
           <!-- Compact Action Controls -->
@@ -203,10 +205,10 @@ export class TokenHUD {
       <div class="token-quickbar glass-panel tok-qb-expanded">
         <!-- Token Header / Avatar -->
         <div class="tok-qb-avatar-group">
-          <img src="${token.avatarUrl || '/assets/tokens/captain_harker.jpg'}" class="tok-qb-avatar" />
+          <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" class="tok-qb-avatar" />
           <div class="tok-qb-meta">
-            <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${displayName}</span>
-            <span class="tok-qb-role">${displayRole}</span>
+            <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
+            <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
           </div>
           <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Open Full Character Sheet">SHEET</button>
         </div>
@@ -252,7 +254,7 @@ export class TokenHUD {
 
         <!-- Hope (Awakened) or Effort/Resolve (Sleeping) -->
         <div class="tok-qb-stat-group">
-          ${token.path === 'Awakened' ? `
+          ${!isPC ? `<div class="tok-qb-stat-label">EVASION ${token.evasion ?? '—'} · ATTACK ${token.attackModifier ?? '—'}</div><div>${escapeHTML(token.damageExpression || '')}</div>` : token.path === 'Awakened' ? `
             <div class="tok-qb-stat-label">
               <span>HOPE</span>
               <span class="tok-qb-num text-cyan">${token.hope || 0} / 6</span>
@@ -301,7 +303,7 @@ export class TokenHUD {
         <div class="tok-qb-divider"></div>
 
         <!-- Sleeper Common Efforts Collapsible Drawer (If Sleeping) -->
-        ${token.path === 'Sleeping' ? `
+        ${isPC && token.path === 'Sleeping' ? `
           <div class="tok-qb-moves-collapsible-container" style="position: relative;">
             <button class="hud-btn hud-btn-xs hud-btn-amber" id="toggle_moves_drawer" style="white-space: nowrap;">
               ⚡ ESFUERZOS (${this.movesOpen ? 'OCULTAR ▲' : 'DESPLEGAR 9 ▼'})
@@ -501,7 +503,7 @@ export class TokenHUD {
           store.addLog({
             sender: token.name,
             type: 'HOPE_MOVE',
-            title: `${token.name}: Spent 1 Hope on [${act.toUpperCase()}]`,
+            title: `${escapeHTML(token.name)}: Spent 1 Hope on [${act.toUpperCase()}]`,
             details: `Remaining Hope: ${token.hope - 1} / 6`
           });
         } else {
@@ -531,13 +533,18 @@ export class TokenHUD {
   }
 
   openCharacterSheetModal(token) {
+    if (store.sessionRole === 'player') { notify('El Keeper gestiona las fichas.'); return; }
+    return openDossier(token, actor => this.openTokenSettingsModal(actor));
+  }
+
+  openTokenSettingsModal(token) {
     if(store.sessionRole==='player'){notify('The Keeper manages character dossiers. Use your assigned character’s quick controls.');return;}
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
     modal.innerHTML = sanitizeHTML(`
       <div class="veil-modal-box sheet-modal-box">
         <div class="veil-modal-header">
-          <h3>OPERATIVE DOSSIER // [${token.name.toUpperCase()}]</h3>
+          <h3>OPERATIVE DOSSIER // [${escapeHTML(token.name.toUpperCase())}]</h3>
           <button class="modal-close-btn">&times;</button>
         </div>
         <div class="veil-modal-body sheet-modal-body">
@@ -545,28 +552,28 @@ export class TokenHUD {
             <!-- Left Column: Portrait & Identity -->
             <div class="sheet-col-left">
               <div class="sheet-avatar-frame">
-                <img src="${token.avatarUrl || '/assets/tokens/captain_harker.jpg'}" id="sheet_avatar_preview" class="sheet-avatar-img" />
+                <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" id="sheet_avatar_preview" class="sheet-avatar-img" />
               </div>
 
               <div class="form-group" style="margin-top: 10px;">
                 <label>Avatar URL or File</label>
-                <input type="text" id="sheet_avatar_url" class="hud-input" value="${token.avatarUrl || ''}" />
+                <input type="text" id="sheet_avatar_url" class="hud-input" value="${escapeHTML(token.avatarUrl || '')}" />
                 <input type="file" id="sheet_avatar_file" accept="image/*" class="hud-file-input" style="margin-top: 6px;" />
               </div>
 
               <div class="form-group">
                 <label>Token Name</label>
-                <input type="text" id="sheet_name" class="hud-input" value="${token.name}" />
+                <input type="text" id="sheet_name" class="hud-input" value="${escapeHTML(token.name)}" />
               </div>
 
               <div class="form-group">
                 <label>Class / Role / Title</label>
-                <input type="text" id="sheet_role" class="hud-input" value="${token.roleTag || ''}" />
+                <input type="text" id="sheet_role" class="hud-input" value="${escapeHTML(token.roleTag || '')}" />
               </div>
 
               <div class="form-group">
                 <label>Species / Lineage (ej. Ailurean, Humano, Synth)</label>
-                <input type="text" id="sheet_species" class="hud-input" value="${token.species || (token.roleTag?.toLowerCase().includes('ailurean') ? 'Ailurean' : '')}" placeholder="Ailurean (activa visión cromática), etc." />
+                <input type="text" id="sheet_species" class="hud-input" value="${escapeHTML(token.species || (token.roleTag?.toLowerCase().includes('ailurean') ? 'Ailurean' : ''))}" placeholder="Ailurean (activa visión cromática), etc." />
               </div>
 
               <div class="form-group">
@@ -672,7 +679,7 @@ export class TokenHUD {
                 </div>
                 <div class="form-group">
                   <label>Recovery Anchor (Bond / Quarters / Keepsake)</label>
-                  <input type="text" id="sheet_recovery_anchor" class="hud-input" value="${token.recoveryAnchor || 'Vagrant Star Quarters & Memorial Ring'}" />
+                  <input type="text" id="sheet_recovery_anchor" class="hud-input" value="${escapeHTML(token.recoveryAnchor || '')}" />
                 </div>
               </div>
 
@@ -1006,11 +1013,11 @@ export class TokenHUD {
         effort: parseInt(modal.querySelector('#sheet_effort_cur')?.value, 10) ?? token.effort,
         resolve: {
           current: parseInt(modal.querySelector('#sheet_resolve_cur')?.value, 10) ?? (token.resolve?.current || 2),
-          max: parseInt(modal.querySelector('#sheet_resolve_cur')?.value, 10) ?? (token.resolve?.max || 2),
+          max: token.resolve?.max ?? 2,
           dieType: modal.querySelector('#sheet_resolve_die')?.value || 'd4'
         },
         recoveryAnchor: modal.querySelector('#sheet_recovery_anchor')?.value.trim() || token.recoveryAnchor,
-        honedEdgeBonus: parseInt(modal.querySelector('#sheet_honed_edge')?.value, 10) || 1,
+        honedEdgeBonus: parseInt(modal.querySelector('#sheet_honed_edge')?.value, 10) || 0,
         traits,
         subtraits,
         visionMode: modal.querySelector('#sheet_vision_mode').value,
@@ -1038,6 +1045,7 @@ export class TokenHUD {
         }
       };
 
+      try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
       store.updateToken(token.id, updated);
       network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
       modal.remove();

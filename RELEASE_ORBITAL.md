@@ -1,5 +1,13 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Orbital III — fichas reales y sesiones locales · 2 de noviembre de 2026
+
+Las fichas anteriores omitían clase, Evasion, experiencias y equipo del creador, y `addToken` descartaba los HP, Armor y Traits recibidos. Esta versión importa JSON de Character Sheet 2.80-RC3.2, preserva el documento completo y emplea sus valores finales sin duplicar bonificaciones. Las fichas y los bloques de adversario tienen una presentación nueva, con exportación individual, revisión de recursos ausentes y actualización de personajes sin mover sus tokens.
+
+**SESIONES** permite crear, duplicar, renombrar, abrir, guardar y transportar campañas independientes. El cambio espera al guardado de la sesión actual y solo se aplica cuando la nueva copia está escrita. Persiste también el registro, evita heredar el antiguo guardado global al abrir IDs inexistentes y limpia selección, undo y efectos temporales al cambiar de campaña.
+
+Validación: 70 pruebas automatizadas, lectura de los cuatro JSON adjuntos (tres personajes únicos), importación y edición en navegador, exportación/reapertura y build local. Compatible con PNJ/adversarios exportados por el VTT; no se ha validado un esquema externo de enemigos porque no se aportó ninguno. No se añade Firebase ni se hace una prueba multijugador. Instrucciones en `PRUEBAS_LOCALES.md`.
+
 ## Orbital II — 2 de noviembre de 2026
 
 Los clocks compactos estaban forzados a una fila por CSS y solo admitían arrastre al expandirse. Ahora vuelven a posicionarse libremente en el mapa con Pointer Events, captura del puntero y persistencia de coordenadas, incluidos los valores cero. Añade movimiento por teclado, límites de pantalla, cancelación segura y ordenación manual desde el panel Clocks.

@@ -1,3 +1,5 @@
+import './dossiers.css';
+import { openSessionManager } from './sessionManager.js';
 import { LOCAL_ONLY } from './runtimeMode.js';
 import { sanitizeHTML, confirmAction, notify } from './ui.js';
 // src/main.js
@@ -775,60 +777,7 @@ function setupAutoJoinFromURL() {
 }
 
 // --- Data Export / Import Modal ---
-function openDataModal() {
-  const modal = document.createElement('div');
-  modal.className = 'veil-modal-backdrop';
-  modal.innerHTML = sanitizeHTML(`
-    <div class="veil-modal-box">
-      <div class="veil-modal-header">
-        <h3>CAMPAIGN STATE ARCHIVE</h3>
-        <button class="modal-close-btn">&times;</button>
-      </div>
-      <div class="veil-modal-body">
-        <p class="modal-intro">Export or import the full campaign state, including custom tokens, maps, Fear count, and clocks.</p>
-
-        <div style="display: flex; gap: 10px; margin-top: 14px;">
-          <button class="hud-btn hud-btn-primary" id="export_json_btn" style="flex: 1;">
-            EXPORT TO JSON FILE
-          </button>
-        </div>
-
-        <div class="form-group" style="margin-top: 16px;">
-          <label>Import Campaign JSON</label>
-          <input type="file" id="import_json_file" accept=".json" class="hud-file-input" />
-        </div>
-      </div>
-    </div>
-  `);
-
-  document.body.appendChild(modal);
-
-  modal.querySelector('.modal-close-btn').onclick = () => modal.remove();
-  modal.onclick = (e) => {
-    if (e.target === modal) modal.remove();
-  };
-
-  modal.querySelector('#export_json_btn').onclick = () => {
-    store.exportCampaignJSON();
-    modal.remove();
-  };
-
-  modal.querySelector('#import_json_file').onchange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (re) => {
-        if (store.importCampaignJSON(re.target.result)) {
-          notify('Campaign state successfully imported!');
-          modal.remove();
-        } else {
-          notify('Error importing JSON. File format invalid.');
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-}
+function openDataModal() { return openSessionManager(); }
 
 // --- Undo & Redo System (Up to 20 Tactical Steps) ---
 function setupUndoRedoEvents() {

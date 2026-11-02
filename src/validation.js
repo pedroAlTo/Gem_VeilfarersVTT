@@ -11,6 +11,7 @@ export const CAMPAIGN_KEYS = [
   'fogOfWar',
   'fogExploredOpacity',
   'optionalEfforts',
+  'logs',
 ];
 export const finite = (x, min = -1e6, max = 1e6) =>
   typeof x === 'number' && Number.isFinite(x) && x >= min && x <= max;
@@ -69,30 +70,8 @@ export function validateCampaign(data) {
       assert(finite(l.x) && finite(l.y) && finite(l.radius, 0, 100000), 'Invalid light.');
   }
   for (const t of data.tokens) {
-    assert(typeof t.name === 'string' && finite(t.x) && finite(t.y), 'Invalid token data.');
-    resource(t.hp, 'HP');
-    assert(t.hp.max >= 1, 'HP maximum must be positive.');
-    for (const key of ['armor', 'stress', 'resolve'])
-      if (t[key] !== undefined) resource(t[key], key);
-    for (const key of ['hope', 'effort'])
-      if (t[key] !== undefined) assert(finite(t[key], 0, 6), `Invalid ${key}.`);
-    assert(
-      data.maps.some((m) => m.id === t.mapId),
-      'Token refers to an unknown map.'
-    );
-    if (t.conditions !== undefined)
-      assert(
-        Array.isArray(t.conditions) && t.conditions.every((x) => typeof x === 'string'),
-        'Invalid conditions.'
-      );
-    for (const stats of [t.traits, t.subtraits])
-      if (stats !== undefined)
-        assert(
-          stats &&
-            typeof stats === 'object' &&
-            Object.values(stats).every((n) => finite(n, -100, 100)),
-          'Invalid character Traits.'
-        );
+    validateActor(t);
+    assert(data.maps.some(m => m.id === t.mapId), 'Token refers to an unknown map.');
   }
   for (const c of data.clocks)
     assert(
@@ -130,6 +109,7 @@ export function validateCampaign(data) {
         'Invalid system Integrity.'
       );
   } else throw new Error('Missing starship data.');
+  if (data.logs !== undefined) assert(Array.isArray(data.logs) && data.logs.length <= 150 && data.logs.every(x => x && typeof x === 'object'), 'Invalid session log.');
   return structuredClone(data);
 }
 
@@ -174,4 +154,39 @@ export function validTokenPatch(p) {
   )
     return false;
   return true;
+}
+
+export function validateActor(t) {
+    assert(t && typeof t === 'object', 'Invalid actor.');
+    assert(typeof t.name === 'string' && finite(t.x) && finite(t.y), 'Invalid token data.');
+    resource(t.hp, 'HP');
+    assert(t.hp.max >= 1, 'HP maximum must be positive.');
+    for (const key of ['armor', 'stress', 'resolve'])
+      if (t[key] !== undefined) resource(t[key], key);
+    for (const key of ['hope', 'effort'])
+      if (t[key] !== undefined) assert(finite(t[key], 0, 6), `Invalid ${key}.`);
+    if (t.conditions !== undefined)
+      assert(
+        Array.isArray(t.conditions) && t.conditions.every((x) => typeof x === 'string'),
+        'Invalid conditions.'
+      );
+    for (const stats of [t.traits, t.subtraits])
+      if (stats !== undefined)
+        assert(
+          stats &&
+            typeof stats === 'object' &&
+            Object.values(stats).every((n) => finite(n, -100, 100)),
+          'Invalid character Traits.'
+        );
+
+  for (const key of ['majorThreshold', 'severeThreshold']) if (t.hp[key] !== undefined) assert(finite(t.hp[key], 0, 10000), 'Invalid damage thresholds.');
+  if (t.hp.majorThreshold !== undefined && t.hp.severeThreshold !== undefined) assert(t.hp.severeThreshold >= t.hp.majorThreshold, 'Severe debe ser igual o mayor que Major.');
+  for (const key of ['level', 'proficiency', 'evasion', 'attackModifier', 'honedEdgeBonus']) if (t[key] !== undefined) assert(finite(t[key], key === 'attackModifier' ? -100 : 0, 100), `Invalid ${key}.`);
+  for (const key of ['name', 'species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes']) if (t[key] !== undefined) assert(typeof t[key] === 'string' && t[key].length <= 100000, `Invalid ${key}.`);
+  if (t.actorType !== undefined) assert(['player', 'npc', 'adversary'].includes(t.actorType), 'Invalid actor type.');
+  if (t.isPlayer === true && t.path !== undefined) assert(['Awakened', 'Sleeping'].includes(t.path), 'Invalid character Path.');
+  if (t.resolve?.dieType !== undefined) assert(['d4', 'd6'].includes(t.resolve.dieType), 'Invalid Resolve die.');
+  if (t.size !== undefined) assert(finite(t.size, 0.1, 20), 'Invalid token size.');
+  if (t.sourceCharacter !== undefined) assert(t.sourceCharacter && typeof t.sourceCharacter === 'object' && t.sourceCharacter.document?.app === 'Veilfarers Character Sheet' && t.sourceCharacter.document?.fields && typeof t.sourceCharacter.document.fields === 'object', 'Invalid source character.');
+  return t;
 }

@@ -176,14 +176,14 @@ test('empty collections and ship changes persist', async () => {
   assert.equal(restored.state.starship.hull, 1);
   assert.equal(restored.state.starship.pearls, 0);
 });
-test('import validates before mutation and preserves campaign name and active map', () => {
+test('import validates before mutation and preserves campaign name and active map', async () => {
   const before = JSON.stringify(store.state);
-  assert.equal(store.importCampaignJSON('{"maps":null}'), false);
+  assert.equal(await store.importCampaignJSON('{"maps":null}'), false);
   assert.equal(JSON.stringify(store.state), before);
   const data = store.serializeCampaign();
   data.campaignName = 'Imported name';
   data.activeMapId = data.maps[1].id;
-  assert.equal(store.importCampaignJSON(JSON.stringify(data)), true);
+  assert.equal(await store.importCampaignJSON(JSON.stringify(data)), true);
   assert.equal(store.state.campaignName, 'Imported name');
   assert.equal(store.state.activeMapId, data.maps[1].id);
 });
@@ -435,11 +435,11 @@ test('guest replica never overwrites local saved campaign', async () => {
   await store.saveQueue;
   assert.equal(localStorage.getItem(key), saved);
 });
-test('malformed nested imports are rejected atomically', () => {
+test('malformed nested imports are rejected atomically', async () => {
   const before = JSON.stringify(store.state),
     input = store.serializeCampaign();
   input.clocks[0].segments = 1e9;
-  assert.equal(store.importCampaignJSON(JSON.stringify(input)), false);
+  assert.equal(await store.importCampaignJSON(JSON.stringify(input)), false);
   assert.equal(JSON.stringify(store.state), before);
 });
 test('secret doors retain blocking geometry but not labels or secret flags', () => {

@@ -30,10 +30,10 @@ export function performGameAction(action) {
     const result = rollVeilfarersCheck({
       actorName: actor.name,
       path: actor.path,
-      traitName: o.traitId,
-      traitMod: actor.traits?.[o.traitId] || 0,
+      traitName: !player && actor.attackModifier !== undefined ? 'Attack' : o.traitId,
+      traitMod: !player && actor.attackModifier !== undefined ? actor.attackModifier : actor.traits?.[o.traitId] || 0,
       subtraitName: o.subtraitId || '',
-      subtraitMod: actor.subtraits?.[o.subtraitId] || 0,
+      subtraitMod: player ? actor.subtraits?.[o.subtraitId] || 0 : 0,
       dc: o.dc,
       hasAdvantage: !!o.hasAdvantage || !!actor.pendingAdvantage,
       hasDisadvantage: !!o.hasDisadvantage,

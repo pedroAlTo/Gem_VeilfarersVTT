@@ -109,16 +109,27 @@ export class CanvasEngine {
   }
 
   loadMap(mapData) {
-    if (this.currentMapId === mapData.id && this.isMapLoaded) return;
+    const campaignId = store.getState().campaignId;
+    const key = `${campaignId}:${mapData.id}:${mapData.imageUrl}`;
+    if (this.currentMapKey === key) return;
+    if (this.currentCampaignId !== campaignId) {
+      this.templates = []; this.pings = []; this.activeTemplate = null;
+      this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear();
+      for (const name of ['draggedToken', 'draggedWall', 'draggedLight', 'draggedEffect', 'draggedWater', 'draggedTemplate', 'preDragSnapshot']) this[name] = null;
+    }
+    this.currentCampaignId = campaignId;
+    this.currentMapKey = key;
     this.currentMapId = mapData.id;
     this.isMapLoaded = false;
 
     this.mapImage = new Image();
-    this.mapImage.src = mapData.imageUrl;
     this.mapImage.onload = () => {
+      if (this.currentMapKey !== key) return;
       this.isMapLoaded = true;
       this.fitMapToViewport();
     };
+    this.mapImage.onerror = () => { if (this.currentMapKey === key) this.isMapLoaded = false; };
+    this.mapImage.src = mapData.imageUrl;
   }
 
   fitMapToViewport() {
@@ -2236,7 +2247,7 @@ export class CanvasEngine {
         ctx,
         mapWidth: this.mapImage.width,
         mapHeight: this.mapImage.height,
-        mapId: map.id,
+        mapId: `${state.campaignId}:${map.id}`,
         walls: map.walls || [],
         viewers,
         lightingEngine: this.lighting,

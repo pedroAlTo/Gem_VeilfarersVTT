@@ -56,7 +56,8 @@ export function initOrbitalUI() {
     session.title = 'Local test mode. Multiplayer is disabled.';
   }
   document.getElementById('rules_modal_btn').textContent = 'CODEX';
-  document.getElementById('data_menu_btn').textContent = 'ARCHIVE';
+  document.getElementById('data_menu_btn').textContent = 'SESIONES';
+  document.getElementById('data_menu_btn').title = 'Crear, abrir y guardar sesiones locales';
   const sidebar = document.getElementById('main_right_sidebar');
   const heading = document.createElement('div');
   heading.className = 'orbital-panel-heading';
@@ -124,8 +125,8 @@ export function initOrbitalUI() {
   initScrollRails();
   footer.querySelector('button').onclick = () => {
     if (store.state.saveStatus === 'error')
-      notify(`Save failed: ${store.state.saveError}. Export a backup from Archive.`, 'error');
-    else notify('Your campaign is saved on this device. Export a backup from Archive.');
+      notify(`Save failed: ${store.state.saveError}. Exporta una copia desde SESIONES.`, 'error');
+    else notify('Your campaign is saved on this device. Exporta una copia desde SESIONES.');
   };
   // Accessible custom file triggers; the system file picker is only invoked on explicit upload.
   const upgradeFiles = () => {
@@ -135,12 +136,12 @@ export function initOrbitalUI() {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'hud-btn orbital-file-trigger';
-      button.textContent = 'Choose file…';
+      button.textContent = input.multiple ? 'Seleccionar archivos…' : 'Seleccionar archivo…';
       button.onclick = () => input.click();
       input.after(button);
       input.addEventListener(
         'change',
-        () => (button.textContent = input.files?.[0]?.name || 'Choose file…')
+        () => (button.textContent = input.files?.length > 1 ? `${input.files.length} archivos seleccionados` : input.files?.[0]?.name || 'Seleccionar archivo…')
       );
     });
   };

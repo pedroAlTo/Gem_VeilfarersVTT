@@ -1,7 +1,8 @@
 // src/state.js
 // Centralized reactive state store for VeilVTT with Layers, Water, Handouts, and Sleeping Moves
 
-import { activeCampaignId, readCampaign, writeCampaign, selectCampaign, newId } from './persistence.js';
+import { activeCampaignId, readCampaign, writeCampaign, selectCampaign, newId, listCampaigns } from './persistence.js';
+import { createActor, replaceActorSheet } from './actors.js';
 import { CAMPAIGN_KEYS, validateCampaign } from './validation.js';
 import { confirmAction, notify } from './ui.js';
 
@@ -114,6 +115,7 @@ class StateStore {
     this.sessionRole = 'local';
     this.remoteApplying = false;
     this.saveQueue = Promise.resolve();
+    this.initialCampaign = this.serializeCampaign();
     this.ready = this.loadFromStorage();
   }
 
@@ -134,6 +136,7 @@ class StateStore {
   }
 
   update(partialState) {
+    if (this.sessionBusy) return false;
     if (this.sessionRole === 'player' && !this.remoteApplying) {
       if (Object.keys(partialState).some(k=>CAMPAIGN_KEYS.includes(k))) return false;
       if (partialState.userRole === 'keeper') return false;
@@ -324,41 +327,36 @@ class StateStore {
   }
 
   addToken(tokenData) {
-    this._beforeTacticalMutation('Crear Operativo: ' + (tokenData?.name || 'Nuevo Token'));
-    const newToken = {
-      id: 'tok_' + Date.now(),
-      mapId: this.state.activeMapId,
-      x: tokenData.x || 600,
-      y: tokenData.y || 400,
-      size: tokenData.size || 1,
-      name: tokenData.name || 'New Operative',
-      roleTag: tokenData.roleTag || 'Voidfarer',
-      avatarUrl: tokenData.avatarUrl || '/assets/tokens/captain_harker.jpg',
-      isPlayer: tokenData.isPlayer ?? true,
-      ownerId: tokenData.ownerId || 'player',
-      hidden: tokenData.hidden || false,
-      path: tokenData.path || 'Awakened',
-      hp: { current: 15, max: 15, majorThreshold: 6, severeThreshold: 12 },
-      armor: { current: 2, max: 2 },
-      stress: { current: 0, max: 6 },
-      hope: 2,
-      effort: 2,
-      effortTrack: [false, false],
-      resolve: { current: 2, max: 2, dieType: 'd4' },
-      isBurnedOut: false,
-      recoveryAnchor: 'Quarters & Memorial Token',
-      honedEdgeBonus: 1,
-      traits: { agility: 1, strength: 1, finesse: 1, knowledge: 1, instinct: 1, presence: 1 },
-      subtraits: { pilot: 0, tech: 0, medicine: 0 },
-      conditions: [],
-      visionRadius: 10,
-      hasLight: true,
-      lightRadius: 250,
-      lightColor: '#00f3ff',
-      lightEffect: 'steady'
-    };
-    this.update({ tokens: [...this.state.tokens, newToken] });
-    return newToken;
+    if (this.sessionRole === 'player' || this.sessionBusy) return null;
+    const token = createActor(tokenData, this.state.activeMapId);
+    this._beforeTacticalMutation('Crear actor: ' + token.name);
+    this.update({ tokens: [...this.state.tokens, token] });
+    return token;
+  }
+
+  importActors(entries) {
+    if (this.sessionRole !== 'local' || this.state.isHosting || this.state.isConnected || this.sessionBusy) throw new Error('Importa personajes en una sesión local.');
+    // Validate the whole batch before a single live mutation or undo snapshot.
+    let tokens = structuredClone(this.state.tokens);
+    const seen = new Set();
+    let selectedTokenId;
+    for (const entry of entries) {
+      if (entry.updateId) {
+        if (seen.has(entry.updateId)) throw new Error('Dos archivos intentan actualizar el mismo personaje.');
+        seen.add(entry.updateId);
+        const index = tokens.findIndex(t => t.id === entry.updateId);
+        if (index < 0) throw new Error('El personaje que se iba a actualizar ya no existe.');
+        tokens[index] = replaceActorSheet(tokens[index], entry.token);
+        selectedTokenId = entry.updateId;
+      } else {
+        const token = createActor(entry.token, this.state.activeMapId);
+        tokens.push(token); selectedTokenId = token.id;
+      }
+    }
+    validateCampaign({ ...this.serializeCampaign(), tokens });
+    this._beforeTacticalMutation('Importar personajes');
+    this.update({ tokens, selectedTokenId });
+    return entries.length;
   }
 
   deleteToken(tokenId) {
@@ -593,7 +591,7 @@ class StateStore {
   resetMapFog(mapId = null) {
     const targetMapId = mapId || this.state.activeMapId;
     if (typeof window !== 'undefined' && window.veilCanvas?.fog) {
-      window.veilCanvas.fog.resetExploration(targetMapId);
+      window.veilCanvas.fog.resetExploration(`${this.state.campaignId}:${targetMapId}`);
     }
     this.update({ fogLastReset: Date.now() });
   }
@@ -602,7 +600,7 @@ class StateStore {
     const targetMapId = mapId || this.state.activeMapId;
     const map = this.getActiveMap();
     if (typeof window !== 'undefined' && window.veilCanvas?.fog && map) {
-      window.veilCanvas.fog.revealAll(targetMapId, window.veilCanvas.mapImage?.width || 2000, window.veilCanvas.mapImage?.height || 1200);
+      window.veilCanvas.fog.revealAll(`${this.state.campaignId}:${targetMapId}`, window.veilCanvas.mapImage?.width || 2000, window.veilCanvas.mapImage?.height || 1200);
     }
     this.update({ fogLastReveal: Date.now() });
   }
@@ -684,34 +682,111 @@ class StateStore {
 
   // Complete versioned snapshots; guest replicas never overwrite a local campaign.
   serializeCampaign() {
-    const data={schemaVersion:2};
+    const data={schemaVersion:3, savedAt: this.state.savedAt};
     for(const key of CAMPAIGN_KEYS)data[key]=structuredClone(this.state[key]);
     return data;
   }
   async saveToStorage() {
     if(this.sessionRole==='player'||this.remoteApplying||this.storageReadFailed)return;
-    const data=this.serializeCampaign(); this.state.saveStatus='saving'; this._storageEvent();
+    const data=this.serializeCampaign(); data.savedAt=new Date().toISOString(); this.state.saveStatus='saving'; this._storageEvent();
     const write=this.saveQueue.catch(()=>{}).then(()=>writeCampaign(data.campaignId,data));this.saveQueue=write;
-    try{await write;if(this.saveQueue===write){this.state.saveStatus='saved';delete this.state.saveError;}}
+    try{await write;if(this.saveQueue===write){this.state.saveStatus='saved';this.state.savedAt=data.savedAt;delete this.state.saveError;}}
     catch(e){this.state.saveStatus='error';this.state.saveError=e.message;}
     this._storageEvent();
   }
   _storageEvent(){if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('veil:save-status',{detail:{status:this.state.saveStatus,error:this.state.saveError}}));}
-  async loadFromStorage(){
-    try{const saved=await readCampaign(this.state.campaignId);if(saved){const merged=validateCampaign({...this.serializeCampaign(),...saved});merged.starship={...this.state.starship,...merged.starship};for(const key of CAMPAIGN_KEYS)if(key in merged)this.state[key]=merged[key];}this.state.saveStatus='saved';if(!saved)await this.saveToStorage();}
-    catch(e){this.storageReadFailed=true;this.state.saveStatus='error';this.state.saveError=e.message;notify(`Saved campaign unavailable: ${e.message} Original data has not been overwritten.`,'error');}
+  async loadFromStorage() {
+    try {
+      const id = this.state.campaignId;
+      const saved = await readCampaign(id, { migrateLegacy: true });
+      if (saved) {
+        const merged = this.normalizeCampaign({ ...saved, campaignId: id });
+        for (const key of CAMPAIGN_KEYS) this.state[key] = merged[key];
+        this.state.savedAt = saved.savedAt;
+      }
+      this.state.saveStatus = 'saved';
+      // Persist a legacy snapshot under its own identity once; no other ID inherits it.
+      if (!saved || !saved.campaignId) await this.saveToStorage();
+    } catch (e) {
+      this.storageReadFailed = true; this.state.saveStatus = 'error'; this.state.saveError = e.message;
+      notify(`Saved campaign unavailable: ${e.message} Original data has not been overwritten.`, 'error');
+    }
     this._storageEvent();
+  }
+  normalizeCampaign(input) {
+    // Old archives may omit optional fields, never borrow maps/actors/logs from the open session.
+    const base = structuredClone(this.initialCampaign);
+    const data = validateCampaign({ ...base, ...input, logs: input.logs ?? [], starship: { ...base.starship, ...input.starship } });
+    if (!data.maps.some(m => m.id === data.activeMapId)) data.activeMapId = data.maps[0].id;
+    return data;
+  }
+  async savedSessions() {
+    await this.ready;
+    await this.saveQueue;
+    return listCampaigns();
+  }
+  async changeSession(prepare) {
+    await this.ready;
+    if (this.sessionBusy) throw new Error('Espera a que termine el cambio de sesión.');
+    if (this.sessionRole !== 'local' || this.state.isHosting || this.state.isConnected) throw new Error('Las sesiones guardadas se gestionan en modo local.');
+    if (this.storageReadFailed) throw new Error('No se pudo leer el guardado. Exporta una copia y recarga antes de cambiar de sesión.');
+    this.sessionBusy = true;
+    try {
+      await this.saveToStorage();
+      await this.saveQueue; // A failed save must not switch or erase the current session.
+      const prepared = await prepare();
+      const data = this.normalizeCampaign(prepared);
+      data.savedAt = new Date().toISOString();
+      await writeCampaign(data.campaignId, data);
+      selectCampaign(data.campaignId);
+      for (const key of CAMPAIGN_KEYS) this.state[key] = data[key];
+      Object.assign(this.state, { selectedTokenId: null, claimedTokenId: null, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null, activeTransmission: null, activeTool: 'select', activeLayer: 'tokens', saveStatus: 'saved', savedAt: data.savedAt });
+      this.undoManager?.clear?.();
+      this._storageEvent();
+      for (const listener of this.listeners) listener(this.state, [...CAMPAIGN_KEYS, 'selectedTokenId', 'selectedWallId', 'selectedLightId', 'selectedWaterId', 'selectedEffectId', 'selectedTemplateId', 'activeTransmission', 'activeTool', 'activeLayer']);
+      return data.campaignId;
+    } finally { this.sessionBusy = false; }
+  }
+  openSession(id) {
+    return this.changeSession(async () => {
+      const data = await readCampaign(id);
+      if (!data) throw new Error('No se encuentra esta sesión.');
+      return { ...data, campaignId: id };
+    });
+  }
+  createSession(name, duplicate = false) {
+    name = String(name || '').trim();
+    if (!name || name.length > 500) return Promise.reject(new Error('Escribe un nombre de 1 a 500 caracteres.'));
+    return this.changeSession(() => {
+      const data = structuredClone(duplicate ? this.serializeCampaign() : this.initialCampaign);
+      data.campaignId = newId(); data.campaignName = name;
+      if (!duplicate) {
+        const id = 'map_' + newId();
+        data.maps = [{ id, name: 'Escena inicial', imageUrl: '/assets/maps/blank-grid.svg', gridSize: 64, gridType: 'square', gridColor: 'rgba(0,243,255,.18)', ambientLight: 1, ambientColor: '#080d18', walls: [], lights: [], effects: [], waterZones: [] }];
+        data.activeMapId = id; data.tokens = []; data.clocks = []; data.handouts = []; data.logs = [];
+        data.fear = 0; data.fogOfWar = false; data.starship.visible = false; data.starship.name = 'Nave sin asignar';
+      }
+      return data;
+    });
+  }
+  renameSession(name) {
+    name = String(name || '').trim();
+    if (!name || name.length > 500) return Promise.reject(new Error('Escribe un nombre de 1 a 500 caracteres.'));
+    return this.changeSession(() => ({ ...this.serializeCampaign(), campaignName: name }));
   }
   exportCampaignJSON(){
     const blob=new Blob([JSON.stringify(this.serializeCampaign(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');
     a.href=url;a.download=`veilfarers_campaign_${Date.now()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
-  importCampaignJSON(jsonString){
-    if(this.sessionRole==='player')return false;
-    try{const input=JSON.parse(jsonString);const parsed=validateCampaign({...this.serializeCampaign(),...input,starship:{...this.state.starship,...input.starship},campaignId:newId()});
-      if(!parsed.maps.some(m=>m.id===parsed.activeMapId))parsed.activeMapId=parsed.maps[0].id;
-      this.storageReadFailed=false;selectCampaign(parsed.campaignId);for(const key of CAMPAIGN_KEYS)this.state[key]=parsed[key];this.validateSelections();this.undoManager?.clear?.();this.notify(CAMPAIGN_KEYS);return true;
-    }catch(e){notify(`Import failed: ${e.message}`,'error');return false;}
+  async importCampaignJSON(jsonString) {
+    if (this.sessionRole === 'player') return false;
+    try {
+      const input = JSON.parse(jsonString.replace(/^\uFEFF/, ''));
+      if (!input || !Array.isArray(input.maps) || !Array.isArray(input.tokens) || !Array.isArray(input.clocks) || !Array.isArray(input.handouts)) throw new Error('Se necesita un archivo de sesión completo.');
+      const parsed = this.normalizeCampaign({ ...input, campaignId: newId() });
+      await this.changeSession(() => parsed);
+      return true;
+    } catch (e) { notify(`Import failed: ${e.message}`, 'error'); return false; }
   }
 }
-export const store=new StateStore();
+export const store = new StateStore();
