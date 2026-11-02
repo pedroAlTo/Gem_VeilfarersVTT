@@ -1,5 +1,15 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Orbital IV.1 — Three.js WebGL dice · 2 November 2026
+
+The dice tray now requires the Three.js WebGL 2 renderer. The former software renderer has been removed. Unsupported devices show a clear graphics-support message while retaining the authoritative numeric roll in the panel and log.
+
+cannon-es advances solid d12 bodies at a fixed 60 Hz during the animation, with gravity, spin, friction, bounce, die-to-die collisions, sleep detection and recovery for cocked or off-table dice. Rendered rails and collision rails now share exact dimensions. Game throws use a deterministic physics preparation pass to label faces before animation; the live simulation reaches the same result without recording/replaying animation frames or rerolling the rules outcome. Cosmetic test throws read the top faces from the actual settled bodies.
+
+Adds OrbitControls (drag, pinch/scroll), accessible rotation/reset buttons and reflected environment lighting. All four finishes and distinct Hope/Fear palettes remain. Theme changes reskin the existing pose instead of starting another throw.
+
+Validation: 88 automated tests and production/local-mode builds. New tests check the live world's final poses against the deterministic preparation pass and the shared rail/collider geometry. GPU rendering cannot be verified in the provided browser because WebGL is disabled; check it locally with graphics acceleration enabled. No production deployment or Firebase changes in this patch.
+
 ## Orbital IV — crew, accounts, scenes and 3D dice · 2 November 2026
 
 Adds a guided host/join flow, permanent session status and copyable invitation, player roster, character submissions, one non-drone token per player, and shared drone control. Rejoining the same live room retains a browser-session seat and its assignments. The Keeper can broadcast announcements; guests cannot publish arbitrary state or control other players' tokens.

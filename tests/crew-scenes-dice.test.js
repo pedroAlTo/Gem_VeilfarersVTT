@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { JSDOM } from 'jsdom';
 import { Vector3, Quaternion } from 'three';
-import { d12Model, faceNumbers, topFace, simulateThrow } from '../src/dicePhysics.js';
+import { d12Model, faceNumbers, topFace, simulateThrow, createDiceSimulation, seededRandom, prepareThrow, TRAY_RAILS } from '../src/dicePhysics.js';
 import { controlsToken, assignControls, movePartyToScene } from '../src/tokenPermissions.js';
 import { createActor } from '../src/actors.js';
 import { CloudAccount, portableCharacter, cleanPreferences } from '../src/cloudAccount.js';
@@ -115,7 +115,7 @@ test('physical throws settle above the mat, inside rails, with a flat numbered f
   const model = d12Model();
   for (let seed = 1; seed <= 12; seed++) {
     let n = seed; const frames = simulateThrow(model, () => ((n = (1664525 * n + 1013904223) >>> 0) / 4294967296));
-    assert.ok(frames.length > 100 && frames.length <= 600);
+    assert.ok(frames.length > 100 && frames.length <= 1200);
     for (const frame of frames.at(-1)) {
       const [x, y, z] = frame.position; assert.ok(Math.abs(x) < 7 && Math.abs(z) < 4); assert.ok(y > .7 && y < 1);
       const face = model.faces[topFace(model, frame.quaternion)], q = new Quaternion(...frame.quaternion);
@@ -157,4 +157,26 @@ test('two clients complete host/join, token assignment, scene sync, submission a
   const result = await guest.importCharacter(pc('Imported pilot')); assert.equal(result.tokenId, token.id); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).name, 'Imported pilot');
   guest.disconnect(); assert.equal(guestStore.state.campaignName, 'Local backup'); assert.equal(guestStore.sessionRole, 'local'); host.disconnect();
   await Promise.all([hostStore.saveQueue, guestStore.saveQueue]);
+});
+
+test('live rigid-body worlds reproduce authoritative face labels without replaying recorded frames', () => {
+  const model = d12Model();
+  for (const [seed, values] of [[1, [1, 12]], [9, [12, 1]], [71, [7, 7]], [9173, [4, 11]]]) {
+    const plan = prepareThrow(model, values, seed), live = createDiceSimulation(model, seededRandom(seed));
+    while (!live.settled && live.steps < 1200) live.step();
+    assert.ok(live.settled); assert.equal(live.steps, plan.steps); assert.deepEqual(live.snapshot(), plan.final);
+    live.snapshot().forEach((body, i) => assert.equal(plan.numbers[i][topFace(model, body.quaternion)], values[i]));
+    const end = live.snapshot(); live.step(); assert.deepEqual(live.snapshot(), end);
+  }
+});
+test('physics and Three.js share rail dimensions, gravity and solid convex die colliders', () => {
+  const simulation = createDiceSimulation(d12Model(), seededRandom(42));
+  assert.ok(simulation.world.gravity.y < 0);
+  assert.equal(simulation.bodies.length, 2);
+  for (const die of simulation.bodies) { assert.ok(die.mass > 0); assert.equal(die.shapes[0].faces.length, 12); }
+  TRAY_RAILS.forEach((rail, i) => {
+    const body = simulation.world.bodies[i + 1]; assert.equal(body.mass, 0);
+    assert.deepEqual(body.position.toArray(), rail.position);
+    assert.deepEqual(body.shapes[0].halfExtents.toArray(), rail.size.map(n => n / 2));
+  });
 });

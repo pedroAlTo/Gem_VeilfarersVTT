@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import { d12Model, simulateThrow, topFace, faceNumbers } from './dicePhysics.js';
+import { d12Model, createDiceSimulation, prepareThrow, seededRandom, topFace, PHYSICS_STEP, TRAY_RAILS } from './dicePhysics.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { store } from './state.js';
 import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e } from './ui.js';
 import './diceTray.css';
-import { DiceSoftwareRenderer } from './diceSoftwareRenderer.js';
 export const DICE_THEMES = { crystal: 'Crystal caves', panels: 'Tech panels', circuits: 'Circuits & processors', galaxy: 'Galaxy & stars' };
 const palettes = { crystal: ['#68e9ff', '#ed7ac8'], panels: ['#71e8d2', '#ff9759'], circuits: ['#91fba7', '#e9a3ff'], galaxy: ['#81b8ff', '#ff8db9'] };
 let tray;
@@ -46,7 +47,8 @@ function makeDie(model, numbers, theme, fear) {
     const material = new THREE.MeshPhysicalMaterial({ map: texture, roughness: theme === 'crystal' ? .24 : .5, metalness: theme === 'panels' || theme === 'circuits' ? .35 : .1, clearcoat: .9, clearcoatRoughness: .22, emissive: color, emissiveMap: texture, emissiveIntensity: .12 });
     const mesh = new THREE.Mesh(geometry, material); mesh.castShadow = mesh.receiveShadow = true; group.add(mesh);
   });
-  const edgeGeo = new THREE.EdgesGeometry(new THREE.DodecahedronGeometry(.958));
+  const edgeSource = new THREE.DodecahedronGeometry(.958);
+  const edgeGeo = new THREE.EdgesGeometry(edgeSource); edgeSource.dispose();
   group.add(new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: .6 })));
   return group;
 }
@@ -55,25 +57,41 @@ export class DiceTray {
   constructor() {
     this.modal = dossierDialog('3D DICE / ORBITAL TRAY', `
       <div class="tray-toolbar"><div><span class="dossier-eyebrow">PHYSICAL DICE SIMULATION</span><h2>Between hope & fear.</h2></div><label class="dossier-field">Dice finish<vf-select class="hud-select" id="tray_theme">${Object.entries(DICE_THEMES).map(([key, label]) => `<option value="${key}" ${store.state.diceTheme === key ? 'selected' : ''}>${e(label)}</option>`).join('')}</vf-select></label></div>
-      <div class="tray-stage" id="tray_stage"><div class="tray-corner tray-corner-left">VEILFARERS / D12</div><div class="tray-corner tray-corner-right">GRAVITY FIELD · ACTIVE</div></div>
+      <div class="tray-stage" id="tray_stage"><div class="tray-corner tray-corner-left">VEILFARERS / D12</div><div class="tray-corner tray-corner-right" id="tray_engine">THREE.JS / WEBGL 2</div></div>
       <div class="tray-result" role="status" aria-live="polite"><span class="tray-hope">HOPE <b id="tray_hope">—</b></span><span id="tray_caption">Two forces. One outcome.</span><span class="tray-fear">FEAR <b id="tray_fear">—</b></span></div>
-      <div class="tray-footer"><label><input type="checkbox" id="tray_automatic" ${store.state.dice3d !== false ? 'checked' : ''}> Show for game rolls</label><label><input type="checkbox" id="tray_motion" ${store.state.reducedMotion ? 'checked' : ''}> Reduce motion</label><button class="hud-btn" id="tray_demo">Test throw</button></div><p class="dossier-muted" id="tray_note">Test throws are previews and do not change your character or game log.</p>`, 'dice-tray-backdrop');
+      <div class="tray-camera"><span>Drag to orbit · scroll or pinch to zoom</span><button class="hud-btn" id="tray_rotate_left" aria-label="Rotate camera left">↶</button><button class="hud-btn" id="tray_rotate_right" aria-label="Rotate camera right">↷</button><button class="hud-btn" id="tray_reset_camera">Reset view</button></div><div class="tray-footer"><label><input type="checkbox" id="tray_automatic" ${store.state.dice3d !== false ? 'checked' : ''}> Show for game rolls</label><label><input type="checkbox" id="tray_motion" ${store.state.reducedMotion ? 'checked' : ''}> Reduce motion</label><button class="hud-btn" id="tray_demo">Test throw</button></div><p class="dossier-muted" id="tray_note">Test throws are previews and do not change your character or game log.</p>`, 'dice-tray-backdrop');
     this.stage = this.modal.querySelector('#tray_stage'); this.theme = store.state.diceTheme || 'crystal'; this.frame = 0;
-    this.modal.querySelector('#tray_theme').onchange = event => { this.theme = event.target.value; store.update({ diceTheme: this.theme }); if (this.lastResult) this.show(this.lastResult, true); };
+    this.modal.querySelector('#tray_theme').onchange = event => { this.theme = event.target.value; store.update({ diceTheme: this.theme }); this.rebuildDice(); };
     this.modal.querySelector('#tray_automatic').onchange = event => store.update({ dice3d: event.target.checked });
     this.modal.querySelector('#tray_motion').onchange = event => store.update({ reducedMotion: event.target.checked });
-    this.modal.querySelector('#tray_demo').onclick = () => this.show({ hopeVal: 1 + Math.floor(Math.random() * 12), fearVal: 1 + Math.floor(Math.random() * 12), demo: true });
+    this.modal.querySelector('#tray_demo').onclick = () => this.show({ demo: true });
     this.observer = new MutationObserver(() => { if (!this.modal.isConnected) this.dispose(); }); this.observer.observe(document.body, { childList: true });
-    try { this.initScene(); } catch { this.stage.classList.add('tray-unavailable'); this.stage.insertAdjacentHTML('beforeend', '<p>3D rendering is unavailable on this device. Roll results remain available below.</p>'); }
+    this.modal.querySelector('#tray_reset_camera').onclick = () => this.resetCamera();
+    for (const [selector, angle] of [['#tray_rotate_left', .25], ['#tray_rotate_right', -.25]]) this.modal.querySelector(selector).onclick = () => {
+      if (!this.controls) return;
+      this.camera.position.sub(this.controls.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).add(this.controls.target);
+      this.controls.update(); this.renderFrame();
+    };
+    try { this.initScene(); } catch { this.unavailable('WebGL 2 is unavailable. Enable graphics acceleration in your browser, then reopen the tray.'); }
   }
   initScene() {
-    try { this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
-    catch { this.renderer = new DiceSoftwareRenderer(); this.modal.querySelector("#tray_note").textContent = "Compatibility rendering · same 3D geometry and physics. Test throws do not change your game."; }
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    this.renderer.domElement.addEventListener('webglcontextlost', event => {
+      event.preventDefault(); this.finishRoll?.();
+      this.unavailable('The 3D graphics context was lost. Your game result is preserved. Reopen the tray to reconnect.');
+    });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75)); this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.4;
     this.renderer.domElement.setAttribute('aria-label', 'Two twelve-sided dice on a futuristic dice mat'); this.stage.append(this.renderer.domElement);
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(36, 1, .1, 100); this.camera.position.set(0, 12.5, 9.5); this.camera.lookAt(0, 0, 0);
-    this.scene.add(new THREE.HemisphereLight(0xa8d9ff, 0x1f1130, 3));
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enablePan = false; this.controls.minDistance = 10; this.controls.maxDistance = 32;
+    this.controls.minPolarAngle = .12; this.controls.maxPolarAngle = Math.PI / 2 - .12;
+    this.controls.addEventListener('change', () => this.renderFrame());
+    const pmrem = new THREE.PMREMGenerator(this.renderer), environment = new RoomEnvironment();
+    this.environment = pmrem.fromScene(environment, .04); this.scene.environment = this.environment.texture;
+    environment.dispose(); pmrem.dispose();
+    this.scene.add(new THREE.HemisphereLight(0xa8d9ff, 0x1f1130, 2));
     const light = new THREE.DirectionalLight(0xe2faff, 5); light.position.set(-3, 10, 5); light.castShadow = true; light.shadow.mapSize.set(1024, 1024); Object.assign(light.shadow.camera, { left: -9, right: 9, top: 7, bottom: -7 }); light.shadow.bias = -.001; this.scene.add(light);
     const rim = new THREE.PointLight(0xe75bd4, 60, 20); rim.position.set(5, 4, -3); this.scene.add(rim);
     const matCanvas = document.createElement('canvas'); matCanvas.width = 1024; matCanvas.height = 640;
@@ -87,33 +105,93 @@ export class DiceTray {
     c.fillStyle = '#9ac9dd75'; c.textAlign = 'center'; c.font = '16px monospace'; c.fillText('V E I L F A R E R S', 512, 560); c.font = '10px monospace'; c.fillText('ORBITAL DICE ARRAY   /   HOPE + FEAR', 512, 584);
     const texture = new THREE.CanvasTexture(matCanvas); texture.colorSpace = THREE.SRGBColorSpace;
     const mat = new THREE.Mesh(new THREE.BoxGeometry(14, .5, 8), new THREE.MeshStandardMaterial({ map: texture, color: 0xc8e4ff, roughness: .95 })); mat.position.y = -.25; mat.receiveShadow = true; this.scene.add(mat);
-    for (const [x, z, w, d] of [[0, -4.1, 14.5, .35], [0, 4.1, 14.5, .35], [-7.1, 0, .35, 8], [7.1, 0, .35, 8]]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(w, .9, d), new THREE.MeshStandardMaterial({ color: 0x1c2d40, roughness: .4, metalness: .65 })); rail.position.set(x, .35, z); rail.castShadow = true; this.scene.add(rail);
+    for (const { position: [x, y, z], size: [w, h, d] } of TRAY_RAILS) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0x1c2d40, roughness: .4, metalness: .65 })); rail.position.set(x, y, z); rail.castShadow = true; this.scene.add(rail);
       const strip = new THREE.Mesh(new THREE.BoxGeometry(w, .035, d * .25), new THREE.MeshBasicMaterial({ color: z > 0 ? 0xc657ae : 0x61cfe7 })); strip.position.set(x, .82, z); this.scene.add(strip);
     }
     this.model = d12Model();
     this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(this.stage); this.resize();
   }
-  resize() { if (!this.renderer) return; const w = this.stage.clientWidth, h = this.stage.clientHeight; this.renderer.setSize(w, h); this.camera.aspect = w / h; this.camera.position.set(0, this.camera.aspect < 1.4 ? 19 : 12.5, this.camera.aspect < 1.4 ? 12 : 9.5); this.camera.lookAt(0, 0, 0); this.camera.updateProjectionMatrix(); this.renderer.render(this.scene, this.camera); }
-  async show(result, immediate = false) {
-    this.lastResult = result; cancelAnimationFrame(this.frame);
-    const reduced = immediate || store.state.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const hope = this.modal.querySelector('#tray_hope'), fear = this.modal.querySelector('#tray_fear'), caption = this.modal.querySelector('#tray_caption');
-    const values = [result.hopeVal, result.fearVal];
-    if (values.some(n => !Number.isInteger(n) || n < 1 || n > 12)) return;
-    const finish = () => { hope.textContent = values[0]; fear.textContent = values[1]; caption.textContent = result.demo ? 'Preview throw · no game changes' : Number.isFinite(result.total) ? `CHECK TOTAL ${result.total}` : 'Roll resolved'; this.modal.querySelector('#tray_demo').disabled = false; };
-    this.modal.querySelector('#tray_demo').disabled = true;
-    if (!this.renderer || !this.model) { finish(); return; }
-    hope.textContent = fear.textContent = '…'; caption.textContent = 'Dice in motion';
-    const frames = simulateThrow(this.model), last = frames.at(-1);
+  renderFrame() { if (this.renderer && this.scene && this.camera && !this.failed) this.renderer.render(this.scene, this.camera); }
+  resetCamera() {
+    if (!this.camera || !this.controls) return;
+    this.controls.target.set(0, 0, 0);
+    this.camera.position.set(0, this.camera.aspect < 1.4 ? 19 : 12.5, this.camera.aspect < 1.4 ? 12 : 9.5);
+    this.controls.update(); this.renderFrame();
+  }
+  resize() {
+    if (!this.renderer || this.failed) return;
+    const w = this.stage.clientWidth, h = this.stage.clientHeight;
+    if (!w || !h) return;
+    this.renderer.setSize(w, h); this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+    if (!this.sized) { this.sized = true; this.resetCamera(); }
+    this.renderFrame();
+  }
+  unavailable(message) {
+    this.failed = true; cancelAnimationFrame(this.frame);
+    this.renderer?.domElement.remove(); this.stage.classList.add('tray-unavailable');
+    const notice = document.createElement('p'); notice.className = 'tray-support-message'; notice.setAttribute('role', 'status'); notice.textContent = message; this.stage.append(notice);
+    this.modal.querySelector('#tray_engine').textContent = '3D UNAVAILABLE';
+    this.modal.querySelector('#tray_note').textContent = 'Game rolls remain available in the result panel and log.';
+    for (const selector of ['#tray_demo', '#tray_rotate_left', '#tray_rotate_right', '#tray_reset_camera', '#tray_theme']) this.modal.querySelector(selector).disabled = true;
+  }
+  rebuildDice() {
+    if (!this.renderer || this.failed || !this.numbers) return;
+    const pose = this.simulation?.snapshot();
     for (const die of this.dice || []) { this.scene.remove(die); disposeGroup(die); }
-    this.dice = values.map((value, i) => { const die = makeDie(this.model, faceNumbers(topFace(this.model, last[i].quaternion), value), this.theme, !!i); this.scene.add(die); return die; });
-    const render = frame => { this.dice.forEach((die, i) => { die.position.fromArray(frame[i].position); die.quaternion.fromArray(frame[i].quaternion); }); this.renderer.render(this.scene, this.camera); };
-    if (reduced) { render(last); finish(); return; }
-    const start = performance.now(), duration = Math.min(frames.length / 60 * 1000, 4300);
-    const animate = now => { if (!this.modal.isConnected) return; const progress = Math.min(1, (now - start) / duration); render(frames[Math.min(frames.length - 1, Math.floor(progress * frames.length))]); if (progress < 1) this.frame = requestAnimationFrame(animate); else finish(); };
+    this.dice = this.numbers.map((numbers, i) => { const die = makeDie(this.model, numbers, this.theme, !!i); this.scene.add(die); return die; });
+    if (pose) this.applyPose(pose);
+    this.renderFrame();
+  }
+  applyPose(pose) { this.dice.forEach((die, i) => { die.position.fromArray(pose[i].position); die.quaternion.fromArray(pose[i].quaternion); }); }
+  show(result, immediate = false) {
+    cancelAnimationFrame(this.frame); this.lastResult = result;
+    const hope = this.modal.querySelector('#tray_hope'), fear = this.modal.querySelector('#tray_fear'), caption = this.modal.querySelector('#tray_caption');
+    const values = [result.hopeVal, result.fearVal], valid = values.every(n => Number.isInteger(n) && n >= 1 && n <= 12);
+    if (!result.demo && !valid) return;
+    if (this.failed || !this.renderer || !this.model) {
+      hope.textContent = valid ? values[0] : '—'; fear.textContent = valid ? values[1] : '—';
+      caption.textContent = valid ? 'Game result · 3D unavailable' : 'WebGL 2 required'; return;
+    }
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+    let plan;
+    try { if (!result.demo) plan = prepareThrow(this.model, values, seed); }
+    catch (error) { hope.textContent = values[0]; fear.textContent = values[1]; caption.textContent = error.message; this.modal.querySelector('#tray_demo').disabled = false; return; }
+    this.numbers = plan?.numbers || [0, 1].map(() => Array.from({ length: 12 }, (_, i) => i + 1));
+    this.simulation = createDiceSimulation(this.model, seededRandom(seed));
+    this.rebuildDice();
+    this.modal.querySelector('#tray_demo').disabled = true;
+    hope.textContent = fear.textContent = '…'; caption.textContent = 'Rolling · live rigid-body physics';
+    this.finishRoll = () => {
+      if (result.demo && this.simulation.settled) this.simulation.snapshot().forEach((body, i) => values[i] = this.numbers[i][topFace(this.model, body.quaternion)]);
+      hope.textContent = values[0] ?? '—'; fear.textContent = values[1] ?? '—';
+      caption.textContent = result.demo ? 'Preview throw · no game changes' : Number.isFinite(result.total) ? `CHECK TOTAL ${result.total}` : 'Roll resolved';
+      this.modal.querySelector('#tray_demo').disabled = false;
+    };
+    const reduced = immediate || store.state.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      while (!this.simulation.settled && this.simulation.steps < 1200) this.simulation.step();
+      this.applyPose(this.simulation.snapshot()); this.renderFrame(); this.finishRoll(); return;
+    }
+    let previous = performance.now(), accumulator = 0;
+    const animate = now => {
+      if (!this.modal.isConnected || this.failed) return;
+      accumulator += Math.min(.1, Math.max(0, (now - previous) / 1000)); previous = now;
+      while (accumulator >= PHYSICS_STEP && !this.simulation.settled) {
+        this.simulation.step(); accumulator -= PHYSICS_STEP;
+      }
+      this.applyPose(this.simulation.snapshot()); this.renderFrame();
+      if (this.simulation.settled) this.finishRoll();
+      else if (this.simulation.steps >= 1200) {
+        this.finishRoll(); caption.textContent = result.demo ? 'Dice did not settle. Throw again.' : 'Game result preserved · dice did not settle';
+      } else this.frame = requestAnimationFrame(animate);
+    };
     this.frame = requestAnimationFrame(animate);
   }
-  dispose() { cancelAnimationFrame(this.frame); this.observer?.disconnect(); this.resizeObserver?.disconnect(); if (this.scene) disposeGroup(this.scene); this.renderer?.dispose(); this.renderer?.forceContextLoss(); if (tray === this) tray = null; }
+  dispose() {
+    cancelAnimationFrame(this.frame); this.observer?.disconnect(); this.resizeObserver?.disconnect(); this.controls?.dispose();
+    if (this.scene) disposeGroup(this.scene); this.environment?.dispose(); this.renderer?.dispose(); this.renderer?.forceContextLoss();
+    if (tray === this) tray = null;
+  }
 }
-export function openDiceTray(result) { if (!tray?.modal.isConnected) tray = new DiceTray(); if (result) tray.show(result); else if (!tray.lastResult) tray.show({ hopeVal: 12, fearVal: 7, demo: true }, true); return tray; }
+export function openDiceTray(result) { if (!tray?.modal.isConnected) tray = new DiceTray(); if (result) tray.show(result); else if (!tray.lastResult) tray.show({ demo: true }, true); return tray; }
