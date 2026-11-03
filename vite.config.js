@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
+import { lanSessions } from './scripts/lan-sessions.mjs';
 
 export default defineConfig({
+  plugins: [lanSessions()],
   server: { allowedHosts: ['terminal.local'] },
   build: {
     rollupOptions: {

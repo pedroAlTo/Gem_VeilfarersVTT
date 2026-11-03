@@ -1,4 +1,5 @@
-import { requireNetworkMode } from './runtimeMode.js';
+import { LanPeer } from './lanPeer.js';
+import { requireNetworkMode, LAN_SESSIONS } from './runtimeMode.js';
 // Keeper-authoritative replication. No cross-room BroadcastChannel.
 import PeerJS from 'peerjs';
 import { store } from './state.js';
@@ -10,8 +11,12 @@ import { notify } from './ui.js';
 const Peer = PeerJS?.Peer || PeerJS?.default || PeerJS;
 import { newId as id } from './persistence.js';
 export class NetworkManager {
-  constructor({ stateStore = store, peerFactory = (...args) => new Peer(...args) } = {}) {
-    this.store = stateStore; this.peerFactory = peerFactory; this.seats = new Map();
+  constructor({ stateStore = store, peerFactory } = {}) {
+    this.store = stateStore;
+    this.peerFactory = peerFactory ?? ((...args) => LAN_SESSIONS
+      ? new LanPeer(import.meta.hot, args[0], this.invite)
+      : new Peer(...args));
+    this.seats = new Map();
     this.peer = null;
     this.connections = new Map();
     this.members = new Map();
@@ -89,6 +94,7 @@ export class NetworkManager {
       userRole: 'player',
       gmVision: false,
       userName: playerName,
+      joiningSession: true,
       isHosting: false,
       isConnected: false,
       roomCode,
@@ -98,9 +104,7 @@ export class NetworkManager {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         if (this.peer !== peer) return;
-        this.disconnect();
-        notify('Connection timed out. Check the invitation and try again.', 'error');
-        reject(new Error('Connection timed out'));
+        this.disconnect(new Error('The Keeper’s map did not arrive. Check the invitation, keep the host tab open and retry.'));
       }, 15000);
       this.joinFailed = error => { clearTimeout(timer); reject(error); };
       this.joinReady = () => {
@@ -119,7 +123,7 @@ export class NetworkManager {
         conn.on('data', (data) => { if (this.hostConn === conn) this.handleIncomingMessage(data, conn.peer); });
         conn.on('close', () => {
           if (this.closing || this.hostConn !== conn || this.peer !== peer) return;
-          if (this.joinFailed) { this.disconnect(); return; }
+          if (this.joinFailed) { this.disconnect(new Error('The Keeper closed the connection before sending the map. Check the invitation or whether the table is full.')); return; }
           this.store.update({ isConnected: false });
           notify('Keeper disconnected. Your local campaign is preserved.', 'error');
         });
@@ -127,7 +131,7 @@ export class NetworkManager {
       this.peer.on('error', (err) => {
         if (this.peer !== peer) return;
         clearTimeout(timer);
-        this.disconnect();
+        this.disconnect(err);
         notify(err.message, 'error');
         reject(err);
       });
@@ -342,6 +346,7 @@ export class NetworkManager {
             userRole: 'player',
             gmVision: false,
             isConnected: true,
+            joiningSession: false,
             claimedTokenId: data.state.claimedTokenId,
             selectedTokenId: selectedId,
             ...(newAssignment || !['select', 'measure', 'template', 'fx', 'ping'].includes(this.store.state.activeTool) ? { activeTool: 'select', activeLayer: 'tokens' } : {}),
@@ -350,7 +355,8 @@ export class NetworkManager {
           this.joinReady?.();
           this.joinReady = null;
         } catch (e) {
-          notify(`Invalid session state: ${e.message}`, 'error');
+          if (this.joinFailed) this.disconnect(new Error('Could not open the Keeper’s map: ' + e.message));
+          else notify(`Invalid session state: ${e.message}`, 'error');
         } finally {
           this.store.remoteApplying = false;
         }
@@ -429,7 +435,7 @@ export class NetworkManager {
     if (data.type === 'SPECIAL_FX' && data.params)
       window.veilCanvas?.triggerFX(data.fxType, data.params);
   }
-  disconnect() {
+  disconnect(reason = new Error('Session closed. Check the invitation and try again.')) {
     this.closing = true;
     clearTimeout(this.syncTimer);
     const peer = this.peer;
@@ -445,7 +451,7 @@ export class NetworkManager {
     this.pending.clear();
     this.seen.clear();
     this.joinReady = null;
-    this.joinFailed?.(new Error('Session closed. Check the invitation and try again.')); this.joinFailed = null;
+    this.joinFailed?.(reason); this.joinFailed = null;
     this.seats.clear(); this.room = ''; this.invite = ''; this.store.memberId = null;
     this.store.sessionRole = 'local';
     if (this.localCampaign) {
@@ -456,6 +462,7 @@ export class NetworkManager {
       isHosting: false,
       isConnected: false,
       roomCode: '',
+      joiningSession: false,
       connectedPeers: [],
       userRole: 'keeper',
       gmVision: true,

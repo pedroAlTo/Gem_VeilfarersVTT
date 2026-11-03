@@ -24,6 +24,7 @@ if errorlevel 1 (
 )
 
 set "VITE_LOCAL_ONLY=0"
+set "VITE_SESSION_TRANSPORT=peerjs"
 node scripts\lan-info.mjs
 set "LAN_IP="
 for /f "delims=" %%i in ('node scripts\lan-info.mjs --primary') do set "LAN_IP=%%i"

@@ -1,5 +1,11 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## LAN session and token position sync · 3 November 2026
+
+The Player button opens the invitation form. Offline preview is an explicit choice. The Keeper shows “Waiting for players” until someone joins, and the guest is marked online after receiving the map. LAN sessions use the VTT server’s WebSocket to deliver messages to invited clients. Keeper-side permissions and filtered snapshots apply to movement in both directions. Online sessions continue to use PeerJS.
+
+The transport integration test starts Vite and opens independent WebSocket clients. It checks invitation rejection, room privacy, token assignment, movement from both endpoints, disconnect and recovery of the current position on rejoin.
+
 ## Windows LAN launchers · 3 November 2026
 
 The dedicated LAN and online launchers serve the VTT on port 5173 on all interfaces. The menu also keeps a single-PC offline option. The launchers print the host’s IPv4 URLs and ask Vite to open the browser once it is listening. If address detection fails, the console explains how to find the correct Wi-Fi or Ethernet address with `ipconfig`.

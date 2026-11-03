@@ -5,10 +5,10 @@
 1. Instala Node.js 24 LTS (también se admite Node 22.12 o posterior de la rama 22).
 2. Extrae **todo** el ZIP en una carpeta. No ejecutes el batch desde dentro del ZIP.
 3. Para jugar por Wi-Fi o Ethernet, ejecuta `INICIAR_VTT_RED_LOCAL.bat` en el PC del Keeper. En los demás equipos abre la URL que muestra la consola, por ejemplo `http://192.168.1.42:5173/`. Todos deben estar en la misma red.
-4. Desde esa dirección, el Keeper crea la partida en **Session** y comparte el código o enlace de invitación. Mantén abiertas la consola y la pestaña del Keeper. El servicio de señalización de PeerJS requiere internet incluso cuando los equipos están en la misma LAN.
+4. Desde esa dirección, el Keeper crea la partida en **Session** y comparte el código o enlace de invitación. En el segundo equipo, pulsa **PLAYER → Join game**, escribe un nombre y pega la invitación. El Keeper debe ver **Crew · 1** y el jugador **LINKED TO KEEPER**. Mantén abiertas la consola y la pestaña del Keeper. El modo LAN comunica los equipos por el propio servidor del VTT.
 5. Si Windows pide acceso para Node.js, permite las conexiones en la red privada donde vas a jugar. Si hay varias direcciones, elige la del adaptador Wi-Fi o Ethernet de esa red. Puedes consultarla con `ipconfig`.
 
-También puedes ejecutar `INICIAR_VTT_ONLINE.bat` para abrir el VTT con las funciones online, o `INICIAR_VTT_LOCAL.bat` para elegir una de estas opciones.
+También puedes ejecutar `INICIAR_VTT_ONLINE.bat` para jugar por internet mediante PeerJS, o `INICIAR_VTT_LOCAL.bat` para elegir una de estas opciones.
 
 | Opción | Acción |
 | --- | --- |
@@ -60,7 +60,7 @@ El entorno de desarrollo es Linux: el `.bat` se ha revisado, pero **no se ha eje
 npm ci
 npm test
 npm run build
-VITE_LOCAL_ONLY=0 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+VITE_SESSION_TRANSPORT=lan VITE_LOCAL_ONLY=0 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
 ```
 
 Para el modo estrictamente local usa `VITE_LOCAL_ONLY=1 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort` en macOS/Linux o la opción 2 del menú en Windows. No abras `index.html` con doble clic: necesita el servidor de Vite.
@@ -79,4 +79,4 @@ En el entorno de revisión pasan 93 pruebas automáticas y ambos builds. Se veri
 
 Para probar el selector de anomalías, coloca una tormenta eléctrica o un láser y pulsa **Color → Choose**. Comprueba el cambio de tono arrastrando y vuelve a abrir el selector para ver el valor guardado.
 
-Para probar el control de jugadores, abre una partida con `INICIAR_VTT_ONLINE.bat`. Conecta un segundo navegador, asigna un personaje y comparte un dron. En **My tokens**, comprueba movimiento, orientación, tiradas y recursos. Reasigna el personaje y comprueba que su anterior controlador pierde el acceso y conserva el dron compartido.
+Para probar el control de jugadores en LAN, abre una partida con `INICIAR_VTT_RED_LOCAL.bat` en el PC del Keeper. Desde un segundo navegador, abre la misma dirección del VTT y únete por invitación. Asigna un personaje en **Session → Player roster** y comparte un dron. Mueve el token desde el Keeper y después desde el jugador. Al soltarlo debe ocupar la misma casilla en ambas ventanas, aunque el zoom sea distinto. En **My tokens**, comprueba movimiento, orientación, tiradas y recursos. Reasigna el personaje y comprueba que su anterior controlador pierde el acceso y conserva el dron compartido.

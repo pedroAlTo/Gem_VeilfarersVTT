@@ -1,4 +1,4 @@
-import { LOCAL_ONLY } from './runtimeMode.js';
+import { LOCAL_ONLY, connectionDisplay } from './runtimeMode.js';
 import { store } from './state.js';
 import { sanitizeHTML, notify } from './ui.js';
 import './orbital.css';
@@ -100,14 +100,13 @@ export function initOrbitalUI() {
   const update = () => {
     const s = store.state;
     const currentMap = store.getActiveMap();
-    readout.innerHTML = `<span>OPERATIVES <b>${store.getTokensForActiveMap().filter(t => s.userRole === 'keeper' || !t.hidden).length}</b></span><span>GRID <b>${currentMap?.gridSize || 0}</b></span><span>SCENE / LOCAL</span>`;
+    const connection = connectionDisplay(s, store.sessionRole);
+    readout.innerHTML = `<span>OPERATIVES <b>${store.getTokensForActiveMap().filter(t => s.userRole === 'keeper' || !t.hidden).length}</b></span><span>GRID <b>${currentMap?.gridSize || 0}</b></span><span>SCENE / ${s.isConnected ? 'SESSION' : 'LOCAL'}</span>`;
     document.getElementById('orbital_scene_name').textContent =
       store.getActiveMap()?.name || 'No active scene';
     document.getElementById('orbital_view_mode').textContent =
       s.userRole === 'keeper' ? 'KEEPER VIEW' : 'PLAYER VIEW';
-    document.getElementById('orbital_connection').textContent = s.isConnected
-      ? `${s.connectedPeers.length || 1} LINKED`
-      : 'LOCAL';
+    document.getElementById('orbital_connection').textContent = connection.detail;
     document.getElementById('orbital_campaign').textContent = s.campaignName;
     document.getElementById('role_keeper_btn').disabled = store.sessionRole === 'player';
     document

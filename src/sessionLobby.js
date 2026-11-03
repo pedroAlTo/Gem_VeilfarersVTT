@@ -1,6 +1,6 @@
 import { store } from './state.js';
 import { network } from './networkManager.js';
-import { LOCAL_ONLY } from './runtimeMode.js';
+import { LOCAL_ONLY, LAN_SESSIONS, connectionDisplay } from './runtimeMode.js';
 import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
 import { openCharacterImport } from './characterManager.js';
@@ -20,16 +20,20 @@ export async function copyText(value, button) {
 }
 export function initSessionBar() {
   const bar = document.createElement('div'); bar.className = 'session-strip';
-  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn" id="session_crew">Crew · 0</button><button class="hud-btn" id="session_my_tokens" hidden>My tokens</button><button class="hud-btn" id="session_account" data-account-label>Sign in</button>';
+  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn" id="session_crew">Crew · 0</button><button class="hud-btn" id="session_join" hidden>Join game</button><button class="hud-btn" id="session_my_tokens" hidden>My tokens</button><button class="hud-btn" id="session_account" data-account-label>Sign in</button>';
   document.querySelector('.header-hud').after(bar);
   bar.querySelector('#session_state').onclick = () => openSessionLobby();
   bar.querySelector('#session_crew').onclick = () => openSessionLobby();
   bar.querySelector('#session_account').onclick = openAccount;
+  bar.querySelector('#session_join').onclick = () => openSessionLobby('', { joinOnly: true });
   bar.querySelector('#session_my_tokens').onclick = openPlayerTokens;
   bar.querySelector('#session_copy').onclick = event => copyText(invitationCode(), event.currentTarget);
   const update = () => {
     const s = store.state;
-    bar.querySelector('#session_state').textContent = s.isConnected ? '● ONLINE' : '○ OFFLINE';
+    const { label, detail } = connectionDisplay(s, store.sessionRole);
+    bar.querySelector('#session_state').textContent = `${s.isConnected ? '●' : '○'} ${label}`;
+    bar.querySelector('#session_state').title = LAN_SESSIONS ? 'LAN · ' + detail : detail;
+    bar.querySelector('#session_join').hidden = LOCAL_ONLY || store.sessionRole !== 'local';
     bar.querySelector('#session_state').dataset.online = String(s.isConnected);
     bar.querySelector('#session_name').textContent = s.campaignName;
     bar.querySelector('#session_name').title = s.campaignName;
@@ -69,20 +73,24 @@ export function openTokenControl(tokenId) {
   modal.querySelector('form').onsubmit = event => { event.preventDefault(); try { store.assignTokenControllers(tokenId, [...modal.querySelectorAll('input:checked')].map(x => x.value)); modal.remove(); } catch (error) { modal.querySelector('.dossier-error').textContent = error.message; } };
 }
 
-export function openSessionLobby(prefill = '') {
+export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer } = {}) {
   const s = store.state, joined = store.sessionRole === 'player', active = s.isHosting || joined;
-  const modal = dossierDialog('SESSION / CREW LINK', `
-    <span class="dossier-eyebrow">${s.isConnected ? 'ONLINE' : 'OFFLINE'} / ${joined ? 'PLAYER' : 'KEEPER'}</span><h2>${e(s.campaignName)}</h2>
-    <p class="dossier-muted">${active ? joined ? 'Import your character or ask the Keeper to assign one. Drones may be shared.' : 'Share the invitation, then assign characters to your crew.' : 'Host your current game, or paste an invitation to join a friend. No account is required to play.'}</p>
-    ${!active ? `<div class="session-lobby-grid"><form id="host_form" class="session-card"><span class="dossier-eyebrow">01 / HOST</span><h3>Create an online game</h3><label class="dossier-field">Session name<input class="hud-input" id="host_name" maxlength="200" required value="${e(s.campaignName)}"></label><label><input type="checkbox" id="host_efforts" ${s.optionalEfforts ? 'checked' : ''}> Optional Efforts</label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Host game</button></form>
+  joinOnly = !active && joinOnly;
+  const modal = dossierDialog(joinOnly ? 'JOIN GAME' : 'SESSION / CREW LINK', `
+    <span class="dossier-eyebrow">${s.isConnected ? 'ONLINE' : 'OFFLINE'}${LAN_SESSIONS ? ' · LAN' : ''} / ${joinOnly || joined ? 'PLAYER' : 'KEEPER'}</span><h2>${joinOnly ? 'Join the Keeper’s table' : e(s.campaignName)}</h2>
+    <p class="dossier-muted">${joinOnly ? 'Enter your name and paste the Keeper’s invitation. The map will appear when the connection is ready.' : active ? joined ? 'Import your character or ask the Keeper to assign one. Drones may be shared.' : 'Share the invitation, then assign characters to your crew.' : 'Host your current game, or paste an invitation to join a friend. No account is required to play.'}</p>
+    ${!active ? `<div class="${joinOnly ? 'session-join-only' : 'session-lobby-grid'}"><form ${joinOnly ? 'hidden' : ''} id="host_form" class="session-card"><span class="dossier-eyebrow">01 / HOST</span><h3>Create an online game</h3><label class="dossier-field">Session name<input class="hud-input" id="host_name" maxlength="200" required value="${e(s.campaignName)}"></label><label><input type="checkbox" id="host_efforts" ${s.optionalEfforts ? 'checked' : ''}> Optional Efforts</label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Host game</button></form>
     <form id="join_form" class="session-card"><span class="dossier-eyebrow">02 / JOIN</span><h3>Join your crew</h3><label class="dossier-field">Your call sign<input class="hud-input" id="join_name" maxlength="80" required value="${e(s.userName === 'Keeper' ? '' : s.userName)}" placeholder="Your name"></label><label class="dossier-field">Invitation code or link<input class="hud-input" id="join_code" required value="${e(prefill)}" placeholder="Paste invitation"></label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Join game</button></form></div>${LOCAL_ONLY ? '<p class="import-warning">Local test mode. Use INICIAR_VTT_ONLINE.bat for online features.</p>' : ''}` : `
     <div class="session-invitation"><label class="dossier-field">Invitation code<input class="hud-input" readonly value="${e(invitationCode())}"></label><button class="hud-btn" id="lobby_copy">Copy code</button><button class="hud-btn" id="lobby_link">Copy link</button></div><div class="session-actions"><button class="hud-btn hud-btn-primary" id="lobby_import">Import my character</button><button class="hud-btn" id="lobby_library">My saved characters</button><button class="hud-btn" id="lobby_leave">${joined ? 'Leave game' : 'Close online game'}</button>${!s.isConnected && joined ? '<button class="hud-btn" id="lobby_reconnect">Reconnect</button>' : ''}</div>`}
     <p id="lobby_status" role="status"></p><p class="dossier-error" role="alert"></p>
-    <h3>Player roster</h3><div id="lobby_roster"></div>
+    ${joinOnly ? '' : '<h3>Player roster</h3>'}<div id="lobby_roster" ${joinOnly ? 'hidden' : ''}></div>
+    ${joinOnly && previewPlayer ? '<button type="button" class="hud-btn" id="lobby_preview">Preview player view offline</button>' : ''}
     ${s.isHosting ? '<form id="broadcast_form" class="session-card"><h3>Broadcast to everyone</h3><label class="dossier-field">Message<textarea class="hud-input" id="broadcast_text" maxlength="2000" rows="3" required placeholder="The next jump begins in five minutes…"></textarea></label><button class="hud-btn">Send broadcast</button></form>' : ''}
   `);
   const error = modal.querySelector('.dossier-error'), status = modal.querySelector('#lobby_status');
-  const run = async fn => { error.textContent = ''; modal.dataset.busy = '1'; const buttons = [...modal.querySelectorAll('button')]; buttons.forEach(b => b.disabled = true); try { await fn(); } catch (err) { error.textContent = err.message; status.textContent = ''; } finally { delete modal.dataset.busy; buttons.forEach(b => b.disabled = false); } };
+  if (joinOnly) modal.querySelector('#join_name').focus();
+  modal.querySelector('#lobby_preview')?.addEventListener('click', () => { modal.remove(); previewPlayer(); });
+  const run = async fn => { error.textContent = ''; modal.dataset.busy = '1'; const buttons = [...modal.querySelectorAll('button')]; const enabled = buttons.filter(b => !b.disabled); enabled.forEach(b => b.disabled = true); try { await fn(); } catch (err) { error.textContent = err.message; status.textContent = ''; } finally { delete modal.dataset.busy; enabled.forEach(b => b.disabled = false); } };
   const renderRoster = () => {
     const state = store.state, players = state.players || [], list = modal.querySelector('#lobby_roster');
     if (list.contains(document.activeElement)) return;
@@ -101,7 +109,7 @@ export function openSessionLobby(prefill = '') {
   const unsub = store.subscribe((state, keys) => { if (keys.some(k => ['players', 'connectedPeers', 'tokens'].includes(k))) renderRoster(); });
   const observer = new MutationObserver(() => { if (!modal.isConnected) { unsub(); observer.disconnect(); } }); observer.observe(document.body, { childList: true });
   modal.querySelector('#host_form')?.addEventListener('submit', event => { event.preventDefault(); run(async () => { store.update({ campaignName: modal.querySelector('#host_name').value.trim(), optionalEfforts: modal.querySelector('#host_efforts').checked }); status.textContent = 'Opening your game…'; await network.hostSession(); modal.remove(); openSessionLobby(); }); });
-  modal.querySelector('#join_form')?.addEventListener('submit', event => { event.preventDefault(); run(async () => { const { room, invite } = parseInvitation(modal.querySelector('#join_code').value); status.textContent = 'Connecting to the Keeper…'; await network.joinSession(room, modal.querySelector('#join_name').value.trim(), invite); modal.remove(); openSessionLobby(); }); });
+  modal.querySelector('#join_form')?.addEventListener('submit', event => { event.preventDefault(); run(async () => { const { room, invite } = parseInvitation(modal.querySelector('#join_code').value); status.textContent = 'Connecting to the Keeper and waiting for the map…'; await network.joinSession(room, modal.querySelector('#join_name').value.trim(), invite); modal.remove(); openSessionLobby(); }); });
   const bind = (id, fn) => { const b = modal.querySelector(id); if (b) b.onclick = fn; };
   bind('#lobby_copy', event => copyText(invitationCode(), event.currentTarget));
   bind('#lobby_link', event => copyText(`${location.origin}${location.pathname}?room=${encodeURIComponent(network.room)}#invite=${encodeURIComponent(network.invite)}`, event.currentTarget));

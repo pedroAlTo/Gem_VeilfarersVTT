@@ -237,11 +237,18 @@ function setupHeaderEvents() {
     updateKeeperUIVisibility(true);
   };
 
-  rolePlayerBtn.onclick = () => {
+  const previewPlayer = () => {
     rolePlayerBtn.classList.add('active');
     roleKeeperBtn.classList.remove('active');
     store.update({ userRole: 'player', gmVision: false, activeTool: 'select', activeLayer: 'tokens', ...(store.sessionRole !== 'player' ? { claimedTokenId: store.state.selectedTokenId || store.state.claimedTokenId } : {}) });
     updateKeeperUIVisibility(false);
+  };
+  rolePlayerBtn.onclick = () => {
+    if (!LOCAL_ONLY && store.sessionRole === 'local') {
+      openSessionLobby('', { joinOnly: true, previewPlayer });
+    } else {
+      previewPlayer();
+    }
   };
 
   // Audio Toggle
@@ -662,7 +669,7 @@ function setupAutoJoinFromURL() {
   if (LOCAL_ONLY) return;
   const room = new URLSearchParams(location.search).get('room');
   const invite = new URLSearchParams(location.hash.slice(1)).get('invite');
-  if (room && invite) openSessionLobby(`${room}.${invite}`);
+  if (room && invite) openSessionLobby(`${room}.${invite}`, { joinOnly: true });
 }
 
 // --- Data Export / Import Modal ---

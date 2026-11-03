@@ -35,6 +35,7 @@ if errorlevel 1 (
 
 REM Activar multijugador (desactivar modo solo local)
 set "VITE_LOCAL_ONLY=0"
+set "VITE_SESSION_TRANSPORT=lan"
 
 REM Mostrar información de la red local
 node scripts\lan-info.mjs
