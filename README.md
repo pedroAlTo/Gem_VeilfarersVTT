@@ -4,9 +4,11 @@ A local-first virtual tabletop with scene travel, a player roster, shared drones
 
 ## Run locally
 
-Use **INICIAR_VTT_LOCAL.bat** for isolated offline tests, or **INICIAR_VTT_ONLINE.bat** for online play and optional Firebase features. Both use the locked dependencies and require Node.js 22.12+ or Node.js 24 LTS. Initial dependency installation needs internet.
+On Windows, extract the ZIP and run **INICIAR_VTT_RED_LOCAL.bat** on the Keeper’s PC. Other devices on the same Wi-Fi or Ethernet network open the printed address, for example `http://192.168.1.42:5173/`. Create a game in **Session** and share its invitation. PeerJS needs internet for signaling. Firebase is optional.
 
-On macOS/Linux: `npm ci`, then `npm run dev`. Run `npm test` and `npm run build` for automated checks. Open the printed local URL rather than opening index.html from disk. Windows launchers have been reviewed but not executed on Windows in this environment.
+**INICIAR_VTT_LOCAL.bat** opens the menu for LAN, single-PC offline play, tests and the effects lab. **INICIAR_VTT_ONLINE.bat** also serves the app on the LAN with online features enabled. The launchers require Node.js 22.12+ or 24 LTS and install locked dependencies on first use.
+
+On macOS/Linux, run `npm ci`, then `npm run dev -- --host 0.0.0.0 --port 5173 --strictPort` for LAN access. Run `node scripts/lan-info.mjs` to display client URLs. For local checks use `npm test` and `npm run build`.
 
 ## Play
 
@@ -21,4 +23,4 @@ On macOS/Linux: `npm ci`, then `npm run dev`. Run `npm test` and `npm run build`
 
 Live sessions use PeerJS/WebRTC and the public PeerServer for signaling. The Keeper's tab must remain open; there is no persistent multiplayer game server or automatic host migration. Up to six connected players. Network restrictions may require your own TURN infrastructure. A dropped player can reconnect with the same invitation and browser-session identity while the host remains open. Imported sheets are validated by the Keeper's client; the application does not independently verify a player's claimed character stats against an external game account.
 
-Changes are on `fix/vtt-session-integrity-and-orbital-ui`. See [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) for history and [PRUEBAS_LOCALES.md](PRUEBAS_LOCALES.md) for the offline test launcher.
+Changes are on `fix/vtt-session-integrity-and-orbital-ui`. See [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) for history and [PRUEBAS_LOCALES.md](PRUEBAS_LOCALES.md) for the Windows launchers and LAN setup.

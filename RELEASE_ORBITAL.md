@@ -1,5 +1,11 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Windows LAN launchers · 3 November 2026
+
+The dedicated LAN and online launchers serve the VTT on port 5173 on all interfaces. The menu also keeps a single-PC offline option. The launchers print the host’s IPv4 URLs and ask Vite to open the browser once it is listening. If address detection fails, the console explains how to find the correct Wi-Fi or Ethernet address with `ipconfig`.
+
+All 95 automated tests and the production build passed. The new tests cover multiple adapters and a host without a shareable IPv4 address. The Windows batches and a connection from a second physical device remain unverified. The test environment restricted network interface enumeration during the Vite LAN startup check.
+
 ## Orbital IV.2 — assigned player controls, visual anomaly colors and compact dice tray · 3 November 2026
 
 The dice tray is now a 352 px overlay anchored inside the map’s top-right corner (300/264 px on narrower screens). It has no modal backdrop or focus trap. Minimize preserves the results, close releases graphics resources, and settings stay collapsed until requested. Tray gestures and shortcuts cannot pan or alter the map; the rest of the tabletop remains usable.

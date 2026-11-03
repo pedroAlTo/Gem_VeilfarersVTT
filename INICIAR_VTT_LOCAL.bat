@@ -1,72 +1,103 @@
 @echo off
 setlocal
 chcp 65001 >nul
-title VeilFarers - Orbital local tests
+title VeilFarers - Orbital VTT Launcher
 pushd "%~dp0"
 if errorlevel 1 exit /b 1
+
 where node >nul 2>&1
 if errorlevel 1 goto missing_node
 where npm >nul 2>&1
 if errorlevel 1 goto missing_node
 if not exist package.json goto missing_files
+
 node scripts\local-setup.mjs
 if errorlevel 1 goto failed
-set "VITE_LOCAL_ONLY=1"
+
 echo.
-echo   VEILFARERS / ORBITAL II
-echo   Local tests - no multiplayer or Firebase
+echo   ==============================================================
+echo     VEILFARERS / ORBITAL VTT
+echo   ==============================================================
 echo.
-echo   [1] Tests + build + open VTT (recommended)
-echo   [2] Open VTT directly
-echo   [3] Tests + build only
-echo   [4] Open visual effects lab
-echo   [5] Exit
-choice /c 12345 /n /m "Select 1-5: "
-if errorlevel 5 goto done
-if errorlevel 4 goto effects_lab
-if errorlevel 3 goto tests_only
-if errorlevel 2 goto start_vtt
+echo   [1] Iniciar en RED LOCAL (Multijugador LAN / WiFi recomendado)
+echo   [2] Iniciar SOLO EN ESTE PC (127.0.0.1 offline)
+echo   [3] Tests + compilacion + abrir en Red Local
+echo   [4] Tests + compilacion solamente
+echo   [5] Laboratorio de efectos visuales (fx-lab)
+echo   [6] Salir
+echo.
+choice /c 123456 /n /m "Selecciona una opcion (1-6): "
+if errorlevel 6 goto done
+if errorlevel 5 goto effects_lab
+if errorlevel 4 goto tests_only
+if errorlevel 3 goto checks_and_lan
+if errorlevel 2 goto start_solo
+if errorlevel 1 goto start_lan
+
+:checks_and_lan
 call :checks
 if errorlevel 1 goto failed
-goto start_vtt
+goto start_lan
+
 :tests_only
 call :checks
 if errorlevel 1 goto failed
-echo All checks passed.
+echo Todos los tests pasaron exitosamente.
 pause
 goto done
+
 :checks
 call npm test
 if errorlevel 1 exit /b 1
 call npm run build
 if errorlevel 1 exit /b 1
 exit /b 0
-:start_vtt
+
+:start_lan
+set "VITE_LOCAL_ONLY=0"
+node scripts\lan-info.mjs
+set "LAN_IP="
+for /f "delims=" %%i in ('node scripts\lan-info.mjs --primary') do set "LAN_IP=%%i"
+set "LAN_OPEN="
+if defined LAN_IP set "LAN_OPEN=--open http://%LAN_IP%:5173/"
+echo Mantén esta ventana abierta mientras juegues. Pulsa Ctrl+C para detener el servidor.
+call npm run dev -- --host 0.0.0.0 --port 5173 --strictPort %LAN_OPEN%
+if errorlevel 1 goto failed
+goto done
+
+:start_solo
+set "VITE_LOCAL_ONLY=1"
 echo.
-echo Opening http://127.0.0.1:5173/
-echo Keep this window open. Press Ctrl+C to stop the server.
-echo Campaigns stay in this browser. Use Archive to export a backup.
+echo Modo offline en este ordenador (127.0.0.1)
+echo Abriendo http://127.0.0.1:5173/ ...
+echo Mantén esta ventana abierta. Pulsa Ctrl+C para detener el servidor.
 call npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --open
 if errorlevel 1 goto failed
 goto done
+
 :effects_lab
+set "VITE_LOCAL_ONLY=1"
 call npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --open /fx-lab.html
 if errorlevel 1 goto failed
 goto done
+
 :missing_node
-echo Install Node.js 24 LTS from https://nodejs.org/ and reopen this batch.
+echo Instala Node.js 24 LTS o 22.12+ desde https://nodejs.org/ y vuelve a abrir este archivo.
 goto failed
+
 :missing_files
-echo Extract the complete ZIP before running this batch.
-echo INICIAR_VTT_LOCAL.bat must be next to package.json.
+echo Extrae el ZIP completo antes de ejecutar este archivo.
+echo INICIAR_VTT_LOCAL.bat debe estar junto a package.json.
 goto failed
+
 :failed
 echo.
-echo Could not complete the operation. Read the error above.
-echo If port 5173 is busy, stop the previous VTT window and retry.
+echo No se pudo completar la operacion. Revisa el mensaje de error superior.
+echo Si el puerto 5173 esta ocupado, cierra la ventana previa del VTT y reintenta.
 pause
 popd
 exit /b 1
+
 :done
 popd
 endlocal

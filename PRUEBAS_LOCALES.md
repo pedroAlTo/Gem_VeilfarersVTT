@@ -4,24 +4,24 @@
 
 1. Instala Node.js 24 LTS (también se admite Node 22.12 o posterior de la rama 22).
 2. Extrae **todo** el ZIP en una carpeta. No ejecutes el batch desde dentro del ZIP.
-3. Haz doble clic en `INICIAR_VTT_LOCAL.bat`, junto a `package.json`.
-4. Selecciona **1** para ejecutar las pruebas, compilar y abrir el VTT.
+3. Para jugar por Wi-Fi o Ethernet, ejecuta `INICIAR_VTT_RED_LOCAL.bat` en el PC del Keeper. En los demás equipos abre la URL que muestra la consola, por ejemplo `http://192.168.1.42:5173/`. Todos deben estar en la misma red.
+4. Desde esa dirección, el Keeper crea la partida en **Session** y comparte el código o enlace de invitación. Mantén abiertas la consola y la pestaña del Keeper. El servicio de señalización de PeerJS requiere internet incluso cuando los equipos están en la misma LAN.
+5. Si Windows pide acceso para Node.js, permite las conexiones en la red privada donde vas a jugar. Si hay varias direcciones, elige la del adaptador Wi-Fi o Ethernet de esa red. Puedes consultarla con `ipconfig`.
 
-El lanzador instala las dependencias bloqueadas con `npm ci` la primera vez y cuando cambie el lockfile o la versión de Node. Ese paso necesita internet. Después reutiliza la instalación. No instala Node automáticamente ni requiere permisos de administrador.
+También puedes ejecutar `INICIAR_VTT_ONLINE.bat` para abrir el VTT con las funciones online, o `INICIAR_VTT_LOCAL.bat` para elegir una de estas opciones.
 
 | Opción | Acción |
 | --- | --- |
-| 1 | Pruebas + compilación + abrir VTT |
-| 2 | Abrir VTT directamente |
-| 3 | Pruebas + compilación, sin servidor |
-| 4 | Laboratorio de agua y agujero negro |
-| 5 | Salir |
+| 1 | Abrir el VTT para la red local |
+| 2 | Abrir el VTT offline en este PC |
+| 3 | Ejecutar pruebas, compilar y abrir para la red local |
+| 4 | Ejecutar pruebas y compilar |
+| 5 | Abrir el laboratorio de efectos en este PC |
+| 6 | Salir |
 
-Dirección del VTT: `http://127.0.0.1:5173/`. Conserva la ventana del batch abierta; `Ctrl+C` detiene el servidor. Si el puerto está ocupado, cierra la instancia anterior. El puerto es fijo para conservar el mismo origen de almacenamiento entre sesiones.
+El modo LAN escucha en todas las interfaces con el puerto 5173. La opción 2 y el laboratorio escuchan en `127.0.0.1` y activan `VITE_LOCAL_ONLY=1`. El lanzador instala las dependencias con `npm ci` la primera vez. Pulsa Ctrl+C para detenerlo.
 
-El batch establece `VITE_LOCAL_ONLY=1`: desactiva crear/unirse a sesiones y la incorporación automática por invitación. No utiliza Firebase ni pide credenciales. La aplicación guarda la campaña en este navegador. Los recursos remotos que hayas añadido a tu campaña pueden necesitar internet.
-
-Antes de probar con una partida importante, expórtala desde **Archive**. `localhost`, `127.0.0.1`, distintos puertos y distintos navegadores tienen almacenes separados: importa el JSON si quieres trasladar una campaña. El ZIP no contiene tus datos de partida del navegador.
+**Si ya tenías una campaña en este PC**, expórtala desde la dirección que utilizabas antes y después impórtala al abrir el VTT desde la IP de red. El navegador guarda por separado los datos de cada dirección y puerto.
 
 ## Prueba manual de esta iteración
 
@@ -41,14 +41,14 @@ Antes de probar con una partida importante, expórtala desde **Archive**. `local
 5. Selecciona el token y pulsa **FICHA**. Comprueba identidad, Evasion, Traits finales, recursos y umbrales. En **Rasgos y equipo**, comprueba las experiencias de la senda activa, armas, poderes y equipo. Asha conserva Stress máximo 6 y su Net Launcher muestra `n/a`.
 6. Guarda una nota, cambia a otra sesión y vuelve; después recarga el navegador. La ficha, las escenas, clocks, nave, documentos y el registro (últimas 150 entradas) deben recuperarse. Se guardan los ajustes de niebla, pero no su historial de exploración al cerrar el navegador; las plantillas de medida y los efectos puntuales son transitorios.
 7. **Exportar actor VTT** conserva toda la ficha local y sirve también para PNJ/adversarios. **Exportar al creador** conserva el JSON original y actualiza los datos editables y recursos; no recalcula reglas de avance ni modifica automáticamente las descripciones de poderes. Comprueba los campos derivados al abrirlo en tu creador.
-8. **Exportar sesión JSON** crea una copia transportable; **Importar sesión JSON** la abre con una identidad nueva sin sobrescribir las sesiones guardadas. El autoguardado pertenece al navegador y a su dirección (mantén `http://127.0.0.1:5173` con el batch). Exporta antes de cambiar de navegador o limpiar sus datos.
+8. **Exportar sesión JSON** crea una copia transportable; **Importar sesión JSON** la abre con una identidad nueva sin sobrescribir las sesiones guardadas. El autoguardado pertenece al navegador y a su dirección (mantén la misma dirección y puerto). Exporta antes de cambiar de navegador o limpiar sus datos.
 9. Para enemigos, crea un **ACTOR → Adversario**, introduce HP/Stress/Armor/Evasion/umbrales y completa Attack, daño, alcance y habilidades en su ficha. Las tiradas de adversario utilizan su Attack, no un Trait de PJ. Puedes exportarlo y reimportarlo en formato VTT Actor v1.
 
 Compatibilidad comprobada: **Veilfarers Character Sheet 2.80-RC3.2**, con los cuatro JSON aportados (tres personajes únicos), y **Veilfarers VTT Actor v1**. No se ha recibido un JSON externo de enemigo para validar otro esquema. Las habilidades, costes especiales y expresiones de daño compuestas se conservan como referencia y no se automatizan a partir de texto libre. Las experiencias importadas se pueden seleccionar en el panel de dados; las reglas existentes aplican su coste cuando se tira.
 
 La importación valida el lote completo antes de modificar la sesión. Si falla el guardado, cambiar de sesión se bloquea y el estado actual sigue abierto. La lista de sesiones ofrece una copia de recuperación si no puede leerse el almacenamiento.
 
-## Validación y límites
+## Validación histórica de Orbital III
 
 Se han ejecutado **70 pruebas automatizadas** y la compilación Vite, incluida la variante `VITE_LOCAL_ONLY=1`. La revisión visual se realizó a 1363, 820 y 390 px; se comprobó arrastre real, persistencia tras recarga, expansión, ordenación y apertura/cierre del panel móvil. Se revisaron el agua rectangular/poligonal y el agujero negro en el laboratorio.
 
@@ -60,10 +60,10 @@ El entorno de desarrollo es Linux: el `.bat` se ha revisado, pero **no se ha eje
 npm ci
 npm test
 npm run build
-npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+VITE_LOCAL_ONLY=0 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
 ```
 
-Para el modo estrictamente local, establece `VITE_LOCAL_ONLY=1` antes de iniciar Vite o compilar; el batch lo hace por ti. No abras `index.html` con doble clic: necesita el servidor de Vite.
+Para el modo estrictamente local usa `VITE_LOCAL_ONLY=1 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort` en macOS/Linux o la opción 2 del menú en Windows. No abras `index.html` con doble clic: necesita el servidor de Vite.
 
 
 ## Orbital IV.2 — comprobar los dados con GPU local
