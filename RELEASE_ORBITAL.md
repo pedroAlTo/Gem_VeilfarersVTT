@@ -1,5 +1,17 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Orbital IV.2 — assigned player controls, visual anomaly colors and compact dice tray · 3 November 2026
+
+The dice tray is now a 352 px overlay anchored inside the map’s top-right corner (300/264 px on narrower screens). It has no modal backdrop or focus trap. Minimize preserves the results, close releases graphics resources, and settings stay collapsed until requested. Tray gestures and shortcuts cannot pan or alter the map; the rest of the tabletop remains usable.
+
+All four finishes have new 512 px color maps, separate relief and illumination maps, clear numbers with orientation marks on 6/9, and consistent cyan Hope / magenta Fear. Actual chamfer geometry adds reflective edges. Lighting is less overexposed; metal recesses do not glow.
+
+cannon-es now steps at 120 Hz with lower launch height, gentler spin, tuned mat friction/bounce, and better contact precision. No live-body nudges, pose snaps or off-table teleports remain. The preparation pass selects clean initial conditions for a flat landing within six simulation seconds, then the live world reproduces them exactly. It does not reroll authoritative game values. Cosmetic tests use natural face labels.
+
+Assigned players can select their character and shared drones through **My tokens**. They can move, turn, roll and change current resources. The Keeper validates ownership and resource limits. Reassignment immediately transfers control, and assigned NPCs are visible to their controllers. The lightning and laser inspectors now open a visual color picker with a two-dimensional color field, hue slider, presets and optional hex entry.
+
+All 93 automated tests pass, including continuous trajectories compared at every step with an unmodified Cannon world, exact authoritative result matching, and nonmodal panel interaction/focus. An additional 200 seeded preparations all landed flat in 2.58–5.78 simulation seconds (mean 4.22). Production and local-mode builds pass. Browser QA verified map-relative placement, settings, minimize/expand, continued map-tool access, and all eight flat texture maps. This browser has WebGL disabled, so hardware rendering, material appearance under 3D lighting and perceived animation smoothness still require a local GPU check. No production deployment.
+
 ## Orbital IV.1 — Three.js WebGL dice · 2 November 2026
 
 The dice tray now requires the Three.js WebGL 2 renderer. The former software renderer has been removed. Unsupported devices show a clear graphics-support message while retaining the authoritative numeric roll in the panel and log.

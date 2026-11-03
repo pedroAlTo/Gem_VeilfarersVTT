@@ -309,11 +309,18 @@ class StateStore {
 
   // --- Token Management ---
   canEditToken(tokenId) {
-    if (this.sessionRole !== 'player') return this.state.userRole === 'keeper' || !!this.state.tokens.find(t=>t.id===tokenId && t.isPlayer);
-    return this.state.isConnected && !!this.state.tokens.find(t=>t.id===tokenId && controlsToken(t, this.memberId || this.peerId));
+    const token = this.state.tokens.find(t => t.id === tokenId);
+    if (!token) return false;
+    if (this.sessionRole !== 'player' && this.state.userRole === 'keeper') return true;
+    if (token.hidden) return false;
+    if (this.sessionRole === 'player') return !!this.state.isConnected && controlsToken(token, this.memberId || this.peerId);
+    // Local Player view previews the claimed character, not every PC on the map.
+    return token.id === this.state.claimedTokenId || controlsToken(token, this.memberId || this.peerId);
   }
+  getControlledTokens() { return this.getTokensForActiveMap().filter(token => this.canEditToken(token.id)); }
 
   updateToken(tokenId, partial) {
+    if (!this.remoteApplying && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
     if (this.sessionRole === 'player' && !this.remoteApplying) {
       if (this.canEditToken(tokenId)) this.sendTokenPatch?.(tokenId, partial);
       return;

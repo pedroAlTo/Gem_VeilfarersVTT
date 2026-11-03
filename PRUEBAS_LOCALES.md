@@ -64,3 +64,19 @@ npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
 Para el modo estrictamente local, establece `VITE_LOCAL_ONLY=1` antes de iniciar Vite o compilar; el batch lo hace por ti. No abras `index.html` con doble clic: necesita el servidor de Vite.
+
+
+## Orbital IV.2 — comprobar los dados con GPU local
+
+1. Ejecuta `INICIAR_VTT_LOCAL.bat` y abre **DICE → Open tray**. La bandeja debe aparecer sobre la esquina superior derecha del mapa, sin bloquearlo.
+2. Abre **⚙ Dice settings** y pulsa **Test throw** varias veces. Comprueba los rebotes, la desaceleración y la caída sobre una cara plana. No debe haber saltos de posición ni impulsos después de caer.
+3. Prueba los cuatro acabados; Hope es cian y Fear magenta. Cambiar el acabado mantiene la posición y el resultado. Comprueba la legibilidad de 6/9 y los reflejos al rotar la cámara.
+4. Haz una tirada real: los valores de Hope/Fear deben coincidir con el resultado del panel y del registro. **Test throw** no cambia la partida.
+5. Minimiza y expande, cambia de herramienta del mapa, cierra y vuelve a abrir. Desactiva **Show for game rolls** para evitar aperturas automáticas; activa **Reduce motion** para ver el resultado sin animación.
+6. Reduce el tamaño de la ventana y comprueba que la bandeja queda dentro del mapa. Si aparece el aviso de WebGL 2, activa la aceleración gráfica de tu navegador y vuelve a abrirla.
+
+En el entorno de revisión pasan 93 pruebas automáticas y ambos builds. Se verificaron 200 trayectorias físicas y las ocho texturas planas; el navegador de revisión no dispone de WebGL, por lo que la apariencia final con iluminación 3D y la fluidez visual requieren esta comprobación local.
+
+Para probar el selector de anomalías, coloca una tormenta eléctrica o un láser y pulsa **Color → Choose**. Comprueba el cambio de tono arrastrando y vuelve a abrir el selector para ver el valor guardado.
+
+Para probar el control de jugadores, abre una partida con `INICIAR_VTT_ONLINE.bat`. Conecta un segundo navegador, asigna un personaje y comparte un dron. En **My tokens**, comprueba movimiento, orientación, tiradas y recursos. Reasigna el personaje y comprueba que su anterior controlador pierde el acceso y conserva el dron compartido.

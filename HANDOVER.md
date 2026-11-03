@@ -1,8 +1,10 @@
-# Current state — Orbital IV
+# Current state — Orbital IV.2
 
 The current implementation and setup are described in `README.md`, `RELEASE_ORBITAL.md`, and `FIREBASE_SETUP.md`. Branch: `fix/vtt-session-integrity-and-orbital-ui`.
 
-New modules: `sessionLobby.js` (host/join/roster), `tokenPermissions.js` (assignment and scene travel), `cloudAccount.js` + `accountUI.js` (Firebase archives), `sceneCreator.js` (server uploads), `diceTray3d.js` + `dicePhysics.js` (Three.js WebGL 2 dice and live cannon-es physics). Firebase remains unconfigured. No production deployment. Historical notes below describe earlier releases and do not override this status.
+Orbital IV.2 adds assigned character and drone control via **My tokens**, a visual anomaly color picker and a compact map dice tray.
+
+New modules: `sessionLobby.js` (host/join/roster), `tokenPermissions.js` (assignment and scene travel), `cloudAccount.js` + `accountUI.js` (Firebase archives), `sceneCreator.js` (server uploads), `diceTray3d.js` + `dicePhysics.js` + `diceMaterials.js` + `diceTrayPanel.js` (compact map overlay, detailed finishes, Three.js WebGL 2 dice and live cannon-es physics at 120 Hz). Firebase remains unconfigured. No production deployment. Historical notes below describe earlier releases and do not override this status.
 
 ---
 

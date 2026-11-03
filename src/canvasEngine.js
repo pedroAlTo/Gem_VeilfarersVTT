@@ -8,6 +8,7 @@ import { drawTokenGauge } from './tokenVitals.js';
 import { FXEngine } from './fxEngine.js';
 import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
+import { isPartyToken } from './tokenPermissions.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
@@ -954,7 +955,7 @@ export class CanvasEngine {
           // 0. Check Eye Controller Handle (Facing Angle / Directional FOV) on Selected Token
           const allTokens = store.getTokensForActiveMap();
           const selectedTok = allTokens.find(t => t.id === state.selectedTokenId);
-          if (selectedTok) {
+          if (selectedTok && store.canEditToken(selectedTok.id)) {
             const tokR = ((selectedTok.size || 1) * (map.gridSize || 64)) / 2;
             const fAngle = selectedTok.facingAngle ?? 0;
             const arrowDist = tokR + 20;
@@ -1406,6 +1407,8 @@ export class CanvasEngine {
         return;
       }
 
+      if (this.draggedTokenFacing && !store.canEditToken(this.draggedTokenFacing.id)) this.draggedTokenFacing = null;
+      if (this.draggedToken && !store.canEditToken(this.draggedToken.id)) this.draggedToken = null;
       if (this.draggedTokenFacing) {
         const dx = world.x - this.draggedTokenFacing.x;
         const dy = world.y - this.draggedTokenFacing.y;
@@ -1688,11 +1691,7 @@ export class CanvasEngine {
           undoManager.pushSnapshot(this.preDragSnapshot, 'Rotar Operativo');
         }
         store.updateToken(this.draggedTokenFacing.id, { facingAngle: this.draggedTokenFacing.facingAngle });
-        network.broadcast({
-          type: 'TOKEN_UPDATE',
-          tokenId: this.draggedTokenFacing.id,
-          data: { facingAngle: this.draggedTokenFacing.facingAngle }
-        });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: this.draggedTokenFacing.id, partial: { facingAngle: this.draggedTokenFacing.facingAngle } });
         this.draggedTokenFacing = null;
       }
 
@@ -1764,7 +1763,7 @@ export class CanvasEngine {
           undoManager.pushSnapshot(this.preDragSnapshot, `Mover ${this.draggedToken.name || 'Operativo'}`);
         }
         store.updateToken(this.draggedToken.id, { x: finalX, y: finalY });
-        network.broadcast({ type: 'TOKEN_MOVE', tokenId: this.draggedToken.id, x: finalX, y: finalY });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId: this.draggedToken.id, x: finalX, y: finalY });
         this.draggedToken = null;
         this.draggedTokenOrigX = null;
         this.draggedTokenOrigY = null;
@@ -2229,14 +2228,14 @@ export class CanvasEngine {
     if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
       let viewers = [];
       if (state.userRole === 'player') {
-        viewers = activeTokens.filter(t => t.isPlayer || (t.actorType === 'drone' && t.controllerIds?.length));
+        viewers = activeTokens.filter(isPartyToken);
         if (viewers.length === 0) {
           const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
           if (claimed) viewers = [claimed];
         }
       } else {
         // Keeper mode: use player tokens to stamp exploration and show visibility
-        viewers = activeTokens.filter(t => t.isPlayer || (t.actorType === 'drone' && t.controllerIds?.length));
+        viewers = activeTokens.filter(isPartyToken);
         if (viewers.length === 0 && state.selectedTokenId) {
           const sel = activeTokens.find(t => t.id === state.selectedTokenId);
           if (sel) viewers = [sel];
@@ -2544,13 +2543,13 @@ export class CanvasEngine {
   isTokenVisibleToPlayers(targetTok, allTokens, map) {
     const state = store.getState();
     // 1. Friendly player tokens are always visible to players
-    if (targetTok.isPlayer || (targetTok.actorType === 'drone' && targetTok.controllerIds?.length)) return true;
+    if (isPartyToken(targetTok)) return true;
 
     // 2. If Keeper has GM Vision active, all tokens are visible to Keeper
     if (state.userRole === 'keeper' && state.gmVision) return true;
 
     // 3. Find viewing tokens: all friendly player characters
-    let viewers = allTokens.filter(t => t.isPlayer || (t.actorType === 'drone' && t.controllerIds?.length));
+    let viewers = allTokens.filter(isPartyToken);
     if (viewers.length === 0) {
       const sel = allTokens.find(t => t.id === state.selectedTokenId || t.id === state.claimedTokenId);
       if (sel) viewers = [sel];

@@ -19,7 +19,7 @@ export class DiceRollerSidebar {
     window.veilDiceRoller = this;
 
     store.subscribe((state, keys) => {
-      if (keys.includes('selectedTokenId') || keys.includes('tokens')) {
+      if (keys.some(key => ['selectedTokenId', 'tokens', 'userRole', 'isConnected', 'claimedTokenId'].includes(key))) {
         this.syncWithSelectedToken();
       }
     });
@@ -56,7 +56,7 @@ export class DiceRollerSidebar {
       if (actorLabel) {
         const isKeeper = store.getState().userRole === 'keeper';
         const isHorror = token.hideName || (!token.isPlayer && (token.actorType === 'adversary' || /horror|stalker|abomination|threat|alien|beast|monster/i.test(token.name || '')));
-        const isMasked = !isKeeper && isHorror;
+        const isMasked = !isKeeper && !store.canEditToken(token.id) && isHorror;
         const actorName = isMasked ? '?????' : (isKeeper && isHorror ? `${token.name} [?????]` : token.name);
         actorLabel.textContent = isPC ? `${actorName} (${token.path || 'Unknown'})` : `${actorName} · Attack ${token.attackModifier ?? '—'} · Evasion ${token.evasion ?? '—'}`;
       }

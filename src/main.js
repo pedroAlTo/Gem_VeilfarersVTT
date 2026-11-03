@@ -1,5 +1,6 @@
 import './sessionUI.css';
 import './diceTray.css';
+import './colorPicker.css';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import './dossiers.css';
 import { openSessionManager } from './sessionManager.js';
@@ -239,7 +240,7 @@ function setupHeaderEvents() {
   rolePlayerBtn.onclick = () => {
     rolePlayerBtn.classList.add('active');
     roleKeeperBtn.classList.remove('active');
-    store.update({ userRole: 'player', gmVision: false });
+    store.update({ userRole: 'player', gmVision: false, activeTool: 'select', activeLayer: 'tokens', ...(store.sessionRole !== 'player' ? { claimedTokenId: store.state.selectedTokenId || store.state.claimedTokenId } : {}) });
     updateKeeperUIVisibility(false);
   };
 

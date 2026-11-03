@@ -20,11 +20,12 @@ export async function copyText(value, button) {
 }
 export function initSessionBar() {
   const bar = document.createElement('div'); bar.className = 'session-strip';
-  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn" id="session_crew">Crew · 0</button><button class="hud-btn" id="session_account" data-account-label>Sign in</button>';
+  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn" id="session_crew">Crew · 0</button><button class="hud-btn" id="session_my_tokens" hidden>My tokens</button><button class="hud-btn" id="session_account" data-account-label>Sign in</button>';
   document.querySelector('.header-hud').after(bar);
   bar.querySelector('#session_state').onclick = () => openSessionLobby();
   bar.querySelector('#session_crew').onclick = () => openSessionLobby();
   bar.querySelector('#session_account').onclick = openAccount;
+  bar.querySelector('#session_my_tokens').onclick = openPlayerTokens;
   bar.querySelector('#session_copy').onclick = event => copyText(invitationCode(), event.currentTarget);
   const update = () => {
     const s = store.state;
@@ -35,9 +36,26 @@ export function initSessionBar() {
     bar.querySelector('#session_code').value = invitationCode() || 'Local session';
     bar.querySelector('#session_copy').disabled = !invitationCode();
     bar.querySelector('#session_crew').textContent = `Crew · ${(s.connectedPeers || []).length}`;
+    const mine = bar.querySelector('#session_my_tokens'), controlled = store.getControlledTokens();
+    mine.hidden = s.userRole !== 'player'; mine.disabled = !controlled.length; mine.textContent = `My tokens · ${controlled.length}`;
+    mine.title = controlled.length ? 'Select and control your character or a shared drone' : 'Ask the Keeper to assign a token';
   };
   store.subscribe(update); update(); initAccount();
   window.addEventListener('veil:announcement', event => dossierDialog('KEEPER BROADCAST', `<span class="dossier-eyebrow">${e(store.state.campaignName)}</span><p class="broadcast-message">${e(event.detail)}</p>`));
+}
+
+export function openPlayerTokens() {
+  const tokens = store.getControlledTokens();
+  const modal = dossierDialog('MY TOKENS', `<p class="dossier-muted">Move, turn, roll and manage the resources of your assigned tokens.</p><div class="session-actions">${tokens.map(token => `<button class="hud-btn" data-control-token="${e(token.id)}">Control ${e(token.name)}${isDrone(token) ? ' · shared drone' : ''}</button>`).join('') || '<p>No token assigned in this scene. Ask the Keeper to assign one.</p>'}</div>`);
+  modal.querySelectorAll('[data-control-token]').forEach(button => button.onclick = () => {
+    const token = store.state.tokens.find(t => t.id === button.dataset.controlToken);
+    if (!token || !store.canEditToken(token.id)) { modal.remove(); notify('This token is no longer assigned to you.'); return; }
+    store.update({ selectedTokenId: token.id, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null, activeTool: 'select', activeLayer: 'tokens' });
+    const canvas = window.veilCanvas;
+    if (canvas) { canvas.panX = canvas.displayWidth / 2 - token.x * canvas.zoom; canvas.panY = canvas.displayHeight / 2 - token.y * canvas.zoom; }
+    modal.remove();
+  });
+  return modal;
 }
 
 export function openTokenControl(tokenId) {

@@ -6,7 +6,7 @@ import { store } from './state.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { WATER_DEPTH_NAMES } from './canvasEngine.js';
-import { openColorPickerPopover } from './tokenSheet.js';
+import { openColorPickerPopover, normalizeHex } from './colorPicker.js';
 import { undoManager } from './undoManager.js';
 
 export class ElementInspectorHUD {
@@ -564,6 +564,7 @@ export class ElementInspectorHUD {
   renderEffectInspector(effect) {
     const shape = effect.shape || 'circle';
     const type = effect.type || 'void_rift';
+    const effectColor = normalizeHex(effect.color) || (type === 'laser' ? '#ef4444' : '#00f3ff');
 
     this.container.innerHTML = sanitizeHTML(`
       <div class="element-inspector glass-panel">
@@ -659,7 +660,7 @@ export class ElementInspectorHUD {
               </div>
               <div class="insp-col" style="max-width: 80px;">
                 <label>Color</label>
-                <input type="text" id="insp_fx_color" value="${effect.color || '#00f3ff'}" style="width: 100%; height: 26px; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: transparent;" />
+                <button type="button" id="insp_fx_color" class="insp-fx-color-button" style="background:${effectColor}" aria-label="Choose anomaly color" title="Choose anomaly color"><span>Choose</span></button>
               </div>
             </div>
           ` : ''}
@@ -676,7 +677,7 @@ export class ElementInspectorHUD {
               </div>
               <div class="insp-col" style="max-width: 80px;">
                 <label>Beam Color</label>
-                <input type="text" id="insp_fx_color" value="${effect.color || '#ef4444'}" style="width: 100%; height: 26px; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: transparent;" />
+                <button type="button" id="insp_fx_color" class="insp-fx-color-button" style="background:${effectColor}" aria-label="Choose anomaly color" title="Choose anomaly color"><span>Choose</span></button>
               </div>
             </div>
             <div class="insp-row" style="margin-top: 4px; display: flex; gap: 6px; align-items: center;">
@@ -804,8 +805,13 @@ export class ElementInspectorHUD {
 
     const colorPicker = this.container.querySelector('#insp_fx_color');
     if (colorPicker) {
-      colorPicker.oninput = (e) => {
-        store.updateEffect(effect.id, { color: e.target.value });
+      colorPicker.onclick = event => {
+        event.stopPropagation();
+        const latest = (store.getActiveMap().effects || []).find(item => item.id === effect.id);
+        openColorPickerPopover(colorPicker, latest?.color || effectColor, color => {
+          // Color picking can rerender the inspector; the popover stays mounted.
+          if ((store.getActiveMap().effects || []).some(item => item.id === effect.id)) store.updateEffect(effect.id, { color });
+        });
       };
     }
 

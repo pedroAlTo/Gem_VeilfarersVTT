@@ -2,6 +2,8 @@ export const isDrone = token => token?.actorType === 'drone';
 export const controlsToken = (token, playerId) => !!playerId && !token?.hidden &&
   (isDrone(token) ? token.controllerIds?.includes(playerId) : token?.ownerId !== 'keeper' && token?.ownerId === playerId);
 
+export const isPartyToken = token => !!(token?.isPlayer || (token?.ownerId && token.ownerId !== 'keeper') || (isDrone(token) && token.controllerIds?.length));
+
 // Validate first, then make one atomic update. A drone never occupies a character slot.
 export function assignControls(tokens, tokenId, playerIds, knownPlayers) {
   const target = tokens.find(t => t.id === tokenId);
@@ -19,7 +21,7 @@ export function assignControls(tokens, tokenId, playerIds, knownPlayers) {
 export function movePartyToScene(tokens, map) {
   let slot = 0;
   return tokens.map(token => {
-    if (token.mapId === map.id || !(token.isPlayer || (token.ownerId && token.ownerId !== 'keeper') || (isDrone(token) && token.controllerIds?.length))) return token;
+    if (token.mapId === map.id || !isPartyToken(token)) return token;
     const grid = map.gridSize || 70, margin = Math.max(grid, grid * (token.size || 1) / 2);
     const previous = token.scenePositions?.[map.id];
     const point = previous || { x: margin + (slot % 5) * grid * 2, y: margin + Math.floor(slot / 5) * grid * 2 };

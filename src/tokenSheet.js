@@ -35,105 +35,8 @@ export const AVAILABLE_STATS = [
   { id: 'trait_presence', name: '👑 Presencia' }
 ];
 
-// Persistent Cyberpunk Color Picker Popover utility
-export function openColorPickerPopover(anchorEl, currentColor = '#00f3ff', onColorChange = () => {}) {
-  const oldPop = document.querySelector('.cyber-color-popover');
-  if (oldPop) oldPop.remove();
-
-  const popover = document.createElement('div');
-  popover.className = 'cyber-color-popover glass-panel';
-
-  const presets = [
-    '#00f3ff', '#38bdf8', '#3b82f6', '#8b5cf6',
-    '#d946ef', '#ff2a5f', '#ef4444', '#f59e0b',
-    '#10b981', '#34d399', '#ffffff', '#94a3b8'
-  ];
-
-  let selectedColor = currentColor;
-
-  popover.innerHTML = sanitizeHTML(`
-    <div class="pop-header">
-      <span>🎨 SELECTOR DE COLOR TÁCTICO</span>
-      <button type="button" class="pop-close-btn">&times;</button>
-    </div>
-    <div class="pop-presets">
-      ${presets.map(c => `
-        <button type="button" class="pop-swatch ${c.toLowerCase() === selectedColor.toLowerCase() ? 'active' : ''}" style="background: ${c};" data-color="${c}"></button>
-      `).join('')}
-    </div>
-    <div class="pop-custom-row">
-      <input type="text" class="pop-native-color" value="${selectedColor.startsWith('#') && selectedColor.length === 7 ? selectedColor : '#00f3ff'}" />
-      <input type="text" class="pop-hex-input hud-input hud-input-xs" value="${selectedColor}" />
-      <div class="pop-preview" style="background: ${selectedColor};"></div>
-    </div>
-    <div class="pop-actions">
-      <span class="pop-hint">Interactúa y prueba</span>
-      <button type="button" class="hud-btn hud-btn-xs hud-btn-primary pop-ok-btn">✓ OK / APLICAR</button>
-    </div>
-  `);
-
-  document.body.appendChild(popover);
-
-  const rect = anchorEl.getBoundingClientRect();
-  let top = rect.bottom + 6;
-  let left = rect.left;
-  if (left + 260 > window.innerWidth) left = window.innerWidth - 270;
-  if (top + 220 > window.innerHeight) top = rect.top - 225;
-  popover.style.top = `${Math.max(10, top)}px`;
-  popover.style.left = `${Math.max(10, left)}px`;
-
-  const hexInput = popover.querySelector('.pop-hex-input');
-  const nativeColor = popover.querySelector('.pop-native-color');
-  const preview = popover.querySelector('.pop-preview');
-
-  const updateColor = (newColor) => {
-    selectedColor = newColor;
-    hexInput.value = newColor;
-    if (newColor.startsWith('#') && newColor.length === 7) nativeColor.value = newColor;
-    preview.style.background = newColor;
-    popover.querySelectorAll('.pop-swatch').forEach(s => {
-      s.classList.toggle('active', s.dataset.color.toLowerCase() === newColor.toLowerCase());
-    });
-    onColorChange(newColor);
-  };
-
-  popover.querySelectorAll('.pop-swatch').forEach(s => {
-    s.onclick = (e) => {
-      e.stopPropagation();
-      updateColor(s.dataset.color);
-    };
-  });
-
-  nativeColor.oninput = (e) => {
-    e.stopPropagation();
-    updateColor(e.target.value);
-  };
-
-  hexInput.oninput = (e) => {
-    e.stopPropagation();
-    updateColor(e.target.value);
-  };
-
-  popover.querySelector('.pop-close-btn').onclick = (e) => {
-    e.stopPropagation();
-    popover.remove();
-  };
-
-  popover.querySelector('.pop-ok-btn').onclick = (e) => {
-    e.stopPropagation();
-    popover.remove();
-  };
-
-  const outsideClickListener = (e) => {
-    if (!popover.contains(e.target) && !anchorEl.contains(e.target)) {
-      popover.remove();
-      document.removeEventListener('mousedown', outsideClickListener);
-    }
-  };
-  setTimeout(() => {
-    document.addEventListener('mousedown', outsideClickListener);
-  }, 100);
-}
+import { openColorPickerPopover } from './colorPicker.js';
+export { openColorPickerPopover };
 
 export class TokenHUD {
   constructor(quickbarContainer) {
@@ -142,7 +45,7 @@ export class TokenHUD {
     this.movesOpen = false;  // Sleeper moves collapsed in drawer by default
     this.render();
     store.subscribe((state, keys) => {
-      if (keys.includes('selectedTokenId') || keys.includes('tokens') || keys.includes('userRole')) {
+      if (keys.some(key => ['selectedTokenId', 'tokens', 'userRole', 'isConnected', 'claimedTokenId'].includes(key))) {
         this.render();
       }
     });
@@ -160,7 +63,7 @@ export class TokenHUD {
     const state = store.getState();
     const isKeeper = state.userRole === 'keeper';
     const isHorror = isHorrorToken(token);
-    const isMasked = !isKeeper && isHorror;
+    const isMasked = !isKeeper && !store.canEditToken(token.id) && isHorror;
     const displayName = isMasked ? '?????' : (isKeeper && isHorror ? `${token.name} [?????]` : token.name);
     const displayRole = isMasked ? 'Amenaza Desconocida // ?????' : (token.roleTag || 'Voidfarer');
     const isPC = token.actorType === 'player' || (!token.actorType && token.isPlayer);
@@ -377,6 +280,9 @@ export class TokenHUD {
   }
 
   attachEvents(token) {
+    if (!store.canEditToken(token.id)) this.container.querySelectorAll('button').forEach(button => {
+      if (!['toggle_expand_btn', 'toggle_moves_drawer'].includes(button.id)) button.disabled = true;
+    });
     // Expand / Minimize Quickbar
     const expandBtn = this.container.querySelector('#toggle_expand_btn');
     if (expandBtn) {
@@ -533,7 +439,7 @@ export class TokenHUD {
   }
 
   openCharacterSheetModal(token) {
-    if (store.sessionRole === 'player') { notify('El Keeper gestiona las fichas.'); return; }
+    if (!store.canEditToken(token.id)) { notify('Selecciona uno de tus tokens asignados.'); return; }
     return openDossier(token, actor => this.openTokenSettingsModal(actor));
   }
 

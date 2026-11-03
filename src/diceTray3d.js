@@ -1,71 +1,52 @@
 import * as THREE from 'three';
-import { d12Model, createDiceSimulation, prepareThrow, seededRandom, topFace, PHYSICS_STEP, TRAY_RAILS } from './dicePhysics.js';
+import { d12Model, createDiceSimulation, prepareThrow, seededRandom, topFace, PHYSICS_STEP, MAX_THROW_STEPS, TRAY_RAILS, TRAY_SIZE } from './dicePhysics.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { store } from './state.js';
-import { dossierDialog } from './dossierUI.js';
-import { escapeHTML as e } from './ui.js';
+import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
+import { createDiceMaps, DICE_THEMES, DICE_PALETTES } from './diceMaterials.js';
+import { createDiceTrayPanel } from './diceTrayPanel.js';
 import './diceTray.css';
-export const DICE_THEMES = { crystal: 'Crystal caves', panels: 'Tech panels', circuits: 'Circuits & processors', galaxy: 'Galaxy & stars' };
-const palettes = { crystal: ['#68e9ff', '#ed7ac8'], panels: ['#71e8d2', '#ff9759'], circuits: ['#91fba7', '#e9a3ff'], galaxy: ['#81b8ff', '#ff8db9'] };
+export { DICE_THEMES };
 let tray;
-function faceTexture(theme, fear, number) {
-  const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
-  const c = canvas.getContext('2d'), color = palettes[theme][fear ? 1 : 0];
-  let seed = 1283 + number * 41; const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-  c.fillStyle = fear ? '#251225' : '#0b2836'; c.fillRect(0, 0, 256, 256);
-  if (theme === 'crystal') {
-    for (let i = 0; i < 28; i++) {
-      const x = rand() * 256, y = rand() * 256, r = 20 + rand() * 80;
-      const g = c.createLinearGradient(x, y, x + r, y + r); g.addColorStop(0, color + '90'); g.addColorStop(1, color + '05');
-      c.fillStyle = g; c.strokeStyle = color + '75'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r * .45, y); c.lineTo(x, y + r * .7); c.lineTo(x - r * .3, y); c.closePath(); c.fill(); c.stroke();
-    }
-  } else if (theme === 'panels') {
-    for (let y = 0; y < 256; y += 42) for (let x = 0; x < 256; x += 64) { c.fillStyle = fear ? ((x + y) % 3 ? '#4b2e23' : '#65402f') : ((x + y) % 3 ? '#17473f' : '#235d50'); c.fillRect(x + 3, y + 3, 58, 36); c.strokeStyle = color + '80'; c.strokeRect(x + 4, y + 4, 56, 34); c.fillStyle = color; c.fillRect(x + 8, y + 8, 13, 2); c.fillStyle = '#7f8f9b'; c.fillRect(x + 51, y + 30, 3, 3); }
-  } else if (theme === 'circuits') {
-    c.strokeStyle = color + 'bc'; c.lineWidth = 1.6;
-    for (let i = 0; i < 25; i++) { const x = rand() * 256, y = rand() * 256; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 24, y); c.lineTo(x + 39, y + 15); c.lineTo(x + 80, y + 15); c.stroke(); c.beginPath(); c.arc(x, y, 2.5, 0, 7); c.stroke(); }
-    for (let i = 0; i < 9; i++) { const x = rand() * 250, y = rand() * 250; c.fillStyle = '#07111d'; c.fillRect(x, y, 22, 22); c.strokeRect(x, y, 22, 22); for (let n = 3; n < 22; n += 5) { c.fillStyle = color; c.fillRect(x - 3, y + n, 4, 1); c.fillRect(x + 22, y + n, 4, 1); } }
-  } else {
-    const g = c.createRadialGradient(50, 190, 0, 130, 130, 180); g.addColorStop(0, fear ? '#ad327c' : '#2868a0'); g.addColorStop(.45, '#44245d'); g.addColorStop(1, '#030b20'); c.fillStyle = g; c.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 140; i++) { c.fillStyle = i % 4 ? '#d5e9ff' : color; const x = rand() * 256, y = rand() * 256, r = rand() * 1.3; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); if (i % 35 === 0) { c.fillRect(x - 4, y, 8, .7); c.fillRect(x, y - 4, .7, 8); } }
-  }
-  c.fillStyle = '#07101aca'; c.beginPath(); c.arc(128, 127, 57, 0, Math.PI * 2); c.fill();
-  c.strokeStyle = color; c.lineWidth = 2; c.beginPath(); c.arc(128, 127, 57, 0, Math.PI * 2); c.stroke();
-  c.fillStyle = '#f5faff'; c.font = 'bold 66px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(number), 128, 119);
-  c.fillStyle = color; c.font = 'bold 13px monospace'; c.fillText(fear ? 'FEAR' : 'HOPE', 128, 157);
-  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4; return texture;
-}
 function makeDie(model, numbers, theme, fear) {
-  const group = new THREE.Group(), color = palettes[theme][fear ? 1 : 0];
+  const group = new THREE.Group(), color = fear ? DICE_PALETTES.fear : DICE_PALETTES.hope;
+  // Real chamfer geometry catches the studio light along edges and corners.
+  // The broad face planes retain the collider's contact height.
+  const inset = (face, id) => model.vertices[id].clone().lerp(face.center, .065);
+  const shell = new THREE.Mesh(new ConvexGeometry(model.faces.flatMap(face => face.indices.map(id => inset(face, id)))), new THREE.MeshPhysicalMaterial({ color: theme === 'crystal' ? color : 0x263849, metalness: theme === 'crystal' ? .15 : .7, roughness: .23, clearcoat: 1 }));
+  shell.castShadow = shell.receiveShadow = true; group.add(shell);
   model.faces.forEach((face, i) => {
     const positions = [], uv = [], radius = model.vertices[face.indices[0]].distanceTo(face.center);
     const add = p => { positions.push(p.x, p.y, p.z); const delta = p.clone().sub(face.center); uv.push(.5 + .46 * delta.dot(face.u) / radius, .5 + .46 * delta.dot(face.v) / radius); };
-    for (let j = 0; j < face.indices.length; j++) { add(face.center); add(model.vertices[face.indices[j]]); add(model.vertices[face.indices[(j + 1) % face.indices.length]]); }
+    for (let j = 0; j < face.indices.length; j++) { add(face.center.clone().addScaledVector(face.normal, .001)); add(inset(face, face.indices[j]).addScaledVector(face.normal, .001)); add(inset(face, face.indices[(j + 1) % face.indices.length]).addScaledVector(face.normal, .001)); }
     const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geometry.computeVertexNormals();
-    const texture = faceTexture(theme, fear, numbers[i]);
-    const material = new THREE.MeshPhysicalMaterial({ map: texture, roughness: theme === 'crystal' ? .24 : .5, metalness: theme === 'panels' || theme === 'circuits' ? .35 : .1, clearcoat: .9, clearcoatRoughness: .22, emissive: color, emissiveMap: texture, emissiveIntensity: .12 });
+    const maps = createDiceMaps(theme, fear, numbers[i]);
+    const material = new THREE.MeshPhysicalMaterial({ ...maps,
+      roughness: { crystal: .2, panels: .38, circuits: .4, galaxy: .23 }[theme],
+      metalness: { crystal: .08, panels: .65, circuits: .42, galaxy: .12 }[theme],
+      bumpScale: theme === 'crystal' ? .018 : theme === 'galaxy' ? 0 : .012,
+      clearcoat: 1, clearcoatRoughness: .15, envMapIntensity: .85,
+      emissive: 0xffffff, emissiveIntensity: .32,
+    });
     const mesh = new THREE.Mesh(geometry, material); mesh.castShadow = mesh.receiveShadow = true; group.add(mesh);
   });
-  const edgeSource = new THREE.DodecahedronGeometry(.958);
-  const edgeGeo = new THREE.EdgesGeometry(edgeSource); edgeSource.dispose();
-  group.add(new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: .6 })));
   return group;
 }
-function disposeGroup(group) { group.traverse(node => { node.geometry?.dispose(); if (node.material) { node.material.map?.dispose(); node.material.dispose(); } }); }
+function disposeGroup(group) {
+  const textures = new Set();
+  group.traverse(node => { node.geometry?.dispose(); for (const material of [node.material].flat().filter(Boolean)) { for (const value of Object.values(material)) if (value?.isTexture) textures.add(value); material.dispose(); } });
+  textures.forEach(texture => texture.dispose());
+}
 export class DiceTray {
   constructor() {
-    this.modal = dossierDialog('3D DICE / ORBITAL TRAY', `
-      <div class="tray-toolbar"><div><span class="dossier-eyebrow">PHYSICAL DICE SIMULATION</span><h2>Between hope & fear.</h2></div><label class="dossier-field">Dice finish<vf-select class="hud-select" id="tray_theme">${Object.entries(DICE_THEMES).map(([key, label]) => `<option value="${key}" ${store.state.diceTheme === key ? 'selected' : ''}>${e(label)}</option>`).join('')}</vf-select></label></div>
-      <div class="tray-stage" id="tray_stage"><div class="tray-corner tray-corner-left">VEILFARERS / D12</div><div class="tray-corner tray-corner-right" id="tray_engine">THREE.JS / WEBGL 2</div></div>
-      <div class="tray-result" role="status" aria-live="polite"><span class="tray-hope">HOPE <b id="tray_hope">—</b></span><span id="tray_caption">Two forces. One outcome.</span><span class="tray-fear">FEAR <b id="tray_fear">—</b></span></div>
-      <div class="tray-camera"><span>Drag to orbit · scroll or pinch to zoom</span><button class="hud-btn" id="tray_rotate_left" aria-label="Rotate camera left">↶</button><button class="hud-btn" id="tray_rotate_right" aria-label="Rotate camera right">↷</button><button class="hud-btn" id="tray_reset_camera">Reset view</button></div><div class="tray-footer"><label><input type="checkbox" id="tray_automatic" ${store.state.dice3d !== false ? 'checked' : ''}> Show for game rolls</label><label><input type="checkbox" id="tray_motion" ${store.state.reducedMotion ? 'checked' : ''}> Reduce motion</label><button class="hud-btn" id="tray_demo">Test throw</button></div><p class="dossier-muted" id="tray_note">Test throws are previews and do not change your character or game log.</p>`, 'dice-tray-backdrop');
-    this.stage = this.modal.querySelector('#tray_stage'); this.theme = store.state.diceTheme || 'crystal'; this.frame = 0;
-    this.modal.querySelector('#tray_theme').onchange = event => { this.theme = event.target.value; store.update({ diceTheme: this.theme }); this.rebuildDice(); };
+    this.modal = createDiceTrayPanel({ theme: store.state.diceTheme, automatic: store.state.dice3d !== false, reducedMotion: store.state.reducedMotion });
+    this.stage = this.modal.querySelector('#tray_stage'); this.theme = DICE_THEMES[store.state.diceTheme] ? store.state.diceTheme : 'crystal'; this.frame = 0;
+    this.modal.querySelector('#tray_theme').onchange = event => { if (!DICE_THEMES[event.target.value]) return; this.theme = event.target.value; store.update({ diceTheme: this.theme }); this.rebuildDice(); };
     this.modal.querySelector('#tray_automatic').onchange = event => store.update({ dice3d: event.target.checked });
     this.modal.querySelector('#tray_motion').onchange = event => store.update({ reducedMotion: event.target.checked });
     this.modal.querySelector('#tray_demo').onclick = () => this.show({ demo: true });
-    this.observer = new MutationObserver(() => { if (!this.modal.isConnected) this.dispose(); }); this.observer.observe(document.body, { childList: true });
+    this.observer = new MutationObserver(() => { if (!this.modal.isConnected) this.dispose(); }); this.observer.observe(this.modal.parentElement, { childList: true });
     this.modal.querySelector('#tray_reset_camera').onclick = () => this.resetCamera();
     for (const [selector, angle] of [['#tray_rotate_left', .25], ['#tray_rotate_right', -.25]]) this.modal.querySelector(selector).onclick = () => {
       if (!this.controls) return;
@@ -77,23 +58,23 @@ export class DiceTray {
   initScene() {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     this.renderer.domElement.addEventListener('webglcontextlost', event => {
-      event.preventDefault(); this.finishRoll?.();
+      event.preventDefault(); if (this.disposed) return; this.finishRoll?.();
       this.unavailable('The 3D graphics context was lost. Your game result is preserved. Reopen the tray to reconnect.');
     });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75)); this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.4;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
     this.renderer.domElement.setAttribute('aria-label', 'Two twelve-sided dice on a futuristic dice mat'); this.stage.append(this.renderer.domElement);
     this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(36, 1, .1, 100); this.camera.position.set(0, 12.5, 9.5); this.camera.lookAt(0, 0, 0);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enablePan = false; this.controls.minDistance = 10; this.controls.maxDistance = 32;
+    this.controls.enablePan = false; this.controls.minDistance = 10; this.controls.maxDistance = 25;
     this.controls.minPolarAngle = .12; this.controls.maxPolarAngle = Math.PI / 2 - .12;
     this.controls.addEventListener('change', () => this.renderFrame());
     const pmrem = new THREE.PMREMGenerator(this.renderer), environment = new RoomEnvironment();
     this.environment = pmrem.fromScene(environment, .04); this.scene.environment = this.environment.texture;
     environment.dispose(); pmrem.dispose();
-    this.scene.add(new THREE.HemisphereLight(0xa8d9ff, 0x1f1130, 2));
-    const light = new THREE.DirectionalLight(0xe2faff, 5); light.position.set(-3, 10, 5); light.castShadow = true; light.shadow.mapSize.set(1024, 1024); Object.assign(light.shadow.camera, { left: -9, right: 9, top: 7, bottom: -7 }); light.shadow.bias = -.001; this.scene.add(light);
-    const rim = new THREE.PointLight(0xe75bd4, 60, 20); rim.position.set(5, 4, -3); this.scene.add(rim);
+    this.scene.add(new THREE.HemisphereLight(0xa8d9ff, 0x1f1130, 1.5));
+    const light = new THREE.DirectionalLight(0xe2faff, 3.5); light.position.set(-3, 10, 5); light.castShadow = true; light.shadow.mapSize.set(1024, 1024); Object.assign(light.shadow.camera, { left: -9, right: 9, top: 7, bottom: -7 }); light.shadow.bias = -.001; this.scene.add(light);
+    const rim = new THREE.PointLight(0xe75bd4, 22, 20); rim.position.set(5, 4, -3); this.scene.add(rim);
     const matCanvas = document.createElement('canvas'); matCanvas.width = 1024; matCanvas.height = 640;
     const c = matCanvas.getContext('2d'); c.fillStyle = '#0b1824'; c.fillRect(0, 0, 1024, 640);
     for (let y = 0; y < 640; y += 4) { c.strokeStyle = y % 8 ? '#112434' : '#142839'; c.beginPath(); c.moveTo(0, y); c.lineTo(1024, y); c.stroke(); }
@@ -104,10 +85,10 @@ export class DiceTray {
     c.rotate(Math.PI / 4); c.strokeRect(-45, -45, 90, 90); c.restore();
     c.fillStyle = '#9ac9dd75'; c.textAlign = 'center'; c.font = '16px monospace'; c.fillText('V E I L F A R E R S', 512, 560); c.font = '10px monospace'; c.fillText('ORBITAL DICE ARRAY   /   HOPE + FEAR', 512, 584);
     const texture = new THREE.CanvasTexture(matCanvas); texture.colorSpace = THREE.SRGBColorSpace;
-    const mat = new THREE.Mesh(new THREE.BoxGeometry(14, .5, 8), new THREE.MeshStandardMaterial({ map: texture, color: 0xc8e4ff, roughness: .95 })); mat.position.y = -.25; mat.receiveShadow = true; this.scene.add(mat);
+    const mat = new THREE.Mesh(new THREE.BoxGeometry(TRAY_SIZE.width, .5, TRAY_SIZE.depth), new THREE.MeshStandardMaterial({ map: texture, color: 0xc8e4ff, roughness: .95 })); mat.position.y = -.25; mat.receiveShadow = true; this.scene.add(mat);
     for (const { position: [x, y, z], size: [w, h, d] } of TRAY_RAILS) {
       const rail = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0x1c2d40, roughness: .4, metalness: .65 })); rail.position.set(x, y, z); rail.castShadow = true; this.scene.add(rail);
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(w, .035, d * .25), new THREE.MeshBasicMaterial({ color: z > 0 ? 0xc657ae : 0x61cfe7 })); strip.position.set(x, .82, z); this.scene.add(strip);
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(w, .035, d * .25), new THREE.MeshBasicMaterial({ color: z > 0 ? 0xc657ae : 0x61cfe7 })); strip.position.set(x, y + h / 2 + .018, z); this.scene.add(strip);
     }
     this.model = d12Model();
     this.resizeObserver = new ResizeObserver(() => this.resize()); this.resizeObserver.observe(this.stage); this.resize();
@@ -116,7 +97,8 @@ export class DiceTray {
   resetCamera() {
     if (!this.camera || !this.controls) return;
     this.controls.target.set(0, 0, 0);
-    this.camera.position.set(0, this.camera.aspect < 1.4 ? 19 : 12.5, this.camera.aspect < 1.4 ? 12 : 9.5);
+    const distance = Math.max(15.7, 24 / this.camera.aspect);
+    this.camera.position.set(0, distance * .87, distance * .49);
     this.controls.update(); this.renderFrame();
   }
   resize() {
@@ -130,6 +112,7 @@ export class DiceTray {
   unavailable(message) {
     this.failed = true; cancelAnimationFrame(this.frame);
     this.renderer?.domElement.remove(); this.stage.classList.add('tray-unavailable');
+    this.stage.querySelector('.tray-support-message')?.remove();
     const notice = document.createElement('p'); notice.className = 'tray-support-message'; notice.setAttribute('role', 'status'); notice.textContent = message; this.stage.append(notice);
     this.modal.querySelector('#tray_engine').textContent = '3D UNAVAILABLE';
     this.modal.querySelector('#tray_note').textContent = 'Game rolls remain available in the result panel and log.';
@@ -155,40 +138,41 @@ export class DiceTray {
     }
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     let plan;
-    try { if (!result.demo) plan = prepareThrow(this.model, values, seed); }
-    catch (error) { hope.textContent = values[0]; fear.textContent = values[1]; caption.textContent = error.message; this.modal.querySelector('#tray_demo').disabled = false; return; }
-    this.numbers = plan?.numbers || [0, 1].map(() => Array.from({ length: 12 }, (_, i) => i + 1));
-    this.simulation = createDiceSimulation(this.model, seededRandom(seed));
+    try { plan = prepareThrow(this.model, result.demo ? null : values, seed); }
+    catch (error) { hope.textContent = values[0] ?? '—'; fear.textContent = values[1] ?? '—'; caption.textContent = error.message; this.modal.querySelector('#tray_demo').disabled = false; return; }
+    this.numbers = plan.numbers;
+    this.simulation = createDiceSimulation(this.model, seededRandom(plan.seed));
     this.rebuildDice();
     this.modal.querySelector('#tray_demo').disabled = true;
-    hope.textContent = fear.textContent = '…'; caption.textContent = 'Rolling · live rigid-body physics';
+    hope.textContent = fear.textContent = '…'; caption.textContent = 'Rolling…';
     this.finishRoll = () => {
       if (result.demo && this.simulation.settled) this.simulation.snapshot().forEach((body, i) => values[i] = this.numbers[i][topFace(this.model, body.quaternion)]);
       hope.textContent = values[0] ?? '—'; fear.textContent = values[1] ?? '—';
-      caption.textContent = result.demo ? 'Preview throw · no game changes' : Number.isFinite(result.total) ? `CHECK TOTAL ${result.total}` : 'Roll resolved';
+      caption.textContent = result.demo ? 'Test throw' : Number.isFinite(result.total) ? `CHECK TOTAL ${result.total}` : 'Roll resolved';
       this.modal.querySelector('#tray_demo').disabled = false;
     };
     const reduced = immediate || store.state.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) {
-      while (!this.simulation.settled && this.simulation.steps < 1200) this.simulation.step();
+      while (!this.simulation.settled && this.simulation.steps < MAX_THROW_STEPS) this.simulation.step();
       this.applyPose(this.simulation.snapshot()); this.renderFrame(); this.finishRoll(); return;
     }
     let previous = performance.now(), accumulator = 0;
     const animate = now => {
       if (!this.modal.isConnected || this.failed) return;
       accumulator += Math.min(.1, Math.max(0, (now - previous) / 1000)); previous = now;
-      while (accumulator >= PHYSICS_STEP && !this.simulation.settled) {
+      while (accumulator >= PHYSICS_STEP && !this.simulation.settled && this.simulation.steps < MAX_THROW_STEPS) {
         this.simulation.step(); accumulator -= PHYSICS_STEP;
       }
       this.applyPose(this.simulation.snapshot()); this.renderFrame();
       if (this.simulation.settled) this.finishRoll();
-      else if (this.simulation.steps >= 1200) {
+      else if (this.simulation.steps >= MAX_THROW_STEPS) {
         this.finishRoll(); caption.textContent = result.demo ? 'Dice did not settle. Throw again.' : 'Game result preserved · dice did not settle';
       } else this.frame = requestAnimationFrame(animate);
     };
     this.frame = requestAnimationFrame(animate);
   }
   dispose() {
+    if (this.disposed) return; this.disposed = true;
     cancelAnimationFrame(this.frame); this.observer?.disconnect(); this.resizeObserver?.disconnect(); this.controls?.dispose();
     if (this.scene) disposeGroup(this.scene); this.environment?.dispose(); this.renderer?.dispose(); this.renderer?.forceContextLoss();
     if (tray === this) tray = null;

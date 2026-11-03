@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { JSDOM } from 'jsdom';
 import { Vector3, Quaternion } from 'three';
-import { d12Model, faceNumbers, topFace, simulateThrow, createDiceSimulation, seededRandom, prepareThrow, TRAY_RAILS } from '../src/dicePhysics.js';
+import { d12Model, faceNumbers, topFace, simulateThrow, createDiceSimulation, seededRandom, prepareThrow, TRAY_RAILS, PHYSICS_STEP, MAX_THROW_STEPS, TRAY_SIZE } from '../src/dicePhysics.js';
 import { controlsToken, assignControls, movePartyToScene } from '../src/tokenPermissions.js';
 import { createActor } from '../src/actors.js';
 import { CloudAccount, portableCharacter, cleanPreferences } from '../src/cloudAccount.js';
@@ -11,7 +11,11 @@ const dom = new JSDOM('<body></body>', { url: 'http://localhost' });
 for (const k of ['window', 'document', 'HTMLElement', 'customElements', 'MutationObserver', 'localStorage', 'Event', 'CustomEvent', 'FormData']) globalThis[k] = dom.window[k];
 const { store } = await import('../src/state.js'); await store.ready;
 const { NetworkManager } = await import('../src/networkManager.js');
-const { parseInvitation } = await import('../src/sessionLobby.js');
+const { parseInvitation, openPlayerTokens } = await import('../src/sessionLobby.js');
+const { openDossier } = await import('../src/dossierUI.js');
+const { createDiceTrayPanel } = await import('../src/diceTrayPanel.js');
+const { openColorPickerPopover, normalizeHex, hexToHSV, hsvToHex } = await import('../src/colorPicker.js');
+const { ElementInspectorHUD } = await import('../src/inspectorHUD.js');
 const original = structuredClone(store.state);
 beforeEach(async () => { await store.saveQueue.catch(() => {}); store.state = structuredClone(original); store.listeners.clear(); store.sessionRole = 'local'; store.remoteApplying = false; store.memberId = null; store.peerId = null; store.sessionBusy = false; document.body.replaceChildren(); });
 after(async () => { await store.saveQueue.catch(() => {}); dom.window.close(); });
@@ -111,13 +115,14 @@ test('d12 model has twelve outward-facing pentagons and every result maps to its
   for (const face of model.faces) { assert.equal(face.indices.length, 5); assert.ok(face.normal.dot(face.center) > 0); }
   for (let face = 0; face < 12; face++) for (let value = 1; value <= 12; value++) { const numbers = faceNumbers(face, value); assert.equal(numbers[face], value); assert.equal(new Set(numbers).size, 12); assert.ok(numbers.every(x => x >= 1 && x <= 12)); }
 });
-test('physical throws settle above the mat, inside rails, with a flat numbered face up', () => {
+test('prepared physical throws settle inside rails with a flat numbered face up', () => {
   const model = d12Model();
   for (let seed = 1; seed <= 12; seed++) {
-    let n = seed; const frames = simulateThrow(model, () => ((n = (1664525 * n + 1013904223) >>> 0) / 4294967296));
-    assert.ok(frames.length > 100 && frames.length <= 1200);
+    const plan = prepareThrow(model, null, seed);
+    const frames = simulateThrow(model, seededRandom(plan.seed));
+    assert.ok(frames.length * PHYSICS_STEP > 1 && frames.length <= MAX_THROW_STEPS);
     for (const frame of frames.at(-1)) {
-      const [x, y, z] = frame.position; assert.ok(Math.abs(x) < 7 && Math.abs(z) < 4); assert.ok(y > .7 && y < 1);
+      const [x, y, z] = frame.position; assert.ok(Math.abs(x) < TRAY_SIZE.width / 2 && Math.abs(z) < TRAY_SIZE.depth / 2); assert.ok(y > .7 && y < 1);
       const face = model.faces[topFace(model, frame.quaternion)], q = new Quaternion(...frame.quaternion);
       assert.ok(face.normal.clone().applyQuaternion(q).dot(new Vector3(0, 1, 0)) > .99);
     }
@@ -155,6 +160,16 @@ test('two clients complete host/join, token assignment, scene sync, submission a
   const scene = hostStore.addMap({ name: 'Other sector', imageUrl: '/blank', gridSize: 70 }); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5));
   assert.equal(guestStore.state.activeMapId, scene.id); assert.equal(guestStore.state.tokens.find(t => t.id === token.id).mapId, scene.id);
   const result = await guest.importCharacter(pc('Imported pilot')); assert.equal(result.tokenId, token.id); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).name, 'Imported pilot');
+  guestStore.updateToken(token.id, { x: 224, y: 336, facingAngle: Math.PI / 2 }); await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(hostStore.state.tokens.find(t => t.id === token.id).x, 224); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).facingAngle, Math.PI / 2);
+  const droneToken = hostStore.addToken({ name: 'Shared scout', actorType: 'drone' }); hostStore.assignTokenControllers(droneToken.id, [playerId]); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5));
+  assert.ok(guestStore.canEditToken(droneToken.id)); guestStore.updateToken(droneToken.id, { x: 140, y: 280 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === droneToken.id).x, 140);
+  const npc = hostStore.addToken({ name: 'Assigned adversary', actorType: 'adversary' }); host.assignToken(playerId, npc.id); await new Promise(resolve => setTimeout(resolve, 5));
+  assert.ok(guestStore.canEditToken(npc.id)); assert.equal(guestStore.canEditToken(token.id), false); assert.equal(guestStore.state.tokens.find(t => t.id === npc.id).name, 'Assigned adversary');
+  guestStore.updateToken(token.id, { x: 999 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).x, 224);
+  guestStore.updateToken(npc.id, { facingAngle: 1.2 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === npc.id).facingAngle, 1.2);
+  hostStore.assignTokenControllers(droneToken.id, []); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(guestStore.canEditToken(droneToken.id), false);
+
   guest.disconnect(); assert.equal(guestStore.state.campaignName, 'Local backup'); assert.equal(guestStore.sessionRole, 'local'); host.disconnect();
   await Promise.all([hostStore.saveQueue, guestStore.saveQueue]);
 });
@@ -162,7 +177,7 @@ test('two clients complete host/join, token assignment, scene sync, submission a
 test('live rigid-body worlds reproduce authoritative face labels without replaying recorded frames', () => {
   const model = d12Model();
   for (const [seed, values] of [[1, [1, 12]], [9, [12, 1]], [71, [7, 7]], [9173, [4, 11]]]) {
-    const plan = prepareThrow(model, values, seed), live = createDiceSimulation(model, seededRandom(seed));
+    const plan = prepareThrow(model, values, seed), live = createDiceSimulation(model, seededRandom(plan.seed));
     while (!live.settled && live.steps < 1200) live.step();
     assert.ok(live.settled); assert.equal(live.steps, plan.steps); assert.deepEqual(live.snapshot(), plan.final);
     live.snapshot().forEach((body, i) => assert.equal(plan.numbers[i][topFace(model, body.quaternion)], values[i]));
@@ -179,4 +194,99 @@ test('physics and Three.js share rail dimensions, gravity and solid convex die c
     assert.deepEqual(body.position.toArray(), rail.position);
     assert.deepEqual(body.shapes[0].halfExtents.toArray(), rail.size.map(n => n / 2));
   });
+});
+
+
+test('dice motion has no mid-roll teleports or artificial post-landing impulses', () => {
+  const model = d12Model();
+  for (const seed of [1, 9, 10, 73, 53249]) {
+    const plan = prepareThrow(model, [6, 9], seed), sim = createDiceSimulation(model, seededRandom(plan.seed));
+    // Cannon is the only source of body motion after initialization. A twin
+    // world stepped directly must match the public simulation at EVERY step.
+    const raw = createDiceSimulation(model, seededRandom(plan.seed));
+    let previous = sim.snapshot();
+    while (!sim.settled && sim.steps < MAX_THROW_STEPS) {
+      sim.step(); raw.world.step(PHYSICS_STEP);
+      assert.deepEqual(sim.snapshot(), raw.snapshot());
+      sim.snapshot().forEach((body, i) => {
+        const distance = new Vector3(...body.position).distanceTo(new Vector3(...previous[i].position));
+        assert.ok(distance < .18, `continuous movement at seed ${seed}, step ${sim.steps}`);
+        assert.ok(body.position[1] > .65, 'no fall-through or off-table recovery');
+      });
+      previous = sim.snapshot();
+    }
+    assert.ok(sim.settled);
+  }
+});
+
+test('map dice panel keeps focus and map input available while isolating tray gestures', () => {
+  document.body.innerHTML = '<button id="launch">Open tray</button><section id="canvas_viewport_root"><canvas></canvas></section>';
+  const launcher = document.querySelector('#launch'); launcher.focus();
+  const viewport = document.querySelector('#canvas_viewport_root'); let pans = 0, wheels = 0, shortcuts = 0;
+  viewport.addEventListener('pointerdown', () => pans++); viewport.addEventListener('wheel', () => wheels++);
+  const onkey = () => shortcuts++; window.addEventListener('keydown', onkey);
+  const panel = createDiceTrayPanel();
+  assert.equal(panel.parentElement, viewport); assert.equal(panel.getAttribute('role'), 'region'); assert.equal(panel.hasAttribute('aria-modal'), false);
+  assert.equal(document.activeElement, launcher); assert.equal(document.querySelector('.veil-modal-backdrop'), null);
+  panel.querySelector('#tray_stage').dispatchEvent(new dom.window.Event('pointerdown', { bubbles: true }));
+  panel.dispatchEvent(new dom.window.WheelEvent('wheel', { bubbles: true }));
+  panel.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'r', bubbles: true }));
+  assert.equal(pans, 0); assert.equal(wheels, 0); assert.equal(shortcuts, 0);
+  viewport.querySelector('canvas').dispatchEvent(new dom.window.Event('pointerdown', { bubbles: true })); assert.equal(pans, 1);
+  panel.querySelector('#tray_minimize').click(); assert.equal(panel.querySelector('#tray_body').hidden, true);
+  panel.querySelector('#tray_minimize').click(); assert.equal(panel.querySelector('#tray_body').hidden, false);
+  panel.querySelector('#tray_settings_toggle').click(); assert.equal(panel.querySelector('#tray_settings').hidden, false);
+  panel.querySelector('#tray_close').focus(); panel.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  assert.equal(panel.isConnected, false); assert.equal(document.activeElement, launcher);
+  window.removeEventListener('keydown', onkey);
+});
+
+
+test('visual color picker supports pointer, hue and presets without saving incomplete hex input', () => {
+  document.body.innerHTML = '<button id="anchor">Color</button>'; const anchor = document.querySelector('#anchor'); const changes = [];
+  const picker = openColorPickerPopover(anchor, '#00ffff', value => changes.push(value));
+  const plane = picker.querySelector('.pop-color-plane'), hue = picker.querySelector('.pop-hue'), hex = picker.querySelector('.pop-hex-input');
+  plane.getBoundingClientRect = () => ({ left: 10, top: 20, width: 200, height: 100 });
+  const pointer = new dom.window.MouseEvent('pointerdown', { bubbles: true, clientX: 210, clientY: 70, button: 0 }); Object.defineProperty(pointer, 'pointerId', { value: 1 }); plane.dispatchEvent(pointer);
+  assert.equal(changes.at(-1), '#008080');
+  hue.value = '0'; hue.dispatchEvent(new Event('input', { bubbles: true })); assert.equal(changes.at(-1), '#800000');
+  picker.querySelector('[data-color="#8b5cf6"]').click(); assert.equal(changes.at(-1), '#8b5cf6');
+  const count = changes.length; hex.value = '#12'; hex.dispatchEvent(new Event('input', { bubbles: true })); assert.equal(changes.length, count); assert.equal(hex.getAttribute('aria-invalid'), 'true');
+  hex.value = '#abc'; hex.dispatchEvent(new Event('change', { bubbles: true })); assert.equal(changes.at(-1), '#aabbcc');
+  plane.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })); assert.notEqual(changes.at(-1), '#aabbcc');
+  picker.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); assert.equal(picker.isConnected, false); assert.equal(document.activeElement, anchor);
+  for (const color of ['#000000', '#ffffff', '#ff0000', '#12abdf', '#8b5cf6']) assert.equal(hsvToHex(hexToHSV(color)), color);
+  assert.equal(normalizeHex('not a color'), null);
+});
+
+test('lightning and laser anomaly swatches open a visual picker and persist through inspector rerenders', async () => {
+  const container = document.createElement('div'); document.body.append(container); const inspector = new ElementInspectorHUD(container);
+  for (const type of ['lightning', 'laser']) {
+    const effect = { id: 'color-test', type, label: 'Color test', x: 100, y: 100, radius: 80, color: '#00f3ff' };
+    store.getActiveMap().effects = [effect]; store.update({ selectedEffectId: effect.id }); inspector.render();
+    const button = container.querySelector('#insp_fx_color'); assert.equal(button.tagName, 'BUTTON'); button.click();
+    let picker = document.querySelector('.vf-color-picker'); assert.ok(picker.querySelector('.pop-color-plane'));
+    picker.querySelector('[data-color="#ef4444"]').click(); assert.equal(store.getActiveMap().effects[0].color, '#ef4444'); assert.ok(picker.isConnected);
+    picker.querySelector('[data-color="#10b981"]').click(); assert.equal(store.getActiveMap().effects[0].color, '#10b981');
+    picker.querySelector('.pop-ok-btn').click(); assert.equal(document.querySelector('.vf-color-picker'), null);
+    container.querySelector('#insp_fx_color').click(); picker = document.querySelector('.vf-color-picker'); assert.equal(picker.querySelector('.pop-hex-input').value, '#10b981'); picker.querySelector('.pop-close-btn').click();
+  }
+  await store.saveQueue;
+});
+
+
+test('assigned players can open their sheet, change current resources and choose shared drones', () => {
+  const owned = pc('Assigned pilot'), shared = drone(), other = pc('Other pilot'); owned.ownerId = 'member'; shared.controllerIds = ['member']; other.ownerId = 'other';
+  store.state.tokens = [owned, shared, other]; store.state.userRole = 'player'; store.state.isConnected = true; store.sessionRole = 'player'; store.memberId = 'member'; store.state.claimedTokenId = owned.id;
+  const patches = []; store.sendTokenPatch = (id, patch) => patches.push({ id, patch });
+  assert.equal(store.getControlledTokens().length, 2); assert.equal(store.canEditToken(other.id), false);
+  let modal = openDossier(owned, () => {}); const form = modal.querySelector('form');
+  assert.equal(form.elements.namedItem('hp_current').disabled, false); assert.equal(form.elements.namedItem('hp_max').disabled, true); assert.equal(form.elements.namedItem('actorName').disabled, true);
+  form.elements.namedItem('hp_current').value = '1'; form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+  assert.equal(patches.length, 1); assert.equal(patches[0].id, owned.id); assert.equal(patches[0].patch.hp.current, 1); assert.equal(patches[0].patch.hp.max, owned.hp.max); assert.equal(patches[0].patch.ownerId, undefined); assert.equal(patches[0].patch.stress, undefined);
+  modal = openDossier(other, () => {}); assert.equal(modal.querySelector('form').elements.namedItem('hp_current').disabled, true); modal.remove();
+  modal = openPlayerTokens(); const choices = modal.querySelectorAll('[data-control-token]'); assert.equal(choices.length, 2);
+  modal.querySelector(`[data-control-token="${shared.id}"]`).click(); assert.equal(store.state.selectedTokenId, shared.id); assert.equal(store.state.activeTool, 'select');
+  store.state.isConnected = false; assert.equal(store.canEditToken(owned.id), false);
+  store.sessionRole = 'local'; store.state.claimedTokenId = owned.id; store.memberId = null; store.peerId = null; assert.equal(store.canEditToken(owned.id), true); assert.equal(store.canEditToken(other.id), false);
 });

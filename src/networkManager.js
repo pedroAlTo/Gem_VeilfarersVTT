@@ -202,7 +202,7 @@ export class NetworkManager {
         .filter((t) => t.mapId === s.activeMapId && !t.hidden)
         .map((t) => {
           const copy = structuredClone(t);
-          if (!copy.isPlayer && (copy.hideName || copy.actorType === 'adversary')) {
+          if (!controlsToken(copy, memberId) && !copy.isPlayer && (copy.hideName || copy.actorType === 'adversary')) {
             copy.name = 'Unknown contact';
             copy.roleTag = 'Unidentified';
             copy.species = '';
@@ -333,6 +333,9 @@ export class NetworkManager {
           const s = validateCampaign(data.state);
           this.lastRevision = data.revision;
           this.store.memberId = data.state.memberId || this.store.peerId;
+          const assigned = s.tokens.filter(t => controlsToken(t, this.store.memberId));
+          const selectedId = assigned.some(t => t.id === this.store.state.selectedTokenId) ? this.store.state.selectedTokenId : data.state.claimedTokenId || assigned[0]?.id || null;
+          const newAssignment = selectedId !== this.store.state.selectedTokenId;
           this.store.remoteApplying = true;
           this.store.update({
             ...s,
@@ -340,9 +343,8 @@ export class NetworkManager {
             gmVision: false,
             isConnected: true,
             claimedTokenId: data.state.claimedTokenId,
-            selectedTokenId: s.tokens.some((t) => t.id === this.store.state.selectedTokenId && controlsToken(t, this.store.memberId))
-              ? this.store.state.selectedTokenId
-              : data.state.claimedTokenId,
+            selectedTokenId: selectedId,
+            ...(newAssignment || !['select', 'measure', 'template', 'fx', 'ping'].includes(this.store.state.activeTool) ? { activeTool: 'select', activeLayer: 'tokens' } : {}),
           });
           this.store.validateSelections();
           this.joinReady?.();
