@@ -62,7 +62,7 @@ export function initOrbitalUI() {
   const heading = document.createElement('div');
   heading.className = 'orbital-panel-heading';
   heading.innerHTML =
-    '<span class="eyebrow">OPERATIONS CONSOLE</span><div><h2 id="orbital_panel_title">Resolve an action</h2><span class="panel-index" id="orbital_panel_index">01 / 07</span></div>';
+    '<span class="eyebrow">OPERATIONS CONSOLE</span><div><h2 id="orbital_panel_title">Resolve an action</h2><span class="panel-index" id="orbital_panel_index">01 / 08</span></div>';
   sidebar.prepend(heading);
   const titles = {
     dice: 'Resolve an action',
@@ -72,12 +72,13 @@ export function initOrbitalUI() {
     scenes: 'Tactical scenes',
     handouts: 'Intelligence',
     log: 'Session chronicle',
+    chat: 'Comunicaciones',
   };
   [...document.querySelectorAll('.tab-nav-btn')].forEach((b, i) => {
     b.addEventListener('click', () => {
       document.getElementById('orbital_panel_title').textContent =
         titles[b.dataset.tab] || b.textContent.trim();
-      document.getElementById('orbital_panel_index').textContent = `0${i + 1} / 07`;
+      document.getElementById('orbital_panel_index').textContent = `0${i + 1} / 08`;
     });
   });
   const viewport = document.getElementById('canvas_viewport_root'),

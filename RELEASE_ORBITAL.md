@@ -1,5 +1,13 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Session chat and Keeper whispers · 4 November 2026
+
+The new **CHAT** panel adds public table messages and private Keeper–player threads, with a **Susurrar** shortcut in the player roster. Cyan public and violet private channels show their audience explicitly. Separate drafts, unread counts, keyboard sending, offline status and retry feedback keep conversation handling clear. Player-to-player whispers and offline message delivery are not included.
+
+The Keeper assigns authors from authenticated session membership and forwards whispers only to the relevant player. Full snapshots apply the same filtering on joins, scene updates and reconnects. Chat-only changes use small dedicated messages instead of resending maps. Client request IDs prevent uncertain retries from posting twice while the entry remains in the retained history. The last 500 messages are saved in the Keeper's session and export; guests never write this replica over their own campaign. New sessions and old archives without chat start empty. The existing browser-session identity is required to recover a private thread; closing and reopening the host does not provide persistent account identity.
+
+Validation: 125 automated tests and the production build pass. Real LAN WebSocket tests cover public delivery, both whisper directions, a third player's excluded wire traffic, forged destinations, duplicate retries, offline rejection and filtered reconnect history. UI tests cover literal text rendering, separate drafts, keyboard/IME handling, unread counts and Player preview privacy. Browser visual QA could not run because the browser runtime is unavailable; review on a second physical computer remains pending. Existing Three.js/Firebase chunk and lobby import warnings remain.
+
 ## Visible conditions and weapon inventory · 4 November 2026
 
 Tokens now show condition icons and quickbar labels. **ESTADOS** and **Ficha → Condiciones** provide the 18 standard conditions with the verbatim Corebook 12.06 Chapter 10 rules, plus custom markers. Reapplying a condition does not stack it. The Keeper and assigned players can edit; others can consult. Network condition actions merge on the Keeper so rapid independent toggles do not replace each other. Hidden is a game condition, separate from token visibility. No automatic damage, bonuses, duration expiry or condition clearing is introduced.

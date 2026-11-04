@@ -8,6 +8,7 @@ import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
 import { notify } from './ui.js';
+import { TABLE, KEEPER, chatRequest, validateChatEntry, chatVisibleTo, chatHistoryFor, appendChat } from './chat.js';
 const Peer = PeerJS?.Peer || PeerJS?.default || PeerJS;
 import { newId as id } from './persistence.js';
 export class NetworkManager {
@@ -29,7 +30,7 @@ export class NetworkManager {
     this.store.sendTokenPatch = (tokenId, partial) =>
       this.sendToHost({ type: 'TOKEN_UPDATE', tokenId, partial });
     this.store.subscribe((s, keys) => {
-      if (s.isHosting && keys.some((k) => CAMPAIGN_KEYS.includes(k))) {
+      if (s.isHosting && keys.some((k) => k !== 'chatMessages' && CAMPAIGN_KEYS.includes(k))) {
         clearTimeout(this.syncTimer);
         this.syncTimer = setTimeout(() => this.syncAll(), 60);
       }
@@ -201,6 +202,7 @@ export class NetworkManager {
     return {
       ...this.store.serializeCampaign(),
       logs: (s.logs || []).filter(entry => entry.visibility !== 'keeper').map(entry => structuredClone(entry)),
+      chatMessages: chatHistoryFor(s.chatMessages, memberId),
       memberId, connectedPeers: this.store.state.connectedPeers || [],
       maps: [map],
       tokens: s.tokens
@@ -245,6 +247,41 @@ export class NetworkManager {
   async importCharacter(token) {
     if (this.store.sessionRole !== 'player') throw new Error('Join a game first.');
     return this.request('IMPORT_CHARACTER', { token: portableCharacter(token) });
+  }
+  async sendChat({ text, recipientId = TABLE, clientId = id() }) {
+    const payload = chatRequest({ text, recipientId, clientId });
+    if (this.store.sessionRole === 'player') {
+      if (![TABLE, KEEPER].includes(recipientId)) throw new Error('Los susurros se envían al Keeper.');
+      return this.request('CHAT_SEND', payload);
+    }
+    if (this.store.state.userRole !== 'keeper') throw new Error('Únete a una sesión para escribir como jugador.');
+    if (this.store.state.isHosting && !this.store.state.isConnected) throw new Error('Sin conexión. Reconecta la sesión antes de enviar.');
+    return this.acceptChat(payload, KEEPER);
+  }
+  acceptChat(input, senderId) {
+    const payload = chatRequest(input), members = [...this.members].filter(([peerId]) => this.connections.get(peerId)?.open).map(([, member]) => member);
+    const sender = senderId === KEEPER ? { id: KEEPER, name: 'Keeper' } : members.find(m => m.id === senderId);
+    if (!sender) throw new Error('Jugador no conectado.');
+    if (senderId !== KEEPER && ![TABLE, KEEPER].includes(payload.recipientId)) throw new Error('Los susurros se envían al Keeper.');
+    const previous = (this.store.state.chatMessages || []).find(m => m.senderId === senderId && m.clientId === payload.clientId);
+    if (previous) {
+      if (previous.text !== payload.text || previous.recipientId !== payload.recipientId) throw new Error('Identificador de mensaje ya utilizado.');
+      return previous; // An acknowledgement may have been lost; never post twice.
+    }
+    const recipient = payload.recipientId === TABLE ? { id: TABLE, name: 'Mesa' }
+      : payload.recipientId === KEEPER ? { id: KEEPER, name: 'Keeper' }
+        : members.find(m => m.id === payload.recipientId);
+    if (!recipient || recipient.id === senderId ||
+        (recipient.id !== TABLE && senderId === KEEPER && !this.store.state.isConnected)) {
+      throw new Error('El destinatario está desconectado. El susurro no se ha enviado.');
+    }
+    const entry = validateChatEntry({ ...payload, id: id(), senderId, senderName: sender.name.trim() || 'Player', recipientName: recipient.name.trim() || 'Player', sentAt: Date.now() });
+    this.store.update({ chatMessages: appendChat(this.store.state.chatMessages, entry) });
+    // Deliberately separate from broadcast: private contents only enter participant sockets.
+    for (const [peerId, conn] of this.connections) {
+      if (conn.open && chatVisibleTo(entry, this.members.get(peerId)?.id)) conn.send(this.envelope({ type: 'CHAT_MESSAGE', entry }));
+    }
+    return entry;
   }
   request(type, payload) {
     if (!this.store.state.isConnected) return Promise.reject(new Error('Not connected to the Keeper.'));
@@ -362,6 +399,14 @@ export class NetworkManager {
         } finally {
           this.store.remoteApplying = false;
         }
+      } else if (data.type === 'CHAT_MESSAGE') {
+        try {
+          const entry = validateChatEntry(data.entry);
+          if (!chatVisibleTo(entry, this.store.memberId)) return;
+          this.store.remoteApplying = true;
+          this.store.update({ chatMessages: appendChat(this.store.state.chatMessages, entry) });
+        } catch { /* Invalid messages must not corrupt the replica. */ }
+        finally { this.store.remoteApplying = false; }
       } else if (data.type === 'ACTION_RESULT') {
         const p = this.pending.get(data.requestId);
         if (p) {
@@ -373,6 +418,14 @@ export class NetworkManager {
       return;
     }
     if (!this.store.state.isHosting || !this.members.has(senderId)) return;
+    if (data.type === 'CHAT_SEND') {
+      const conn = this.connections.get(senderId);
+      try {
+        const result = this.acceptChat(data, this.members.get(senderId).id);
+        conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, result }));
+      } catch (error) { conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error: error.message })); }
+      return;
+    }
     const owns = (tokenId) =>
       this.store.state.tokens.some(
         (t) => t.id === tokenId && controlsToken(t, this.members.get(senderId)?.id || senderId)

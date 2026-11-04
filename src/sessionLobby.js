@@ -99,6 +99,12 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
       return `<article class="crew-row"><span class="crew-avatar">${e(p.name.slice(0, 1).toUpperCase())}</span><div><strong>${e(p.name)}</strong><small>${online ? 'Online' : 'Offline'} · ${e(token?.name || 'No character assigned')}</small>${drones.length ? `<small>Shared drones: ${drones.map(t => e(t.name)).join(', ')}</small>` : ''}</div>${state.isHosting ? `<vf-select class="hud-select" data-assign="${e(p.id)}" aria-label="Character for ${e(p.name)}"><option value="" ${!token ? 'selected' : ''}>Observer</option>${state.tokens.filter(t => !isDrone(t)).map(t => `<option value="${e(t.id)}" ${t.id === token?.id ? 'selected' : ''}>${e(t.name)}</option>`).join('')}</vf-select>` : ''}</article>`;
     }).join('') : '<p class="dossier-muted">No players yet. Host a game and share its invitation.</p>');
     list.querySelectorAll('[data-assign]').forEach(select => select.onchange = () => { try { network.assignToken(select.dataset.assign, select.value); } catch (err) { error.textContent = err.message; } });
+    if (state.isHosting) list.querySelectorAll('[data-assign]').forEach(select => {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'hud-btn'; button.textContent = 'Susurrar';
+      button.setAttribute('aria-label', `Susurrar a ${players.find(p => p.id === select.dataset.assign)?.name || 'jugador'}`);
+      button.onclick = () => { modal.remove(); window.dispatchEvent(new CustomEvent('veil:open_chat', { detail: { recipientId: select.dataset.assign } })); };
+      select.closest('.crew-row').append(button);
+    });
     if (state.isHosting) {
       const row = document.createElement('div'); row.className = 'session-actions';
       for (const drone of state.tokens.filter(isDrone)) { const b = document.createElement('button'); b.className = 'hud-btn'; b.textContent = `Drone controls · ${drone.name}`; b.onclick = () => openTokenControl(drone.id); row.append(b); }

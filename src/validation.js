@@ -1,4 +1,5 @@
 import { validateInventory } from './equipment.js';
+import { validateChatHistory } from './chat.js';
 export const CAMPAIGN_KEYS = [
   'campaignId',
   'campaignName',
@@ -14,6 +15,7 @@ export const CAMPAIGN_KEYS = [
   'optionalEfforts',
   'logs',
   'players',
+  'chatMessages',
 ];
 export const finite = (x, min = -1e6, max = 1e6) =>
   typeof x === 'number' && Number.isFinite(x) && x >= min && x <= max;
@@ -116,7 +118,7 @@ export function validateCampaign(data) {
       );
   } else throw new Error('Missing starship data.');
   if (data.logs !== undefined) assert(Array.isArray(data.logs) && data.logs.length <= 150 && data.logs.every(x => x && typeof x === 'object'), 'Invalid session log.');
-  return structuredClone(data);
+  return structuredClone({ ...data, chatMessages: validateChatHistory(data.chatMessages) });
 }
 
 export function validTokenPatch(p) {

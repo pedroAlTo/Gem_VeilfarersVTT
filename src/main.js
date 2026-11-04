@@ -1,6 +1,8 @@
 import './sessionUI.css';
 import './diceTray.css';
 import './colorPicker.css';
+import './chat.css';
+import { ChatPanel } from './chatPanel.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import './dossiers.css';
 import { openSessionManager } from './sessionManager.js';
@@ -76,6 +78,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const logPane = document.getElementById('tab_pane_log');
   new CombatLogView(logPane);
+  new ChatPanel(document.getElementById('tab_pane_chat'));
 
   // Starship tab inside sidebar
   const shipPane = document.getElementById('tab_pane_ship');
@@ -547,7 +550,8 @@ function setupSidebarTabNavigation() {
     roster: document.getElementById('tab_pane_roster'),
     scenes: document.getElementById('tab_pane_scenes'),
     handouts: document.getElementById('tab_pane_handouts'),
-    log: document.getElementById('tab_pane_log')
+    log: document.getElementById('tab_pane_log'),
+    chat: document.getElementById('tab_pane_chat')
   };
 
   const sidebarEl = document.getElementById('main_right_sidebar');

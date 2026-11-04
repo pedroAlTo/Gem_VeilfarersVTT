@@ -1,5 +1,15 @@
 # VeilFarers Orbital II — pruebas locales
 
+## Chat de sesión y susurros
+
+1. Ejecuta **INICIAR_VTT_RED_LOCAL.bat** y conecta dos jugadores desde perfiles de navegador distintos. En **CHAT → Mesa · todos**, envía un mensaje desde cada participante: los tres deben verlo una sola vez.
+2. En **Session → Player roster → Susurrar**, el Keeper elige al primer jugador. El panel debe pasar a violeta y mostrar ese destinatario. Envía un susurro y responde desde **CHAT → Keeper · susurro** en el jugador. El segundo jugador no debe recibir ninguno de los dos mensajes, tampoco al cambiar de escena o reconectar.
+3. Escribe borradores distintos en Mesa y en un susurro. Cambia de canal: cada borrador debe permanecer en su conversación. Enter envía y Mayús + Enter inserta una línea. Comprueba el contador de mensajes sin leer al abrir otra pestaña o conversación.
+4. Desconecta al destinatario: el susurro queda deshabilitado y conserva su destino. Reconecta con la misma invitación en el mismo perfil/pestaña: debe recuperar su historial disponible. No hay cola de envíos automáticos ni confirmación de lectura.
+5. Cierra la partida online, abre otra sesión guardada y vuelve a la original. El Keeper conserva los últimos 500 mensajes; una sesión nueva empieza vacía. Una exportación JSON del Keeper incluye los susurros. La copia del jugador no debe sustituir su campaña local.
+
+Verificación automatizada de esta entrega: **125 pruebas y build de producción correctos**, incluidos Keeper y dos jugadores por WebSocket LAN real. No se ha podido realizar la revisión visual porque el navegador del entorno no está disponible.
+
 ## Condiciones, armas e inventario
 
 1. Selecciona un token y abre **ESTADOS**. Activa Cegado y Oculto: los dos iconos deben aparecer junto al token y sus nombres en la barra inferior. El token debe seguir visible al jugador: la condición Hidden es independiente del control de visibilidad del Keeper. Consulta una condición y comprueba que se muestra su texto y la referencia al Corebook, Chapter 10.

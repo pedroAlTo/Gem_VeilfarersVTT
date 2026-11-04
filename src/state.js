@@ -33,6 +33,7 @@ class StateStore {
       handouts: structuredClone(INITIAL_HANDOUTS),
       activeTransmission: null, // Broadcasted handout currently popped up
       logs: [],
+      chatMessages: [],
 
       // Layers System
       // 'map' | 'water' | 'walls_lights' | 'tokens' | 'overlay'
@@ -746,7 +747,7 @@ class StateStore {
   normalizeCampaign(input) {
     // Old archives may omit optional fields, never borrow maps/actors/logs from the open session.
     const base = structuredClone(this.initialCampaign);
-    const data = validateCampaign({ ...base, ...input, logs: input.logs ?? [], starship: { ...base.starship, ...input.starship } });
+    const data = validateCampaign({ ...base, ...input, logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
     if (!data.maps.some(m => m.id === data.activeMapId)) data.activeMapId = data.maps[0].id;
     return data;
   }
@@ -793,7 +794,7 @@ class StateStore {
       if (!duplicate) {
         const id = 'map_' + newId();
         data.maps = [{ id, name: 'Escena inicial', imageUrl: '/assets/maps/blank-grid.svg', gridSize: 64, gridType: 'square', gridColor: 'rgba(0,243,255,.18)', ambientLight: 1, ambientColor: '#080d18', walls: [], lights: [], effects: [], waterZones: [] }];
-        data.activeMapId = id; data.tokens = []; data.clocks = []; data.handouts = []; data.logs = [];
+        data.activeMapId = id; data.tokens = []; data.clocks = []; data.handouts = []; data.logs = []; data.chatMessages = [];
         data.fear = 0; data.fogOfWar = false; data.starship.visible = false; data.starship.name = 'Nave sin asignar';
       }
       return data;
