@@ -2,6 +2,8 @@ import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { store } from './state.js';
 import { validateActor } from './validation.js';
 import { characterDetails, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
+import { mountEquipmentPanel } from './equipmentUI.js';
+import { conditionBadges, openConditions } from './conditionUI.js';
 
 export function dossierDialog(title, body, className = '') {
   const previous = document.activeElement;
@@ -28,14 +30,15 @@ const field = (label, key, value, type = 'text', attrs = '') => `<label class="d
 const stat = (label, key, value, min = 0, max = 10000) => field(label, key, value ?? 0, 'number', `min="${min}" max="${max}" step="1" required`);
 const narrative = (title, value) => `<article class="dossier-narrative"><h4>${e(title)}</h4><p>${e(value).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
 
-export function openDossier(token, openSettings) {
+export function openDossier(token, openSettings, initialTab = 'stats') {
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
     <div class="dossier-hero"><div class="dossier-seal"><span>${pc ? 'LVL' : 'NPC'}</span><strong>${pc ? e(token.level ?? 1) : '◇'}</strong></div><div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
-    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos y equipo</button>${imported ? '<button class="hud-btn" data-tab="source">JSON original</button>' : ''}</nav>
+    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button><button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn" data-tab="source">JSON original</button>' : ''}</nav>
     <form id="dossier_form">
       <div data-panel="stats">
+        <div class="dossier-condition-summary"><button type="button" class="hud-btn" data-open-conditions>Condiciones</button><div class="condition-badges" data-condition-badges>${conditionBadges(token)}</div></div>
         <div class="dossier-identity">${field('Nombre', 'actorName', token.name)}${field(pc ? 'Clase' : 'Rol', pc ? 'characterClass' : 'roleTag', pc ? token.characterClass || '' : token.roleTag || '')}${pc ? field('Subclase', 'subclass', token.subclass || '') : ''}${field('Ancestry / especie', 'species', token.species || '')}${pc ? field('Comunidad', 'community', token.community || '') + stat('Nivel', 'level', token.level ?? 1, 1, 100) + stat('Proficiency', 'proficiency', token.proficiency ?? 1, 1, 100) : ''}${stat('Evasion', 'evasion', token.evasion ?? 10, 0, 100)}</div>
         <div class="dossier-resources">
           ${[['hp', 'HP · disponibles'], ['armor', 'Armor · disponibles'], ['stress', 'Stress · marcado']].map(([k, label]) => `<section class="dossier-resource ${k}"><h4>${label}</h4><div>${stat('Actual', `${k}_current`, token[k]?.current)}${stat('Máximo', `${k}_max`, token[k]?.max, k === 'hp' ? 1 : 0)}</div></section>`).join('')}
@@ -48,14 +51,13 @@ export function openDossier(token, openSettings) {
       <div data-panel="reference" hidden>
         ${imported ? '<p class="dossier-muted">Referencia del archivo importado. Las especializaciones, propiedades de armas y costes no se activan automáticamente.</p>' : '<p class="dossier-muted">Importa una ficha del creador para ver sus experiencias, poderes y equipo. Puedes registrar las habilidades manuales en Notas.</p>'}
         ${d.experiences.length ? `<h4 class="dossier-label">EXPERIENCIAS · ${e(token.path)}</h4><div class="dossier-experiences">${d.experiences.map(x => `<article><span>${e(x.name)}</span><strong>${e(x.bonus)}</strong></article>`).join('')}</div>` : ''}
-        ${d.weapons.length ? `<h4 class="dossier-label">ARMAMENTO</h4><div class="dossier-weapons">${d.weapons.map(w => `<article><span class="dossier-eyebrow">${e(w.tier)}</span><h4>${e(w.name)}</h4><div class="weapon-damage">${e(w.damage || 'Sin daño indicado')}</div><p>${e(w.trait)}</p><p>${e(w.features)}</p></article>`).join('')}</div>` : ''}
         ${d.armor ? narrative('Armadura', d.armor) : ''}
         ${d.features.map(([k, v]) => narrative(k, v)).join('')}
         ${d.domains ? `<h4 class="dossier-label">DOMINIOS · ${e(d.domains)}</h4>` : ''}
         ${d.powers.map(p => narrative(`${p.name}${p.recall ? ' · Recall ' + p.recall : ''}`, p.description)).join('')}
-        ${d.equipment.length ? `<h4 class="dossier-label">EQUIPO</h4>${d.equipment.map(x => narrative(`${x.quantity || '1'} × ${x.name} · ${x.tier}`, x.use)).join('')}` : ''}
         ${d.notes.map(([k, v]) => narrative(k, v)).join('')}
       </div>
+      <div data-panel="equipment" hidden></div>
       ${imported ? `<div data-panel="source" hidden><p class="dossier-muted">Original íntegro para consulta, incluidos campos de otras sendas. Exportar al creador conserva esos campos y actualiza los valores editables de esta ficha.</p><pre class="dossier-json">${e(JSON.stringify(token.sourceCharacter.document, null, 2))}</pre></div>` : ''}
       <p class="dossier-error" role="alert"></p>
       <footer class="dossier-footer"><button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
@@ -65,6 +67,14 @@ export function openDossier(token, openSettings) {
     modal.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b === button));
     modal.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== button.dataset.tab; });
   });
+  modal.querySelector(`[data-tab="${['stats', 'reference', 'equipment', 'source'].includes(initialTab) ? initialTab : 'stats'}"]`)?.click();
+  mountEquipmentPanel(modal.querySelector('[data-panel="equipment"]'), token.id);
+  modal.querySelector('[data-open-conditions]').onclick = () => openConditions(token.id);
+  const unsubscribeConditions = store.subscribe((_, keys) => {
+    if (!modal.isConnected) { unsubscribeConditions(); return; }
+    if (keys.includes('tokens')) modal.querySelector('[data-condition-badges]').innerHTML = conditionBadges(store.state.tokens.find(t => t.id === token.id) || token);
+  });
+  const observer = new MutationObserver(() => { if (!modal.isConnected) { unsubscribeConditions(); observer.disconnect(); } }); observer.observe(document.body, { childList: true });
   modal.querySelector('#dossier_controls').onclick = async () => { const { openTokenControl } = await import('./sessionLobby.js'); openTokenControl(token.id); };
   modal.querySelector('#dossier_token').onclick = () => { modal.remove(); openSettings(store.state.tokens.find(t => t.id === token.id) || token); };
   const playerView = store.sessionRole === 'player' || store.state.userRole === 'player';

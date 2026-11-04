@@ -1,5 +1,13 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Visible conditions and weapon inventory · 4 November 2026
+
+Tokens now show condition icons and quickbar labels. **ESTADOS** and **Ficha → Condiciones** provide the 18 standard conditions with the verbatim Corebook 12.06 Chapter 10 rules, plus custom markers. Reapplying a condition does not stack it. The Keeper and assigned players can edit; others can consult. Network condition actions merge on the Keeper so rapid independent toggles do not replace each other. Hidden is a game condition, separate from token visibility. No automatic damage, bonuses, duration expiry or condition clearing is introduced.
+
+**EQUIPO / Ficha → Armas y equipo** displays imported weapons, kits and items and provides an editable inventory. **Preparar daño** opens the damage panel with the chosen expression, preserving the target. Base and final damage are explicit: final imported values do not receive Proficiency or Honed Edge again. Mixed dice pools are supported and use the existing player/Keeper Critical procedures; unsupported alternative or keep-highest expressions fail visibly. Special features, resistances and ammunition remain manual. Inventory edits persist in sessions and native VTT actor exports; creator exports retain their original equipment. Concurrent inventory edits detected in the local replica require reopening the editor.
+
+Validation: 115 automated tests and the production build pass. Tests cover exact canonical text, icon overflow, ownership, malformed patches, native export/import, concurrent condition toggles, final/base damage, mixed pools, Critical, stale weapon preparation, and real LAN WebSockets with inventory/condition recovery on reconnect. Browser QA confirmed condition icons on the map, rules, inventory editing and preparation from the sheet. The final browser follow-up was interrupted by the preview/browser environment; testing on a second physical computer remains pending. Existing Three.js/Firebase chunk warnings are unchanged.
+
 ## Keeper secret rolls and adversary library · 4 November 2026
 
 **Dice → Tirada secreta · solo Keeper** keeps checks, Bear Down and damage results in the Keeper's local session log. Private entries are omitted from player snapshots and dice broadcasts, including reconnects; players cannot request private actions. A Keeper can make a secret check without selecting a token. Public and secret Bear Down histories are separate. Switching to Player removes private results from the visible log, result panel and tray. Resource changes on visible sheets still synchronize normally, and Keeper session exports retain private history.

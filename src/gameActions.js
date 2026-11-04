@@ -2,6 +2,7 @@ import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
 import { rollVeilfarersCheck, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { finite } from './validation.js';
+import { normalizeConditions } from './conditions.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
 export function performGameAction(action, store = defaultStore) {
@@ -11,6 +12,14 @@ export function performGameAction(action, store = defaultStore) {
   const actor = standalone ? { name: 'Keeper', isPlayer: false } : store.state.tokens.find(t => t.id === action.actorId);
   const rollKey = JSON.stringify([store.state.campaignId, action.actorId, secret ? 'keeper' : 'table']);
   if (!actor) throw new Error('Choose a character first.');
+  if (action.type === 'CONDITION') {
+    if (typeof action.name !== 'string' || !action.name.trim() || action.name.length > 100 || typeof action.active !== 'boolean') throw new Error('Condición inválida.');
+    const name = normalizeConditions([action.name])[0], current = normalizeConditions(actor.conditions);
+    const conditions = action.active ? normalizeConditions([...current, name]) : current.filter(c => c !== name);
+    if (conditions.length > 30) throw new Error('Máximo 30 condiciones por token.');
+    store.updateToken(actor.id, { conditions });
+    return { actorId: actor.id, conditions };
+  }
   if (action.type === 'CHECK') {
     const o = action.options || {};
     if (

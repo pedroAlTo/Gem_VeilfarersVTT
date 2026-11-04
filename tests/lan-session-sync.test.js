@@ -87,6 +87,17 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     assert.equal(keeper.state.state.logs.length, count);
     const publicRoll = await pilot.manager.requestAction({ type: 'CHECK', actorId: tokenId, options });
     await until(() => pilot.received.some(packet => packet.type === 'DICE_ROLL' && packet.result.id === publicRoll.id), 'public check reaches guest');
+    await Promise.all(['Bleeding', 'Hidden'].map(name => pilot.manager.requestAction({ type:'CONDITION', actorId:tokenId, name, active:true })));
+    await until(() => pilot.state.state.tokens.find(t => t.id === tokenId).conditions.includes('Hidden'), 'condition changes reach the player');
+    for (const endpoint of [keeper, pilot]) {
+      const token = endpoint.state.state.tokens.find(t => t.id === tokenId);
+      assert.ok(token.conditions.includes('Hidden') && token.conditions.includes('Bleeding'), 'rapid independent toggles are merged by the Keeper');
+      assert.equal(!!token.hidden, false, 'Hidden condition does not make the token private');
+    }
+    await assert.rejects(pilot.manager.requestAction({ type:'CONDITION', actorId:hidden.id, name:'Stunned', active:true }), /not assigned/);
+    const inventory = { weapons:[{id:'test-gun',name:'Pistol',damage:'d8+1 Phys',damageMode:'final',trait:'Finesse',range:'Close',tier:'Common',features:'Reliable'}],items:[{id:'medkit',name:'Medkit',quantity:'2',tier:'Common',use:'First Aid'}] };
+    pilot.state.updateToken(tokenId, { inventory });
+    await until(() => keeper.state.state.tokens.find(t => t.id === tokenId).inventory?.items[0]?.quantity === '2', 'owned inventory reaches Keeper');
     const pose = state => {
       const token = state.getTokensForActiveMap().find(token => token.id === tokenId);
       return [token.mapId, token.x, token.y];
@@ -102,6 +113,9 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     await pilot.manager.joinSession(room, 'Pilot', keeper.manager.invite);
     assert.deepEqual(pose(pilot.state), [map, 512, 256]);
     assert.ok(pilot.state.canEditToken(tokenId));
+    const restored = pilot.state.state.tokens.find(t => t.id === tokenId);
+    assert.deepEqual(restored.inventory, inventory);
+    assert.ok(restored.conditions.includes('Bleeding') && restored.conditions.includes('Hidden'));
     assert.ok(pilot.state.state.logs.some(entry => entry.type === 'CHECK'));
     assert.ok(pilot.state.state.logs.every(entry => entry.visibility !== 'keeper'));
     const wire = JSON.stringify(pilot.received);

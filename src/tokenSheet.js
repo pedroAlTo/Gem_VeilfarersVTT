@@ -1,3 +1,4 @@
+import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
 import { validateActor } from './validation.js';
 import { statGaugeHTML } from './tokenVitals.js';
@@ -80,6 +81,7 @@ export class TokenHUD {
             <div class="tok-qb-meta">
               <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
               <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
+              <div class="condition-badges tok-condition-badges">${conditionBadges(token)}</div>
             </div>
           </div>
 
@@ -94,6 +96,8 @@ export class TokenHUD {
 
           <!-- Compact Action Controls -->
           <div class="tok-qb-actions" style="display: flex; gap: 6px; align-items: center;">
+            <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
+            <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${store.canEditToken(token.id) ? '' : 'disabled'}>EQUIPO</button>
             <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>
             <button class="hud-btn hud-btn-xs hud-btn-primary" id="toggle_expand_btn" title="Expandir Panel Completo">▲ EXPANDIR</button>
           </div>
@@ -114,6 +118,8 @@ export class TokenHUD {
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
           </div>
           <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Open Full Character Sheet">SHEET</button>
+          <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
+          <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${store.canEditToken(token.id) ? '' : 'disabled'}>EQUIPO</button>
         </div>
 
         <div class="tok-qb-divider"></div>
@@ -280,6 +286,8 @@ export class TokenHUD {
   }
 
   attachEvents(token) {
+    this.container.querySelector('#open_conditions_btn')?.addEventListener('click', () => openConditions(token.id));
+    this.container.querySelector('#open_equipment_btn')?.addEventListener('click', () => { if (store.canEditToken(token.id)) openDossier(store.state.tokens.find(t => t.id === token.id), actor => this.openTokenSettingsModal(actor), 'equipment'); });
     if (!store.canEditToken(token.id)) this.container.querySelectorAll('button').forEach(button => {
       if (!['toggle_expand_btn', 'toggle_moves_drawer'].includes(button.id)) button.disabled = true;
     });

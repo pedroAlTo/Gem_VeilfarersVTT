@@ -406,7 +406,7 @@ export class NetworkManager {
       try {
         if (
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
-          !['CHECK', 'EFFORT', 'RESOLVE'].includes(data.action?.type)
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
         const result = await this.performAction(data.action);

@@ -7,6 +7,7 @@ import { characterDetails } from './characterImport.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
+import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression } from './equipment.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -33,6 +34,13 @@ export class DiceRollerSidebar {
     const token = store.getSelectedToken();
     const actorChanged=this.currentActor?.id!==token?.id;
     this.currentActor = token;
+    if (this.preparedWeapon && (actorChanged || JSON.stringify(token && tokenInventory(token).weapons.find(w => w.id === this.preparedWeapon.id)) !== this.preparedWeapon.signature)) {
+      this.preparedWeapon = null;
+      this.container.querySelector('#dmg_formula').value = '';
+      this.syncDamageMode();
+      this.container.querySelector('[data-weapon-preview]').textContent = 'El arma o el actor ha cambiado. Prepara el daño de nuevo.';
+      this.container.querySelector('#damage_result_display').style.display = 'none';
+    }
     const isPC = token && token.isPlayer !== false;
     const isKeeper = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
     const toggle = this.container.querySelector('#secret_roll');
@@ -97,6 +105,30 @@ export class DiceRollerSidebar {
       rollBtn.classList.add('pulse-highlight');
       setTimeout(() => rollBtn.classList.remove('pulse-highlight'), 1000);
     }
+  }
+
+  prepareWeapon(tokenId, weaponId) {
+    const actor = store.state.tokens.find(t => t.id === tokenId);
+    if (!actor || !store.canEditToken(tokenId)) { notify('Selecciona uno de tus tokens asignados.'); return false; }
+    const weapon = tokenInventory(actor).weapons.find(w => w.id === weaponId);
+    if (!weapon) { notify('Este arma ya no está en la ficha.'); return false; }
+    store.update({ selectedTokenId: tokenId }); this.syncWithSelectedToken();
+    const preset = weaponPreset(actor, weapon);
+    this.container.querySelector('#dmg_formula').value = preset.formula;
+    this.syncDamageMode();
+    this.container.querySelector('#dmg_proficiency').value = preset.proficiency;
+    this.container.querySelector('#dmg_honed').value = preset.honed;
+    this.container.querySelector('#dmg_is_critical').checked = false;
+    this.container.querySelector('#dmg_is_direct').checked = false;
+    this.container.querySelector('#damage_result_display').style.display = 'none';
+    const note = weapon.damageMode === 'final' ? 'Daño final: Proficiency y Honed Edge no se vuelven a sumar.' : 'Daño base: se añade Proficiency al primer grupo de dados y Honed Edge una vez.';
+    let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
+    this.container.querySelector('[data-weapon-preview]').textContent = [weapon.name, note, weapon.features, warning].filter(Boolean).join(' · ');
+    this.preparedWeapon = { id: weaponId, signature: JSON.stringify(weapon) };
+    window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
+    this.container.querySelector('#tab_damage_btn').click();
+    this.container.querySelector('#dmg_formula').focus();
+    return true;
   }
 
   render() {
@@ -227,6 +259,9 @@ export class DiceRollerSidebar {
 
         <!-- Section 2: Damage & Thresholds Calculator -->
         <div class="dice-section" id="section_damage_calc" style="display: none;">
+          <p class="weapon-prepared-note" data-weapon-preview>Prepara un arma desde Ficha → Armas y equipo, o introduce una expresión.</p>
+          <label class="dossier-field"><span>Expresión completa</span><input id="dmg_formula" class="hud-input" maxlength="1000" placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"></label>
+          <p class="field-help">Vacía este campo para usar los dados manuales de abajo. Las propiedades y condiciones se resuelven según su texto.</p>
           <div class="dice-actor-bar">
             <span class="actor-tag">TARGET:</span>
             <vf-select id="dmg_target_select" class="hud-select" style="max-width: 200px;">
@@ -356,6 +391,11 @@ export class DiceRollerSidebar {
 
     // Roll Damage Button
     this.container.querySelector('#roll_damage_btn').onclick = () => this.executeDamageCalc();
+    for (const event of ['input', 'change']) damageSec.addEventListener(event, () => { this.syncDamageMode(); this.container.querySelector('#damage_result_display').style.display = 'none'; });
+  }
+
+  syncDamageMode() {
+    this.container.querySelector('#dmg_dice_count').closest('.form-group').style.display = this.container.querySelector('#dmg_formula').value.trim() ? 'none' : '';
   }
 
   updateTraitButtons() {
@@ -372,9 +412,11 @@ export class DiceRollerSidebar {
     const select = this.container.querySelector('#dmg_target_select');
     if (!select) return;
     const tokens = store.getTokensForActiveMap();
-    select.innerHTML = sanitizeHTML(tokens.map(t => `
-      <option value="${t.id}">${t.name} (HP ${t.hp.current}/${t.hp.max})</option>
+    const previous = select.value;
+    select.innerHTML = sanitizeHTML('<option value="">Sin objetivo · calcular</option>' + tokens.map(t => `
+      <option value="${escapeHTML(t.id)}">${escapeHTML(t.name)} (HP ${t.hp.current}/${t.hp.max})</option>
     `).join(''));
+    select.value = tokens.some(t => t.id === previous) ? previous : '';
 
     select.onchange = () => {
       const tok = tokens.find(t => t.id === select.value);
@@ -481,8 +523,9 @@ export class DiceRollerSidebar {
     const proficiency=parseInt(this.container.querySelector('#dmg_proficiency').value,10),honed=parseInt(this.container.querySelector('#dmg_honed').value,10);
     if(!Number.isInteger(proficiency)||proficiency<1||proficiency>10||!Number.isInteger(honed)||honed<0||honed>9){notify('Check Proficiency (1–10) and Honed Edge (0–9).','error');return;}
 
-    if (![diceCount,diceSides,flatMod,major,severe,mr].every(Number.isFinite) || diceCount<1 || diceCount>100 || major<1 || severe<major) { notify('Check the damage dice and thresholds.','error'); return; }
-    const dmgResult = resolveDamage({
+    const formula = this.container.querySelector('#dmg_formula').value.trim();
+    if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
+    const damageOptions = {
       attackerName: this.currentActor?.name || 'Attacker',
       targetName: targetToken?.name || 'Target',
       diceCount: diceCount + Math.max(0, (parseInt(this.container.querySelector('#dmg_proficiency').value,10)||1)-1),
@@ -495,8 +538,12 @@ export class DiceRollerSidebar {
       targetSevereThreshold: severe,
       useArmorSlot: useArmor,
       currentArmorSlots: targetToken?.armor?.current ?? 2,
-      mountRating: mr
-    });
+      mountRating: mr,
+      proficiency, honed,
+    };
+    let dmgResult;
+    try { dmgResult = formula ? resolveDamageExpression(formula, damageOptions) : resolveDamage(damageOptions); }
+    catch (error) { notify(error.message, 'error'); return; }
 
     const display = this.container.querySelector('#damage_result_display');
     display.style.display = 'block';
@@ -505,7 +552,7 @@ export class DiceRollerSidebar {
     this.container.querySelector('#dmg_severity_val').textContent = dmgResult.finalSeverity;
     this.container.querySelector('#dmg_hp_loss_val').textContent = `${dmgResult.finalHpDamage} HP`;
 
-    const detailText = `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
+    const detailText = (formula ? formula + ' · ' : '') + `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
       `Compared to Major (${major}) & Severe (${severe}). ` +
       (dmgResult.armorSlotSpent ? '1 Armor Slot spent to lower severity step.' : 'No armor slot used.');
     const secret = this.rollVisibility() === 'keeper';
@@ -516,7 +563,7 @@ export class DiceRollerSidebar {
     // Apply button
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
     let applied=false;
-    applyBtn.disabled=false;applyBtn.textContent="APPLY DAMAGE TO TARGET";
+    applyBtn.disabled=!targetToken || store.sessionRole==='player' || store.state.userRole!=='keeper';applyBtn.textContent=targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
     applyBtn.onclick = () => {
       if(applied)return;
       if(store.sessionRole==='player'||store.state.userRole!=='keeper'){notify('The Keeper applies incoming damage.','error');return;}

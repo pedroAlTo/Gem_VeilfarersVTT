@@ -1,3 +1,4 @@
+import { validateInventory } from './equipment.js';
 export const CAMPAIGN_KEYS = [
   'campaignId',
   'campaignName',
@@ -136,6 +137,7 @@ export function validTokenPatch(p) {
           'effortTrack',
           'resolve',
           'conditions',
+          'inventory',
         ].includes(k)
     )
   )
@@ -152,6 +154,7 @@ export function validTokenPatch(p) {
       p.conditions.some((x) => typeof x !== 'string' || x.length > 100))
   )
     return false;
+  if ('inventory' in p) { try { validateInventory(p.inventory); } catch { return false; } }
   if (
     'effortTrack' in p &&
     (!Array.isArray(p.effortTrack) ||
@@ -173,9 +176,10 @@ export function validateActor(t) {
       if (t[key] !== undefined) assert(finite(t[key], 0, 6), `Invalid ${key}.`);
     if (t.conditions !== undefined)
       assert(
-        Array.isArray(t.conditions) && t.conditions.every((x) => typeof x === 'string'),
+        Array.isArray(t.conditions) && t.conditions.length <= 30 && t.conditions.every((x) => typeof x === 'string' && x.length <= 100),
         'Invalid conditions.'
       );
+    if (t.inventory !== undefined) validateInventory(t.inventory);
     for (const stats of [t.traits, t.subtraits])
       if (stats !== undefined)
         assert(

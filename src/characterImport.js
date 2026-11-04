@@ -1,3 +1,4 @@
+import { tokenInventory } from './equipment.js';
 // Character Sheet 2.80 exports use final Traits/thresholds and separate resource tracks.
 // Keep the original document intact, including fields that this VTT cannot automate.
 export const TRAIT_IDS = ['agility', 'strength', 'finesse', 'knowledge', 'instinct', 'presence'];
@@ -76,11 +77,12 @@ export function initializeImportedResources(parsed, values) {
 }
 export function characterDetails(token) {
   const f = token.sourceCharacter?.document?.fields || {};
+  const inventory = tokenInventory(token);
   const prefix = token.path === 'Sleeping' ? 's' : 'a';
   const indexed = (regex, build) => Object.keys(f).filter(k => regex.test(k)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).filter(k => text(f[k]).trim()).map(build);
   return {
     experiences: indexed(new RegExp(`^${prefix}_exp_\\d+$`), k => ({ name: text(f[k]), bonus: text(f[`${k}_bonus`]) })),
-    weapons: ['wpri', 'wsec'].filter(p => f[`${p}_name`]).map(p => ({ name: text(f[`${p}_name`]), trait: text(f[`${p}_trait`]), damage: text(f[`${p}_dmg_final${token.path === 'Awakened' ? '_aw' : ''}`] || f[`${p}_dmg_final`] || f[`${p}_dmg`]), features: text(f[`${p}_feat`]), tier: text(f[`${p}_tier`]) })),
+    weapons: inventory.weapons,
     armor: [f.armor_name, f.armor_tier, f.armor_feat].filter(Boolean).join(' · '),
     features: [
       ['Clase / subclase · referencia importada', f.features],
@@ -92,7 +94,7 @@ export function characterDetails(token) {
     ].filter(([, value]) => value && value !== '[]'),
     domains: prefix === 'a' ? text(f.a_domain_ref) : '',
     powers: prefix === 'a' ? indexed(/^a_pwr_\d+_n$/, k => ({ name: text(f[k]), description: text(f[k.replace(/_n$/, '_d')]), recall: text(f[k.replace(/_n$/, '_rc')]) })) : [],
-    equipment: indexed(/^eq_\d+_name$/, k => ({ name: text(f[k]), tier: text(f[k.replace(/_name$/, '_tier')]), quantity: text(f[k.replace(/_name$/, '_qty')]), use: text(f[k.replace(/_name$/, '_use')]) })),
+    equipment: inventory.items,
     notes: [['Equipo', f.equipment_notes], ['Notas', f[`${prefix}_quick_notes`]], ['Motivación', f.seed_motive], ['Vínculos', [f.conn_first, f.conn_debt, f.conn_friction].filter(Boolean).join('\n\n')]].filter(([, v]) => v),
   };
 }

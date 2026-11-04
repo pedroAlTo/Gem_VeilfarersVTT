@@ -5,6 +5,7 @@
 import { LightingEngine } from './lightingEngine.js';
 import { drawWaterSurface, traceWater, waterBounds } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
+import { drawTokenConditions } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
 import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
@@ -3043,6 +3044,7 @@ export class CanvasEngine {
 
       // Vitals & Nameplate
       this.renderTokenVitals(ctx, tok, radius);
+      drawTokenConditions(ctx, tok, radius, this.zoom);
 
       // Directional Vision & Smaller Directional Arrow Handle on Selected Token
       if (isSelected) {

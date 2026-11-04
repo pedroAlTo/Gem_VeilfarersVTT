@@ -1,5 +1,14 @@
 # VeilFarers Orbital II — pruebas locales
 
+## Condiciones, armas e inventario
+
+1. Selecciona un token y abre **ESTADOS**. Activa Cegado y Oculto: los dos iconos deben aparecer junto al token y sus nombres en la barra inferior. El token debe seguir visible al jugador: la condición Hidden es independiente del control de visibilidad del Keeper. Consulta una condición y comprueba que se muestra su texto y la referencia al Corebook, Chapter 10.
+2. Añade un marcador propio, quítalo y comprueba el resultado en el otro equipo. El jugador asignado puede cambiar condiciones; un jugador sin control puede consultar las reglas. Activa dos condiciones rápidamente: deben conservarse ambas. No se descuentan Stress ni HP automáticamente.
+3. Abre **EQUIPO → Editar inventario**. Añade un arma y un objeto con cantidad. Guarda, vuelve a abrir y exporta el actor VTT. Al reimportar ese JSON deben mantenerse armas, cantidades y condiciones. Exportar al creador mantiene su equipo original; para conservar los cambios de inventario utiliza el formato VTT o la sesión completa.
+4. Pulsa **Preparar daño**. Comprueba que se carga su expresión y se abre el panel de daño. Una expresión final importada usa Proficiency 1 y Honed Edge 0 para evitar duplicaciones. Una base aplica los valores de la ficha. La preparación no tira dados ni aplica daño.
+5. Prueba `1d8+1 Phys + 1d4 Shock`: se tiran ambos grupos, se suma el modificador una vez y se comparan los umbrales una vez. Prueba `2d8 keep highest` o `d8 / d6`: debe pedirte resolver ese procedimiento, sin tirar una versión incompleta. Las resistencias y propiedades especiales siguen siendo manuales.
+6. En LAN, edita el inventario desde el jugador asignado y reconecta. Keeper y jugador deben conservar las condiciones, armas y cantidades. Solo el Keeper puede aplicar el daño calculado a un objetivo. Guarda la sesión antes de cerrar el servidor.
+
 ## Tiradas secretas y biblioteca de adversarios
 
 1. Conecta un Keeper y un jugador siguiendo el arranque LAN descrito abajo. Abre **Dice** y el registro en ambos equipos.
