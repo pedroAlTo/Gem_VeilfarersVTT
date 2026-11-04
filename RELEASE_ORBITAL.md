@@ -1,5 +1,13 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Keeper secret rolls and adversary library · 4 November 2026
+
+**Dice → Tirada secreta · solo Keeper** keeps checks, Bear Down and damage results in the Keeper's local session log. Private entries are omitted from player snapshots and dice broadcasts, including reconnects; players cannot request private actions. A Keeper can make a secret check without selecting a token. Public and secret Bear Down histories are separate. Switching to Player removes private results from the visible log, result panel and tray. Resource changes on visible sheets still synchronize normally, and Keeper session exports retain private history.
+
+**Roster → Biblioteca de adversarios** searches names, abilities and types, with book and tier filters. The catalog is generated from the supplied 12.06 Alien Species threats, Keeper’s Companion Galactic Bestiary Section A, and Rust & Steel brokers: 57 profiles, 42 directly deployable. The remaining 15 are reference-only because their printed encounters lack standard numeric fields or use special procedures. No missing HP or thresholds are invented. Tokens start hidden by default in the active scene, carry the printed combat values and full source notes, and have independent resources. Unprinted Stress/Armor tracks have zero slots; special abilities and mixed/alternative attacks remain manual.
+
+Validation: all 104 automated tests and `npm run build` pass. Tests cover source fidelity, filtering and deployment controls, permissions, private result cleanup, and two independent real LAN WebSockets: public rolls and movement synchronize while hidden actors and secret rolls never reach the player's wire traffic or reconnect snapshot. Visual browser review and a second physical computer remain unverified; the managed preview relay is unavailable in this environment. Existing build warnings concern large Three.js/Firebase chunks and a mixed static/dynamic lobby import.
+
 ## LAN session and token position sync · 3 November 2026
 
 The Player button opens the invitation form. Offline preview is an explicit choice. The Keeper shows “Waiting for players” until someone joins, and the guest is marked online after receiving the map. LAN sessions use the VTT server’s WebSocket to deliver messages to invited clients. Keeper-side permissions and filtered snapshots apply to movement in both directions. Online sessions continue to use PeerJS.

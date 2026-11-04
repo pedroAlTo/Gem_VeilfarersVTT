@@ -27,10 +27,11 @@ async function client(url) {
   const socket = new WebSocket(url, 'vite-hmr');
   const events = new EventEmitter();
   let gamePackets = 0;
+  const received = [];
   socket.addEventListener('message', event => {
     const packet = JSON.parse(event.data);
     if (packet.type === 'custom') {
-      if (packet.event === 'veil:lan' && packet.data.op === 'data') gamePackets++;
+      if (packet.event === 'veil:lan' && packet.data.op === 'data') { gamePackets++; received.push(packet.data.data); }
       events.emit(packet.event, packet.data);
     }
   });
@@ -47,10 +48,10 @@ async function client(url) {
   const state = new store.constructor();
   await state.ready;
   const manager = new NetworkManager({ stateStore: state, peerFactory: options => new LanPeer(transport, options, manager.invite) });
-  return { state, manager, socket, packets: () => gamePackets };
+  return { state, manager, socket, received, packets: () => gamePackets };
 }
 
-test('LAN: Keeper and player receive the same token coordinates over independent WebSockets', { timeout: 18000 }, async () => {
+test('LAN: token positions and public rolls synchronize, secret rolls never reach player sockets or reconnect snapshots', { timeout: 18000 }, async () => {
   await store.ready;
   const server = await createServer({
     configFile: false, envFile: false, plugins: [{ name: 'lan-test-mode', configResolved(config) {
@@ -76,6 +77,16 @@ test('LAN: Keeper and player receive the same token coordinates over independent
     const tokenId = keeper.state.getTokensForActiveMap().find(token => token.isPlayer).id;
     keeper.manager.assignToken(keeper.state.state.connectedPeers[0].id, tokenId);
     await until(() => pilot.state.canEditToken(tokenId), 'assignment reaches player');
+    const hidden = keeper.state.addToken({ name: 'SECRET_AMBUSH_SENTINEL', isPlayer: false, hidden: true });
+    const options = { traitId: 'finesse', dc: 12, customMod: 0 };
+    const secret = await keeper.manager.requestAction({ type: 'CHECK', actorId: hidden.id, visibility: 'keeper', options });
+    assert.equal(secret.visibility, 'keeper');
+    assert.ok(keeper.state.serializeCampaign().logs.some(entry => entry.visibility === 'keeper'));
+    const count = keeper.state.state.logs.length;
+    await assert.rejects(pilot.manager.requestAction({ type: 'CHECK', actorId: tokenId, visibility: 'keeper', options }), /not assigned/);
+    assert.equal(keeper.state.state.logs.length, count);
+    const publicRoll = await pilot.manager.requestAction({ type: 'CHECK', actorId: tokenId, options });
+    await until(() => pilot.received.some(packet => packet.type === 'DICE_ROLL' && packet.result.id === publicRoll.id), 'public check reaches guest');
     const pose = state => {
       const token = state.getTokensForActiveMap().find(token => token.id === tokenId);
       return [token.mapId, token.x, token.y];
@@ -91,6 +102,12 @@ test('LAN: Keeper and player receive the same token coordinates over independent
     await pilot.manager.joinSession(room, 'Pilot', keeper.manager.invite);
     assert.deepEqual(pose(pilot.state), [map, 512, 256]);
     assert.ok(pilot.state.canEditToken(tokenId));
+    assert.ok(pilot.state.state.logs.some(entry => entry.type === 'CHECK'));
+    assert.ok(pilot.state.state.logs.every(entry => entry.visibility !== 'keeper'));
+    const wire = JSON.stringify(pilot.received);
+    assert.ok(!wire.includes('SECRET_AMBUSH_SENTINEL'));
+    assert.ok(!wire.includes(hidden.id)); assert.ok(!wire.includes(secret.id));
+    assert.ok(pilot.received.filter(packet => packet.type === 'INITIAL_STATE').every(packet => packet.state.logs.every(entry => entry.visibility !== 'keeper')));
     assert.equal(stranger.packets(), 0, 'rejected sockets receive no campaign packets');
     keeper.manager.disconnect();
     await until(() => !pilot.state.state.isConnected, 'losing the Keeper marks the replica disconnected');

@@ -32,7 +32,7 @@ export class RosterManager {
           ` : ''}
         </div>
 
-        ${isKeeper ? '<div class="roster-import-actions"><button class="hud-btn hud-btn-primary" id="import_actors_btn">IMPORTAR PERSONAJES JSON</button></div>' : ''}
+        ${isKeeper ? '<div class="roster-import-actions"><button class="hud-btn" id="bestiary_open">Biblioteca de adversarios</button><button class="hud-btn hud-btn-primary" id="import_actors_btn">IMPORTAR PERSONAJES JSON</button></div>' : ''}
         <div class="roster-tokens-list">
           ${tokens.map(tok => {
             const isSelected = tok.id === state.selectedTokenId;
@@ -73,6 +73,11 @@ export class RosterManager {
   initEvents() {
     const isKeeper = store.getState().userRole === 'keeper';
 
+    const library = this.container.querySelector('#bestiary_open');
+    if (library) library.onclick = async () => {
+      try { const { openAdversaryLibrary } = await import('./adversaryLibrary.js'); await openAdversaryLibrary(); }
+      catch (error) { notify(error.message, 'error'); }
+    };
     // Select & focus token
     this.container.querySelectorAll('.roster-token-card').forEach(card => {
       card.onclick = (e) => {

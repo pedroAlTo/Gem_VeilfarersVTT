@@ -1,5 +1,14 @@
 # VeilFarers Orbital II — pruebas locales
 
+## Tiradas secretas y biblioteca de adversarios
+
+1. Conecta un Keeper y un jugador siguiendo el arranque LAN descrito abajo. Abre **Dice** y el registro en ambos equipos.
+2. En el Keeper, activa **Tirada secreta · solo Keeper**. Puedes seleccionar un adversario o tirar sin token. El resultado y su entrada **SOLO KEEPER** deben aparecer únicamente en su pantalla. Desconecta y vuelve a conectar al jugador: esa entrada debe seguir ausente. Al desactivar la casilla, la siguiente tirada debe publicarse normalmente.
+3. El daño calculado en secreto también conserva un registro privado. Aplicarlo a un personaje visible cambia sus HP/Armor para todos: el modo secreto oculta el resultado de los dados, no los recursos de las fichas compartidas. La sesión guardada y su exportación conservan el registro privado del Keeper.
+4. Abre **Roster → Biblioteca de adversarios**, busca `Rogue Synthetic` y comprueba HP 12, Stress 6, Evasion 13, Ataque +3, Major 10 / Severe 18 y `1d8+1 Phys + 1d4 Shock`. Coloca dos copias: deben estar ocultas inicialmente y modificar los HP de una no debe cambiar la otra. Revela una desde el roster para mostrarla al jugador.
+5. Filtra por **Rust & Steel**, tier **3**, y busca `Vanko`. Comprueba HP 25, Armor 4 y las notas originales en su ficha. Busca `Grandfather Leviathan`: debe mostrar la referencia completa y tener desactivado **Colocar en la escena**.
+6. Guarda y reabre la sesión. Los adversarios, sus recursos y las tiradas privadas deben conservarse. Cambia a la vista local Player: no debe mostrar los resultados privados ni el control de tiradas secretas.
+
 ## Arranque en Windows
 
 1. Instala Node.js 24 LTS (también se admite Node 22.12 o posterior de la rama 22).

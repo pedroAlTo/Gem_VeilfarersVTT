@@ -1,12 +1,15 @@
-import { store } from './state.js';
+import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
 import { rollVeilfarersCheck, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { finite } from './validation.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
-export function performGameAction(action) {
-  const actor = store.state.tokens.find((t) => t.id === action.actorId);
-  const rollKey = `${store.state.campaignId}:${action.actorId}`;
+export function performGameAction(action, store = defaultStore) {
+  const secret = action.visibility === 'keeper';
+  if (secret && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) throw new Error('Solo el Keeper puede hacer tiradas secretas.');
+  const standalone = secret && action.type === 'CHECK' && !action.actorId;
+  const actor = standalone ? { name: 'Keeper', isPlayer: false } : store.state.tokens.find(t => t.id === action.actorId);
+  const rollKey = JSON.stringify([store.state.campaignId, action.actorId, secret ? 'keeper' : 'table']);
   if (!actor) throw new Error('Choose a character first.');
   if (action.type === 'CHECK') {
     const o = action.options || {};
@@ -79,12 +82,13 @@ export function performGameAction(action) {
     }
     if (player && result.isCritical)
       patch.stress = { ...actor.stress, current: Math.max(0, (actor.stress?.current || 0) - 1) };
-    store.updateToken(actor.id, patch);
+    if (!standalone) store.updateToken(actor.id, patch);
     if (result.fearGain) store.addFear(result.fearGain);
-    const record = { id: newId(), actorId: actor.id, ...result };
+    const record = { id: newId(), actorId: actor.id, ...result, ...(secret ? { visibility: 'keeper' } : {}) };
     lastRoll.set(rollKey, record);
     const log = {
       sender: actor.name,
+      ...(secret ? { visibility: 'keeper' } : {}),
       type: 'CHECK',
       title: `${actor.name}: ${result.outcomeTitle}`,
       details: `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}. ${result.pathPayout}`,
@@ -120,6 +124,7 @@ export function performGameAction(action) {
     const log = {
       sender: actor.name,
       type: 'RESOLVE',
+      ...(secret ? { visibility: 'keeper' } : {}),
       title: 'Bear Down',
       details: `+${bonus}; ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}`,
     };

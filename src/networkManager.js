@@ -200,6 +200,7 @@ export class NetworkManager {
     const memberId = this.members.get(peerId)?.id || peerId;
     return {
       ...this.store.serializeCampaign(),
+      logs: (s.logs || []).filter(entry => entry.visibility !== 'keeper').map(entry => structuredClone(entry)),
       memberId, connectedPeers: this.store.state.connectedPeers || [],
       maps: [map],
       tokens: s.tokens
@@ -269,6 +270,7 @@ export class NetworkManager {
     return { tokenId: actor.id };
   }
   broadcast(message) {
+    if (message.type === 'DICE_ROLL' && (message.logEntry?.visibility === 'keeper' || message.result?.visibility === 'keeper')) return;
     if (this.store.sessionRole === 'player') {
       this.sendToHost(message);
       return;
@@ -315,8 +317,8 @@ export class NetworkManager {
   }
   async performAction(action) {
     const { performGameAction } = await import('./gameActions.js');
-    const result = performGameAction(action);
-    if (result.log) this.broadcast({ type: 'DICE_ROLL', logEntry: result.log, result: { id: result.id, actorId: result.actorId, hopeVal: result.hopeVal, fearVal: result.fearVal, total: result.total } });
+    const result = performGameAction(action, this.store);
+    if (result.log && result.log.visibility !== 'keeper') this.broadcast({ type: 'DICE_ROLL', logEntry: result.log, result: { id: result.id, actorId: result.actorId, hopeVal: result.hopeVal, fearVal: result.fearVal, total: result.total } });
     return result;
   }
   async handleIncomingMessage(data, senderId) {
@@ -403,7 +405,7 @@ export class NetworkManager {
       const conn = this.connections.get(senderId);
       try {
         if (
-          !owns(data.action?.actorId) ||
+          data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
           !['CHECK', 'EFFORT', 'RESOLVE'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');

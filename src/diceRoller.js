@@ -25,13 +25,32 @@ export class DiceRollerSidebar {
     });
   }
 
+  rollVisibility() {
+    return store.sessionRole !== 'player' && store.state.userRole === 'keeper' && this.container.querySelector('#secret_roll')?.checked ? 'keeper' : 'table';
+  }
+
   syncWithSelectedToken() {
     const token = store.getSelectedToken();
     const actorChanged=this.currentActor?.id!==token?.id;
     this.currentActor = token;
     const isPC = token && token.isPlayer !== false;
-    this.container.querySelector('#roll_check_btn').disabled = !token || !store.canEditToken(token.id);
-    if (!token) this.container.querySelector('#dice_actor_name').textContent = 'Selecciona un actor';
+    const isKeeper = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
+    const toggle = this.container.querySelector('#secret_roll');
+    toggle.closest('label').hidden = !isKeeper;
+    if (!isKeeper) {
+      toggle.checked = false;
+      document.querySelector('.dice-tray-overlay[data-keeper-only]')?.remove();
+      if (this.lastResult?.visibility === 'keeper') {
+        this.container.querySelector('#dice_result_display').style.display = 'none';
+        this.lastResult = null;
+      }
+      if (this.secretDamage) this.container.querySelector('#damage_result_display').style.display = 'none';
+    }
+    const secret = this.rollVisibility() === 'keeper';
+    this.container.querySelector('[data-secret-help]').hidden = !secret;
+    this.container.querySelector('#roll_check_btn').disabled = !secret && (!token || !store.canEditToken(token.id));
+    this.container.querySelector('#roll_check_btn .btn-glow-text').textContent = secret ? 'TIRADA SECRETA · 2d12' : 'ROLL 2d12 (HOPE & FEAR)';
+    if (!token) this.container.querySelector('#dice_actor_name').textContent = secret ? 'Keeper · sin actor seleccionado' : 'Selecciona un actor';
     this.container.querySelector('#dice_exp_mod').disabled = !isPC;
     const experiences = token ? characterDetails(token).experiences : [];
     const signature = JSON.stringify([token?.id, experiences]);
@@ -83,6 +102,8 @@ export class DiceRollerSidebar {
   render() {
     this.container.innerHTML = sanitizeHTML(`
       <div class="dice-sidebar-content"><div class="tray-launcher"><div><span>ORBITAL DICE ARRAY</span><strong>3D Hope &amp; Fear</strong></div><button class="hud-btn" id="open_dice_tray">Open tray</button></div>
+        <label class="keeper-roll-switch" hidden><input type="checkbox" id="secret_roll"> Tirada secreta · solo Keeper</label>
+        <p class="dossier-muted" data-secret-help hidden>El resultado y el registro son privados. Los cambios de recursos en fichas visibles se siguen compartiendo.</p>
         <!-- Tab Navigation -->
         <div class="sidebar-subtabs">
           <button class="subtab-btn active" id="tab_check_btn">HOPE & FEAR CHECK</button>
@@ -330,6 +351,7 @@ export class DiceRollerSidebar {
     });
 
     // Roll Action Check Button
+    this.container.querySelector('#secret_roll').onchange = () => this.syncWithSelectedToken();
     this.container.querySelector('#roll_check_btn').onclick = () => this.executeActionCheck();
 
     // Roll Damage Button
@@ -393,14 +415,16 @@ export class DiceRollerSidebar {
 
     let result;
     try {
-      result = await network.requestAction({type:'CHECK',actorId:actor.id,options:{traitId:this.selectedTraitId,subtraitId,dc,hasAdvantage,hasDisadvantage,useResolve,experienceMod:expMod,customMod,criticalChoice:this.container.querySelector('#critical_resource').value,meaningful:this.container.querySelector('#meaningful_roll').checked}});
+      result = await network.requestAction({type:'CHECK',actorId:actor.id,visibility:this.rollVisibility(),options:{traitId:this.selectedTraitId,subtraitId,dc,hasAdvantage,hasDisadvantage,useResolve,experienceMod:expMod,customMod,criticalChoice:this.container.querySelector('#critical_resource').value,meaningful:this.container.querySelector('#meaningful_roll').checked}});
     } catch(e) { notify(e.message,'error'); return; }
-    if (store.state.dice3d !== false) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(result)).catch(() => notify("3D dice unavailable; your roll is shown below."));
+    if (store.state.dice3d !== false) import("./diceTray3d.js").then(({ openDiceTray }) => { if (result.visibility !== 'keeper' || (store.sessionRole !== 'player' && store.state.userRole === 'keeper')) openDiceTray(result); }).catch(() => notify("3D dice unavailable; your roll is shown below."));
     this.lastResult=result;
     this.showResult(result);
   }
 
   showResult(result) {
+    if (result.visibility === 'keeper' && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) return;
+    this.lastResult = result;
     // Display Results
     const display = this.container.querySelector('#dice_result_display');
     display.style.display = 'block';
@@ -421,7 +445,7 @@ export class DiceRollerSidebar {
     readoutDc.textContent = result.dc;
 
     outcomeBanner.className = 'outcome-banner ' + result.resultType.toLowerCase();
-    outcomeTitle.textContent = result.outcomeTitle;
+    outcomeTitle.textContent = (result.visibility === 'keeper' ? 'SOLO KEEPER · ' : '') + result.outcomeTitle;
     outcomeDesc.textContent = result.outcomeDesc;
     outcomePayout.textContent = result.pathPayout;
 
@@ -484,7 +508,10 @@ export class DiceRollerSidebar {
     const detailText = `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
       `Compared to Major (${major}) & Severe (${severe}). ` +
       (dmgResult.armorSlotSpent ? '1 Armor Slot spent to lower severity step.' : 'No armor slot used.');
-    this.container.querySelector('#dmg_detail_text').textContent = detailText;
+    const secret = this.rollVisibility() === 'keeper';
+    this.secretDamage = secret;
+    this.container.querySelector('#dmg_detail_text').textContent = (secret ? 'SOLO KEEPER · ' : '') + detailText;
+    if (secret) store.addLog({ visibility: 'keeper', type: 'DAMAGE', sender: 'Keeper', title: 'Daño · ' + (targetToken?.name || 'Sin objetivo'), details: detailText });
 
     // Apply button
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
@@ -492,7 +519,7 @@ export class DiceRollerSidebar {
     applyBtn.disabled=false;applyBtn.textContent="APPLY DAMAGE TO TARGET";
     applyBtn.onclick = () => {
       if(applied)return;
-      if(store.sessionRole==='player'){notify('The Keeper applies incoming damage.','error');return;}
+      if(store.sessionRole==='player'||store.state.userRole!=='keeper'){notify('The Keeper applies incoming damage.','error');return;}
       const currentTarget=store.state.tokens.find(t=>t.id===targetId);
       if (currentTarget) {
         applied=true;applyBtn.disabled=true;applyBtn.textContent='DAMAGE APPLIED';
@@ -525,6 +552,7 @@ export class DiceRollerSidebar {
 
         store.addLog({
           sender: 'Combat',
+          ...(secret ? { visibility: 'keeper' } : {}),
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${targetToken.name}`,
           details: `Suffered ${currentDamage.finalHpDamage} HP damage (${currentDamage.finalSeverity}). Current HP: ${newHp}/${targetToken.hp.max}.`

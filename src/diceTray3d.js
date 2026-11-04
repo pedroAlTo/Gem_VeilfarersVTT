@@ -128,6 +128,7 @@ export class DiceTray {
   }
   applyPose(pose) { this.dice.forEach((die, i) => { die.position.fromArray(pose[i].position); die.quaternion.fromArray(pose[i].quaternion); }); }
   show(result, immediate = false) {
+    this.modal.toggleAttribute('data-keeper-only', result.visibility === 'keeper');
     cancelAnimationFrame(this.frame); this.lastResult = result;
     const hope = this.modal.querySelector('#tray_hope'), fear = this.modal.querySelector('#tray_fear'), caption = this.modal.querySelector('#tray_caption');
     const values = [result.hopeVal, result.fearVal], valid = values.every(n => Number.isInteger(n) && n >= 1 && n <= 12);

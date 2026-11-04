@@ -1,4 +1,4 @@
-import { sanitizeHTML } from './ui.js';
+import { sanitizeHTML, escapeHTML as e } from './ui.js';
 // src/combatLog.js
 // Real-time Tactical Action and Roll Log for VeilVTT
 
@@ -9,14 +9,15 @@ export class CombatLogView {
     this.container = containerElement;
     this.render();
     store.subscribe((state, keys) => {
-      if (keys.includes('logs')) {
+      if (keys.includes('logs') || keys.includes('userRole')) {
         this.render();
       }
     });
   }
 
   render() {
-    const logs = store.getState().logs || [];
+    const isKeeper = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
+    const logs = (store.getState().logs || []).filter(entry => isKeeper || entry.visibility !== 'keeper');
 
     this.container.innerHTML = sanitizeHTML(`
       <div class="combat-log-content">
@@ -33,11 +34,11 @@ export class CombatLogView {
             return `
               <div class="log-card glass-panel ${badgeClass}">
                 <div class="log-card-header">
-                  <span class="log-sender">${entry.sender || 'System'}</span>
-                  <span class="log-time">${entry.timestamp}</span>
+                  <span class="log-sender">${e(entry.sender || 'System')} ${entry.visibility === 'keeper' ? '<b class="keeper-log-label">SOLO KEEPER</b>' : ''}</span>
+                  <span class="log-time">${e(entry.timestamp)}</span>
                 </div>
-                <div class="log-title">${entry.title}</div>
-                ${entry.details ? `<div class="log-details">${entry.details}</div>` : ''}
+                <div class="log-title">${e(entry.title)}</div>
+                ${entry.details ? `<div class="log-details">${e(entry.details)}</div>` : ''}
               </div>
             `;
           }).join('')}
@@ -47,6 +48,7 @@ export class CombatLogView {
 
     const clearBtn = this.container.querySelector('#clear_log_btn');
     if (clearBtn) {
+      clearBtn.disabled = !isKeeper;
       clearBtn.onclick = () => {
         store.update({ logs: [] });
       };
