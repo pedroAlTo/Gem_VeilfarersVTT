@@ -1,5 +1,11 @@
 # VeilFarers Orbital II — pruebas locales
 
+## Versión instalada y changelog
+
+El paquete de esta entrega se llama **VeilFarers_VTT_v1.1.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.1.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.1.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.1.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+
+`npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
+
 ## Agua: polígonos y cancelación
 
 1. En **Water → Polígono**, dibuja un triángulo o un contorno cóncavo. Cierra con el primer vértice, doble clic, Enter o **Cerrar polígono**. Debe conservar esa silueta, sin crear un rectángulo ni añadir un vértice duplicado.

@@ -1,6 +1,8 @@
-# VeilFarers VTT · Orbital IV
+# VeilFarers VTT · v1.1.0 · Orbital
 
 A local-first virtual tabletop with scene travel, a player roster, shared drones, character JSON import, optional Firebase accounts, and a Three.js Hope & Fear dice tray.
+
+Current release: **v1.1.0**. Download package: **VeilFarers_VTT_v1.1.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -31,3 +33,7 @@ On macOS/Linux, run `npm ci`, then `VITE_SESSION_TRANSPORT=lan VITE_LOCAL_ONLY=0
 The online launcher and static deployments use PeerJS/WebRTC and the public PeerServer for signaling. The Keeper's tab must remain open; there is no persistent multiplayer game server or automatic host migration. Up to six connected players. Network restrictions may require your own TURN infrastructure. A dropped player can reconnect with the same invitation and browser-session identity while the host remains open. Imported sheets are validated by the Keeper's client; the application does not independently verify a player's claimed character stats against an external game account.
 
 Changes are on `fix/vtt-session-integrity-and-orbital-ui`. See [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) for history and [PRUEBAS_LOCALES.md](PRUEBAS_LOCALES.md) for the Windows launchers and LAN setup.
+
+## Preparing a new release
+
+Update the application version in `package.json` and both root version fields in `package-lock.json`. Prepend an entry in `src/releaseHistory.js`, preserving previous entries, and run `npm run release:notes`. `npm run release:check` verifies that package versions, the current release entry and the generated `CHANGELOG.md` agree; `npm run build` runs this check automatically. Use `VeilFarers_VTT_v<VERSION>.zip` for the release archive and `VeilFarers_VTT_Changelog_v<VERSION>.md` for downloaded notes. Keep launcher filenames stable inside the versioned package. Update this README's release line and heading for each release.

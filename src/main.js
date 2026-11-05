@@ -5,6 +5,8 @@ import './chat.css';
 import { ChatPanel } from './chatPanel.js';
 import { initWaterControls } from './waterControls.js';
 import './waterControls.css';
+import './help.css';
+import { APP_LABEL } from './version.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import './dossiers.css';
 import { openSessionManager } from './sessionManager.js';
@@ -36,6 +38,9 @@ import { undoManager } from './undoManager.js';
 window.addEventListener('DOMContentLoaded', async () => {
   await store.ready;
   initOrbitalUI();
+  const helpButton = document.getElementById('help_btn');
+  helpButton.title = `Ayuda y changelog · ${APP_LABEL}`;
+  helpButton.onclick = () => import('./help.js').then(({ openHelp }) => openHelp()).catch(error => notify(`No se pudo abrir la ayuda: ${error.message}`, 'error'));
   // 1. Initialize Canvas Engine
   const canvasEl = document.getElementById('tactical_canvas');
   const canvasEngine = new CanvasEngine(canvasEl);

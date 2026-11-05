@@ -1,5 +1,11 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## v1.1.0 — versioned releases, help and changelog · 5 November 2026
+
+The header now opens **AYUDA**, available to both Keeper and players. It shows the installed VTT version separately from Corebook 12.06, a quick-start guide, keyboard shortcuts and a changelog with versioned Markdown download. `package.json` supplies the displayed version and download filenames. The generated `CHANGELOG.md` and the in-app view share release entries; the build rejects mismatched package/lockfile/release versions or stale generated notes. This delivery is **VeilFarers_VTT_v1.1.0.zip**. Previous Orbital names and the original history below remain intact.
+
+Validation: 138 automated tests and the production build pass. DOM checks verified help navigation, duplicate-dialog prevention, closing and the exact versioned changelog download for Keeper and Player. Visual browser review remains pending because the browser runtime is unavailable; existing build warnings remain.
+
 ## Water polygon creation and tool cancellation · 5 November 2026
 
 Water creation previously discarded `shape` and `points`, producing the default rectangle regardless of the drawn outline. The store now preserves independent polygon vertices and bounds, accepts zero coordinates, and creates unique zone IDs. Polygon edits keep bounds current; token water detection and rain ripples respect the real outline. Existing rectangles cannot recover vertices that were never saved.

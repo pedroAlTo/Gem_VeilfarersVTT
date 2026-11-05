@@ -1,5 +1,6 @@
 import { LOCAL_ONLY, connectionDisplay } from './runtimeMode.js';
 import { store } from './state.js';
+import { APP_VERSION } from './version.js';
 import { sanitizeHTML, notify } from './ui.js';
 import './orbital.css';
 import './orbital-v2.css';
@@ -46,7 +47,7 @@ export function initOrbitalUI() {
       el.setAttribute('aria-label', label);
     }
   }
-  document.querySelector('.brand-version').textContent = 'TACTICAL SYSTEM / 12.06';
+  document.querySelector('.brand-version').textContent = `VTT v${APP_VERSION} / CORE 12.06`;
   document.getElementById('network_modal_btn').innerHTML =
     '<span id="net_status_dot">●</span> SESSION';
   if (LOCAL_ONLY) {
