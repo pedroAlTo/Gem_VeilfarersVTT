@@ -1,5 +1,13 @@
 # VeilFarers Orbital II — pruebas locales
 
+## Agua: polígonos y cancelación
+
+1. En **Water → Polígono**, dibuja un triángulo o un contorno cóncavo. Cierra con el primer vértice, doble clic, Enter o **Cerrar polígono**. Debe conservar esa silueta, sin crear un rectángulo ni añadir un vértice duplicado.
+2. Durante otro trazado, pulsa **Move**, **Measure**, cambia a **Caja** o cambia de escena. El trazado pendiente debe desaparecer. Volver a Polígono empieza desde cero. Prueba también **Esc**, clic derecho y **Cancelar**; no deben borrar zonas o muros ya guardados.
+3. Pulsa **Retroceso** para quitar el último vértice. Prueba el cierre con zoom alto y bajo. En Caja, arrastra desde una coordenada cero y comprueba que no salta a otra posición.
+4. Con **Move**, ajusta un vértice de la zona creada. Comprueba **Undo/Redo**, guardado y recarga, y que otro jugador vea el mismo contorno al conectarse o reconectar.
+5. Las ondas y los efectos de agua de los tokens deben respetar el interior del polígono. Las zonas que una versión anterior ya guardó erróneamente como rectángulos deben redibujarse: sus vértices originales no se conservaron.
+
 ## Chat de sesión y susurros
 
 1. Ejecuta **INICIAR_VTT_RED_LOCAL.bat** y conecta dos jugadores desde perfiles de navegador distintos. En **CHAT → Mesa · todos**, envía un mensaje desde cada participante: los tres deben verlo una sola vez.

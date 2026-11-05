@@ -6,6 +6,7 @@ import { createActor, replaceActorSheet } from './actors.js';
 import { controlsToken, assignControls, movePartyToScene } from './tokenPermissions.js';
 import { CAMPAIGN_KEYS, validateCampaign } from './validation.js';
 import { confirmAction, notify } from './ui.js';
+import { waterGeometry } from './waterGeometry.js';
 
 import { INITIAL_MAPS, INITIAL_TOKENS, INITIAL_CLOCKS, INITIAL_HANDOUTS } from './defaultData.js';
 
@@ -66,6 +67,7 @@ class StateStore {
 
       // UI / Interaction
       activeTool: 'select', // 'select', 'measure', 'template', 'wall', 'light', 'water', 'fx', 'ping'
+      waterDrawMode: 'box',
       activeFxType: 'lightning', // 'lightning', 'sparkle', 'explosion', 'radiant', 'void_rift', 'emp'
       templateShape: 'circle', // 'circle', 'cone', 'line', 'box'
       templateRadius: 4, // grid units
@@ -467,18 +469,17 @@ class StateStore {
 
   // --- Water Zones ---
   addWaterZone(zoneData) {
-    this._beforeTacticalMutation('Añadir Zona Acuática');
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return null;
+    const geometry = waterGeometry(zoneData);
     const map = this.getActiveMap();
+    this._beforeTacticalMutation('Añadir Zona Acuática');
     const newZone = {
-      id: 'water_' + Date.now(),
+      id: 'water_' + newId(),
       name: zoneData.name || 'Water Hazard',
-      x: zoneData.x || 300,
-      y: zoneData.y || 300,
-      width: zoneData.width || 200,
-      height: zoneData.height || 160,
+      ...geometry,
       depth: zoneData.depth ?? 2, // 0 to 5
       color: zoneData.color || 'rgba(0, 243, 255, 0.45)',
-      flowSpeed: 1.0
+      flowSpeed: zoneData.flowSpeed ?? 1.0
     };
     const waterZones = [...(map.waterZones || []), newZone];
     this.updateActiveMap({ waterZones });
@@ -487,9 +488,13 @@ class StateStore {
   }
 
   updateWaterZone(zoneId, partial) {
-    this._beforeTacticalMutation('Modificar Zona Acuática', 'water_' + zoneId);
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return;
     const map = this.getActiveMap();
-    const waterZones = (map.waterZones || []).map(w => w.id === zoneId ? { ...w, ...partial } : w);
+    const zone = (map.waterZones || []).find(w => w.id === zoneId);
+    if (!zone) return;
+    const updated = { ...zone, ...partial, ...waterGeometry({ ...zone, ...partial }, { requireArea:false }) };
+    this._beforeTacticalMutation('Modificar Zona Acuática', 'water_' + zoneId);
+    const waterZones = map.waterZones.map(w => w.id === zoneId ? updated : w);
     this.updateActiveMap({ waterZones });
   }
 

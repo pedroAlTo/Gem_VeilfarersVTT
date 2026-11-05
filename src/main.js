@@ -3,6 +3,8 @@ import './diceTray.css';
 import './colorPicker.css';
 import './chat.css';
 import { ChatPanel } from './chatPanel.js';
+import { initWaterControls } from './waterControls.js';
+import './waterControls.css';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import './dossiers.css';
 import { openSessionManager } from './sessionManager.js';
@@ -396,17 +398,7 @@ function setupToolbarEvents() {
     }
   }
 
-  // Water Shape Selector Buttons
-  if (waterFlyout) {
-    waterFlyout.querySelectorAll('.flyout-btn').forEach(btn => {
-      btn.onclick = () => {
-        waterFlyout.querySelectorAll('.flyout-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const shape = btn.dataset.waterShape || 'box';
-        store.update({ activeTool: 'water', waterDrawMode: shape });
-      };
-    });
-  }
+  initWaterControls();
 
   // GM Vision Toggle
   const gmVisionBtn = document.getElementById('toggle_gm_vision');

@@ -13,6 +13,8 @@ import { isPartyToken } from './tokenPermissions.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
+import { pointInWater } from './waterGeometry.js';
+import { notify } from './ui.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -114,6 +116,7 @@ export class CanvasEngine {
     const campaignId = store.getState().campaignId;
     const key = `${campaignId}:${mapData.id}:${mapData.imageUrl}`;
     if (this.currentMapKey === key) return;
+    this.cancelWaterDrawing();
     if (this.currentCampaignId !== campaignId) {
       this.templates = []; this.pings = []; this.activeTemplate = null;
       this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear();
@@ -246,6 +249,32 @@ export class CanvasEngine {
   }
 
   // --- Tablet & Mobile Touch Gestures ---
+  canDrawWater() {
+    const state = store.getState();
+    return state.activeTool === 'water' && state.userRole === 'keeper' && store.sessionRole !== 'player' &&
+      state.layerVisibility.water !== false && !state.layerLocked.water;
+  }
+
+  waterDraftChanged() {
+    window.dispatchEvent(new CustomEvent('veil:water-draft'));
+  }
+
+  cancelWaterDrawing() {
+    if (this.waterStart || this.waterPolyPoints?.length) this.preDragSnapshot = null;
+    this.waterStart = null; this.waterCurrent = null; this.waterPolyPoints = [];
+    this.waterDraftChanged();
+  }
+
+  finishWaterPolygon() {
+    if (!this.canDrawWater() || store.state.waterDrawMode !== 'polygon') return false;
+    try {
+      const zone = store.addWaterZone({ name:'Aquatic Hazard', shape:'polygon', points:this.waterPolyPoints, depth:2 });
+      if (!zone) return false;
+      this.cancelWaterDrawing();
+      return true;
+    } catch (error) { notify(error.message, 'error'); return false; }
+  }
+
   initTouchEvents() {
     let lastTouchDistance = 0;
     let isPinching = false;
@@ -269,6 +298,7 @@ export class CanvasEngine {
       clearLongPress();
 
       if (e.touches.length === 2) {
+        this.cancelWaterDrawing();
         isPinching = true;
         const t1 = e.touches[0];
         const t2 = e.touches[1];
@@ -394,6 +424,7 @@ export class CanvasEngine {
 
     const endTouch = (e) => {
       clearLongPress();
+      if (e.type === 'touchcancel') this.cancelWaterDrawing();
       if (e.touches && e.touches.length < 2) {
         isPinching = false;
         lastTouchDistance = 0;
@@ -416,6 +447,15 @@ export class CanvasEngine {
   }
 
   initEvents() {
+    const waterContext = s => JSON.stringify([s.campaignId,s.activeMapId,s.activeTool,s.waterDrawMode,s.userRole,s.activeLayer,s.layerVisibility.water,s.layerLocked.water]);
+    let previousWaterContext = waterContext(store.state);
+    this.waterUnsubscribe = store.subscribe(state => {
+      const context = waterContext(state);
+      if (context !== previousWaterContext) { previousWaterContext = context; this.cancelWaterDrawing(); }
+    });
+    window.addEventListener('blur', () => { this.cancelWaterDrawing(); this.isSpacePressed=false; this.isPanning=false; });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.cancelWaterDrawing(); });
+    this.canvas.addEventListener('pointercancel', () => this.cancelWaterDrawing());
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => {
       setTimeout(() => this.resize(), 120);
@@ -425,6 +465,7 @@ export class CanvasEngine {
     window.addEventListener('keydown', (e) => {
     if(e.defaultPrevented || e.target.closest?.('vf-select,.orbital-listbox,.veil-modal-backdrop,[contenteditable="true"]'))return;
       if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+      if (e.target.closest?.('button') && (e.key === 'Enter' || e.code === 'Space')) return;
 
       if (e.code === 'Space' && !e.repeat) {
         this.isSpacePressed = true;
@@ -433,6 +474,9 @@ export class CanvasEngine {
 
       // Delete key deletes active area template or selected wall/light/water zone
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (e.key === 'Backspace' && this.canDrawWater() && this.waterPolyPoints.length) {
+          e.preventDefault(); this.waterPolyPoints.pop(); this.waterDraftChanged(); return;
+        }
         if (this.activeTemplate) {
           undoManager.pushCurrentState('Eliminar Plantilla de Área');
           this.templates = this.templates.filter(t => t.id !== this.activeTemplate.id);
@@ -458,18 +502,8 @@ export class CanvasEngine {
       }
 
       // Enter closes in-progress polygon water drawing
-      if (e.code === 'Enter') {
-        const state = store.getState();
-        const isKeeper = state.userRole === 'keeper';
-        if (state.activeTool === 'water' && isKeeper && this.waterPolyPoints && this.waterPolyPoints.length >= 3) {
-          store.addWaterZone({
-            name: 'Aquatic Hazard',
-            shape: 'polygon',
-            points: [...this.waterPolyPoints],
-            depth: 2
-          });
-          this.waterPolyPoints = [];
-        }
+      if ((e.key === 'Enter' || e.code === 'Enter') && this.canDrawWater() && this.waterPolyPoints.length) {
+        e.preventDefault(); this.finishWaterPolygon();
       }
 
       // Escape cancels template, ruler, wall, or water placement
@@ -477,8 +511,7 @@ export class CanvasEngine {
         this.activeTemplate = null;
         this.rulerStart = null;
         this.wallStart = null;
-        this.waterStart = null;
-        this.waterPolyPoints = [];
+        this.cancelWaterDrawing();
         store.update({ selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null });
       }
     });
@@ -497,14 +530,9 @@ export class CanvasEngine {
     this.canvas.addEventListener('dblclick', (e) => {
       const state = store.getState();
       const isKeeper = state.userRole === 'keeper';
-      if (state.activeTool === 'water' && isKeeper && this.waterPolyPoints && this.waterPolyPoints.length >= 3) {
-        store.addWaterZone({
-          name: 'Aquatic Hazard',
-          shape: 'polygon',
-          points: [...this.waterPolyPoints],
-          depth: 2
-        });
-        this.waterPolyPoints = [];
+      if (state.activeTool === 'water') {
+        e.preventDefault();
+        if (this.waterPolyPoints.length) this.finishWaterPolygon();
         return;
       }
 
@@ -898,29 +926,30 @@ export class CanvasEngine {
         }
 
         // Water Creation Tool (Keeper)
-        if (state.activeTool === 'water' && isKeeper) {
+        if (state.activeTool === 'water') {
+          if (!this.canDrawWater()) return;
           const mode = state.waterDrawMode || 'box';
           if (mode === 'polygon') {
-            if (!this.waterPolyPoints) this.waterPolyPoints = [];
+            // Browser double-clicks contain a second mousedown; it is not another vertex.
+            if (e.detail > 1) return;
             // If clicking near first point and has >= 3 points, close polygon
             if (this.waterPolyPoints.length >= 3) {
               const firstPt = this.waterPolyPoints[0];
-              if (Math.hypot(world.x - firstPt.x, world.y - firstPt.y) <= 18) {
-                store.addWaterZone({
-                  name: 'Aquatic Hazard',
-                  shape: 'polygon',
-                  points: [...this.waterPolyPoints],
-                  depth: 2
-                });
-                this.waterPolyPoints = [];
+              if (Math.hypot(world.x - firstPt.x, world.y - firstPt.y) <= 12 / this.zoom) {
+                this.finishWaterPolygon();
                 return;
               }
             }
+            const last = this.waterPolyPoints.at(-1);
+            if (last && Math.hypot(world.x-last.x,world.y-last.y) < 2/this.zoom) return;
+            if (this.waterPolyPoints.length >= 512) { notify('Máximo 512 vértices. Cierra el polígono o quita el último con Retroceso.', 'error'); return; }
             this.waterPolyPoints.push({ x: Math.round(world.x), y: Math.round(world.y) });
+            this.waterDraftChanged();
             return;
           } else {
             this.waterStart = world;
             this.waterCurrent = world;
+            this.waterDraftChanged();
             return;
           }
         }
@@ -1655,7 +1684,7 @@ export class CanvasEngine {
     });
 
     // MOUSE UP
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
       const state = store.getState();
       if (this.gridCalibStart) {
         if (this.gridCalibCurrent) {
@@ -1949,7 +1978,7 @@ export class CanvasEngine {
         this.wallCurrent = null;
       }
 
-      if (this.waterStart && this.waterCurrent) {
+      if (this.waterStart && this.waterCurrent && this.canDrawWater() && store.state.waterDrawMode !== 'polygon' && e.button === 0) {
         const x1 = Math.min(this.waterStart.x, this.waterCurrent.x);
         const y1 = Math.min(this.waterStart.y, this.waterCurrent.y);
         const w = Math.abs(this.waterCurrent.x - this.waterStart.x);
@@ -1962,6 +1991,7 @@ export class CanvasEngine {
           }
           store.addWaterZone({
             name: 'Water Hazard',
+            shape: 'box',
             x: Math.round(x1),
             y: Math.round(y1),
             width: Math.round(w),
@@ -1971,6 +2001,7 @@ export class CanvasEngine {
         }
         this.waterStart = null;
         this.waterCurrent = null;
+        this.waterDraftChanged();
       }
       this.preDragSnapshot = null;
     });
@@ -2001,6 +2032,11 @@ export class CanvasEngine {
       const state = store.getState();
       const isKeeper = state.userRole === 'keeper';
       const map = store.getActiveMap();
+
+      // Cancelling an unfinished water shape must never delete geometry underneath it.
+      if (this.waterStart || this.waterPolyPoints.length) {
+        this.cancelWaterDrawing(); this.isPanning=false; return;
+      }
 
       // Check if right-clicked on any area template to delete it
       for (let i = this.templates.length - 1; i >= 0; i--) {
@@ -2134,7 +2170,7 @@ export class CanvasEngine {
       this.activeTemplate = null;
       this.rulerStart = null;
       this.wallStart = null;
-      this.waterStart = null;
+      this.cancelWaterDrawing();
     });
   }
 
@@ -2301,7 +2337,7 @@ export class CanvasEngine {
     }
 
     // Render In-Progress Water Zone
-    if (this.waterStart && this.waterCurrent) {
+    if (this.canDrawWater() && this.waterStart && this.waterCurrent) {
       const x = Math.min(this.waterStart.x, this.waterCurrent.x);
       const y = Math.min(this.waterStart.y, this.waterCurrent.y);
       const w = Math.abs(this.waterCurrent.x - this.waterStart.x);
@@ -2373,12 +2409,12 @@ export class CanvasEngine {
     }
 
     // In-progress polygon drawing preview (Water Tool)
-    if (this.waterPolyPoints && this.waterPolyPoints.length > 0) {
+    if (this.canDrawWater() && state.waterDrawMode === 'polygon' && this.waterPolyPoints.length > 0) {
       ctx.save();
       ctx.strokeStyle = '#00f3ff';
       ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.lineWidth = 2.0;
-      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 2 / this.zoom;
+      ctx.setLineDash([6/this.zoom, 4/this.zoom]);
 
       ctx.beginPath();
       ctx.moveTo(this.waterPolyPoints[0].x, this.waterPolyPoints[0].y);
@@ -2388,6 +2424,7 @@ export class CanvasEngine {
       if (this.cursorWorld) {
         ctx.lineTo(this.cursorWorld.x, this.cursorWorld.y);
       }
+      if (this.waterPolyPoints.length >= 2) ctx.fill();
       ctx.stroke();
 
       // Render vertex dots
@@ -2398,7 +2435,7 @@ export class CanvasEngine {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, i === 0 ? 7 : 5, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, (i === 0 ? 7 : 5)/this.zoom, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
       }
@@ -2407,11 +2444,11 @@ export class CanvasEngine {
       if (this.waterPolyPoints.length >= 3 && this.cursorWorld) {
         const first = this.waterPolyPoints[0];
         const distFirst = Math.hypot(this.cursorWorld.x - first.x, this.cursorWorld.y - first.y);
-        if (distFirst <= 18) {
+        if (distFirst <= 12 / this.zoom) {
           ctx.strokeStyle = '#10b981';
           ctx.lineWidth = 2.5;
           ctx.beginPath();
-          ctx.arc(first.x, first.y, 14, 0, Math.PI * 2);
+          ctx.arc(first.x, first.y, 14/this.zoom, 0, Math.PI * 2);
           ctx.stroke();
 
           ctx.font = 'bold 10px "Rajdhani", sans-serif';
@@ -2449,16 +2486,20 @@ export class CanvasEngine {
 
     // Ripples across water bodies
     for (const wzone of (map.waterZones || [])) {
+      const bounds=waterBounds(wzone);
+      if (!bounds) continue;
+      ctx.save(); traceWater(ctx,wzone); ctx.clip();
       for (let r = 0; r < 2; r++) {
         const rphase = (time * 1.6 + r * 0.5) % 1;
-        const ripX = wzone.x + ((wzone.width * (0.25 + r * 0.45)) % wzone.width);
-        const ripY = wzone.y + ((wzone.height * (0.35 + r * 0.35)) % wzone.height);
+        const ripX = bounds.minX + (bounds.maxX-bounds.minX)*(0.25+r*0.45);
+        const ripY = bounds.minY + (bounds.maxY-bounds.minY)*(0.35+r*0.35);
         ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - rphase) * 0.35})`;
         ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.ellipse(ripX, ripY, 12 * rphase, 5 * rphase, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -2894,10 +2935,7 @@ export class CanvasEngine {
       }
 
       // Check if token is in any water zone
-      const waterZone = (map.waterZones || []).find(w =>
-        tok.x >= w.x && tok.x <= w.x + w.width &&
-        tok.y >= w.y && tok.y <= w.y + w.height
-      );
+      const waterZone = (map.waterZones || []).find(w => pointInWater(tok.x, tok.y, w));
 
       ctx.save();
       ctx.translate(tok.x, tok.y);

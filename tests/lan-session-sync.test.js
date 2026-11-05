@@ -77,6 +77,9 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     const tokenId = keeper.state.getTokensForActiveMap().find(token => token.isPlayer).id;
     keeper.manager.assignToken(keeper.state.state.connectedPeers[0].id, tokenId);
     await until(() => pilot.state.canEditToken(tokenId), 'assignment reaches player');
+    const water = keeper.state.addWaterZone({name:'Polygon lake',shape:'polygon',points:[{x:0,y:0},{x:180,y:0},{x:80,y:140}],depth:2});
+    await until(() => pilot.state.getActiveMap().waterZones?.some(w => w.id === water.id), 'water geometry reaches player');
+    assert.deepEqual(pilot.state.getActiveMap().waterZones.find(w => w.id === water.id).points,water.points);
     const hidden = keeper.state.addToken({ name: 'SECRET_AMBUSH_SENTINEL', isPlayer: false, hidden: true });
     const options = { traitId: 'finesse', dc: 12, customMod: 0 };
     const secret = await keeper.manager.requestAction({ type: 'CHECK', actorId: hidden.id, visibility: 'keeper', options });
@@ -131,6 +134,8 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     assert.deepEqual(pose(pilot.state), [map, 512, 256]);
     assert.ok(pilot.state.canEditToken(tokenId));
     assert.equal(pilot.state.memberId,pilotId);
+    const restoredWater = pilot.state.getActiveMap().waterZones.find(w => w.id === water.id);
+    assert.equal(restoredWater.shape,'polygon');assert.deepEqual(restoredWater.points,water.points);
     assert.ok(pilot.state.state.chatMessages.some(m => m.id === privateChat.id));
     assert.ok(pilot.state.state.chatMessages.some(m => m.id === reply.id));
     await engineer.manager.sendChat({text:'ENGINEER_PRIVATE_SENTINEL',recipientId:'keeper'});

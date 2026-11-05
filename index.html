@@ -134,7 +134,9 @@
           </button>
           <div class="tool-flyout-panel" id="water_flyout" style="top: 350px;">
             <button class="flyout-btn active" id="water_btn_box" data-water-shape="box" title="Zona Rectangular (Arrastrar ancho y alto)">🟦 Caja</button>
-            <button class="flyout-btn" id="water_btn_poly" data-water-shape="polygon" title="Trazado Poligonal / Pintura Libre (Clics sucesivos para vértices)">📐 Polígono</button>
+            <button class="flyout-btn" id="water_btn_poly" data-water-shape="polygon" title="Clic para cada vértice; Enter o doble clic para cerrar">📐 Polígono</button>
+            <p id="water_hint" class="water-draw-hint" role="status"></p>
+            <div class="water-draw-actions"><button class="hud-btn hud-btn-primary" id="water_finish" type="button" hidden>Cerrar polígono</button><button class="hud-btn" id="water_cancel" type="button" disabled>Cancelar</button></div>
           </div>
           <button class="tool-btn keeper-only-tool" id="tool_grid_scale" title="[Keeper] Escalar y Calibrar Rejilla en el Mapa [Shift+G]">
             <span>📐</span>

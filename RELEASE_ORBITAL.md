@@ -1,5 +1,13 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## Water polygon creation and tool cancellation · 5 November 2026
+
+Water creation previously discarded `shape` and `points`, producing the default rectangle regardless of the drawn outline. The store now preserves independent polygon vertices and bounds, accepts zero coordinates, and creates unique zone IDs. Polygon edits keep bounds current; token water detection and rain ripples respect the real outline. Existing rectangles cannot recover vertices that were never saved.
+
+Changing tool, shape, scene, campaign, role or layer clears unfinished water immediately. Escape, right-click, lost focus and pointer/touch cancellation also clear it. Right-click cancellation cannot delete geometry beneath the draft. Double-click closes once without an extra vertex, and closing at the first point uses a consistent screen-space distance at every zoom. The flyout provides explicit close/cancel controls, vertex count and keyboard instructions. Backspace removes a vertex; degenerate drafts fail visibly. Water geometry now participates in undo comparison so separate edits remain undoable.
+
+Validation: all 138 automated tests and the production build pass. The water regression suite exercises the real canvas mouse/keyboard handlers, shape buttons, all close methods, cancellation, mode changes, zero coordinates, editing, save/import, undo/redo and permissions. The LAN test also verifies polygon vertices on a player client and after reconnect. Browser visual review remains unverified because the browser runtime is unavailable. Existing chunk-size and lobby import warnings remain.
+
 ## Session chat and Keeper whispers · 4 November 2026
 
 The new **CHAT** panel adds public table messages and private Keeper–player threads, with a **Susurrar** shortcut in the player roster. Cyan public and violet private channels show their audience explicitly. Separate drafts, unread counts, keyboard sending, offline status and retry feedback keep conversation handling clear. Player-to-player whispers and offline message delivery are not included.
