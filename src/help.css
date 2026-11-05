@@ -1,0 +1,23 @@
+.help-dialog .dossier-modal.veil-modal-box {max-width:860px}
+.help-dialog [hidden] {display:none!important}
+.help-hero {padding:8px 0 16px;border-bottom:1px solid #72bcd32b}
+.help-dialog .help-hero h2 {margin:8px 0 12px;font:500 26px var(--font-hud);color:#e4f1f8}
+.help-hero p,.help-release p {color:#adc1d2;font:12px/1.7 var(--font-hud)}
+.help-version {display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.help-version strong {padding:7px 10px;border:1px solid #83d5e87a;background:#173244;color:#a0eff5;font:12px var(--font-mono)}
+.help-version span {color:#b9a9d2;font:11px var(--font-mono)}
+.help-guide-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.help-guide-grid article,.help-release {padding:16px;border:1px solid #7cb7d12b;background:linear-gradient(130deg,#10233488,#0b122099);border-radius:4px}
+.help-dialog .help-guide-grid h3,.help-dialog .help-release h3,.help-dialog .help-shortcuts h3 {font:600 16px var(--font-hud);color:#bdeaf2;margin:0 0 8px}
+.help-guide-grid p,.help-release li,.help-shortcuts p {font:13px/1.75 var(--font-hud);color:#c5d6e3;margin:0;overflow-wrap:anywhere}
+.help-shortcuts {padding:16px 0 2px}
+.help-shortcuts kbd {border:1px solid #5e82994d;padding:2px 5px;border-radius:3px;color:#bce9f0;font:10px var(--font-mono)}
+.help-changelog-actions {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.help-changelog-actions p {font:12px var(--font-hud);color:#b6cbdc}
+.help-release {margin:0 0 12px}
+.help-release header {display:flex;gap:12px;justify-content:space-between;align-items:center;margin-bottom:12px;font:11px var(--font-mono);color:#a9dfe8}
+.help-release header strong {font-size:17px;color:#b5f2f6}
+.help-dialog .help-release h4 {margin:18px 0 8px;font:11px var(--font-mono);color:#cba8de}
+.help-release ul {padding-left:20px;margin:0}
+.help-release li+li {margin-top:6px}
+@media(max-width:640px) {.help-guide-grid {grid-template-columns:1fr}.help-dialog .help-hero h2 {font-size:22px}}
