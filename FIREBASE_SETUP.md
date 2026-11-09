@@ -1,5 +1,7 @@
 # Account and scene-image setup
 
+For Spanish instructions, including this project's Netlify deployment and authorized domain, see [SETUP_ES.md](SETUP_ES.md).
+
 This build implements a separate Firebase account (email/password), a private character library, preferences, and scene images. No Firebase project is bundled or connected. Local campaigns, JSON imports, the dice tray and scene movement work without Firebase. Multiplayer still uses PeerJS; Firebase does not host the live game state.
 
 1. Create or select your Firebase project and register a Web app in Project settings.
