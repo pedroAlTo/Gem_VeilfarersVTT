@@ -1,6 +1,9 @@
-#water_flyout {position:fixed;top:auto!important;bottom:55px;left:86px;width:min(230px,calc(100vw - 100px));padding:10px;gap:8px;border:1px solid #64c6df70;background:linear-gradient(135deg,#102432f5,#0b1120f5);box-shadow:0 12px 32px #0008}
+#water_flyout {position:fixed;top:auto!important;bottom:55px;left:86px;width:min(250px,calc(100vw - 100px));padding:10px;gap:8px;border:1px solid #64c6df70;background:linear-gradient(135deg,#102432f5,#0b1120f5);box-shadow:0 12px 32px #0008}
 .water-draw-hint {margin:0;color:#b5cedc;font:11px/1.65 var(--font-hud);overflow-wrap:anywhere}
 .water-draw-actions {display:flex;flex-wrap:wrap;gap:6px}
 .water-draw-actions button {min-height:34px;font-size:10px;flex:1}
 .water-draw-actions button[hidden] {display:none}
 #water_flyout button:focus-visible {outline:2px solid #91eafa;outline-offset:2px}
+.flyout-btn-row {display:flex;gap:5px;width:100%}
+.flyout-btn-row .flyout-btn {flex:1;min-height:28px;font-size:10px;padding:4px 6px}
+.flyout-section-title {font:9px ui-monospace,monospace;color:#6db2ce;letter-spacing:.08em;margin-top:2px}

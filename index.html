@@ -134,8 +134,20 @@
             <span>🌊</span>
           </button>
           <div class="tool-flyout-panel" id="water_flyout" style="top: 350px;">
-            <button class="flyout-btn active" id="water_btn_box" data-water-shape="box" title="Zona Rectangular (Arrastrar ancho y alto)">🟦 Caja</button>
-            <button class="flyout-btn" id="water_btn_poly" data-water-shape="polygon" title="Clic para cada vértice; Enter o doble clic para cerrar">📐 Polígono</button>
+            <div class="flyout-section-title">AGUA // FORMA</div>
+            <div class="flyout-btn-row">
+              <button class="flyout-btn active" id="water_btn_box" data-water-shape="box" title="Zona Rectangular (Arrastrar ancho y alto)">🟦 Caja</button>
+              <button class="flyout-btn" id="water_btn_poly" data-water-shape="polygon" title="Clic para cada vértice; Enter o doble clic para cerrar">📐 Polígono</button>
+            </div>
+            <div class="flyout-section-title" style="margin-top: 6px;">CLIMA // LLUVIA Y NIEBLA</div>
+            <div class="flyout-btn-row">
+              <button class="flyout-btn" id="water_rain_toggle" type="button" title="Alternar Lluvia">🌧️ Lluvia</button>
+              <button class="flyout-btn" id="water_rain_intensity_btn" type="button" title="Cambiar intensidad de lluvia">⚡ Normal</button>
+            </div>
+            <div class="flyout-btn-row" style="margin-top: 4px;">
+              <button class="flyout-btn" id="water_fog_toggle" type="button" title="Alternar Niebla Ambiental">🌫️ Niebla</button>
+              <button class="flyout-btn" id="water_fog_density_btn" type="button" title="Cambiar densidad de niebla">Media</button>
+            </div>
             <p id="water_hint" class="water-draw-hint" role="status"></p>
             <div class="water-draw-actions"><button class="hud-btn hud-btn-primary" id="water_finish" type="button" hidden>Cerrar polígono</button><button class="hud-btn" id="water_cancel" type="button" disabled>Cancelar</button></div>
           </div>

@@ -1,10 +1,30 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.1.0**.
-Paquete: `VeilFarers_VTT_v1.1.0.zip`.
+Versión actual del VTT: **v1.1.1**.
+Paquete: `VeilFarers_VTT_v1.1.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.1.1] — 2026-11-09
+
+Ondas de lluvia y conservación de las mejoras de clima
+
+### Corregido
+
+- La lluvia deja de dibujar gotas, rayas, salpicaduras en suelo seco y destellos sobre todo el mapa. Solo genera ondas en las zonas de agua.
+- Impactos dispersos con doble anillo, expansión suave y desvanecimiento, recortados por el contorno real del agua, incluidos polígonos cóncavos.
+- Ondas ancladas al mapa, por debajo de tokens, iluminación y niebla de visión. Ocultar la capa de agua también oculta la lluvia.
+- Ajuste de lluvia por escena con compatibilidad para guardados antiguos; reducir movimiento desactiva los impactos animados. Trabajo de dibujo acotado en mapas grandes.
+
+### Conservado de la copia aportada
+
+- Bruma independiente y niveles de llovizna, lluvia y tormenta, que ahora regulan la densidad de las ondas.
+- Mejoras del selector de color, calibración de rejilla y controles de agua. Se conservan los lanzadores actuales de GitHub.
+
+### Prueba local
+
+- Laboratorio de efectos con intensidad de lluvia y bruma separadas. Versión, ayuda, changelog y nombre del paquete sincronizados en v1.1.1.
 
 ## [1.1.0] — 2026-11-05
 

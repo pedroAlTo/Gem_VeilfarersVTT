@@ -1,4 +1,5 @@
 import { sanitizeHTML } from './ui.js';
+import { openColorPickerPopover, toHexColor } from './colorPicker.js';
 // src/gridScalerHUD.js
 // Tactical Grid Scaler & Scale Calibration HUD for VeilVTT
 // Allows live scaling of grid cells, physical scale (meters/sq), and fine offset alignment
@@ -13,6 +14,9 @@ export class GridScalerHUD {
     this.render();
 
     store.subscribe((state, keys) => {
+      if (document.querySelector('.cyber-color-popover')) {
+        return;
+      }
       if (
         keys.includes('maps') ||
         keys.includes('activeMapId') ||
@@ -61,6 +65,7 @@ export class GridScalerHUD {
     const offX = map.gridOffsetX || 0;
     const offY = map.gridOffsetY || 0;
     const gridColor = map.gridColor || '#00f3ff';
+    const gridColorHex = toHexColor(gridColor);
     const gridAlpha = map.gridAlpha !== undefined ? map.gridAlpha : 0.2;
 
     this.container.classList.remove('hidden');
@@ -178,7 +183,7 @@ export class GridScalerHUD {
 
             <div style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 10px; color: var(--text-dim);">Color:</span>
-              <input type="text" id="grid_color_picker" value="${gridColor.startsWith('#') ? gridColor : '#00f3ff'}" class="hud-color-input" style="width: 28px; height: 22px;" />
+              <button type="button" id="grid_color_btn" class="overlay-color-btn" style="background: ${gridColorHex}; width: 34px; height: 24px; border: 1px solid rgba(255,255,255,0.7); cursor: pointer;" title="Seleccionar Color de Rejilla"></button>
               <button class="hud-btn hud-btn-xs hud-btn-secondary" id="grid_apply_done_btn" style="margin-left: 8px;">GUARDAR Y CERRAR</button>
             </div>
           </div>
@@ -321,10 +326,17 @@ export class GridScalerHUD {
     }
 
     // Grid Color picker
-    const colorPicker = this.container.querySelector('#grid_color_picker');
-    if (colorPicker) {
-      colorPicker.oninput = (e) => {
-        store.updateActiveMap({ gridColor: e.target.value });
+    const colorBtn = this.container.querySelector('#grid_color_btn');
+    if (colorBtn) {
+      colorBtn.onclick = (e) => {
+        e.stopPropagation();
+        const activeMap = store.getActiveMap() || map || {};
+        const currentHex = toHexColor(activeMap.gridColor || '#00f3ff');
+        openColorPickerPopover(colorBtn, currentHex, (c) => {
+          const btn = document.getElementById('grid_color_btn');
+          if (btn) btn.style.background = c;
+          store.updateActiveMap({ gridColor: c });
+        });
       };
     }
   }

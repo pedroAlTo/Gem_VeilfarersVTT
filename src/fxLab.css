@@ -10,10 +10,11 @@ button {cursor:pointer;padding:10px 20px;background:#0b1726;color:#a6bfd0;border
 button[aria-pressed=true] {color:#d4faff;background:#163244;border-color:#87e4f2}
 button:focus-visible,a:focus-visible {outline:2px solid #e98cd1;outline-offset:4px}
 #pause{margin-left:auto}
-main{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+main{display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:20px}
 section {min-width:0;border:1px solid #87c5dc36;background:linear-gradient(130deg,#0c1827,#111223);position:relative}
 section:before{content:'';position:absolute;top:-1px;left:24px;width:60px;height:2px;background:#8bdff3}
 section:nth-child(2):before{background:#e594d1}
+section:nth-child(3):before{background:#5eead4}
 .card-heading{padding:26px 26px 10px}h2 {font-size:22px;font-weight:450;margin:13px 0 8px}
 canvas{display:block;width:100%;height:400px}
 footer {display:flex;justify-content:space-between;gap:16px;padding:25px 0;font-size:8px;line-height:1.6}
