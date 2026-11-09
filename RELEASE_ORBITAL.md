@@ -1,5 +1,13 @@
 # VeilFarers VTT — Orbital UI y correcciones de sesión
 
+## v1.1.1 — water-only rain ripples · 9 November 2026
+
+Rain now creates expanding, fading double rings only inside water zones. Falling streaks, dry-ground splashes, screen washes and storm flashes have been removed. Impacts stay in map coordinates, respect concave shorelines and render with the water beneath lighting, vision fog and tokens. Hiding water hides the ripples. Per-scene rain can override legacy global weather; drizzle, rain and storm retain different impact densities. Reduced motion suppresses animated rain, and viewport culling plus quality budgets bound work on large maps.
+
+The supplied ZIP's independent mist, intensity controls, color-picker/grid fixes and water controls are preserved. The GitHub launchers are retained. The supplied ZIP was named v1.1.1 but still declared v1.1.0 internally; package metadata, help and changelog now agree on v1.1.1. The effects lab compares intensity and mist separately, and pausing retains the ripple frame.
+
+Validation: 148 automated tests pass, including shoreline clipping, camera stability, intensity density, rendering budgets, reduced motion, scene controls and layer order. The production build passes with the existing chunk-size warnings. Browser QA verified application loading, rain/mist controls, paused surface rings and AYUDA/Changelog v1.1.1. No public deployment or Firebase configuration was performed.
+
 ## v1.1.0 — versioned releases, help and changelog · 5 November 2026
 
 The header now opens **AYUDA**, available to both Keeper and players. It shows the installed VTT version separately from Corebook 12.06, a quick-start guide, keyboard shortcuts and a changelog with versioned Markdown download. `package.json` supplies the displayed version and download filenames. The generated `CHANGELOG.md` and the in-app view share release entries; the build rejects mismatched package/lockfile/release versions or stale generated notes. This delivery is **VeilFarers_VTT_v1.1.0.zip**. Previous Orbital names and the original history below remain intact.

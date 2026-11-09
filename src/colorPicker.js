@@ -5,6 +5,17 @@ export function normalizeHex(value) {
   if (/^[0-9a-f]{3}$/i.test(text)) return '#' + [...text].map(c => c + c).join('').toLowerCase();
   return /^[0-9a-f]{6}$/i.test(text) ? '#' + text.toLowerCase() : null;
 }
+export function toHexColor(colorStr) {
+  if (!colorStr) return '#00f3ff';
+  const norm = normalizeHex(colorStr);
+  if (norm) return norm;
+  const match = colorStr.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (match) {
+    const [_, r, g, b] = match;
+    return '#' + [r, g, b].map(x => Math.max(0, Math.min(255, parseInt(x, 10))).toString(16).padStart(2, '0')).join('');
+  }
+  return '#00f3ff';
+}
 export function hexToHSV(hex) {
   const color = normalizeHex(hex) || '#00f3ff', [r, g, b] = [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16) / 255);
   const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;

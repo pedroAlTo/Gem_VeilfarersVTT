@@ -1,13 +1,14 @@
 import test, { beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { drawWaterSurface, drawBlackHole } from '../src/surfaceFX.js';
+import { drawWaterSurface, drawBlackHole, renderWeatherRain, renderWeatherFog } from '../src/surfaceFX.js';
 import { gaugeState, drawTokenGauge } from '../src/tokenVitals.js';
 import { FXEngine } from '../src/fxEngine.js';
 const dom = new JSDOM('<body><div id="overlay"></div></body>',{url:'http://localhost/'});
 for(const key of ['window','document','HTMLElement','customElements','MutationObserver','localStorage','Event','CustomEvent']) globalThis[key]=dom.window[key];
 const {store}=await import('../src/state.js');await store.ready;
 const {ClocksManager}=await import('../src/clocksManager.js');
+const {GridScalerHUD}=await import('../src/gridScalerHUD.js');
 const {audio}=await import('../src/audioEngine.js');audio.muted=true;
 const initial=structuredClone(store.state);
 const overlay=document.getElementById('overlay');
@@ -103,6 +104,29 @@ test('black hole can exist at particle budget and restores canvas state at every
     assert.ok(commands.every(c=>c.slice(1).every(v=>typeof v!=='number'||Number.isFinite(v))));
   }
 });
+test('weather rain clips surface rings; fog retains its independent atmospheric pass',()=>{
+  assert.equal(renderWeatherRain(null, { viewport: { width: 0, height: 0 } }), false);
+  assert.equal(renderWeatherFog(null, { viewport: { width: 0, height: 0 } }), false);
+  const viewport = { minX: 0, minY: 0, maxX: 800, maxY: 600, width: 800, height: 600, zoom: 1 };
+  const waterZone = { x: 100, y: 100, width: 200, height: 150 };
+  for (const quality of ['eco', 'balanced', 'ultra']) {
+    const { ctx, commands } = context();
+    const result = renderWeatherRain(ctx, { map: { waterZones: [waterZone] }, viewport, time: 5, quality });
+    assert.equal(result, true);
+    assert.equal(commands.filter(c => c[0] === 'save').length, commands.filter(c => c[0] === 'restore').length);
+    assert.ok(!commands.some(c => c[0] === 'lineTo'));
+    assert.ok(commands.some(c => c[0] === 'clip'));
+    assert.ok(commands.some(c => c[0] === 'ellipse'));
+  }
+  for (const density of ['light', 'medium', 'dense']) {
+    const { ctx, commands } = context();
+    const fogRes = renderWeatherFog(ctx, { map: { fogDensity: density }, viewport, time: 8, quality: 'balanced' });
+    assert.equal(fogRes, true);
+    assert.equal(commands.filter(c => c[0] === 'save').length, commands.filter(c => c[0] === 'restore').length);
+    assert.ok(commands.some(c => c[0] === 'arc'));
+    assert.ok(commands.some(c => c[0] === 'ellipse'));
+  }
+});
 test('HP and Stress warn at opposite ends; gauges retain numeric values without overflow',()=>{
   assert.equal(gaugeState(1,6,'hp').danger,true);assert.equal(gaugeState(1,6,'stress').danger,false);
   assert.equal(gaugeState(6,6,'stress').danger,true);assert.equal(gaugeState(20,6).ratio,1);
@@ -117,4 +141,26 @@ test('arranging clocks restores an accessible layout without changing their prog
   assert.deepEqual(store.state.clocks.map(c=>c.filled),[2,4]);
   assert.ok(store.state.clocks.every(c=>c.posX>=0&&c.posX<=582&&c.posY>=0&&c.posY<=506));
   assert.notEqual(store.state.clocks[0].posX,store.state.clocks[1].posX);
+});
+
+test('grid scaler HUD opens color picker popover and updates grid color without reference error', () => {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  store.state.userRole = 'keeper';
+  const hud = new GridScalerHUD(container);
+  hud.isOpen = true;
+  hud.render();
+  const colorBtn = container.querySelector('#grid_color_btn');
+  assert.ok(colorBtn, 'grid_color_btn should exist');
+  assert.doesNotThrow(() => {
+    colorBtn.click();
+  });
+  const popover = document.querySelector('.cyber-color-popover');
+  assert.ok(popover, 'Color popover should be open');
+  const amberSwatch = popover.querySelector('[data-color="#f59e0b"]');
+  assert.ok(amberSwatch, 'Amber swatch exists');
+  amberSwatch.click();
+  assert.equal(store.getActiveMap().gridColor, '#f59e0b');
+  popover.querySelector('.pop-ok-btn')?.click();
+  container.remove();
 });

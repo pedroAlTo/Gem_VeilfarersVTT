@@ -3,7 +3,7 @@
 // Drag-Resizable Templates, Expanded Particle FX, and Multi-Layer Support
 
 import { LightingEngine } from './lightingEngine.js';
-import { drawWaterSurface, traceWater, waterBounds } from './surfaceFX.js';
+import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherFog } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
 import { drawTokenConditions } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
@@ -2234,7 +2234,7 @@ export class CanvasEngine {
 
     // 2. LAYER: WATER & HAZARDS
     if (state.layerVisibility.water !== false) {
-      this.renderWaterZones(ctx, map.waterZones || [], now * 0.001);
+      this.renderWaterZones(ctx, map.waterZones || [], now * 0.001, !!(map.showRain ?? state.showRain), map.rainIntensity ?? state.rainIntensity);
     }
 
     // Grid Overlay
@@ -2371,14 +2371,14 @@ export class CanvasEngine {
       if (this.gridCalibStart && this.gridCalibCurrent) {
         this.renderGridCalibrationGuide(ctx, this.gridCalibStart, this.gridCalibCurrent);
       }
-      this.renderRainOverlay(ctx, map, now * 0.001);
+      this.renderFogOverlay(ctx, map, now * 0.001);
     }
 
     ctx.restore();
   }
 
   // --- Water Zones Rendering ---
-  renderWaterZones(ctx, waterZones, time) {
+  renderWaterZones(ctx, waterZones, time, rain = false, intensity = 'rain') {
     const state = store.getState();
     const isWaterLayer = state.activeLayer === 'water' && state.userRole === 'keeper';
 
@@ -2388,6 +2388,8 @@ export class CanvasEngine {
       const isSelected = w.id === state.selectedWaterId;
       if (!drawWaterSurface(ctx, w, time, { viewport, quality: this.fx.quality,
         reducedMotion: this.reducedMotion?.matches })) continue;
+      if (rain) drawRainRipples(ctx, w, time, { viewport, quality: this.fx.quality, intensity,
+        reducedMotion: this.reducedMotion?.matches });
       if (!(isWaterLayer || isSelected)) continue;
       const depth = Math.max(0, Math.min(5, w.depth ?? 2));
       const bounds = waterBounds(w);
@@ -2461,47 +2463,25 @@ export class CanvasEngine {
     }
   }
 
-  // --- Rain Weather Overlay Pass ---
-  renderRainOverlay(ctx, map, time) {
-    if (!map.showRain && !store.getState().showRain) return;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(186, 230, 253, 0.3)';
-    ctx.lineWidth = 1.2;
-
-    const numDrops = 65;
-    const speed = 720;
-    const mapW = this.mapImage?.width || 2000;
-    const mapH = this.mapImage?.height || 2000;
-
-    for (let i = 0; i < numDrops; i++) {
-      const rx = ((i * 53 + time * speed * 0.35) % mapW);
-      const ry = ((i * 89 + time * speed) % mapH);
-      ctx.beginPath();
-      ctx.moveTo(rx, ry);
-      ctx.lineTo(rx - 7, ry + 20);
-      ctx.stroke();
-    }
-
-    // Ripples across water bodies
-    for (const wzone of (map.waterZones || [])) {
-      const bounds=waterBounds(wzone);
-      if (!bounds) continue;
-      ctx.save(); traceWater(ctx,wzone); ctx.clip();
-      for (let r = 0; r < 2; r++) {
-        const rphase = (time * 1.6 + r * 0.5) % 1;
-        const ripX = bounds.minX + (bounds.maxX-bounds.minX)*(0.25+r*0.45);
-        const ripY = bounds.minY + (bounds.maxY-bounds.minY)*(0.35+r*0.35);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - rphase) * 0.35})`;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.ellipse(ripX, ripY, 12 * rphase, 5 * rphase, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-    ctx.restore();
+  // --- Fog Weather Overlay Pass ---
+  renderFogOverlay(ctx, map, time) {
+    if (!map.showFog && !store.getState().showFog) return;
+    const viewport = {
+      minX: -this.panX / this.zoom,
+      minY: -this.panY / this.zoom,
+      maxX: (this.displayWidth - this.panX) / this.zoom,
+      maxY: (this.displayHeight - this.panY) / this.zoom,
+      width: this.displayWidth / this.zoom,
+      height: this.displayHeight / this.zoom,
+      zoom: this.zoom
+    };
+    renderWeatherFog(ctx, {
+      map,
+      viewport,
+      time,
+      quality: this.fx?.quality || 'balanced',
+      reducedMotion: this.reducedMotion?.matches
+    });
   }
 
   // --- Grid Rendering ---

@@ -1,3 +1,5 @@
+import { pointInWater } from './waterGeometry.js';
+
 // Canvas-only artwork. Geometry stays in map coordinates; no frame-buffer readback.
 const TAU = Math.PI * 2;
 export function waterBounds(zone) {
@@ -157,4 +159,146 @@ export function drawBlackHole(ctx, rift, quality = 'balanced', reducedMotion = f
   // The foreground disk occludes only the lower horizon, giving the hole depth.
   disk(true);
   ctx.restore();
+}
+
+// Stateless, world-anchored impacts: moving the camera never drags the rain.
+function rainRandom(x, y, seed) {
+  let n = Math.imul(x,374761393) ^ Math.imul(y,668265263) ^ Math.imul(seed,1274126177);
+  n = Math.imul(n ^ (n >>> 13),1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+}
+
+export function drawRainRipples(ctx, zone, time, { viewport, quality = 'balanced', intensity = 'rain', reducedMotion = false } = {}) {
+  if (reducedMotion || !Number.isFinite(time)) return false;
+  const bounds = waterBounds(zone);
+  if (!bounds) return false;
+  const b = viewport ? {
+    minX:Math.max(bounds.minX,viewport.minX), minY:Math.max(bounds.minY,viewport.minY),
+    maxX:Math.min(bounds.maxX,viewport.maxX), maxY:Math.min(bounds.maxY,viewport.maxY)
+  } : bounds;
+  if (!Object.values(b).every(Number.isFinite) || b.maxX<=b.minX || b.maxY<=b.minY) return false;
+  const spacing = intensity==='drizzle' ? 1.6 : intensity==='storm' ? .72 : 1;
+  const baseCell = (quality==='eco' ? 112 : quality==='ultra' ? 64 : 80) * spacing;
+  const budget = quality==='eco' ? 128 : quality==='ultra' ? 512 : 256;
+  let cell = baseCell;
+  // Powers of two bound work on giant maps without tying positions to the camera.
+  while ((Math.ceil((b.maxX-b.minX)/cell)+2) * (Math.ceil((b.maxY-b.minY)/cell)+2)>budget) cell*=2;
+  const radiusScale=cell/baseCell, margin=24*radiusScale;
+  let seed=0;
+  for (const char of String(zone.id??'water')) seed=(Math.imul(seed,31)+char.charCodeAt(0))|0;
+  ctx.save(); traceWater(ctx,zone); ctx.clip(); ctx.setLineDash([]);
+  for (let row=Math.floor((b.minY-margin)/cell);row<=Math.floor((b.maxY+margin)/cell);row++) {
+    for (let col=Math.floor((b.minX-margin)/cell);col<=Math.floor((b.maxX+margin)/cell);col++) {
+      const period=1.7+rainRandom(col,row,seed)*1.1;
+      const clock=Math.max(0,time)/period+rainRandom(col,row,seed+1);
+      const cycle=Math.floor(clock), phase=(clock-cycle)/.78;
+      if (phase>=1) continue;
+      const x=(col+.12+rainRandom(col,row,seed+cycle*7+2)*.76)*cell;
+      const y=(row+.12+rainRandom(col,row,seed+cycle*7+3)*.76)*cell;
+      if (x<b.minX-margin || x>b.maxX+margin || y<b.minY-margin || y>b.maxY+margin || !pointInWater(x,y,zone)) continue;
+      const radius=(10+rainRandom(col,row,seed+4)*13)*radiusScale;
+      const aspect=.72+rainRandom(col,row,seed+5)*.18;
+      for (let ring=0;ring<2;ring++) {
+        const age=phase-ring*.19;
+        if (age<=0) continue;
+        const r=radius*Math.sqrt(age);
+        const alpha=Math.min(1,age/.09)*(1-phase)**1.6*(ring?.18:.32);
+        ctx.beginPath(); ctx.ellipse(x,y,r,r*aspect,0,0,TAU);
+        ctx.lineWidth=2.2*radiusScale; ctx.strokeStyle=`rgba(4,28,40,${alpha*.45})`; ctx.stroke();
+        ctx.lineWidth=.8*radiusScale; ctx.strokeStyle=`rgba(191,232,240,${alpha})`; ctx.stroke();
+      }
+    }
+  }
+  ctx.restore(); return true;
+}
+
+// Shared by the effects lab; there is no screen-wide weather pass anymore.
+export function renderWeatherRain(ctx, { map = {}, viewport, time = 0, quality = 'balanced', reducedMotion = false } = {}) {
+  if (!viewport || viewport.width<=0 || viewport.height<=0 || reducedMotion) return false;
+  let drawn=false;
+  for (const zone of map.waterZones||[]) {
+    drawn=drawRainRipples(ctx,zone,time,{viewport,quality,reducedMotion,intensity:map.rainIntensity})||drawn;
+  }
+  return drawn;
+}
+
+/**
+ * Atmospheric drifting fog & mist simulation.
+ * Pure canvas procedural animation across visible viewport.
+ * Uses harmonic multi-octave drifting billows with soft alpha compositing.
+ */
+export function renderWeatherFog(ctx, { map = {}, viewport, time = 0, quality = 'balanced', reducedMotion = false } = {}) {
+  if (!viewport || viewport.width <= 0 || viewport.height <= 0) return false;
+
+  const zoom = Math.max(0.1, viewport.zoom || 1);
+  const margin = 120 / zoom;
+  const vw = viewport.width + margin * 2;
+  const vh = viewport.height + margin * 2;
+  const ox = viewport.minX - margin;
+  const oy = viewport.minY - margin;
+
+  const density = map.fogDensity || 'medium'; // 'light' | 'medium' | 'dense'
+  const densityAlpha = density === 'light' ? 0.18 : density === 'dense' ? 0.52 : 0.32;
+  const speed = reducedMotion ? 0 : 28; // Slow atmospheric drift (28 px/s)
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+
+  // 1. Overall base ambient mist layer
+  ctx.fillStyle = `rgba(148, 185, 215, ${densityAlpha * 0.22})`;
+  ctx.fillRect(viewport.minX, viewport.minY, viewport.width, viewport.height);
+
+  // 2. Multi-layer drifting fog banks (soft radial clusters)
+  const bankCount = quality === 'eco' ? 8 : quality === 'ultra' ? 24 : 14;
+  const radius = Math.max(160, Math.min(420, (viewport.width + viewport.height) * 0.24));
+
+  for (let b = 0; b < bankCount; b++) {
+    const layerSpeed = speed * (0.6 + (b % 4) * 0.25);
+    const seedX = (b * 0.381966 + (b % 7) * 0.11) % 1;
+    const seedY = (b * 0.535897 + (b % 11) * 0.09) % 1;
+
+    const driftX = time * layerSpeed;
+    const driftY = Math.sin(time * 0.12 + b * 1.7) * 45;
+
+    const cx = ((seedX * vw + driftX) % vw + vw) % vw + ox;
+    const cy = ((seedY * vh + driftY) % vh + vh) % vh + oy;
+
+    const pulse = Math.sin(time * 0.2 + b * 2.3) * 0.15;
+    const r = radius * (0.85 + (b % 3) * 0.2 + pulse);
+    const alpha = densityAlpha * (0.28 + (b % 5) * 0.08);
+
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
+    grad.addColorStop(0, `rgba(180, 215, 240, ${alpha})`);
+    grad.addColorStop(0.55, `rgba(150, 190, 220, ${alpha * 0.45})`);
+    grad.addColorStop(1, 'rgba(150, 190, 220, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 3. Wisp streaks (horizontal crawling mist ribbons)
+  const wisps = quality === 'eco' ? 4 : quality === 'ultra' ? 12 : 7;
+  for (let w = 0; w < wisps; w++) {
+    const wSpeed = speed * (1.1 + (w % 3) * 0.3);
+    const wx = ((w * 0.618 * vw + time * wSpeed) % vw + vw) % vw + ox;
+    const wy = oy + ((w * 0.414 * vh + Math.cos(time * 0.15 + w) * 35) % vh + vh) % vh;
+    const wLen = (280 + (w % 4) * 120) / Math.sqrt(zoom);
+    const wHeight = (40 + (w % 3) * 20) / Math.sqrt(zoom);
+
+    const wGrad = ctx.createLinearGradient(wx, wy, wx + wLen, wy);
+    const wAlpha = densityAlpha * 0.22;
+    wGrad.addColorStop(0, 'rgba(190, 225, 250, 0)');
+    wGrad.addColorStop(0.5, `rgba(190, 225, 250, ${wAlpha})`);
+    wGrad.addColorStop(1, 'rgba(190, 225, 250, 0)');
+
+    ctx.fillStyle = wGrad;
+    ctx.beginPath();
+    ctx.ellipse(wx + wLen * 0.5, wy, wLen * 0.5, wHeight * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+  return true;
 }

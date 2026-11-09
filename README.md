@@ -1,8 +1,8 @@
-# VeilFarers VTT · v1.1.0 · Orbital
+# VeilFarers VTT · v1.1.1 · Orbital
 
 A local-first virtual tabletop with scene travel, a player roster, shared drones, character JSON import, optional Firebase accounts, and a Three.js Hope & Fear dice tray.
 
-Current release: **v1.1.0**. Download package: **VeilFarers_VTT_v1.1.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v1.1.1**. Download package: **VeilFarers_VTT_v1.1.1.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 

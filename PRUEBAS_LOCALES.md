@@ -2,9 +2,17 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v1.1.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.1.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.1.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.1.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v1.1.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.1.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.1.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.1.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
+
+## Lluvia y bruma
+
+1. Selecciona una zona de agua y activa **Ondas de lluvia**. Prueba **Llovizna**, **Normal** y **Tormenta**: cambia la densidad de las ondas, sin gotas o destellos sobre el mapa.
+2. En un polígono cóncavo, las ondas deben quedar dentro del agua. Mueve la cámara y cambia el zoom; los impactos deben permanecer anclados al mapa.
+3. Oculta **Water**: el agua y sus ondas desaparecen. La niebla de visión debe cubrir las ondas; los tokens permanecen por encima.
+4. Desactiva la lluvia, cambia de escena y vuelve; comprueba también guardado y recarga. La bruma conserva su interruptor independiente.
+5. En el laboratorio local, compara intensidades, calidad y pausa. El VTT desactiva los impactos animados con la preferencia del sistema **reducir movimiento**.
 
 ## Agua: polígonos y cancelación
 
