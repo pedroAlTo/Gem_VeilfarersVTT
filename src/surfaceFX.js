@@ -158,3 +158,278 @@ export function drawBlackHole(ctx, rift, quality = 'balanced', reducedMotion = f
   disk(true);
   ctx.restore();
 }
+
+/**
+ * Cinematic multi-layer weather rain overlay with parallax, wind flutter,
+ * ground splashes, and water surface ripples.
+ * Pure canvas procedural animation; zero allocations in the render loop.
+ */
+export function renderWeatherRain(ctx, { map = {}, viewport, time = 0, quality = 'balanced', reducedMotion = false } = {}) {
+  if (!viewport || viewport.width <= 0 || viewport.height <= 0) return false;
+
+  const zoom = Math.max(0.1, viewport.zoom || 1);
+  const margin = 100 / zoom;
+  const vw = viewport.width + margin * 2;
+  const vh = viewport.height + margin * 2;
+  const ox = viewport.minX - margin;
+  const oy = viewport.minY - margin;
+
+  // 1. Atmospheric storm moisture wash
+  ctx.save();
+  ctx.fillStyle = 'rgba(8, 20, 38, 0.09)';
+  ctx.fillRect(viewport.minX, viewport.minY, viewport.width, viewport.height);
+
+  const intensity = map.rainIntensity || 'rain';
+  const isDrizzle = intensity === 'drizzle';
+  const isStorm = intensity === 'storm';
+
+  // 2. Dynamic wind vector with subtle organic gusts
+  const gust = reducedMotion ? 0 : isDrizzle
+    ? Math.sin(time * 0.25) * 0.03
+    : isStorm
+      ? Math.sin(time * 0.6) * 0.16 + Math.cos(time * 0.3) * 0.08
+      : Math.sin(time * 0.45) * 0.08 + Math.cos(time * 0.23) * 0.04;
+  const windAngle = Math.PI * (isDrizzle ? 0.52 : 0.58) + gust; // Slanted towards bottom-left
+  const dirX = Math.cos(windAngle);
+  const dirY = Math.sin(windAngle);
+
+  // 3. Drop density budgets by intensity & quality tier
+  const densityMult = isDrizzle ? 0.45 : isStorm ? 1.6 : 1.0;
+  const speedMult = isDrizzle ? 0.65 : isStorm ? 1.35 : 1.0;
+
+  let countBg = Math.round(180 * densityMult);
+  let countMid = Math.round(110 * densityMult);
+  let countFg = isDrizzle ? 0 : Math.round(25 * densityMult);
+  let splashMax = isDrizzle ? 4 : isStorm ? 22 : 12;
+  let waterRipplesMax = isDrizzle ? 6 : isStorm ? 30 : 18;
+
+  if (quality === 'eco') {
+    countBg = Math.round(countBg * 0.45);
+    countMid = Math.round(countMid * 0.45);
+    countFg = Math.round(countFg * 0.45);
+    splashMax = Math.round(splashMax * 0.5);
+    waterRipplesMax = Math.round(waterRipplesMax * 0.5);
+  } else if (quality === 'ultra') {
+    countBg = Math.round(countBg * 1.4);
+    countMid = Math.round(countMid * 1.4);
+    countFg = Math.round(countFg * 1.4);
+    splashMax = Math.round(splashMax * 1.4);
+    waterRipplesMax = Math.round(waterRipplesMax * 1.4);
+  }
+
+  // Helper to render a rain layer
+  const renderLayer = (count, speed, minLen, maxLen, strokeW, strokeStyle) => {
+    ctx.save();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = strokeW;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+
+    const layerSpeed = (reducedMotion ? speed * 0.35 : speed) * speedMult;
+    for (let i = 0; i < count; i++) {
+      const seedX = (i * 0.6180339887 + (i % 17) * 0.13) % 1;
+      const seedY = (i * 0.4142135623 + (i % 23) * 0.07) % 1;
+      const varSpeed = 0.88 + ((i * 37) % 25) / 100;
+      const len = minLen + ((i * 47) % Math.max(1, maxLen - minLen));
+
+      const travel = time * layerSpeed * varSpeed;
+      const x = ((seedX * vw + travel * dirX) % vw + vw) % vw + ox;
+      const y = ((seedY * vh + travel * dirY) % vh + vh) % vh + oy;
+
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - dirX * len, y - dirY * len);
+    }
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  // Layer 1: Distant background drizzle (thin, fast, subtle)
+  renderLayer(countBg, 950, 12 / zoom, 22 / zoom, Math.max(0.6, 0.85 / Math.sqrt(zoom)), 'rgba(165, 205, 235, 0.22)');
+
+  // Layer 2: Main rain body (medium streaks with good contrast)
+  renderLayer(countMid, 1350, 24 / zoom, 44 / zoom, Math.max(0.8, 1.25 / Math.sqrt(zoom)), 'rgba(195, 230, 255, 0.38)');
+
+  // Layer 3: Foreground camera-close streaks (long, fast highlights)
+  if (countFg > 0) {
+    renderLayer(countFg, 1750, 48 / zoom, 80 / zoom, Math.max(1.1, 1.85 / Math.sqrt(zoom)), 'rgba(230, 248, 255, 0.58)');
+  }
+
+  // 4. Ground micro-splashes on terrain
+  if (!reducedMotion && splashMax > 0) {
+    ctx.save();
+    for (let s = 0; s < splashMax; s++) {
+      const cycle = 0.48 + (s % 5) * 0.09;
+      const t = (time + s * 0.17) % cycle;
+      const p = t / cycle;
+      if (p > 0.75) continue; // Brief impact burst
+
+      const seed = Math.floor((time + s * 0.17) / cycle);
+      const sx = ox + (((s * 157 + seed * 89) % 1000) / 1000) * vw;
+      const sy = oy + (((s * 263 + seed * 131) % 1000) / 1000) * vh;
+
+      const alpha = (1 - p / 0.75) * 0.45;
+      const spread = p * (7 + (s % 4) * 2) / Math.sqrt(zoom);
+
+      ctx.strokeStyle = `rgba(205, 238, 255, ${alpha})`;
+      ctx.lineWidth = Math.max(0.5, 0.9 / Math.sqrt(zoom));
+
+      // Splashing droplets bouncing up
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx - spread * 0.6, sy - spread * 0.85 + (p * p * 12) / zoom);
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + spread * 0.7, sy - spread * 0.75 + (p * p * 12) / zoom);
+      ctx.stroke();
+
+      // Floor impact ring
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, spread * 0.8, spread * 0.3, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 5. Water surface ripples (procedural splashes across actual water zones)
+  const waterZones = map.waterZones || [];
+  if (waterZones.length > 0) {
+    for (const zone of waterZones) {
+      const bounds = waterBounds(zone);
+      if (!bounds) continue;
+      // Viewport culling
+      if (bounds.maxX < viewport.minX || bounds.minX > viewport.maxX ||
+          bounds.maxY < viewport.minY || bounds.minY > viewport.maxY) continue;
+
+      ctx.save();
+      traceWater(ctx, zone);
+      ctx.clip(); // Mask strictly to polygon / box water shape
+
+      const zw = bounds.maxX - bounds.minX;
+      const zh = bounds.maxY - bounds.minY;
+      const numRipples = Math.min(waterRipplesMax, Math.max(4, Math.floor(Math.sqrt(zw * zh) / 55)));
+
+      for (let r = 0; r < numRipples; r++) {
+        const cycle = 1.1 + (r % 7) * 0.16;
+        const rTime = (time + r * 0.33) % cycle;
+        const progress = rTime / cycle;
+
+        const cycleSeed = Math.floor((time + r * 0.33) / cycle);
+        const rx = bounds.minX + (((r * 67 + cycleSeed * 97) % 100) / 100) * zw;
+        const ry = bounds.minY + (((r * 113 + cycleSeed * 53) % 100) / 100) * zh;
+
+        const radius = progress * (16 + (r % 5) * 4);
+        const alpha = (1 - progress) * 0.42;
+
+        ctx.strokeStyle = `rgba(195, 242, 255, ${alpha})`;
+        ctx.lineWidth = Math.max(0.6, 1.2 * (1 - progress * 0.5));
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, radius, radius * 0.38, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (progress > 0.22) {
+          const innerProg = (progress - 0.22) / 0.78;
+          const innerRadius = innerProg * (11 + (r % 5) * 3);
+          ctx.strokeStyle = `rgba(220, 250, 255, ${(1 - innerProg) * 0.22})`;
+          ctx.beginPath();
+          ctx.ellipse(rx, ry, innerRadius, innerRadius * 0.38, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  // 6. Ambient lightning flash in storm mode (periodic pulse every ~18s)
+  if (!reducedMotion && isStorm) {
+    const flashPeriod = 18;
+    const flashTime = time % flashPeriod;
+    if (flashTime < 0.14) {
+      const flashAlpha = Math.sin((flashTime / 0.14) * Math.PI) * (flashTime < 0.06 ? 0.22 : 0.09);
+      ctx.fillStyle = `rgba(195, 230, 255, ${flashAlpha})`;
+      ctx.fillRect(viewport.minX, viewport.minY, viewport.width, viewport.height);
+    }
+  }
+
+  ctx.restore();
+  return true;
+}
+
+/**
+ * Atmospheric drifting fog & mist simulation.
+ * Pure canvas procedural animation across visible viewport.
+ * Uses harmonic multi-octave drifting billows with soft alpha compositing.
+ */
+export function renderWeatherFog(ctx, { map = {}, viewport, time = 0, quality = 'balanced', reducedMotion = false } = {}) {
+  if (!viewport || viewport.width <= 0 || viewport.height <= 0) return false;
+
+  const zoom = Math.max(0.1, viewport.zoom || 1);
+  const margin = 120 / zoom;
+  const vw = viewport.width + margin * 2;
+  const vh = viewport.height + margin * 2;
+  const ox = viewport.minX - margin;
+  const oy = viewport.minY - margin;
+
+  const density = map.fogDensity || 'medium'; // 'light' | 'medium' | 'dense'
+  const densityAlpha = density === 'light' ? 0.18 : density === 'dense' ? 0.52 : 0.32;
+  const speed = reducedMotion ? 0 : 28; // Slow atmospheric drift (28 px/s)
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+
+  // 1. Overall base ambient mist layer
+  ctx.fillStyle = `rgba(148, 185, 215, ${densityAlpha * 0.22})`;
+  ctx.fillRect(viewport.minX, viewport.minY, viewport.width, viewport.height);
+
+  // 2. Multi-layer drifting fog banks (soft radial clusters)
+  const bankCount = quality === 'eco' ? 8 : quality === 'ultra' ? 24 : 14;
+  const radius = Math.max(160, Math.min(420, (viewport.width + viewport.height) * 0.24));
+
+  for (let b = 0; b < bankCount; b++) {
+    const layerSpeed = speed * (0.6 + (b % 4) * 0.25);
+    const seedX = (b * 0.381966 + (b % 7) * 0.11) % 1;
+    const seedY = (b * 0.535897 + (b % 11) * 0.09) % 1;
+
+    const driftX = time * layerSpeed;
+    const driftY = Math.sin(time * 0.12 + b * 1.7) * 45;
+
+    const cx = ((seedX * vw + driftX) % vw + vw) % vw + ox;
+    const cy = ((seedY * vh + driftY) % vh + vh) % vh + oy;
+
+    const pulse = Math.sin(time * 0.2 + b * 2.3) * 0.15;
+    const r = radius * (0.85 + (b % 3) * 0.2 + pulse);
+    const alpha = densityAlpha * (0.28 + (b % 5) * 0.08);
+
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
+    grad.addColorStop(0, `rgba(180, 215, 240, ${alpha})`);
+    grad.addColorStop(0.55, `rgba(150, 190, 220, ${alpha * 0.45})`);
+    grad.addColorStop(1, 'rgba(150, 190, 220, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 3. Wisp streaks (horizontal crawling mist ribbons)
+  const wisps = quality === 'eco' ? 4 : quality === 'ultra' ? 12 : 7;
+  for (let w = 0; w < wisps; w++) {
+    const wSpeed = speed * (1.1 + (w % 3) * 0.3);
+    const wx = ((w * 0.618 * vw + time * wSpeed) % vw + vw) % vw + ox;
+    const wy = oy + ((w * 0.414 * vh + Math.cos(time * 0.15 + w) * 35) % vh + vh) % vh;
+    const wLen = (280 + (w % 4) * 120) / Math.sqrt(zoom);
+    const wHeight = (40 + (w % 3) * 20) / Math.sqrt(zoom);
+
+    const wGrad = ctx.createLinearGradient(wx, wy, wx + wLen, wy);
+    const wAlpha = densityAlpha * 0.22;
+    wGrad.addColorStop(0, 'rgba(190, 225, 250, 0)');
+    wGrad.addColorStop(0.5, `rgba(190, 225, 250, ${wAlpha})`);
+    wGrad.addColorStop(1, 'rgba(190, 225, 250, 0)');
+
+    ctx.fillStyle = wGrad;
+    ctx.beginPath();
+    ctx.ellipse(wx + wLen * 0.5, wy, wLen * 0.5, wHeight * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+  return true;
+}

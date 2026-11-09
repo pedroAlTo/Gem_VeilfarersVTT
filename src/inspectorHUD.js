@@ -443,6 +443,9 @@ export class ElementInspectorHUD {
     const state = store.getState();
     const map = store.getActiveMap();
     const isRain = !!(map.showRain || state.showRain);
+    const rainIntensity = map.rainIntensity || state.rainIntensity || 'rain';
+    const isFog = !!(map.showFog || state.showFog);
+    const fogDensity = map.fogDensity || state.fogDensity || 'medium';
 
     this.container.innerHTML = sanitizeHTML(`
       <div class="element-inspector glass-panel">
@@ -480,10 +483,27 @@ export class ElementInspectorHUD {
             </div>
 
             <div class="insp-col" style="flex: 2;">
-              <label>Weather FX</label>
-              <button class="hud-btn hud-btn-xs ${isRain ? 'hud-btn-primary active' : 'hud-btn-secondary'}" id="insp_water_rain_toggle">
-                ${isRain ? '🌧️ RAIN ACTIVE' : '🌧️ RAIN OFF'}
-              </button>
+              <label>Lluvia</label>
+              <div style="display:flex;gap:3px">
+                <button class="hud-btn hud-btn-xs ${isRain ? 'hud-btn-primary active' : 'hud-btn-secondary'}" id="insp_water_rain_toggle" style="flex:1">
+                  ${isRain ? '🌧️ ON' : '🌧️ OFF'}
+                </button>
+                <button class="hud-btn hud-btn-xs hud-btn-secondary" id="insp_water_rain_intensity" title="Ciclar intensidad: Llovizna, Normal, Tormenta">
+                  ${rainIntensity === 'drizzle' ? 'Llovizna' : rainIntensity === 'storm' ? 'Tormenta' : 'Normal'}
+                </button>
+              </div>
+            </div>
+
+            <div class="insp-col" style="flex: 2;">
+              <label>Niebla</label>
+              <div style="display:flex;gap:3px">
+                <button class="hud-btn hud-btn-xs ${isFog ? 'hud-btn-primary active' : 'hud-btn-secondary'}" id="insp_water_fog_toggle" style="flex:1">
+                  ${isFog ? '🌫️ ON' : '🌫️ OFF'}
+                </button>
+                <button class="hud-btn hud-btn-xs hud-btn-secondary" id="insp_water_fog_density" title="Ciclar densidad: Bruma, Media, Densa">
+                  ${fogDensity === 'light' ? 'Bruma' : fogDensity === 'dense' ? 'Densa' : 'Media'}
+                </button>
+              </div>
             </div>
 
             <div class="insp-col insp-actions" style="max-width: 90px; justify-content: flex-end;">
@@ -551,6 +571,38 @@ export class ElementInspectorHUD {
         const next = !isRain;
         store.updateActiveMap({ showRain: next });
         store.update({ showRain: next });
+        this.renderWaterInspector(zone);
+      };
+    }
+
+    const rainIntensityBtn = this.container.querySelector('#insp_water_rain_intensity');
+    if (rainIntensityBtn) {
+      rainIntensityBtn.onclick = () => {
+        const cycle = { drizzle: 'rain', rain: 'storm', storm: 'drizzle' };
+        const next = cycle[rainIntensity] || 'rain';
+        store.updateActiveMap({ rainIntensity: next });
+        store.update({ rainIntensity: next });
+        this.renderWaterInspector(zone);
+      };
+    }
+
+    const fogBtn = this.container.querySelector('#insp_water_fog_toggle');
+    if (fogBtn) {
+      fogBtn.onclick = () => {
+        const next = !isFog;
+        store.updateActiveMap({ showFog: next });
+        store.update({ showFog: next });
+        this.renderWaterInspector(zone);
+      };
+    }
+
+    const fogDensityBtn = this.container.querySelector('#insp_water_fog_density');
+    if (fogDensityBtn) {
+      fogDensityBtn.onclick = () => {
+        const cycle = { light: 'medium', medium: 'dense', dense: 'light' };
+        const next = cycle[fogDensity] || 'medium';
+        store.updateActiveMap({ fogDensity: next });
+        store.update({ fogDensity: next });
         this.renderWaterInspector(zone);
       };
     }

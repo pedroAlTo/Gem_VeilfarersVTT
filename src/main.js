@@ -668,9 +668,24 @@ function setupKeyboardShortcuts() {
 function openMultiplayerModal() { return openSessionLobby(); }
 function setupAutoJoinFromURL() {
   if (LOCAL_ONLY) return;
-  const room = new URLSearchParams(location.search).get('room');
-  const invite = new URLSearchParams(location.hash.slice(1)).get('invite');
-  if (room && invite) openSessionLobby(`${room}.${invite}`, { joinOnly: true });
+  const searchParams = new URLSearchParams(location.search);
+  const joinParam = searchParams.get('join') || searchParams.get('room');
+  const hashInvite = new URLSearchParams(location.hash.slice(1)).get('invite');
+  const searchInvite = searchParams.get('invite');
+
+  if (joinParam) {
+    // Fase 1: Enrutamiento directo por URL — forzar automáticamente rol a player para invitados
+    store.update({ userRole: 'player' });
+
+    let fullCode = joinParam;
+    if (joinParam.includes('.')) {
+      fullCode = joinParam;
+    } else if (hashInvite || searchInvite) {
+      fullCode = `${joinParam}.${hashInvite || searchInvite}`;
+    }
+
+    openSessionLobby(fullCode, { joinOnly: true });
+  }
 }
 
 // --- Data Export / Import Modal ---

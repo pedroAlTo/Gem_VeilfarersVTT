@@ -248,6 +248,13 @@ export class NetworkManager {
     if (this.store.sessionRole !== 'player') throw new Error('Join a game first.');
     return this.request('IMPORT_CHARACTER', { token: portableCharacter(token) });
   }
+  async claimToken(tokenId) {
+    if (this.store.sessionRole !== 'player') {
+      this.store.assignTokenControllers(tokenId, [this.store.memberId || 'keeper']);
+      return { claimed: true, tokenId };
+    }
+    return this.request('CLAIM_TOKEN', { tokenId });
+  }
   async sendChat({ text, recipientId = TABLE, clientId = id() }) {
     const payload = chatRequest({ text, recipientId, clientId });
     if (this.store.sessionRole === 'player') {
@@ -393,6 +400,13 @@ export class NetworkManager {
           this.store.validateSelections();
           this.joinReady?.();
           this.joinReady = null;
+          if (assigned.length === 0 && !this.store.state.claimedTokenId) {
+            setTimeout(() => {
+              import('./rosterManager.js').then(({ openClaimCharacterModal }) => {
+                openClaimCharacterModal();
+              }).catch(() => {});
+            }, 300);
+          }
         } catch (e) {
           if (this.joinFailed) this.disconnect(new Error('Could not open the Keeper’s map: ' + e.message));
           else notify(`Invalid session state: ${e.message}`, 'error');
@@ -436,6 +450,19 @@ export class NetworkManager {
         const result = this.acceptCharacter(data.token, this.members.get(senderId)?.id || senderId);
         conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, result }));
       } catch (error) { conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error: error.message })); }
+      return;
+    }
+    if (data.type === 'CLAIM_TOKEN') {
+      const conn = this.connections.get(senderId);
+      const memberId = this.members.get(senderId)?.id || senderId;
+      const target = this.store.state.tokens.find(t => t.id === data.tokenId);
+      if (target && !isDrone(target) && (!target.ownerId || target.ownerId === 'keeper' || target.ownerId === '')) {
+        this.store.assignTokenControllers(data.tokenId, [memberId]);
+        this.syncAll();
+        conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, result: { claimed: true, tokenId: data.tokenId } }));
+      } else {
+        conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error: 'Ficha no disponible o ya reclamada.' }));
+      }
       return;
     }
     if (data.type === 'TOKEN_UPDATE' || data.type === 'TOKEN_MOVE') {

@@ -102,10 +102,12 @@ export class FogOfWarEngine {
     mapHeight,
     mapId = 'default_map',
     walls = [],
+    lights = [],
     viewers = [],
     lightingEngine,
     exploredOpacity = 0.88,
-    isKeeperGM = false
+    isKeeperGM = false,
+    stamp = true
   }) {
     this.resize(mapWidth, mapHeight);
     const fCtx = this.fogCtx;
@@ -133,8 +135,49 @@ export class FogOfWarEngine {
 
       if (poly && poly.length >= 3) {
         currentVisionPolygons.push(poly);
-        // Stamp this newly discovered field into the persistent exploration canvas
-        this.stampExploration(expCtx, poly);
+        // Stamp this newly discovered field into the persistent exploration memory only when confirmed
+        if (stamp) {
+          this.stampExploration(expCtx, poly);
+        }
+      }
+    }
+
+    // 1b. Calculate illumination for lights in VISITED areas
+    // Lights located in areas already explored by the user show through the shroud
+    const visitedLightPolygons = [];
+    if (lights && lights.length > 0) {
+      for (const light of lights) {
+        const lx = Math.round(light.x);
+        const ly = Math.round(light.y);
+        if (lx < 0 || ly < 0 || lx >= mapWidth || ly >= mapHeight) continue;
+
+        let isVisited = false;
+        try {
+          const pixel = expCtx.getImageData(lx, ly, 1, 1).data;
+          isVisited = (pixel[0] > 64 || pixel[3] > 64);
+        } catch {
+          isVisited = false;
+        }
+
+        if (isVisited) {
+          const lRadius = light.radius || 200;
+          const lFacing = light.facingAngle ?? null;
+          const lAngle = light.visionAngle ?? 360;
+          const lPoly = lightingEngine.computeVisibilityPolygon(
+            lx,
+            ly,
+            lRadius,
+            walls,
+            lFacing,
+            lAngle
+          );
+          if (lPoly && lPoly.length >= 3) {
+            visitedLightPolygons.push({ poly: lPoly, intensity: light.intensity ?? 0.8 });
+            if (stamp) {
+              this.stampExploration(expCtx, lPoly);
+            }
+          }
+        }
       }
     }
 
@@ -166,6 +209,18 @@ export class FogOfWarEngine {
       }
       fCtx.closePath();
       fCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
+      fCtx.fill();
+    }
+
+    // Also cut out illumination from visited map lights so explored lit zones remain illuminated
+    for (const { poly, intensity } of visitedLightPolygons) {
+      fCtx.beginPath();
+      fCtx.moveTo(poly[0].x, poly[0].y);
+      for (let i = 1; i < poly.length; i++) {
+        fCtx.lineTo(poly[i].x, poly[i].y);
+      }
+      fCtx.closePath();
+      fCtx.fillStyle = `rgba(0, 0, 0, ${Math.min(1.0, Math.max(0.65, intensity))})`;
       fCtx.fill();
     }
 

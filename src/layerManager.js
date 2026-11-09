@@ -20,7 +20,7 @@ export class LayerManagerHUD {
     this.initDrag();
     this.render();
     store.subscribe((state, keys) => {
-      if (keys.includes('activeLayer') || keys.includes('layerVisibility') || keys.includes('layerLocked') || keys.includes('userRole') || keys.includes('fogOfWar') || keys.includes('fogExploredOpacity')) {
+      if (keys.includes('activeLayer') || keys.includes('layerVisibility') || keys.includes('layerLocked') || keys.includes('userRole') || keys.includes('fogOfWar') || keys.includes('fogExploredOpacity') || keys.includes('showRain') || keys.includes('rainIntensity') || keys.includes('showFog') || keys.includes('fogDensity') || keys.includes('activeMapId')) {
         this.render();
       }
     });
@@ -104,6 +104,11 @@ export class LayerManagerHUD {
     const state = store.getState();
     const activeLayer = state.activeLayer;
     const isKeeper = state.userRole === 'keeper';
+    const map = store.getActiveMap() || {};
+    const isRain = !!(map.showRain || state.showRain);
+    const rainIntensity = map.rainIntensity || state.rainIntensity || 'rain';
+    const isFog = !!(map.showFog || state.showFog);
+    const fogDensity = map.fogDensity || state.fogDensity || 'medium';
 
     this.container.innerHTML = sanitizeHTML(`
       <div class="layer-bar glass-panel ${this.isMinimized ? 'layer-bar-minimized' : ''}">
@@ -166,6 +171,28 @@ export class LayerManagerHUD {
                 </button>
                 <button class="hud-btn hud-btn-xs" id="btn_reveal_fow" style="flex: 1; font-size: 9px; padding: 4px;" title="Revelar todo el mapa">
                   👁️ REVELAR
+                </button>
+              </div>
+            </div>
+
+            <div class="layer-weather-section" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0, 243, 255, 0.25);">
+              <div style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: 'Rajdhani', sans-serif; margin-bottom: 6px;">
+                🌧️ EFECTOS OVERLAY & CLIMA
+              </div>
+              <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                <button class="hud-btn hud-btn-xs ${isRain ? 'active' : ''}" id="layer_btn_toggle_rain" style="flex: 1; font-size: 10px; padding: 4px;" title="Alternar Lluvia en Capa Overlay">
+                  ${isRain ? '🌧️ LLUVIA ON' : '🌧️ LLUVIA OFF'}
+                </button>
+                <button class="hud-btn hud-btn-xs" id="layer_btn_cycle_rain" style="font-size: 9px; padding: 4px;" title="Intensidad: Llovizna, Normal, Tormenta">
+                  ⚡ ${rainIntensity === 'drizzle' ? 'Llovizna' : rainIntensity === 'storm' ? 'Tormenta' : 'Normal'}
+                </button>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="hud-btn hud-btn-xs ${isFog ? 'active' : ''}" id="layer_btn_toggle_fog" style="flex: 1; font-size: 10px; padding: 4px;" title="Alternar Niebla Ambiental">
+                  ${isFog ? '🌫️ NIEBLA ON' : '🌫️ NIEBLA OFF'}
+                </button>
+                <button class="hud-btn hud-btn-xs" id="layer_btn_cycle_fog" style="font-size: 9px; padding: 4px;" title="Densidad: Bruma, Media, Densa">
+                  ${fogDensity === 'light' ? 'Bruma' : fogDensity === 'dense' ? 'Densa' : 'Media'}
                 </button>
               </div>
             </div>
@@ -263,6 +290,55 @@ export class LayerManagerHUD {
           title: '👁️ MAPA REVELADO',
           details: 'Toda la niebla del mapa ha sido revelada por el Keeper.'
         });
+      };
+    }
+
+    const state = store.getState();
+    const map = store.getActiveMap() || {};
+    const isRain = !!(map.showRain || state.showRain);
+    const rainIntensity = map.rainIntensity || state.rainIntensity || 'rain';
+    const isFog = !!(map.showFog || state.showFog);
+    const fogDensity = map.fogDensity || state.fogDensity || 'medium';
+
+    const rainToggleBtn = this.container.querySelector('#layer_btn_toggle_rain');
+    if (rainToggleBtn) {
+      rainToggleBtn.onclick = () => {
+        const next = !isRain;
+        store.updateActiveMap({ showRain: next });
+        store.update({ showRain: next });
+        this.render();
+      };
+    }
+
+    const rainIntensityBtn = this.container.querySelector('#layer_btn_cycle_rain');
+    if (rainIntensityBtn) {
+      rainIntensityBtn.onclick = () => {
+        const cycle = { drizzle: 'rain', rain: 'storm', storm: 'drizzle' };
+        const next = cycle[rainIntensity] || 'rain';
+        store.updateActiveMap({ rainIntensity: next });
+        store.update({ rainIntensity: next });
+        this.render();
+      };
+    }
+
+    const fogToggleBtn = this.container.querySelector('#layer_btn_toggle_fog');
+    if (fogToggleBtn) {
+      fogToggleBtn.onclick = () => {
+        const next = !isFog;
+        store.updateActiveMap({ showFog: next });
+        store.update({ showFog: next });
+        this.render();
+      };
+    }
+
+    const fogDensityBtn = this.container.querySelector('#layer_btn_cycle_fog');
+    if (fogDensityBtn) {
+      fogDensityBtn.onclick = () => {
+        const cycle = { light: 'medium', medium: 'dense', dense: 'light' };
+        const next = cycle[fogDensity] || 'medium';
+        store.updateActiveMap({ fogDensity: next });
+        store.update({ fogDensity: next });
+        this.render();
       };
     }
   }

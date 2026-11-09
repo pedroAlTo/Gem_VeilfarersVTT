@@ -1,6 +1,7 @@
 import { openCharacterImport } from './characterManager.js';
 import { dossierDialog } from './dossierUI.js';
 import { sanitizeHTML, escapeHTML, notify } from './ui.js';
+import { isDrone } from './tokenPermissions.js';
 // src/rosterManager.js
 // Operative Roster and NPC/Adversary Manager
 
@@ -148,4 +149,94 @@ export class RosterManager {
       } catch (err) { modal.querySelector('.dossier-error').textContent = err.message; }
     };
   }
+}
+
+// Fase 3: Modal automático para reclamar personaje al entrar a la sesión
+export function openClaimCharacterModal() {
+  const state = store.getState();
+  const availablePCs = state.tokens.filter(t => t.isPlayer && !isDrone(t) && (!t.ownerId || t.ownerId === 'keeper' || t.ownerId === ''));
+
+  const modal = dossierDialog('RECLAMAR PERSONAJE', `
+    <span class="dossier-eyebrow">BIENVENIDO A BORDO / SELECCIÓN DE TRIPULANTE</span>
+    <h2>Elige tu personaje para esta misión</h2>
+    <p class="dossier-muted">Reclama un operativo disponible de la tripulación o importa tu ficha creada con el Character Creator.</p>
+
+    <section class="claim-crew-section" style="margin-top: 14px;">
+      <h3 class="dossier-eyebrow" style="color: #00f3ff; margin-bottom: 8px;">OPCIÓN A: TRIPULACIÓN DISPONIBLE (${availablePCs.length})</h3>
+      <div class="claim-crew-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px;">
+        ${availablePCs.map(tok => `
+          <article class="roster-token-card glass-panel claim-card" style="padding: 10px; cursor: pointer; border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between;" data-claim-id="${escapeHTML(tok.id)}">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <img src="${tok.avatarUrl || '/assets/tokens/captain_harker.jpg'}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #00f3ff;" alt="" />
+              <div>
+                <strong style="color: #fff; font-size: 13px; display: block;">${escapeHTML(tok.name)}</strong>
+                <small style="color: var(--cyan-pearl); font-size: 11px;">${escapeHTML(tok.path || 'Operativo')}</small>
+              </div>
+            </div>
+            <div style="margin-top: 8px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;">
+              <span>HP: ${tok.hp.current}/${tok.hp.max}</span>
+              <span>Armadura: ${tok.armor?.current || 0}</span>
+              <span>Evasión: ${tok.evasion ?? '—'}</span>
+            </div>
+            <button class="hud-btn hud-btn-primary hud-btn-xs" style="width: 100%; margin-top: 8px;" data-claim-btn="${escapeHTML(tok.id)}">
+              🎯 Reclamar
+            </button>
+          </article>
+        `).join('') || '<p class="dossier-muted">No hay operativos libres en la escena actual.</p>'}
+      </div>
+    </section>
+
+    <section class="claim-import-section" style="border-top: 1px solid rgba(0, 243, 255, 0.2); padding-top: 14px;">
+      <h3 class="dossier-eyebrow" style="color: #00f3ff; margin-bottom: 6px;">OPCIÓN B: IMPORTAR MI VIAJERO</h3>
+      <p class="dossier-muted" style="margin-bottom: 10px;">¿Tienes tu propio archivo de personaje exportado (.json)? Súbelo para saltar directamente a la acción.</p>
+      <button class="hud-btn hud-btn-primary" id="btn_claim_import_file">
+        📂 Importar mi Viajero (.JSON)
+      </button>
+    </section>
+  `);
+
+  modal.querySelectorAll('[data-claim-btn], [data-claim-id]').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const tokenId = btn.dataset.claimBtn || btn.dataset.claimId;
+      if (!tokenId) return;
+      try {
+        if (network.claimToken) {
+          await network.claimToken(tokenId);
+        } else {
+          store.assignTokenControllers(tokenId, [store.memberId || 'player']);
+        }
+        store.update({ selectedTokenId: tokenId, claimedTokenId: tokenId, activeTool: 'select', activeLayer: 'tokens' });
+        const targetToken = store.getState().tokens.find(t => t.id === tokenId);
+        if (targetToken && window.veilCanvas) {
+          const cv = window.veilCanvas;
+          cv.panX = cv.displayWidth / 2 - targetToken.x * cv.zoom;
+          cv.panY = cv.displayHeight / 2 - targetToken.y * cv.zoom;
+        }
+        notify(`¡Has reclamado a ${targetToken?.name || 'tu personaje'}!`);
+        modal.remove();
+      } catch (err) {
+        notify(err.message, 'error');
+      }
+    };
+  });
+
+  const importBtn = modal.querySelector('#btn_claim_import_file');
+  if (importBtn) {
+    importBtn.onclick = () => {
+      modal.remove();
+      openCharacterImport({
+        single: true,
+        onImport: async entries => {
+          for (const entry of entries) {
+            if (network.importCharacter) await network.importCharacter(entry.token);
+          }
+          notify('¡Personaje importado y asignado!');
+          return entries.length;
+        }
+      });
+    };
+  }
+
+  return modal;
 }

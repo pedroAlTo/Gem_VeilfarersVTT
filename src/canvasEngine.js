@@ -3,7 +3,7 @@
 // Drag-Resizable Templates, Expanded Particle FX, and Multi-Layer Support
 
 import { LightingEngine } from './lightingEngine.js';
-import { drawWaterSurface, traceWater, waterBounds } from './surfaceFX.js';
+import { drawWaterSurface, traceWater, waterBounds, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
 import { drawTokenConditions } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
@@ -282,6 +282,8 @@ export class CanvasEngine {
     let lastTouchX = 0;
     let lastTouchY = 0;
     let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
     let longPressTimer = null;
     let touchMoved = false;
     let touchStartX = 0;
@@ -317,31 +319,22 @@ export class CanvasEngine {
         touchStartX = touch.clientX;
         touchStartY = touch.clientY;
 
-        // Double Tap Detection
+        // Double Tap Detection (Mobile & Tablets)
         const now = Date.now();
         const timeDiff = now - lastTapTime;
-        if (timeDiff < 320 && timeDiff > 40) {
-          // Double Tap: Check if tapped on a token
+        const distFromLastTap = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
+        if (timeDiff < 360 && timeDiff > 40 && distFromLastTap < 32) {
+          clearLongPress();
           const rect = this.canvas.getBoundingClientRect();
           const sx = touch.clientX - rect.left;
           const sy = touch.clientY - rect.top;
           const world = this.screenToWorld(sx, sy);
-          const state = store.getState();
-          const map = store.getActiveMap() || {};
-          const gridSize = map.gridSize || 64;
-          const tokens = state.tokens.filter(t => t.mapId === state.activeMapId);
-
-          for (let i = tokens.length - 1; i >= 0; i--) {
-            const tok = tokens[i];
-            const radius = (tok.size * gridSize) / 2;
-            if (Math.hypot(world.x - tok.x, world.y - tok.y) <= radius) {
-              if (window.veilTokenHUD) {
-                window.veilTokenHUD.openCharacterSheetModal(tok);
-              }
-              break;
-            }
-          }
+          this.handleDoubleAction(world.x, world.y, e);
+          lastTapTime = 0;
+          return;
         }
+        lastTapX = touch.clientX;
+        lastTapY = touch.clientY;
         lastTapTime = now;
 
         // Long Press Detection (Hold for 500ms)
@@ -523,241 +516,13 @@ export class CanvasEngine {
       }
     });
 
-    // Double-click handler:
-    // 1. Element handles: double click on line creates new anchor; double click on endpoint starts new side
-    // 2. Closes in-progress water polygon
-    // 3. Double-click token opens character sheet
+    // Double-click handler (Desktop mouse)
     this.canvas.addEventListener('dblclick', (e) => {
-      const state = store.getState();
-      const isKeeper = state.userRole === 'keeper';
-      if (state.activeTool === 'water') {
-        e.preventDefault();
-        if (this.waterPolyPoints.length) this.finishWaterPolygon();
-        return;
-      }
-
       const rect = this.canvas.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
       const world = this.screenToWorld(sx, sy);
-      const map = store.getActiveMap();
-
-      // --- KEEPER ELEMENT HANDLES (Walls, Anomalies, Water) ---
-      if (isKeeper) {
-        // A. Check Endpoints: si dos puntos están juntos unelos en un trazado compuesto, haciendo doble click se separan
-        // 1. Walls Endpoints
-        const nearEndpoints = [];
-        for (const w of (map.walls || [])) {
-          const d1 = Math.hypot(world.x - w.x1, world.y - w.y1);
-          const d2 = Math.hypot(world.x - w.x2, world.y - w.y2);
-          if (d1 <= 16) {
-            nearEndpoints.push({ wall: w, pt: 'p1', x: w.x1, y: w.y1, otherX: w.x2, otherY: w.y2 });
-          } else if (d2 <= 16) {
-            nearEndpoints.push({ wall: w, pt: 'p2', x: w.x2, y: w.y2, otherX: w.x1, otherY: w.y1 });
-          }
-        }
-
-        if (nearEndpoints.length >= 2) {
-          // SEPARATE COMPOUND JOINT ON DOUBLE CLICK
-          undoManager.pushCurrentState('Separar Muros Compuestos');
-
-          for (const ep of nearEndpoints) {
-            const dx = ep.otherX - ep.x;
-            const dy = ep.otherY - ep.y;
-            const len = Math.hypot(dx, dy);
-            if (len > 0) {
-              const sepDist = Math.max(10, Math.min(26, len * 0.35));
-              const newX = Math.round(ep.x + (dx / len) * sepDist);
-              const newY = Math.round(ep.y + (dy / len) * sepDist);
-              if (ep.pt === 'p1') {
-                ep.wall.x1 = newX;
-                ep.wall.y1 = newY;
-              } else {
-                ep.wall.x2 = newX;
-                ep.wall.y2 = newY;
-              }
-              store.updateWall(ep.wall.id, {
-                x1: ep.wall.x1,
-                y1: ep.wall.y1,
-                x2: ep.wall.x2,
-                y2: ep.wall.y2
-              });
-              network.broadcast({
-                type: 'WALL_UPDATE',
-                wallId: ep.wall.id,
-                data: { x1: ep.wall.x1, y1: ep.wall.y1, x2: ep.wall.x2, y2: ep.wall.y2 }
-              });
-            }
-          }
-          audio.playClockTick();
-          store.addCombatLog({
-            type: 'SYSTEM',
-            title: '✂️ MUROS SEPARADOS',
-            details: `Vértice compuesto separado. Se han independizado ${nearEndpoints.length} extremos de muro.`
-          });
-          return;
-        } else if (nearEndpoints.length === 1) {
-          // Single standalone endpoint: double click starts drawing a new wall segment from it
-          const ep = nearEndpoints[0];
-          this.wallStart = { x: ep.x, y: ep.y };
-          this.wallCurrent = { x: Math.round(world.x), y: Math.round(world.y) };
-          store.update({ activeTool: 'wall', selectedWallId: ep.wall.id });
-          audio.playClockTick();
-          return;
-        }
-
-        // 2. Line Anomalies & Lasers Endpoints (Point A or Point B)
-        for (const eff of (map.effects || [])) {
-          if (eff.shape === 'line' || eff.type === 'laser') {
-            const x2 = eff.x2 ?? (eff.x + 260);
-            const y2 = eff.y2 ?? eff.y;
-            const dA = Math.hypot(world.x - eff.x, world.y - eff.y);
-            const dB = Math.hypot(world.x - x2, world.y - y2);
-
-            if (dA <= 16 || dB <= 16) {
-              const startX = dB <= 16 ? x2 : eff.x;
-              const startY = dB <= 16 ? y2 : eff.y;
-              const dir = dB <= 16 ? 1 : -1;
-              const newEff = store.addEffect({
-                type: eff.type,
-                shape: 'line',
-                color: eff.color,
-                beamWidth: eff.beamWidth,
-                intensity: eff.intensity,
-                frequency: eff.frequency,
-                label: eff.label,
-                x: startX,
-                y: startY,
-                x2: startX + 220 * dir,
-                y2: startY
-              });
-              store.update({ selectedEffectId: newEff.id, activeTool: 'select' });
-              audio.playClockTick();
-              return;
-            }
-          }
-        }
-
-        // B. Check Lines Between Two Points: "hacer doble click en una linea entre dos puntos crea un nuevo anclaje"
-        // 1. Walls: Split segment into two contiguous walls sharing the new anchor point
-        for (const w of (map.walls || [])) {
-          const proj = this.projectPointToSegment(world.x, world.y, w.x1, w.y1, w.x2, w.y2);
-          if (proj.dist <= 15 && proj.t > 0.06 && proj.t < 0.94) {
-            const snapped = this.snapPoint(Math.round(proj.x), Math.round(proj.y), 16);
-            const anchorX = snapped.x;
-            const anchorY = snapped.y;
-
-            const wall1 = { ...w, x2: anchorX, y2: anchorY };
-            const wall2 = {
-              ...w,
-              id: 'wall_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-              x1: anchorX,
-              y1: anchorY,
-              x2: w.x2,
-              y2: w.y2
-            };
-
-            const updatedWalls = (map.walls || []).map(existing => existing.id === w.id ? wall1 : existing);
-            updatedWalls.push(wall2);
-            store.updateActiveMap({ walls: updatedWalls });
-            store.update({ selectedWallId: wall1.id });
-            audio.playClockTick();
-            return;
-          }
-        }
-
-        // 2. Polygon Water Zones: Insert new vertex between the two clicked vertices
-        for (const zone of (map.waterZones || [])) {
-          if (zone.shape === 'polygon' && zone.points && zone.points.length >= 3) {
-            const pts = zone.points;
-            for (let i = 0; i < pts.length; i++) {
-              const p1 = pts[i];
-              const p2 = pts[(i + 1) % pts.length];
-              const proj = this.projectPointToSegment(world.x, world.y, p1.x, p1.y, p2.x, p2.y);
-              if (proj.dist <= 15 && proj.t > 0.06 && proj.t < 0.94) {
-                const newPts = [...pts];
-                newPts.splice(i + 1, 0, { x: Math.round(proj.x), y: Math.round(proj.y) });
-                store.updateWaterZone(zone.id, { points: newPts });
-                store.update({ selectedWaterId: zone.id });
-                audio.playClockTick();
-                return;
-              }
-            }
-          }
-        }
-
-        // 3. Persistent Anomaly Effects: Insert new vertex or split line
-        for (const eff of (map.effects || [])) {
-          if (eff.shape === 'polygon' && eff.points && eff.points.length >= 3) {
-            const pts = eff.points;
-            for (let i = 0; i < pts.length; i++) {
-              const p1 = pts[i];
-              const p2 = pts[(i + 1) % pts.length];
-              const proj = this.projectPointToSegment(world.x, world.y, p1.x, p1.y, p2.x, p2.y);
-              if (proj.dist <= 15 && proj.t > 0.06 && proj.t < 0.94) {
-                const newPts = [...pts];
-                newPts.splice(i + 1, 0, { x: Math.round(proj.x), y: Math.round(proj.y) });
-                store.updateEffect(eff.id, { points: newPts });
-                store.update({ selectedEffectId: eff.id });
-                audio.playClockTick();
-                return;
-              }
-            }
-          } else if (eff.shape === 'line' || eff.type === 'laser') {
-            const x2 = eff.x2 ?? (eff.x + 260);
-            const y2 = eff.y2 ?? eff.y;
-            const proj = this.projectPointToSegment(world.x, world.y, eff.x, eff.y, x2, y2);
-            if (proj.dist <= 15 && proj.t > 0.06 && proj.t < 0.94) {
-              const anchorX = Math.round(proj.x);
-              const anchorY = Math.round(proj.y);
-
-              if (eff.type === 'laser') {
-                // Split laser beam into two connected segments
-                store.updateEffect(eff.id, { x2: anchorX, y2: anchorY });
-                const newLaser = store.addEffect({
-                  type: 'laser',
-                  shape: 'line',
-                  color: eff.color,
-                  beamWidth: eff.beamWidth,
-                  label: eff.label,
-                  x: anchorX,
-                  y: anchorY,
-                  x2: x2,
-                  y2: y2
-                });
-                store.update({ selectedEffectId: newLaser.id });
-              } else {
-                // Convert other line anomalies to a 3-point polygon anchor
-                store.updateEffect(eff.id, {
-                  shape: 'polygon',
-                  points: [
-                    { x: eff.x, y: eff.y },
-                    { x: anchorX, y: anchorY },
-                    { x: x2, y: y2 }
-                  ]
-                });
-              }
-              audio.playClockTick();
-              return;
-            }
-          }
-        }
-      }
-
-      // --- TOKEN CHARACTER SHEET ---
-      const tokens = store.getTokensForActiveMap();
-      const gridSize = map.gridSize || 64;
-
-      for (let i = tokens.length - 1; i >= 0; i--) {
-        const tok = tokens[i];
-        const radius = (tok.size * gridSize) / 2;
-        if (Math.hypot(world.x - tok.x, world.y - tok.y) <= radius) {
-          if (window.veilTokenHUD) {
-            window.veilTokenHUD.openCharacterSheetModal(tok);
-          }
-          break;
-        }
-      }
+      this.handleDoubleAction(world.x, world.y, e);
     });
 
     // Drag and Drop Images directly onto Canvas
@@ -1447,8 +1212,45 @@ export class CanvasEngine {
       }
 
       if (this.draggedToken) {
-        this.draggedToken.x = world.x - this.dragOffsetX;
-        this.draggedToken.y = world.y - this.dragOffsetY;
+        let nextX = world.x - this.dragOffsetX;
+        let nextY = world.y - this.dragOffsetY;
+
+        // Players cannot cross walls, windows, or closed doors with their token
+        if (state.userRole === 'player' && (map.walls || []).length > 0) {
+          const currX = this.draggedToken.x;
+          const currY = this.draggedToken.y;
+          const origX = this.draggedTokenOrigX ?? currX;
+          const origY = this.draggedTokenOrigY ?? currY;
+
+          const collidesWithBlockingWall = (x1, y1, x2, y2) => {
+            for (const wall of (map.walls || [])) {
+              const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
+              const isBlocking = wallType === 'wall' || wallType === 'window' || (wallType === 'door' && !wall.isOpen);
+              if (isBlocking && this.checkLineIntersection(x1, y1, x2, y2, wall.x1, wall.y1, wall.x2, wall.y2)) {
+                return true;
+              }
+            }
+            return false;
+          };
+
+          const directBlocked = collidesWithBlockingWall(currX, currY, nextX, nextY) || collidesWithBlockingWall(origX, origY, nextX, nextY);
+          if (directBlocked) {
+            const xSlideBlocked = collidesWithBlockingWall(currX, currY, nextX, currY) || collidesWithBlockingWall(origX, origY, nextX, currY);
+            const ySlideBlocked = collidesWithBlockingWall(currX, currY, currX, nextY) || collidesWithBlockingWall(origX, origY, currX, nextY);
+
+            if (!xSlideBlocked) {
+              nextY = currY;
+            } else if (!ySlideBlocked) {
+              nextX = currX;
+            } else {
+              nextX = currX;
+              nextY = currY;
+            }
+          }
+        }
+
+        this.draggedToken.x = nextX;
+        this.draggedToken.y = nextY;
         return;
       }
 
@@ -2174,6 +1976,237 @@ export class CanvasEngine {
     });
   }
 
+  // --- Unified Double-Click / Double-Tap Handler (Desktop, Tablet & Mobile) ---
+  handleDoubleAction(worldX, worldY, originalEvent) {
+    if (originalEvent?.preventDefault) originalEvent.preventDefault();
+    const state = store.getState();
+    const isKeeper = state.userRole === 'keeper';
+    if (state.activeTool === 'water') {
+      if (this.waterPolyPoints && this.waterPolyPoints.length) this.finishWaterPolygon();
+      return;
+    }
+
+    const world = { x: worldX, y: worldY };
+    const map = store.getActiveMap() || {};
+
+    // --- KEEPER ELEMENT HANDLES (Walls, Anomalies, Water) ---
+    if (isKeeper) {
+      // A. Check Endpoints: si dos puntos están juntos unelos en un trazado compuesto, haciendo doble click se separan
+      // 1. Walls Endpoints
+      const nearEndpoints = [];
+      for (const w of (map.walls || [])) {
+        const d1 = Math.hypot(world.x - w.x1, world.y - w.y1);
+        const d2 = Math.hypot(world.x - w.x2, world.y - w.y2);
+        if (d1 <= 16) {
+          nearEndpoints.push({ wall: w, pt: 'p1', x: w.x1, y: w.y1, otherX: w.x2, otherY: w.y2 });
+        } else if (d2 <= 16) {
+          nearEndpoints.push({ wall: w, pt: 'p2', x: w.x2, y: w.y2, otherX: w.x1, otherY: w.y1 });
+        }
+      }
+
+      if (nearEndpoints.length >= 2) {
+        // SEPARATE COMPOUND JOINT ON DOUBLE CLICK
+        undoManager.pushCurrentState('Separar Muros Compuestos');
+
+        for (const ep of nearEndpoints) {
+          const dx = ep.otherX - ep.x;
+          const dy = ep.otherY - ep.y;
+          const len = Math.hypot(dx, dy);
+          if (len > 0) {
+            const sepDist = Math.max(10, Math.min(26, len * 0.35));
+            const newX = Math.round(ep.x + (dx / len) * sepDist);
+            const newY = Math.round(ep.y + (dy / len) * sepDist);
+            if (ep.pt === 'p1') {
+              ep.wall.x1 = newX;
+              ep.wall.y1 = newY;
+            } else {
+              ep.wall.x2 = newX;
+              ep.wall.y2 = newY;
+            }
+            store.updateWall(ep.wall.id, {
+              x1: ep.wall.x1,
+              y1: ep.wall.y1,
+              x2: ep.wall.x2,
+              y2: ep.wall.y2
+            });
+            network.broadcast({
+              type: 'WALL_UPDATE',
+              wallId: ep.wall.id,
+              data: { x1: ep.wall.x1, y1: ep.wall.y1, x2: ep.wall.x2, y2: ep.wall.y2 }
+            });
+          }
+        }
+        audio.playClockTick();
+        store.addCombatLog({
+          type: 'SYSTEM',
+          title: '✂️ MUROS SEPARADOS',
+          details: `Vértice compuesto separado. Se han independizado ${nearEndpoints.length} extremos de muro.`
+        });
+        return;
+      } else if (nearEndpoints.length === 1) {
+        // Single standalone endpoint: double click starts drawing a new wall segment from it
+        const ep = nearEndpoints[0];
+        this.wallStart = { x: ep.x, y: ep.y };
+        this.wallCurrent = { x: Math.round(world.x), y: Math.round(world.y) };
+        store.update({ activeTool: 'wall', selectedWallId: ep.wall.id });
+        audio.playClockTick();
+        return;
+      }
+
+      // 2. Line Anomalies & Lasers Endpoints (Point A or Point B)
+      for (const eff of (map.effects || [])) {
+        if (eff.shape === 'line' || eff.type === 'laser') {
+          const x2 = eff.x2 ?? (eff.x + 260);
+          const y2 = eff.y2 ?? eff.y;
+          const dA = Math.hypot(world.x - eff.x, world.y - eff.y);
+          const dB = Math.hypot(world.x - x2, world.y - y2);
+
+          if (dA <= 16 || dB <= 16) {
+            const startX = dB <= 16 ? x2 : eff.x;
+            const startY = dB <= 16 ? y2 : eff.y;
+            const dir = dB <= 16 ? 1 : -1;
+            const newEff = store.addEffect({
+              type: eff.type,
+              shape: 'line',
+              color: eff.color,
+              beamWidth: eff.beamWidth,
+              intensity: eff.intensity,
+              frequency: eff.frequency,
+              label: eff.label,
+              x: startX,
+              y: startY,
+              x2: startX + 220 * dir,
+              y2: startY
+            });
+            store.update({ selectedEffectId: newEff.id, activeTool: 'select' });
+            audio.playClockTick();
+            return;
+          }
+        }
+      }
+
+      // B. Check Lines Between Two Points: double-click on a line between two points creates a new anchor
+      // 1. Walls: Split segment into two contiguous walls sharing the new anchor point
+      for (const w of (map.walls || [])) {
+        const proj = this.projectPointToSegment(world.x, world.y, w.x1, w.y1, w.x2, w.y2);
+        if (proj.dist <= 15 && proj.t > 0.06 && proj.t < 0.94) {
+          const snapped = this.snapPoint(Math.round(proj.x), Math.round(proj.y), 16);
+          const anchorX = snapped.x;
+          const anchorY = snapped.y;
+
+          const wall1 = { ...w, x2: anchorX, y2: anchorY };
+          const wall2 = {
+            ...w,
+            id: 'wall_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            x1: anchorX,
+            y1: anchorY,
+            x2: w.x2,
+            y2: w.y2
+          };
+
+          const updatedWalls = (map.walls || []).map(existing => existing.id === w.id ? wall1 : existing);
+          updatedWalls.push(wall2);
+          store.updateActiveMap({ walls: updatedWalls });
+          store.update({ selectedWallId: wall1.id });
+          audio.playClockTick();
+          return;
+        }
+      }
+
+      // 2. Polygon Water Zones: Insert new vertex between the two clicked vertices
+      for (const zone of (map.waterZones || [])) {
+        if (zone.shape === 'polygon' && zone.points && zone.points.length >= 3) {
+          const pts = zone.points;
+          for (let i = 0; i < pts.length; i++) {
+            const p1 = pts[i];
+            const p2 = pts[(i + 1) % pts.length];
+            const proj = this.projectPointToSegment(world.x, world.y, p1.x, p1.y, p2.x, p2.y);
+            if (proj.dist <= 15 && proj.t > 0.06 && proj.t < 0.94) {
+              const newPts = [...pts];
+              newPts.splice(i + 1, 0, { x: Math.round(proj.x), y: Math.round(proj.y) });
+              store.updateWaterZone(zone.id, { points: newPts });
+              store.update({ selectedWaterId: zone.id });
+              audio.playClockTick();
+              return;
+            }
+          }
+        }
+      }
+
+      // 3. Persistent Anomaly Effects: Insert new vertex or split line
+      for (const eff of (map.effects || [])) {
+        if (eff.shape === 'polygon' && eff.points && eff.points.length >= 3) {
+          const pts = eff.points;
+          for (let i = 0; i < pts.length; i++) {
+            const p1 = pts[i];
+            const p2 = pts[(i + 1) % pts.length];
+            const proj = this.projectPointToSegment(world.x, world.y, p1.x, p1.y, p2.x, p2.y);
+            if (proj.dist <= 15 && proj.t > 0.06 && proj.t < 0.94) {
+              const newPts = [...pts];
+              newPts.splice(i + 1, 0, { x: Math.round(proj.x), y: Math.round(proj.y) });
+              store.updateEffect(eff.id, { points: newPts });
+              store.update({ selectedEffectId: eff.id });
+              audio.playClockTick();
+              return;
+            }
+          }
+        } else if (eff.shape === 'line' || eff.type === 'laser') {
+          const x2 = eff.x2 ?? (eff.x + 260);
+          const y2 = eff.y2 ?? eff.y;
+          const proj = this.projectPointToSegment(world.x, world.y, eff.x, eff.y, x2, y2);
+          if (proj.dist <= 15 && proj.t > 0.06 && proj.t < 0.94) {
+            const anchorX = Math.round(proj.x);
+            const anchorY = Math.round(proj.y);
+
+            if (eff.type === 'laser') {
+              // Split laser beam into two connected segments
+              store.updateEffect(eff.id, { x2: anchorX, y2: anchorY });
+              const newLaser = store.addEffect({
+                type: 'laser',
+                shape: 'line',
+                color: eff.color,
+                beamWidth: eff.beamWidth,
+                label: eff.label,
+                x: anchorX,
+                y: anchorY,
+                x2: x2,
+                y2: y2
+              });
+              store.update({ selectedEffectId: newLaser.id });
+            } else {
+              // Convert other line anomalies to a 3-point polygon anchor
+              store.updateEffect(eff.id, {
+                shape: 'polygon',
+                points: [
+                  { x: eff.x, y: eff.y },
+                  { x: anchorX, y: anchorY },
+                  { x: x2, y: y2 }
+                ]
+              });
+            }
+            audio.playClockTick();
+            return;
+          }
+        }
+      }
+    }
+
+    // --- TOKEN CHARACTER SHEET ---
+    const tokens = store.getTokensForActiveMap();
+    const gridSize = map.gridSize || 64;
+
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      const tok = tokens[i];
+      const radius = (tok.size * gridSize) / 2;
+      if (Math.hypot(world.x - tok.x, world.y - tok.y) <= radius) {
+        if (window.veilTokenHUD) {
+          window.veilTokenHUD.openCharacterSheetModal(tok);
+        }
+        break;
+      }
+    }
+  }
+
   // --- Particle FX Engine ---
   triggerPing(x, y, color = '#00f3ff') {
     this.pings.push({
@@ -2248,6 +2281,12 @@ export class CanvasEngine {
 
     // A. Dynamic Lighting Pass (Ambient darkness, light fixtures, sirens)
     if (state.layerVisibility.walls_lights !== false && !isKeeperGM) {
+      const lightingTokens = activeTokens.map(tok => {
+        if (this.draggedToken && tok.id === this.draggedToken.id && this.draggedTokenOrigX != null && state.userRole === 'player') {
+          return { ...tok, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY };
+        }
+        return tok;
+      });
       this.lighting.renderLighting({
         ctx,
         mapWidth: this.mapImage.width,
@@ -2256,7 +2295,7 @@ export class CanvasEngine {
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
         lights: map.lights || [],
-        tokens: activeTokens,
+        tokens: lightingTokens,
         time: now * 0.001
       });
     }
@@ -2269,6 +2308,10 @@ export class CanvasEngine {
         if (viewers.length === 0) {
           const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
           if (claimed) viewers = [claimed];
+        }
+        // Anchor vision to origin position during drag so player cannot scan ahead into undiscovered areas
+        if (this.draggedToken && this.draggedTokenOrigX != null) {
+          viewers = viewers.map(v => v.id === this.draggedToken.id ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v);
         }
       } else {
         // Keeper mode: use player tokens to stamp exploration and show visibility
@@ -2285,10 +2328,12 @@ export class CanvasEngine {
         mapHeight: this.mapImage.height,
         mapId: `${state.campaignId}:${map.id}`,
         walls: map.walls || [],
+        lights: map.lights || [],
         viewers,
         lightingEngine: this.lighting,
         exploredOpacity: state.fogExploredOpacity ?? 0.88,
-        isKeeperGM: isKeeperGM
+        isKeeperGM: isKeeperGM,
+        stamp: !this.draggedToken
       });
     }
 
@@ -2372,6 +2417,7 @@ export class CanvasEngine {
         this.renderGridCalibrationGuide(ctx, this.gridCalibStart, this.gridCalibCurrent);
       }
       this.renderRainOverlay(ctx, map, now * 0.001);
+      this.renderFogOverlay(ctx, map, now * 0.001);
     }
 
     ctx.restore();
@@ -2464,44 +2510,43 @@ export class CanvasEngine {
   // --- Rain Weather Overlay Pass ---
   renderRainOverlay(ctx, map, time) {
     if (!map.showRain && !store.getState().showRain) return;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(186, 230, 253, 0.3)';
-    ctx.lineWidth = 1.2;
+    const viewport = {
+      minX: -this.panX / this.zoom,
+      minY: -this.panY / this.zoom,
+      maxX: (this.displayWidth - this.panX) / this.zoom,
+      maxY: (this.displayHeight - this.panY) / this.zoom,
+      width: this.displayWidth / this.zoom,
+      height: this.displayHeight / this.zoom,
+      zoom: this.zoom
+    };
+    renderWeatherRain(ctx, {
+      map,
+      viewport,
+      time,
+      quality: this.fx?.quality || 'balanced',
+      reducedMotion: this.reducedMotion?.matches
+    });
+  }
 
-    const numDrops = 65;
-    const speed = 720;
-    const mapW = this.mapImage?.width || 2000;
-    const mapH = this.mapImage?.height || 2000;
-
-    for (let i = 0; i < numDrops; i++) {
-      const rx = ((i * 53 + time * speed * 0.35) % mapW);
-      const ry = ((i * 89 + time * speed) % mapH);
-      ctx.beginPath();
-      ctx.moveTo(rx, ry);
-      ctx.lineTo(rx - 7, ry + 20);
-      ctx.stroke();
-    }
-
-    // Ripples across water bodies
-    for (const wzone of (map.waterZones || [])) {
-      const bounds=waterBounds(wzone);
-      if (!bounds) continue;
-      ctx.save(); traceWater(ctx,wzone); ctx.clip();
-      for (let r = 0; r < 2; r++) {
-        const rphase = (time * 1.6 + r * 0.5) % 1;
-        const ripX = bounds.minX + (bounds.maxX-bounds.minX)*(0.25+r*0.45);
-        const ripY = bounds.minY + (bounds.maxY-bounds.minY)*(0.35+r*0.35);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - rphase) * 0.35})`;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.ellipse(ripX, ripY, 12 * rphase, 5 * rphase, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-    ctx.restore();
+  // --- Fog Weather Overlay Pass ---
+  renderFogOverlay(ctx, map, time) {
+    if (!map.showFog && !store.getState().showFog) return;
+    const viewport = {
+      minX: -this.panX / this.zoom,
+      minY: -this.panY / this.zoom,
+      maxX: (this.displayWidth - this.panX) / this.zoom,
+      maxY: (this.displayHeight - this.panY) / this.zoom,
+      width: this.displayWidth / this.zoom,
+      height: this.displayHeight / this.zoom,
+      zoom: this.zoom
+    };
+    renderWeatherFog(ctx, {
+      map,
+      viewport,
+      time,
+      quality: this.fx?.quality || 'balanced',
+      reducedMotion: this.reducedMotion?.matches
+    });
   }
 
   // --- Grid Rendering ---
