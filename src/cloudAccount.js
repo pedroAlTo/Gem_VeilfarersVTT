@@ -3,7 +3,8 @@ import { newId } from './persistence.js';
 import { exportNativeCharacter, parseCharacterJSON } from './characterImport.js';
 const env = import.meta.env || {};
 export const cloudConfig = Object.fromEntries(['apiKey', 'authDomain', 'projectId', 'storageBucket', 'appId'].map((key, i) => [key, env[['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_PROJECT_ID', 'VITE_FIREBASE_STORAGE_BUCKET', 'VITE_FIREBASE_APP_ID'][i]] || '']));
-export const cloudConfigured = !LOCAL_ONLY && Object.values(cloudConfig).every(Boolean);
+export const cloudConfigured = !LOCAL_ONLY && ['apiKey', 'authDomain', 'projectId'].every(k => Boolean(cloudConfig[k]));
+export const storageConfigured = cloudConfigured && Boolean(cloudConfig.storageBucket);
 export function portableCharacter(token) {
   const data = structuredClone(token);
   for (const key of ['id', 'mapId', 'ownerId', 'controllerIds', 'scenePositions', 'hidden', 'hideName']) delete data[key];
@@ -27,10 +28,17 @@ export class CloudAccount {
     if (!cloudConfigured) throw new Error(LOCAL_ONLY ? 'Cloud features are disabled in local test mode.' : 'Firebase setup is required. Follow FIREBASE_SETUP.md, then restart the app.');
     if (this.loading) return this.loading;
     this.loading = (async () => {
-      const [app, auth, db, storage] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore'), import('firebase/storage')]);
+      const imports = [import('firebase/app'), import('firebase/auth'), import('firebase/firestore')];
+      if (storageConfigured) imports.push(import('firebase/storage').catch(() => null));
+      const [app, auth, db, storage] = await Promise.all(imports);
       this.authAPI = auth; this.dbAPI = db; this.storageAPI = storage;
       this.app = app.getApps()[0] || app.initializeApp(cloudConfig);
-      this.auth = auth.getAuth(this.app); this.db = db.getFirestore(this.app); this.storage = storage.getStorage(this.app);
+      this.auth = auth.getAuth(this.app); this.db = db.getFirestore(this.app);
+      if (storage) {
+        try { this.storage = storage.getStorage(this.app); } catch { this.storage = null; }
+      } else {
+        this.storage = null;
+      }
       await new Promise(resolve => {
         let first = true;
         auth.onAuthStateChanged(this.auth, user => { this.user = user; this.epoch++; this.emit(); if (first) { first = false; resolve(); } });
@@ -78,6 +86,9 @@ export class CloudAccount {
   }
   async uploadScene(file, scene, progress = () => {}) {
     const uid = await this.identity();
+    if (!this.storageAPI || (!this.storage && !this.storageAPI.ref)) {
+      throw new Error('Firebase Storage no está configurado. Desmarca la opción para usar la imagen en local o mediante URL.');
+    }
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 20 * 1024 * 1024) throw new Error('Choose PNG, JPEG or WebP up to 20 MB.');
     const path = `users/${uid}/maps/${newId()}`, s = this.storageAPI, d = this.dbAPI;
     const ref = s.ref(this.storage, path);

@@ -1,5 +1,5 @@
 import { store } from './state.js';
-import { account, cloudConfigured } from './cloudAccount.js';
+import { account, cloudConfigured, storageConfigured } from './cloudAccount.js';
 import { openAccount } from './accountUI.js';
 import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
@@ -20,8 +20,8 @@ export function openSceneCreator() {
     <form id="scene_form"><label class="dossier-field">Scene name<input class="hud-input" id="scene_name" required maxlength="200" placeholder="Derelict station · Hangar 04"></label>
     <label class="dossier-drop"><strong>Map image</strong><span>PNG, JPEG or WebP · up to 20 MB · 6000 × 6000 px</span><input id="scene_file" type="file" accept="image/png,image/jpeg,image/webp"></label>
     <label class="dossier-field">Or an image URL<input class="hud-input" id="scene_url" type="url" placeholder="https://…"></label>
-    <div class="session-options"><label><input id="scene_cloud" type="checkbox" ${cloudConfigured ? 'checked' : ''}> Save uploaded image and scene to my account</label><button type="button" class="hud-btn" id="scene_account">${account.user ? 'Account connected' : 'Sign in for server uploads'}</button></div>
-    <p class="dossier-muted">Server uploads use Firebase Storage. Without this option, the image is stored only in this local campaign. A web URL stays on its original server.</p>
+    <div class="session-options"><label><input id="scene_cloud" type="checkbox" ${storageConfigured ? 'checked' : ''} ${!storageConfigured ? 'disabled' : ''}> Save uploaded image and scene to my account</label><button type="button" class="hud-btn" id="scene_account">${account.user ? 'Account connected' : 'Sign in for server uploads'}</button></div>
+    <p class="dossier-muted">${storageConfigured ? 'Server uploads use Firebase Storage. Without this option, the image is stored only in this local campaign. A web URL stays on its original server.' : 'Firebase Storage es opcional. Sin él, la imagen se guarda directamente en tu campaña local o pegando una URL web.'}</p>
     <img id="scene_preview" class="scene-upload-preview" alt="Map preview" hidden>
     <div class="form-row"><label class="dossier-field">Grid size (px)<input class="hud-input" id="scene_grid" type="number" value="70" min="24" max="250" required></label><label class="dossier-field">Ambient light<vf-select class="hud-select" id="scene_light"><option value="0.25">Dim · 25%</option><option value="0.5">Emergency · 50%</option><option value="0.8">Bright · 80%</option></vf-select></label></div>
     <p id="scene_progress" role="status"></p><p class="dossier-error" role="alert"></p><div class="session-actions"><button type="submit" class="hud-btn hud-btn-primary">Create and enter scene</button><button type="button" class="hud-btn" id="scene_cancel_upload" hidden>Cancel upload</button></div></form>
