@@ -1,6 +1,13 @@
 import { drawBlackHole, drawWaterSurface, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
 import './fxLab.css';
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+let rainIntensity = 'rain', fogEnabled = false;
+const intensityButton=document.getElementById('rain_intensity'), fogButton=document.getElementById('lab_fog');
+intensityButton.onclick=()=>{
+  rainIntensity=({drizzle:'rain',rain:'storm',storm:'drizzle'})[rainIntensity];
+  intensityButton.textContent='Lluvia: '+({drizzle:'llovizna',rain:'normal',storm:'tormenta'})[rainIntensity];
+};
+fogButton.onclick=()=>{fogEnabled=!fogEnabled;fogButton.setAttribute('aria-pressed',String(fogEnabled));fogButton.textContent='Bruma: '+(fogEnabled?'sí':'no');};
 let quality = 'balanced', paused = reduced.matches, time = 0, previous = performance.now();
 const pause = document.getElementById('pause');
 function showPause() {
@@ -60,7 +67,7 @@ function frame(now) {
       ]
     };
     drawWaterSurface(ctx, waterZone, time, { quality, reducedMotion: paused });
-    renderWeatherFog(ctx, {
+    if (fogEnabled) renderWeatherFog(ctx, {
       map: { fogDensity: 'medium' },
       viewport: { minX: 0, minY: 0, maxX: width, maxY: height, width, height, zoom: 1 },
       time,
@@ -68,13 +75,13 @@ function frame(now) {
       reducedMotion: paused
     });
     renderWeatherRain(ctx, {
-      map: { waterZones: [waterZone], rainIntensity: 'storm' },
+      map: { waterZones: [waterZone], rainIntensity },
       viewport: { minX: 0, minY: 0, maxX: width, maxY: height, width, height, zoom: 1 },
       time,
       quality,
       reducedMotion: paused
     });
-    ctx.fillStyle='#acd8df';ctx.font='10px monospace';ctx.fillText('WEATHER // STORM, DRIFTING FOG & WATER RIPPLES',width*0.06,height*0.94);
+    ctx.fillStyle='#acd8df';ctx.font='10px monospace';ctx.fillText('WEATHER // RAIN, DRIFTING FOG & WATER RIPPLES',width*0.06,height*0.94);
   }
   requestAnimationFrame(frame);
 }

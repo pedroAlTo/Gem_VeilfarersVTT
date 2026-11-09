@@ -1,3 +1,5 @@
+import { pointInWater } from './waterGeometry.js';
+
 // Canvas-only artwork. Geometry stays in map coordinates; no frame-buffer readback.
 const TAU = Math.PI * 2;
 export function waterBounds(zone) {
@@ -159,198 +161,208 @@ export function drawBlackHole(ctx, rift, quality = 'balanced', reducedMotion = f
   ctx.restore();
 }
 
+// Stateless, world-anchored impacts: moving the camera never drags the rain.
+function rainRandom(x, y, seed) {
+  let n = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(seed, 1274126177);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+}
+
+export function drawRainRipples(ctx, zone, time, { viewport, quality = 'balanced', intensity = 'rain', reducedMotion = false } = {}) {
+  if (reducedMotion || !Number.isFinite(time)) return false;
+  const bounds = waterBounds(zone);
+  if (!bounds) return false;
+  const b = viewport ? {
+    minX: Math.max(bounds.minX, viewport.minX), minY: Math.max(bounds.minY, viewport.minY),
+    maxX: Math.min(bounds.maxX, viewport.maxX), maxY: Math.min(bounds.maxY, viewport.maxY)
+  } : bounds;
+  if (!Object.values(b).every(Number.isFinite) || b.maxX <= b.minX || b.maxY <= b.minY) return false;
+  const spacing = intensity === 'drizzle' ? 1.6 : intensity === 'storm' ? .72 : 1;
+  const baseCell = (quality === 'eco' ? 112 : quality === 'ultra' ? 64 : 80) * spacing;
+  const budget = quality === 'eco' ? 128 : quality === 'ultra' ? 512 : 256;
+  let cell = baseCell;
+  // Powers of two bound work on giant maps without tying positions to the camera.
+  while ((Math.ceil((b.maxX - b.minX) / cell) + 2) * (Math.ceil((b.maxY - b.minY) / cell) + 2) > budget) cell *= 2;
+  const radiusScale = cell / baseCell, margin = 24 * radiusScale;
+  let seed = 0;
+  for (const char of String(zone.id ?? 'water')) seed = (Math.imul(seed, 31) + char.charCodeAt(0)) | 0;
+  ctx.save(); traceWater(ctx, zone); ctx.clip(); ctx.setLineDash([]);
+  for (let row = Math.floor((b.minY - margin) / cell); row <= Math.floor((b.maxY + margin) / cell); row++) {
+    for (let col = Math.floor((b.minX - margin) / cell); col <= Math.floor((b.maxX + margin) / cell); col++) {
+      const period = 1.7 + rainRandom(col, row, seed) * 1.1;
+      const clock = Math.max(0, time) / period + rainRandom(col, row, seed + 1);
+      const cycle = Math.floor(clock), phase = (clock - cycle) / .78;
+      if (phase >= 1) continue;
+      const x = (col + .12 + rainRandom(col, row, seed + cycle * 7 + 2) * .76) * cell;
+      const y = (row + .12 + rainRandom(col, row, seed + cycle * 7 + 3) * .76) * cell;
+      if (x < b.minX - margin || x > b.maxX + margin || y < b.minY - margin || y > b.maxY + margin || !pointInWater(x, y, zone)) continue;
+      const radius = (10 + rainRandom(col, row, seed + 4) * 13) * radiusScale;
+      const aspect = .72 + rainRandom(col, row, seed + 5) * .18;
+      for (let ring = 0; ring < 2; ring++) {
+        const age = phase - ring * .19;
+        if (age <= 0) continue;
+        const r = radius * Math.sqrt(age);
+        const alpha = Math.min(1, age / .09) * (1 - phase) ** 1.6 * (ring ? .18 : .32);
+        ctx.beginPath(); ctx.ellipse(x, y, r, r * aspect, 0, 0, TAU);
+        ctx.lineWidth = 2.2 * radiusScale; ctx.strokeStyle = `rgba(4,28,40,${alpha * .45})`; ctx.stroke();
+        ctx.lineWidth = .8 * radiusScale; ctx.strokeStyle = `rgba(191,232,240,${alpha})`; ctx.stroke();
+      }
+    }
+  }
+  ctx.restore(); return true;
+}
+
 /**
  * Cinematic multi-layer weather rain overlay with parallax, wind flutter,
  * ground splashes, and water surface ripples.
  * Pure canvas procedural animation; zero allocations in the render loop.
  */
 export function renderWeatherRain(ctx, { map = {}, viewport, time = 0, quality = 'balanced', reducedMotion = false } = {}) {
-  if (!viewport || viewport.width <= 0 || viewport.height <= 0) return false;
+  if (!viewport || viewport.width <= 0 || viewport.height <= 0 || reducedMotion) return false;
+  if (!map.showRain && (!map.waterZones || map.waterZones.length === 0)) return false;
 
-  const zoom = Math.max(0.1, viewport.zoom || 1);
-  const margin = 100 / zoom;
-  const vw = viewport.width + margin * 2;
-  const vh = viewport.height + margin * 2;
-  const ox = viewport.minX - margin;
-  const oy = viewport.minY - margin;
+  let drawn = false;
 
-  // 1. Atmospheric storm moisture wash
-  ctx.save();
-  ctx.fillStyle = 'rgba(8, 20, 38, 0.09)';
-  ctx.fillRect(viewport.minX, viewport.minY, viewport.width, viewport.height);
-
-  const intensity = map.rainIntensity || 'rain';
-  const isDrizzle = intensity === 'drizzle';
-  const isStorm = intensity === 'storm';
-
-  // 2. Dynamic wind vector with subtle organic gusts
-  const gust = reducedMotion ? 0 : isDrizzle
-    ? Math.sin(time * 0.25) * 0.03
-    : isStorm
-      ? Math.sin(time * 0.6) * 0.16 + Math.cos(time * 0.3) * 0.08
-      : Math.sin(time * 0.45) * 0.08 + Math.cos(time * 0.23) * 0.04;
-  const windAngle = Math.PI * (isDrizzle ? 0.52 : 0.58) + gust; // Slanted towards bottom-left
-  const dirX = Math.cos(windAngle);
-  const dirY = Math.sin(windAngle);
-
-  // 3. Drop density budgets by intensity & quality tier
-  const densityMult = isDrizzle ? 0.45 : isStorm ? 1.6 : 1.0;
-  const speedMult = isDrizzle ? 0.65 : isStorm ? 1.35 : 1.0;
-
-  let countBg = Math.round(180 * densityMult);
-  let countMid = Math.round(110 * densityMult);
-  let countFg = isDrizzle ? 0 : Math.round(25 * densityMult);
-  let splashMax = isDrizzle ? 4 : isStorm ? 22 : 12;
-  let waterRipplesMax = isDrizzle ? 6 : isStorm ? 30 : 18;
-
-  if (quality === 'eco') {
-    countBg = Math.round(countBg * 0.45);
-    countMid = Math.round(countMid * 0.45);
-    countFg = Math.round(countFg * 0.45);
-    splashMax = Math.round(splashMax * 0.5);
-    waterRipplesMax = Math.round(waterRipplesMax * 0.5);
-  } else if (quality === 'ultra') {
-    countBg = Math.round(countBg * 1.4);
-    countMid = Math.round(countMid * 1.4);
-    countFg = Math.round(countFg * 1.4);
-    splashMax = Math.round(splashMax * 1.4);
-    waterRipplesMax = Math.round(waterRipplesMax * 1.4);
+  // 1. Water surface ripples
+  for (const zone of map.waterZones || []) {
+    drawn = drawRainRipples(ctx, zone, time, { viewport, quality, reducedMotion, intensity: map.rainIntensity }) || drawn;
   }
 
-  // Helper to render a rain layer
-  const renderLayer = (count, speed, minLen, maxLen, strokeW, strokeStyle) => {
+  // 2. Full-screen rain overlay when enabled
+  if (map.showRain) {
+    drawn = true;
+    const zoom = Math.max(0.1, viewport.zoom || 1);
+    const margin = 100 / zoom;
+    const vw = viewport.width + margin * 2;
+    const vh = viewport.height + margin * 2;
+    const ox = viewport.minX - margin;
+    const oy = viewport.minY - margin;
+
     ctx.save();
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = strokeW;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
+    // Atmospheric storm moisture wash
+    ctx.fillStyle = 'rgba(8, 20, 38, 0.09)';
+    ctx.fillRect(viewport.minX, viewport.minY, viewport.width, viewport.height);
 
-    const layerSpeed = (reducedMotion ? speed * 0.35 : speed) * speedMult;
-    for (let i = 0; i < count; i++) {
-      const seedX = (i * 0.6180339887 + (i % 17) * 0.13) % 1;
-      const seedY = (i * 0.4142135623 + (i % 23) * 0.07) % 1;
-      const varSpeed = 0.88 + ((i * 37) % 25) / 100;
-      const len = minLen + ((i * 47) % Math.max(1, maxLen - minLen));
+    const intensity = map.rainIntensity || 'rain';
+    const isDrizzle = intensity === 'drizzle';
+    const isStorm = intensity === 'storm';
 
-      const travel = time * layerSpeed * varSpeed;
-      const x = ((seedX * vw + travel * dirX) % vw + vw) % vw + ox;
-      const y = ((seedY * vh + travel * dirY) % vh + vh) % vh + oy;
+    // Dynamic wind vector with subtle organic gusts
+    const gust = isDrizzle
+      ? Math.sin(time * 0.25) * 0.03
+      : isStorm
+        ? Math.sin(time * 0.6) * 0.16 + Math.cos(time * 0.3) * 0.08
+        : Math.sin(time * 0.45) * 0.08 + Math.cos(time * 0.23) * 0.04;
+    const windAngle = Math.PI * (isDrizzle ? 0.52 : 0.58) + gust;
+    const dirX = Math.cos(windAngle);
+    const dirY = Math.sin(windAngle);
 
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - dirX * len, y - dirY * len);
+    // Drop density budgets by intensity & quality tier
+    const densityMult = isDrizzle ? 0.45 : isStorm ? 1.6 : 1.0;
+    const speedMult = isDrizzle ? 0.65 : isStorm ? 1.35 : 1.0;
+
+    let countBg = Math.round(180 * densityMult);
+    let countMid = Math.round(110 * densityMult);
+    let countFg = isDrizzle ? 0 : Math.round(25 * densityMult);
+    let splashMax = isDrizzle ? 4 : isStorm ? 22 : 12;
+
+    if (quality === 'eco') {
+      countBg = Math.round(countBg * 0.45);
+      countMid = Math.round(countMid * 0.45);
+      countFg = Math.round(countFg * 0.45);
+      splashMax = Math.round(splashMax * 0.5);
+    } else if (quality === 'ultra') {
+      countBg = Math.round(countBg * 1.4);
+      countMid = Math.round(countMid * 1.4);
+      countFg = Math.round(countFg * 1.4);
+      splashMax = Math.round(splashMax * 1.4);
     }
-    ctx.stroke();
-    ctx.restore();
-  };
 
-  // Layer 1: Distant background drizzle (thin, fast, subtle)
-  renderLayer(countBg, 950, 12 / zoom, 22 / zoom, Math.max(0.6, 0.85 / Math.sqrt(zoom)), 'rgba(165, 205, 235, 0.22)');
-
-  // Layer 2: Main rain body (medium streaks with good contrast)
-  renderLayer(countMid, 1350, 24 / zoom, 44 / zoom, Math.max(0.8, 1.25 / Math.sqrt(zoom)), 'rgba(195, 230, 255, 0.38)');
-
-  // Layer 3: Foreground camera-close streaks (long, fast highlights)
-  if (countFg > 0) {
-    renderLayer(countFg, 1750, 48 / zoom, 80 / zoom, Math.max(1.1, 1.85 / Math.sqrt(zoom)), 'rgba(230, 248, 255, 0.58)');
-  }
-
-  // 4. Ground micro-splashes on terrain
-  if (!reducedMotion && splashMax > 0) {
-    ctx.save();
-    for (let s = 0; s < splashMax; s++) {
-      const cycle = 0.48 + (s % 5) * 0.09;
-      const t = (time + s * 0.17) % cycle;
-      const p = t / cycle;
-      if (p > 0.75) continue; // Brief impact burst
-
-      const seed = Math.floor((time + s * 0.17) / cycle);
-      const sx = ox + (((s * 157 + seed * 89) % 1000) / 1000) * vw;
-      const sy = oy + (((s * 263 + seed * 131) % 1000) / 1000) * vh;
-
-      const alpha = (1 - p / 0.75) * 0.45;
-      const spread = p * (7 + (s % 4) * 2) / Math.sqrt(zoom);
-
-      ctx.strokeStyle = `rgba(205, 238, 255, ${alpha})`;
-      ctx.lineWidth = Math.max(0.5, 0.9 / Math.sqrt(zoom));
-
-      // Splashing droplets bouncing up
-      ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(sx - spread * 0.6, sy - spread * 0.85 + (p * p * 12) / zoom);
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(sx + spread * 0.7, sy - spread * 0.75 + (p * p * 12) / zoom);
-      ctx.stroke();
-
-      // Floor impact ring
-      ctx.beginPath();
-      ctx.ellipse(sx, sy, spread * 0.8, spread * 0.3, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  // 5. Water surface ripples (procedural splashes across actual water zones)
-  const waterZones = map.waterZones || [];
-  if (waterZones.length > 0) {
-    for (const zone of waterZones) {
-      const bounds = waterBounds(zone);
-      if (!bounds) continue;
-      // Viewport culling
-      if (bounds.maxX < viewport.minX || bounds.minX > viewport.maxX ||
-          bounds.maxY < viewport.minY || bounds.minY > viewport.maxY) continue;
-
+    // Helper to render a rain layer
+    const renderLayer = (count, speed, minLen, maxLen, strokeW, strokeStyle) => {
       ctx.save();
-      traceWater(ctx, zone);
-      ctx.clip(); // Mask strictly to polygon / box water shape
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = strokeW;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
 
-      const zw = bounds.maxX - bounds.minX;
-      const zh = bounds.maxY - bounds.minY;
-      const numRipples = Math.min(waterRipplesMax, Math.max(4, Math.floor(Math.sqrt(zw * zh) / 55)));
+      const layerSpeed = speed * speedMult;
+      for (let i = 0; i < count; i++) {
+        const seedX = (i * 0.6180339887 + (i % 17) * 0.13) % 1;
+        const seedY = (i * 0.4142135623 + (i % 23) * 0.07) % 1;
+        const varSpeed = 0.88 + ((i * 37) % 25) / 100;
+        const len = minLen + ((i * 47) % Math.max(1, maxLen - minLen));
 
-      for (let r = 0; r < numRipples; r++) {
-        const cycle = 1.1 + (r % 7) * 0.16;
-        const rTime = (time + r * 0.33) % cycle;
-        const progress = rTime / cycle;
+        const travel = time * layerSpeed * varSpeed;
+        const x = ((seedX * vw + travel * dirX) % vw + vw) % vw + ox;
+        const y = ((seedY * vh + travel * dirY) % vh + vh) % vh + oy;
 
-        const cycleSeed = Math.floor((time + r * 0.33) / cycle);
-        const rx = bounds.minX + (((r * 67 + cycleSeed * 97) % 100) / 100) * zw;
-        const ry = bounds.minY + (((r * 113 + cycleSeed * 53) % 100) / 100) * zh;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - dirX * len, y - dirY * len);
+      }
+      ctx.stroke();
+      ctx.restore();
+    };
 
-        const radius = progress * (16 + (r % 5) * 4);
-        const alpha = (1 - progress) * 0.42;
+    // Layer 1: Distant background drizzle
+    renderLayer(countBg, 950, 12 / zoom, 22 / zoom, Math.max(0.6, 0.85 / Math.sqrt(zoom)), 'rgba(165, 205, 235, 0.22)');
 
-        ctx.strokeStyle = `rgba(195, 242, 255, ${alpha})`;
-        ctx.lineWidth = Math.max(0.6, 1.2 * (1 - progress * 0.5));
+    // Layer 2: Main rain body
+    renderLayer(countMid, 1350, 24 / zoom, 44 / zoom, Math.max(0.8, 1.25 / Math.sqrt(zoom)), 'rgba(195, 230, 255, 0.38)');
+
+    // Layer 3: Foreground camera-close streaks
+    if (countFg > 0) {
+      renderLayer(countFg, 1750, 48 / zoom, 80 / zoom, Math.max(1.1, 1.85 / Math.sqrt(zoom)), 'rgba(230, 248, 255, 0.58)');
+    }
+
+    // Ground micro-splashes on terrain
+    if (splashMax > 0) {
+      ctx.save();
+      for (let s = 0; s < splashMax; s++) {
+        const cycle = 0.48 + (s % 5) * 0.09;
+        const t = (time + s * 0.17) % cycle;
+        const p = t / cycle;
+        if (p > 0.75) continue;
+
+        const seed = Math.floor((time + s * 0.17) / cycle);
+        const sx = ox + (((s * 157 + seed * 89) % 1000) / 1000) * vw;
+        const sy = oy + (((s * 263 + seed * 131) % 1000) / 1000) * vh;
+
+        const alpha = (1 - p / 0.75) * 0.45;
+        const spread = p * (7 + (s % 4) * 2) / Math.sqrt(zoom);
+
+        ctx.strokeStyle = `rgba(205, 238, 255, ${alpha})`;
+        ctx.lineWidth = Math.max(0.5, 0.9 / Math.sqrt(zoom));
+
         ctx.beginPath();
-        ctx.ellipse(rx, ry, radius, radius * 0.38, 0, 0, Math.PI * 2);
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx - spread * 0.6, sy - spread * 0.85 + (p * p * 12) / zoom);
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + spread * 0.7, sy - spread * 0.75 + (p * p * 12) / zoom);
         ctx.stroke();
 
-        if (progress > 0.22) {
-          const innerProg = (progress - 0.22) / 0.78;
-          const innerRadius = innerProg * (11 + (r % 5) * 3);
-          ctx.strokeStyle = `rgba(220, 250, 255, ${(1 - innerProg) * 0.22})`;
-          ctx.beginPath();
-          ctx.ellipse(rx, ry, innerRadius, innerRadius * 0.38, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        }
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, spread * 0.8, spread * 0.3, 0, 0, Math.PI * 2);
+        ctx.stroke();
       }
       ctx.restore();
     }
-  }
 
-  // 6. Ambient lightning flash in storm mode (periodic pulse every ~18s)
-  if (!reducedMotion && isStorm) {
-    const flashPeriod = 18;
-    const flashTime = time % flashPeriod;
-    if (flashTime < 0.14) {
-      const flashAlpha = Math.sin((flashTime / 0.14) * Math.PI) * (flashTime < 0.06 ? 0.22 : 0.09);
-      ctx.fillStyle = `rgba(195, 230, 255, ${flashAlpha})`;
-      ctx.fillRect(viewport.minX, viewport.minY, viewport.width, viewport.height);
+    // Ambient lightning in storm
+    if (isStorm) {
+      const flashPeriod = 18;
+      const flashTime = time % flashPeriod;
+      if (flashTime < 0.14) {
+        const flashAlpha = Math.sin((flashTime / 0.14) * Math.PI) * (flashTime < 0.06 ? 0.22 : 0.09);
+        ctx.fillStyle = `rgba(195, 230, 255, ${flashAlpha})`;
+        ctx.fillRect(viewport.minX, viewport.minY, viewport.width, viewport.height);
+      }
     }
+
+    ctx.restore();
   }
 
-  ctx.restore();
-  return true;
+  return drawn;
 }
 
 /**

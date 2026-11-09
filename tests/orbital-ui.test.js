@@ -106,7 +106,7 @@ test('black hole can exist at particle budget and restores canvas state at every
     assert.ok(commands.every(c=>c.slice(1).every(v=>typeof v!=='number'||Number.isFinite(v))));
   }
 });
-test('weather rain renders multi-layer parallax, restores canvas context and culls zero viewport',()=>{
+test('weather rain renders ripples and overlay; fog retains its independent atmospheric pass', () => {
   assert.equal(renderWeatherRain(null, { viewport: { width: 0, height: 0 } }), false);
   assert.equal(renderWeatherFog(null, { viewport: { width: 0, height: 0 } }), false);
   const viewport = { minX: 0, minY: 0, maxX: 800, maxY: 600, width: 800, height: 600, zoom: 1 };
@@ -116,9 +116,12 @@ test('weather rain renders multi-layer parallax, restores canvas context and cul
     const result = renderWeatherRain(ctx, { map: { waterZones: [waterZone] }, viewport, time: 5, quality });
     assert.equal(result, true);
     assert.equal(commands.filter(c => c[0] === 'save').length, commands.filter(c => c[0] === 'restore').length);
-    assert.ok(commands.some(c => c[0] === 'lineTo'));
+    assert.ok(commands.some(c => c[0] === 'clip'));
     assert.ok(commands.some(c => c[0] === 'ellipse'));
   }
+  const { ctx: rainCtx, commands: rainCommands } = context();
+  assert.equal(renderWeatherRain(rainCtx, { map: { showRain: true }, viewport, time: 5, quality: 'balanced' }), true);
+  assert.ok(rainCommands.some(c => c[0] === 'lineTo'));
   for (const density of ['light', 'medium', 'dense']) {
     const { ctx, commands } = context();
     const fogRes = renderWeatherFog(ctx, { map: { fogDensity: density }, viewport, time: 8, quality: 'balanced' });

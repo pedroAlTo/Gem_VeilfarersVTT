@@ -442,7 +442,7 @@ export class ElementInspectorHUD {
     const depth = zone.depth ?? 2;
     const state = store.getState();
     const map = store.getActiveMap();
-    const isRain = !!(map.showRain || state.showRain);
+    const isRain = !!(map.showRain ?? state.showRain);
     const rainIntensity = map.rainIntensity || state.rainIntensity || 'rain';
     const isFog = !!(map.showFog || state.showFog);
     const fogDensity = map.fogDensity || state.fogDensity || 'medium';
@@ -485,8 +485,8 @@ export class ElementInspectorHUD {
             <div class="insp-col" style="flex: 2;">
               <label>Lluvia</label>
               <div style="display:flex;gap:3px">
-                <button class="hud-btn hud-btn-xs ${isRain ? 'hud-btn-primary active' : 'hud-btn-secondary'}" id="insp_water_rain_toggle" style="flex:1">
-                  ${isRain ? '🌧️ ON' : '🌧️ OFF'}
+                <button class="hud-btn hud-btn-xs ${isRain ? 'hud-btn-primary active' : 'hud-btn-secondary'}" id="insp_water_rain_toggle" style="flex:1" aria-pressed="${isRain}" title="Alternar Lluvia en la escena">
+                  ${isRain ? '🌧️ LLUVIA ON' : '🌧️ LLUVIA OFF'}
                 </button>
                 <button class="hud-btn hud-btn-xs hud-btn-secondary" id="insp_water_rain_intensity" title="Ciclar intensidad: Llovizna, Normal, Tormenta">
                   ${rainIntensity === 'drizzle' ? 'Llovizna' : rainIntensity === 'storm' ? 'Tormenta' : 'Normal'}
@@ -570,7 +570,6 @@ export class ElementInspectorHUD {
       rainBtn.onclick = () => {
         const next = !isRain;
         store.updateActiveMap({ showRain: next });
-        store.update({ showRain: next });
         this.renderWaterInspector(zone);
       };
     }
@@ -581,7 +580,6 @@ export class ElementInspectorHUD {
         const cycle = { drizzle: 'rain', rain: 'storm', storm: 'drizzle' };
         const next = cycle[rainIntensity] || 'rain';
         store.updateActiveMap({ rainIntensity: next });
-        store.update({ rainIntensity: next });
         this.renderWaterInspector(zone);
       };
     }

@@ -3,7 +3,7 @@
 // Drag-Resizable Templates, Expanded Particle FX, and Multi-Layer Support
 
 import { LightingEngine } from './lightingEngine.js';
-import { drawWaterSurface, traceWater, waterBounds, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
+import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
 import { drawTokenConditions } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
@@ -2267,7 +2267,7 @@ export class CanvasEngine {
 
     // 2. LAYER: WATER & HAZARDS
     if (state.layerVisibility.water !== false) {
-      this.renderWaterZones(ctx, map.waterZones || [], now * 0.001);
+      this.renderWaterZones(ctx, map.waterZones || [], now * 0.001, !!(map.showRain ?? state.showRain), map.rainIntensity ?? state.rainIntensity);
     }
 
     // Grid Overlay
@@ -2424,7 +2424,7 @@ export class CanvasEngine {
   }
 
   // --- Water Zones Rendering ---
-  renderWaterZones(ctx, waterZones, time) {
+  renderWaterZones(ctx, waterZones, time, rain = false, intensity = 'rain') {
     const state = store.getState();
     const isWaterLayer = state.activeLayer === 'water' && state.userRole === 'keeper';
 
@@ -2434,6 +2434,8 @@ export class CanvasEngine {
       const isSelected = w.id === state.selectedWaterId;
       if (!drawWaterSurface(ctx, w, time, { viewport, quality: this.fx.quality,
         reducedMotion: this.reducedMotion?.matches })) continue;
+      if (rain) drawRainRipples(ctx, w, time, { viewport, quality: this.fx.quality, intensity,
+        reducedMotion: this.reducedMotion?.matches });
       if (!(isWaterLayer || isSelected)) continue;
       const depth = Math.max(0, Math.min(5, w.depth ?? 2));
       const bounds = waterBounds(w);
@@ -2527,7 +2529,6 @@ export class CanvasEngine {
       reducedMotion: this.reducedMotion?.matches
     });
   }
-
   // --- Fog Weather Overlay Pass ---
   renderFogOverlay(ctx, map, time) {
     if (!map.showFog && !store.getState().showFog) return;

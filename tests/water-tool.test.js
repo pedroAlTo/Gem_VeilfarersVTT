@@ -14,6 +14,7 @@ const {undoManager}=await import('../src/undoManager.js');
 const {audio}=await import('../src/audioEngine.js');audio.muted=true;
 const {initWaterControls}=await import('../src/waterControls.js');
 const {NetworkManager}=await import('../src/networkManager.js');
+const {ElementInspectorHUD}=await import('../src/inspectorHUD.js');
 const original=structuredClone(store.state);
 // Rendering is covered by surfaceFX tests. Exercise the actual canvas event handlers here.
 class EventCanvas extends CanvasEngine { startLoop() {} }
@@ -37,6 +38,41 @@ const click=(x,y,detail=1)=>{mouse('mousedown',x,y,detail);mouse('mouseup',x,y,d
 const key=(key)=>window.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key,code:key,bubbles:true,cancelable:true}));
 const zones=()=>store.getActiveMap().waterZones;
 const triangle=()=>{click(0,0);click(180,0);click(80,140);};
+
+test('rain controls affect this scene, preserve fog and override legacy global rain',()=>{
+  const inspector=Object.create(ElementInspectorHUD.prototype);inspector.container=document.createElement('div');
+  const map=store.getActiveMap(), zone={id:'rain-zone',name:'Pond',x:0,y:0,width:400,height:300,depth:2};
+  map.waterZones=[zone];map.showRain=false;map.showFog=true;store.state.showRain=true;store.state.rainIntensity='drizzle';
+  inspector.renderWaterInspector(zone);
+  const button=()=>inspector.container.querySelector('#insp_water_rain_toggle');
+  assert.equal(button().getAttribute('aria-pressed'),'false');
+  button().click();assert.equal(store.getActiveMap().showRain,true);
+  button().click();assert.equal(store.getActiveMap().showRain,false);assert.equal(store.state.showRain,true);
+  inspector.container.querySelector('#insp_water_rain_intensity').click();
+  assert.equal(store.getActiveMap().rainIntensity,'rain');assert.equal(store.state.rainIntensity,'drizzle');
+  assert.equal(store.getActiveMap().showFog,true);
+});
+
+test('rain is in the water pass beneath fog and tokens and respects layer visibility',t=>{
+  const calls=[],ctx=new Proxy({}, {get:(obj,key)=>obj[key]??(()=>{}),set:(obj,key,value)=>{obj[key]=value;return true;}});
+  t.mock.method(engine,'loadMap',()=>{});
+  t.mock.method(engine,'renderWaterZones',(_ctx,_zones,_time,rain,intensity)=>calls.push(['water',rain,intensity]));
+  t.mock.method(engine.lighting,'renderLighting',()=>calls.push(['lighting']));
+  t.mock.method(engine.fog,'renderFogOfWar',()=>calls.push(['fog']));
+  for(const name of ['renderWalls','renderLightMarkers','renderParticlesAndPings','renderEffectMarkers'])t.mock.method(engine,name,()=>{});
+  t.mock.method(engine,'renderTokens',()=>calls.push(['tokens']));
+  t.mock.method(engine,'renderFogOverlay',()=>calls.push(['mist']));
+  const old={ctx:engine.ctx,isMapLoaded:engine.isMapLoaded,mapImage:engine.mapImage};
+  try{
+    Object.assign(engine,{ctx,isMapLoaded:true,mapImage:{width:800,height:600}});
+    Object.assign(store.state,{showGrid:false,showRain:true,fogOfWar:true,gmVision:false,layerVisibility:{water:true,walls_lights:true,tokens:true,overlay:true}});
+    const map=store.getActiveMap();map.showRain=false;map.rainIntensity='storm';
+    engine.render(3000);assert.deepEqual(calls,[['water',false,'storm'],['lighting'],['fog'],['tokens'],['mist']]);
+    calls.length=0;map.showRain=true;engine.render(3016);assert.deepEqual(calls[0],['water',true,'storm']);
+    calls.length=0;store.state.layerVisibility.water=false;engine.render(3032);assert.deepEqual(calls,[['lighting'],['fog'],['tokens'],['mist']]);
+    calls.length=0;store.state.layerVisibility.water=true;delete map.showRain;engine.render(3048);assert.equal(calls[0][1],true);
+  }finally{Object.assign(engine,old);}
+});
 
 test('polygon creation preserves vertices, zero coordinates and independent copies through saves and snapshots', async()=>{
   triangle();key('Enter');assert.equal(zones().length,1);
