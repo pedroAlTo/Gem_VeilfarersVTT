@@ -6,25 +6,39 @@ Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
 
-## [1.1.1] — 2026-11-09
+## [1.1.1] — 2026-11-10
 
-Ondas de lluvia y conservación de las mejoras de clima
+Overlay de lluvia cinemática, niebla táctica, restricciones de muros, doble toque móvil y onboarding multijugador
 
-### Corregido
+### Clima y Efectos Atmosféricos
 
-- La lluvia deja de dibujar gotas, rayas, salpicaduras en suelo seco y destellos sobre todo el mapa. Solo genera ondas en las zonas de agua.
-- Impactos dispersos con doble anillo, expansión suave y desvanecimiento, recortados por el contorno real del agua, incluidos polígonos cóncavos.
-- Ondas ancladas al mapa, por debajo de tokens, iluminación y niebla de visión. Ocultar la capa de agua también oculta la lluvia.
-- Ajuste de lluvia por escena con compatibilidad para guardados antiguos; reducir movimiento desactiva los impactos animados. Trabajo de dibujo acotado en mapas grandes.
+- Overlay de lluvia cinemática a pantalla completa conservado y perfeccionado: paralaje multicapa, viento dinámico, salpicaduras en terreno e iluminación ambiental de tormenta.
+- Ondas procedurales sobre el agua (drawRainRipples) perfectamente integradas y recortadas por el contorno del agua, incluidos polígonos cóncavos.
+- Controles directos de lluvia y niebla en el panel de Capas Tácticas y en el inspector de elementos acuáticos, con niveles de llovizna, lluvia y tormenta.
 
-### Conservado de la copia aportada
+### Niebla de Guerra y Visión Táctica
 
-- Bruma independiente y niveles de llovizna, lluvia y tormenta, que ahora regulan la densidad de las ondas.
-- Mejoras del selector de color, calibración de rejilla y controles de agua. Se conservan los lanzadores actuales de GitHub.
+- Iluminación de zonas visitadas: Las fuentes de luz estáticas del mapa ubicadas en áreas previamente exploradas por los jugadores ahora iluminan su entorno a través de la niebla de guerra, evitando que las salas visitadas queden en oscuridad total.
+- Bloqueo de visión en arrastre (Drag Vision Lockdown): Mientras un jugador arrastra su token, la visión y las luces se mantienen ancladas en la posición original sin sellar niebla permanente, impidiendo revelar habitaciones o pasillos inexplorados antes de soltar la ficha.
 
-### Prueba local
+### Muros y Colisiones Físicas
 
-- Laboratorio de efectos con intensidad de lluvia y bruma separadas. Versión, ayuda, changelog y nombre del paquete sincronizados en v1.1.1.
+- Restricción de movimiento en tiempo real: Los tokens de jugadores no pueden atravesar paredes, ventanas ni puertas cerradas, contando con deslizamiento axial fluido en X e Y al colisionar.
+
+### Soporte Táctil para Tablets y Móviles
+
+- Detección unificada de doble toque (double-tap): Permite abrir la hoja de personaje en tokens propios, cerrar trazados de polígonos de agua, dividir paredes, separar nodos compuestos e insertar nuevos vértices en dispositivos táctiles.
+
+### Onboarding Multijugador en 4 Fases
+
+- Fase 1 (URL directa): Entrada directa con ?join=CODIGO o ?room=CODIGO, forzando rol de jugador y presentando tarjeta compacta con nombre autocompletado.
+- Fase 2 (Enlace mágico): Botón destacado "Copiar Enlace Mágico" en la barra superior del Keeper y en el lobby, con notificación toast visual.
+- Fase 3 (Reclamo de personaje): Modal automático de entrada para reclamar un PJ de la tripulación en 1 clic o importar un archivo .json del Character Creator, centrando la cámara en el token asignado.
+- Fase 4 (Tripulación en vivo): Píldoras de estado en la barra de sesión del Keeper con avatares de personajes, nombres y estado de conexión en tiempo real.
+
+### Persistencia y Nube (Firebase)
+
+- Soporte completo y configuración para cuentas en la nube, biblioteca privada de personajes y almacenamiento de mapas de alta resolución vía Firebase, manteniendo el juego en vivo multijugador P2P mediante PeerJS.
 
 ## [1.1.0] — 2026-11-05
 
