@@ -84,10 +84,99 @@ export function openAccount() {
     <p class="dossier-error" role="alert"></p>
   `);
   const error = modal.querySelector('.dossier-error');
+  const displayAuthError = (err) => {
+    const isUnauthorizedDomain = err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain');
+    const isPopupClosed = err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup-closed-by-user');
+    const isOpNotAllowed = err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed');
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'tu-dominio.netlify.app';
+
+    if (isUnauthorizedDomain) {
+      error.innerHTML = sanitizeHTML(`
+        <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 8px; padding: 12px; margin-top: 10px; text-align: left;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <span style="font-size: 16px;">⚠️</span>
+            <strong style="color: #f87171; font-size: 13px;">Dominio no autorizado en Firebase Authentication</strong>
+          </div>
+          <p style="margin: 0 0 8px; font-size: 12px; color: #cbd5e1; line-height: 1.4;">
+            Google bloquea las conexiones desde este dominio porque aún no está en la lista de dominios autorizados de tu proyecto Firebase.
+          </p>
+          <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 6px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: bold;">Dominio actual:</span>
+            <code style="color: #00f3ff; font-weight: bold; font-size: 13px; flex: 1;" id="domain_code_display">${e(currentHost)}</code>
+            <button type="button" class="hud-btn hud-btn-xs hud-btn-secondary" id="btn_copy_auth_domain" style="white-space: nowrap;">📋 Copiar</button>
+          </div>
+          <p style="margin: 0 0 10px; font-size: 11px; color: #94a3b8; line-height: 1.4;">
+            👉 <strong>Pasos para activarlo (10 segundos):</strong><br>
+            1. Abre <a href="https://console.firebase.google.com/project/veilfarers-vtt/authentication/settings" target="_blank" rel="noopener noreferrer" style="color: #00f3ff; text-decoration: underline;">Firebase Console · Configuración de Auth</a>.<br>
+            2. En la pestaña <strong>Settings</strong> ve a <strong>Authorized domains</strong> (Dominios autorizados).<br>
+            3. Pulsa <strong>Add domain</strong> (Añadir dominio), pega <code>${e(currentHost)}</code> y guarda.
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="https://console.firebase.google.com/project/veilfarers-vtt/authentication/settings" target="_blank" rel="noopener noreferrer" class="hud-btn hud-btn-primary hud-btn-xs" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              🔗 Ir a Firebase Console
+            </a>
+            <button type="button" class="hud-btn hud-btn-secondary hud-btn-xs" id="fallback_netlify_btn">
+              ⚡ Probar con Netlify Identity
+            </button>
+          </div>
+        </div>
+      `);
+      modal.querySelector('#btn_copy_auth_domain')?.addEventListener('click', () => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(currentHost);
+          notify(`Dominio '${currentHost}' copiado al portapapeles.`);
+        }
+      });
+      modal.querySelector('#fallback_netlify_btn')?.addEventListener('click', () => run(async () => {
+        await account.signInWithNetlify();
+        modal.remove();
+        openAccount();
+      }));
+      return;
+    }
+
+    if (isOpNotAllowed) {
+      error.innerHTML = sanitizeHTML(`
+        <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 8px; padding: 12px; margin-top: 10px; text-align: left;">
+          <strong style="color: #f87171; font-size: 13px;">Google Sign-In no está habilitado en Firebase</strong>
+          <p style="margin: 6px 0 8px; font-size: 12px; color: #cbd5e1;">Debes habilitar el proveedor Google en Firebase Console > Authentication > Sign-in method.</p>
+          <a href="https://console.firebase.google.com/project/veilfarers-vtt/authentication/providers" target="_blank" rel="noopener noreferrer" class="hud-btn hud-btn-primary hud-btn-xs" style="text-decoration: none;">
+            🔗 Habilitar Google en Firebase Console
+          </a>
+        </div>
+      `);
+      return;
+    }
+
+    if (isPopupClosed) {
+      error.innerHTML = sanitizeHTML(`
+        <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 10px; margin-top: 8px; text-align: left;">
+          <p style="margin: 0 0 6px; font-weight: bold; color: #f87171;">La ventana emergente de Google se cerró antes de completar el acceso.</p>
+          <p style="margin: 0 0 8px; font-size: 12px; color: #cbd5e1;">Esto ocurre si el navegador bloquea popups o si el dominio no está autorizado en Firebase.</p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="hud-btn hud-btn-primary hud-btn-xs" id="quick_google_redirect">🔄 Probar con Redirección Directa</button>
+            <button type="button" class="hud-btn hud-btn-secondary hud-btn-xs" id="quick_netlify_login">⚡ Usar Netlify Identity</button>
+          </div>
+        </div>
+      `);
+      modal.querySelector('#quick_google_redirect')?.addEventListener('click', () => {
+        account.signInWithGoogle({ useRedirect: true });
+      });
+      modal.querySelector('#quick_netlify_login')?.addEventListener('click', () => run(async () => {
+        await account.signInWithNetlify();
+        modal.remove();
+        openAccount();
+      }));
+      return;
+    }
+
+    error.textContent = err.message || 'Error durante la autenticación.';
+  };
+
   const run = async fn => {
     error.textContent = ''; modal.dataset.busy = '1';
     const buttons = [...modal.querySelectorAll('button')]; buttons.forEach(b => b.disabled = true);
-    try { await fn(); } catch (err) { error.textContent = err.message; }
+    try { await fn(); } catch (err) { displayAuthError(err); }
     finally { delete modal.dataset.busy; buttons.forEach(b => b.disabled = false); }
   };
   if (!signed) {
@@ -96,35 +185,10 @@ export function openAccount() {
     modal.querySelector('#btn_signin_account')?.addEventListener('click', () => { submitMode = 'signin'; });
 
     modal.querySelector('#btn_google_signin')?.addEventListener('click', () => run(async () => {
-      try {
-        const user = await account.signInWithGoogle({ useRedirect: false });
-        if (user) {
-          modal.remove();
-          openAccount();
-        }
-      } catch (err) {
-        if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup-closed-by-user')) {
-          error.innerHTML = sanitizeHTML(`
-            <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 10px; margin-top: 8px;">
-              <p style="margin: 0 0 6px; font-weight: bold; color: #f87171;">La ventana emergente de Google se cerró antes de completar el acceso.</p>
-              <p style="margin: 0 0 8px; font-size: 12px; color: #cbd5e1;">Esto suele ocurrir si el navegador bloquea popups o si el dominio no está autorizado en Firebase Console.</p>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" class="hud-btn hud-btn-primary hud-btn-xs" id="quick_google_redirect">Reintentar con Redirección Directa</button>
-                <button type="button" class="hud-btn hud-btn-secondary hud-btn-xs" id="quick_netlify_login">Usar Netlify Identity</button>
-              </div>
-            </div>
-          `);
-          modal.querySelector('#quick_google_redirect')?.addEventListener('click', () => {
-            account.signInWithGoogle({ useRedirect: true });
-          });
-          modal.querySelector('#quick_netlify_login')?.addEventListener('click', () => run(async () => {
-            await account.signInWithNetlify();
-            modal.remove();
-            openAccount();
-          }));
-        } else {
-          throw err;
-        }
+      const user = await account.signInWithGoogle({ useRedirect: false });
+      if (user) {
+        modal.remove();
+        openAccount();
       }
     }));
 

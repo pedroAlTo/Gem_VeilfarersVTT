@@ -111,7 +111,7 @@ export class TokenHUD {
 
           <!-- Compact Action Controls -->
           <div class="tok-qb-actions" style="display: flex; gap: 6px; align-items: center;">
-            <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-cyan' : ''}" id="quick_spotlight_btn" title="Alternar Spotlight / Foco de iluminación">${token.hasSpotlight ? '🔦 FOCO ON' : '🔦 FOCO'}</button>
+            <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-amber' : ''}" id="quick_spotlight_btn" title="Alternar Foco / Borde dorado brillante con pulso">${token.hasSpotlight ? '✨ FOCO ON' : '✨ FOCO'}</button>
             <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
             <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
             <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>
@@ -134,7 +134,7 @@ export class TokenHUD {
             <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
           </div>
-          <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-cyan' : ''}" id="quick_spotlight_btn" title="Alternar Spotlight / Foco de iluminación">${token.hasSpotlight ? '🔦 FOCO ON' : '🔦 FOCO'}</button>
+          <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-amber' : ''}" id="quick_spotlight_btn" title="Alternar Foco / Borde dorado brillante con pulso">${token.hasSpotlight ? '✨ FOCO ON' : '✨ FOCO'}</button>
           <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Open Full Character Sheet">SHEET</button>
           <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
           <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
@@ -329,7 +329,7 @@ export class TokenHUD {
         const curTok = store.state.tokens.find(t => t.id === token.id);
         if (!curTok) return;
         const newSpotlight = !curTok.hasSpotlight;
-        const spotConfig = curTok.spotlight || { radius: 150, color: '#00f3ff', intensity: 0.85 };
+        const spotConfig = curTok.spotlight || { radius: 140, color: '#fbbf24', intensity: 0.85 };
         store.updateToken(curTok.id, {
           hasSpotlight: newSpotlight,
           spotlight: { ...spotConfig, enabled: newSpotlight }
@@ -339,7 +339,7 @@ export class TokenHUD {
           tokenId: curTok.id,
           partial: { hasSpotlight: newSpotlight, spotlight: { ...spotConfig, enabled: newSpotlight } }
         });
-        notify(newSpotlight ? '🔦 Spotlight activado en este token.' : '🔦 Spotlight desactivado.');
+        notify(newSpotlight ? '✨ Borde dorado brillante activado con pulso.' : '✨ Foco desactivado.');
       };
     }
 
@@ -807,24 +807,24 @@ export class TokenHUD {
                 </div>
               </div>
 
-              <!-- FOCO / SPOTLIGHT ILUMINANDO EL TOKEN -->
+              <!-- BORDE DORADO BRILLANTE / FOCO CON PULSO -->
               <h4 class="sheet-section-title" style="margin-top: 16px; color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">
-                🔦 FOCO TÁCTICO / SPOTLIGHT ILUMINANDO EL TOKEN
+                ✨ BORDE DORADO BRILLANTE / FOCO CON PULSO
               </h4>
               <div class="form-row" style="gap: 10px; flex-wrap: wrap;">
                 <div class="form-group checkbox-group" style="flex: 1.2; min-width: 160px; margin-top: 18px;">
                   <label class="hud-checkbox-label">
                     <input type="checkbox" id="sheet_has_spotlight" ${token.hasSpotlight ? 'checked' : ''} />
-                    <span style="color: #fbbf24;">🔦 Activar Foco / Spotlight</span>
+                    <span style="color: #fbbf24;">✨ Borde Dorado Brillante con Pulso</span>
                   </label>
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 110px;">
-                  <label>Radio Foco (px)</label>
-                  <input type="number" id="sheet_spotlight_radius" class="hud-input" min="50" max="600" step="10" value="${token.spotlight?.radius || 150}" />
+                  <label>Radio Pulso (px)</label>
+                  <input type="number" id="sheet_spotlight_radius" class="hud-input" min="50" max="600" step="10" value="${token.spotlight?.radius || 140}" />
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 100px;">
-                  <label>Color del Foco</label>
-                  <input type="color" id="sheet_spotlight_color" class="hud-input" value="${token.spotlight?.color || '#00f3ff'}" style="height: 34px; padding: 2px;" />
+                  <label>Color del Borde</label>
+                  <input type="color" id="sheet_spotlight_color" class="hud-input" value="${token.spotlight?.color || '#fbbf24'}" style="height: 34px; padding: 2px;" />
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 100px;">
                   <label>Intensidad (0.1 - 1.0)</label>

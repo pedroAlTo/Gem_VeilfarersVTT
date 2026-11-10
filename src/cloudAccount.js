@@ -166,13 +166,27 @@ export class CloudAccount {
     const ni = await this.initNetlifyIdentity();
     if (!ni) throw new Error('Netlify Identity no está disponible en este entorno.');
     return new Promise((resolve, reject) => {
+      let settled = false;
       const onLogin = user => {
+        if (settled) return;
+        settled = true;
         this.setNetlifyUser(user);
         try { ni.close(); } catch {}
         resolve(this.user);
       };
+      const onClose = () => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('Acceso con Netlify Identity cerrado o cancelado.'));
+      };
+      const onError = err => {
+        if (settled) return;
+        settled = true;
+        reject(err);
+      };
       ni.on('login', onLogin);
-      ni.on('error', err => reject(err));
+      ni.on('close', onClose);
+      ni.on('error', onError);
       ni.open('login');
     });
   }

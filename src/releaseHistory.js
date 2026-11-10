@@ -38,11 +38,11 @@ export const RELEASES = [
         ],
       },
       {
-        title: 'Spotlight Táctico Cenital',
+        title: 'Spotlight Táctico — Borde Dorado Brillante con Pulso de Luz',
         items: [
-          'Simulación visual de foco cenital de alta tecnología: haz cónico volumétrico proyectado desde arriba, charco de luz elíptico en el suelo, anillo de baliza y reflejo especular en el avatar.',
-          'Integración con el motor de iluminación dinámica y desvanecimiento de niebla de guerra en el área enfocada.',
-          'Configuración personalizable de radio de iluminación, color de luz e intensidad lumínica en la configuración del token.',
+          'Rediseño compacto y elegante del foco táctico (Spotlight): se sustituyen el haz cenital y charco volumétrico de gran tamaño por un borde dorado brillante perimetral alrededor del token.',
+          'Emisión de un breve pulso de luz periódico (onda dorada radiante) que se expande suavemente alrededor del borde del token sin ocupar espacio excesivo ni solapar elementos adyacentes del mapa.',
+          'Anillo dorado con destello metálico, resplandor áureo dinámico, reflejo especular en el avatar y botón de alternancia rápida (✨ FOCO) en el Token HUD.',
         ],
       },
       {

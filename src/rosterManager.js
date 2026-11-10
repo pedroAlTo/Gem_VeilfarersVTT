@@ -344,10 +344,10 @@ export class RosterManager {
         </div>
 
         <label class="dossier-field" style="margin-top: 8px;">
-          <span>🔦 Foco / Spotlight Táctico</span>
+          <span>✨ Foco / Borde Dorado Brillante</span>
           <div style="font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 8px;">
             <input type="checkbox" name="has_spotlight" id="drone_spotlight" checked />
-            <label for="drone_spotlight" style="cursor: pointer; color: #00f3ff;">Activar foco iluminando el token en el mapa táctico</label>
+            <label for="drone_spotlight" style="cursor: pointer; color: #fbbf24;">Activar borde dorado brillante con pulso de luz en el mapa táctico</label>
           </div>
         </label>
 
@@ -411,7 +411,7 @@ export class RosterManager {
           armor: { current: armorVal, max: armorVal },
           stress: { current: 0, max: 0 },
           hasSpotlight: hasSpotlight,
-          spotlight: { enabled: hasSpotlight, radius: 140, color: '#00f3ff', intensity: 0.85 },
+          spotlight: { enabled: hasSpotlight, radius: 140, color: '#fbbf24', intensity: 0.85 },
           inventory: preset?.inventory ? structuredClone(preset.inventory) : { weapons: [], items: [] },
           ...center
         };

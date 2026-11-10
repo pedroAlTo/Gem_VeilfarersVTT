@@ -3399,55 +3399,6 @@ export class CanvasEngine {
         ctx.globalAlpha = 0.55;
       }
 
-      // Tactical Spotlight Simulation (Focused overhead beam illuminating token)
-      if ((tok.hasSpotlight || tok.spotlight?.enabled) && !tok.hidden) {
-        ctx.save();
-        const spotRadius = Math.max(radius * 2, (tok.spotlight?.radius || 140) * (radius / 24));
-        const spotColor = tok.spotlight?.color || '#00f3ff';
-        const spotIntensity = Math.min(1.0, tok.spotlight?.intensity ?? 0.85);
-
-        // 1. Overhead Angled Volumetric Light Cone
-        const beamTopY = -spotRadius * 1.4;
-        const beamTopWidth = radius * 0.9;
-        const beamBottomWidth = spotRadius * 1.5;
-        const coneGrad = ctx.createLinearGradient(0, beamTopY, 0, radius);
-        coneGrad.addColorStop(0, 'rgba(255, 255, 255, 0.02)');
-        coneGrad.addColorStop(0.3, `rgba(255, 255, 255, ${0.14 * spotIntensity})`);
-        coneGrad.addColorStop(0.8, `${spotColor}33`);
-        coneGrad.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = coneGrad;
-        ctx.beginPath();
-        ctx.moveTo(-beamTopWidth / 2, beamTopY);
-        ctx.lineTo(beamTopWidth / 2, beamTopY);
-        ctx.lineTo(beamBottomWidth / 2, radius * 0.8);
-        ctx.lineTo(-beamBottomWidth / 2, radius * 0.8);
-        ctx.closePath();
-        ctx.fill();
-
-        // 2. Focused Ground Light Pool beneath token
-        const groundGrad = ctx.createRadialGradient(0, 0, radius * 0.4, 0, 0, spotRadius);
-        groundGrad.addColorStop(0, `rgba(255, 255, 255, ${0.45 * spotIntensity})`);
-        groundGrad.addColorStop(0.25, `${spotColor}44`);
-        groundGrad.addColorStop(0.7, `${spotColor}18`);
-        groundGrad.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = groundGrad;
-        ctx.beginPath();
-        ctx.arc(0, 0, spotRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 3. Outer subtle beam halo
-        ctx.strokeStyle = `${spotColor}55`;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 6]);
-        ctx.beginPath();
-        ctx.arc(0, 0, spotRadius * 0.95, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
-
       // Selection Glow
       if (isSelected) {
         ctx.save();
@@ -3516,9 +3467,9 @@ export class CanvasEngine {
 
       // Spotlight Top Specular Highlight on Token Avatar
       if ((tok.hasSpotlight || tok.spotlight?.enabled) && !isDead) {
-        const specGrad = ctx.createLinearGradient(0, -radius, 0, radius * 0.4);
-        specGrad.addColorStop(0, 'rgba(255, 255, 255, 0.48)');
-        specGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.10)');
+        const specGrad = ctx.createLinearGradient(0, -radius, 0, radius * 0.35);
+        specGrad.addColorStop(0, 'rgba(254, 240, 138, 0.28)');
+        specGrad.addColorStop(0.6, 'rgba(251, 191, 36, 0.08)');
         specGrad.addColorStop(1, 'transparent');
         ctx.fillStyle = specGrad;
         ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
@@ -3526,20 +3477,86 @@ export class CanvasEngine {
 
       ctx.restore();
 
-      // Rim Border
-      ctx.save();
-      let rimColor = '#00f3ff';
-      if (isDead) rimColor = '#ef4444';
-      else if (tok.path === 'Sleeping') rimColor = '#ffaa00';
-      else if (!tok.isPlayer) rimColor = tok.actorType === 'drone' ? '#72dfce' : '#ef4444';
-      if (tok.hidden) rimColor = '#a855f7';
+      // Rim Border / Brilliant Golden Border with Brief Light Pulse (Spotlight / Foco)
+      const hasSpotlight = (tok.hasSpotlight || tok.spotlight?.enabled) && !tok.hidden && !isDead;
+      if (hasSpotlight) {
+        ctx.save();
+        const goldPrimary = tok.spotlight?.color || '#fbbf24';
+        const goldBright = '#fef08a';
 
-      ctx.strokeStyle = rimColor;
-      ctx.lineWidth = isSelected ? 4 : (isDead ? 3 : 2.5);
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
+        // Periodic brief pulse of light: 2.2s period, 0.75s active pulse wave
+        const pulsePeriod = 2.2;
+        const pulseDuration = 0.75;
+        const phase = (time || 0) % pulsePeriod;
+        const isPulsing = phase < pulseDuration;
+
+        if (isPulsing) {
+          const t = phase / pulseDuration; // 0.0 -> 1.0
+          // Pulse expansion: compact (~10-14px outward) so it doesn't take much canvas space
+          const maxExpand = Math.min(14, Math.max(8, radius * 0.28));
+          const currentExpand = radius + t * maxExpand;
+          const pulseAlpha = Math.sin(t * Math.PI) * 0.85;
+
+          // 1. Expanding brief wave of golden light
+          ctx.save();
+          ctx.strokeStyle = `rgba(251, 191, 36, ${pulseAlpha})`;
+          ctx.lineWidth = Math.max(1.5, 3 * (1 - t * 0.6));
+          ctx.shadowColor = goldPrimary;
+          ctx.shadowBlur = 12 * (1 - t * 0.4);
+          ctx.beginPath();
+          ctx.arc(0, 0, currentExpand, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // 2. Second softer harmonic micro-wave
+          if (t < 0.6) {
+            const t2 = t / 0.6;
+            const currentExpand2 = radius + t2 * (maxExpand * 0.55);
+            const alpha2 = (1 - t2) * 0.55;
+            ctx.strokeStyle = `rgba(254, 240, 138, ${alpha2})`;
+            ctx.lineWidth = 1.5;
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(0, 0, currentExpand2, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        // Luminous Golden Rim
+        const flashIntensity = isPulsing && phase < 0.35 ? (1 - phase / 0.35) * 8 : 0;
+        ctx.strokeStyle = goldPrimary;
+        ctx.lineWidth = isSelected ? 4.5 : 3.5;
+        ctx.shadowColor = goldPrimary;
+        ctx.shadowBlur = 10 + flashIntensity;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner metallic highlight ring
+        ctx.strokeStyle = goldBright;
+        ctx.lineWidth = 1.2;
+        ctx.shadowColor = goldBright;
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+      } else {
+        ctx.save();
+        let rimColor = '#00f3ff';
+        if (isDead) rimColor = '#ef4444';
+        else if (tok.path === 'Sleeping') rimColor = '#ffaa00';
+        else if (!tok.isPlayer) rimColor = tok.actorType === 'drone' ? '#72dfce' : '#ef4444';
+        if (tok.hidden) rimColor = '#a855f7';
+
+        ctx.strokeStyle = rimColor;
+        ctx.lineWidth = isSelected ? 4 : (isDead ? 3 : 2.5);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // Dead / Defeated Badge above token
       if (isDead) {
