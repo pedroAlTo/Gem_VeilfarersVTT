@@ -1,5 +1,20 @@
 # VeilFarers VTT — Notas de entrega
 
+## v1.3.1 — cuenta persistente, sincronización y sesiones · 10 de noviembre de 2026
+
+Base: `main` en `a2531f2800f55d6eae4b20e367a4486a0f13ff62` (v1.3.0). Se conservan el catálogo de equipo, el HUD de recursos y el foco dorado de la rama principal actual.
+
+- **Acceso:** restaura cuentas de Netlify aunque el widget se haya inicializado antes de cargar el VTT. Google aplica la opción de mantener la sesión tanto en popup como en redirección. Los eventos de Firebase y Netlify no se borran entre sí; el cierre de sesión elimina los listeners temporales sin recursión. Las preferencias se aíslan por cuenta y no recuperan asignaciones de tokens ni sustituyen la niebla del Keeper.
+- **Movimiento y recursos:** el arrastre usa una vista temporal independiente del token recibido. Los cambios del jugador llevan secuencia y confirmación; una instantánea antigua no los revierte, y las actualizaciones del Keeper en otros campos se conservan. Los rechazos y tiempos de espera muestran un aviso y restauran el último estado confirmado. Los cambios de escena, asignación o posición del Keeper cancelan gestos obsoletos. La visión espera la confirmación y no descubre zonas mediante un movimiento pendiente.
+- **HUD:** cada cambio se envía una vez. El jugador puede alternar el foco de su token sin modificar la configuración de la luz del Keeper.
+- **Sesiones:** un único botón SESIONES agrupa Partida y tripulación y Sesiones guardadas. La cuenta está arriba a la derecha: nombre + Conectado + piloto verde al acceder; Iniciar sesión + Offline + piloto rojo al salir. El estado online de la partida permanece independiente. El archivo conserva sus protecciones mientras una partida está abierta.
+
+Validación: **216 pruebas automatizadas correctas**, incluidas 20 regresiones nuevas de acceso, arrastre con instantáneas intercaladas, cambios rápidos de recursos, confirmaciones, rechazo, cambio de escena y navegación de sesiones. `npm run build` y `git diff --check` correctos. Revisión en navegador de cabecera, archivo de sesiones, navegación y creación/cierre de una sala LAN sin cuenta. La suite incluye transporte LAN sobre WebSocket real. Persisten las advertencias de tamaño de paquetes ya existentes.
+
+Límites: la autenticación se ha probado con dobles de los SDK, sin completar un acceso OAuth real; falta comprobarla en el dominio configurado y probar el movimiento entre dos equipos físicos. Keeper y jugadores deben actualizar a esta versión. No se ha desplegado el VTT ni modificado el portal público.
+
+Paquete: `VeilFarers_VTT_v1.3.1.zip`, con fuentes, pruebas, lanzadores locales, `dist/` y `CHANGELOG_v1.3.1.md`. Ayuda, changelog y metadatos muestran v1.3.1. Recorrido reproducible en `PRUEBAS_LOCALES.md`.
+
 ## v1.2.0 — entornos, bosses por estados e impactos · 10 de noviembre de 2026
 
 Base: `main` en `b1cac241e681807e929d32599e35016268687b63`. Se conservan las mejoras actuales de lluvia, bruma, exploración, colisiones y onboarding. Esta entrega incorpora las reglas de creación de escenarios de los capítulos 9 y 10 del Keeper 12.06 aportado, cuyo contenido coincide con la fuente del repositorio.
@@ -183,6 +198,6 @@ Antes de actualizar una campaña existente, exportar su JSON. La versión recono
 
 ## Git
 
-Rama de esta entrega: `feat/environments-boss-states`.
+Rama de esta entrega: `fix/login-and-player-sync`.
 
-Repositorio: `pedroAlTo/Gem_VeilfarersVTT`. Esta rama se prepara sobre `main` en `b1cac241e681807e929d32599e35016268687b63`. La integración en `main` y cualquier despliegue quedan fuera de esta entrega.
+Repositorio: `pedroAlTo/Gem_VeilfarersVTT`. Esta rama se prepara sobre `main` en `a2531f2800f55d6eae4b20e367a4486a0f13ff62`. La integración en `main` y cualquier despliegue quedan fuera de esta entrega.

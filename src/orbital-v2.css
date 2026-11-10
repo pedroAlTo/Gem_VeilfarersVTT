@@ -123,6 +123,37 @@ body {background:radial-gradient(ellipse at 72% 4%,#21132f66,transparent 55%),#0
 .right-sidebar {background-image:radial-gradient(ellipse at 90% 0,#ba4f9c12,transparent 40%),linear-gradient(120deg,#0c1a27ed,#090c1aef 75%)}
 
 .layer-hud-container {bottom:154px}
+/* One session entry, with account identity anchored above the header actions. */
+.header-hud {height:auto;min-height:106px}
+.header-right {display:grid;gap:7px;justify-items:end;max-width:520px;flex-shrink:0}
+.header-actions {display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.header-right .account-access {display:flex;align-items:center;gap:9px;min-width:130px;max-width:240px;padding:6px 11px;border-color:#ff79794d;background:linear-gradient(110deg,#21151eaa,#0b1423);text-align:left;letter-spacing:.02em}
+.account-status-dot {width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#ff696f;box-shadow:0 0 9px #ff696f77}
+.account-copy {display:grid;gap:2px;min-width:0}
+.account-copy strong {font:600 11px var(--font-body, sans-serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-copy small {font:9px var(--font-mono);color:#ff969c;letter-spacing:.05em}
+.header-right .account-access[data-signed-in=true] {border-color:#6de5ad66;background:linear-gradient(110deg,#12312699,#0b1423)}
+.account-access[data-signed-in=true] .account-status-dot {background:#5ce49d;box-shadow:0 0 10px #5ce49d88}
+.account-access[data-signed-in=true] .account-copy small {color:#8aefb9}
+.account-access:focus-visible {outline:2px solid #85e6ff;outline-offset:3px}
+.session-navigation {display:flex;gap:8px;padding:12px 24px;border-bottom:1px solid #86cce92e;background:#0b1523}
+.session-navigation .hud-btn {flex:1;min-height:36px}
+.session-navigation .hud-btn.active {color:#b6f5ff;border-color:#6bddf4;background:#16415888}
+@media(max-width:1100px) {
+  .header-hud {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;min-height:0}
+  .header-left {grid-column:1;grid-row:1}
+  .header-right {display:contents}
+  .header-right .account-access {grid-column:2;grid-row:1;justify-self:end;max-width:210px}
+  .header-actions {grid-column:1/-1;grid-row:2;justify-content:flex-end}
+  .header-center {grid-column:1/-1;grid-row:3;max-width:none;min-width:0;width:100%}
+}
+@media(max-width:600px) {
+  .header-right .account-access {min-width:0;max-width:160px;padding:5px 8px}
+  .account-copy strong {font-size:10px}
+  .account-copy small {font-size:8px}
+  .session-navigation {padding:10px 14px;gap:6px}
+  .session-navigation .hud-btn {font-size:10px;padding:8px}
+}
 @media(max-width:600px) {
   .brand-title,.brand-version{display:block}.brand-badge{gap:4px 6px}.brand-title{font-size:10px;letter-spacing:.12em}
   .left-toolbar{position:relative;left:auto;top:auto;bottom:auto;height:auto;max-height:none;z-index:30}

@@ -38,6 +38,11 @@
 
         <!-- HEADER RIGHT -->
         <div class="header-right">
+          <button type="button" class="hud-btn account-access" id="session_account" data-account-label data-signed-in="false" aria-label="Cuenta: Offline. Iniciar sesión">
+            <span class="account-status-dot" aria-hidden="true"></span>
+            <span class="account-copy"><strong data-account-name>Iniciar sesión</strong><small data-account-status>Offline</small></span>
+          </button>
+          <div class="header-actions">
           <!-- Role Toggle -->
           <div class="role-toggle-group">
             <button class="hud-btn hud-btn-xs active" id="role_keeper_btn">KEEPER</button>
@@ -57,7 +62,7 @@
 
           <!-- Multiplayer Network -->
           <button class="hud-btn hud-btn-xs hud-btn-primary" id="network_modal_btn">
-            <span id="net_status_dot">●</span> MULTIPLAYER
+            <span id="net_status_dot">●</span> SESIONES
           </button>
 
           <!-- Audio Toggle -->
@@ -66,14 +71,13 @@
           <!-- Sacred Rules Compendium -->
           <button class="hud-btn hud-btn-xs hud-btn-amber" id="rules_modal_btn" title="Sacred Rules Compendium (12.06)">📖 RULES 12.06</button>
 
-          <!-- Campaign Storage Export/Import -->
-          <button class="hud-btn hud-btn-xs" id="data_menu_btn" title="Export/Import Campaign">💾</button>
           <button class="hud-btn hud-btn-xs" id="help_btn" title="Ayuda, versión y changelog" aria-label="Ayuda, versión y changelog">AYUDA</button>
 
           <!-- Mobile & Tablet Sidebar Drawer Toggle -->
           <button class="hud-btn hud-btn-xs hud-btn-primary tablet-sidebar-toggle" id="btn_toggle_sidebar" title="Abrir Paneles Tácticos (Dados, Relojes, Naves, Dossiers)">
             <span>📑 <span class="hide-xs">PANELES</span></span>
           </button>
+          </div>
         </div>
       </header>
 

@@ -6,6 +6,7 @@ import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
 import { openCharacterImport } from './characterManager.js';
 import { openAccount, useCharacter, initAccount } from './accountUI.js';
 import { isDrone } from './tokenPermissions.js';
+import { mountSessionNavigation } from './sessionNavigation.js';
 
 export function invitationCode() { return network.room && network.invite ? `${network.room}.${network.invite}` : ''; }
 export function magicInvitationLink() {
@@ -36,12 +37,11 @@ export async function copyText(value, button) {
 }
 export function initSessionBar() {
   const bar = document.createElement('div'); bar.className = 'session-strip';
-  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn hud-btn-primary" id="session_magic_btn" hidden title="Copiar Enlace Mágico de Invitación para Jugadores">🔗 Enlace Invitación</button><button class="hud-btn" id="session_crew">Crew · 0</button><div class="session-crew-pills" id="session_crew_pills" style="display:none; align-items:center; gap:4px; margin-left:6px;"></div><button class="hud-btn hud-btn-xs" id="session_map_sync" style="display:none; margin-left:6px; font-weight:600; cursor:pointer;" title="Telemetría de sincronización de escena">🛰️ Escena: 100%</button><button class="hud-btn" id="session_join" hidden>Join game</button><button class="hud-btn" id="session_my_tokens" hidden>My tokens</button><button class="hud-btn" id="session_account" data-account-label>Sign in</button>';
+  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn hud-btn-primary" id="session_magic_btn" hidden title="Copiar Enlace Mágico de Invitación para Jugadores">🔗 Enlace Invitación</button><button class="hud-btn" id="session_crew">Crew · 0</button><div class="session-crew-pills" id="session_crew_pills" style="display:none; align-items:center; gap:4px; margin-left:6px;"></div><button class="hud-btn hud-btn-xs" id="session_map_sync" style="display:none; margin-left:6px; font-weight:600; cursor:pointer;" title="Telemetría de sincronización de escena">🛰️ Escena: 100%</button><button class="hud-btn" id="session_join" hidden>Join game</button><button class="hud-btn" id="session_my_tokens" hidden>My tokens</button>';
   document.querySelector('.header-hud').after(bar);
   bar.querySelector('#session_state').onclick = () => openSessionLobby();
   bar.querySelector('#session_crew').onclick = () => openSessionLobby();
   bar.querySelector('#session_map_sync').onclick = () => openMapSyncTelemetryModal();
-  bar.querySelector('#session_account').onclick = openAccount;
   bar.querySelector('#session_join').onclick = () => openSessionLobby('', { joinOnly: true });
   bar.querySelector('#session_my_tokens').onclick = openPlayerTokens;
   bar.querySelector('#session_copy').onclick = event => copyText(invitationCode(), event.currentTarget);
@@ -204,7 +204,7 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
     if (fromStorage && !savedName) savedName = fromStorage;
   } catch {}
 
-  const modal = dossierDialog(joinOnly ? 'JOIN GAME' : 'SESSION / CREW LINK', `
+  const modal = dossierDialog(joinOnly ? 'UNIRSE A LA PARTIDA' : 'SESIONES', `
     <span class="dossier-eyebrow">${s.isConnected ? 'ONLINE' : 'OFFLINE'}${LAN_SESSIONS ? ' · LAN' : ''} / ${joinOnly || joined ? 'PLAYER' : 'KEEPER'}</span><h2>${joinOnly ? 'Unirse a la misión' : e(s.campaignName)}</h2>
     <p class="dossier-muted">${joinOnly ? 'Introduce tu nombre o indicativo de llamada. La sesión táctica se abrirá en cuanto la conexión esté lista.' : active ? joined ? 'Importa tu personaje o reclama uno disponible de la tripulación. Los drones pueden compartirse.' : 'Comparte el enlace de invitación y asigna personajes a tu tripulación.' : 'Inicia una partida online o pega un enlace para unirte a tus compañeros. No se requiere cuenta para jugar.'}</p>
     ${!active ? (joinOnly ? `
@@ -229,6 +229,7 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
     ${joinOnly && previewPlayer ? '<button type="button" class="hud-btn" id="lobby_preview">Preview player view offline</button>' : ''}
     ${s.isHosting ? '<form id="broadcast_form" class="session-card"><h3>Broadcast to everyone</h3><label class="dossier-field">Message<textarea class="hud-input" id="broadcast_text" maxlength="2000" rows="3" required placeholder="The next jump begins in five minutes…"></textarea></label><button class="hud-btn">Send broadcast</button></form>' : ''}
   `);
+  mountSessionNavigation(modal, 'live');
   const error = modal.querySelector('.dossier-error'), status = modal.querySelector('#lobby_status');
   if (joinOnly) modal.querySelector('#join_name').focus();
   modal.querySelector('#lobby_preview')?.addEventListener('click', () => { modal.remove(); previewPlayer(); });

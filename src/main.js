@@ -10,7 +10,7 @@ import './help.css';
 import { APP_LABEL } from './version.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import './dossiers.css';
-import { openSessionManager, checkBackupReminder } from './sessionManager.js';
+import { checkBackupReminder } from './sessionManager.js';
 import { LOCAL_ONLY } from './runtimeMode.js';
 import { sanitizeHTML, confirmAction, notify } from './ui.js';
 // src/main.js
@@ -214,7 +214,6 @@ function setupHeaderEvents() {
   const rolePlayerBtn = document.getElementById('role_player_btn');
   const netBtn = document.getElementById('network_modal_btn');
   const audioBtn = document.getElementById('audio_toggle_btn');
-  const dataBtn = document.getElementById('data_menu_btn');
 
   // Populate Scenes dropdown
   function updateScenesList() {
@@ -272,8 +271,6 @@ function setupHeaderEvents() {
   // Multiplayer Modal
   netBtn.onclick = () => openMultiplayerModal();
 
-  // Campaign Data Export / Import Modal
-  dataBtn.onclick = () => openDataModal();
 }
 
 function updateKeeperUIVisibility(isKeeper) {
@@ -690,7 +687,6 @@ function setupAutoJoinFromURL() {
 }
 
 // --- Data Export / Import Modal ---
-function openDataModal() { return openSessionManager(); }
 
 // --- Undo & Redo System (Up to 20 Tactical Steps) ---
 function setupUndoRedoEvents() {

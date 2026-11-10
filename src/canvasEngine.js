@@ -156,6 +156,7 @@ export class CanvasEngine {
     const campaignId = store.getState().campaignId;
     const key = `${campaignId}:${mapData.id}:${mapData.imageUrl}`;
     if (this.currentMapKey === key) return;
+    this.cancelTokenDrag();
     this.cancelWaterDrawing();
     if (this.currentCampaignId !== campaignId) {
       this.templates = []; this.pings = []; this.activeTemplate = null;
@@ -564,16 +565,45 @@ export class CanvasEngine {
     this.canvas.addEventListener('touchcancel', endTouch, { passive: false });
   }
 
+  beginTokenDrag(token, facing = false) {
+    this.tokenDragContext = { campaignId: store.state.campaignId, mapId: token.mapId, tool: store.state.activeTool, role: store.state.userRole, x: token.x, y: token.y, facingAngle: token.facingAngle };
+    // Gesture state is a visual preview, never the authoritative token object.
+    if (facing) this.draggedTokenFacing = { ...token };
+    else { this.draggedToken = { ...token }; this.draggedTokenOrigX = token.x; this.draggedTokenOrigY = token.y; }
+  }
+  cancelTokenDrag() {
+    if (this.draggedToken || this.draggedTokenFacing) this.preDragSnapshot = null;
+    this.draggedToken = null; this.draggedTokenFacing = null;
+    this.draggedTokenOrigX = null; this.draggedTokenOrigY = null; this.tokenDragContext = null;
+  }
+  reconcileTokenDrag() {
+    const drag = this.draggedToken || this.draggedTokenFacing, origin = this.tokenDragContext;
+    if (!drag || !origin) return;
+    const token = store.state.tokens.find(t => t.id === drag.id), state = store.state;
+    if (!token || !store.canEditToken(drag.id) || token.mapId !== origin.mapId || state.activeMapId !== origin.mapId || state.campaignId !== origin.campaignId || state.activeTool !== origin.tool || state.userRole !== origin.role || token.x !== origin.x || token.y !== origin.y || (this.draggedTokenFacing && token.facingAngle !== origin.facingAngle)) this.cancelTokenDrag();
+  }
+  displayTokens() {
+    this.reconcileTokenDrag();
+    return store.getTokensForActiveMap().map(token => {
+      if (this.draggedToken?.id === token.id) return { ...token, x: this.draggedToken.x, y: this.draggedToken.y };
+      if (this.draggedTokenFacing?.id === token.id) return { ...token, facingAngle: this.draggedTokenFacing.facingAngle };
+      return token;
+    });
+  }
+  visionTokens() {
+    return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId);
+  }
   initEvents() {
+    this.tokenUnsubscribe = store.subscribe(() => this.reconcileTokenDrag());
     const waterContext = s => JSON.stringify([s.campaignId,s.activeMapId,s.activeTool,s.waterDrawMode,s.userRole,s.activeLayer,s.layerVisibility.water,s.layerLocked.water]);
     let previousWaterContext = waterContext(store.state);
     this.waterUnsubscribe = store.subscribe(state => {
       const context = waterContext(state);
       if (context !== previousWaterContext) { previousWaterContext = context; this.cancelWaterDrawing(); }
     });
-    window.addEventListener('blur', () => { this.cancelWaterDrawing(); this.isSpacePressed=false; this.isPanning=false; });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) this.cancelWaterDrawing(); });
-    this.canvas.addEventListener('pointercancel', () => this.cancelWaterDrawing());
+    window.addEventListener('blur', () => { this.cancelWaterDrawing(); this.cancelTokenDrag(); this.isSpacePressed=false; this.isPanning=false; });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { this.cancelWaterDrawing(); this.cancelTokenDrag(); } });
+    this.canvas.addEventListener('pointercancel', () => { this.cancelWaterDrawing(); this.cancelTokenDrag(); });
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => {
       setTimeout(() => this.resize(), 120);
@@ -584,6 +614,7 @@ export class CanvasEngine {
     if(e.defaultPrevented || e.target.closest?.('vf-select,.orbital-listbox,.veil-modal-backdrop,[contenteditable="true"]'))return;
       if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
       if (e.target.closest?.('button') && (e.key === 'Enter' || e.code === 'Space')) return;
+      if (e.key === 'Escape') this.cancelTokenDrag();
 
       if (e.code === 'Space' && !e.repeat) {
         this.isSpacePressed = true;
@@ -941,7 +972,7 @@ export class CanvasEngine {
             const arrowX = selectedTok.x + Math.cos(fAngle) * arrowDist;
             const arrowY = selectedTok.y + Math.sin(fAngle) * arrowDist;
             if (Math.hypot(world.x - arrowX, world.y - arrowY) <= 18) {
-              this.draggedTokenFacing = selectedTok;
+              this.beginTokenDrag(selectedTok, true);
               return;
             }
           }
@@ -965,9 +996,7 @@ export class CanvasEngine {
           if (clickedToken) {
             const canMove = store.canEditToken(clickedToken.id);
             if (canMove) {
-              this.draggedToken = clickedToken;
-              this.draggedTokenOrigX = clickedToken.x;
-              this.draggedTokenOrigY = clickedToken.y;
+              this.beginTokenDrag(clickedToken);
               this.dragOffsetX = world.x - clickedToken.x;
               this.dragOffsetY = world.y - clickedToken.y;
             }
@@ -1708,12 +1737,13 @@ export class CanvasEngine {
       }
 
       if (this.draggedTokenFacing) {
+        const token = this.draggedTokenFacing;
         if (this.preDragSnapshot) {
           undoManager.pushSnapshot(this.preDragSnapshot, 'Rotar Operativo');
         }
-        store.updateToken(this.draggedTokenFacing.id, { facingAngle: this.draggedTokenFacing.facingAngle });
-        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: this.draggedTokenFacing.id, partial: { facingAngle: this.draggedTokenFacing.facingAngle } });
-        this.draggedTokenFacing = null;
+        this.cancelTokenDrag();
+        store.updateToken(token.id, { facingAngle: token.facingAngle });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { facingAngle: token.facingAngle } });
       }
 
       if (this.draggedToken) {
@@ -1783,11 +1813,10 @@ export class CanvasEngine {
           store._skipNextUndoSnapshot = true;
           undoManager.pushSnapshot(this.preDragSnapshot, `Mover ${this.draggedToken.name || 'Operativo'}`);
         }
-        store.updateToken(this.draggedToken.id, { x: finalX, y: finalY });
-        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId: this.draggedToken.id, x: finalX, y: finalY });
-        this.draggedToken = null;
-        this.draggedTokenOrigX = null;
-        this.draggedTokenOrigY = null;
+        const tokenId = this.draggedToken.id;
+        this.cancelTokenDrag();
+        store.updateToken(tokenId, { x: finalX, y: finalY });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId, x: finalX, y: finalY });
       }
 
       if (this.draggedWall) {
@@ -2526,7 +2555,7 @@ export class CanvasEngine {
 
     // 3. LAYER: WALLS & LIGHTING & FOG OF WAR
     const isKeeperGM = state.userRole === 'keeper' && state.gmVision;
-    const activeTokens = store.getTokensForActiveMap();
+    const activeTokens = this.visionTokens();
 
     // A. Dynamic Lighting Pass (Ambient darkness, light fixtures, sirens)
     if (state.layerVisibility.walls_lights !== false && !isKeeperGM) {
@@ -2910,6 +2939,7 @@ export class CanvasEngine {
   // --- Check if an NPC / Adversary token is visible to any active player token ---
   isTokenVisibleToPlayers(targetTok, allTokens, map) {
     const state = store.getState();
+    if (store.sessionRole === 'player') allTokens = this.visionTokens();
     // 1. Friendly player tokens are always visible to players
     if (isPartyToken(targetTok)) return true;
 
@@ -3019,6 +3049,7 @@ export class CanvasEngine {
 
   // --- Check if a point is within active vision/light of any player token ---
   isPointInPlayerVision(x, y, allTokens, map) {
+    if (store.sessionRole === 'player') allTokens = this.visionTokens();
     let viewers = allTokens.filter(isPartyToken);
     for (const viewer of viewers) {
       if (viewer.hidden) continue;
@@ -3326,7 +3357,7 @@ export class CanvasEngine {
 
   // --- Tokens Rendering ---
   renderTokens(ctx, map, time) {
-    const tokens = store.getTokensForActiveMap();
+    const tokens = this.displayTokens();
     const state = store.getState();
     const gridSize = map.gridSize || 64;
     const isKeeperGM = state.userRole === 'keeper' && state.gmVision;

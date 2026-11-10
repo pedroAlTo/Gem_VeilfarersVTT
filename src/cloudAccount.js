@@ -14,7 +14,7 @@ export function portableCharacter(token) {
 export const preferenceKeys = [
   'userName', 'audioMuted', 'showGrid', 'gridSnap', 'snapToGrid',
   'snapToAnchors', 'snapToObjects', 'diceTheme', 'dice3d', 'reducedMotion',
-  'gmVision', 'fogOfWar', 'fogExploredOpacity', 'claimedTokenId'
+  'fogOfWar', 'fogExploredOpacity'
 ];
 export function cleanPreferences(values = {}) {
   if (!values || typeof values !== 'object') return {};
@@ -23,14 +23,41 @@ export function cleanPreferences(values = {}) {
     if (k === 'userName') return [k, String(v || '').slice(0, 80)];
     if (k === 'diceTheme') return [k, ['crystal', 'panels', 'circuits', 'galaxy'].includes(v) ? v : 'crystal'];
     if (k === 'fogExploredOpacity') return [k, typeof v === 'number' ? Math.max(0.05, Math.min(0.95, v)) : 0.5];
-    if (k === 'claimedTokenId') return [k, v ? String(v) : null];
     return [k, !!v];
   }));
 }
 export class CloudAccount {
-  constructor() { this.user = null; this.listeners = new Set(); this.epoch = 0; }
+  constructor() {
+    this.user = null; this.listeners = new Set(); this.epoch = 0;
+    this.firebaseUser = null; this.netlifyUser = null;
+    try { this.preferredProvider = localStorage.getItem('veil_auth_provider'); } catch {}
+  }
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { for (const fn of this.listeners) fn(this.user); }
+  selectProvider(provider) {
+    this.preferredProvider = provider;
+    try { localStorage.setItem('veil_auth_provider', provider); } catch {}
+  }
+  publishUser() {
+    if (this.signingOut) return;
+    const user = this.preferredProvider === 'netlify'
+      ? this.netlifyUser || this.firebaseUser : this.firebaseUser || this.netlifyUser;
+    const changed = this.user?.uid !== user?.uid || !!this.user?.isNetlify !== !!user?.isNetlify || this.user?.displayName !== user?.displayName || this.user?.email !== user?.email;
+    this.user = user;
+    if (changed) { this.epoch++; this.emit(); }
+  }
+  setFirebaseUser(user, preferred = false) {
+    this.firebaseUser = user;
+    if (preferred && user) this.selectProvider('firebase');
+    this.publishUser();
+  }
+  async restoreSession() {
+    if (LOCAL_ONLY) return;
+    // Neither provider's initial signed-out event may erase the other's session.
+    const results = await Promise.allSettled([this.initNetlifyIdentity(), ...(cloudConfigured ? [this.init()] : [])]);
+    const failed = results.find(r => r.status === 'rejected');
+    if (failed && !this.user) throw failed.reason;
+  }
   async init() {
     if (!cloudConfigured) throw new Error(LOCAL_ONLY ? 'Cloud features are disabled in local test mode.' : 'Firebase setup is required. Follow FIREBASE_SETUP.md, then restart the app.');
     if (this.loading) return this.loading;
@@ -46,130 +73,114 @@ export class CloudAccount {
       } else {
         this.storage = null;
       }
-      await new Promise(resolve => {
+      await new Promise((resolve, reject) => {
         let first = true;
-        auth.onAuthStateChanged(this.auth, user => { this.user = user; this.epoch++; this.emit(); if (first) { first = false; resolve(); } });
+        this.authUnsubscribe?.();
+        this.authUnsubscribe = auth.onAuthStateChanged(this.auth, user => { this.setFirebaseUser(user); if (first) { first = false; resolve(); } }, reject);
       });
       try {
         const redirectResult = await auth.getRedirectResult(this.auth);
         if (redirectResult?.user) {
-          this.user = redirectResult.user;
-          this.epoch++;
-          this.emit();
+          this.setFirebaseUser(redirectResult.user, true);
         }
       } catch (e) {
         console.warn('Firebase getRedirectResult error:', e);
-      }
-      if (typeof window !== 'undefined' && window.netlifyIdentity && !this.user) {
-        try {
-          const netlifyUser = window.netlifyIdentity.currentUser();
-          if (netlifyUser) this.setNetlifyUser(netlifyUser);
-        } catch {}
       }
       return this;
     })().catch(error => { this.loading = null; throw error; });
     return this.loading;
   }
-  setNetlifyUser(user) {
-    if (!user) return;
-    this.user = {
-      uid: user.id || user.email || 'netlify_' + Date.now(),
+  setNetlifyUser(user, preferred = true) {
+    this.netlifyUser = user ? {
+      uid: user.id || user.email,
       email: user.email || '',
       displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Operative',
       isNetlify: true,
       netlifyUser: user
-    };
-    this.epoch++;
-    this.emit();
+    } : null;
+    if (preferred && user) this.selectProvider('netlify');
+    this.publishUser();
   }
   async signIn(email, password, { create = false, name = '', remember = true } = {}) {
     await this.init();
     const a = this.authAPI;
     await a.setPersistence(this.auth, remember ? a.browserLocalPersistence : a.browserSessionPersistence);
     const credential = await (create ? a.createUserWithEmailAndPassword : a.signInWithEmailAndPassword)(this.auth, email.trim(), password);
-    if (create && name.trim()) { await a.updateProfile(credential.user, { displayName: name.trim().slice(0, 80) }); this.emit(); }
+    if (create && name.trim()) await a.updateProfile(credential.user, { displayName: name.trim().slice(0, 80) });
+    this.setFirebaseUser(credential.user, true);
   }
   async signInWithGoogle(options = {}) {
-    const { useRedirect = false } = options;
+    const { useRedirect = false, remember = true } = options;
     if (this.authAPI || cloudConfigured) {
       const a = this.authAPI || (await this.init()).authAPI;
+      await a.setPersistence(this.auth, remember ? a.browserLocalPersistence : a.browserSessionPersistence);
       const provider = new a.GoogleAuthProvider();
       if (typeof provider.setCustomParameters === 'function') {
         provider.setCustomParameters({ prompt: 'select_account' });
       }
       if (useRedirect) {
+        this.selectProvider('firebase');
         await a.signInWithRedirect(this.auth, provider);
         return null;
       }
-      try {
-        const credential = await a.signInWithPopup(this.auth, provider);
-        return credential?.user || credential;
-      } catch (err) {
-        console.warn('Firebase Google popup failed:', err);
-        // If popup was blocked or closed immediately, try Netlify Identity if available
-        if (typeof window !== 'undefined' && window.netlifyIdentity) {
-          try {
-            return await this.signInWithNetlify('google');
-          } catch (niErr) {
-            console.warn('Netlify Identity fallback failed:', niErr);
-          }
-        }
-        throw err;
-      }
+      const credential = await a.signInWithPopup(this.auth, provider);
+      this.setFirebaseUser(credential.user, true);
+      return credential.user;
     }
     return this.signInWithNetlify('google');
   }
+  bindNetlifyIdentity(ni) {
+    if (this.netlifyIdentity !== ni) {
+      for (const [name, fn] of this.netlifyBindings || []) this.netlifyIdentity?.off(name, fn);
+      this.netlifyIdentity = ni;
+      this.netlifyBindings = [
+        ['init', user => this.setNetlifyUser(user, false)],
+        ['login', user => this.setNetlifyUser(user, true)],
+        ['logout', () => this.setNetlifyUser(null, false)],
+      ];
+      for (const [name, fn] of this.netlifyBindings) ni.on(name, fn);
+      // The script may have completed its automatic init before the app subscribed.
+      try { this.setNetlifyUser(ni.currentUser(), false); } catch {}
+      try { ni.init(); } catch {}
+    }
+    try { this.setNetlifyUser(ni.currentUser(), false); } catch {}
+    return ni;
+  }
   async initNetlifyIdentity() {
     if (typeof window === 'undefined') return null;
-    if (window.netlifyIdentity) return window.netlifyIdentity;
+    if (window.netlifyIdentity) return this.bindNetlifyIdentity(window.netlifyIdentity);
     if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent)) return null;
-
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(window.netlifyIdentity || null), 2000);
+    if (this.netlifyLoading) return this.netlifyLoading;
+    this.netlifyLoading = new Promise((resolve) => {
+      const ready = () => { clearTimeout(timer); resolve(window.netlifyIdentity ? this.bindNetlifyIdentity(window.netlifyIdentity) : null); };
+      const timer = setTimeout(ready, 2000);
       const existing = document.querySelector('script[src*="netlify-identity-widget"]');
       if (existing) {
-        if (window.netlifyIdentity) {
-          clearTimeout(timer);
-          try { window.netlifyIdentity.init(); } catch {}
-          resolve(window.netlifyIdentity);
-          return;
-        }
-        existing.addEventListener('load', () => {
-          clearTimeout(timer);
-          if (window.netlifyIdentity) {
-            try { window.netlifyIdentity.init(); } catch {}
-            resolve(window.netlifyIdentity);
-          } else {
-            resolve(null);
-          }
-        });
-        existing.addEventListener('error', () => { clearTimeout(timer); resolve(null); });
+        existing.addEventListener('load', ready, { once: true });
+        existing.addEventListener('error', ready, { once: true });
         return;
       }
       const script = document.createElement('script');
       script.src = 'https://identity.netlify.com/v1/netlify-identity-widget.js';
       script.async = true;
-      script.onload = () => {
-        clearTimeout(timer);
-        if (window.netlifyIdentity) {
-          try { window.netlifyIdentity.init(); } catch {}
-          resolve(window.netlifyIdentity);
-        } else {
-          resolve(null);
-        }
-      };
-      script.onerror = () => { clearTimeout(timer); resolve(null); };
+      script.onload = ready;
+      script.onerror = ready;
       document.head.appendChild(script);
-    });
+    }).finally(() => { this.netlifyLoading = null; });
+    return this.netlifyLoading;
   }
   async signInWithNetlify(provider = '') {
     const ni = await this.initNetlifyIdentity();
     if (!ni) throw new Error('Netlify Identity no está disponible en este entorno.');
+    const existing = ni.currentUser();
+    if (existing) { this.setNetlifyUser(existing, true); return this.user; }
     return new Promise((resolve, reject) => {
       let settled = false;
+      const cleanup = () => { ni.off('login', onLogin); ni.off('close', onClose); ni.off('error', onError); };
       const onLogin = user => {
         if (settled) return;
         settled = true;
+        cleanup();
         this.setNetlifyUser(user);
         try { ni.close(); } catch {}
         resolve(this.user);
@@ -177,30 +188,31 @@ export class CloudAccount {
       const onClose = () => {
         if (settled) return;
         settled = true;
+        cleanup();
         reject(new Error('Acceso con Netlify Identity cerrado o cancelado.'));
       };
       const onError = err => {
         if (settled) return;
         settled = true;
+        cleanup();
         reject(err);
       };
       ni.on('login', onLogin);
       ni.on('close', onClose);
       ni.on('error', onError);
-      ni.open('login');
+      try { ni.open('login'); } catch (error) { onError(error); }
     });
   }
   async resetPassword(email) { await this.init(); await this.authAPI.sendPasswordResetEmail(this.auth, email.trim()); }
   async signOut() {
-    if (this.user?.isNetlify && typeof window !== 'undefined' && window.netlifyIdentity) {
-      try { window.netlifyIdentity.logout(); } catch {}
-    }
-    this.user = null;
-    this.epoch++;
-    this.emit();
-    if (this.authAPI && this.auth) {
-      try { await this.authAPI.signOut(this.auth); } catch {}
-    }
+    if (this.signingOut) return;
+    this.signingOut = true;
+    try {
+      if (this.authAPI && this.auth) await this.authAPI.signOut(this.auth);
+      const ni = this.netlifyIdentity || (typeof window !== 'undefined' && window.netlifyIdentity);
+      if (ni) await ni.logout();
+      this.firebaseUser = null; this.netlifyUser = null;
+    } finally { this.signingOut = false; this.publishUser(); }
   }
   async identity() {
     if (this.user?.isNetlify) return this.user.uid;
@@ -253,34 +265,37 @@ export class CloudAccount {
   }
   decodeCharacter(row) { return portableCharacter(parseCharacterJSON(row.payload).token); }
   async savePreferences(values) {
-    const cleaned = cleanPreferences(values);
-    try {
-      localStorage.setItem('veil_user_preferences', JSON.stringify(cleaned));
-    } catch {}
+    const cleaned = cleanPreferences(values), uid = await this.identity(), epoch = this.epoch;
+    const cacheKey = `veil_user_preferences_${this.user?.isNetlify ? 'netlify' : 'firebase'}_${uid}`;
     if (this.user?.isNetlify) {
-      try {
-        localStorage.setItem('veil_user_preferences_' + this.user.uid, JSON.stringify(cleaned));
-      } catch {}
+      localStorage.setItem(cacheKey, JSON.stringify(cleaned));
       return;
     }
-    const uid = await this.identity(), d = this.dbAPI;
+    const d = this.dbAPI;
     await d.setDoc(d.doc(this.db, 'users', uid, 'settings', 'preferences'), cleaned);
+    if (epoch !== this.epoch) throw new Error('Account changed. Reopen your preferences.');
+    try { localStorage.setItem(cacheKey, JSON.stringify(cleaned)); } catch {}
   }
   async loadPreferences() {
+    const uid = await this.identity(), epoch = this.epoch;
+    const cacheKey = `veil_user_preferences_${this.user?.isNetlify ? 'netlify' : 'firebase'}_${uid}`;
     if (this.user?.isNetlify) {
       try {
-        const saved = localStorage.getItem('veil_user_preferences_' + this.user.uid) || localStorage.getItem('veil_user_preferences');
+        const saved = localStorage.getItem(cacheKey) || localStorage.getItem('veil_user_preferences_' + uid);
         return saved ? cleanPreferences(JSON.parse(saved)) : {};
       } catch { return {}; }
     }
     try {
-      const uid = await this.identity(), epoch = this.epoch, d = this.dbAPI;
+      const d = this.dbAPI;
       const doc = await d.getDocFromServer(d.doc(this.db, 'users', uid, 'settings', 'preferences'));
       if (epoch !== this.epoch) throw new Error('Account changed.');
-      return (doc && typeof doc.exists === 'function' && doc.exists()) ? cleanPreferences(doc.data() || {}) : {};
+      const values = (doc && typeof doc.exists === 'function' && doc.exists()) ? cleanPreferences(doc.data() || {}) : {};
+      try { localStorage.setItem(cacheKey, JSON.stringify(values)); } catch {}
+      return values;
     } catch {
+      if (epoch !== this.epoch) throw new Error('Account changed.');
       try {
-        const saved = localStorage.getItem('veil_user_preferences');
+        const saved = localStorage.getItem(cacheKey);
         return saved ? cleanPreferences(JSON.parse(saved)) : {};
       } catch { return {}; }
     }

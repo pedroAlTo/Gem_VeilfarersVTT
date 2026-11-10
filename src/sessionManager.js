@@ -2,9 +2,11 @@ import { store } from './state.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
 import { openCharacterImport } from './characterManager.js';
+import { mountSessionNavigation } from './sessionNavigation.js';
 
 export async function openSessionManager() {
-  const modal = dossierDialog('SESIONES GUARDADAS', '<p class="dossier-muted">Leyendo sesiones…</p>', 'sessions-backdrop');
+  const modal = dossierDialog('SESIONES', '<p class="dossier-muted">Leyendo sesiones…</p>', 'sessions-backdrop');
+  mountSessionNavigation(modal, 'saved');
   const body = modal.querySelector('.dossier-body');
   const refresh = async () => {
     const sessions = await store.savedSessions();
@@ -17,11 +19,19 @@ export async function openSessionManager() {
       <section class="session-new"><h4 class="dossier-label">CREAR SESIÓN</h4><div><input class="hud-input" id="session_new_name" aria-label="Nombre de nueva sesión" placeholder="Nombre de la nueva sesión" maxlength="500"><button class="hud-btn hud-btn-primary" id="session_create">Nueva vacía</button><button class="hud-btn" id="session_copy">Duplicar activa</button></div><small>La sesión vacía comienza con una escena sin actores. Fear se inicia en 0 para que lo ajustes al preparar la partida.</small></section>
       <p class="dossier-error" role="alert"></p><footer class="dossier-footer"><button class="hud-btn" id="session_actors">Importar personajes</button><button class="hud-btn" id="session_export">Exportar sesión JSON</button><label class="hud-btn session-file">Importar sesión JSON<input type="file" id="session_import" accept=".json,application/json"></label></footer>
     `);
+    if (store.sessionRole !== 'local' || store.state.isHosting || store.state.isConnected) {
+      const message = document.createElement('p'); message.className = 'import-warning';
+      message.textContent = 'Para abrir, crear o importar otra sesión, cierra la partida desde «Partida y tripulación». Tus sesiones guardadas se conservan.';
+      body.prepend(message);
+      body.querySelectorAll('#session_rename,#session_create,#session_copy,#session_import,#session_actors,[data-open-session]').forEach(b => { b.disabled = true; });
+      if (store.sessionRole === 'player') body.querySelector('#session_save').disabled = true;
+    }
     const execute = async action => {
       modal.dataset.busy = 'true';
-      body.querySelectorAll('button, input').forEach(x => { x.disabled = true; });
+      const controls = [...body.querySelectorAll('button, input')].map(x => [x, x.disabled]);
+      controls.forEach(([x]) => { x.disabled = true; });
       try { await action(); await refresh(); }
-      catch (err) { body.querySelector('.dossier-error').textContent = err.message; body.querySelectorAll('button, input').forEach(x => { x.disabled = false; }); }
+      catch (err) { body.querySelector('.dossier-error').textContent = err.message; controls.forEach(([x, disabled]) => { x.disabled = disabled; }); }
       finally { delete modal.dataset.busy; }
     };
     body.querySelector('#session_save').onclick = () => execute(async () => { await store.saveToStorage(); await store.saveQueue; notify('Sesión guardada.'); });
