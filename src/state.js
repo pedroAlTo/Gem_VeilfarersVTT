@@ -67,6 +67,7 @@ class StateStore {
       // Client / User context
       userRole: 'keeper', // 'keeper' or 'player'
       userName: 'Keeper',
+      isObserver: false,
       claimedTokenId: 'tok_harker',
       selectedTokenId: 'tok_harker',
       selectedWallId: null,

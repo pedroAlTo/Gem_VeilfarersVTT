@@ -28,10 +28,20 @@ Persistencia del acceso, telemetría de escena y optimización compacta de panel
 
 ### Telemetría de escena y distribución compacta de paneles
 
-- Corrección de la telemetría de sincronización de escena: se elimina la duplicación de la terminal local y se garantiza que la escena cargada al 100% no se muestre como pendiente o al 0%.
+- Corrección integral de la telemetría de sincronización de escena: el anfitrión indexa el estado de carga por identificador de miembro, peer y nombre, emitiendo eventos reactivos que actualizan de inmediato las píldoras de tripulación a 100% ✅ y eliminan estados falsos de 0% o pendiente.
+- Transmisión proactiva de telemetría: los clientes notifican inmediatamente su estado de carga al Keeper al conectarse o recibir la escena inicial, incluso cuando el mapa ya se encuentra precargado en la memoria local.
+- Dossier de estado de escena reactivo y completo: actualización automática en vivo ante cambios de carga y visualización de la fila del Keeper para clientes conectados.
+- Ampliación del límite de tamaño de mapas tácticos: se eleva el límite máximo de subida de 20 MB a 50 MB en almacenamiento local/servidor y hasta 100 MB al utilizar Cloudinary con compresión WebP/AVIF.
 - Consola de chat táctico compacta y libre de scroll exterior: contenedor flex con mensajes scrollables internamente, selector de canal de bajo perfil y compositor de entrada condensado.
 - Panel de vista previa de token (Token HUD) comprimido verticalmente en más de un 70%, agrupando acciones en cuadrícula compacta y disponiendo la telemetría vital en una sola fila ágil.
 - Navegación por pestañas laterales (DICE, CLOCKS, SHIP, ROSTER, SCENES, DOSSIERS, LOG, CHAT) optimizada en una sola fila sin desbordamiento.
+
+### Modo Observador y asignación de tokens
+
+- Tercera opción al unirse a la partida: «Unirse como Observador». El jugador puede conectarse a la sesión sin verse forzado a reclamar o importar un personaje de inmediato.
+- La opción de observador está disponible tanto en el formulario de acceso a la sesión como en el modal de reclamación de personaje (Opción C).
+- El Director de Juego (Keeper) puede asignar cualquier token a un observador desde el lobby o el panel de asignación; la transición es fluida e inmediata, centrando la vista en el token y activando sus controles tácticos.
+- Indicador interactivo en la barra superior «👁️ Observador», que permite al usuario seguir la partida en tiempo real y reclamar o importar un personaje si cambia de opinión.
 
 ## [1.3.0] — 2026-11-10
 

@@ -61,8 +61,14 @@ export function initSessionBar() {
     if (magicBtn) magicBtn.hidden = !invitationCode() || store.sessionRole === 'player';
     bar.querySelector('#session_crew').textContent = `Crew · ${(s.connectedPeers || []).length}`;
     const mine = bar.querySelector('#session_my_tokens'), controlled = store.getControlledTokens();
-    mine.hidden = s.userRole !== 'player'; mine.disabled = !controlled.length; mine.textContent = `My tokens · ${controlled.length}`;
-    mine.title = controlled.length ? 'Select and control your character or a shared drone' : 'Ask the Keeper to assign a token';
+    mine.hidden = s.userRole !== 'player';
+    mine.disabled = false;
+    mine.textContent = controlled.length
+      ? `My tokens · ${controlled.length}`
+      : (s.isObserver ? '👁️ Observador' : 'My tokens · 0');
+    mine.title = controlled.length
+      ? 'Select and control your character or a shared drone'
+      : (s.isObserver ? 'Modo Observador activo: el Keeper te asignará un token' : 'Ask the Keeper to assign a token');
 
     // Live Scene Synchronization Status Button
     const mapSyncBtn = bar.querySelector('#session_map_sync');
@@ -82,7 +88,11 @@ export function initSessionBar() {
 
         for (const peer of peers) {
           total++;
-          const st = network.mapLoadStatuses?.get(peer.id);
+          const p = (s.players || []).find(x => x.id === peer.id);
+          const st = network.mapLoadStatuses?.get(peer.id) ||
+                     (p ? network.mapLoadStatuses?.get(p.id) : null) ||
+                     (peer.name ? network.mapLoadStatuses?.get(peer.name) : null) ||
+                     [...network.mapLoadStatuses.values()].find(x => (peer.name && x.name === peer.name) || x.peerId === peer.id || (p && x.peerId === p.id));
           const isPeerReady = st ? (st.mapId === activeMapId && st.loaded) : (!s.isHosting);
           if (isPeerReady) {
             ready++;
@@ -122,7 +132,11 @@ export function initSessionBar() {
           const isOnline = peers.some(c => c.id === p.id);
           const tok = s.tokens.find(t => !isDrone(t) && t.ownerId === p.id);
           const avatar = tok?.avatarUrl || '';
-          const st = network.mapLoadStatuses?.get(p.id);
+          const peer = peers.find(c => c.id === p.id);
+          const st = network.mapLoadStatuses?.get(p.id) ||
+                     (peer ? network.mapLoadStatuses?.get(peer.id) : null) ||
+                     network.mapLoadStatuses?.get(p.name) ||
+                     [...network.mapLoadStatuses.values()].find(x => x.name === p.name || x.peerId === p.id || (peer && x.peerId === peer.id));
           const isReady = st ? (st.mapId === activeMapId && st.loaded) : false;
           const progress = isReady ? 100 : (st?.mapId === activeMapId ? st.progress : 0);
           const syncBadge = !isOnline ? '' : (isReady ?
@@ -176,7 +190,16 @@ export function initSessionBar() {
 
 export function openPlayerTokens() {
   const tokens = store.getControlledTokens();
-  const modal = dossierDialog('MY TOKENS', `<p class="dossier-muted">Move, turn, roll and manage the resources of your assigned tokens.</p><div class="session-actions">${tokens.map(token => `<button class="hud-btn" data-control-token="${e(token.id)}">Control ${e(token.name)}${isDrone(token) ? ' · shared drone' : ''}</button>`).join('') || '<p>No token assigned in this scene. Ask the Keeper to assign one.</p>'}</div>`);
+  const isObserver = !!store.state.isObserver;
+  const content = tokens.length
+    ? `<p class="dossier-muted">Mueve, gira, tira y gestiona los recursos de tus tokens asignados.</p>
+       <div class="session-actions">${tokens.map(token => `<button class="hud-btn" data-control-token="${e(token.id)}">Controlar ${e(token.name)}${isDrone(token) ? ' · dron compartido' : ''}</button>`).join('')}</div>`
+    : `<div style="text-align: center; padding: 12px 6px;">
+        <p style="font-size: 15px; margin-bottom: 8px;">${isObserver ? '👁️ <strong>Estás conectado como Observador</strong>' : 'No tienes ningún token asignado en esta escena.'}</p>
+        <p class="dossier-muted" style="margin-bottom: 16px;">${isObserver ? 'El Keeper te asignará tu personaje directamente cuando sea oportuno, o puedes reclamar o importar uno tú mismo.' : 'Pide al Keeper que te asigne uno o reclama uno disponible de la tripulación.'}</p>
+        <button class="hud-btn hud-btn-primary" id="btn_modal_claim_character" style="width: 100%;">🎯 Reclamar o Importar Personaje</button>
+       </div>`;
+  const modal = dossierDialog('MIS TOKENS', content);
   modal.querySelectorAll('[data-control-token]').forEach(button => button.onclick = () => {
     const token = store.state.tokens.find(t => t.id === button.dataset.controlToken);
     if (!token || !store.canEditToken(token.id)) { modal.remove(); notify('This token is no longer assigned to you.'); return; }
@@ -184,6 +207,12 @@ export function openPlayerTokens() {
     const canvas = window.veilCanvas;
     if (canvas) { canvas.panX = canvas.displayWidth / 2 - token.x * canvas.zoom; canvas.panY = canvas.displayHeight / 2 - token.y * canvas.zoom; }
     modal.remove();
+  });
+  modal.querySelector('#btn_modal_claim_character')?.addEventListener('click', () => {
+    modal.remove();
+    import('./rosterManager.js').then(({ openClaimCharacterModal }) => {
+      openClaimCharacterModal();
+    }).catch(() => {});
   });
   return modal;
 }
@@ -222,11 +251,15 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
           <label class="dossier-field" ${prefill ? 'style="display:none;"' : ''}>Código o Enlace de Invitación
             <input class="hud-input" id="join_code" required value="${e(prefill)}" placeholder="Pega el código o enlace">
           </label>
+          <label class="dossier-field" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:8px;">
+            <input type="checkbox" id="join_as_observer" ${s.isObserver ? 'checked' : ''}>
+            <span>👁️ Unirme como Observador (el Keeper asignará el token)</span>
+          </label>
           <button class="hud-btn hud-btn-primary" id="btn_direct_join" style="width: 100%; margin-top: 10px;" ${LOCAL_ONLY ? 'disabled' : ''}>🚀 Entrar</button>
         </form>
       </div>
     ` : `<div class="session-lobby-grid"><form id="host_form" class="session-card"><span class="dossier-eyebrow">01 / HOST</span><h3>Create an online game</h3><label class="dossier-field">Session name<input class="hud-input" id="host_name" maxlength="200" required value="${e(s.campaignName)}"></label><label><input type="checkbox" id="host_efforts" ${s.optionalEfforts ? 'checked' : ''}> Optional Efforts</label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Host game</button></form>
-    <form id="join_form" class="session-card"><span class="dossier-eyebrow">02 / JOIN</span><h3>Join your crew</h3><label class="dossier-field">Your call sign<input class="hud-input" id="join_name" maxlength="80" required value="${e(savedName)}" placeholder="Your name"></label><label class="dossier-field">Invitation code or link<input class="hud-input" id="join_code" required value="${e(prefill)}" placeholder="Paste invitation"></label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Join game</button></form></div>${LOCAL_ONLY ? '<p class="import-warning">Local test mode. Use INICIAR_VTT_ONLINE.bat for online features.</p>' : ''}`) : `
+    <form id="join_form" class="session-card"><span class="dossier-eyebrow">02 / JOIN</span><h3>Join your crew</h3><label class="dossier-field">Your call sign<input class="hud-input" id="join_name" maxlength="80" required value="${e(savedName)}" placeholder="Your name"></label><label class="dossier-field">Invitation code or link<input class="hud-input" id="join_code" required value="${e(prefill)}" placeholder="Paste invitation"></label><label class="dossier-field" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:8px;"><input type="checkbox" id="join_as_observer" ${s.isObserver ? 'checked' : ''}> <span>👁️ Unirme como observador (el Keeper asignará el token)</span></label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Join game</button></form></div>${LOCAL_ONLY ? '<p class="import-warning">Local test mode. Use INICIAR_VTT_ONLINE.bat for online features.</p>' : ''}`) : `
     <div class="session-invitation"><label class="dossier-field">Invitation code<input class="hud-input" readonly value="${e(invitationCode())}"></label><button class="hud-btn" id="lobby_copy">Copy code</button><button class="hud-btn hud-btn-primary" id="lobby_link">🔗 Copiar Enlace Mágico</button></div><div class="session-actions"><button class="hud-btn hud-btn-primary" id="lobby_import">Import my character</button><button class="hud-btn" id="lobby_library">My saved characters</button><button class="hud-btn" id="lobby_leave">${joined ? 'Leave game' : 'Close online game'}</button>${!s.isConnected && joined ? '<button class="hud-btn" id="lobby_reconnect">Reconnect</button>' : ''}</div>`}
     <p id="lobby_status" role="status"></p><p class="dossier-error" role="alert"></p>
     ${joinOnly ? '' : '<h3>Player roster</h3>'}<div id="lobby_roster" ${joinOnly ? 'hidden' : ''}></div>
@@ -283,7 +316,9 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
   modal.querySelector('#join_form')?.addEventListener('submit', event => {
     event.preventDefault();
     const playerName = modal.querySelector('#join_name').value.trim();
+    const asObserver = !!modal.querySelector('#join_as_observer')?.checked;
     try { if (typeof localStorage !== 'undefined') localStorage.setItem('veil_last_player_name', playerName); } catch {}
+    store.update({ isObserver: asObserver, ...(asObserver ? { claimedTokenId: null, selectedTokenId: null } : {}) });
     run(async () => {
       const { room, invite } = parseInvitation(modal.querySelector('#join_code').value);
       status.textContent = 'Connecting to the Keeper and waiting for the map…';
@@ -304,84 +339,120 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
 }
 
 export function openMapSyncTelemetryModal() {
-  const s = store.state;
-  const activeMap = store.getActiveMap() || { name: 'Escena actual' };
-  const peers = s.connectedPeers || [];
-  const players = s.players || [];
-  const activeMapId = activeMap.id;
+  const modal = dossierDialog('TELEMETRÍA // ESTADO DE ESCENA', '<div id="telemetry_content"></div>');
+  const container = modal.querySelector('#telemetry_content');
 
-  const myMemberId = store.memberId || store.peerId || 'local';
-  const myStatus = network.mapLoadStatuses?.get(myMemberId) || network.mapLoadStatuses?.get('local');
-  const selfLoaded = myStatus ? (myStatus.mapId === activeMapId && myStatus.loaded) : (window.veilCanvas?.isMapLoaded !== false);
-  const selfProgress = selfLoaded ? 100 : (myStatus?.progress || 0);
-  const isKeeper = s.userRole === 'keeper';
+  const render = () => {
+    if (!container || !modal.isConnected) return;
+    const s = store.state;
+    const activeMap = store.getActiveMap() || { name: 'Escena actual' };
+    const peers = s.connectedPeers || [];
+    const players = s.players || [];
+    const activeMapId = activeMap.id;
 
-  const rows = [
-    {
-      name: isKeeper ? 'Keeper' : (s.playerName || 'Mi Terminal'),
-      role: isKeeper ? 'KEEPER' : 'OPERATIVO',
-      tokenName: isKeeper ? 'Director de Juego' : (store.getSelectedToken()?.name || 'Operativo'),
-      progress: selfProgress,
-      loaded: selfLoaded,
-      statusText: selfLoaded ? 'Matriz cargada al 100%' : (myStatus?.text || 'Descargando...'),
-      isSelf: true
-    },
-    ...peers.filter(peer => peer.id && peer.id !== myMemberId).map(peer => {
-      const p = players.find(x => x.id === peer.id);
-      const tok = s.tokens.find(t => !isDrone(t) && t.ownerId === peer.id);
-      const st = network.mapLoadStatuses?.get(peer.id);
-      const isReady = st ? (st.mapId === activeMapId && st.loaded) : (!s.isHosting);
-      const progress = isReady ? 100 : (st?.mapId === activeMapId ? st.progress : 0);
-      return {
-        name: peer.name || p?.name || 'Operativo',
-        role: 'OPERATIVO',
-        tokenName: tok ? tok.name : 'Sin personaje asignado',
-        progress,
-        loaded: isReady,
-        statusText: isReady ? 'Matriz cargada al 100%' : (st?.text || 'Descargando escena...'),
-        isSelf: false
-      };
-    })
-  ];
+    const myMemberId = store.memberId || store.peerId || 'local';
+    const myStatus = network.mapLoadStatuses?.get(myMemberId) || network.mapLoadStatuses?.get('local');
+    const selfLoaded = myStatus ? (myStatus.mapId === activeMapId && myStatus.loaded) : (window.veilCanvas?.isMapLoaded !== false);
+    const selfProgress = selfLoaded ? 100 : (myStatus?.progress || 0);
+    const isKeeper = s.userRole === 'keeper';
 
-  const allReady = rows.every(r => r.loaded);
-  const readyCount = rows.filter(r => r.loaded).length;
+    const keeperStatus = network.mapLoadStatuses?.get('keeper') || [...network.mapLoadStatuses.values()].find(x => x.role === 'keeper');
+    const isKeeperReady = keeperStatus ? (keeperStatus.mapId === activeMapId && keeperStatus.loaded) : true;
+    const keeperRow = isKeeper ? null : {
+      name: 'Director de Juego (Keeper)',
+      role: 'KEEPER',
+      tokenName: 'Host de la misión',
+      progress: 100,
+      loaded: isKeeperReady,
+      statusText: 'Matriz cargada al 100%',
+      isSelf: false
+    };
 
-  return dossierDialog('TELEMETRÍA // ESTADO DE ESCENA', `
-    <span class="dossier-eyebrow">SINCRONIZACIÓN DE MATRIZ TÁCTICA // MULTIJUGADOR</span>
-    <h2>${e(activeMap.name)}</h2>
-    <p class="dossier-muted">Estado de descarga y decodificación del mapa táctico en las terminales de la tripulación (${readyCount}/${rows.length} sincronizados).</p>
+    const rows = [
+      {
+        name: isKeeper ? 'Keeper' : (s.userName || s.playerName || 'Mi Terminal'),
+        role: isKeeper ? 'KEEPER' : 'OPERATIVO',
+        tokenName: isKeeper ? 'Director de Juego' : (store.getSelectedToken()?.name || 'Operativo'),
+        progress: selfProgress,
+        loaded: selfLoaded,
+        statusText: selfLoaded ? 'Matriz cargada al 100%' : (myStatus?.text || 'Descargando...'),
+        isSelf: true
+      },
+      ...(keeperRow ? [keeperRow] : []),
+      ...peers.filter(peer => peer.id && peer.id !== myMemberId).map(peer => {
+        const p = players.find(x => x.id === peer.id);
+        const tok = s.tokens.find(t => !isDrone(t) && t.ownerId === peer.id);
+        const st = network.mapLoadStatuses?.get(peer.id) ||
+                   (p ? network.mapLoadStatuses?.get(p.id) : null) ||
+                   (peer.name ? network.mapLoadStatuses?.get(peer.name) : null) ||
+                   [...network.mapLoadStatuses.values()].find(x => (peer.name && x.name === peer.name) || x.peerId === peer.id || (p && x.peerId === p.id));
+        const isReady = st ? (st.mapId === activeMapId && st.loaded) : (!s.isHosting);
+        const progress = isReady ? 100 : (st?.mapId === activeMapId ? st.progress : 0);
+        return {
+          name: peer.name || p?.name || 'Operativo',
+          role: 'OPERATIVO',
+          tokenName: tok ? tok.name : 'Sin personaje asignado',
+          progress,
+          loaded: isReady,
+          statusText: isReady ? 'Matriz cargada al 100%' : (st?.text || 'Descargando escena...'),
+          isSelf: false
+        };
+      })
+    ];
 
-    <div style="margin: 16px 0; display: flex; flex-direction: column; gap: 10px;">
-      ${rows.map(row => `
-        <div class="glass-panel" style="padding: 10px 14px; border-radius: 6px; border: 1px solid ${row.loaded ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}; background: rgba(13, 20, 36, 0.7);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${row.loaded ? '#10b981' : '#fbbf24'}; box-shadow: 0 0 8px ${row.loaded ? '#10b981' : '#fbbf24'};"></span>
-              <strong style="color: #fff; font-size: 13px;">${e(row.name)} ${row.isSelf ? '<small style="color:var(--cyan-pearl);">(Tú)</small>' : ''}</strong>
-              <span style="font-size: 10px; color: #94a3b8;">[${e(row.tokenName)}]</span>
+    const allReady = rows.every(r => r.loaded);
+    const readyCount = rows.filter(r => r.loaded).length;
+
+    container.innerHTML = sanitizeHTML(`
+      <span class="dossier-eyebrow">SINCRONIZACIÓN DE MATRIZ TÁCTICA // MULTIJUGADOR</span>
+      <h2>${e(activeMap.name)}</h2>
+      <p class="dossier-muted">Estado de descarga y decodificación del mapa táctico en las terminales de la tripulación (${readyCount}/${rows.length} sincronizados).</p>
+
+      <div style="margin: 16px 0; display: flex; flex-direction: column; gap: 10px;">
+        ${rows.map(row => `
+          <div class="glass-panel" style="padding: 10px 14px; border-radius: 6px; border: 1px solid ${row.loaded ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}; background: rgba(13, 20, 36, 0.7);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${row.loaded ? '#10b981' : '#fbbf24'}; box-shadow: 0 0 8px ${row.loaded ? '#10b981' : '#fbbf24'};"></span>
+                <strong style="color: #fff; font-size: 13px;">${e(row.name)} ${row.isSelf ? '<small style="color:var(--cyan-pearl);">(Tú)</small>' : ''}</strong>
+                <span style="font-size: 10px; color: #94a3b8;">[${e(row.tokenName)}]</span>
+              </div>
+              <span style="font-family: var(--font-mono, monospace); font-weight: 700; color: ${row.loaded ? '#10b981' : '#fbbf24'}; font-size: 12px;">
+                ${row.loaded ? '100% ✅' : `${row.progress}% ⏳`}
+              </span>
             </div>
-            <span style="font-family: var(--font-mono, monospace); font-weight: 700; color: ${row.loaded ? '#10b981' : '#fbbf24'}; font-size: 12px;">
-              ${row.loaded ? '100% ✅' : `${row.progress}% ⏳`}
-            </span>
-          </div>
 
-          <div style="width: 100%; height: 6px; background: rgba(15, 23, 42, 0.8); border-radius: 3px; overflow: hidden;">
-            <div style="height: 100%; width: ${row.progress}%; background: ${row.loaded ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #f59e0b, #fbbf24)'}; transition: width 0.3s ease;"></div>
-          </div>
+            <div style="width: 100%; height: 6px; background: rgba(15, 23, 42, 0.8); border-radius: 3px; overflow: hidden;">
+              <div style="height: 100%; width: ${row.progress}%; background: ${row.loaded ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #f59e0b, #fbbf24)'}; transition: width 0.3s ease;"></div>
+            </div>
 
-          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 4px; font-family: var(--font-mono, monospace);">
-            <span>${e(row.statusText)}</span>
-            <span>${row.loaded ? 'Listo para el combate' : 'Esperando datos de escena...'}</span>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 4px; font-family: var(--font-mono, monospace);">
+              <span>${e(row.statusText)}</span>
+              <span>${row.loaded ? 'Listo para el combate' : 'Esperando datos de escena...'}</span>
+            </div>
           </div>
-        </div>
-      `).join('')}
-    </div>
+        `).join('')}
+      </div>
 
-    <div style="padding: 10px; border-radius: 6px; text-align: center; background: ${allReady ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; border: 1px solid ${allReady ? '#10b981' : '#f59e0b'};">
-      <strong style="color: ${allReady ? '#10b981' : '#fbbf24'}; font-size: 12px;">
-        ${allReady ? '🚀 TODOS LOS OPERATIVOS ESTÁN SINCRONIZADOS Y LISTOS' : '⏳ ESPERANDO A QUE TODOS LOS OPERATIVOS COMPLETEN LA CARGA DEL MAPA'}
-      </strong>
-    </div>
-  `);
+      <div style="padding: 10px; border-radius: 6px; text-align: center; background: ${allReady ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; border: 1px solid ${allReady ? '#10b981' : '#f59e0b'};">
+        <strong style="color: ${allReady ? '#10b981' : '#fbbf24'}; font-size: 12px;">
+          ${allReady ? '🚀 TODOS LOS OPERATIVOS ESTÁN SINCRONIZADOS Y LISTOS' : '⏳ ESPERANDO A QUE TODOS LOS OPERATIVOS COMPLETEN LA CARGA DEL MAPA'}
+        </strong>
+      </div>
+    `);
+  };
+
+  render();
+  window.addEventListener('veil:map-load-status', render);
+  const unsub = store.subscribe(() => render());
+  const obs = new MutationObserver(() => {
+    if (!modal.isConnected) {
+      window.removeEventListener('veil:map-load-status', render);
+      unsub();
+      obs.disconnect();
+    }
+  });
+  obs.observe(document.body, { childList: true });
+
+  return modal;
 }

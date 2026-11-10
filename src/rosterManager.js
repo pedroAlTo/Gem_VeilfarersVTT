@@ -497,6 +497,14 @@ export function openClaimCharacterModal() {
         📂 Importar mi Viajero (.JSON)
       </button>
     </section>
+
+    <section class="claim-observer-section" style="border-top: 1px solid rgba(0, 243, 255, 0.2); padding-top: 14px; margin-top: 14px;">
+      <h3 class="dossier-eyebrow" style="color: #fbbf24; margin-bottom: 6px;">OPCIÓN C: UNIRSE COMO OBSERVADOR</h3>
+      <p class="dossier-muted" style="margin-bottom: 10px;">Únete a la mesa táctica para seguir la misión como observador. El Keeper te asignará tu personaje cuando sea oportuno.</p>
+      <button class="hud-btn hud-btn-secondary" id="btn_claim_observer" style="width: 100%; border-color: rgba(251, 191, 36, 0.6); color: #fbbf24; font-weight: 600; padding: 8px 12px;">
+        👁️ Unirse como Observador (El Keeper asignará el token)
+      </button>
+    </section>
   `);
 
   modal.querySelectorAll('[data-claim-btn], [data-claim-id]').forEach(btn => {
@@ -510,7 +518,7 @@ export function openClaimCharacterModal() {
         } else {
           store.assignTokenControllers(tokenId, [store.memberId || 'player']);
         }
-        store.update({ selectedTokenId: tokenId, claimedTokenId: tokenId, activeTool: 'select', activeLayer: 'tokens' });
+        store.update({ isObserver: false, selectedTokenId: tokenId, claimedTokenId: tokenId, activeTool: 'select', activeLayer: 'tokens' });
         let targetToken = store.getState().tokens.find(t => t.id === tokenId);
         if (targetToken && (targetToken.mapId === 'reserve' || targetToken.inReserve)) {
           store.deployTokenFromReserve(targetToken.id);
@@ -536,6 +544,7 @@ export function openClaimCharacterModal() {
       openCharacterImport({
         single: true,
         onImport: async entries => {
+          store.update({ isObserver: false });
           for (const entry of entries) {
             if (network.importCharacter) await network.importCharacter(entry.token);
           }
@@ -543,6 +552,21 @@ export function openClaimCharacterModal() {
           return entries.length;
         }
       });
+    };
+  }
+
+  const observerBtn = modal.querySelector('#btn_claim_observer');
+  if (observerBtn) {
+    observerBtn.onclick = () => {
+      store.update({
+        isObserver: true,
+        claimedTokenId: null,
+        selectedTokenId: null,
+        activeTool: 'select',
+        activeLayer: 'tokens'
+      });
+      notify('👁️ Te has unido como Observador. El Keeper te asignará tu token en la sesión.');
+      modal.remove();
     };
   }
 

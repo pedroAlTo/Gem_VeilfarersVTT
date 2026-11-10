@@ -20,7 +20,7 @@ export function openSceneCreator({ arcId } = {}) {
   const modal = dossierDialog('CREATE A SCENE', `
     <span class="dossier-eyebrow">SCENE / NEW DESTINATION</span><h2>Set the next encounter.</h2><p class="dossier-muted">Your party travels with you. Enemies stay in their own scene.</p>
     <form id="scene_form"><label class="dossier-field">Scene name<input class="hud-input" id="scene_name" required maxlength="200" placeholder="Derelict station · Hangar 04"></label>
-    <label class="dossier-drop"><strong>Map image</strong><span>PNG, JPEG or WebP · up to 20 MB · 6000 × 6000 px</span><input id="scene_file" type="file" accept="image/png,image/jpeg,image/webp"></label>
+    <label class="dossier-drop"><strong>Map image</strong><span>PNG, JPEG o WebP · hasta 50 MB (100 MB con Cloudinary) · hasta 8192 × 8192 px</span><input id="scene_file" type="file" accept="image/png,image/jpeg,image/webp"></label>
     <label class="dossier-field">Or an image URL<input class="hud-input" id="scene_url" type="url" placeholder="https://…"></label>
     <div class="session-options" style="background: rgba(0, 243, 255, 0.08); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(0, 243, 255, 0.3); margin: 8px 0;">
       <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
@@ -62,7 +62,17 @@ export function openSceneCreator({ arcId } = {}) {
     const cancel = modal.querySelector('#scene_cancel_upload');
     try {
       const file = fileInput.files[0], cloud = modal.querySelector('#scene_cloud').checked;
-      if (file && (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 20 * 1024 * 1024)) throw new Error('Choose PNG, JPEG or WebP up to 20 MB.');
+      const isCloudinary = !!modal.querySelector('#scene_cloudinary')?.checked;
+      const maxBytes = isCloudinary ? 100 * 1024 * 1024 : 50 * 1024 * 1024;
+      const maxMB = Math.round(maxBytes / (1024 * 1024));
+      if (file) {
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+          throw new Error('Elige una imagen en formato PNG, JPEG o WebP.');
+        }
+        if (file.size > maxBytes) {
+          throw new Error(`La imagen supera el límite de ${maxMB} MB.${!isCloudinary ? ' Activa la opción de Cloudinary para permitir mapas de hasta 100 MB.' : ''}`);
+        }
+      }
       let src = file ? previewURL : modal.querySelector('#scene_url').value.trim() || '/assets/maps/blank-grid.svg';
       if (!file && src[0] !== '/' && !/^https?:\/\//i.test(src)) throw new Error('Use an HTTP or HTTPS image URL.');
       status.textContent = 'Checking image…';

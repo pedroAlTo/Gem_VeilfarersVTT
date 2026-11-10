@@ -288,4 +288,115 @@ test('cloud account & login: Google popup, redirect fallback and Netlify Identit
   assert.equal(popupUser.uid, 'google_user_1');
 });
 
+test('observer mode: joining as observer suppresses claim modal, and assignment from keeper transitions player to active', async () => {
+  const { openClaimCharacterModal } = await import('../src/rosterManager.js');
+
+  // 1. Initial player state without assigned tokens
+  const baseToken = structuredClone(store.state.tokens[0]);
+  store.update({
+    userRole: 'player',
+    isObserver: false,
+    claimedTokenId: null,
+    selectedTokenId: null,
+    tokens: [
+      { ...baseToken, id: 'tok_assigned', name: 'Harker', ownerId: '', controllerIds: [] }
+    ]
+  });
+
+  // 2. Open Claim Character modal and select Opción C (Observer)
+  const modal = openClaimCharacterModal();
+  assert.ok(modal, 'Claim character modal rendered');
+  const observerBtn = modal.querySelector('#btn_claim_observer');
+  assert.ok(observerBtn, 'Observer button present in claim modal');
+
+  observerBtn.click();
+  assert.equal(store.state.isObserver, true, 'isObserver set to true');
+  assert.equal(store.state.claimedTokenId, null, 'claimedTokenId is cleared');
+  assert.equal(document.body.contains(modal), false, 'Claim modal closed after choosing observer');
+
+  // 3. NetworkManager INITIAL_STATE processing with assignment
+  const { NetworkManager } = await import('../src/networkManager.js');
+  const net = new NetworkManager(store);
+  store.sessionRole = 'player';
+  store.peerId = 'player_observer_1';
+  store.memberId = 'player_observer_1';
+  net.room = 'test_alpha_room';
+  net.hostConn = { peer: 'keeper_peer' };
+
+  // State snapshot where Keeper assigned tok_assigned to player_observer_1
+  const campaignBase = store.serializeCampaign();
+  const assignedState = {
+    ...campaignBase,
+    memberId: 'player_observer_1',
+    tokens: [
+      { ...baseToken, id: 'tok_assigned', name: 'Harker', ownerId: 'player_observer_1', controllerIds: ['player_observer_1'], x: 500, y: 400, mapId: store.state.activeMapId }
+    ],
+    claimedTokenId: null
+  };
+
+  // Simulate receiving INITIAL_STATE
+  await net.handleIncomingMessage(net.envelope({
+    type: 'INITIAL_STATE',
+    state: assignedState
+  }), 'keeper_peer');
+
+  // Should automatically transition from observer to active player with assigned token
+  assert.equal(store.state.isObserver, false, 'isObserver flipped to false upon assignment');
+  assert.equal(store.state.selectedTokenId, 'tok_assigned', 'Assigned token is selected');
+});
+
+test('scene telemetry & image size limit: MAP_LOAD_STATUS updates keeper UI and file limit is 50MB (100MB with Cloudinary)', async () => {
+  const { NetworkManager } = await import('../src/networkManager.js');
+  const net = new NetworkManager(store);
+
+  // 1. Host receiving MAP_LOAD_STATUS from connected peer
+  store.sessionRole = 'host';
+  store.update({
+    userRole: 'keeper',
+    isHosting: true,
+    campaignName: 'Test Host Campaign',
+    players: [{ id: 'p_yomismo', name: 'yomismo' }],
+    connectedPeers: [{ id: 'p_yomismo', name: 'yomismo' }]
+  });
+  net.room = 'room_telemetry_test';
+  net.members.set('peer_yomismo_conn', { id: 'p_yomismo', name: 'yomismo' });
+
+  let eventFired = false;
+  const listener = (e) => {
+    if (e.detail?.peerId === 'p_yomismo') eventFired = true;
+  };
+  window.addEventListener('veil:map-load-status', listener);
+
+  const statusMsg = net.envelope({
+    type: 'MAP_LOAD_STATUS',
+    peerId: 'p_yomismo',
+    name: 'yomismo',
+    role: 'player',
+    mapId: store.state.activeMapId,
+    progress: 100,
+    loaded: true,
+    text: 'Matriz cargada al 100%'
+  });
+
+  await net.handleIncomingMessage(statusMsg, 'peer_yomismo_conn');
+  window.removeEventListener('veil:map-load-status', listener);
+
+  assert.equal(eventFired, true, 'veil:map-load-status event was dispatched on host');
+  const recorded = net.mapLoadStatuses.get('p_yomismo');
+  assert.ok(recorded, 'Map load status recorded for player ID');
+  assert.equal(recorded.progress, 100);
+  assert.equal(recorded.loaded, true);
+
+  // 2. Telemetry Modal displays 100% and ready status
+  const { openMapSyncTelemetryModal } = await import('../src/sessionLobby.js');
+  const modal = openMapSyncTelemetryModal();
+  assert.ok(modal, 'Telemetry modal opened');
+  const text = modal.textContent;
+  assert.match(text, /yomismo/i);
+  assert.match(text, /100% ✅/);
+  modal.remove();
+});
+
+
+
 

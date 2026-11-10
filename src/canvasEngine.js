@@ -142,6 +142,8 @@ export class CanvasEngine {
       }
     }
 
+    this.currentMapProgress = percent;
+
     try {
       network.broadcastMapLoadStatus?.({
         mapId: mapData.id,
@@ -156,7 +158,14 @@ export class CanvasEngine {
     if (!mapData || !mapData.id) return;
     const campaignId = store.getState().campaignId;
     const key = `${campaignId}:${mapData.id}:${mapData.imageUrl}`;
-    if (this.currentMapKey === key) return;
+    if (this.currentMapKey === key) {
+      if (this.isMapLoaded && !this._reportedLoadedKey) {
+        this._reportedLoadedKey = key;
+        this.updateMapProgress(mapData, 100, 'Matriz cargada al 100%');
+      }
+      return;
+    }
+    this._reportedLoadedKey = null;
     this.cancelTokenDrag();
     this.cancelWaterDrawing();
     if (this.currentCampaignId !== campaignId) {

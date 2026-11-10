@@ -324,7 +324,7 @@ export class CloudAccount {
     if (!this.storageAPI || (!this.storage && !this.storageAPI.ref)) {
       throw new Error('Firebase Storage no está configurado. Desmarca la opción para usar la imagen en local o mediante URL.');
     }
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 20 * 1024 * 1024) throw new Error('Choose PNG, JPEG or WebP up to 20 MB.');
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 50 * 1024 * 1024) throw new Error('Elige una imagen PNG, JPEG o WebP de hasta 50 MB.');
     const path = `users/${uid}/maps/${newId()}`, s = this.storageAPI, d = this.dbAPI;
     const ref = s.ref(this.storage, path);
     const task = s.uploadBytesResumable(ref, file, { contentType: file.type });

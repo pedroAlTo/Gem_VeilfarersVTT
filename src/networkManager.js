@@ -460,12 +460,18 @@ export class NetworkManager {
     this.mapLoadStatuses.set(memberId, status);
     this.mapLoadStatuses.set('local', status);
     if (this.store.memberId) this.mapLoadStatuses.set(this.store.memberId, status);
+    if (this.store.peerId) this.mapLoadStatuses.set(this.store.peerId, status);
+    if (name) this.mapLoadStatuses.set(name, status);
+    if (this.store.state.userName) this.mapLoadStatuses.set(this.store.state.userName, status);
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('veil:map-load-status', { detail: status }));
     }
 
     if (this.store.sessionRole === 'player') {
-      this.sendToHost(status);
+      if (this.hostConn?.open) {
+        this.hostConn.send(this.envelope(status));
+      }
     } else if (this.store.state.isHosting) {
       for (const conn of this.connections.values()) {
         if (conn.open) conn.send(this.envelope(status));
@@ -581,9 +587,14 @@ export class NetworkManager {
           this.lastRevision = data.revision;
           this.store.memberId = data.state.memberId || this.store.peerId;
           this.reconcileTokenPatches(s, data.tokenPatchAck);
+          const currentlyControlled = this.store.getControlledTokens();
+          const hadAssigned = currentlyControlled.length > 0;
           const assigned = s.tokens.filter(t => controlsToken(t, this.store.memberId));
           const selectedId = assigned.some(t => t.id === this.store.state.selectedTokenId) ? this.store.state.selectedTokenId : data.state.claimedTokenId || assigned[0]?.id || null;
           const newAssignment = selectedId !== this.store.state.selectedTokenId;
+          const wasObserver = !!this.store.state.isObserver;
+          const isNowAssigned = assigned.length > 0;
+          const nextIsObserver = isNowAssigned ? false : (hadAssigned ? true : wasObserver);
           this.store.remoteApplying = true;
           this.store.update({
             ...s,
@@ -591,15 +602,47 @@ export class NetworkManager {
             gmVision: false,
             isConnected: true,
             joiningSession: false,
+            isObserver: nextIsObserver,
             claimedTokenId: data.state.claimedTokenId,
             selectedTokenId: selectedId,
             ...(newAssignment || !['select', 'measure', 'template', 'fx', 'ping'].includes(this.store.state.activeTool) ? { activeTool: 'select', activeLayer: 'tokens' } : {}),
           });
           this.store.validateSelections();
+          const isInitialJoin = Boolean(this.joinReady);
           this.joinReady?.();
           this.joinReady = null;
-          if (assigned.length === 0 && !this.store.state.claimedTokenId) {
+
+          // Notify host of our local map load status once upon joining
+          if (isInitialJoin) {
+            const activeMap = this.store.getActiveMap();
+            if (activeMap) {
+              const canvas = window.veilCanvas;
+              const isLoaded = !!(canvas?.isMapLoaded && (canvas?.currentMapId === activeMap.id || canvas?.currentMapKey?.includes(activeMap.id)));
+              const currentProgress = isLoaded ? 100 : (canvas?.currentMapProgress || 10);
+              this.broadcastMapLoadStatus({
+                mapId: activeMap.id,
+                progress: currentProgress,
+                loaded: isLoaded,
+                text: isLoaded ? 'Matriz cargada al 100%' : 'Descargando escena...'
+              });
+            }
+          }
+
+          if (wasObserver && isNowAssigned && selectedId) {
+            const newlyAssigned = assigned.find(t => t.id === selectedId) || assigned[0];
+            notify(`🎯 El Director de Juego (Keeper) te ha asignado a ${newlyAssigned.name}.`);
+            if (window.veilCanvas && newlyAssigned) {
+              const cv = window.veilCanvas;
+              cv.panX = cv.displayWidth / 2 - newlyAssigned.x * cv.zoom;
+              cv.panY = cv.displayHeight / 2 - newlyAssigned.y * cv.zoom;
+            }
+          } else if (hadAssigned && !isNowAssigned) {
+            notify('👁️ El Director de Juego ha cambiado tu estado a Observador.');
+          }
+
+          if (assigned.length === 0 && !this.store.state.claimedTokenId && !this.store.state.isObserver) {
             setTimeout(() => {
+              if (this.store.state.isObserver || this.store.state.claimedTokenId || (this.store.getControlledTokens().length > 0)) return;
               import('./rosterManager.js').then(({ openClaimCharacterModal }) => {
                 openClaimCharacterModal();
               }).catch(() => {});
@@ -728,12 +771,21 @@ export class NetworkManager {
       const peerId = member?.id || data.peerId || senderId;
       const status = { ...data, peerId };
       this.mapLoadStatuses.set(peerId, status);
+      if (member?.id) this.mapLoadStatuses.set(member.id, status);
+      if (data.peerId) this.mapLoadStatuses.set(data.peerId, status);
+      if (senderId) this.mapLoadStatuses.set(senderId, status);
+      if (status.name) this.mapLoadStatuses.set(status.name, status);
       this.ephemeral(status);
       this.broadcast(status);
     }
   }
   ephemeral(data) {
     // The authoritative snapshot contains logs; the event is only for presentation.
+    if (data.type === 'MAP_LOAD_STATUS') {
+      if (data.peerId) this.mapLoadStatuses.set(data.peerId, data);
+      if (data.name) this.mapLoadStatuses.set(data.name, data);
+      window.dispatchEvent(new CustomEvent('veil:map-load-status', { detail: data }));
+    }
     if (data.type === 'DICE_ROLL' && data.result) window.dispatchEvent(new CustomEvent('veil:remote-roll', { detail: data.result }));
     if (data.type === 'ANNOUNCEMENT' && typeof data.text === 'string') window.dispatchEvent(new CustomEvent('veil:announcement', { detail: data.text.slice(0, 2000) }));
     if (data.type === 'PING' && finite(data.x) && finite(data.y))
