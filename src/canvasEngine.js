@@ -15,6 +15,7 @@ import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
 import { pointInWater } from './waterGeometry.js';
 import { notify, confirmAction } from './ui.js';
+import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -726,12 +727,9 @@ export class CanvasEngine {
           });
         } else {
           // Update map image
-          const testImg = new Image();
-          testImg.onload = () => {
-            const w = testImg.naturalWidth || 2000;
-            const h = testImg.naturalHeight || 2000;
+          const applyLocal = (imgSrc, w, h) => {
             store.updateActiveMap({
-              imageUrl: dataUrl,
+              imageUrl: imgSrc,
               width: w,
               height: h,
               name: file.name.replace(/\.[^/.]+$/, '')
@@ -745,7 +743,26 @@ export class CanvasEngine {
               details: `Tactical scene texture updated (${w} x ${h} px).`
             });
           };
-          testImg.src = dataUrl;
+
+          const cConfig = getCloudinaryConfig();
+          if (cConfig.isConfigured) {
+            notify('☁️ Subiendo mapa táctico a Cloudinary...');
+            uploadToCloudinary(file, percent => {
+              this.updateMapProgress({ id: map.id, name: file.name }, percent, `Subiendo a Cloudinary: ${percent}%`);
+            }).then(uploaded => {
+              applyLocal(uploaded.url, uploaded.width || 2000, uploaded.height || 2000);
+              notify('☁️ Mapa subido y optimizado en Cloudinary.');
+            }).catch(err => {
+              notify(`Fallo Cloudinary: ${err.message}. Usando copia local.`, 'warning');
+              const testImg = new Image();
+              testImg.onload = () => applyLocal(dataUrl, testImg.naturalWidth || 2000, testImg.naturalHeight || 2000);
+              testImg.src = dataUrl;
+            });
+          } else {
+            const testImg = new Image();
+            testImg.onload = () => applyLocal(dataUrl, testImg.naturalWidth || 2000, testImg.naturalHeight || 2000);
+            testImg.src = dataUrl;
+          }
         }
       };
       reader.readAsDataURL(file);

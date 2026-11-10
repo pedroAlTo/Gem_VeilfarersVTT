@@ -268,3 +268,26 @@ test('map load progress and multiplayer scene synchronization telemetry', async 
 
   window.removeEventListener('veil:map-load-status', listener);
 });
+
+test('cloudinary service: configuration, local persistence and auto-optimization url formatting', async () => {
+  const { getCloudinaryConfig, saveCloudinaryConfig, uploadToCloudinary } = await import('../src/cloudinaryService.js');
+
+  // Save config in localStorage
+  saveCloudinaryConfig('veilfarers_cloud', 'veilfarers_preset');
+  const cfg = getCloudinaryConfig();
+  assert.equal(cfg.cloudName, 'veilfarers_cloud');
+  assert.equal(cfg.preset, 'veilfarers_preset');
+  assert.equal(cfg.isConfigured, true);
+
+  // Test upload formatting
+  const mockFile = new Blob(['mock image data'], { type: 'image/png' });
+  const result = await uploadToCloudinary(mockFile);
+  assert.ok(result.url.includes('/upload/f_auto,q_auto/'), 'Url should include auto-format and auto-quality transformation');
+  assert.ok(result.url.includes('veilfarers_cloud'));
+
+  // Clean up
+  saveCloudinaryConfig('', '');
+  const cleared = getCloudinaryConfig();
+  assert.equal(cleared.cloudName, '');
+  assert.equal(cleared.isConfigured, false);
+});

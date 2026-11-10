@@ -3,6 +3,7 @@ import { account, cloudConfigured, storageConfigured } from './cloudAccount.js';
 import { openAccount } from './accountUI.js';
 import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
+import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 
 export function imageDimensions(src) {
   return new Promise((resolve, reject) => {
@@ -15,11 +16,21 @@ export function imageDimensions(src) {
 }
 export function openSceneCreator() {
   if (store.sessionRole === 'player') return;
+  const cConfig = getCloudinaryConfig();
   const modal = dossierDialog('CREATE A SCENE', `
     <span class="dossier-eyebrow">SCENE / NEW DESTINATION</span><h2>Set the next encounter.</h2><p class="dossier-muted">Your party travels with you. Enemies stay in their own scene.</p>
     <form id="scene_form"><label class="dossier-field">Scene name<input class="hud-input" id="scene_name" required maxlength="200" placeholder="Derelict station · Hangar 04"></label>
     <label class="dossier-drop"><strong>Map image</strong><span>PNG, JPEG or WebP · up to 20 MB · 6000 × 6000 px</span><input id="scene_file" type="file" accept="image/png,image/jpeg,image/webp"></label>
     <label class="dossier-field">Or an image URL<input class="hud-input" id="scene_url" type="url" placeholder="https://…"></label>
+    <div class="session-options" style="background: rgba(0, 243, 255, 0.08); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(0, 243, 255, 0.3); margin: 8px 0;">
+      <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+        <input id="scene_cloudinary" type="checkbox" ${cConfig.isConfigured ? 'checked' : ''} ${!cConfig.isConfigured ? 'disabled' : ''}>
+        <strong style="color: var(--cyan-pearl, #00f3ff);">${cConfig.isConfigured ? '☁️ Subir y optimizar mapa con Cloudinary' : '☁️ Cloudinary (No detectado en variables de entorno)'}</strong>
+      </label>
+      <small style="color: #94a3b8; display: block; margin-top: 4px;">
+        ${cConfig.isConfigured ? `Conectado al cloud [${e(cConfig.cloudName)}]. Optimización WebP/AVIF (f_auto, q_auto) en CDN global para todos los jugadores.` : 'Sin Cloudinary, la imagen se almacena en la campaña local o pegando una URL web.'}
+      </small>
+    </div>
     <div class="session-options"><label><input id="scene_cloud" type="checkbox" ${storageConfigured ? 'checked' : ''} ${!storageConfigured ? 'disabled' : ''}> Save uploaded image and scene to my account</label><button type="button" class="hud-btn" id="scene_account">${account.user ? 'Account connected' : 'Sign in for server uploads'}</button></div>
     <p class="dossier-muted">${storageConfigured ? 'Server uploads use Firebase Storage. Without this option, the image is stored only in this local campaign. A web URL stays on its original server.' : 'Firebase Storage es opcional. Sin él, la imagen se guarda directamente en tu campaña local o pegando una URL web.'}</p>
     <img id="scene_preview" class="scene-upload-preview" alt="Map preview" hidden>
@@ -57,7 +68,15 @@ export function openSceneCreator() {
       status.textContent = 'Checking image…';
       const dimensions = await imageDimensions(src);
       const scene = { name: modal.querySelector('#scene_name').value.trim(), gridSize: Number(modal.querySelector('#scene_grid').value), ambientLight: Number(modal.querySelector('#scene_light').value), ...dimensions };
-      if (file && cloud) {
+      if (file && modal.querySelector('#scene_cloudinary')?.checked) {
+        status.textContent = 'Subiendo y optimizando mapa en Cloudinary...';
+        const res = await uploadToCloudinary(file, n => {
+          status.textContent = `Subiendo a Cloudinary · ${n}%`;
+        });
+        scene.imageUrl = res.url;
+        scene.width = res.width || scene.width;
+        scene.height = res.height || scene.height;
+      } else if (file && cloud) {
         cancel.hidden = false; cancel.disabled = false;
         Object.assign(scene, await account.uploadScene(file, scene, n => { status.textContent = `Uploading image to server · ${n}%`; }));
       } else {
@@ -65,7 +84,7 @@ export function openSceneCreator() {
         scene.imageUrl = src;
       }
       if (!store.addMap(scene)) throw new Error('Cannot create a scene while joining a game.');
-      modal.remove(); notify(file && cloud ? 'Scene saved on the server. Party moved to the new scene.' : 'Scene created. Party moved to the new scene.');
+      modal.remove(); notify('¡Escena creada y desplegada con éxito!');
     } catch (err) { error.textContent = err.message || 'Image could not be saved.'; status.textContent = 'Scene was not created.'; }
     finally { delete modal.dataset.busy; controls.forEach(c => c.disabled = false); cancel.hidden = true; }
   };
