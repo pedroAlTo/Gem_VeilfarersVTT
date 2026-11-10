@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import { adversaryLibraryPlugin } from './scripts/adversary-library.mjs';
+import { encounterLibraryPlugin } from './scripts/encounter-library.mjs';
 import { lanSessions } from './scripts/lan-sessions.mjs';
 
 export default defineConfig({
-  plugins: [lanSessions(), adversaryLibraryPlugin()],
+  plugins: [lanSessions(), adversaryLibraryPlugin(), encounterLibraryPlugin()],
   server: { allowedHosts: ['terminal.local'] },
   build: {
     rollupOptions: {

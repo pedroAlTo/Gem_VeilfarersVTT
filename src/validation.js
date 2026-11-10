@@ -1,3 +1,4 @@
+import { validateEnvironment, validateBoss } from './encounterRules.js';
 import { validateInventory } from './equipment.js';
 import { validateChatHistory } from './chat.js';
 export const CAMPAIGN_KEYS = [
@@ -6,6 +7,7 @@ export const CAMPAIGN_KEYS = [
   'fear',
   'activeMapId',
   'maps',
+  'arcs',
   'tokens',
   'clocks',
   'handouts',
@@ -55,7 +57,17 @@ export function validateCampaign(data) {
     typeof data.campaignName === 'string' && data.campaignName.length <= 500,
     'Invalid campaign name.'
   );
+  if (data.arcs !== undefined) {
+    assert(Array.isArray(data.arcs) && data.arcs.length <= 100, 'Invalid arcs.');
+    const assigned = new Set(), ids = new Set();
+    for (const arc of data.arcs) {
+      assert(arc && typeof arc.id === 'string' && arc.id.length <= 200 && !ids.has(arc.id) && typeof arc.name === 'string' && arc.name.length <= 500, 'Invalid arc.'); ids.add(arc.id);
+      assert(Array.isArray(arc.sceneIds) && arc.sceneIds.length <= 100, 'Invalid arc scenes.');
+      for (const id of arc.sceneIds) { assert(data.maps.some(m => m.id === id) && !assigned.has(id), 'Scene belongs to an invalid or duplicated arc.'); assigned.add(id); }
+    }
+  }
   for (const m of data.maps) {
+    validateEnvironment(m.environment);
     assert(
       typeof m.name === 'string' && typeof m.imageUrl === 'string' && finite(m.gridSize, 1, 1000),
       'Invalid map name, image or grid.'
@@ -168,6 +180,7 @@ export function validTokenPatch(p) {
 }
 
 export function validateActor(t) {
+  validateBoss(t?.boss);
     assert(t && typeof t === 'object', 'Invalid actor.');
     assert(typeof t.name === 'string' && finite(t.x) && finite(t.y), 'Invalid token data.');
     resource(t.hp, 'HP');

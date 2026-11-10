@@ -817,7 +817,7 @@ class StateStore {
 
   getArcs() {
     let arcs = this.state.arcs;
-    if (!arcs || !Array.isArray(arcs) || arcs.length === 0) {
+    if (!Array.isArray(arcs)) {
       arcs = [
         {
           id: 'arc_main',
@@ -880,6 +880,8 @@ class StateStore {
 
   moveSceneToArc(mapId, targetArcId) {
     if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return false;
+    if (!this.state.maps.some(m => m.id === mapId)) return false;
+    if (targetArcId && !this.getArcs().some(a => a.id === targetArcId)) return false;
     this._beforeTacticalMutation('Mover Escena a Arco');
     const arcs = this.getArcs().map(arc => {
       const sceneIds = (arc.sceneIds || []).filter(id => id !== mapId);
@@ -990,7 +992,8 @@ class StateStore {
   normalizeCampaign(input) {
     // Old archives may omit optional fields, never borrow maps/actors/logs from the open session.
     const base = structuredClone(this.initialCampaign);
-    const data = validateCampaign({ ...base, ...input, logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
+    const legacyArcs = [{ id: 'arc_main', name: 'Arco 1: Operaciones Activas', description: '', sceneIds: (input.maps || base.maps).map(m => m.id), tokenIds: [], images: [] }];
+    const data = validateCampaign({ ...base, ...input, arcs: input.arcs ?? legacyArcs, logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
     if (!data.maps.some(m => m.id === data.activeMapId)) data.activeMapId = data.maps[0].id;
     if (data.fogExploredOpacity === undefined || data.fogExploredOpacity === 0.88) {
       data.fogExploredOpacity = 0.50;
@@ -1040,6 +1043,7 @@ class StateStore {
       if (!duplicate) {
         const id = 'map_' + newId();
         data.maps = [{ id, name: 'Escena inicial', imageUrl: '/assets/maps/blank-grid.svg', gridSize: 64, gridType: 'square', gridColor: 'rgba(0,243,255,.18)', ambientLight: 1, ambientColor: '#080d18', walls: [], lights: [], effects: [], waterZones: [] }];
+        data.arcs = [{ id: 'arc_' + newId(), name: 'Arco 1', description: '', sceneIds: [id], tokenIds: [], images: [] }];
         data.activeMapId = id; data.tokens = []; data.clocks = []; data.handouts = []; data.logs = []; data.chatMessages = [];
         data.fear = 0; data.fogOfWar = false; data.starship.visible = false; data.starship.name = 'Nave sin asignar';
       }

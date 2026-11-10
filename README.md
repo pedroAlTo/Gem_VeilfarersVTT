@@ -1,8 +1,8 @@
-# VeilFarers VTT · v1.1.1 · Orbital
+# VeilFarers VTT · v1.2.0 · Orbital
 
 A local-first virtual tabletop with scene travel, a player roster, shared drones, character JSON import, optional Firebase accounts, and a Three.js Hope & Fear dice tray.
 
-Current release: **v1.1.1**. Download package: **VeilFarers_VTT_v1.1.1.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v1.2.0**. Download package: **VeilFarers_VTT_v1.2.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -11,6 +11,13 @@ On Windows, extract the ZIP and run **INICIAR_VTT_RED_LOCAL.bat** on the Keeper�
 **INICIAR_VTT_LOCAL.bat** opens the menu for LAN, single-PC offline play, tests and the effects lab. **INICIAR_VTT_ONLINE.bat** uses PeerJS for online play and requires internet for signaling. The launchers require Node.js 22.12+ or 24 LTS and install locked dependencies on first use.
 
 On macOS/Linux, run `npm ci`, then `VITE_SESSION_TRANSPORT=lan VITE_LOCAL_ONLY=0 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort` for LAN play. Run `node scripts/lan-info.mjs` to display client URLs. For local checks use `npm test` and `npm run build`.
+
+## Encounters in v1.2.0
+
+- **SCENES → Definir entorno / activar con Fear**: choose the micro stat block and one Passive or Action macro feature (Keeper 12.06, chapters 9–10). Tier scaling and DC are shown from the book. Save before activating; Fear costs are printed costs, and reactions require the stated trigger. Roll and resolve consequences at the table. Visuals are optional and separate from weather.
+- **ROSTER → Biblioteca de adversarios → Colocar como boss**, or an enemy **Ficha → Boss · estados**: configure 2–8 phases or load one of 17 Keeper profiles. Unprinted values visibly inherit the base adversary. Review them before play. Transitions are Keeper-controlled; +2 Fear, or +3 for the final phase, capped at 12. Objective/clock mechanics and special abilities follow their source text, not automatic damage logic.
+- **DICE → Damage → Impacto del arma**: weapon-derived or explicit presentation. Only applied damage triggers an impact, sized from actual HP lost. Armor expenditure produces shield feedback; direct bypass does not. `/fx-lab.html` demonstrates ballistics, plasma, fire, cryo, explosions and clipped fire areas.
+- In **SCENES**, choose another arc or **Sin arco** for any scene. Wait for **SAVED** before closing or reloading. Arc membership is now part of campaign persistence and export.
 
 ## Play
 

@@ -2,13 +2,25 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v1.1.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.1.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.1.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.1.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v1.2.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.2.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.2.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.2.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
+## Entornos, bosses e impactos (v1.2.0)
+
+1. **SCENES → Definir entorno / activar con Fear**: escoge Bridge y Core World → Gridlock. Deben aparecer todas las características del micro y solo Gridlock del macro. El selector macro no ofrece Reactions. Cambia de Tier para ver su DC y descripción impresa.
+2. Guarda y activa Gridlock: descuenta exactamente 1 Fear y añade un registro privado. Con Fear 0 no permite gastarlo. Una Reaction requiere marcar su disparador. Reactor Core → Meltdown crea un reloj de 6 segmentos y evita duplicarlo.
+3. Cambia el entorno de una escena inactiva: se guarda en esa escena, pero sus efectos solo se pueden activar cuando es la escena activa. Recarga después de ver SAVED: la configuración debe persistir.
+4. En cada escena prueba otro arco y **Sin arco**. Guarda, recarga y exporta/importa la campaña; conserva pertenencia y orden. Cambiar de arco no cambia la escena activa ni las posiciones de sus tokens.
+5. **ROSTER → Biblioteca de adversarios → Colocar como boss**. Carga Rust-King, revisa el nombre y las cifras heredadas, guarda y lleva su primera reserva a 0 HP. La fase final empieza con 8 HP, Armor 0, Evasion 12 y concede 3 Fear, limitado a 12. El botón no permite repetir la misma transición.
+6. Prueba una fase por porcentaje con **Conservar HP**, una por reloj y una por objetivo. Experimental Subject requiere el Spotlight impreso y permite elegir qué condiciones deja de soportar el cuerpo anterior. Precursor Warden termina con objetivo de Override/escape, no con una derrota automática por HP.
+7. **DICE → Damage**: calcular no debe animar un impacto. Al aplicar, comprueba metralla, plasma, fuego, criogénesis y explosión. Los valores son HP realmente perdidos, después de Armor, Brace y del límite de HP restantes. El escudo aparece solo si se ha gastado un Armor Slot; no aparece al marcar Armor si no quedan slots ni con daño directo.
+8. **Laboratorio de efectos** desde el batch local: 1 HP ocupa 50% del diámetro, 2 HP 100%, 3 HP 120%, hasta 7 HP o más 200%. Prueba 0 HP con escudo, cada tipo de impacto, calidad Eco y pausa. Las áreas de fuego cóncavas deben conservar su hueco.
+9. En dos clientes, verifica que el impacto llegue solo a la escena correspondiente, que el resultado secreto no emita animaciones públicas y que las fases futuras del boss no aparezcan en los datos del jugador. La verificación automatizada cubre las proyecciones; la comprobación con dos dispositivos físicos sigue siendo una prueba local recomendada.
+
 ## Lluvia y bruma
 
-1. Selecciona una zona de agua y activa **Ondas de lluvia**. Prueba **Llovizna**, **Normal** y **Tormenta**: cambia la densidad de las ondas, sin gotas o destellos sobre el mapa.
+1. Selecciona una zona de agua y activa **Ondas de lluvia**. Prueba **Llovizna**, **Normal** y **Tormenta**: cambia la densidad de las ondas y del overlay de lluvia de la versión actual de main.
 2. En un polígono cóncavo, las ondas deben quedar dentro del agua. Mueve la cámara y cambia el zoom; los impactos deben permanecer anclados al mapa.
 3. Oculta **Water**: el agua y sus ondas desaparecen. La niebla de visión debe cubrir las ondas; los tokens permanecen por encima.
 4. Desactiva la lluvia, cambia de escena y vuelve; comprueba también guardado y recarga. La bruma conserva su interruptor independiente.

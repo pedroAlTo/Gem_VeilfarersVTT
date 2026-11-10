@@ -38,6 +38,7 @@ class UndoManager {
       description,
       timestamp: Date.now(),
       maps: JSON.parse(JSON.stringify(state.maps || [])),
+      arcs: JSON.parse(JSON.stringify(state.arcs || [])),
       tokens: JSON.parse(JSON.stringify(state.tokens || [])),
       clocks: JSON.parse(JSON.stringify(state.clocks || [])),
       fear: state.fear,
@@ -213,6 +214,7 @@ class UndoManager {
       if (snapshot.maps) {
         store.state.maps = JSON.parse(JSON.stringify(snapshot.maps));
       }
+      if (snapshot.arcs) store.state.arcs = JSON.parse(JSON.stringify(snapshot.arcs));
       if (snapshot.tokens) {
         store.state.tokens = JSON.parse(JSON.stringify(snapshot.tokens));
       }
@@ -247,7 +249,7 @@ class UndoManager {
       store.saveToStorage();
 
       // Notify reactive UI listeners
-      store.notify(['maps', 'tokens', 'clocks', 'fear', 'activeMapId', 'templates', 'starship', 'handouts']);
+      store.notify(['maps', 'arcs', 'tokens', 'clocks', 'fear', 'activeMapId', 'templates', 'starship', 'handouts']);
 
       // Multiplayer synchronization if hosting
       if (store.state.isHosting) {
@@ -267,6 +269,9 @@ class UndoManager {
       return JSON.stringify({
         mapId: snap.activeMapId,
         fear: snap.fear,
+        arcs: snap.arcs,
+        environments: (snap.maps || []).map(m => [m.id, m.environment]),
+        bosses: (snap.tokens || []).map(t => [t.id, t.boss]),
         tok: (snap.tokens || []).map(t => `${t.id}:${t.x}:${t.y}:${t.hp?.current}:${t.stress?.current}`),
         maps: (snap.maps || []).map(m => `${m.id}:${m.walls?.length}:${m.lights?.length}:${m.waterZones?.length}:${m.effects?.length}:${m.gridSize}`),
         water: (snap.maps || []).map(m => ({ id:m.id, zones:m.waterZones || [] })),

@@ -50,7 +50,7 @@ export async function openAdversaryLibrary(catalog) {
     </div>
     <p class="dossier-muted" data-count aria-live="polite"></p>
     <div class="bestiary-browser"><div data-list aria-label="Adversarios"></div><article data-detail></article></div>
-    <footer class="bestiary-footer"><label><input type="checkbox" data-hidden checked> Oculto para los jugadores</label><button class="hud-btn hud-btn-primary" data-deploy>Colocar en la escena</button></footer>`);
+    <footer class="bestiary-footer"><label><input type="checkbox" data-hidden checked> Oculto para los jugadores</label><button class="hud-btn" data-deploy-boss>Colocar como boss</button><button class="hud-btn hud-btn-primary" data-deploy>Colocar en la escena</button></footer>`);
   const find = selector => modal.querySelector(selector);
   const search = find('[data-search]'), book = find('[data-book]'), tier = find('[data-tier]');
   const list = find('[data-list]'), detail = find('[data-detail]'), deploy = find('[data-deploy]');
@@ -59,7 +59,7 @@ export async function openAdversaryLibrary(catalog) {
   function show(entry) {
     selected = entry;
     for (const button of list.querySelectorAll('button')) button.setAttribute('aria-pressed', String(button.dataset.key === selected?.id));
-    deploy.disabled = !entry?.deployable;
+    deploy.disabled = !entry?.deployable; find('[data-deploy-boss]').disabled = !entry?.deployable;
     detail.scrollTop = 0;
     if (!entry) { detail.textContent = 'Prueba con otro nombre, libro o tier.'; return; }
     const stats = [['HP',entry.hp], ['Evasion',entry.evasion], ['Ataque',entry.attack == null ? null : (entry.attack >= 0 ? '+' : '') + entry.attack], ['Major / Severe',entry.major != null && entry.severe != null ? entry.major + ' / ' + entry.severe : null], ['Stress',entry.stress], ['Armor',entry.armor]];
@@ -86,6 +86,10 @@ export async function openAdversaryLibrary(catalog) {
   search.oninput = book.onchange = tier.onchange = filter;
   deploy.onclick = () => {
     try { const token = deployAdversary(selected, { hidden: find('[data-hidden]').checked }); modal.remove(); notify((token.hidden ? 'Colocado en oculto: ' : 'Colocado: ') + token.name); }
+    catch (error) { notify(error.message, 'error'); }
+  };
+  find('[data-deploy-boss]').onclick = async () => {
+    try { const token = deployAdversary(selected, { hidden: find('[data-hidden]').checked }); modal.remove(); const { openBossEditor } = await import('./bossUI.js'); openBossEditor(token.id); }
     catch (error) { notify(error.message, 'error'); }
   };
   filter(); search.focus();

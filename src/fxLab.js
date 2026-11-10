@@ -1,3 +1,4 @@
+import { CombatFX, drawFireArea, impactScale } from './combatFX.js';
 import { drawBlackHole, drawWaterSurface, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
 import './fxLab.css';
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -22,7 +23,13 @@ document.querySelectorAll('[data-quality]').forEach(button=>button.onclick=()=>{
   quality=button.dataset.quality;
   document.querySelectorAll('[data-quality]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
 });
-const canvases=['hole','water','rain'].map(id=>document.getElementById(id));
+const combatFX = new CombatFX();
+let impactKind = 'ballistic', replay = true, nextReplay = 0;
+document.querySelectorAll('[data-impact]').forEach(button => button.onclick = () => { impactKind = button.dataset.impact; replay = true; document.querySelectorAll('[data-impact]').forEach(b => b.setAttribute('aria-pressed', String(b === button))); });
+document.getElementById('lab_replay').onclick = () => replay = true;
+document.getElementById('lab_hp').oninput = event => { document.getElementById('lab_hp_value').textContent = `${event.target.value} HP · ${Math.round(impactScale(+event.target.value) * 100)}%`; replay = true; };
+document.getElementById('lab_shield').onchange = () => replay = true;
+const canvases=['hole','water','rain','combat','fire_area'].map(id=>document.getElementById(id));
 function setup(canvas) {
   if (!canvas) return null;
   const {width,height}=canvas.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio || 1,2);
@@ -37,6 +44,7 @@ function setup(canvas) {
   ctx.stroke();return {ctx,width,height};
 }
 function frame(now) {
+  const dt = paused || document.hidden ? 0 : Math.min((now - previous) / 1000, .05);
   if(!paused && !document.hidden)time+=Math.min((now-previous)/1000,0.05);
   previous=now;
   const hole=setup(canvases[0]);
@@ -83,6 +91,17 @@ function frame(now) {
     });
     ctx.fillStyle='#acd8df';ctx.font='10px monospace';ctx.fillText('WEATHER // RAIN, DRIFTING FOG & WATER RIPPLES',width*0.06,height*0.94);
   }
+  const combat = setup(canvases[3]);
+  if (combat) {
+    const {ctx,width,height} = combat;
+    const target = {x:width*.65,y:height*.48};
+    ctx.strokeStyle='#82aebe';ctx.lineWidth=2;ctx.fillStyle='#172d40';ctx.beginPath();ctx.arc(target.x,target.y,40,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#bddce7';ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText('TOKEN · 80 px',target.x,target.y+68);
+    if(replay || time > nextReplay) {combatFX.clear();combatFX.add({attacker:{x:width*.15,y:height*.52},target,kind:impactKind,hpLost:+document.getElementById('lab_hp').value,shield:document.getElementById('lab_shield').checked,tokenDiameter:80});if(paused)combatFX.bursts[0].age=combatFX.bursts[0].travel+.4; replay=false;nextReplay=time+2.5;}
+    combatFX.render(ctx,dt,{quality,reducedMotion:reduced.matches});
+  }
+  const fire = setup(canvases[4]);
+  if(fire) {const {ctx,width:w,height:h}=fire;drawFireArea(ctx,{shape:'polygon',points:[{x:w*.12,y:h*.22},{x:w*.88,y:h*.22},{x:w*.88,y:h*.8},{x:w*.6,y:h*.8},{x:w*.6,y:h*.5},{x:w*.38,y:h*.5},{x:w*.38,y:h*.8},{x:w*.12,y:h*.8}]},time,{quality,reducedMotion:paused});}
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

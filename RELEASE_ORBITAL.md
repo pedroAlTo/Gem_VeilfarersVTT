@@ -1,4 +1,22 @@
-# VeilFarers VTT — Orbital UI y correcciones de sesión
+# VeilFarers VTT — Notas de entrega
+
+## v1.2.0 — entornos, bosses por estados e impactos · 10 de noviembre de 2026
+
+Base: `main` en `b1cac241e681807e929d32599e35016268687b63`. Se conservan las mejoras actuales de lluvia, bruma, exploración, colisiones y onboarding. Esta entrega incorpora las reglas de creación de escenarios de los capítulos 9 y 10 del Keeper 12.06 aportado, cuyo contenido coincide con la fuente del repositorio.
+
+- **Escenarios:** 24 microentornos y 15 macroentornos. Cada mapa guarda su microentorno base, tier y una sola característica Passive o Action del macro. La interfaz muestra las reglas y DC impresos. Las activaciones descuentan el Fear indicado, comprueban recursos y disparadores, y registran la resolución en privado. Meltdown crea su reloj de seis segmentos una sola vez.
+- **Bosses:** editor de 2–8 estados y 17 perfiles de referencia, accesible desde la ficha o la biblioteca de adversarios. Cada fase permite sus estadísticas, habilidades, narración, reserva de HP y disparador. El Keeper confirma las transiciones; se aplican las ganancias de Fear y excepciones de tiempo y condiciones del perfil. Los jugadores reciben solamente la fase pública actual. Los valores no impresos se heredan explícitamente del adversario base.
+- **Combate:** impactos de balística, plasma/láser, fuego, criogénesis y explosión. Los proyectiles muestran escudo únicamente cuando la mitigación consume Armor. El efecto se genera al aplicar el daño, una sola vez, y su diámetro usa los HP realmente perdidos: 1 = 50%, 2 = 100%, +20% por HP adicional hasta 200%. Los ataques secretos no se retransmiten y los tiradores ocultos no revelan su origen.
+- **Fuego de área:** llamas, calor y brasas distribuidos por la superficie y recortados al círculo, línea o polígono, con límites de trabajo y reducción de movimiento.
+- **Escenas y arcos:** selector de destino para mover una escena a cualquier arco o dejarla sin arco. Se conservan mapas, tokens y escena activa. Los arcos participan en guardado, importación, exportación, undo y sincronización.
+
+Validación: **189 pruebas automatizadas correctas**, `npm run build` correcto y `git diff --check` sin errores. Revisión en navegador de configuración ambiental, tier/DC, gasto de Fear, movimiento y persistencia de escenas sin arco, creación de boss y laboratorio de impactos/fuego. La compilación conserva las advertencias existentes por tamaño de paquetes. No se ha validado esta entrega entre dos equipos físicos.
+
+Alcance: las tiradas, objetivos narrativos, efectos especiales de habilidades, inmunidades y consecuencias ambientales se resuelven por el Keeper conforme al texto mostrado. El VTT automatiza costes, estados, estadísticas declaradas y presentación; los efectos visuales no añaden daño ni condiciones. Las transiciones no conceden ataques automáticos. No se ha desplegado el VTT ni modificado el portal público.
+
+Paquete: `VeilFarers_VTT_v1.2.0.zip`, con fuentes, pruebas, reglas de referencia, lanzadores locales, `dist/` y `CHANGELOG_v1.2.0.md`. La ayuda y el changelog muestran la misma versión. Instrucciones y recorridos de prueba en `PRUEBAS_LOCALES.md`.
+
+Las notas siguientes documentan entregas históricas; el comportamiento y la validación actuales son los descritos arriba y en `CHANGELOG.md`.
 
 ## v1.1.1 — water-only rain ripples · 9 November 2026
 
@@ -165,6 +183,6 @@ Antes de actualizar una campaña existente, exportar su JSON. La versión recono
 
 ## Git
 
-Rama alternativa: `fix/vtt-session-integrity-and-orbital-ui`.
+Rama de esta entrega: `feat/environments-boss-states`.
 
-Repositorio: `pedroAlTo/Gem_VeilfarersVTT`. Esta rama contiene las correcciones y el rediseño Orbital sobre la base `e9d8aa2fd32d1060a7d4eef04c5becb74578789f`. El acceso de escritura quedó verificado y Pedro autorizó subir los cambios a una rama alternativa. La integración en `master` y el despliegue quedan pendientes de la validación multijugador indicada arriba.
+Repositorio: `pedroAlTo/Gem_VeilfarersVTT`. Esta rama se prepara sobre `main` en `b1cac241e681807e929d32599e35016268687b63`. La integración en `main` y cualquier despliegue quedan fuera de esta entrega.

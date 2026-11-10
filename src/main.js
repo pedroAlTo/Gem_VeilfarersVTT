@@ -1,3 +1,4 @@
+import './encounters.css';
 import './sessionUI.css';
 import './diceTray.css';
 import './colorPicker.css';
