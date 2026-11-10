@@ -235,7 +235,7 @@ export class LightingEngine {
           effect: tok.lightEffect || 'steady',
           pulseSpeed: 1,
           facingAngle: tok.facingAngle,
-          visionAngle: tok.visionAngle ?? 360
+          visionAngle: tok.visionAngle ?? 90
         });
       }
 
@@ -251,7 +251,7 @@ export class LightingEngine {
           effect: 'steady',
           pulseSpeed: 1,
           facingAngle: tok.facingAngle,
-          visionAngle: tok.visionAngle ?? 360,
+          visionAngle: tok.visionAngle ?? 90,
           isNightVision: true
         });
       }

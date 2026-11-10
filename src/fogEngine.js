@@ -155,7 +155,7 @@ export class FogOfWarEngine {
       const ly = viewer.y;
       const radius = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 360);
       const facingAngle = viewer.facingAngle ?? 0;
-      const visionAngle = viewer.visionAngle ?? 360;
+      const visionAngle = viewer.visionAngle ?? 90;
 
       const poly = lightingEngine.computeVisibilityPolygon(
         lx,

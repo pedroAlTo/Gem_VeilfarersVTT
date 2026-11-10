@@ -1,4 +1,5 @@
-import { sanitizeHTML, confirmAction } from './ui.js';
+import { sanitizeHTML, confirmAction, notify } from './ui.js';
+import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 // src/handoutManager.js
 // Classified Transmissions, Dossiers, and Enriched Text Handouts with Images
 
@@ -195,9 +196,23 @@ export class HandoutManager {
     const previewBox = modal.querySelector('#doc_image_preview_box');
     const previewImg = modal.querySelector('#doc_image_preview');
 
-    fileInput.onchange = (e) => {
+    fileInput.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
+        const { isConfigured } = getCloudinaryConfig();
+        if (isConfigured) {
+          try {
+            notify('Subiendo imagen de dossier a Cloudinary (Dossier_)...');
+            const res = await uploadToCloudinary(file, () => {}, { prefix: 'Dossier_' });
+            urlInput.value = res.url;
+            previewImg.src = res.url;
+            previewBox.style.display = 'block';
+            notify('Imagen de dossier subida con éxito a Cloudinary.');
+            return;
+          } catch (err) {
+            notify('No se pudo subir a Cloudinary (' + err.message + '). Usando imagen local.', 'error');
+          }
+        }
         const reader = new FileReader();
         reader.onload = (re) => {
           urlInput.value = re.target.result;

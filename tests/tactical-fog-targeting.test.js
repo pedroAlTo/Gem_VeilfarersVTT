@@ -366,3 +366,110 @@ test('player kick: keeper revokes access, unassigns tokens and prevents reconnec
   network.disconnect();
   assert.equal(network.kickedMembers.size, 0, 'kickedMembers cleared on disconnect');
 });
+
+test('scene manager: scene deletion, party transition and single scene protection', async () => {
+  const { store } = await import('../src/state.js');
+  await store.ready;
+
+  // Add a test map
+  const mapA = store.addMap({ name: 'Alpha Station', imageUrl: '/assets/maps/blank-grid.svg' });
+  const mapB = store.addMap({ name: 'Beta Sector', imageUrl: '/assets/maps/blank-grid.svg' });
+
+  assert.equal(store.getState().activeMapId, mapB.id);
+  const initialCount = store.getState().maps.length;
+
+  // Deleting active scene transitions to another available scene
+  const deleted = store.deleteScene(mapB.id);
+  assert.equal(deleted, true);
+  assert.equal(store.getState().maps.some(m => m.id === mapB.id), false);
+  assert.notEqual(store.getState().activeMapId, mapB.id);
+
+  // If only one map left, deleting it throws an error
+  while (store.getState().maps.length > 1) {
+    store.deleteScene(store.getState().maps[0].id);
+  }
+  assert.throws(() => {
+    store.deleteScene(store.getState().maps[0].id);
+  }, /No se puede eliminar la única escena/);
+
+  // Restore maps
+  store.addMap({ name: 'Bridge // USC Vagrant Star', imageUrl: '/assets/maps/starship_bridge.jpg' });
+});
+
+test('campaign arcs: create, reorder scenes, move between arcs and attach images', async () => {
+  const { store } = await import('../src/state.js');
+  await store.ready;
+
+  const arc1 = store.getArcs()[0];
+  assert.ok(arc1, 'Default arc exists');
+
+  // Create new arc
+  const arc2 = store.createArc({ name: 'Arco 2: Infiltración', description: 'Misión encubierta' });
+  assert.ok(arc2.id);
+  assert.equal(arc2.name, 'Arco 2: Infiltración');
+
+  const map = store.addMap({ name: 'Cámara Oculta', imageUrl: '/assets/maps/blank-grid.svg', arcId: arc2.id });
+  const currentArc2 = store.getArcs().find(a => a.id === arc2.id);
+  assert.ok(currentArc2.sceneIds.includes(map.id));
+
+  // Move scene to arc 1
+  store.moveSceneToArc(map.id, arc1.id);
+  const updatedArc1 = store.getArcs().find(a => a.id === arc1.id);
+  assert.ok(updatedArc1.sceneIds.includes(map.id));
+
+  // Attach image to arc
+  store.attachImageToArc(arc2.id, { name: 'Esquema de nave', url: 'https://res.cloudinary.com/test/Dossier_schematic.webp' });
+  const updatedArc2 = store.getArcs().find(a => a.id === arc2.id);
+  assert.equal(updatedArc2.images.length, 1);
+  assert.equal(updatedArc2.images[0].name, 'Esquema de nave');
+
+  // Delete arc
+  store.deleteArc(arc2.id);
+  assert.equal(store.getArcs().some(a => a.id === arc2.id), false);
+});
+
+test('dead token detection: HP <= 0 triggers dead state and skull bones overlay', async () => {
+  const { store } = await import('../src/state.js');
+  await store.ready;
+
+  const testTok = store.addToken({
+    name: 'Operative Down',
+    hp: { current: 12, max: 12, majorThreshold: 4, severeThreshold: 8 },
+    visionAngle: 90
+  });
+
+  assert.equal(testTok.visionAngle, 90, 'Default standard FOV is 90 degrees');
+  assert.equal(testTok.hp.current > 0, true);
+
+  // Set HP to 0
+  store.updateToken(testTok.id, { hp: { ...testTok.hp, current: 0 } });
+  const deadTok = store.getState().tokens.find(t => t.id === testTok.id);
+  assert.equal(deadTok.hp.current, 0);
+  assert.ok(deadTok.hp.current <= 0, 'Token is marked dead');
+});
+
+test('cloud account & preferences: null-safe parameters and Netlify identity support', async () => {
+  const { cleanPreferences, preferenceKeys } = await import('../src/cloudAccount.js');
+
+  // Must not throw on null, undefined, or missing values
+  assert.deepEqual(cleanPreferences(null), {});
+  assert.deepEqual(cleanPreferences(undefined), {});
+  assert.deepEqual(cleanPreferences('not an object'), {});
+
+  const cleaned = cleanPreferences({
+    userName: 'Commander Shepard',
+    audioMuted: true,
+    showGrid: false,
+    gridSnap: true,
+    fogExploredOpacity: 0.75,
+    userRole: 'keeper',
+    unknownField: 'ignore'
+  });
+
+  assert.equal(cleaned.userName, 'Commander Shepard');
+  assert.equal(cleaned.audioMuted, true);
+  assert.equal(cleaned.showGrid, false);
+  assert.equal(cleaned.fogExploredOpacity, 0.75);
+  assert.equal(cleaned.unknownField, undefined);
+  assert.ok(preferenceKeys.includes('fogExploredOpacity'));
+});

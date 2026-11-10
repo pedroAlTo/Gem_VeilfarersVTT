@@ -6,6 +6,7 @@ import { statGaugeHTML } from './tokenVitals.js';
 // Token HUD Quickbar and Holographic Character Sheet Editor
 
 import { notify, confirmAction, sanitizeHTML, escapeHTML } from './ui.js';
+import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { TRAITS, SUBTRAITS } from './rulesEngine.js';
@@ -868,9 +869,22 @@ export class TokenHUD {
     const avatarPreview = modal.querySelector('#sheet_avatar_preview');
     const avatarUrlInput = modal.querySelector('#sheet_avatar_url');
 
-    fileInput.onchange = (e) => {
+    fileInput.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
+        const { isConfigured } = getCloudinaryConfig();
+        if (isConfigured) {
+          try {
+            notify('Subiendo avatar de token a Cloudinary (Token_)...');
+            const res = await uploadToCloudinary(file, () => {}, { prefix: 'Token_' });
+            avatarPreview.src = res.url;
+            avatarUrlInput.value = res.url;
+            notify('Avatar de token subido a Cloudinary.');
+            return;
+          } catch (err) {
+            notify('No se pudo subir a Cloudinary (' + err.message + '). Usando imagen local.', 'error');
+          }
+        }
         const reader = new FileReader();
         reader.onload = (re) => {
           avatarPreview.src = re.target.result;

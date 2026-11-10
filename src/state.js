@@ -35,6 +35,16 @@ class StateStore {
       activeTransmission: null, // Broadcasted handout currently popped up
       logs: [],
       chatMessages: [],
+      arcs: [
+        {
+          id: 'arc_main',
+          name: 'Arco 1: La Deriva // Vagrant Star',
+          description: 'Campaña principal e investigaciones del núcleo cuántico.',
+          sceneIds: INITIAL_MAPS.map(m => m.id),
+          tokenIds: INITIAL_TOKENS.map(t => t.id),
+          images: []
+        }
+      ],
 
       // Layers System
       // 'map' | 'water' | 'walls_lights' | 'tokens' | 'overlay'
@@ -746,12 +756,176 @@ class StateStore {
       lights: [],
       waterZones: []
     };
+
+    const targetArcId = mapData.arcId || this.state.arcs?.[0]?.id;
+    const arcs = (this.state.arcs || []).map(arc => {
+      if (arc.id === targetArcId) {
+        return { ...arc, sceneIds: [...(arc.sceneIds || []), newMap.id] };
+      }
+      return arc;
+    });
+
     this.update({
       maps: [...this.state.maps, newMap],
       activeMapId: newMap.id,
+      arcs,
       tokens: movePartyToScene(this.state.tokens, newMap)
     });
     return newMap;
+  }
+
+  deleteScene(mapId) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper' || this.sessionBusy) return false;
+    const maps = this.state.maps || [];
+    if (maps.length <= 1) {
+      throw new Error('No se puede eliminar la única escena. Crea otra escena antes.');
+    }
+    const targetMap = maps.find(m => m.id === mapId);
+    if (!targetMap) throw new Error('La escena no existe o ya ha sido eliminada.');
+
+    this._beforeTacticalMutation('Eliminar Escena: ' + targetMap.name);
+
+    let nextActiveMapId = this.state.activeMapId;
+    let updatedTokens = this.state.tokens;
+
+    if (mapId === this.state.activeMapId) {
+      const remainingMap = maps.find(m => m.id !== mapId);
+      nextActiveMapId = remainingMap.id;
+      updatedTokens = movePartyToScene(this.state.tokens, remainingMap);
+    }
+
+    updatedTokens = updatedTokens.map(t => t.mapId === mapId ? { ...t, mapId: 'reserve', inReserve: true } : t);
+    const remainingMaps = maps.filter(m => m.id !== mapId);
+
+    const updatedArcs = (this.state.arcs || []).map(arc => ({
+      ...arc,
+      sceneIds: (arc.sceneIds || []).filter(id => id !== mapId)
+    }));
+
+    this.update({
+      maps: remainingMaps,
+      activeMapId: nextActiveMapId,
+      tokens: updatedTokens,
+      arcs: updatedArcs,
+      selectedWallId: null,
+      selectedLightId: null,
+      selectedWaterId: null
+    });
+    this.validateSelections();
+    return true;
+  }
+
+  getArcs() {
+    let arcs = this.state.arcs;
+    if (!arcs || !Array.isArray(arcs) || arcs.length === 0) {
+      arcs = [
+        {
+          id: 'arc_main',
+          name: 'Arco 1: Operaciones Activas',
+          description: 'Campaña principal e investigaciones en curso.',
+          sceneIds: (this.state.maps || []).map(m => m.id),
+          tokenIds: (this.state.tokens || []).map(t => t.id),
+          images: []
+        }
+      ];
+      this.state.arcs = arcs;
+    }
+    return arcs;
+  }
+
+  createArc({ name, description = '', sceneIds = [], tokenIds = [], images = [] } = {}) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return null;
+    this._beforeTacticalMutation('Crear Arco Argumental');
+    const newArc = {
+      id: 'arc_' + newId(),
+      name: name?.trim() || 'Nuevo Arco Argumental',
+      description: description?.trim() || '',
+      sceneIds: Array.isArray(sceneIds) ? sceneIds : [],
+      tokenIds: Array.isArray(tokenIds) ? tokenIds : [],
+      images: Array.isArray(images) ? images : []
+    };
+    const arcs = [...(this.getArcs()), newArc];
+    this.update({ arcs });
+    return newArc;
+  }
+
+  deleteArc(arcId) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return false;
+    const arcs = this.getArcs();
+    if (arcs.length <= 1) {
+      throw new Error('No se puede eliminar el único arco activo.');
+    }
+    this._beforeTacticalMutation('Eliminar Arco');
+    const targetArc = arcs.find(a => a.id === arcId);
+    const remainingArcs = arcs.filter(a => a.id !== arcId);
+    if (targetArc?.sceneIds?.length && remainingArcs[0]) {
+      remainingArcs[0].sceneIds = [...new Set([...(remainingArcs[0].sceneIds || []), ...targetArc.sceneIds])];
+    }
+    this.update({ arcs: remainingArcs });
+    return true;
+  }
+
+  updateArc(arcId, partial) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return false;
+    this._beforeTacticalMutation('Actualizar Arco');
+    const arcs = this.getArcs().map(arc => {
+      if (arc.id === arcId) {
+        return { ...arc, ...partial };
+      }
+      return arc;
+    });
+    this.update({ arcs });
+    return true;
+  }
+
+  moveSceneToArc(mapId, targetArcId) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return false;
+    this._beforeTacticalMutation('Mover Escena a Arco');
+    const arcs = this.getArcs().map(arc => {
+      const sceneIds = (arc.sceneIds || []).filter(id => id !== mapId);
+      if (arc.id === targetArcId) {
+        sceneIds.push(mapId);
+      }
+      return { ...arc, sceneIds };
+    });
+    this.update({ arcs });
+    return true;
+  }
+
+  reorderScenes(arcId, direction, mapId) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return false;
+    const arc = this.getArcs().find(a => a.id === arcId);
+    if (!arc || !arc.sceneIds) return false;
+    const ids = [...arc.sceneIds];
+    const index = ids.indexOf(mapId);
+    if (index === -1) return false;
+
+    if (direction === 'up' && index > 0) {
+      const temp = ids[index - 1];
+      ids[index - 1] = ids[index];
+      ids[index] = temp;
+    } else if (direction === 'down' && index < ids.length - 1) {
+      const temp = ids[index + 1];
+      ids[index + 1] = ids[index];
+      ids[index] = temp;
+    } else {
+      return false;
+    }
+    return this.updateArc(arcId, { sceneIds: ids });
+  }
+
+  attachImageToArc(arcId, imageObj) {
+    const arc = this.getArcs().find(a => a.id === arcId);
+    if (!arc) return false;
+    const images = [...(arc.images || []), { id: 'img_' + newId(), ...imageObj }];
+    return this.updateArc(arcId, { images });
+  }
+
+  detachImageFromArc(arcId, imageId) {
+    const arc = this.getArcs().find(a => a.id === arcId);
+    if (!arc) return false;
+    const images = (arc.images || []).filter(img => img.id !== imageId);
+    return this.updateArc(arcId, { images });
   }
 
   updateActiveMap(partial) {

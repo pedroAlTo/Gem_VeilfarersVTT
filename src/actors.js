@@ -13,7 +13,7 @@ export function createActor(data = {}, mapId) {
     hope: 0, effort: 0, effortTrack: [false, false],
     resolve: { current: 0, max: 2, dieType: 'd4' }, honedEdgeBonus: 0, recoveryAnchor: '',
     traits: Object.fromEntries(TRAIT_IDS.map(k => [k, 0])), subtraits: {}, conditions: [],
-    visionRadius: 10, hasLight: true, lightRadius: 250, lightColor: '#00f3ff', lightEffect: 'steady',
+    visionRadius: 10, visionAngle: 90, hasLight: true, lightRadius: 250, lightColor: '#00f3ff', lightEffect: 'steady',
     ...structuredClone(data), id: `tok_${newId()}`, mapId,
   };
   validateActor(actor);

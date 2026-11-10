@@ -36,26 +36,39 @@ export function saveCloudinaryConfig(cloudName, preset) {
   }
 }
 
-export async function uploadToCloudinary(file, onProgress = () => {}) {
+export async function uploadToCloudinary(file, onProgress = () => {}, options = {}) {
   const { cloudName, preset, isConfigured } = getCloudinaryConfig();
   if (!isConfigured) {
     throw new Error('Cloudinary no está configurado (falta Cloud Name o Upload Preset).');
   }
 
+  const prefix = options.prefix || '';
+  let uploadFile = file;
+  if (prefix && file && typeof File !== 'undefined' && file instanceof File) {
+    const rawName = (file.name || 'asset').replace(/\.[^/.]+$/, '');
+    const ext = (file.name || '').split('.').pop() || 'png';
+    const cleanPrefixed = rawName.startsWith(prefix) ? rawName : `${prefix}${rawName}`;
+    uploadFile = new File([file], `${cleanPrefixed}.${ext}`, { type: file.type });
+  }
+
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', uploadFile);
   formData.append('upload_preset', preset);
+  if (options.folder) {
+    formData.append('folder', options.folder);
+  }
 
   return new Promise((resolve, reject) => {
     if (typeof XMLHttpRequest === 'undefined') {
       // Node / test environment fallback
+      const pubId = (prefix || '') + 'test_asset';
       resolve({
-        url: 'https://res.cloudinary.com/' + encodeURIComponent(cloudName) + '/image/upload/f_auto,q_auto/test_map.webp',
-        rawUrl: 'https://res.cloudinary.com/' + encodeURIComponent(cloudName) + '/image/upload/test_map.jpg',
+        url: 'https://res.cloudinary.com/' + encodeURIComponent(cloudName) + '/image/upload/f_auto,q_auto/' + pubId + '.webp',
+        rawUrl: 'https://res.cloudinary.com/' + encodeURIComponent(cloudName) + '/image/upload/' + pubId + '.jpg',
         width: 1920,
         height: 1080,
         bytes: file.size || 1024,
-        publicId: 'test_map'
+        publicId: pubId
       });
       return;
     }

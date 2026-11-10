@@ -14,7 +14,7 @@ export function imageDimensions(src) {
     image.src = src;
   });
 }
-export function openSceneCreator() {
+export function openSceneCreator({ arcId } = {}) {
   if (store.sessionRole === 'player') return;
   const cConfig = getCloudinaryConfig();
   const modal = dossierDialog('CREATE A SCENE', `
@@ -83,6 +83,7 @@ export function openSceneCreator() {
         if (file) src = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
         scene.imageUrl = src;
       }
+      if (arcId) scene.arcId = arcId;
       if (!store.addMap(scene)) throw new Error('Cannot create a scene while joining a game.');
       modal.remove(); notify('¡Escena creada y desplegada con éxito!');
     } catch (err) { error.textContent = err.message || 'Image could not be saved.'; status.textContent = 'Scene was not created.'; }

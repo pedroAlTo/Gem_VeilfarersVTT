@@ -715,6 +715,24 @@ export class CanvasEngine {
       reader.onload = (re) => {
         const dataUrl = re.target.result;
         if (hitToken) {
+          const { isConfigured } = getCloudinaryConfig();
+          if (isConfigured) {
+            uploadToCloudinary(file, () => {}, { prefix: 'Token_' }).then(res => {
+              store.updateToken(hitToken.id, { avatarUrl: res.url });
+              network.broadcast({ type: 'TOKEN_UPDATE', tokenId: hitToken.id, partial: { avatarUrl: res.url } });
+              audio.playSparkle();
+              store.addLog({
+                sender: 'Tactical Canvas',
+                type: 'TOKEN_CUSTOMIZE',
+                title: `Token Portrait Cloudinary: [${hitToken.name}]`,
+                details: `Custom portrait asset applied from Cloudinary (Token_).`
+              });
+            }).catch(() => {
+              store.updateToken(hitToken.id, { avatarUrl: dataUrl });
+              network.broadcast({ type: 'TOKEN_UPDATE', tokenId: hitToken.id, partial: { avatarUrl: dataUrl } });
+            });
+            return;
+          }
           // Update token portrait
           store.updateToken(hitToken.id, { avatarUrl: dataUrl });
           network.broadcast({ type: 'TOKEN_UPDATE', tokenId: hitToken.id, partial: { avatarUrl: dataUrl } });
@@ -2917,8 +2935,8 @@ export class CanvasEngine {
       // Beyond max perception range -> cannot see
       if (dist > vRange) continue;
 
-      // Vision angle (FOV) test
-      const vAngle = viewer.visionAngle ?? 360;
+      // Vision angle (FOV) test (standard 90° for Veilfarers)
+      const vAngle = viewer.visionAngle ?? 90;
       if (vAngle < 360) {
         const fAngle = viewer.facingAngle ?? 0;
         const angleToTarget = Math.atan2(ty - vy, tx - vx);
@@ -3007,7 +3025,7 @@ export class CanvasEngine {
       const vRange = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 400);
       if (dist > vRange) continue;
 
-      const vAngle = viewer.visionAngle ?? 360;
+      const vAngle = viewer.visionAngle ?? 90;
       if (vAngle < 360) {
         const fAngle = viewer.facingAngle ?? 0;
         const angleToTarget = Math.atan2(y - vy, x - vx);
@@ -3403,41 +3421,79 @@ export class CanvasEngine {
         ctx.restore();
       }
 
-      // Avatar
-      const img = this.getTokenImage(tok.avatarUrl);
+      // Avatar & Defeated / Dead Token representation (HP <= 0)
+      const isDead = typeof tok.hp?.current === 'number' && tok.hp.current <= 0;
+
       ctx.save();
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
       ctx.clip();
 
-      if (img && img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, -radius, -radius, radius * 2, radius * 2);
-      } else {
-        ctx.fillStyle = '#1e293b';
+      if (isDead) {
+        ctx.fillStyle = '#0a0f1d';
         ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
-        ctx.fillStyle = '#00f3ff';
-        ctx.font = `bold ${Math.round(radius * 0.7)}px "Orbitron", sans-serif`;
+
+        const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+        radGrad.addColorStop(0, 'rgba(239, 68, 68, 0.45)');
+        radGrad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+        ctx.fillStyle = radGrad;
+        ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+
+        ctx.fillStyle = '#f87171';
+        ctx.font = `bold ${Math.round(radius * 1.15)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const isKeeper = state.userRole === 'keeper';
-        const isMaskedLetter = !isKeeper && this.isHorrorToken(tok);
-        ctx.fillText(isMaskedLetter ? '?' : (tok.name ? tok.name.charAt(0) : '?'), 0, 0);
+        ctx.fillText('☠️', 0, 0);
+      } else {
+        const img = this.getTokenImage(tok.avatarUrl);
+        if (img && img.complete && img.naturalWidth > 0) {
+          ctx.drawImage(img, -radius, -radius, radius * 2, radius * 2);
+        } else {
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+          ctx.fillStyle = '#00f3ff';
+          ctx.font = `bold ${Math.round(radius * 0.7)}px "Orbitron", sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const isKeeper = state.userRole === 'keeper';
+          const isMaskedLetter = !isKeeper && this.isHorrorToken(tok);
+          ctx.fillText(isMaskedLetter ? '?' : (tok.name ? tok.name.charAt(0) : '?'), 0, 0);
+        }
       }
       ctx.restore();
 
       // Rim Border
       ctx.save();
       let rimColor = '#00f3ff';
-      if (tok.path === 'Sleeping') rimColor = '#ffaa00';
-      if (!tok.isPlayer) rimColor = tok.actorType === 'drone' ? '#72dfce' : '#ef4444';
+      if (isDead) rimColor = '#ef4444';
+      else if (tok.path === 'Sleeping') rimColor = '#ffaa00';
+      else if (!tok.isPlayer) rimColor = tok.actorType === 'drone' ? '#72dfce' : '#ef4444';
       if (tok.hidden) rimColor = '#a855f7';
 
       ctx.strokeStyle = rimColor;
-      ctx.lineWidth = isSelected ? 4 : 2.5;
+      ctx.lineWidth = isSelected ? 4 : (isDead ? 3 : 2.5);
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
+
+      // Dead / Defeated Badge above token
+      if (isDead) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.95)';
+        ctx.strokeStyle = '#fca5a5';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(-24, -radius - 22, 48, 14, 3);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('☠️ DEAD', 0, -radius - 15);
+        ctx.restore();
+      }
 
       // Hidden Badge
       if (tok.hidden) {
@@ -3501,7 +3557,7 @@ export class CanvasEngine {
       if (isSelected) {
         ctx.save();
         const fAngle = tok.facingAngle ?? 0;
-        const vAngle = tok.visionAngle ?? 360;
+        const vAngle = tok.visionAngle ?? 90;
         const arrowDist = radius + 20;
 
         // FOV Guide Arc if directional (< 360)
