@@ -132,9 +132,21 @@ export function initSessionBar() {
               <strong>${e(p.name)}</strong>
               ${syncBadge}
               <small style="color:${tok ? 'var(--cyan-pearl)' : '#fbbf24'}; opacity:0.85;">${tok ? e(tok.name) : '⏳ Sin ficha'}</small>
+              <button class="crew-kick-pill-btn" data-kick-player="${e(p.id)}" title="Expulsar a ${e(p.name)} de la sesión" style="margin-left:3px; padding:0 3px; font-size:9px; line-height:1; color:#ef4444; border:none; background:transparent; cursor:pointer; font-weight:bold;">✕</button>
             </span>
           `;
         }).join(''));
+        crewPills.querySelectorAll('[data-kick-player]').forEach(btn => {
+          btn.onclick = async (ev) => {
+            ev.stopPropagation();
+            const playerId = btn.dataset.kickPlayer;
+            const targetPlayer = players.find(p => p.id === playerId);
+            const name = targetPlayer?.name || 'este jugador';
+            if (await confirmAction(`¿Expulsar a "${name}" de la sesión activa? Se revocará su acceso y se liberará su personaje asignado.`)) {
+              network.kickPlayer(playerId);
+            }
+          };
+        });
       } else {
         crewPills.style.display = 'none';
         crewPills.innerHTML = '';
@@ -144,6 +156,18 @@ export function initSessionBar() {
   store.subscribe(update); update(); initAccount();
   window.addEventListener('veil:map-load-status', () => update());
   window.addEventListener('veil:announcement', event => dossierDialog('KEEPER BROADCAST', `<span class="dossier-eyebrow">${e(store.state.campaignName)}</span><p class="broadcast-message">${e(event.detail)}</p>`));
+  window.addEventListener('veil:kicked', event => {
+    const reason = event.detail?.reason || 'Has sido expulsado de la sesión por el Director de Juego.';
+    dossierDialog('ACCESO DENEGADO // EXPULSIÓN', `
+      <span class="dossier-eyebrow">ENLACE TERMINADO</span>
+      <h2 style="color:#ef4444;">Expulsado de la sesión</h2>
+      <p style="margin:14px 0; color:#f87171; font-weight:500;">${e(reason)}</p>
+      <p class="dossier-muted">Tu terminal ha sido desconectada del enlace táctico. Tu campaña y personajes locales permanecen intactos.</p>
+      <div style="margin-top:16px;">
+        <button class="hud-btn hud-btn-primary" onclick="this.closest('.dossier-modal')?.remove()">Entendido</button>
+      </div>
+    `);
+  });
 }
 
 export function openPlayerTokens() {
@@ -218,10 +242,28 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
     }).join('') : '<p class="dossier-muted">No players yet. Host a game and share its invitation.</p>');
     list.querySelectorAll('[data-assign]').forEach(select => select.onchange = () => { try { network.assignToken(select.dataset.assign, select.value); } catch (err) { error.textContent = err.message; } });
     if (state.isHosting) list.querySelectorAll('[data-assign]').forEach(select => {
+      const playerId = select.dataset.assign;
+      const targetPlayer = players.find(p => p.id === playerId);
+      const name = targetPlayer?.name || 'jugador';
+
       const button = document.createElement('button'); button.type = 'button'; button.className = 'hud-btn'; button.textContent = 'Susurrar';
-      button.setAttribute('aria-label', `Susurrar a ${players.find(p => p.id === select.dataset.assign)?.name || 'jugador'}`);
-      button.onclick = () => { modal.remove(); window.dispatchEvent(new CustomEvent('veil:open_chat', { detail: { recipientId: select.dataset.assign } })); };
+      button.setAttribute('aria-label', `Susurrar a ${name}`);
+      button.onclick = () => { modal.remove(); window.dispatchEvent(new CustomEvent('veil:open_chat', { detail: { recipientId: playerId } })); };
       select.closest('.crew-row').append(button);
+
+      const kickBtn = document.createElement('button');
+      kickBtn.type = 'button';
+      kickBtn.className = 'hud-btn hud-btn-danger';
+      kickBtn.textContent = '👢 Expulsar';
+      kickBtn.title = `Expulsar a ${name} de la sesión`;
+      kickBtn.setAttribute('aria-label', `Expulsar a ${name}`);
+      kickBtn.onclick = async () => {
+        if (await confirmAction(`¿Expulsar a "${name}" de la sesión? No podrá reconectarse automáticamente.`)) {
+          network.kickPlayer(playerId);
+          renderRoster();
+        }
+      };
+      select.closest('.crew-row').append(kickBtn);
     });
     if (state.isHosting) {
       const row = document.createElement('div'); row.className = 'session-actions';

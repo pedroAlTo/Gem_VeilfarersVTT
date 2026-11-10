@@ -291,3 +291,78 @@ test('cloudinary service: configuration, local persistence and auto-optimization
   assert.equal(cleared.cloudName, '');
   assert.equal(cleared.isConfigured, false);
 });
+
+test('player kick: keeper revokes access, unassigns tokens and prevents reconnection', async () => {
+  const { network } = await import('../src/networkManager.js');
+  const { store } = await import('../src/state.js');
+
+  await store.ready;
+  store.update({
+    isHosting: true,
+    userRole: 'keeper',
+    players: [
+      { id: 'player_kick_target', name: 'Rogue Operative' },
+      { id: 'player_friendly', name: 'Friendly Operative' }
+    ],
+    tokens: [
+      { id: 'tok_kicked_char', name: 'Rogue Token', ownerId: 'player_kick_target', mapId: 'default' },
+      { id: 'tok_drone_shared', name: 'Drone Token', actorType: 'drone', ownerId: '', controllerIds: ['player_kick_target', 'player_friendly'], mapId: 'default' }
+    ]
+  });
+
+  // Mock a connected peer
+  let sentData = null;
+  let connClosed = false;
+  const mockConn = {
+    peer: 'peer_target_123',
+    open: true,
+    send: (msg) => { sentData = msg; },
+    close: () => { connClosed = true; }
+  };
+  network.connections.set('peer_target_123', mockConn);
+  network.members.set('peer_target_123', { id: 'player_kick_target', name: 'Rogue Operative' });
+  network.seats.set('resume_secret_target', 'player_kick_target');
+
+  // Verify kickPlayer execution
+  const kicked = network.kickPlayer('player_kick_target', 'Comportamiento no autorizado.');
+  assert.equal(kicked, true);
+
+  // 1. Target added to kickedMembers
+  assert.ok(network.kickedMembers.has('player_kick_target'), 'Member ID is recorded in kickedMembers');
+  assert.ok(network.kickedMembers.has('peer_target_123'), 'Peer ID is recorded in kickedMembers');
+  assert.ok(network.kickedMembers.has('resume_secret_target'), 'Resume token is recorded in kickedMembers');
+
+  // 2. Kicked packet was sent to the peer
+  assert.ok(sentData, 'Target should receive KICKED packet');
+  const parsed = typeof sentData === 'string' ? JSON.parse(sentData) : sentData;
+  assert.equal(parsed.type, 'KICKED');
+  assert.equal(parsed.reason, 'Comportamiento no autorizado.');
+
+  // 3. Player removed from players roster
+  assert.equal(store.getState().players.some(p => p.id === 'player_kick_target'), false);
+  assert.equal(store.getState().players.length, 1);
+
+  // 4. Controlled character unassigned and removed from drone
+  const charTok = store.getState().tokens.find(t => t.id === 'tok_kicked_char');
+  assert.equal(charTok.ownerId, '', 'Character token is no longer owned by kicked player');
+  const droneTok = store.getState().tokens.find(t => t.id === 'tok_drone_shared');
+  assert.deepEqual(droneTok.controllerIds, ['player_friendly'], 'Kicked player removed from drone controllers');
+
+  // 5. Connection rejected if attempting to reconnect
+  let rejectedConnClosed = false;
+  const rejoinConn = {
+    peer: 'peer_target_123',
+    on: (evt, handler) => {
+      if (evt === 'data') {
+        handler({ type: 'HANDSHAKE', resume: 'resume_secret_target', name: 'Rogue Again' });
+      }
+    },
+    close: () => { rejectedConnClosed = true; }
+  };
+  network.setupConnection(rejoinConn);
+  assert.equal(rejectedConnClosed, true, 'Reconnection attempt by kicked member is immediately closed');
+
+  // Clean up
+  network.disconnect();
+  assert.equal(network.kickedMembers.size, 0, 'kickedMembers cleared on disconnect');
+});

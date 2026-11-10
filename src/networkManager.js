@@ -25,6 +25,7 @@ export class NetworkManager {
     this.hostConn = null;
     this.seen = new Set();
     this.mapLoadStatuses = new Map();
+    this.kickedMembers = new Set();
     this.invite = '';
     this.room = '';
     this.revision = 0;
@@ -156,6 +157,10 @@ export class NetworkManager {
         clearTimeout(expiry);
         const resume = typeof data.resume === 'string' && /^[a-zA-Z0-9-]{20,100}$/.test(data.resume) ? data.resume : id();
         const memberId = this.seats.get(resume) || 'player_' + id();
+        if (this.kickedMembers.has(memberId) || this.kickedMembers.has(resume) || this.kickedMembers.has(conn.peer)) {
+          conn.close();
+          return;
+        }
         if ([...this.members.values()].some(m => m.id === memberId)) { conn.close(); return; }
         this.connections.set(conn.peer, conn);
         this.seats.set(resume, memberId);
@@ -244,6 +249,71 @@ export class NetworkManager {
       this.store.update({ tokens: this.store.state.tokens.map(t => !isDrone(t) && t.ownerId === memberId ? { ...t, ownerId: '' } : t) });
     } else this.store.assignTokenControllers(tokenId, [memberId]);
     this.syncAll();
+  }
+  kickPlayer(playerId, reason = 'Has sido expulsado de la sesión por el Director de Juego.') {
+    if (!this.store.state.isHosting) return false;
+    let targetPeerId = null;
+    let targetMember = null;
+    for (const [peerId, member] of this.members.entries()) {
+      if (member.id === playerId || peerId === playerId) {
+        targetPeerId = peerId;
+        targetMember = member;
+        break;
+      }
+    }
+
+    const memberId = targetMember?.id || playerId;
+    this.kickedMembers.add(memberId);
+    if (targetPeerId) this.kickedMembers.add(targetPeerId);
+
+    for (const [resume, mId] of this.seats.entries()) {
+      if (mId === memberId) {
+        this.kickedMembers.add(resume);
+        this.seats.delete(resume);
+      }
+    }
+
+    // Unassign tokens controlled by this player (owned and shared drones)
+    this.store.update({
+      tokens: (this.store.state.tokens || []).map(t => {
+        let changed = false;
+        let updated = t;
+        if (!isDrone(t) && t.ownerId === memberId) {
+          updated = { ...updated, ownerId: '' };
+          changed = true;
+        }
+        if (t.controllerIds?.includes(memberId)) {
+          updated = { ...updated, controllerIds: t.controllerIds.filter(id => id !== memberId) };
+          changed = true;
+        }
+        return changed ? updated : t;
+      }),
+      players: (this.store.state.players || []).filter(p => p.id !== memberId && p.id !== playerId)
+    });
+
+    if (targetPeerId) {
+      const conn = this.connections.get(targetPeerId);
+      if (conn && conn.open) {
+        try {
+          conn.send(this.envelope({
+            type: 'KICKED',
+            reason
+          }));
+        } catch {}
+        setTimeout(() => {
+          try { conn.close(); } catch {}
+        }, 50);
+      }
+      this.connections.delete(targetPeerId);
+      this.members.delete(targetPeerId);
+      this.mapLoadStatuses?.delete(memberId);
+      this.mapLoadStatuses?.delete(targetPeerId);
+    }
+
+    this.updatePeersList();
+    this.syncAll();
+    notify(`👢 ${targetMember?.name || 'El jugador'} ha sido expulsado de la sesión.`);
+    return true;
   }
   async importCharacter(token) {
     if (this.store.sessionRole !== 'player') throw new Error('Join a game first.');
@@ -456,6 +526,14 @@ export class NetworkManager {
           this.pending.delete(data.requestId);
           data.error ? p.reject(new Error(data.error)) : p.resolve(data.result);
         }
+      } else if (data.type === 'KICKED') {
+        const reason = data.reason || 'Has sido expulsado de la sesión por el Director de Juego.';
+        this.disconnect(new Error(reason));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('veil:kicked', { detail: { reason } }));
+        }
+        notify(reason, 'error');
+        return;
       } else this.ephemeral(data);
       return;
     }
@@ -579,7 +657,7 @@ export class NetworkManager {
     this.seen.clear();
     this.joinReady = null;
     this.joinFailed?.(reason); this.joinFailed = null;
-    this.seats.clear(); this.room = ''; this.invite = ''; this.store.memberId = null;
+    this.seats.clear(); this.kickedMembers.clear(); this.room = ''; this.invite = ''; this.store.memberId = null;
     this.store.sessionRole = 'local';
     if (this.localCampaign) {
       this.store.update(this.localCampaign);
