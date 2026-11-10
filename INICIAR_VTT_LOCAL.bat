@@ -47,9 +47,9 @@ pause
 goto done
 
 :checks
-call npm test
+call npm.cmd test
 if errorlevel 1 exit /b 1
-call npm run build
+call npm.cmd run build
 if errorlevel 1 exit /b 1
 exit /b 0
 
@@ -62,7 +62,7 @@ for /f "delims=" %%i in ('node scripts\lan-info.mjs --primary') do set "LAN_IP=%
 set "LAN_OPEN="
 if defined LAN_IP set "LAN_OPEN=--open http://%LAN_IP%:5173/"
 echo Mantén esta ventana abierta mientras juegues. Pulsa Ctrl+C para detener el servidor.
-call npm run dev -- --host 0.0.0.0 --port 5173 --strictPort %LAN_OPEN%
+call npm.cmd run dev -- --host 0.0.0.0 --port 5173 --strictPort %LAN_OPEN%
 if errorlevel 1 goto failed
 goto done
 
@@ -72,13 +72,13 @@ echo.
 echo Modo offline en este ordenador (127.0.0.1)
 echo Abriendo http://127.0.0.1:5173/ ...
 echo Mantén esta ventana abierta. Pulsa Ctrl+C para detener el servidor.
-call npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --open
+call npm.cmd run dev -- --host 127.0.0.1 --port 5173 --strictPort --open
 if errorlevel 1 goto failed
 goto done
 
 :effects_lab
 set "VITE_LOCAL_ONLY=1"
-call npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --open /fx-lab.html
+call npm.cmd run dev -- --host 127.0.0.1 --port 5173 --strictPort --open /fx-lab.html
 if errorlevel 1 goto failed
 goto done
 

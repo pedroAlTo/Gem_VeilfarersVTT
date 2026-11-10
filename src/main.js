@@ -10,7 +10,7 @@ import './help.css';
 import { APP_LABEL } from './version.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import './dossiers.css';
-import { openSessionManager } from './sessionManager.js';
+import { openSessionManager, checkBackupReminder } from './sessionManager.js';
 import { LOCAL_ONLY } from './runtimeMode.js';
 import { sanitizeHTML, confirmAction, notify } from './ui.js';
 // src/main.js
@@ -770,4 +770,10 @@ function setupUndoRedoEvents() {
 
   window.addEventListener('veil:undo_stack_changed', updateUndoRedoUI);
   updateUndoRedoUI();
+
+  // Periodic Campaign Backup Reminder for Testers (Alpha protection)
+  setTimeout(() => {
+    checkBackupReminder();
+    setInterval(checkBackupReminder, 20 * 60 * 1000);
+  }, 15 * 60 * 1000);
 }

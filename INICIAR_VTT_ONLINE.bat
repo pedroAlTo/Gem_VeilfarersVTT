@@ -31,7 +31,7 @@ for /f "delims=" %%i in ('node scripts\lan-info.mjs --primary') do set "LAN_IP=%
 set "LAN_OPEN="
 if defined LAN_IP set "LAN_OPEN=--open http://%LAN_IP%:5173/"
 echo Mantén esta ventana abierta mientras juegues. Pulsa Ctrl+C para detener el servidor.
-call npm run dev -- --host 0.0.0.0 --port 5173 --strictPort %LAN_OPEN%
+call npm.cmd run dev -- --host 0.0.0.0 --port 5173 --strictPort %LAN_OPEN%
 if errorlevel 1 (
   echo Si el puerto 5173 está ocupado, detén la sesión anterior y reintenta.
   pause

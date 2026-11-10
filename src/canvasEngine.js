@@ -2580,11 +2580,16 @@ export class CanvasEngine {
         }
       }
 
+      const fullMapId = `${state.campaignId}:${map.id}`;
+      if (!this.fog.isExplorationLoaded(fullMapId) && map.fogExplored) {
+        this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
+      }
+
       this.fog.renderFogOfWar({
         ctx,
         mapWidth: this.mapImage.width,
         mapHeight: this.mapImage.height,
-        mapId: `${state.campaignId}:${map.id}`,
+        mapId: fullMapId,
         walls: map.walls || [],
         lights: map.lights || [],
         viewers,
@@ -2593,6 +2598,22 @@ export class CanvasEngine {
         isKeeperGM: isKeeperGM,
         stamp: !this.draggedToken
       });
+
+      // Authoritative Keeper exploration persistence debounced sync
+      if (state.userRole === 'keeper' && !this.draggedToken && !this._fogSyncTimer) {
+        this._fogSyncTimer = setTimeout(() => {
+          this._fogSyncTimer = null;
+          if (this.fog && this.mapImage && map) {
+            const serialized = this.fog.serializeExploration(fullMapId, this.mapImage.width, this.mapImage.height);
+            if (serialized && JSON.stringify(serialized) !== JSON.stringify(map.fogExplored)) {
+              store.updateMap(map.id, { fogExplored: serialized });
+              import('./networkManager.js').then(({ network }) => {
+                network.broadcast?.({ type: 'FOG_SYNC', mapId: map.id, fogExplored: serialized });
+              }).catch(() => {});
+            }
+          }
+        }, 1500);
+      }
     }
 
     // Sensory Vision Acoustic Pass (Tremorsense: reveals ground creatures through darkness)
@@ -3378,6 +3399,55 @@ export class CanvasEngine {
         ctx.globalAlpha = 0.55;
       }
 
+      // Tactical Spotlight Simulation (Focused overhead beam illuminating token)
+      if ((tok.hasSpotlight || tok.spotlight?.enabled) && !tok.hidden) {
+        ctx.save();
+        const spotRadius = Math.max(radius * 2, (tok.spotlight?.radius || 140) * (radius / 24));
+        const spotColor = tok.spotlight?.color || '#00f3ff';
+        const spotIntensity = Math.min(1.0, tok.spotlight?.intensity ?? 0.85);
+
+        // 1. Overhead Angled Volumetric Light Cone
+        const beamTopY = -spotRadius * 1.4;
+        const beamTopWidth = radius * 0.9;
+        const beamBottomWidth = spotRadius * 1.5;
+        const coneGrad = ctx.createLinearGradient(0, beamTopY, 0, radius);
+        coneGrad.addColorStop(0, 'rgba(255, 255, 255, 0.02)');
+        coneGrad.addColorStop(0.3, `rgba(255, 255, 255, ${0.14 * spotIntensity})`);
+        coneGrad.addColorStop(0.8, `${spotColor}33`);
+        coneGrad.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = coneGrad;
+        ctx.beginPath();
+        ctx.moveTo(-beamTopWidth / 2, beamTopY);
+        ctx.lineTo(beamTopWidth / 2, beamTopY);
+        ctx.lineTo(beamBottomWidth / 2, radius * 0.8);
+        ctx.lineTo(-beamBottomWidth / 2, radius * 0.8);
+        ctx.closePath();
+        ctx.fill();
+
+        // 2. Focused Ground Light Pool beneath token
+        const groundGrad = ctx.createRadialGradient(0, 0, radius * 0.4, 0, 0, spotRadius);
+        groundGrad.addColorStop(0, `rgba(255, 255, 255, ${0.45 * spotIntensity})`);
+        groundGrad.addColorStop(0.25, `${spotColor}44`);
+        groundGrad.addColorStop(0.7, `${spotColor}18`);
+        groundGrad.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = groundGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, spotRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Outer subtle beam halo
+        ctx.strokeStyle = `${spotColor}55`;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 6]);
+        ctx.beginPath();
+        ctx.arc(0, 0, spotRadius * 0.95, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
       // Selection Glow
       if (isSelected) {
         ctx.save();
@@ -3443,6 +3513,17 @@ export class CanvasEngine {
           ctx.fillText(isMaskedLetter ? '?' : (tok.name ? tok.name.charAt(0) : '?'), 0, 0);
         }
       }
+
+      // Spotlight Top Specular Highlight on Token Avatar
+      if ((tok.hasSpotlight || tok.spotlight?.enabled) && !isDead) {
+        const specGrad = ctx.createLinearGradient(0, -radius, 0, radius * 0.4);
+        specGrad.addColorStop(0, 'rgba(255, 255, 255, 0.48)');
+        specGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.10)');
+        specGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = specGrad;
+        ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+      }
+
       ctx.restore();
 
       // Rim Border

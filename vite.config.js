@@ -5,6 +5,11 @@ import { lanSessions } from './scripts/lan-sessions.mjs';
 
 export default defineConfig({
   plugins: [lanSessions(), adversaryLibraryPlugin(), encounterLibraryPlugin()],
+  resolve: {
+    alias: {
+      peerjs: 'peerjs/dist/bundler.cjs',
+    },
+  },
   server: { allowedHosts: ['terminal.local'] },
   build: {
     rollupOptions: {

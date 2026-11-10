@@ -74,6 +74,98 @@ export class FogOfWarEngine {
   }
 
   /**
+   * Checks if exploration data has been loaded/initialized for this map
+   */
+  isExplorationLoaded(mapId) {
+    return this.exploredCanvases.has(mapId);
+  }
+
+  /**
+   * Serializes exploration memory into a compact grid bitmask for persistence and network sync
+   */
+  serializeExploration(mapId, mapWidth, mapHeight, cellSize = 32) {
+    const canvas = this.exploredCanvases.get(mapId);
+    if (!canvas) return 'none';
+    const ctx = canvas.getContext('2d');
+    const cols = Math.ceil(mapWidth / cellSize);
+    const rows = Math.ceil(mapHeight / cellSize);
+    const totalCells = cols * rows;
+    const numBytes = Math.ceil(totalCells / 8);
+    const bytes = new Uint8Array(numBytes);
+
+    let setBits = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const sampleX = Math.min(mapWidth - 1, Math.floor(c * cellSize + cellSize / 2));
+        const sampleY = Math.min(mapHeight - 1, Math.floor(r * cellSize + cellSize / 2));
+        try {
+          const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+          if (pixel[0] > 64 || pixel[3] > 64) {
+            const index = r * cols + c;
+            const byteIndex = Math.floor(index / 8);
+            const bitIndex = index % 8;
+            bytes[byteIndex] |= (1 << bitIndex);
+            setBits++;
+          }
+        } catch {
+          // ignore sampling error
+        }
+      }
+    }
+
+    if (setBits === 0) return 'none';
+    if (setBits === totalCells) return 'all';
+
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const b64 = typeof Buffer !== 'undefined' ? Buffer.from(bytes).toString('base64') : globalThis.btoa(binary);
+    return { status: 'custom', cols, rows, cellSize, bits: b64 };
+  }
+
+  /**
+   * Hydrates exploration canvas from authoritative serialized exploration state
+   */
+  loadExploration(mapId, mapWidth, mapHeight, fogExplored) {
+    if (!fogExplored || fogExplored === 'none') {
+      this.resetExploration(mapId);
+      return;
+    }
+    if (fogExplored === 'all') {
+      this.revealAll(mapId, mapWidth, mapHeight);
+      return;
+    }
+    if (typeof fogExplored === 'object' && fogExplored.status === 'custom' && fogExplored.bits) {
+      const canvas = this.getExploredCanvas(mapId, mapWidth, mapHeight);
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, mapWidth, mapHeight);
+
+      const cellSize = fogExplored.cellSize || 32;
+      const cols = fogExplored.cols;
+      const rows = fogExplored.rows;
+      let bytes;
+      if (typeof Buffer !== 'undefined') {
+        bytes = new Uint8Array(Buffer.from(fogExplored.bits, 'base64'));
+      } else {
+        const binary = globalThis.atob(fogExplored.bits);
+        bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      }
+
+      ctx.fillStyle = '#ffffff';
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const index = r * cols + c;
+          const byteIndex = Math.floor(index / 8);
+          const bitIndex = index % 8;
+          if (byteIndex < bytes.length && (bytes[byteIndex] & (1 << bitIndex))) {
+            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Stamps a visibility polygon into the persistent exploration memory
    */
   stampExploration(exploredCtx, polygon) {

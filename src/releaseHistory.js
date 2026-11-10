@@ -1,6 +1,69 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.3.0',
+    date: '2026-11-10',
+    title: 'Catálogo de equipo alienígena, drones tácticos, mitigación con escudos, spotlight cenital y niebla autoritaria',
+    sections: [
+      {
+        title: 'Equipo y Aumentos Alienígenas (Core + Rust & Steel)',
+        items: [
+          'Catálogo canónico completo de armamento, armaduras, equipo tecnológico y aumentos ciberbiológicos extraídos del Corebook y las especies alienígenas de Rust & Steel (Lithian, Chitinid, Synthet, Voidborn).',
+          'Filtros interactivos por origen (Todos, Core, Rust & Steel) y categoría (Armas, Armaduras, Equipo, Aumentos), permitiendo a los jugadores equipar cualquier combinación a sus personajes.',
+          'Integración directa con el dossier del personaje y el inventario del token, con previsualización de propiedades, daño, alcance y notas de reglas.',
+        ],
+      },
+      {
+        title: 'Drones Tácticos y Despliegue',
+        items: [
+          'Sistema dedicado de creación y despliegue de drones desde el Roster Táctico, con presets especializados: Scout (alta velocidad, sensor range), Combat (armadura reforzada y armamento ligero), Medical (módulos de socorro), Utility y Custom.',
+          'Campo de visión (FOV) estándar estandarizado en 90º cónico con visión frontal direccional.',
+          'Permisos de control compartido para tripulantes y foco cenital activado por defecto.',
+        ],
+      },
+      {
+        title: 'Edición Rápida en Token HUD Preview',
+        items: [
+          'Controles incrementales (+ / -) directamente integrados en la ventana de vista previa (TokenHUD) para HP, Escudos/Armor, Stress y Hope/Effort.',
+          'Permite a los dueños de tokens y al Keeper modificar estadísticas vitales al vuelo durante el combate sin necesidad de abrir la ficha completa ni interrumpir el flujo táctico.',
+          'Botón de conmutación rápida para foco cenital (🔦 FOCO) en el TokenHUD.',
+        ],
+      },
+      {
+        title: 'Ejecución de Daño por Jugadores y Mitigación con Escudos',
+        items: [
+          'Permiso habilitado para que los jugadores puedan ejecutar el daño calculado sobre su objetivo seleccionado.',
+          'Mecanismo de mitigación interactiva con escudos: cuando un token recibe daño, el portador puede gastar uno o varios escudos disponibles para absorber el impacto antes de que se reste el HP y se ejecute la animación de impacto.',
+          'Integración completa con las reglas de daño directo (que ignora escudos) y efectos de ataque acordes a los escudos consumidos.',
+        ],
+      },
+      {
+        title: 'Spotlight Táctico Cenital',
+        items: [
+          'Simulación visual de foco cenital de alta tecnología: haz cónico volumétrico proyectado desde arriba, charco de luz elíptico en el suelo, anillo de baliza y reflejo especular en el avatar.',
+          'Integración con el motor de iluminación dinámica y desvanecimiento de niebla de guerra en el área enfocada.',
+          'Configuración personalizable de radio de iluminación, color de luz e intensidad lumínica en la configuración del token.',
+        ],
+      },
+      {
+        title: 'Niebla de Guerra Persistente y Autoritaria',
+        items: [
+          'Autoridad centralizada en el Keeper para la exploración de niebla de guerra por escena, persistida en la campaña mediante máscaras de bits comprimidas.',
+          'Las acciones de "Reiniciar niebla" y "Revelar todo" actualizan la campaña y se sincronizan instantáneamente a todos los jugadores mediante el mensaje de red FOG_SYNC.',
+          'Persistencia total ante recargas de página, reconexiones tardías y suspensiones de pestañas en navegadores móviles.',
+        ],
+      },
+      {
+        title: 'Respaldo de Campaña y Lanzadores Locales',
+        items: [
+          'Copia de seguridad automática rotativa (auto-backup) en almacenamiento local durante cada guardado de campaña.',
+          'Aviso modal proactivo de recordatorio de exportación JSON para testers alpha.',
+          'Reparación de scripts de inicio por lotes (.bat) y script de instalación local en Windows invocando npm.cmd para evitar bloqueos por ExecutionPolicy de PowerShell.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.2.0', date: '2026-11-10',
     title: 'Entornos de dos capas, bosses por estados e impactos de combate',
     sections: [

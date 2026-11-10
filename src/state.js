@@ -677,12 +677,21 @@ class StateStore {
     this.update({ fogExploredOpacity: val });
   }
 
+  updateMap(mapId, partial) {
+    const maps = this.state.maps.map(m => m.id === mapId ? { ...m, ...partial } : m);
+    this.update({ maps });
+  }
+
   resetMapFog(mapId = null) {
     const targetMapId = mapId || this.state.activeMapId;
     if (typeof window !== 'undefined' && window.veilCanvas?.fog) {
       window.veilCanvas.fog.resetExploration(`${this.state.campaignId}:${targetMapId}`);
     }
+    this.updateMap(targetMapId, { fogExplored: 'none' });
     this.update({ fogLastReset: Date.now() });
+    if (typeof window !== 'undefined' && window.veilNetwork) {
+      window.veilNetwork.broadcast({ type: 'FOG_SYNC', mapId: targetMapId, fogExplored: 'none' });
+    }
   }
 
   revealMapFog(mapId = null) {
@@ -691,7 +700,11 @@ class StateStore {
     if (typeof window !== 'undefined' && window.veilCanvas?.fog && map) {
       window.veilCanvas.fog.revealAll(`${this.state.campaignId}:${targetMapId}`, window.veilCanvas.mapImage?.width || 2000, window.veilCanvas.mapImage?.height || 1200);
     }
+    this.updateMap(targetMapId, { fogExplored: 'all' });
     this.update({ fogLastReveal: Date.now() });
+    if (typeof window !== 'undefined' && window.veilNetwork) {
+      window.veilNetwork.broadcast({ type: 'FOG_SYNC', mapId: targetMapId, fogExplored: 'all' });
+    }
   }
 
   // --- Handouts / Classified Transmissions ---
@@ -966,7 +979,26 @@ class StateStore {
     if(this.sessionRole==='player'||this.remoteApplying||this.storageReadFailed)return;
     const data=this.serializeCampaign(); data.savedAt=new Date().toISOString(); this.state.saveStatus='saving'; this._storageEvent();
     const write=this.saveQueue.catch(()=>{}).then(()=>writeCampaign(data.campaignId,data));this.saveQueue=write;
-    try{await write;if(this.saveQueue===write){this.state.saveStatus='saved';this.state.savedAt=data.savedAt;delete this.state.saveError;}}
+    try {
+      await write;
+      if (this.saveQueue === write) {
+        this.state.saveStatus = 'saved';
+        this.state.savedAt = data.savedAt;
+        delete this.state.saveError;
+        // Automatic rolling snapshot in localStorage for recovery
+        if (typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('veilfarers_auto_backup', JSON.stringify({
+              campaignId: data.campaignId,
+              name: data.campaignName,
+              savedAt: data.savedAt,
+              data
+            }));
+            localStorage.setItem('veilfarers_auto_backup_timestamp', String(Date.now()));
+          } catch {}
+        }
+      }
+    }
     catch(e){this.state.saveStatus='error';this.state.saveError=e.message;}
     this._storageEvent();
   }

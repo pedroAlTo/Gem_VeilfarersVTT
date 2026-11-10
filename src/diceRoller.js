@@ -1,5 +1,6 @@
 import { attackPresentation, weaponImpactType } from './combatFX.js';
 import { IMPACT_TYPES } from './encounterRules.js';
+import { dossierDialog } from './dossierUI.js';
 // src/diceRoller.js
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
@@ -58,9 +59,14 @@ export class DiceRollerSidebar {
     }
     const secret = this.rollVisibility() === 'keeper';
     this.container.querySelector('[data-secret-help]').hidden = !secret;
-    this.container.querySelector('#roll_check_btn').disabled = !secret && (!token || !store.canEditToken(token.id));
-    this.container.querySelector('#roll_check_btn .btn-glow-text').textContent = secret ? 'TIRADA SECRETA · 2d12' : 'ROLL 2d12 (HOPE & FEAR)';
-    if (!token) this.container.querySelector('#dice_actor_name').textContent = secret ? 'Keeper · sin actor seleccionado' : 'Selecciona un actor';
+    const rollBtn = this.container.querySelector('#roll_check_btn');
+    if (rollBtn) {
+      rollBtn.disabled = !secret && (!token || !store.canEditToken(token.id));
+      const btnGlow = rollBtn.querySelector('.btn-glow-text') || rollBtn;
+      btnGlow.textContent = secret ? 'TIRADA SECRETA · 2d12' : 'ROLL 2d12 (HOPE & FEAR)';
+    }
+    const actorLabel = this.container.querySelector('#dice_actor_name');
+    if (!token && actorLabel) actorLabel.textContent = secret ? 'Keeper · sin actor seleccionado' : 'Selecciona un actor';
     this.container.querySelector('#dice_exp_mod').disabled = !isPC;
     const experiences = token ? characterDetails(token).experiences : [];
     const signature = JSON.stringify([token?.id, experiences]);
@@ -346,6 +352,11 @@ export class DiceRollerSidebar {
               </div>
             </div>
             <div class="dmg-detail-text" id="dmg_detail_text"></div>
+            <div id="dmg_shield_mitigation_row" style="display: none; margin-top: 8px;">
+              <button type="button" class="hud-btn hud-btn-secondary hud-btn-sm" id="dmg_mitigate_btn" style="width: 100%;">
+                🛡️ Gastar escudos (Elegir cantidad)
+              </button>
+            </div>
             <button class="hud-btn hud-btn-sm hud-btn-danger" id="apply_dmg_to_target_btn" style="width: 100%; margin-top: 8px;">
               APPLY DAMAGE TO TARGET TOKEN
             </button>
@@ -582,31 +593,72 @@ export class DiceRollerSidebar {
     const impactKind = weaponImpactType(preparedWeapon || [this.currentActor?.name, formula].join(' '), this.container.querySelector('#dmg_impact_type').value);
     const damageMapId = targetToken?.mapId;
 
-    // Apply button
+    let spentShieldsChoice = null;
+    const targetArmorAvailable = targetToken?.armor?.current || 0;
+    const shieldRow = this.container.querySelector('#dmg_shield_mitigation_row');
+    const mitigateBtn = this.container.querySelector('#dmg_mitigate_btn');
+    if (shieldRow && mitigateBtn) {
+      if (!isDirect && targetArmorAvailable > 0) {
+        shieldRow.style.display = 'block';
+        mitigateBtn.textContent = `🛡️ Gastar escudos (${targetArmorAvailable} disponible${targetArmorAvailable > 1 ? 's' : ''})`;
+        mitigateBtn.onclick = () => {
+          const freshTarget = store.state.tokens.find(t => t.id === targetId) || targetToken;
+          promptShieldMitigation(freshTarget, dmgResult.rawDamage, (spent) => {
+            spentShieldsChoice = spent;
+            mitigateBtn.textContent = `🛡️ Escudos seleccionados: ${spent}`;
+            applyBtn.textContent = `APPLY DAMAGE (${spent} ESCUDO${spent !== 1 ? 'S' : ''} GASTADO${spent !== 1 ? 'S' : ''})`;
+          });
+        };
+      } else {
+        shieldRow.style.display = 'none';
+      }
+    }
+
+    // Apply button - Enabled for both Keeper and Token Owner Players
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
-    let applied=false;
-    applyBtn.disabled=!targetToken || store.sessionRole==='player' || store.state.userRole!=='keeper';applyBtn.textContent=targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
+    let applied = false;
+    applyBtn.disabled = !targetToken;
+    applyBtn.textContent = targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
     applyBtn.onclick = () => {
-      if(applied)return;
-      if(store.sessionRole==='player'||store.state.userRole!=='keeper'){notify('The Keeper applies incoming damage.','error');return;}
-      const currentTarget=store.state.tokens.find(t=>t.id===targetId);
-      if (currentTarget) {
-        if (currentTarget.mapId !== damageMapId || currentTarget.mapId !== store.state.activeMapId) { notify('La escena o el objetivo ha cambiado. Calcula de nuevo el daño.', 'error'); return; }
-        applied=true;applyBtn.disabled=true;applyBtn.textContent='DAMAGE APPLIED';
-        const targetToken=currentTarget;
-        // Preserve the original dice; use current armor and thresholds when the hit lands.
-        const currentDamage=resolveDamage({diceCount:0,flatModifier:dmgResult.rawDamage,targetMajorThreshold:targetToken.hp.majorThreshold??major,targetSevereThreshold:targetToken.hp.severeThreshold??severe,isDirectDamage:isDirect,useArmorSlot:useArmor,currentArmorSlots:targetToken.armor?.current||0});
-        if(targetToken.pendingBrace&&!isDirect){currentDamage.finalHpDamage=Math.max(0,currentDamage.finalHpDamage-1);currentDamage.finalSeverity+=' · Brace';}
-        const newHp = Math.max(0, targetToken.hp.current - currentDamage.finalHpDamage);
-        const newArmor = currentDamage.armorSlotSpent ? Math.max(0, (targetToken.armor?.current||0) - 1) : (targetToken.armor?.current||0);
+      if (applied) return;
+      const currentTarget = store.state.tokens.find(t => t.id === targetId);
+      if (!currentTarget) return;
+      if (currentTarget.mapId !== damageMapId || currentTarget.mapId !== store.state.activeMapId) {
+        notify('La escena o el objetivo ha cambiado. Calcula de nuevo el daño.', 'error');
+        return;
+      }
+
+      const applyFinalDamage = (spentShields = 0) => {
+        applied = true;
+        applyBtn.disabled = true;
+        applyBtn.textContent = 'DAMAGE APPLIED';
+        const targetToken = store.state.tokens.find(t => t.id === targetId) || currentTarget;
+
+        const currentDamage = resolveDamage({
+          diceCount: 0,
+          flatModifier: dmgResult.rawDamage,
+          targetMajorThreshold: targetToken.hp.majorThreshold ?? major,
+          targetSevereThreshold: targetToken.hp.severeThreshold ?? severe,
+          isDirectDamage: isDirect,
+          useArmorSlot: spentShields > 0,
+          currentArmorSlots: targetToken.armor?.current || 0
+        });
+
+        // Each shield spent absorbs damage/reduces severity
+        const mitigatedHpDamage = Math.max(0, (currentDamage.finalHpDamage || 0) - (spentShields > 0 ? (spentShields - 1) : 0));
+        const finalHpDamage = targetToken.pendingBrace && !isDirect ? Math.max(0, mitigatedHpDamage - 1) : mitigatedHpDamage;
+
+        const currentArmor = targetToken.armor?.current || 0;
+        const newArmor = Math.max(0, currentArmor - spentShields);
+        const newHp = Math.max(0, targetToken.hp.current - finalHpDamage);
 
         store.updateToken(targetToken.id, {
           hp: { ...targetToken.hp, current: newHp },
-          pendingBrace:isDirect?targetToken.pendingBrace:false,
+          pendingBrace: isDirect ? targetToken.pendingBrace : false,
           armor: { ...targetToken.armor, current: newArmor }
         });
 
-        network.broadcast({
+        network.broadcast?.({
           type: 'TOKEN_UPDATE',
           tokenId: targetToken.id,
           partial: {
@@ -616,16 +668,24 @@ export class DiceRollerSidebar {
         });
 
         const attacker = store.state.tokens.find(t => t.id === attackerId && t.mapId === damageMapId);
-        const params = attackPresentation({ attacker: attacker || targetToken, target: targetToken,
-          mapId: damageMapId, kind: impactKind, hpLost: targetToken.hp.current - newHp,
-          armorSlotSpent: currentDamage.armorSlotSpent, isDirect, isCritical,
-          gridSize: store.getActiveMap().gridSize || 64 });
+        const params = attackPresentation({
+          attacker: attacker || targetToken,
+          target: targetToken,
+          mapId: damageMapId,
+          kind: impactKind,
+          hpLost: targetToken.hp.current - newHp,
+          armorSlotSpent: spentShields > 0,
+          isDirect,
+          isCritical,
+          gridSize: store.getActiveMap()?.gridSize || 64
+        });
+
         if (params) {
-          params.targetId = targetToken.id; params.attackerId = attacker?.id;
-          // An unseen attacker must not disclose its location through a projectile trail.
+          params.targetId = targetToken.id;
+          params.attackerId = attacker?.id;
           if (attacker?.hidden) params.attacker = { ...params.target };
           window.veilCanvas?.triggerAttackFX(params);
-          if (!secret && !targetToken.hidden) network.broadcast({ type: 'ATTACK_FX', params });
+          if (!secret && !targetToken.hidden) network.broadcast?.({ type: 'ATTACK_FX', params });
         }
 
         store.addLog({
@@ -633,9 +693,79 @@ export class DiceRollerSidebar {
           ...(secret ? { visibility: 'keeper' } : {}),
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${targetToken.name}`,
-          details: `Lost ${targetToken.hp.current - newHp} HP (${currentDamage.finalHpDamage} before remaining-HP cap) (${currentDamage.finalSeverity}). Current HP: ${newHp}/${targetToken.hp.max}.`
+          details: `Lost ${targetToken.hp.current - newHp} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
         });
+      };
+
+      const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
+      const currentArmorNow = currentTarget.armor?.current || 0;
+      let finalSpentShields = 0;
+      if (!isDirect && currentArmorNow > 0) {
+        if (spentShieldsChoice !== null && spentShieldsChoice !== undefined) {
+          finalSpentShields = Math.min(currentArmorNow, Math.max(0, spentShieldsChoice));
+        } else if (useArmor) {
+          finalSpentShields = 1;
+        }
       }
+      applyFinalDamage(finalSpentShields);
     };
   }
+}
+
+export function promptShieldMitigation(targetToken, incomingRawDamage, onConfirm) {
+  if (typeof document === 'undefined' || !document.body) {
+    onConfirm(targetToken.armor?.current > 0 ? 1 : 0);
+    return;
+  }
+  const currentShields = targetToken.armor?.current || 0;
+  if (currentShields <= 0) {
+    onConfirm(0);
+    return;
+  }
+
+  const modal = dossierDialog('🛡️ MITIGACIÓN CON ESCUDOS · ' + targetToken.name, `
+    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+      <img src="${escapeHTML(targetToken.avatarUrl || '/assets/tokens/captain_harker.jpg')}" style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid #00f3ff; object-fit: cover;" alt="" />
+      <div>
+        <h3 style="margin: 0; color: #fff; font-size: 15px;">${escapeHTML(targetToken.name)}</h3>
+        <p class="dossier-muted" style="margin: 2px 0 0;">¡Impacto entrante de ${incomingRawDamage} de daño!</p>
+      </div>
+    </div>
+    <p style="font-size: 12px; color: #cbd5e1; line-height: 1.4; margin-bottom: 12px;">
+      El portador cuenta con <strong>${currentShields} escudo${currentShields > 1 ? 's' : ''}</strong> disponible${currentShields > 1 ? 's' : ''}.
+      Selecciona cuántos escudos deseas gastar para absorber el impacto. A continuación se ejecutará la animación de impacto y se restará el daño al HP restante.
+    </p>
+
+    <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-radius: 6px; border: 1px solid rgba(0, 243, 255, 0.2); margin-bottom: 12px;">
+      <label class="dossier-field" style="margin: 0;">
+        <span>Escudos a gastar:</span>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px;">
+          <input type="range" id="mitigate_shields_slider" min="0" max="${currentShields}" value="${Math.min(1, currentShields)}" style="flex: 1;" />
+          <span id="mitigate_shields_val" style="font-size: 16px; font-weight: bold; color: #00f3ff; min-width: 28px; text-align: center;">${Math.min(1, currentShields)}</span>
+        </div>
+      </label>
+    </div>
+
+    <footer class="dossier-footer" style="display: flex; justify-content: space-between; gap: 8px;">
+      <button class="hud-btn hud-btn-secondary" type="button" id="mitigate_zero_btn">Gastar 0 Escudos</button>
+      <button class="hud-btn hud-btn-primary" type="button" id="mitigate_confirm_btn">🛡️ Gastar Escudos y Aplicar</button>
+    </footer>
+  `);
+
+  const slider = modal.querySelector('#mitigate_shields_slider');
+  const valText = modal.querySelector('#mitigate_shields_val');
+  if (slider && valText) {
+    slider.oninput = () => { valText.textContent = slider.value; };
+  }
+
+  modal.querySelector('#mitigate_zero_btn').onclick = () => {
+    modal.remove();
+    onConfirm(0);
+  };
+
+  modal.querySelector('#mitigate_confirm_btn').onclick = () => {
+    const chosen = Math.max(0, Math.min(currentShields, parseInt(slider?.value || '0', 10)));
+    modal.remove();
+    onConfirm(chosen);
+  };
 }

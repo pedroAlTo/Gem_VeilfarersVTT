@@ -47,3 +47,43 @@ export async function openSessionManager() {
   }
   return modal;
 }
+
+export function checkBackupReminder(force = false) {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  const state = store.getState();
+  if (state.userRole !== 'keeper') return;
+
+  const lastReminder = parseInt(localStorage.getItem('veil_last_export_reminder') || '0', 10);
+  const now = Date.now();
+  const TWENTY_MINS = 20 * 60 * 1000;
+
+  if (!force && (now - lastReminder) < TWENTY_MINS) return;
+
+  localStorage.setItem('veil_last_export_reminder', String(now));
+
+  const modal = dossierDialog('💾 RECORDATORIO DE COPIA DE SEGURIDAD', `
+    <span class="dossier-eyebrow">PROTECCIÓN DE DATOS DE CAMPAÑA // VERSIÓN ALPHA</span>
+    <h2 class="dossier-heading">Tus historias viven en tu navegador.</h2>
+    <p class="dossier-muted">
+      Las campañas y mapas tácticos se almacenan localmente en el almacenamiento de este navegador. Si borras cookies o datos de navegación, podrías perder tu campaña.
+    </p>
+    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 6px; padding: 12px; margin: 12px 0;">
+      <p style="margin: 0; color: #fff; font-size: 13px;">
+        💡 <strong>Recomendación para Testers:</strong> Descarga una copia de seguridad en formato JSON de tu campaña <strong>"${e(state.campaignName || 'Campaña')}"</strong>. Puedes restaurarla en cualquier momento o abrirla en otro equipo.
+      </p>
+      <small style="color: #64748b; display: block; margin-top: 4px;">También se mantiene una copia de seguridad automática rodante en la memoria del navegador.</small>
+    </div>
+    <footer class="dossier-footer" style="display: flex; justify-content: space-between; gap: 8px;">
+      <button class="hud-btn hud-btn-secondary" type="button" id="reminder_later_btn">Recordar más tarde</button>
+      <button class="hud-btn hud-btn-primary" type="button" id="reminder_export_btn">📥 Descargar Copia de Seguridad JSON</button>
+    </footer>
+  `);
+
+  modal.querySelector('#reminder_later_btn')?.addEventListener('click', () => modal.remove());
+  modal.querySelector('#reminder_export_btn')?.addEventListener('click', () => {
+    store.exportCampaignJSON();
+    modal.remove();
+    notify('💾 Copia de seguridad exportada con éxito.');
+  });
+  return modal;
+}

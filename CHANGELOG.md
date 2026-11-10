@@ -1,10 +1,56 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.2.0**.
-Paquete: `VeilFarers_VTT_v1.2.0.zip`.
+Versión actual del VTT: **v1.3.0**.
+Paquete: `VeilFarers_VTT_v1.3.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.3.0] — 2026-11-10
+
+Catálogo de equipo alienígena, drones tácticos, mitigación con escudos, spotlight cenital y niebla autoritaria
+
+### Equipo y Aumentos Alienígenas (Core + Rust & Steel)
+
+- Catálogo canónico completo de armamento, armaduras, equipo tecnológico y aumentos ciberbiológicos extraídos del Corebook y las especies alienígenas de Rust & Steel (Lithian, Chitinid, Synthet, Voidborn).
+- Filtros interactivos por origen (Todos, Core, Rust & Steel) y categoría (Armas, Armaduras, Equipo, Aumentos), permitiendo a los jugadores equipar cualquier combinación a sus personajes.
+- Integración directa con el dossier del personaje y el inventario del token, con previsualización de propiedades, daño, alcance y notas de reglas.
+
+### Drones Tácticos y Despliegue
+
+- Sistema dedicado de creación y despliegue de drones desde el Roster Táctico, con presets especializados: Scout (alta velocidad, sensor range), Combat (armadura reforzada y armamento ligero), Medical (módulos de socorro), Utility y Custom.
+- Campo de visión (FOV) estándar estandarizado en 90º cónico con visión frontal direccional.
+- Permisos de control compartido para tripulantes y foco cenital activado por defecto.
+
+### Edición Rápida en Token HUD Preview
+
+- Controles incrementales (+ / -) directamente integrados en la ventana de vista previa (TokenHUD) para HP, Escudos/Armor, Stress y Hope/Effort.
+- Permite a los dueños de tokens y al Keeper modificar estadísticas vitales al vuelo durante el combate sin necesidad de abrir la ficha completa ni interrumpir el flujo táctico.
+- Botón de conmutación rápida para foco cenital (🔦 FOCO) en el TokenHUD.
+
+### Ejecución de Daño por Jugadores y Mitigación con Escudos
+
+- Permiso habilitado para que los jugadores puedan ejecutar el daño calculado sobre su objetivo seleccionado.
+- Mecanismo de mitigación interactiva con escudos: cuando un token recibe daño, el portador puede gastar uno o varios escudos disponibles para absorber el impacto antes de que se reste el HP y se ejecute la animación de impacto.
+- Integración completa con las reglas de daño directo (que ignora escudos) y efectos de ataque acordes a los escudos consumidos.
+
+### Spotlight Táctico Cenital
+
+- Simulación visual de foco cenital de alta tecnología: haz cónico volumétrico proyectado desde arriba, charco de luz elíptico en el suelo, anillo de baliza y reflejo especular en el avatar.
+- Integración con el motor de iluminación dinámica y desvanecimiento de niebla de guerra en el área enfocada.
+- Configuración personalizable de radio de iluminación, color de luz e intensidad lumínica en la configuración del token.
+
+### Niebla de Guerra Persistente y Autoritaria
+
+- Autoridad centralizada en el Keeper para la exploración de niebla de guerra por escena, persistida en la campaña mediante máscaras de bits comprimidas.
+- Las acciones de "Reiniciar niebla" y "Revelar todo" actualizan la campaña y se sincronizan instantáneamente a todos los jugadores mediante el mensaje de red FOG_SYNC.
+- Persistencia total ante recargas de página, reconexiones tardías y suspensiones de pestañas en navegadores móviles.
+
+### Respaldo de Campaña y Lanzadores Locales
+
+- Copia de seguridad automática rotativa (auto-backup) en almacenamiento local durante cada guardado de campaña.
+- Aviso modal proactivo de recordatorio de exportación JSON para testers alpha.
+- Reparación de scripts de inicio por lotes (.bat) y script de instalación local en Windows invocando npm.cmd para evitar bloqueos por ExecutionPolicy de PowerShell.
 
 ## [1.2.0] — 2026-11-10
 

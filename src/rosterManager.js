@@ -29,9 +29,12 @@ export class RosterManager {
       <div class="roster-sidebar-content">
         <div class="sidebar-header-row">
           <span class="sidebar-title">TACTICAL ROSTER (${tokens.length})</span>
-          ${isKeeper ? `
-            <button class="hud-btn hud-btn-xs" id="add_token_btn">+ ACTOR</button>
-          ` : ''}
+          <div style="display: flex; gap: 4px;">
+            <button class="hud-btn hud-btn-xs hud-btn-cyan" id="add_drone_btn" title="Crear y desplegar nuevo Drone táctico">+ DRONE</button>
+            ${isKeeper ? `
+              <button class="hud-btn hud-btn-xs" id="add_token_btn">+ ACTOR</button>
+            ` : ''}
+          </div>
         </div>
 
         ${isKeeper ? '<div class="roster-import-actions"><button class="hud-btn" id="bestiary_open">Biblioteca de adversarios</button><button class="hud-btn hud-btn-primary" id="import_actors_btn">IMPORTAR PERSONAJES JSON</button></div>' : ''}
@@ -228,7 +231,203 @@ export class RosterManager {
       if (addBtn) {
         addBtn.onclick = () => this.openDeployModal();
       }
+
+      // Deploy new drone modal
+      const addDroneBtn = this.container.querySelector('#add_drone_btn');
+      if (addDroneBtn) {
+        addDroneBtn.onclick = () => this.openDeployDroneModal();
+      }
     }
+  }
+
+  openDeployDroneModal() {
+    const DRONE_PRESETS = [
+      {
+        id: 'scout',
+        name: 'Drone Explorador · Recon-X',
+        role: 'Exploración y Sensores',
+        hp: 4,
+        armor: 1,
+        evasion: 12,
+        major: 4,
+        severe: 8,
+        visionAngle: 90,
+        avatarUrl: '/assets/tokens/security_officer_kovacs.jpg',
+        desc: 'Alta velocidad y maniobrabilidad. Detección óptica y telemetría de objetivos a través de niebla.',
+        inventory: {
+          weapons: [{ id: 'drone_wp_1', name: 'Pulso Sensor Deslumbrante', damage: '1d4', damageMode: 'base', trait: 'Agility', range: 'Medium', features: 'Deslumbra y marca objetivos.', tier: 'Tier 1' }],
+          items: [{ id: 'drone_it_1', name: 'Sensor Espectral de Reconocimiento', tier: 'Tier 1', quantity: '1', use: 'Escaneo térmico y detección tras muros delgados.' }]
+        }
+      },
+      {
+        id: 'combat',
+        name: 'Drone de Asalto · Aegis-V',
+        role: 'Combate y Fuego de Cobertura',
+        hp: 6,
+        armor: 2,
+        evasion: 10,
+        major: 4,
+        severe: 8,
+        visionAngle: 90,
+        avatarUrl: '/assets/tokens/synthetic_infiltrator_echo.jpg',
+        desc: 'Chasis reforzado con blindaje cerámico y cañón automático de pulso magnético.',
+        inventory: {
+          weapons: [{ id: 'drone_wp_2', name: 'Cañón de Pulso Automático', damage: '1d8', damageMode: 'base', trait: 'Finesse', range: 'Medium', features: 'Fuego de supresión de alta cadencia.', tier: 'Tier 1' }],
+          items: [{ id: 'drone_it_2', name: 'Escudo Cinético Desplegable', tier: 'Tier 2', quantity: '1', use: 'Absorbe impactos directos para proteger aliados adyacentes.' }]
+        }
+      },
+      {
+        id: 'medical',
+        name: 'Drone Médico · Lifeline-3',
+        role: 'Soporte y Estabilización',
+        hp: 4,
+        armor: 1,
+        evasion: 10,
+        major: 4,
+        severe: 8,
+        visionAngle: 90,
+        avatarUrl: '/assets/tokens/dr_arun_sharma.jpg',
+        desc: 'Unidad de primeros auxilios y trauma móvil. Estabiliza heridas críticas y administra coagulantes.',
+        inventory: {
+          weapons: [{ id: 'drone_wp_3', name: 'Dardo Sedante de Contacto', damage: '1d6', damageMode: 'base', trait: 'Agility', range: 'Short', features: 'Inmovilización temporal no letal.', tier: 'Tier 1' }],
+          items: [{ id: 'drone_it_3', name: 'Auto-Inyectores de Trauma', tier: 'Tier 1', quantity: '3', use: 'Restaura 2 HP o limpia 1 de Estrés a un aliado en rango cuerpo a cuerpo.' }]
+        }
+      },
+      {
+        id: 'utility',
+        name: 'Drone de Ingeniería · Forge-1',
+        role: 'Reparación y Brecha',
+        hp: 5,
+        armor: 1,
+        evasion: 11,
+        major: 4,
+        severe: 8,
+        visionAngle: 90,
+        avatarUrl: '/assets/tokens/operative_tarek.jpg',
+        desc: 'Equipado con soplete de micro-plasma, soldador de aleaciones y herramientas de hackeo.',
+        inventory: {
+          weapons: [{ id: 'drone_wp_4', name: 'Soplete de Micro-Plasma', damage: '1d8', damageMode: 'base', trait: 'Strength', range: 'Melee', features: 'Funde blindajes y abre mamparos bloqueados.', tier: 'Tier 1' }],
+          items: [{ id: 'drone_it_4', name: 'Omnitool de Ingeniería Remota', tier: 'Tier 1', quantity: '1', use: 'Hackea terminales y repara escudos aliados.' }]
+        }
+      }
+    ];
+
+    const currentMemberId = store.state.memberId || store.state.peerId || 'keeper';
+    const isKeeper = store.state.userRole === 'keeper';
+
+    const modal = dossierDialog('DESPLEGAR NUEVO DRONE TÁCTICO', `
+      <p class="dossier-muted">Los drones son unidades de control compartido (Shared Control). El dueño o creador puede asignar controladores adicionales de la tripulación en cualquier momento.</p>
+      
+      <form id="drone_deploy_form">
+        <label class="dossier-field">
+          <span>Plantilla / Modelo de Drone</span>
+          <select class="hud-select" name="preset_id" id="drone_preset_select">
+            ${DRONE_PRESETS.map(p => `<option value="${p.id}">${escapeHTML(p.name)} (${p.role})</option>`).join('')}
+            <option value="custom">⚙️ Drone Personalizado (Ajustar valores)</option>
+          </select>
+        </label>
+
+        <label class="dossier-field">
+          <span>Nombre del Drone</span>
+          <input class="hud-input" name="name" id="drone_name_input" required value="${escapeHTML(DRONE_PRESETS[0].name)}" />
+        </label>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <label class="dossier-field"><span>HP Máximo</span><input class="hud-input" type="number" name="hp" id="drone_hp" required min="1" max="50" value="${DRONE_PRESETS[0].hp}" /></label>
+          <label class="dossier-field"><span>Armadura / Escudos</span><input class="hud-input" type="number" name="armor" id="drone_armor" required min="0" max="10" value="${DRONE_PRESETS[0].armor}" /></label>
+          <label class="dossier-field"><span>Evasión</span><input class="hud-input" type="number" name="evasion" id="drone_evasion" required min="0" max="30" value="${DRONE_PRESETS[0].evasion}" /></label>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+          <label class="dossier-field"><span>Umbral Major</span><input class="hud-input" type="number" name="major" id="drone_major" required min="0" max="50" value="${DRONE_PRESETS[0].major}" /></label>
+          <label class="dossier-field"><span>Umbral Severe</span><input class="hud-input" type="number" name="severe" id="drone_severe" required min="0" max="50" value="${DRONE_PRESETS[0].severe}" /></label>
+        </div>
+
+        <label class="dossier-field" style="margin-top: 8px;">
+          <span>🔦 Foco / Spotlight Táctico</span>
+          <div style="font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" name="has_spotlight" id="drone_spotlight" checked />
+            <label for="drone_spotlight" style="cursor: pointer; color: #00f3ff;">Activar foco iluminando el token en el mapa táctico</label>
+          </div>
+        </label>
+
+        <p class="dossier-error" role="alert" style="margin-top: 8px;"></p>
+        <footer class="dossier-footer" style="margin-top: 12px;">
+          <button class="hud-btn hud-btn-primary" type="submit">🛸 Desplegar Drone en la Escena</button>
+        </footer>
+      </form>
+    `);
+
+    const select = modal.querySelector('#drone_preset_select');
+    const nameInput = modal.querySelector('#drone_name_input');
+    const hpInput = modal.querySelector('#drone_hp');
+    const armorInput = modal.querySelector('#drone_armor');
+    const evasionInput = modal.querySelector('#drone_evasion');
+    const majorInput = modal.querySelector('#drone_major');
+    const severeInput = modal.querySelector('#drone_severe');
+
+    select.onchange = () => {
+      const found = DRONE_PRESETS.find(p => p.id === select.value);
+      if (found) {
+        nameInput.value = found.name;
+        hpInput.value = found.hp;
+        armorInput.value = found.armor;
+        evasionInput.value = found.evasion;
+        majorInput.value = found.major;
+        severeInput.value = found.severe;
+      }
+    };
+
+    modal.querySelector('form').onsubmit = (e) => {
+      e.preventDefault();
+      try {
+        const preset = DRONE_PRESETS.find(p => p.id === select.value);
+        const nameVal = nameInput.value.trim() || 'Drone Táctico';
+        const hpVal = Math.max(1, Number(hpInput.value) || 4);
+        const armorVal = Math.max(0, Number(armorInput.value) || 0);
+        const evasionVal = Math.max(0, Number(evasionInput.value) || 10);
+        const majorVal = Math.max(0, Number(majorInput.value) || 4);
+        const severeVal = Math.max(0, Number(severeInput.value) || 8);
+        const hasSpotlight = modal.querySelector('#drone_spotlight').checked;
+
+        const cv = window.veilCanvas;
+        const center = cv?.screenToWorld(cv.displayWidth / 2, cv.displayHeight / 2) || { x: 500, y: 500 };
+
+        const controllers = currentMemberId && currentMemberId !== 'keeper' ? [currentMemberId] : [];
+
+        const tokenData = {
+          name: nameVal,
+          actorType: 'drone',
+          isPlayer: false,
+          roleTag: 'Drone Táctico',
+          avatarUrl: preset?.avatarUrl || '/assets/tokens/synthetic_infiltrator_echo.jpg',
+          visionAngle: 90,
+          fov: 90,
+          facingAngle: 0,
+          evasion: evasionVal,
+          ownerId: '',
+          controllerIds: controllers,
+          hp: { current: hpVal, max: hpVal, majorThreshold: majorVal, severeThreshold: severeVal },
+          armor: { current: armorVal, max: armorVal },
+          stress: { current: 0, max: 0 },
+          hasSpotlight: hasSpotlight,
+          spotlight: { enabled: hasSpotlight, radius: 140, color: '#00f3ff', intensity: 0.85 },
+          inventory: preset?.inventory ? structuredClone(preset.inventory) : { weapons: [], items: [] },
+          ...center
+        };
+
+        const created = store.addToken(tokenData);
+        if (!created) throw new Error('No se pudo crear el drone.');
+        
+        store.update({ selectedTokenId: created.id });
+        network.broadcast?.({ type: 'TOKEN_ADD', token: created });
+        network.syncAll?.();
+        notify(`🛸 "${created.name}" desplegado con éxito.`);
+        modal.remove();
+      } catch (err) {
+        modal.querySelector('.dossier-error').textContent = err.message;
+      }
+    };
   }
 
   openDeployModal() {

@@ -72,6 +72,8 @@ export class TokenHUD {
     const maxStress = token.stress?.max ?? 6;
     const isOverwhelmed = (token.stress?.current || 0) >= maxStress;
 
+    const canEdit = store.canEditToken(token.id);
+
     // --- COMPACT MINIMIZED QUICKBAR (DEFAULT) ---
     if (!this.isExpanded) {
       this.container.innerHTML = sanitizeHTML(`
@@ -89,18 +91,31 @@ export class TokenHUD {
           <div class="tok-qb-divider"></div>
 
           <div class="token-telemetry-grid">
-            ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
-            ${statGaugeHTML('ARMOR', token.armor?.current, token.armor?.max, 'armor')}
-            ${statGaugeHTML('STRESS', token.stress?.current, maxStress, 'stress')}
-            ${isPC ? statGaugeHTML(token.path === 'Sleeping' ? 'EFFORT' : 'HOPE', token.path === 'Sleeping' ? token.effort : token.hope, 6, 'path') : `<div class="dossier-eyebrow">EVASION ${token.evasion ?? '—'}<br>ATTACK ${token.attackModifier ?? '—'}</div>`}
+            <div class="stat-telemetry-col" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+              ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
+              ${canEdit ? `<div class="quick-stat-stepper" style="display: flex; gap: 2px;"><button class="hud-btn hud-btn-xs" data-quick-stat="hp" data-delta="-1" title="Restar 1 HP" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">-</button><button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="hp" data-delta="1" title="Sumar 1 HP" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">+</button></div>` : ''}
+            </div>
+            <div class="stat-telemetry-col" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+              ${statGaugeHTML('ARMOR', token.armor?.current, token.armor?.max, 'armor')}
+              ${canEdit ? `<div class="quick-stat-stepper" style="display: flex; gap: 2px;"><button class="hud-btn hud-btn-xs" data-quick-stat="armor" data-delta="-1" title="Gastar 1 Escudo" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">-</button><button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="armor" data-delta="1" title="Recargar 1 Escudo" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">+</button></div>` : ''}
+            </div>
+            <div class="stat-telemetry-col" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+              ${statGaugeHTML('STRESS', token.stress?.current, maxStress, 'stress')}
+              ${canEdit ? `<div class="quick-stat-stepper" style="display: flex; gap: 2px;"><button class="hud-btn hud-btn-xs" data-quick-stat="stress" data-delta="-1" title="Aliviar 1 Estrés" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">-</button><button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="stress" data-delta="1" title="Añadir 1 Estrés" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">+</button></div>` : ''}
+            </div>
+            <div class="stat-telemetry-col" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+              ${isPC ? `${statGaugeHTML(token.path === 'Sleeping' ? 'EFFORT' : 'HOPE', token.path === 'Sleeping' ? token.effort : token.hope, 6, 'path')}
+              ${canEdit ? `<div class="quick-stat-stepper" style="display: flex; gap: 2px;"><button class="hud-btn hud-btn-xs" data-quick-stat="hope" data-delta="-1" title="Gastar 1 ${token.path === 'Sleeping' ? 'Esfuerzo' : 'Esperanza'}" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">-</button><button class="hud-btn hud-btn-xs hud-btn-cyan" data-quick-stat="hope" data-delta="1" title="Ganar 1 ${token.path === 'Sleeping' ? 'Esfuerzo' : 'Esperanza'}" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">+</button></div>` : ''}` : `<div class="dossier-eyebrow">EVASION ${token.evasion ?? '—'}<br>ATTACK ${token.attackModifier ?? '—'}</div>`}
+            </div>
           </div>
 
           <!-- Compact Action Controls -->
           <div class="tok-qb-actions" style="display: flex; gap: 6px; align-items: center;">
+            <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-cyan' : ''}" id="quick_spotlight_btn" title="Alternar Spotlight / Foco de iluminación">${token.hasSpotlight ? '🔦 FOCO ON' : '🔦 FOCO'}</button>
             <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
-            <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${store.canEditToken(token.id) ? '' : 'disabled'}>EQUIPO</button>
+            <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
             <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>
-            ${isKeeper || store.canEditToken(token.id) ? `<button class="hud-btn hud-btn-xs" id="quick_reserve_btn" title="Retirar a Reserva (Ocultar del mapa sin borrar)">📦 RESERVA</button>` : ''}
+            ${isKeeper || canEdit ? `<button class="hud-btn hud-btn-xs" id="quick_reserve_btn" title="Retirar a Reserva (Ocultar del mapa sin borrar)">📦 RESERVA</button>` : ''}
             <button class="hud-btn hud-btn-xs hud-btn-primary" id="toggle_expand_btn" title="Expandir Panel Completo">▲ EXPANDIR</button>
           </div>
         </div>
@@ -119,10 +134,11 @@ export class TokenHUD {
             <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
           </div>
+          <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-cyan' : ''}" id="quick_spotlight_btn" title="Alternar Spotlight / Foco de iluminación">${token.hasSpotlight ? '🔦 FOCO ON' : '🔦 FOCO'}</button>
           <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Open Full Character Sheet">SHEET</button>
           <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
-          <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${store.canEditToken(token.id) ? '' : 'disabled'}>EQUIPO</button>
-          ${isKeeper || store.canEditToken(token.id) ? `<button class="hud-btn hud-btn-xs" id="quick_reserve_btn" title="Retirar a Reserva (Ocultar del mapa sin borrar)">📦 RESERVA</button>` : ''}
+          <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
+          ${isKeeper || canEdit ? `<button class="hud-btn hud-btn-xs" id="quick_reserve_btn" title="Retirar a Reserva (Ocultar del mapa sin borrar)">📦 RESERVA</button>` : ''}
         </div>
 
         <div class="tok-qb-divider"></div>
@@ -131,8 +147,8 @@ export class TokenHUD {
         <div class="tok-qb-stat-group">
           ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
           <div class="tok-qb-stat-actions">
-            <button class="hud-btn hud-btn-xs" id="hp_minus_btn">-1</button>
-            <button class="hud-btn hud-btn-xs hud-btn-primary" id="hp_plus_btn">+1</button>
+            <button class="hud-btn hud-btn-xs" data-quick-stat="hp" data-delta="-1">-1</button>
+            <button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="hp" data-delta="1">+1</button>
             <span class="tok-qb-thresholds">M:${token.hp.majorThreshold} S:${token.hp.severeThreshold}</span>
           </div>
         </div>
@@ -141,9 +157,12 @@ export class TokenHUD {
 
         <!-- Armor & Stress -->
         <div class="tok-qb-stat-group">
-          <div class="tok-qb-stat-label">
-            <span>ARMOR</span>
-            <span class="tok-qb-num">${token.armor?.current ?? 0} / ${token.armor?.max ?? 0}</span>
+          <div class="tok-qb-stat-label" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>ARMOR / ESCUDOS</span>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span class="tok-qb-num">${token.armor?.current ?? 0} / ${token.armor?.max ?? 0}</span>
+              ${canEdit ? `<button class="hud-btn hud-btn-xs" data-quick-stat="armor" data-delta="-1" style="padding:0 3px; height:16px; line-height:1;">-</button><button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="armor" data-delta="1" style="padding:0 3px; height:16px; line-height:1;">+</button>` : ''}
+            </div>
           </div>
           <div class="tok-qb-pips" id="armor_pips_row">
             ${Array.from({ length: token.armor?.max || 0 }, (_, i) => `
@@ -151,9 +170,12 @@ export class TokenHUD {
             `).join('')}
           </div>
 
-          <div class="tok-qb-stat-label" style="margin-top: 4px;">
+          <div class="tok-qb-stat-label" style="margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
             <span>STRESS</span>
-            <span class="tok-qb-num ${isOverwhelmed ? 'text-danger' : ''}">${token.stress?.current ?? 0} / ${maxStress}</span>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span class="tok-qb-num ${isOverwhelmed ? 'text-danger' : ''}">${token.stress?.current ?? 0} / ${maxStress}</span>
+              ${canEdit ? `<button class="hud-btn hud-btn-xs" data-quick-stat="stress" data-delta="-1" style="padding:0 3px; height:16px; line-height:1;">-</button><button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="stress" data-delta="1" style="padding:0 3px; height:16px; line-height:1;">+</button>` : ''}
+            </div>
           </div>
           <div class="tok-qb-pips" id="stress_pips_row">
             ${Array.from({ length: maxStress }, (_, i) => `
@@ -167,9 +189,12 @@ export class TokenHUD {
         <!-- Hope (Awakened) or Effort/Resolve (Sleeping) -->
         <div class="tok-qb-stat-group">
           ${!isPC ? `<div class="tok-qb-stat-label">EVASION ${token.evasion ?? '—'} · ATTACK ${token.attackModifier ?? '—'}</div><div>${escapeHTML(token.damageExpression || '')}</div>` : token.path === 'Awakened' ? `
-            <div class="tok-qb-stat-label">
+            <div class="tok-qb-stat-label" style="display: flex; justify-content: space-between; align-items: center;">
               <span>HOPE</span>
-              <span class="tok-qb-num text-cyan">${token.hope || 0} / 6</span>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span class="tok-qb-num text-cyan">${token.hope || 0} / 6</span>
+                ${canEdit ? `<button class="hud-btn hud-btn-xs" data-quick-stat="hope" data-delta="-1" style="padding:0 3px; height:16px; line-height:1;">-</button><button class="hud-btn hud-btn-xs hud-btn-cyan" data-quick-stat="hope" data-delta="1" style="padding:0 3px; height:16px; line-height:1;">+</button>` : ''}
+              </div>
             </div>
             <div class="tok-qb-pips" id="hope_pips_row">
               ${Array.from({ length: 6 }, (_, i) => `
@@ -181,9 +206,12 @@ export class TokenHUD {
               <button class="hud-btn hud-btn-xs hud-btn-cyan tok-hope-action-btn" data-action="assist" title="Spend 1 Hope to Assist Ally (+2)">ASSIST (1H)</button>
             </div>
           ` : `
-            <div class="tok-qb-stat-label">
+            <div class="tok-qb-stat-label" style="display: flex; justify-content: space-between; align-items: center;">
               <span>EFFORT</span>
-              <span class="tok-qb-num text-amber">${token.effort || 0} / 6</span>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span class="tok-qb-num text-amber">${token.effort || 0} / 6</span>
+                ${canEdit ? `<button class="hud-btn hud-btn-xs" data-quick-stat="hope" data-delta="-1" style="padding:0 3px; height:16px; line-height:1;">-</button><button class="hud-btn hud-btn-xs hud-btn-amber" data-quick-stat="hope" data-delta="1" style="padding:0 3px; height:16px; line-height:1;">+</button>` : ''}
+              </div>
             </div>
             <div class="tok-qb-pips" id="effort_pips_row">
               ${Array.from({ length: 6 }, (_, i) => `
@@ -294,6 +322,66 @@ export class TokenHUD {
     if (!store.canEditToken(token.id)) this.container.querySelectorAll('button').forEach(button => {
       if (!['toggle_expand_btn', 'toggle_moves_drawer'].includes(button.id)) button.disabled = true;
     });
+    // Quick Spotlight Toggle
+    const spotlightBtn = this.container.querySelector('#quick_spotlight_btn');
+    if (spotlightBtn) {
+      spotlightBtn.onclick = () => {
+        const curTok = store.state.tokens.find(t => t.id === token.id);
+        if (!curTok) return;
+        const newSpotlight = !curTok.hasSpotlight;
+        const spotConfig = curTok.spotlight || { radius: 150, color: '#00f3ff', intensity: 0.85 };
+        store.updateToken(curTok.id, {
+          hasSpotlight: newSpotlight,
+          spotlight: { ...spotConfig, enabled: newSpotlight }
+        });
+        network.broadcast?.({
+          type: 'TOKEN_UPDATE',
+          tokenId: curTok.id,
+          partial: { hasSpotlight: newSpotlight, spotlight: { ...spotConfig, enabled: newSpotlight } }
+        });
+        notify(newSpotlight ? '🔦 Spotlight activado en este token.' : '🔦 Spotlight desactivado.');
+      };
+    }
+
+    // Direct Quick Stat Steppers (HP, Armor/Shields, Stress, Hope/Effort)
+    this.container.querySelectorAll('[data-quick-stat]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if (!store.canEditToken(token.id)) return;
+        const stat = btn.dataset.quickStat;
+        const delta = Number(btn.dataset.delta) || 0;
+        const curTok = store.state.tokens.find(t => t.id === token.id);
+        if (!curTok) return;
+
+        if (stat === 'hp') {
+          const maxHp = curTok.hp?.max || 1;
+          const newHp = Math.max(0, Math.min(maxHp, (curTok.hp?.current ?? 0) + delta));
+          store.updateToken(curTok.id, { hp: { ...curTok.hp, current: newHp } });
+          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hp: { ...curTok.hp, current: newHp } } });
+        } else if (stat === 'armor') {
+          const maxA = curTok.armor?.max || 0;
+          const newA = Math.max(0, Math.min(maxA, (curTok.armor?.current ?? 0) + delta));
+          store.updateToken(curTok.id, { armor: { ...curTok.armor, current: newA } });
+          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { armor: { ...curTok.armor, current: newA } } });
+        } else if (stat === 'stress') {
+          const maxS = curTok.stress?.max ?? 6;
+          const newS = Math.max(0, Math.min(maxS, (curTok.stress?.current ?? 0) + delta));
+          store.updateToken(curTok.id, { stress: { ...curTok.stress, current: newS } });
+          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { stress: { ...curTok.stress, current: newS } } });
+        } else if (stat === 'hope') {
+          if (curTok.path === 'Sleeping') {
+            const newEffort = Math.max(0, Math.min(6, (curTok.effort ?? 0) + delta));
+            store.updateToken(curTok.id, { effort: newEffort });
+            network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { effort: newEffort } });
+          } else {
+            const newHope = Math.max(0, Math.min(6, (curTok.hope ?? 0) + delta));
+            store.updateToken(curTok.id, { hope: newHope });
+            network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hope: newHope } });
+          }
+        }
+      };
+    });
+
     // Expand / Minimize Quickbar
     const expandBtn = this.container.querySelector('#toggle_expand_btn');
     if (expandBtn) {
@@ -719,6 +807,31 @@ export class TokenHUD {
                 </div>
               </div>
 
+              <!-- FOCO / SPOTLIGHT ILUMINANDO EL TOKEN -->
+              <h4 class="sheet-section-title" style="margin-top: 16px; color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">
+                🔦 FOCO TÁCTICO / SPOTLIGHT ILUMINANDO EL TOKEN
+              </h4>
+              <div class="form-row" style="gap: 10px; flex-wrap: wrap;">
+                <div class="form-group checkbox-group" style="flex: 1.2; min-width: 160px; margin-top: 18px;">
+                  <label class="hud-checkbox-label">
+                    <input type="checkbox" id="sheet_has_spotlight" ${token.hasSpotlight ? 'checked' : ''} />
+                    <span style="color: #fbbf24;">🔦 Activar Foco / Spotlight</span>
+                  </label>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 110px;">
+                  <label>Radio Foco (px)</label>
+                  <input type="number" id="sheet_spotlight_radius" class="hud-input" min="50" max="600" step="10" value="${token.spotlight?.radius || 150}" />
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 100px;">
+                  <label>Color del Foco</label>
+                  <input type="color" id="sheet_spotlight_color" class="hud-input" value="${token.spotlight?.color || '#00f3ff'}" style="height: 34px; padding: 2px;" />
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 100px;">
+                  <label>Intensidad (0.1 - 1.0)</label>
+                  <input type="number" id="sheet_spotlight_intensity" class="hud-input" min="0.1" max="1.0" step="0.05" value="${token.spotlight?.intensity || 0.85}" />
+                </div>
+              </div>
+
               <!-- MAP OVERLAYS & MODULAR INDICATOR SELECTION -->
               <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; border-bottom: 1px solid rgba(0, 243, 255, 0.3); padding-bottom: 4px;">
                 <h4 class="sheet-section-title" style="margin: 0; color: #00f3ff; border: none;">
@@ -988,6 +1101,13 @@ export class TokenHUD {
         lightRadius: parseInt(modal.querySelector('#sheet_light_rad').value, 10),
         lightColor: modal.querySelector('#sheet_light_col_val').value,
         lightEffect: modal.querySelector('#sheet_light_fx').value,
+        hasSpotlight: modal.querySelector('#sheet_has_spotlight')?.checked ?? false,
+        spotlight: {
+          enabled: modal.querySelector('#sheet_has_spotlight')?.checked ?? false,
+          radius: parseInt(modal.querySelector('#sheet_spotlight_radius')?.value, 10) || 150,
+          color: modal.querySelector('#sheet_spotlight_color')?.value || '#00f3ff',
+          intensity: parseFloat(modal.querySelector('#sheet_spotlight_intensity')?.value) || 0.85
+        },
         hidden: modal.querySelector('#sheet_is_hidden').checked,
         displayOverlays: currentOverlays,
         displayConfig: {

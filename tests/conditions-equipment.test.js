@@ -124,9 +124,9 @@ test('one click in the sheet prepares damage, retains the selected target and av
   assert.equal(el.querySelector('#dmg_formula').value,'');assert.equal(el.querySelector('#damage_result_display').style.display,'none');
 });
 
-test('unassigned players cannot prepare another token weapon; final damage remains Keeper-applied', () => {
+test('unassigned players cannot prepare another token weapon; assigned players can execute damage', () => {
   const t=actor();store.state.tokens=[t];store.state.selectedTokenId=t.id;store.state.userRole='player';store.state.claimedTokenId=null;
   const el=mount(),dice=new DiceRollerSidebar(el);assert.equal(dice.prepareWeapon(t.id,'laser'),false);assert.equal(openInventory(t.id),undefined);
   store.state.claimedTokenId=t.id;assert.equal(dice.prepareWeapon(t.id,'laser'),true);
-  el.querySelector('#dmg_target_select').value=t.id;dice.executeDamageCalc();assert.equal(el.querySelector('#apply_dmg_to_target_btn').disabled,true);
+  el.querySelector('#dmg_target_select').value=t.id;dice.executeDamageCalc();assert.equal(el.querySelector('#apply_dmg_to_target_btn').disabled,false);
 });

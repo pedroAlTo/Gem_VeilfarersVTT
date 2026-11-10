@@ -239,6 +239,20 @@ export class LightingEngine {
         });
       }
 
+      // Token Tactical Spotlight (Focused beam illuminating token and ground)
+      if ((tok.hasSpotlight || tok.spotlight?.enabled) && !tok.hidden) {
+        allLights.push({
+          id: `tok_spotlight_${tok.id}`,
+          x: tok.x,
+          y: tok.y,
+          radius: tok.spotlight?.radius || 150,
+          color: tok.spotlight?.color || '#00f3ff',
+          intensity: tok.spotlight?.intensity ?? 0.85,
+          effect: 'steady',
+          isSpotlight: true
+        });
+      }
+
       // Token Night Vision (tactical phosphor green light cutting darkness up to visionRange)
       if (tok.visionMode === 'night_vision' && !tok.hidden) {
         allLights.push({

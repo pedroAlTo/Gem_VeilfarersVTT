@@ -639,6 +639,19 @@ export class NetworkManager {
       window.veilCanvas?.triggerAttackFX(data.params);
     if (data.type === 'TARGET_SELECT')
       window.veilCanvas?.setAttackTarget(data.attackerId, data.targetId);
+    if (data.type === 'FOG_SYNC' && data.mapId) {
+      const currentMap = this.store.state.maps.find(m => m.id === data.mapId);
+      if (currentMap) {
+        this.store.updateMap(data.mapId, { fogExplored: data.fogExplored });
+        if (typeof window !== 'undefined' && window.veilCanvas?.fog) {
+          const fullMapId = `${this.store.state.campaignId}:${data.mapId}`;
+          const w = window.veilCanvas.mapImage?.width || 2000;
+          const h = window.veilCanvas.mapImage?.height || 1200;
+          window.veilCanvas.fog.loadExploration(fullMapId, w, h, data.fogExplored);
+          window.veilCanvas.render();
+        }
+      }
+    }
     if (data.type === 'MAP_LOAD_STATUS') {
       this.mapLoadStatuses.set(data.peerId, data);
       window.dispatchEvent(new CustomEvent('veil:map-load-status', { detail: data }));
