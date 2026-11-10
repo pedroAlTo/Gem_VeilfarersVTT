@@ -273,6 +273,7 @@ test('cloud account & login: Google popup, redirect fallback and Netlify Identit
   let redirectCalled = false;
   let popupCalled = false;
   c.authAPI = {
+    setPersistence: async () => {}, browserLocalPersistence: 'local', browserSessionPersistence: 'session',
     GoogleAuthProvider: class { setCustomParameters() {} },
     signInWithRedirect: async () => { redirectCalled = true; },
     signInWithPopup: async () => { popupCalled = true; return { user: { uid: 'google_user_1', email: 'g@test.com' } }; }

@@ -152,12 +152,14 @@ export function validTokenPatch(p) {
           'resolve',
           'conditions',
           'inventory',
+          'hasSpotlight',
         ].includes(k)
     )
   )
     return false;
   for (const k of ['x', 'y', 'rotation', 'facingAngle']) if (k in p && !finite(p[k])) return false;
   for (const k of ['hope', 'effort']) if (k in p && !finite(p[k], 0, 6)) return false;
+  if ('hasSpotlight' in p && typeof p.hasSpotlight !== 'boolean') return false;
   for (const k of ['hp', 'armor', 'stress', 'resolve'])
     if (k in p && (!p[k] || !finite(p[k].max, 0, 10000) || !finite(p[k].current, 0, p[k].max)))
       return false;

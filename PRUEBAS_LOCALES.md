@@ -2,9 +2,19 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v1.2.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.2.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.2.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.2.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v1.3.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.3.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.3.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.3.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
+
+## Acceso y sincronización (v1.3.1)
+
+1. Usa la misma versión en Keeper y jugadores. Inicia con `INICIAR_VTT_RED_LOCAL.bat` y abre dos navegadores o equipos en la misma dirección LAN.
+2. El Keeper aloja la partida y asigna un personaje. El jugador lo arrastra durante varios segundos mientras el Keeper cambia Fear o un recurso: el token sigue al cursor y conserva el recurso actualizado. Al soltar, ambos deben ver la misma posición.
+3. Pulsa varias veces los controles de HP, Armor, Stress y Hope/Effort. Todos los clics deben llegar una sola vez. Alterna FOCO y gira la dirección del token.
+4. Mientras un jugador arrastra, mueve su token desde el Keeper, retírale la asignación o cambia de escena. El arrastre anterior debe cancelarse. La visión no debe descubrir zonas desde posiciones pendientes de confirmación.
+5. Interrumpe la conexión del jugador: no debe seguir editando; los cambios sin confirmar se descartan con aviso. Reconecta mediante la misma invitación y pestaña para recuperar su asignación y el estado del Keeper.
+6. En un dominio con autenticación configurada, inicia sesión con Google o correo marcando **Keep me signed in on this device**, recarga y cierra/reabre el navegador. Repite con Netlify Identity. Comprueba también **Sign out** y que cancelar un acceso no abre otro proveedor.
+7. Las sesiones de acceso del navegador pertenecen a su origen: `localhost`, la IP LAN y el dominio de Netlify son direcciones diferentes. Para comprobar persistencia vuelve exactamente a la misma dirección y puerto. La cuenta no reconecta por sí sola a una partida cerrada.
 
 ## Entornos, bosses e impactos (v1.2.0)
 
@@ -142,3 +152,9 @@ En el entorno de revisión pasan 93 pruebas automáticas y ambos builds. Se veri
 Para probar el selector de anomalías, coloca una tormenta eléctrica o un láser y pulsa **Color → Choose**. Comprueba el cambio de tono arrastrando y vuelve a abrir el selector para ver el valor guardado.
 
 Para probar el control de jugadores en LAN, abre una partida con `INICIAR_VTT_RED_LOCAL.bat` en el PC del Keeper. Desde un segundo navegador, abre la misma dirección del VTT y únete por invitación. Asigna un personaje en **Session → Player roster** y comparte un dron. Mueve el token desde el Keeper y después desde el jugador. Al soltarlo debe ocupar la misma casilla en ambas ventanas, aunque el zoom sea distinto. En **My tokens**, comprueba movimiento, orientación, tiradas y recursos. Reasigna el personaje y comprueba que su anterior controlador pierde el acceso y conserva el dron compartido.
+
+### Cabecera y sesiones · v1.3.1
+
+- Abre SESIONES y alterna Partida y tripulación / Sesiones guardadas. Debe quedar una sola ventana; crear, guardar e importar campañas sigue disponible en el archivo local.
+- Sin cuenta, la esquina superior derecha muestra Iniciar sesión, Offline y un piloto rojo. Tras acceder, muestra tu nombre, Conectado y un piloto verde. Cierra la cuenta y comprueba que vuelve al estado rojo.
+- Crea una partida sin iniciar sesión en una cuenta: la partida debe figurar online y la cuenta Offline. El archivo impide cambiar de campaña hasta cerrar la partida.

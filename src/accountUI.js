@@ -1,28 +1,47 @@
-import { account, cloudConfigured, cleanPreferences } from './cloudAccount.js';
+import { account, cleanPreferences } from './cloudAccount.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
 import { openCharacterImport } from './characterManager.js';
 import { network } from './networkManager.js';
+import { CAMPAIGN_KEYS } from './validation.js';
 
+let accountReady, accountSubscribed = false;
+export function sessionPreferences(values) {
+  const prefs = cleanPreferences(values);
+  if (store.sessionRole === 'player') for (const key of CAMPAIGN_KEYS) delete prefs[key];
+  return prefs;
+}
 export function initAccount() {
-  account.subscribe(async user => {
-    document.querySelectorAll('[data-account-label]').forEach(el => el.textContent = user?.displayName || (user ? 'My account' : 'Sign in'));
+  const paint = () => document.querySelectorAll('[data-account-label]').forEach(el => {
+    const name = account.user?.displayName || account.user?.email || (account.user ? 'Mi cuenta' : 'Iniciar sesión');
+    const status = account.user ? 'Conectado' : 'Offline';
+    if (el.querySelector('[data-account-name]')) {
+      el.querySelector('[data-account-name]').textContent = name;
+      el.querySelector('[data-account-status]').textContent = status;
+    } else el.textContent = `${name} · ${status}`;
+    el.dataset.signedIn = String(!!account.user);
+    el.setAttribute('aria-label', `Cuenta: ${name}. ${status}`);
+    el.title = account.user ? `Cuenta: ${name} · sesión iniciada` : 'Cuenta: Offline · iniciar sesión';
+    el.onclick = openAccount;
+  });
+  if (!accountSubscribed) account.subscribe(async user => {
+    paint();
     if (user) {
-      try { const prefs = await account.loadPreferences(); store.update(prefs); if ('audioMuted' in prefs) audio.muted = prefs.audioMuted; }
+      const epoch = account.epoch;
+      try {
+        const saved = await account.loadPreferences();
+        if (epoch !== account.epoch || account.user?.uid !== user.uid) return;
+        const prefs = sessionPreferences(saved);
+        store.update(prefs); if ('audioMuted' in prefs) audio.muted = prefs.audioMuted;
+      }
       catch (error) { notify('Preferences could not be loaded: ' + error.message, 'error'); }
     }
   });
-  if (typeof window !== 'undefined' && window.netlifyIdentity) {
-    try {
-      window.netlifyIdentity.on('init', user => { if (user && !account.user) account.setNetlifyUser(user); });
-      window.netlifyIdentity.on('login', user => { if (user) account.setNetlifyUser(user); });
-      window.netlifyIdentity.on('logout', () => { if (account.user?.isNetlify) account.signOut(); });
-      window.netlifyIdentity.init();
-    } catch {}
-  }
-  if (cloudConfigured) account.init().catch(error => notify(error.message, 'error'));
+  accountSubscribed = true; paint();
+  accountReady ||= account.restoreSession().catch(error => notify(error.message, 'error')).finally(paint);
+  return accountReady;
 }
 export async function useCharacter(token) {
   if (store.sessionRole === 'player') {
@@ -160,7 +179,7 @@ export function openAccount() {
         </div>
       `);
       modal.querySelector('#quick_google_redirect')?.addEventListener('click', () => {
-        account.signInWithGoogle({ useRedirect: true });
+        run(() => account.signInWithGoogle({ useRedirect: true, remember: modal.querySelector('[name=remember]')?.checked !== false }));
       });
       modal.querySelector('#quick_netlify_login')?.addEventListener('click', () => run(async () => {
         await account.signInWithNetlify();
@@ -185,7 +204,7 @@ export function openAccount() {
     modal.querySelector('#btn_signin_account')?.addEventListener('click', () => { submitMode = 'signin'; });
 
     modal.querySelector('#btn_google_signin')?.addEventListener('click', () => run(async () => {
-      const user = await account.signInWithGoogle({ useRedirect: false });
+      const user = await account.signInWithGoogle({ useRedirect: false, remember: modal.querySelector('[name=remember]').checked });
       if (user) {
         modal.remove();
         openAccount();
@@ -193,7 +212,7 @@ export function openAccount() {
     }));
 
     modal.querySelector('#btn_google_redirect')?.addEventListener('click', () => run(async () => {
-      await account.signInWithGoogle({ useRedirect: true });
+      await account.signInWithGoogle({ useRedirect: true, remember: modal.querySelector('[name=remember]').checked });
     }));
 
     modal.querySelector('#btn_netlify_signin')?.addEventListener('click', () => run(async () => {
@@ -250,7 +269,7 @@ export function openAccount() {
         fogExploredOpacity: fogOpVal
       };
       await account.savePreferences(values);
-      store.update(cleanPreferences(values));
+      store.update(sessionPreferences(values));
       audio.muted = values.audioMuted;
       notify('All user parameters and preferences saved.');
     });

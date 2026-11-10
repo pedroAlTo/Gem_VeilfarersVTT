@@ -327,14 +327,14 @@ export class TokenHUD {
     if (spotlightBtn) {
       spotlightBtn.onclick = () => {
         const curTok = store.state.tokens.find(t => t.id === token.id);
-        if (!curTok) return;
+        if (!curTok || !store.canEditToken(curTok.id)) return;
         const newSpotlight = !curTok.hasSpotlight;
         const spotConfig = curTok.spotlight || { radius: 140, color: '#fbbf24', intensity: 0.85 };
         store.updateToken(curTok.id, {
           hasSpotlight: newSpotlight,
-          spotlight: { ...spotConfig, enabled: newSpotlight }
+          ...(store.sessionRole === 'player' ? {} : { spotlight: { ...spotConfig, enabled: newSpotlight } })
         });
-        network.broadcast?.({
+        if (store.sessionRole !== 'player') network.broadcast?.({
           type: 'TOKEN_UPDATE',
           tokenId: curTok.id,
           partial: { hasSpotlight: newSpotlight, spotlight: { ...spotConfig, enabled: newSpotlight } }
@@ -357,26 +357,26 @@ export class TokenHUD {
           const maxHp = curTok.hp?.max || 1;
           const newHp = Math.max(0, Math.min(maxHp, (curTok.hp?.current ?? 0) + delta));
           store.updateToken(curTok.id, { hp: { ...curTok.hp, current: newHp } });
-          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hp: { ...curTok.hp, current: newHp } } });
+          if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hp: { ...curTok.hp, current: newHp } } });
         } else if (stat === 'armor') {
           const maxA = curTok.armor?.max || 0;
           const newA = Math.max(0, Math.min(maxA, (curTok.armor?.current ?? 0) + delta));
           store.updateToken(curTok.id, { armor: { ...curTok.armor, current: newA } });
-          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { armor: { ...curTok.armor, current: newA } } });
+          if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { armor: { ...curTok.armor, current: newA } } });
         } else if (stat === 'stress') {
           const maxS = curTok.stress?.max ?? 6;
           const newS = Math.max(0, Math.min(maxS, (curTok.stress?.current ?? 0) + delta));
           store.updateToken(curTok.id, { stress: { ...curTok.stress, current: newS } });
-          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { stress: { ...curTok.stress, current: newS } } });
+          if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { stress: { ...curTok.stress, current: newS } } });
         } else if (stat === 'hope') {
           if (curTok.path === 'Sleeping') {
             const newEffort = Math.max(0, Math.min(6, (curTok.effort ?? 0) + delta));
             store.updateToken(curTok.id, { effort: newEffort });
-            network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { effort: newEffort } });
+            if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { effort: newEffort } });
           } else {
             const newHope = Math.max(0, Math.min(6, (curTok.hope ?? 0) + delta));
             store.updateToken(curTok.id, { hope: newHope });
-            network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hope: newHope } });
+            if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hope: newHope } });
           }
         }
       };
@@ -411,7 +411,7 @@ export class TokenHUD {
     if (quickReserveBtn) {
       quickReserveBtn.onclick = () => {
         store.sendTokenToReserve(token.id);
-        network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { mapId: 'reserve', inReserve: true } });
+        if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { mapId: 'reserve', inReserve: true } });
         network.syncAll?.();
         notify(`📦 "${token.name}" retirado a la Reserva.`);
       };
@@ -425,7 +425,7 @@ export class TokenHUD {
         const cur = token.hp.current;
         const newHp = Math.min(token.hp.max, cur + 1);
         store.updateToken(token.id, { hp: { ...token.hp, current: newHp } });
-        network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { hp: { ...token.hp, current: newHp } } });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { hp: { ...token.hp, current: newHp } } });
       };
     }
     if (hpMinus) {
@@ -433,7 +433,7 @@ export class TokenHUD {
         const cur = token.hp.current;
         const newHp = Math.max(0, cur - 1);
         store.updateToken(token.id, { hp: { ...token.hp, current: newHp } });
-        network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { hp: { ...token.hp, current: newHp } } });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { hp: { ...token.hp, current: newHp } } });
       };
     }
 
@@ -444,7 +444,7 @@ export class TokenHUD {
         const cur = token.armor?.current || 0;
         const newArmor = idx + 1 === cur ? idx : idx + 1;
         store.updateToken(token.id, { armor: { ...token.armor, current: newArmor } });
-        network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { armor: { ...token.armor, current: newArmor } } });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { armor: { ...token.armor, current: newArmor } } });
       };
     });
 
@@ -455,7 +455,7 @@ export class TokenHUD {
         const cur = token.stress?.current || 0;
         const newStress = idx + 1 === cur ? idx : idx + 1;
         store.updateToken(token.id, { stress: { ...token.stress, current: newStress } });
-        network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { stress: { ...token.stress, current: newStress } } });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { stress: { ...token.stress, current: newStress } } });
       };
     });
 
@@ -466,7 +466,7 @@ export class TokenHUD {
         const cur = token.hope || 0;
         const newHope = idx + 1 === cur ? idx : idx + 1;
         store.updateToken(token.id, { hope: newHope });
-        network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { hope: newHope } });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { hope: newHope } });
       };
     });
 
@@ -477,7 +477,7 @@ export class TokenHUD {
         const cur = token.effort || 0;
         const newEffort = idx + 1 === cur ? idx : idx + 1;
         store.updateToken(token.id, { effort: newEffort });
-        network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { effort: newEffort } });
+        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { effort: newEffort } });
       };
     });
 
@@ -1016,7 +1016,7 @@ export class TokenHUD {
     if (sheetReserveBtn) {
       sheetReserveBtn.onclick = () => {
         store.sendTokenToReserve(token.id);
-        network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { mapId: 'reserve', inReserve: true } });
+        if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { mapId: 'reserve', inReserve: true } });
         network.syncAll?.();
         notify(`📦 [${token.name}] retirado a la Reserva.`);
         modal.remove();
@@ -1125,7 +1125,7 @@ export class TokenHUD {
 
       try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
       store.updateToken(token.id, updated);
-      network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
+      if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
       modal.remove();
     };
   }

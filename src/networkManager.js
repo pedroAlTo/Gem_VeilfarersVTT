@@ -29,8 +29,13 @@ export class NetworkManager {
     this.invite = '';
     this.room = '';
     this.revision = 0;
+    this.tokenPatchSequence = 0;
+    this.tokenPatchAcks = new Map();
+    this.pendingTokenPatches = new Map();
+    this.authoritativeTokens = null;
+    this.store.confirmedTokens = () => this.store.sessionRole === 'player' && this.authoritativeTokens ? this.authoritativeTokens : this.store.state.tokens;
     this.store.sendTokenPatch = (tokenId, partial) =>
-      this.sendToHost({ type: 'TOKEN_UPDATE', tokenId, partial });
+      this.queueTokenPatch(tokenId, partial);
     this.store.subscribe((s, keys) => {
       if (s.isHosting && keys.some((k) => k !== 'chatMessages' && CAMPAIGN_KEYS.includes(k))) {
         clearTimeout(this.syncTimer);
@@ -128,6 +133,7 @@ export class NetworkManager {
           if (this.closing || this.hostConn !== conn || this.peer !== peer) return;
           if (this.joinFailed) { this.disconnect(new Error('The Keeper closed the connection before sending the map. Check the invitation or whether the table is full.')); return; }
           this.store.update({ isConnected: false });
+          this.clearTokenPatches(true);
           notify('Keeper disconnected. Your local campaign is preserved.', 'error');
         });
       });
@@ -178,6 +184,7 @@ export class NetworkManager {
       clearTimeout(expiry);
       this.connections.delete(conn.peer);
       this.members.delete(conn.peer);
+      this.tokenPatchAcks.delete(conn.peer);
       this.updatePeersList();
     });
   }
@@ -239,6 +246,7 @@ export class NetworkManager {
         this.envelope({
           type: 'INITIAL_STATE',
           revision: ++this.revision,
+          tokenPatchAck: this.tokenPatchAcks.get(conn.peer) || 0,
           state: this.snapshotFor(conn.peer),
         })
       );
@@ -446,8 +454,75 @@ export class NetworkManager {
     }
   }
   sendToHost(message) {
-    if (this.hostConn?.open) this.hostConn.send(this.envelope(message));
-    else notify('Not connected to the Keeper.', 'error');
+    if (this.hostConn?.open) { this.hostConn.send(this.envelope(message)); return true; }
+    notify('Not connected to the Keeper.', 'error');
+    return false;
+  }
+  queueTokenPatch(tokenId, partial) {
+    const state = this.store.state, token = state.tokens.find(t => t.id === tokenId);
+    if (!state.isConnected || !this.hostConn?.open || !controlsToken(token, this.store.memberId || this.store.peerId)) {
+      notify('No puedes editar este token sin conexión o sin asignación del Keeper.', 'error'); return false;
+    }
+    if (!validTokenPatch(partial) || this.pendingTokenPatches.size >= 100) {
+      notify('Cambio de token no permitido o demasiados cambios pendientes. Espera la confirmación del Keeper.', 'error'); return false;
+    }
+    this.authoritativeTokens ||= structuredClone(state.tokens);
+    const sequence = ++this.tokenPatchSequence;
+    const patch = { tokenId, partial: structuredClone(partial), sequence, campaignId: state.campaignId, mapId: token.mapId };
+    patch.timer = setTimeout(() => {
+      this.pendingTokenPatches.delete(sequence);
+      this.applyPendingTokenPatches();
+      notify('El Keeper no ha confirmado el cambio del token. Se ha recuperado el último estado confirmado.', 'error');
+    }, 10000);
+    this.pendingTokenPatches.set(sequence, patch);
+    this.applyPendingTokenPatches();
+    try {
+      const { timer, ...request } = patch;
+      if (!this.sendToHost({ type: 'TOKEN_UPDATE', ...request })) throw new Error('Conexión con el Keeper interrumpida.');
+    } catch (error) {
+      clearTimeout(patch.timer); this.pendingTokenPatches.delete(sequence); this.applyPendingTokenPatches();
+      notify(error.message, 'error'); return false;
+    }
+    return true;
+  }
+  projectedTokens(tokens, state = this.store.state) {
+    return tokens.map(token => {
+      let result = token;
+      for (const patch of this.pendingTokenPatches.values()) {
+        if (patch.tokenId === token.id && patch.campaignId === state.campaignId && patch.mapId === state.activeMapId && token.mapId === patch.mapId && controlsToken(token, this.store.memberId || this.store.peerId)) {
+          result = { ...result, ...patch.partial };
+          for (const key of ['hp', 'armor', 'stress', 'resolve']) if (patch.partial[key]) result[key] = { ...token[key], current: Math.min(token[key].max, patch.partial[key].current) };
+          // A personal toggle never replaces the Keeper's configured light parameters.
+          if ('hasSpotlight' in patch.partial) result.spotlight = { ...token.spotlight, enabled: patch.partial.hasSpotlight };
+        }
+      }
+      return result;
+    });
+  }
+  applyPendingTokenPatches() {
+    if (!this.authoritativeTokens || this.store.sessionRole !== 'player') return;
+    const applying = this.store.remoteApplying;
+    this.store.remoteApplying = true;
+    try { this.store.update({ tokens: this.projectedTokens(this.authoritativeTokens) }); }
+    finally { this.store.remoteApplying = applying; }
+  }
+  clearTokenPatches(restore = false) {
+    for (const patch of this.pendingTokenPatches.values()) clearTimeout(patch.timer);
+    this.pendingTokenPatches.clear();
+    if (restore) this.applyPendingTokenPatches();
+    this.authoritativeTokens = null;
+  }
+  reconcileTokenPatches(state, ack) {
+    for (const [sequence, patch] of this.pendingTokenPatches) {
+      const token = state.tokens.find(t => t.id === patch.tokenId);
+      const acknowledged = Number.isSafeInteger(ack) && ack >= sequence;
+      const obsolete = patch.campaignId !== state.campaignId || patch.mapId !== state.activeMapId || token?.mapId !== patch.mapId || !controlsToken(token, this.store.memberId || this.store.peerId);
+      // Older Keepers have no acknowledgement field; matching their snapshot confirms the patch.
+      const legacyConfirmed = ack === undefined && token && Object.entries(patch.partial).every(([key, value]) => JSON.stringify(token[key]) === JSON.stringify(value));
+      if (acknowledged || obsolete || legacyConfirmed) { clearTimeout(patch.timer); this.pendingTokenPatches.delete(sequence); }
+    }
+    this.authoritativeTokens = structuredClone(state.tokens);
+    state.tokens = this.projectedTokens(state.tokens, state);
   }
   async requestAction(action) {
     if (this.store.sessionRole !== 'player') return this.performAction(action);
@@ -486,6 +561,7 @@ export class NetworkManager {
           const s = validateCampaign(data.state);
           this.lastRevision = data.revision;
           this.store.memberId = data.state.memberId || this.store.peerId;
+          this.reconcileTokenPatches(s, data.tokenPatchAck);
           const assigned = s.tokens.filter(t => controlsToken(t, this.store.memberId));
           const selectedId = assigned.some(t => t.id === this.store.state.selectedTokenId) ? this.store.state.selectedTokenId : data.state.claimedTokenId || assigned[0]?.id || null;
           const newAssignment = selectedId !== this.store.state.selectedTokenId;
@@ -524,6 +600,8 @@ export class NetworkManager {
           this.store.update({ chatMessages: appendChat(this.store.state.chatMessages, entry) });
         } catch { /* Invalid messages must not corrupt the replica. */ }
         finally { this.store.remoteApplying = false; }
+      } else if (data.type === 'TOKEN_PATCH_REJECTED') {
+        notify(data.error || 'El Keeper ha rechazado el cambio del token.', 'error');
       } else if (data.type === 'ACTION_RESULT') {
         const p = this.pending.get(data.requestId);
         if (p) {
@@ -577,17 +655,29 @@ export class NetworkManager {
       return;
     }
     if (data.type === 'TOKEN_UPDATE' || data.type === 'TOKEN_MOVE') {
-      const partial = data.type === 'TOKEN_MOVE' ? { x: data.x, y: data.y } : data.partial;
-      if (owns(data.tokenId) && validTokenPatch(partial)) {
+      const conn = this.connections.get(senderId), sequenced = Number.isSafeInteger(data.sequence) && data.sequence > 0;
+      if (sequenced && data.sequence <= (this.tokenPatchAcks.get(senderId) || 0)) { if (conn) this.syncPeer(conn); return; }
+      try {
+        const partial = structuredClone(data.type === 'TOKEN_MOVE' ? { x: data.x, y: data.y } : data.partial);
+        if (!owns(data.tokenId)) throw new Error('Este token ya no está asignado a ti.');
+        if (!validTokenPatch(partial)) throw new Error('El cambio contiene campos de token no permitidos.');
         const token = this.store.state.tokens.find((t) => t.id === data.tokenId);
+        if (token.mapId !== this.store.state.activeMapId || (data.mapId && data.mapId !== token.mapId) || (data.campaignId && data.campaignId !== this.store.state.campaignId)) throw new Error('La escena ha cambiado. Repite el cambio en la escena actual.');
         for (const k of ['hp', 'armor', 'stress', 'resolve'])
           if (partial[k]) {
-            if (partial[k].max !== token[k]?.max) return;
+            if (partial[k].max !== token[k]?.max) throw new Error('El Keeper ha cambiado el máximo de ' + k + '. Revisa la ficha.');
             for (const field of Object.keys(partial[k]))
-              if (field !== 'current' && partial[k][field] !== token[k]?.[field]) return;
+              if (field !== 'current' && partial[k][field] !== token[k]?.[field]) throw new Error('Solo puedes cambiar el valor actual de ' + k + '.');
             partial[k] = { ...token[k], current: partial[k].current };
           }
-        this.store.updateToken(data.tokenId, partial);
+        if ('hasSpotlight' in partial) partial.spotlight = { ...token.spotlight, enabled: partial.hasSpotlight };
+        // Membership was checked above. Keeper's local Player-preview selection is irrelevant.
+        this.store._beforeTacticalMutation?.('Cambio de jugador', 'tok_' + token.id);
+        this.store.update({ tokens: this.store.state.tokens.map(t => t.id === token.id ? { ...t, ...partial } : t) });
+      } catch (error) {
+        conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', sequence: data.sequence, error: error.message }));
+      } finally {
+        if (sequenced) this.tokenPatchAcks.set(senderId, data.sequence);
         this.syncAll();
       }
       return;
@@ -660,6 +750,7 @@ export class NetworkManager {
   disconnect(reason = new Error('Session closed. Check the invitation and try again.')) {
     this.closing = true;
     clearTimeout(this.syncTimer);
+    this.clearTokenPatches(); this.tokenPatchAcks.clear(); this.tokenPatchSequence = 0;
     const peer = this.peer;
     this.peer = null;
     peer?.destroy();

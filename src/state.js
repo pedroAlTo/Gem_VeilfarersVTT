@@ -340,8 +340,8 @@ class StateStore {
   updateToken(tokenId, partial) {
     if (!this.remoteApplying && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
     if (this.sessionRole === 'player' && !this.remoteApplying) {
-      if (this.canEditToken(tokenId)) this.sendTokenPatch?.(tokenId, partial);
-      return;
+      if (this.canEditToken(tokenId)) return this.sendTokenPatch?.(tokenId, partial);
+      return false;
     }
     this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
     const tokens = this.state.tokens.map(t => {

@@ -49,16 +49,14 @@ export function initOrbitalUI() {
   }
   document.querySelector('.brand-version').textContent = `VTT v${APP_VERSION} / CORE 12.06`;
   document.getElementById('network_modal_btn').innerHTML =
-    '<span id="net_status_dot">●</span> SESSION';
+    '<span id="net_status_dot">●</span> SESIONES';
+  document.getElementById('network_modal_btn').title = 'Partida, tripulación y sesiones guardadas';
   if (LOCAL_ONLY) {
     const session = document.getElementById('network_modal_btn');
     session.disabled = false;
-    session.innerHTML = '<span id="net_status_dot">●</span> LOCAL TEST';
-    session.title = 'Local test mode. Multiplayer is disabled.';
+    session.title = 'Sesiones locales. El multijugador está desactivado en este modo de pruebas.';
   }
   document.getElementById('rules_modal_btn').textContent = 'CODEX';
-  document.getElementById('data_menu_btn').textContent = 'SESIONES';
-  document.getElementById('data_menu_btn').title = 'Crear, abrir y guardar sesiones locales';
   const sidebar = document.getElementById('main_right_sidebar');
   const heading = document.createElement('div');
   heading.className = 'orbital-panel-heading';
