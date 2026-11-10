@@ -110,7 +110,7 @@ export class TokenHUD {
           </div>
 
           <!-- Compact Action Controls -->
-          <div class="tok-qb-actions" style="display: flex; gap: 6px; align-items: center;">
+          <div class="tok-qb-actions">
             <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-amber' : ''}" id="quick_spotlight_btn" title="Alternar Foco / Borde dorado brillante con pulso">${token.hasSpotlight ? '✨ FOCO ON' : '✨ FOCO'}</button>
             <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
             <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>

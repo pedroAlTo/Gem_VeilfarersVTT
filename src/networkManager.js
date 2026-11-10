@@ -241,7 +241,7 @@ export class NetworkManager {
     };
   }
   syncPeer(conn) {
-    if (conn.open)
+    if (conn.open) {
       conn.send(
         this.envelope({
           type: 'INITIAL_STATE',
@@ -250,6 +250,23 @@ export class NetworkManager {
           state: this.snapshotFor(conn.peer),
         })
       );
+      const activeMap = this.store.getActiveMap();
+      if (activeMap) {
+        conn.send(
+          this.envelope({
+            type: 'MAP_LOAD_STATUS',
+            peerId: 'keeper',
+            name: 'Keeper',
+            role: 'keeper',
+            mapId: activeMap.id,
+            progress: 100,
+            loaded: true,
+            text: 'Matriz cargada al 100%',
+            updatedAt: Date.now()
+          })
+        );
+      }
+    }
   }
   syncAll() {
     if (!this.store.state.isHosting) return;
@@ -441,6 +458,8 @@ export class NetworkManager {
       updatedAt: Date.now()
     };
     this.mapLoadStatuses.set(memberId, status);
+    this.mapLoadStatuses.set('local', status);
+    if (this.store.memberId) this.mapLoadStatuses.set(this.store.memberId, status);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('veil:map-load-status', { detail: status }));
     }

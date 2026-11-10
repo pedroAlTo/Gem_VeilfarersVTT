@@ -153,6 +153,7 @@ export class CanvasEngine {
   }
 
   loadMap(mapData) {
+    if (!mapData || !mapData.id) return;
     const campaignId = store.getState().campaignId;
     const key = `${campaignId}:${mapData.id}:${mapData.imageUrl}`;
     if (this.currentMapKey === key) return;

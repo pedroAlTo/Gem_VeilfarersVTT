@@ -75,28 +75,29 @@ body {background:radial-gradient(ellipse at 72% 4%,#21132f66,transparent 55%),#0
 .clock-button-row {gap:4px}
 .clock-status-tag {font-size:8px;letter-spacing:.1em}
 /* Selected operative: measured values, segmented channels, and explicit danger states. */
-.token-quickbar-container {bottom:37px;max-width:calc(100% - 32px)}
-.token-quickbar {position:relative;border-radius:3px;background:linear-gradient(120deg,#0b1c2af5,#101122ed);border:1px solid #79cce74d;box-shadow:0 8px 40px #0008;gap:16px;padding:15px 18px}
-.token-quickbar:before {content:'';position:absolute;top:-1px;left:18px;width:48px;height:2px;background:#86e6ed;box-shadow:0 0 12px #7de3ff66}
-.tok-qb-avatar-group {min-width:150px;gap:12px}
-.tok-qb-avatar {width:42px;height:42px;border:2px solid #82dae66b;box-shadow:0 0 0 4px #85dded0d}
-.tok-qb-compact .tok-qb-name {font-size:13px;letter-spacing:.02em;white-space:normal;max-width:165px}
-.tok-qb-compact .tok-qb-role {font:8px var(--font-mono);color:#8faabd;white-space:normal;max-width:165px;line-height:1.5}
-.token-telemetry-grid {display:grid;grid-template-columns:repeat(2,minmax(86px,1fr));gap:10px 16px;min-width:200px}
-.telemetry-stat {min-width:80px;--stat-color:#78e0db}
-.telemetry-label {display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:7px;font:8px var(--font-mono);letter-spacing:.08em;color:#b8d0df}
-.telemetry-label b {font:13px var(--font-hud);color:#effaff;letter-spacing:.02em}
-.telemetry-label small {font:9px var(--font-mono);color:#8da6ba}
-.telemetry-track {height:6px;display:flex;gap:2px}
+.token-quickbar-container {bottom:18px;max-width:calc(100% - 24px)}
+.token-quickbar {position:relative;border-radius:4px;background:linear-gradient(120deg,#0b1c2af5,#101122ed);border:1px solid #79cce74d;box-shadow:0 6px 24px #000a;gap:8px;padding:6px 10px}
+.token-quickbar:before {content:'';position:absolute;top:-1px;left:14px;width:36px;height:2px;background:#86e6ed;box-shadow:0 0 10px #7de3ff66}
+.tok-qb-avatar-group {min-width:0;gap:8px}
+.tok-qb-avatar {width:32px;height:32px;border:1.5px solid #82dae66b;box-shadow:0 0 0 2px #85dded0d}
+.tok-qb-compact .tok-qb-name {font-size:11.5px;letter-spacing:.02em;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.tok-qb-compact .tok-qb-role {font:8px var(--font-mono);color:#8faabd;white-space:nowrap;max-width:140px;line-height:1.2;overflow:hidden;text-overflow:ellipsis}
+.token-telemetry-grid {display:flex;flex-direction:row;gap:6px 10px;align-items:center;justify-content:center;min-width:0}
+.telemetry-stat {min-width:0;--stat-color:#78e0db}
+.telemetry-label {display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:3px;font:7.5px var(--font-mono);letter-spacing:.06em;color:#b8d0df}
+.telemetry-label b {font:11px var(--font-hud);color:#effaff;letter-spacing:.02em}
+.telemetry-label small {font:8px var(--font-mono);color:#8da6ba}
+.telemetry-track {height:5px;display:flex;gap:2px}
 .telemetry-track i {flex:1;min-width:0;transform:skew(-18deg);background:linear-gradient(90deg,var(--stat-color) var(--cell-fill),#29374a var(--cell-fill));border-top:1px solid #e1faff23}
 .stat-danger .telemetry-label {color:#ff90b1}
 .stat-danger .telemetry-track {filter:drop-shadow(0 0 3px #f476a84d)}
-.tok-qb-pips {gap:4px}
-.tok-qb-pips .pip {width:14px;height:7px;border-radius:1px;transform:skew(-18deg);padding:0;border:1px solid #7bafc53d;background:#263346;cursor:pointer}
-.tok-qb-pips .pip.active {box-shadow:0 0 8px #9bddec22}
+.tok-qb-pips {gap:3px}
+.tok-qb-pips .pip {width:12px;height:6px;border-radius:1px;transform:skew(-18deg);padding:0;border:1px solid #7bafc53d;background:#263346;cursor:pointer}
+.tok-qb-pips .pip.active {box-shadow:0 0 6px #9bddec22}
 .pip-armor.active {background:#79cef9}.pip-stress.active {background:#d990ed}.pip-hope.active {background:#e9d791}.pip-effort.active {background:#e7c791}
-.tok-qb-compact .tok-qb-actions {flex-direction:column;align-items:stretch!important}
-.tok-qb-expanded {max-height:min(380px,65dvh);overflow:auto}
+.tok-qb-compact .tok-qb-actions {display:grid;grid-template-columns:repeat(3,auto);gap:3px;align-items:center;max-width:230px}
+.tok-qb-compact .tok-qb-actions button {padding:2px 5px!important;font-size:9px!important;height:20px!important;line-height:1!important;white-space:nowrap}
+.tok-qb-expanded {max-height:min(340px,50dvh);overflow-y:auto;padding:8px 12px;gap:8px}
 .instrument-ring {box-shadow:0 0 0 8px #7ad5ee08,0 0 25px #78d0ef0d;margin-bottom:15px}
 .instrument-ring:after {content:'';position:absolute;inset:6px;border:2px dotted #80bdd740;border-radius:50%;pointer-events:none}
 .orbital-statusbar {border-top:1px solid #729cb820;padding-top:5px;height:22px;color:#8aa6bd}

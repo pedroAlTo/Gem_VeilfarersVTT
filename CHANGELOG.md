@@ -8,14 +8,15 @@ Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial 
 
 ## [1.3.1] — 2026-11-10
 
-Persistencia del acceso y sincronización de tokens de jugadores
+Persistencia del acceso, telemetría de escena y optimización compacta de paneles
 
-### Inicio de sesión
+### Inicio de sesión y preferencias
 
 - Session y Sesiones se agrupan en un único acceso SESIONES, con secciones de partida/tripulación y archivo guardado. La cuenta aparece arriba a la derecha: usuario y piloto verde al iniciar sesión, Offline y piloto rojo al salir.
 - Restauración de Netlify Identity tanto si el widget ya terminó de iniciarse como si carga después. Firebase y Netlify mantienen estados independientes y se recuerda el proveedor elegido.
 - Google aplica explícitamente la opción de mantener la sesión, tanto en ventana emergente como en redirección. Cancelar un acceso no inicia otro proveedor automáticamente.
 - El cierre de sesión limpia sus listeners temporales. Las preferencias se aíslan por cuenta y una respuesta antigua no puede reasignar el personaje ni sobrescribir los ajustes del Keeper.
+- Guardado seguro de preferencias y parámetros de usuario: soporte para esquemas extendidos (fogOfWar, opacidad de niebla, modos de ajuste a rejilla) con almacenamiento local inmediato y fallback resiliente ante restricciones de permisos en Firestore.
 
 ### Movimiento y recursos
 
@@ -24,6 +25,13 @@ Persistencia del acceso y sincronización de tokens de jugadores
 - Se elimina el envío duplicado desde la barra de recursos; el foco del token se sincroniza sin permitir cambiar la configuración de su luz.
 - Rechazos y tiempos de espera muestran un aviso y recuperan el último estado confirmado. Cambiar de escena, retirar permisos o mover el token desde el Keeper cancela arrastres obsoletos.
 - La visión, las luces y la exploración usan posiciones confirmadas por el Keeper, incluso mientras un movimiento espera respuesta. El modo Player de previsualización del anfitrión no bloquea los movimientos de sus jugadores.
+
+### Telemetría de escena y distribución compacta de paneles
+
+- Corrección de la telemetría de sincronización de escena: se elimina la duplicación de la terminal local y se garantiza que la escena cargada al 100% no se muestre como pendiente o al 0%.
+- Consola de chat táctico compacta y libre de scroll exterior: contenedor flex con mensajes scrollables internamente, selector de canal de bajo perfil y compositor de entrada condensado.
+- Panel de vista previa de token (Token HUD) comprimido verticalmente en más de un 70%, agrupando acciones en cuadrícula compacta y disponiendo la telemetría vital en una sola fila ágil.
+- Navegación por pestañas laterales (DICE, CLOCKS, SHIP, ROSTER, SCENES, DOSSIERS, LOG, CHAT) optimizada en una sola fila sin desbordamiento.
 
 ## [1.3.0] — 2026-11-10
 

@@ -267,14 +267,33 @@ export class CloudAccount {
   async savePreferences(values) {
     const cleaned = cleanPreferences(values), uid = await this.identity(), epoch = this.epoch;
     const cacheKey = `veil_user_preferences_${this.user?.isNetlify ? 'netlify' : 'firebase'}_${uid}`;
-    if (this.user?.isNetlify) {
+    try {
       localStorage.setItem(cacheKey, JSON.stringify(cleaned));
+      localStorage.setItem('veil_user_preferences_' + uid, JSON.stringify(cleaned));
+    } catch {}
+
+    if (this.user?.isNetlify) {
       return;
     }
     const d = this.dbAPI;
-    await d.setDoc(d.doc(this.db, 'users', uid, 'settings', 'preferences'), cleaned);
+    try {
+      await d.setDoc(d.doc(this.db, 'users', uid, 'settings', 'preferences'), cleaned);
+    } catch (err) {
+      const isPermError = err.code === 'permission-denied' || String(err.message || '').includes('permissions');
+      if (isPermError) {
+        try {
+          const coreKeys = ['userName', 'audioMuted', 'showGrid', 'gridSnap', 'diceTheme', 'dice3d', 'reducedMotion'];
+          const coreOnly = Object.fromEntries(coreKeys.filter(k => k in cleaned).map(k => [k, cleaned[k]]));
+          await d.setDoc(d.doc(this.db, 'users', uid, 'settings', 'preferences'), coreOnly);
+          return;
+        } catch (innerErr) {
+          console.warn('Cloud preferences sync skipped; parameters saved in local cache.', innerErr);
+          return;
+        }
+      }
+      throw err;
+    }
     if (epoch !== this.epoch) throw new Error('Account changed. Reopen your preferences.');
-    try { localStorage.setItem(cacheKey, JSON.stringify(cleaned)); } catch {}
   }
   async loadPreferences() {
     const uid = await this.identity(), epoch = this.epoch;

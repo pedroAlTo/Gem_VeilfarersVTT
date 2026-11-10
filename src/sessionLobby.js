@@ -69,11 +69,11 @@ export function initSessionBar() {
     if (mapSyncBtn) {
       if (s.isConnected || s.isHosting) {
         mapSyncBtn.style.display = 'inline-flex';
-        const peers = s.connectedPeers || [];
+        const myMemberId = store.memberId || store.peerId || 'local';
+        const peers = (s.connectedPeers || []).filter(p => p.id && p.id !== myMemberId);
         const activeMap = store.getActiveMap();
         const activeMapId = activeMap?.id;
-        const myMemberId = store.memberId || store.peerId || 'local';
-        const myStatus = network.mapLoadStatuses?.get(myMemberId);
+        const myStatus = network.mapLoadStatuses?.get(myMemberId) || network.mapLoadStatuses?.get('local');
         const selfReady = myStatus ? (myStatus.mapId === activeMapId && myStatus.loaded) : (window.veilCanvas?.isMapLoaded !== false);
         
         let total = 1;
@@ -83,7 +83,7 @@ export function initSessionBar() {
         for (const peer of peers) {
           total++;
           const st = network.mapLoadStatuses?.get(peer.id);
-          const isPeerReady = st ? (st.mapId === activeMapId && st.loaded) : false;
+          const isPeerReady = st ? (st.mapId === activeMapId && st.loaded) : (!s.isHosting);
           if (isPeerReady) {
             ready++;
           } else {
@@ -92,8 +92,12 @@ export function initSessionBar() {
           }
         }
 
-        if (ready === total) {
+        if (ready >= total) {
           mapSyncBtn.textContent = '🛰️ Escena: 100% ✅';
+          mapSyncBtn.style.borderColor = '#10b981';
+          mapSyncBtn.style.color = '#7de8d0';
+        } else if (selfReady) {
+          mapSyncBtn.textContent = `🛰️ Escena: 100% (Tripulación: ${ready}/${total})`;
           mapSyncBtn.style.borderColor = '#10b981';
           mapSyncBtn.style.color = '#7de8d0';
         } else {
@@ -307,7 +311,7 @@ export function openMapSyncTelemetryModal() {
   const activeMapId = activeMap.id;
 
   const myMemberId = store.memberId || store.peerId || 'local';
-  const myStatus = network.mapLoadStatuses?.get(myMemberId);
+  const myStatus = network.mapLoadStatuses?.get(myMemberId) || network.mapLoadStatuses?.get('local');
   const selfLoaded = myStatus ? (myStatus.mapId === activeMapId && myStatus.loaded) : (window.veilCanvas?.isMapLoaded !== false);
   const selfProgress = selfLoaded ? 100 : (myStatus?.progress || 0);
   const isKeeper = s.userRole === 'keeper';
@@ -322,11 +326,11 @@ export function openMapSyncTelemetryModal() {
       statusText: selfLoaded ? 'Matriz cargada al 100%' : (myStatus?.text || 'Descargando...'),
       isSelf: true
     },
-    ...peers.map(peer => {
+    ...peers.filter(peer => peer.id && peer.id !== myMemberId).map(peer => {
       const p = players.find(x => x.id === peer.id);
       const tok = s.tokens.find(t => !isDrone(t) && t.ownerId === peer.id);
       const st = network.mapLoadStatuses?.get(peer.id);
-      const isReady = st ? (st.mapId === activeMapId && st.loaded) : false;
+      const isReady = st ? (st.mapId === activeMapId && st.loaded) : (!s.isHosting);
       const progress = isReady ? 100 : (st?.mapId === activeMapId ? st.progress : 0);
       return {
         name: peer.name || p?.name || 'Operativo',

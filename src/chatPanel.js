@@ -9,14 +9,23 @@ export class ChatPanel {
     this.root = root; this.store = stateStore; this.network = transport;
     this.channel = TABLE; this.drafts = new Map(); this.known = new Set(); this.unread = new Set();
     root.innerHTML = `<section class="chat-console">
-      <div class="chat-heading"><span class="eyebrow">COMMS / SESSION LINK</span><span class="chat-status" role="status"></span></div>
-      <label class="chat-channel-label">Destinatario<vf-select class="hud-select" aria-label="Destinatario del chat"></vf-select></label>
+      <div class="chat-heading">
+        <span class="eyebrow">COMMS // ENLACE</span>
+        <span class="chat-status" role="status" title="Historial en tiempo real de la sesión"></span>
+      </div>
+      <label class="chat-channel-label" style="margin: 0;">
+        <vf-select class="hud-select" aria-label="Destinatario del chat"></vf-select>
+      </label>
       <p class="chat-privacy"></p>
       <div class="chat-messages" role="log" aria-label="Mensajes de la conversación" aria-live="polite" aria-relevant="additions" tabindex="0"></div>
-      <form class="chat-composer"><label for="chat_text">Mensaje</label><textarea id="chat_text" class="hud-input" rows="3" maxlength="2000" placeholder="Escribe a la mesa…" aria-describedby="chat_hint chat_error"></textarea>
-        <div class="chat-compose-meta"><span id="chat_hint">Enter envía · Mayús + Enter, nueva línea</span><span class="chat-count">0 / 2000</span></div>
-        <p id="chat_error" class="dossier-error" role="alert"></p><button class="hud-btn hud-btn-primary chat-send" type="submit">Enviar a la mesa</button>
-      </form><p class="chat-retention">Últimos 500 mensajes de la sesión. El Keeper conserva el historial en sus guardados.</p>
+      <form class="chat-composer">
+        <textarea id="chat_text" class="hud-input" rows="2" maxlength="2000" placeholder="Escribe a la mesa…" aria-describedby="chat_hint chat_error"></textarea>
+        <div class="chat-composer-footer">
+          <div class="chat-compose-meta"><span id="chat_hint">↵ Enviar · ⇧↵ Salto</span><span class="chat-count">0/2000</span></div>
+          <button class="hud-btn hud-btn-xs hud-btn-primary chat-send" type="submit">Enviar</button>
+        </div>
+        <p id="chat_error" class="dossier-error" role="alert"></p>
+      </form>
     </section>`;
     this.select = root.querySelector('vf-select'); this.input = root.querySelector('textarea');
     this.list = root.querySelector('.chat-messages'); this.error = root.querySelector('#chat_error');

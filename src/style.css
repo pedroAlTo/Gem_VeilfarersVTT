@@ -818,21 +818,25 @@ body, html {
 .sidebar-tab-nav {
   display: flex;
   border-bottom: 1px solid var(--border-glass);
-  background: rgba(8, 12, 22, 0.9);
+  background: rgba(8, 12, 22, 0.95);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .tab-nav-btn {
   flex: 1;
-  padding: 12px 6px;
+  padding: 8px 3px;
   background: none;
   border: none;
   color: var(--text-dim);
   font-family: var(--font-hud);
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 700;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all 0.2s;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .tab-nav-btn:hover {
@@ -849,7 +853,19 @@ body, html {
 .sidebar-tab-content-area {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#tab_pane_chat {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* Sidebar Subtabs */

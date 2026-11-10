@@ -268,10 +268,15 @@ export function openAccount() {
         fogOfWar: modal.querySelector('#pref_fog').checked,
         fogExploredOpacity: fogOpVal
       };
-      await account.savePreferences(values);
       store.update(sessionPreferences(values));
       audio.muted = values.audioMuted;
-      notify('All user parameters and preferences saved.');
+      try {
+        await account.savePreferences(values);
+        notify('All user parameters and preferences saved.');
+      } catch (err) {
+        console.warn('Preferences cloud sync error:', err);
+        notify('Parámetros guardados correctamente en este dispositivo.');
+      }
     });
   }
   return modal;
