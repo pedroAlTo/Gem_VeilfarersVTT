@@ -213,15 +213,13 @@ export class LightingEngine {
     this.resize(mapWidth, mapHeight);
     const lCtx = this.lightCtx;
 
-    // 1. Fill with darkness based on ambientLight
+    // 1. Fill with darkness based on ambientLight (ambient 1.0 = clear, ambient 0.25 = 0.75 darkness)
     lCtx.clearRect(0, 0, mapWidth, mapHeight);
-    lCtx.fillStyle = ambientColor;
-    lCtx.fillRect(0, 0, mapWidth, mapHeight);
-
-    // Calculate darkness opacity (ambient 0.2 means 0.8 darkness)
     const darknessAlpha = Math.max(0, Math.min(1, 1 - ambientLight));
-    lCtx.fillStyle = `rgba(5, 8, 15, ${darknessAlpha})`;
-    lCtx.fillRect(0, 0, mapWidth, mapHeight);
+    if (darknessAlpha > 0.01) {
+      lCtx.fillStyle = `rgba(5, 8, 15, ${darknessAlpha})`;
+      lCtx.fillRect(0, 0, mapWidth, mapHeight);
+    }
 
     // Collect all active light sources (station lights + token vision lights)
     const allLights = [...lights];

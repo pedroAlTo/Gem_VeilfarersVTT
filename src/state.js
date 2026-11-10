@@ -756,6 +756,9 @@ class StateStore {
     const base = structuredClone(this.initialCampaign);
     const data = validateCampaign({ ...base, ...input, logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
     if (!data.maps.some(m => m.id === data.activeMapId)) data.activeMapId = data.maps[0].id;
+    if (data.fogExploredOpacity === undefined || data.fogExploredOpacity === 0.88) {
+      data.fogExploredOpacity = 0.50;
+    }
     return data;
   }
   async savedSessions() {

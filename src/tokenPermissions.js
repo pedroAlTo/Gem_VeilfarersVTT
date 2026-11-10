@@ -2,7 +2,7 @@ export const isDrone = token => token?.actorType === 'drone';
 export const controlsToken = (token, playerId) => !!playerId && !token?.hidden &&
   (isDrone(token) ? token.controllerIds?.includes(playerId) : token?.ownerId !== 'keeper' && token?.ownerId === playerId);
 
-export const isPartyToken = token => !!(token?.isPlayer || (token?.ownerId && token.ownerId !== 'keeper') || (isDrone(token) && token.controllerIds?.length));
+export const isPartyToken = token => !!(token?.isPlayer || token?.actorType === 'player' || (token?.ownerId && token.ownerId !== 'keeper') || (isDrone(token) && token.controllerIds?.length));
 
 // Validate first, then make one atomic update. A drone never occupies a character slot.
 export function assignControls(tokens, tokenId, playerIds, knownPlayers) {

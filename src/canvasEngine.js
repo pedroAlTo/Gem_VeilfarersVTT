@@ -2382,11 +2382,15 @@ export class CanvasEngine {
         }
         return tok;
       });
+      // When Fog of War is enabled, Fog of War itself controls map darkness and explored attenuation (50%).
+      // Dynamic lighting only renders light fixtures and glows without covering the explored map with opaque darkness.
+      const ambientLightLevel = state.fogOfWar !== false ? 1.0 : (map.ambientLight ?? 0.25);
+
       this.lighting.renderLighting({
         ctx,
         mapWidth: this.mapImage.width,
         mapHeight: this.mapImage.height,
-        ambientLight: map.ambientLight ?? 0.25,
+        ambientLight: ambientLightLevel,
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
         lights: activeLights,
@@ -2395,7 +2399,7 @@ export class CanvasEngine {
       });
     }
 
-    // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 80%-95% shroud, Current FOV 0%)
+    // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)
     if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
       let viewers = [];
       if (state.userRole === 'player') {
@@ -2426,7 +2430,7 @@ export class CanvasEngine {
         lights: map.lights || [],
         viewers,
         lightingEngine: this.lighting,
-        exploredOpacity: state.fogExploredOpacity ?? 0.88,
+        exploredOpacity: state.fogExploredOpacity ?? 0.50,
         isKeeperGM: isKeeperGM,
         stamp: !this.draggedToken
       });
