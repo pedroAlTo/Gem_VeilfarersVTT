@@ -1,3 +1,5 @@
+import { attackPresentation, weaponImpactType } from './combatFX.js';
+import { IMPACT_TYPES } from './encounterRules.js';
 // src/diceRoller.js
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
@@ -125,6 +127,7 @@ export class DiceRollerSidebar {
     let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
     this.container.querySelector('[data-weapon-preview]').textContent = [weapon.name, note, weapon.features, warning].filter(Boolean).join(' · ');
     this.preparedWeapon = { id: weaponId, signature: JSON.stringify(weapon) };
+    this.container.querySelector('#dmg_impact_type').value = weaponImpactType(weapon);
     window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
     this.container.querySelector('#tab_damage_btn').click();
     this.container.querySelector('#dmg_formula').focus();
@@ -260,6 +263,8 @@ export class DiceRollerSidebar {
         <!-- Section 2: Damage & Thresholds Calculator -->
         <div class="dice-section" id="section_damage_calc" style="display: none;">
           <p class="weapon-prepared-note" data-weapon-preview>Prepara un arma desde Ficha → Armas y equipo, o introduce una expresión.</p>
+          <label class="dossier-field"><span>Impacto del arma</span><vf-select class="hud-select" id="dmg_impact_type">${Object.entries(IMPACT_TYPES).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}</vf-select></label>
+          <p class="dossier-muted">Tamaño por HP realmente perdidos: 1 → 50%, 2 → 100%, +20% por HP adicional (máx. 200%). Armor consumido muestra el escudo.</p>
           <label class="dossier-field"><span>Expresión completa</span><input id="dmg_formula" class="hud-input" maxlength="1000" placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"></label>
           <p class="field-help">Vacía este campo para usar los dados manuales de abajo. Las propiedades y condiciones se resuelven según su texto.</p>
           <div class="dice-actor-bar">
@@ -516,6 +521,8 @@ export class DiceRollerSidebar {
   }
 
   executeDamageCalc() {
+    const bossPhase = this.currentActor?.boss?.states[this.currentActor.boss.index];
+    if (bossPhase?.canAttack === false) { notify('Este estado usa su procedimiento especial; no tiene un ataque de daño estándar.', 'error'); return; }
     const targetSelect = this.container.querySelector('#dmg_target_select');
     const targetId = targetSelect.value;
     const targetToken = store.getState().tokens.find(t => t.id === targetId);
@@ -569,28 +576,11 @@ export class DiceRollerSidebar {
     this.container.querySelector('#dmg_detail_text').textContent = (secret ? 'SOLO KEEPER · ' : '') + detailText;
     if (secret) store.addLog({ visibility: 'keeper', type: 'DAMAGE', sender: 'Keeper', title: 'Daño · ' + (targetToken?.name || 'Sin objetivo'), details: detailText });
 
-    // Trigger weapon attack trajectory FX from attacker to target
-    const currentTokens = store.getTokensForActiveMap();
-    const attackerId = this.currentActor?.id || store.getState().selectedTokenId;
-    const attacker = currentTokens.find(t => t.id === attackerId);
-    if (attacker && targetToken && window.veilCanvas) {
-      const weaponType = formula || 'laser';
-      window.veilCanvas.triggerAttackFX({
-        attacker,
-        target: targetToken,
-        weaponType,
-        isCritical
-      });
-      network.broadcast({
-        type: 'ATTACK_FX',
-        params: {
-          attacker: { x: attacker.x, y: attacker.y },
-          target: { x: targetToken.x, y: targetToken.y },
-          weaponType,
-          isCritical
-        }
-      });
-    }
+    // Snapshot presentation choices, but never animate or broadcast a damage preview.
+    const attackerId = this.currentActor?.id || store.state.selectedTokenId;
+    const preparedWeapon = this.currentActor && this.preparedWeapon ? tokenInventory(this.currentActor).weapons.find(w => w.id === this.preparedWeapon.id) : null;
+    const impactKind = weaponImpactType(preparedWeapon || [this.currentActor?.name, formula].join(' '), this.container.querySelector('#dmg_impact_type').value);
+    const damageMapId = targetToken?.mapId;
 
     // Apply button
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
@@ -601,6 +591,7 @@ export class DiceRollerSidebar {
       if(store.sessionRole==='player'||store.state.userRole!=='keeper'){notify('The Keeper applies incoming damage.','error');return;}
       const currentTarget=store.state.tokens.find(t=>t.id===targetId);
       if (currentTarget) {
+        if (currentTarget.mapId !== damageMapId || currentTarget.mapId !== store.state.activeMapId) { notify('La escena o el objetivo ha cambiado. Calcula de nuevo el daño.', 'error'); return; }
         applied=true;applyBtn.disabled=true;applyBtn.textContent='DAMAGE APPLIED';
         const targetToken=currentTarget;
         // Preserve the original dice; use current armor and thresholds when the hit lands.
@@ -624,31 +615,25 @@ export class DiceRollerSidebar {
           }
         });
 
-        // Trigger impact explosion FX with size directly proportional to damage produced!
-        const finalHp = currentDamage.finalHpDamage || 0;
-        const rawDmg = dmgResult.rawDamage || 0;
-        const fxIntensity = Math.max(0.6, Math.min(3.5, 0.6 + (finalHp * 0.35) + (rawDmg * 0.08)));
-
-        if (window.veilCanvas) {
-          window.veilCanvas.triggerFX('explosion', {
-            x: targetToken.x,
-            y: targetToken.y,
-            intensity: fxIntensity
-          });
+        const attacker = store.state.tokens.find(t => t.id === attackerId && t.mapId === damageMapId);
+        const params = attackPresentation({ attacker: attacker || targetToken, target: targetToken,
+          mapId: damageMapId, kind: impactKind, hpLost: targetToken.hp.current - newHp,
+          armorSlotSpent: currentDamage.armorSlotSpent, isDirect, isCritical,
+          gridSize: store.getActiveMap().gridSize || 64 });
+        if (params) {
+          params.targetId = targetToken.id; params.attackerId = attacker?.id;
+          // An unseen attacker must not disclose its location through a projectile trail.
+          if (attacker?.hidden) params.attacker = { ...params.target };
+          window.veilCanvas?.triggerAttackFX(params);
+          if (!secret && !targetToken.hidden) network.broadcast({ type: 'ATTACK_FX', params });
         }
-
-        network.broadcast({
-          type: 'SPECIAL_FX',
-          fxType: 'explosion',
-          params: { x: targetToken.x, y: targetToken.y, intensity: fxIntensity }
-        });
 
         store.addLog({
           sender: 'Combat',
           ...(secret ? { visibility: 'keeper' } : {}),
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${targetToken.name}`,
-          details: `Suffered ${currentDamage.finalHpDamage} HP damage (${currentDamage.finalSeverity}). Current HP: ${newHp}/${targetToken.hp.max}.`
+          details: `Lost ${targetToken.hp.current - newHp} HP (${currentDamage.finalHpDamage} before remaining-HP cap) (${currentDamage.finalSeverity}). Current HP: ${newHp}/${targetToken.hp.max}.`
         });
       }
     };

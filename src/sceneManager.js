@@ -6,6 +6,7 @@ import { sanitizeHTML, escapeHTML as e, confirmAction, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { store } from './state.js';
+import { openEnvironment } from './environmentUI.js';
 import { network } from './networkManager.js';
 
 export class SceneManager {
@@ -96,13 +97,7 @@ export class SceneManager {
                             <span>Muros: ${map.walls?.length || 0}</span>
                             <span>Luces: ${map.lights?.length || 0}</span>
                           </div>
-                          ${isKeeper && arcs.length > 1 ? `
-                            <div style="margin-top: 3px;">
-                              <select class="hud-select hud-select-xs move-scene-arc-select" data-map-id="${map.id}" data-current-arc="${arc.id}" style="font-size: 9px; padding: 1px 4px; height: auto;">
-                                ${arcs.map(a => `<option value="${a.id}" ${a.id === arc.id ? 'selected' : ''}>Arco: ${e(a.name.slice(0, 20))}</option>`).join('')}
-                              </select>
-                            </div>
-                          ` : ''}
+                          ${isKeeper ? `<div class="scene-destinations"><label>Arco<vf-select class="hud-select move-scene-arc-select" data-map-id="${map.id}" aria-label="Destino de ${e(map.name)}"><option value="">Sin arco</option>${arcs.map(a => `<option value="${a.id}" ${a.id === arc.id ? 'selected' : ''}>${e(a.name)}</option>`).join('')}</vf-select></label><button class="hud-btn hud-btn-xs scene-environment-btn" data-map-id="${map.id}">Macro / microentorno</button></div>` : ''}
                         </div>
                         <div class="scene-card-actions" style="display: flex; flex-direction: column; gap: 3px; align-items: flex-end;">
                           <div style="display: flex; gap: 2px;">
@@ -152,7 +147,7 @@ export class SceneManager {
                   <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: rgba(15,23,42,0.6); border-radius: 4px;">
                     <span style="font-size: 11px; color: #fff;">${e(m.name)}</span>
                     <div style="display: flex; gap: 4px; align-items: center;">
-                      ${arcs[0] ? `<button class="hud-btn hud-btn-xs move-scene-arc-btn" data-map-id="${m.id}" data-target-arc="${arcs[0].id}">Mover al Arco 1</button>` : ''}
+                      ${isKeeper ? `<vf-select class="hud-select move-scene-arc-select" data-map-id="${m.id}" aria-label="Destino de ${e(m.name)}"><option value="" selected>Sin arco</option>${arcs.map(a => `<option value="${a.id}">${e(a.name)}</option>`).join('')}</vf-select><button class="hud-btn hud-btn-xs scene-environment-btn" data-map-id="${m.id}">Entorno</button>${m.id !== state.activeMapId ? `<button class="hud-btn hud-btn-xs switch-scene-btn" data-id="${m.id}">ENGAGE</button>` : '<span>ACTIVA</span>'}` : ''}
                       <button class="hud-btn hud-btn-xs hud-btn-danger delete-scene-btn" data-id="${m.id}" data-name="${e(m.name)}">🗑️</button>
                     </div>
                   </div>
@@ -170,19 +165,8 @@ export class SceneManager {
               <span style="font-size: 10px; color: #94a3b8;">[${e(activeMap.name)}]</span>
             </div>
 
-            <!-- Environmental Presets (1-Click) -->
-            <div style="margin-top: 10px;">
-              <label style="font-size: 10px; color: #38bdf8; font-family: var(--font-mono, monospace); display: block; margin-bottom: 4px;">
-                PREAJUSTES DE ENTORNO (SISTEMA VEILFARERS):
-              </label>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                <button class="hud-btn hud-btn-xs env-preset-btn" data-preset="derelict" style="font-size: 10px; text-align: left;">🚀 Derrelicto Espacial</button>
-                <button class="hud-btn hud-btn-xs env-preset-btn" data-preset="storm" style="font-size: 10px; text-align: left;">⛈️ Tormenta Planetaria</button>
-                <button class="hud-btn hud-btn-xs env-preset-btn" data-preset="fog" style="font-size: 10px; text-align: left;">🌫️ Bruma Tensa</button>
-                <button class="hud-btn hud-btn-xs env-preset-btn" data-preset="abyssal" style="font-size: 10px; text-align: left;">🌊 Brecha Abisal</button>
-                <button class="hud-btn hud-btn-xs env-preset-btn" data-preset="highsec" style="font-size: 10px; text-align: left; grid-column: span 2;">💡 Instalación Alta Seguridad</button>
-              </div>
-            </div>
+            <div class="scene-rule-summary"><span class="dossier-eyebrow">REGLA DE DOS CAPAS · KEEPER, CAP. 9–10</span><p>${e(activeMap.environment?.microName || 'Microentorno sin definir')}</p><small>${e(activeMap.environment?.macroName || 'Sin modificador macro')}</small><button class="hud-btn hud-btn-primary scene-environment-btn" data-map-id="${activeMap.id}">Definir entorno / activar con Fear</button></div>
+            <p class="dossier-muted">Ajustes visuales del mapa</p>
 
             <div class="form-group" style="margin-top: 12px;">
               <label>Luz Ambiental (Nivel de oscuridad: ${(100 - ((activeMap.ambientLight ?? 0.25) * 100)).toFixed(0)}%)</label>
@@ -295,7 +279,7 @@ export class SceneManager {
           const mapId = sel.dataset.mapId;
           const targetArcId = sel.value;
           store.moveSceneToArc(mapId, targetArcId);
-          notify('Escena movida al arco seleccionado.');
+          notify(targetArcId ? 'Escena movida al arco seleccionado.' : 'Escena fuera de los arcos.');
         };
       });
 
@@ -352,11 +336,8 @@ export class SceneManager {
         };
       });
 
-      // Environmental Presets (1-Click)
-      this.container.querySelectorAll('.env-preset-btn').forEach(btn => {
-        btn.onclick = () => {
-          this.applyEnvironmentPreset(btn.dataset.preset);
-        };
+      this.container.querySelectorAll('.scene-environment-btn').forEach(btn => {
+        btn.onclick = () => openEnvironment(btn.dataset.mapId);
       });
 
       // Environmental Sliders & Controls
@@ -434,39 +415,6 @@ export class SceneManager {
           store.deleteWaterZone(btn.dataset.id);
         };
       });
-    }
-  }
-
-  applyEnvironmentPreset(preset) {
-    const activeMap = store.getActiveMap();
-    if (!activeMap) return;
-
-    switch (preset) {
-      case 'derelict':
-        store.updateActiveMap({ ambientLight: 0.18, showRain: false });
-        store.update({ fogOfWar: true, fogExploredOpacity: 0.50, showRain: false });
-        notify('🚀 Ajuste aplicado: Derrelicto Espacial (Oscuridad profunda, Niebla de guerra al 50%).');
-        break;
-      case 'storm':
-        store.updateActiveMap({ ambientLight: 0.35, showRain: true });
-        store.update({ showRain: true, rainSpeed: 1.5, rainDirection: -0.3, rainIntensity: 'storm' });
-        notify('⛈️ Ajuste aplicado: Tormenta Planetaria (Lluvia torrencial y rayos ambientales).');
-        break;
-      case 'fog':
-        store.updateActiveMap({ ambientLight: 0.28, showRain: true });
-        store.update({ fogOfWar: true, fogExploredOpacity: 0.35, showRain: true, rainIntensity: 'fog' });
-        notify('🌫️ Ajuste aplicado: Bruma Tensa (Bruma climática y niebla de combate atenuada).');
-        break;
-      case 'abyssal':
-        store.updateActiveMap({ ambientLight: 0.12, showRain: false });
-        store.update({ fogOfWar: true, fogExploredOpacity: 0.40 });
-        notify('🌊 Ajuste aplicado: Brecha Abisal (Oscuridad oceánica profunda y atenuación).');
-        break;
-      case 'highsec':
-        store.updateActiveMap({ ambientLight: 0.88, showRain: false });
-        store.update({ showRain: false, fogOfWar: false });
-        notify('💡 Ajuste aplicado: Instalación Alta Seguridad (Iluminación máxima, visibilidad total).');
-        break;
     }
   }
 

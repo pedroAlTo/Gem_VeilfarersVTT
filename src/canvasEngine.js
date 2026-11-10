@@ -159,7 +159,7 @@ export class CanvasEngine {
     this.cancelWaterDrawing();
     if (this.currentCampaignId !== campaignId) {
       this.templates = []; this.pings = []; this.activeTemplate = null;
-      this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear();
+      this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear(); this.fx.combat.clear();
       for (const name of ['draggedToken', 'draggedWall', 'draggedLight', 'draggedEffect', 'draggedWater', 'draggedTemplate', 'preDragSnapshot']) this[name] = null;
     }
     this.currentCampaignId = campaignId;
@@ -2458,37 +2458,19 @@ export class CanvasEngine {
   }
 
   triggerAttackFX(params = {}) {
-    const { attacker, target, weaponType, isCritical } = params;
-    if (!attacker || !target) return;
-    const x1 = attacker.x;
-    const y1 = attacker.y;
-    const x2 = target.x;
-    const y2 = target.y;
-
-    let fxType = 'laser';
-    const typeStr = (weaponType || '').toLowerCase();
-    if (typeStr.includes('plasma') || typeStr.includes('ion') || typeStr.includes('blaster') || typeStr.includes('termico')) {
-      fxType = 'plasma';
-    } else if (typeStr.includes('arc') || typeStr.includes('rayo') || typeStr.includes('shock') || typeStr.includes('electr') || typeStr.includes('lightning') || typeStr.includes('volt')) {
-      fxType = 'lightning';
-    } else if (typeStr.includes('bala') || typeStr.includes('bullet') || typeStr.includes('kinetic') || typeStr.includes('cinet') || typeStr.includes('rifle') || typeStr.includes('shotgun') || typeStr.includes('pistol')) {
-      fxType = 'ballistic';
-    } else if (typeStr.includes('saber') || typeStr.includes('sword') || typeStr.includes('espada') || typeStr.includes('blade') || typeStr.includes('melee') || typeStr.includes('cuerpo') || typeStr.includes('filo') || typeStr.includes('daga')) {
-      fxType = 'melee';
-    } else if (typeStr.includes('void') || typeStr.includes('vacio') || typeStr.includes('gravity') || typeStr.includes('grav') || typeStr.includes('entrop')) {
-      fxType = 'void_beam';
-    } else if (typeStr.includes('laser') || typeStr.includes('haz') || typeStr.includes('beam')) {
-      fxType = 'laser';
+    const map = store.getActiveMap();
+    if (params.mapId && params.mapId !== map?.id) return false;
+    if (store.state.userRole !== 'keeper') {
+      if (params.targetId) {
+        const target = store.state.tokens.find(t => t.id === params.targetId);
+        if (!target || target.hidden || !this.isTokenVisibleToPlayers(target, store.getTokensForActiveMap(), map)) return false;
+      } else if (!params.target || !this.isTokenVisibleToPlayers({ ...params.target, size: 1 }, store.getTokensForActiveMap(), map)) return false;
     }
-
-    this.fx.trigger(fxType, {
-      x: x1,
-      y: y1,
-      targetX: x2,
-      targetY: y2,
-      isCritical,
-      color: isCritical ? '#f59e0b' : undefined
-    });
+    if (store.state.userRole !== 'keeper' && params.attackerId) {
+      const attacker = store.state.tokens.find(t => t.id === params.attackerId);
+      if (!attacker || attacker.hidden || !this.isTokenVisibleToPlayers(attacker, store.getTokensForActiveMap(), map)) params = { ...params, attacker: { ...params.target } };
+    }
+    return this.fx.combat.add(params);
   }
 
   startLoop() {
@@ -3422,7 +3404,8 @@ export class CanvasEngine {
       }
 
       // Avatar & Defeated / Dead Token representation (HP <= 0)
-      const isDead = typeof tok.hp?.current === 'number' && tok.hp.current <= 0;
+      const bossPending = tok.boss ? !tok.boss.defeated && (tok.boss.index < tok.boss.states.length - 1 || tok.boss.states[tok.boss.index].defeat === 'objective') : tok.bossStatus?.pending;
+      const isDead = tok.boss?.defeated || tok.bossStatus?.defeated || (typeof tok.hp?.current === 'number' && tok.hp.current <= 0 && !bossPending);
 
       ctx.save();
       ctx.beginPath();
@@ -3552,6 +3535,15 @@ export class CanvasEngine {
       // Vitals & Nameplate
       this.renderTokenVitals(ctx, tok, radius);
       drawTokenConditions(ctx, tok, radius, this.zoom);
+      const bossStatus = tok.boss ? { index: tok.boss.index, total: tok.boss.states.length } : tok.bossStatus;
+      if (bossStatus) {
+        ctx.save(); ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+        const phaseText = `FASE ${bossStatus.index + 1}/${bossStatus.total}${tok.hp.current === 0 && bossPending ? ' · TRANSICIÓN' : ''}`;
+        const width = ctx.measureText(phaseText).width + 12;
+        ctx.fillStyle = '#201525'; ctx.fillRect(-width / 2, -radius - 36, width, 17);
+        ctx.fillStyle = '#efb9d8'; ctx.fillText(phaseText, 0, -radius - 24); ctx.restore();
+      }
+
 
       // Directional Vision & Smaller Directional Arrow Handle on Selected Token
       if (isSelected) {

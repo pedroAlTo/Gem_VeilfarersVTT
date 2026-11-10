@@ -19,3 +19,5 @@ section:nth-child(3):before{background:#5eead4}
 canvas{display:block;width:100%;height:400px}
 footer {display:flex;justify-content:space-between;gap:16px;padding:25px 0;font-size:8px;line-height:1.6}
 @media(max-width:800px){body{padding:18px}header{align-items:flex-start}h1{font-size:22px}main{grid-template-columns:1fr}canvas{height:300px}button{padding:10px}footer{flex-direction:column}}
+
+.lab-controls {display:flex;flex-wrap:wrap;gap:8px;align-items:center}.lab-controls label{display:flex;gap:8px;align-items:center;font-size:11px;color:#b2cbd6}.lab-controls input{accent-color:#83dbe3}.lab-controls button{padding:9px 12px}.combat-lab{grid-column:1/-1}.combat-lab canvas{height:310px}nav{flex-wrap:wrap}@media(min-width:1100px){.combat-lab{grid-column:span 2}}

@@ -1,3 +1,4 @@
+import { CombatFX, drawFireArea } from './combatFX.js';
 import { drawBlackHole } from './surfaceFX.js';
 // src/fxEngine.js
 // High-Performance AAA Tactical FX & Particle Simulation Engine for VeilVTT
@@ -7,6 +8,7 @@ import { drawBlackHole } from './surfaceFX.js';
 
 export class FXEngine {
   constructor() {
+    this.combat = new CombatFX();
     this.particles = [];
     this.lightningBolts = [];
     this.shockwaves = [];
@@ -100,115 +102,8 @@ export class FXEngine {
 
   // --- 1. RESTORED HIGH-YIELD AAA PLASMA EXPLOSION ---
   createExplosion(x, y, params = {}) {
-    const intensity = params.intensity || 1.0;
-
-    // Phase 1: Dual Compression Shockwaves (Fast primary blast + deep compression wavefront)
-    if (this.shockwaves.length < this.maxShockwaves) {
-      this.shockwaves.push({
-        x,
-        y,
-        radius: 12,
-        maxRadius: 230 * intensity,
-        speed: 520 * intensity,
-        lineWidth: 7,
-        color: '#ffffff',
-        edgeColor: '#ff8800',
-        alpha: 1.0,
-        decay: 2.2
-      });
-      this.shockwaves.push({
-        x,
-        y,
-        radius: 8,
-        maxRadius: 180 * intensity,
-        speed: 320 * intensity,
-        lineWidth: 12,
-        color: 'rgba(255, 140, 0, 0.85)',
-        edgeColor: '#ff2200',
-        alpha: 0.9,
-        decay: 1.8
-      });
-    }
-
-    // Central blinding core flash
-    this.particles.push({
-      type: 'flash',
-      x,
-      y,
-      radius: 65 * intensity,
-      color: '#ffffff',
-      alpha: 1.0,
-      life: 1.0,
-      decay: 0.08
-    });
-
-    // Phase 2: Volumetric Fireball Plasma Puffs (Rich multi-layer expansion)
-    const puffCount = Math.min(32, Math.round(28 * intensity));
-    for (let i = 0; i < puffCount; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const spd = 40 + Math.random() * 240 * intensity;
-      const size = 18 + Math.random() * 28 * intensity;
-      this.particles.push({
-        type: 'fireball',
-        x: x + Math.cos(ang) * (Math.random() * 14),
-        y: y + Math.sin(ang) * (Math.random() * 14),
-        vx: Math.cos(ang) * spd,
-        vy: Math.sin(ang) * spd,
-        drag: 0.91,
-        size,
-        maxSize: size * 2.4,
-        growth: 28,
-        rotation: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 3,
-        life: 1.0,
-        decay: 0.018 + Math.random() * 0.018
-      });
-    }
-
-    // Phase 3: Spark Shrapnel with fast trails
-    const sparkCount = Math.min(36, Math.round(32 * intensity));
-    for (let i = 0; i < sparkCount; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const spd = 120 + Math.random() * 420 * intensity;
-      this.particles.push({
-        type: 'spark',
-        x,
-        y,
-        prevX: x,
-        prevY: y,
-        vx: Math.cos(ang) * spd,
-        vy: Math.sin(ang) * spd,
-        drag: 0.93,
-        gravity: 45,
-        size: 2.2 + Math.random() * 2.8,
-        color: Math.random() > 0.35 ? '#fff5a6' : '#ff8800',
-        life: 1.0,
-        decay: 0.02 + Math.random() * 0.02
-      });
-    }
-
-    // Phase 4: Lingering Smoke Plumes
-    const smokeCount = Math.min(10, Math.round(8 * intensity));
-    for (let i = 0; i < smokeCount; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const spd = 15 + Math.random() * 55;
-      this.particles.push({
-        type: 'smoke',
-        x: x + Math.cos(ang) * 16,
-        y: y + Math.sin(ang) * 16,
-        vx: Math.cos(ang) * spd,
-        vy: Math.sin(ang) * spd - 15,
-        drag: 0.95,
-        size: 24 + Math.random() * 20,
-        maxSize: 65,
-        growth: 18,
-        rotation: 0,
-        rotSpeed: 0,
-        alpha: 0.45,
-        life: 1.0,
-        decay: 0.008 + Math.random() * 0.008
-      });
-    }
+    this.combat.add({ attacker: { x, y }, target: { x, y }, kind: 'explosion', hpLost: params.hpLost ?? 2,
+      tokenDiameter: params.tokenDiameter ?? (96 * Math.max(.5, Math.min(2, params.intensity || 1))) });
   }
 
   // --- 2. OPTIMIZED FRACTAL ARC DISCHARGE (LIGHTNING) ---
@@ -989,101 +884,8 @@ export class FXEngine {
           }
         }
       }
-      // 4. FIRE (Animated flames & embers around circle/polygon perimeter or straight-line plasma stream A to B)
-      else if (eff.type === 'fire') {
-        if (timer >= 0.10 * rate) {
-          timer = 0;
-          if (this.particles.length < this.maxParticles) {
-            if (eff.shape === 'line') {
-              const x1 = eff.x;
-              const y1 = eff.y;
-              const x2 = eff.x2 ?? (eff.x + 160);
-              const y2 = eff.y2 ?? eff.y;
-              const dx = x2 - x1;
-              const dy = y2 - y1;
-              const dist = Math.hypot(dx, dy) || 1;
-              const ux = dx / dist;
-              const uy = dy / dist;
-              const nx = -uy;
-              const ny = ux;
-              const t = Math.random() * 0.3; // Spawn near Point A
-              const jetSpeed = (150 + Math.random() * 180) * (eff.intensity || 1.0);
-              const spread = (Math.random() - 0.5) * 32;
-
-              this.particles.push({
-                type: 'fireball',
-                effectId: eff.id,
-                x: x1 + t * dx + nx * (Math.random() - 0.5) * 10,
-                y: y1 + t * dy + ny * (Math.random() - 0.5) * 10,
-                vx: ux * jetSpeed + nx * spread,
-                vy: uy * jetSpeed + ny * spread,
-                drag: 0.95,
-                size: 8 * (eff.intensity || 1.0),
-                maxSize: 22 * (eff.intensity || 1.0),
-                growth: 16,
-                rotation: 0,
-                rotSpeed: 0,
-                life: 1.0,
-                decay: 0.035
-              });
-
-              // High velocity stream ember towards B
-              this.particles.push({
-                type: 'spark',
-                effectId: eff.id,
-                x: x1 + t * dx,
-                y: y1 + t * dy,
-                prevX: x1 + t * dx,
-                prevY: y1 + t * dy,
-                vx: ux * (jetSpeed * 1.3) + nx * spread * 0.6,
-                vy: uy * (jetSpeed * 1.3) + ny * spread * 0.6,
-                drag: 0.96,
-                size: 2.2,
-                color: Math.random() > 0.4 ? '#f59e0b' : '#ef4444',
-                life: 1.0,
-                decay: 0.025
-              });
-            } else {
-              const pt = this.getRandomPointOnPerimeter(eff);
-              this.particles.push({
-                type: 'fireball',
-                effectId: eff.id,
-                x: pt.x + (Math.random() - 0.5) * 10,
-                y: pt.y + (Math.random() - 0.5) * 10,
-                vx: (Math.random() - 0.5) * 22,
-                vy: -28 - Math.random() * 38,
-                drag: 0.94,
-                size: 12 * (eff.intensity || 1.0),
-                maxSize: 24 * (eff.intensity || 1.0),
-                growth: 14,
-                rotation: 0,
-                rotSpeed: 0,
-                life: 1.0,
-                decay: 0.038
-              });
-
-              // Rising hot ember
-              if (Math.random() < 0.5) {
-                this.particles.push({
-                  type: 'spark',
-                  effectId: eff.id,
-                  x: pt.x,
-                  y: pt.y,
-                  prevX: pt.x,
-                  prevY: pt.y,
-                  vx: (Math.random() - 0.5) * 35,
-                  vy: -40 - Math.random() * 50,
-                  drag: 0.95,
-                  size: 2.0,
-                  color: Math.random() > 0.4 ? '#f59e0b' : '#ef4444',
-                  life: 1.0,
-                  decay: 0.028
-                });
-              }
-            }
-          }
-        }
-      }
+      // Fire is rendered as a clipped continuous field, not perimeter particle blobs.
+      else if (eff.type === 'fire') { timer = 0; }
       // 5. LIGHTNING / ARC STORM (Straight-Line Arc Storm A to B, Electrified polygon nodes, Circle center-to-rim)
       else if (eff.type === 'lightning') {
         const isLine = eff.shape === 'line' || eff.lightningMode === 'line';
@@ -1336,6 +1138,10 @@ export class FXEngine {
   // --- HARDWARE-ACCELERATED MAIN UPDATE & RENDER LOOP ---
   // Zero software shadowBlur inside loops; uses GPU-native additive blend
   updateAndRender(ctx, dt, mapEffects = [], viewport = null) {
+    const combatOptions = { quality: this.quality, reducedMotion: !!this.reducedMotion?.matches, viewport };
+    this.combat.render(ctx, dt, combatOptions);
+    for (const effect of mapEffects) if (effect.type === 'fire') drawFireArea(ctx, effect, this.combat.time, combatOptions);
+
     // 0. Update persistent map effect emitters (always run to purge deleted effects)
     this.updateEmitters(mapEffects || [], dt);
 

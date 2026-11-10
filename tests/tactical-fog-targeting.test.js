@@ -163,11 +163,12 @@ test('fx engine: triggers weapon attack FX and scalable explosion', () => {
   assert.ok(fx.particles.length > 0, 'Weapon triggers should generate particles');
 
   // Test scalable explosion
-  const initialShockwaves = fx.shockwaves.length;
-  fx.trigger('explosion', { x: 100, y: 100, intensity: 2.5 });
-  assert.ok(fx.shockwaves.length > initialShockwaves, 'Explosion should generate shockwaves');
-  const latestWave = fx.shockwaves[fx.shockwaves.length - 1];
-  assert.ok(latestWave.maxRadius >= 180 * 2.0, 'Shockwave maxRadius should scale with intensity');
+  fx.trigger('explosion', { x: 100, y: 100, hpLost: 3, tokenDiameter: 64 });
+  const burst = fx.combat.bursts.at(-1);
+  assert.equal(burst.kind, 'explosion');
+  assert.equal(burst.scale, 1.2, '3 HP gives 120% of the target token diameter');
+  assert.equal(burst.diameter, 64, 'World-space token size is retained');
+
 });
 
 test('token reserve system: send to reserve, deploy to scene and delete permanently', () => {

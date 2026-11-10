@@ -211,10 +211,15 @@ export class NetworkManager {
       chatMessages: chatHistoryFor(s.chatMessages, memberId),
       memberId, connectedPeers: this.store.state.connectedPeers || [],
       maps: [map],
+      arcs: (s.arcs || []).filter(a => a.sceneIds?.includes(map.id)).map(a => ({ id: a.id, name: a.name, description: '', sceneIds: [map.id], tokenIds: [], images: [] })),
       tokens: s.tokens
         .filter((t) => t.mapId === s.activeMapId && !t.hidden)
         .map((t) => {
           const copy = structuredClone(t);
+          if (copy.boss) {
+            copy.bossStatus = { index: copy.boss.index, total: copy.boss.states.length, name: copy.boss.states[copy.boss.index].name, defeated: !!copy.boss.defeated, pending: !copy.boss.defeated && (copy.boss.index < copy.boss.states.length - 1 || copy.boss.states[copy.boss.index].defeat === 'objective') };
+            delete copy.boss;
+          }
           if (!controlsToken(copy, memberId) && !copy.isPlayer && (copy.hideName || copy.actorType === 'adversary')) {
             copy.name = 'Unknown contact';
             copy.roleTag = 'Unidentified';

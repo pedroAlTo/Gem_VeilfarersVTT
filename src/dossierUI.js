@@ -60,7 +60,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
       <div data-panel="equipment" hidden></div>
       ${imported ? `<div data-panel="source" hidden><p class="dossier-muted">Original íntegro para consulta, incluidos campos de otras sendas. Exportar al creador conserva esos campos y actualiza los valores editables de esta ficha.</p><pre class="dossier-json">${e(JSON.stringify(token.sourceCharacter.document, null, 2))}</pre></div>` : ''}
       <p class="dossier-error" role="alert"></p>
-      <footer class="dossier-footer"><button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
+      <footer class="dossier-footer">${!pc ? '<button type="button" class="hud-btn" id="dossier_boss">Boss · estados</button>' : ''}<button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
     </form>
   `);
   modal.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => {
@@ -77,6 +77,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
   const observer = new MutationObserver(() => { if (!modal.isConnected) { unsubscribeConditions(); observer.disconnect(); } }); observer.observe(document.body, { childList: true });
   modal.querySelector('#dossier_controls').onclick = async () => { const { openTokenControl } = await import('./sessionLobby.js'); openTokenControl(token.id); };
   modal.querySelector('#dossier_token').onclick = () => { modal.remove(); openSettings(store.state.tokens.find(t => t.id === token.id) || token); };
+  if (!pc) { const bossButton = modal.querySelector('#dossier_boss'); bossButton.disabled = store.sessionRole === 'player' || store.state.userRole !== 'keeper'; bossButton.onclick = async () => { modal.remove(); const { openBossEditor } = await import('./bossUI.js'); openBossEditor(token.id); }; }
   const playerView = store.sessionRole === 'player' || store.state.userRole === 'player';
   const readPlayerPatch = () => {
     const current = store.state.tokens.find(t => t.id === token.id);
