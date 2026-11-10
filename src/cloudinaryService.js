@@ -36,6 +36,63 @@ export function saveCloudinaryConfig(cloudName, preset) {
   }
 }
 
+export async function compressImageForUpload(file, maxBytes = 9.8 * 1024 * 1024) {
+  if (!file || typeof window === 'undefined' || typeof document === 'undefined') return file;
+  if (file.size <= maxBytes) return file;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      const MAX_DIM = 6000;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width >= height) {
+          height = Math.round((height * MAX_DIM) / width);
+          width = MAX_DIM;
+        } else {
+          width = Math.round((width * MAX_DIM) / height);
+          height = MAX_DIM;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const tryExport = (quality) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            if (blob.size > maxBytes && quality > 0.6) {
+              tryExport(quality - 0.12);
+              return;
+            }
+            const cleanName = (file.name || 'map').replace(/\.[^/.]+$/, '') + '.webp';
+            const compressed = new File([blob], cleanName, { type: 'image/webp' });
+            resolve(compressed);
+          },
+          'image/webp',
+          quality
+        );
+      };
+
+      tryExport(0.88);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
 export async function uploadToCloudinary(file, onProgress = () => {}, options = {}) {
   const { cloudName, preset, isConfigured } = getCloudinaryConfig();
   if (!isConfigured) {
@@ -44,11 +101,15 @@ export async function uploadToCloudinary(file, onProgress = () => {}, options = 
 
   const prefix = options.prefix || '';
   let uploadFile = file;
-  if (prefix && file && typeof File !== 'undefined' && file instanceof File) {
-    const rawName = (file.name || 'asset').replace(/\.[^/.]+$/, '');
-    const ext = (file.name || '').split('.').pop() || 'png';
+  if (file && file.size > 9.5 * 1024 * 1024) {
+    onProgress(1);
+    uploadFile = await compressImageForUpload(file);
+  }
+  if (prefix && uploadFile && typeof File !== 'undefined' && uploadFile instanceof File) {
+    const rawName = (uploadFile.name || 'asset').replace(/\.[^/.]+$/, '');
+    const ext = (uploadFile.name || '').split('.').pop() || 'png';
     const cleanPrefixed = rawName.startsWith(prefix) ? rawName : `${prefix}${rawName}`;
-    uploadFile = new File([file], `${cleanPrefixed}.${ext}`, { type: file.type });
+    uploadFile = new File([uploadFile], `${cleanPrefixed}.${ext}`, { type: uploadFile.type });
   }
 
   const formData = new FormData();

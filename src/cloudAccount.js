@@ -228,9 +228,23 @@ export class CloudAccount {
       } catch { return []; }
     }
     const uid = await this.identity(), epoch = this.epoch, d = this.dbAPI;
-    const result = await d.getDocsFromServer(d.collection(this.db, 'users', uid, kind));
-    if (epoch !== this.epoch) throw new Error('Account changed. Reopen your library.');
-    return result.docs.map(doc => ({ ...doc.data(), id: doc.id })).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    try {
+      const result = await d.getDocsFromServer(d.collection(this.db, 'users', uid, kind));
+      if (epoch !== this.epoch) throw new Error('Account changed. Reopen your library.');
+      const items = result.docs.map(doc => ({ ...doc.data(), id: doc.id })).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      try { localStorage.setItem(`veil_${kind}_${uid}`, JSON.stringify(items)); } catch {}
+      return items;
+    } catch (err) {
+      const isPerm = err?.code === 'permission-denied' || String(err?.message || '').toLowerCase().includes('permission');
+      if (isPerm) {
+        console.warn(`Firestore permission denied for ${kind}; falling back to local account storage.`);
+        try {
+          const stored = localStorage.getItem(`veil_${kind}_${uid}`);
+          return stored ? JSON.parse(stored) : [];
+        } catch { return []; }
+      }
+      throw err;
+    }
   }
   async saveCharacter(token) {
     const uid = await this.identity();
@@ -248,9 +262,23 @@ export class CloudAccount {
       return id;
     }
 
-    const d = this.dbAPI;
-    await d.setDoc(d.doc(this.db, 'users', uid, 'characters', id), entry);
-    return id;
+    try {
+      const d = this.dbAPI;
+      await d.setDoc(d.doc(this.db, 'users', uid, 'characters', id), entry);
+      return id;
+    } catch (err) {
+      const isPerm = err?.code === 'permission-denied' || String(err?.message || '').toLowerCase().includes('permission');
+      if (isPerm) {
+        console.warn('Firestore permission denied; saving character locally in account cache.');
+        try {
+          const list = (await this.list('characters')).filter(c => c.id !== id);
+          list.unshift(entry);
+          localStorage.setItem(`veil_characters_${uid}`, JSON.stringify(list));
+        } catch {}
+        return id;
+      }
+      throw err;
+    }
   }
   async removeCharacter(id) {
     const uid = await this.identity();
@@ -261,7 +289,74 @@ export class CloudAccount {
       } catch {}
       return;
     }
-    await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'characters', id));
+    try {
+      await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'characters', id));
+    } catch (err) {
+      const isPerm = err?.code === 'permission-denied' || String(err?.message || '').toLowerCase().includes('permission');
+      if (isPerm) {
+        try {
+          const list = (await this.list('characters')).filter(c => c.id !== id);
+          localStorage.setItem(`veil_characters_${uid}`, JSON.stringify(list));
+        } catch {}
+        return;
+      }
+      throw err;
+    }
+  }
+  async saveScene(scene) {
+    const uid = await this.identity();
+    const id = scene.id || newId();
+    const entry = {
+      id,
+      name: (scene.name || 'Escena táctica').slice(0, 200),
+      gridSize: Number(scene.gridSize) || 70,
+      ambientLight: Number(scene.ambientLight) ?? 0.25,
+      width: Number(scene.width) || 1920,
+      height: Number(scene.height) || 1080,
+      imageUrl: scene.imageUrl || '',
+      updatedAt: Date.now()
+    };
+
+    if (this.user?.isNetlify) {
+      try {
+        const list = (await this.list('scenes')).filter(s => s.id !== id);
+        list.unshift(entry);
+        localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
+      } catch {}
+      return id;
+    }
+
+    try {
+      const d = this.dbAPI;
+      await d.setDoc(d.doc(this.db, 'users', uid, 'scenes', id), entry);
+    } catch (err) {
+      console.warn('Firestore permission error in saveScene; caching locally in account storage:', err);
+      try {
+        const list = (await this.list('scenes')).filter(s => s.id !== id);
+        list.unshift(entry);
+        localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
+      } catch {}
+    }
+    return id;
+  }
+  async removeScene(id) {
+    const uid = await this.identity();
+    if (this.user?.isNetlify) {
+      try {
+        const list = (await this.list('scenes')).filter(s => s.id !== id);
+        localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
+      } catch {}
+      return;
+    }
+    try {
+      await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'scenes', id));
+    } catch (err) {
+      console.warn('Firestore removeScene fallback to local storage:', err);
+      try {
+        const list = (await this.list('scenes')).filter(s => s.id !== id);
+        localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
+      } catch {}
+    }
   }
   decodeCharacter(row) { return portableCharacter(parseCharacterJSON(row.payload).token); }
   async savePreferences(values) {

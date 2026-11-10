@@ -31,8 +31,14 @@ export function openSceneCreator({ arcId } = {}) {
         ${cConfig.isConfigured ? `Conectado al cloud [${e(cConfig.cloudName)}]. Optimización WebP/AVIF (f_auto, q_auto) en CDN global para todos los jugadores.` : 'Sin Cloudinary, la imagen se almacena en la campaña local o pegando una URL web.'}
       </small>
     </div>
-    <div class="session-options"><label><input id="scene_cloud" type="checkbox" ${storageConfigured ? 'checked' : ''} ${!storageConfigured ? 'disabled' : ''}> Save uploaded image and scene to my account</label><button type="button" class="hud-btn" id="scene_account">${account.user ? 'Account connected' : 'Sign in for server uploads'}</button></div>
-    <p class="dossier-muted">${storageConfigured ? 'Server uploads use Firebase Storage. Without this option, the image is stored only in this local campaign. A web URL stays on its original server.' : 'Firebase Storage es opcional. Sin él, la imagen se guarda directamente en tu campaña local o pegando una URL web.'}</p>
+    <div class="session-options" style="margin: 8px 0;">
+      <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+        <input id="scene_save_account" type="checkbox" ${account.user ? 'checked' : ''} ${!account.user ? 'disabled' : ''}>
+        <span>💾 Guardar escena en mi biblioteca de cuenta ${account.user ? `[${e(account.user.displayName || 'Conectado')}]` : ''}</span>
+      </label>
+      ${!account.user ? '<button type="button" class="hud-btn hud-btn-xs" id="scene_account" style="margin-left: 8px;">Conectar cuenta</button>' : ''}
+    </div>
+    <p class="dossier-muted">Las imágenes se optimizan y sirven desde Cloudinary. Al guardar en tu cuenta, podrás reutilizar la escena en cualquier campaña.</p>
     <img id="scene_preview" class="scene-upload-preview" alt="Map preview" hidden>
     <div class="form-row"><label class="dossier-field">Grid size (px)<input class="hud-input" id="scene_grid" type="number" value="70" min="24" max="250" required></label><label class="dossier-field">Ambient light<vf-select class="hud-select" id="scene_light"><option value="0.25">Dim · 25%</option><option value="0.5">Emergency · 50%</option><option value="0.8">Bright · 80%</option></vf-select></label></div>
     <p id="scene_progress" role="status"></p><p class="dossier-error" role="alert"></p><div class="session-actions"><button type="submit" class="hud-btn hud-btn-primary">Create and enter scene</button><button type="button" class="hud-btn" id="scene_cancel_upload" hidden>Cancel upload</button></div></form>
@@ -43,14 +49,32 @@ export function openSceneCreator({ arcId } = {}) {
   const observer = new MutationObserver(() => { if (!modal.isConnected) { if (previewURL) URL.revokeObjectURL(previewURL); observer.disconnect(); } });
   observer.observe(document.body, { childList: true });
   fileInput.onchange = () => { if (previewURL) URL.revokeObjectURL(previewURL); const file = fileInput.files[0]; const img = modal.querySelector('#scene_preview'); img.hidden = !file; if (file) { previewURL = URL.createObjectURL(file); img.src = previewURL; } };
-  modal.querySelector('#scene_account').onclick = () => openAccount();
+  modal.querySelector('#scene_account')?.addEventListener('click', () => openAccount());
   const refresh = async () => {
     const list = modal.querySelector('#cloud_scenes');
     try {
       const rows = await account.list('scenes');
       if (!modal.isConnected) return;
-      list.innerHTML = sanitizeHTML(rows.length ? rows.map((s, i) => `<article class="crew-row"><div><strong>${e(s.name)}</strong><small>${s.width} × ${s.height} · server image</small></div><button class="hud-btn" data-scene="${i}">Add to game</button></article>`).join('') : 'No saved scenes yet.');
+      list.innerHTML = sanitizeHTML(rows.length ? rows.map((s, i) => `
+        <article class="crew-row" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong>${e(s.name)}</strong>
+            <small style="display:block; color:#94a3b8;">${s.width || 1920} × ${s.height || 1080} · cuadrícula ${s.gridSize || 70}px</small>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="hud-btn hud-btn-xs" data-scene="${i}">Añadir al juego</button>
+            <button class="hud-btn hud-btn-xs hud-btn-danger" data-delete-scene="${i}" title="Eliminar de mi cuenta">✕</button>
+          </div>
+        </article>
+      `).join('') : '<p class="dossier-muted">No tienes escenas guardadas todavía.</p>');
       list.querySelectorAll('[data-scene]').forEach(b => b.onclick = () => { store.addMap(rows[Number(b.dataset.scene)]); modal.remove(); });
+      list.querySelectorAll('[data-delete-scene]').forEach(b => b.onclick = async () => {
+        const item = rows[Number(b.dataset.deleteScene)];
+        if (await confirmAction(`¿Eliminar la escena "${item.name}" de tu cuenta?`)) {
+          await account.removeScene(item.id);
+          await refresh();
+        }
+      });
     } catch (err) { list.textContent = err.message; }
   };
   modal.querySelector('#scene_refresh').onclick = refresh;
@@ -61,7 +85,8 @@ export function openSceneCreator({ arcId } = {}) {
     const controls = [...modal.querySelectorAll('input, button, vf-select')]; controls.forEach(c => c.disabled = true);
     const cancel = modal.querySelector('#scene_cancel_upload');
     try {
-      const file = fileInput.files[0], cloud = modal.querySelector('#scene_cloud').checked;
+      const file = fileInput.files[0];
+      const saveToAccount = !!modal.querySelector('#scene_save_account')?.checked;
       const isCloudinary = !!modal.querySelector('#scene_cloudinary')?.checked;
       const maxBytes = isCloudinary ? 100 * 1024 * 1024 : 50 * 1024 * 1024;
       const maxMB = Math.round(maxBytes / (1024 * 1024));
@@ -78,7 +103,7 @@ export function openSceneCreator({ arcId } = {}) {
       status.textContent = 'Checking image…';
       const dimensions = await imageDimensions(src);
       const scene = { name: modal.querySelector('#scene_name').value.trim(), gridSize: Number(modal.querySelector('#scene_grid').value), ambientLight: Number(modal.querySelector('#scene_light').value), ...dimensions };
-      if (file && modal.querySelector('#scene_cloudinary')?.checked) {
+      if (file && isCloudinary) {
         status.textContent = 'Subiendo y optimizando mapa en Cloudinary...';
         const res = await uploadToCloudinary(file, n => {
           status.textContent = `Subiendo a Cloudinary · ${n}%`;
@@ -86,12 +111,15 @@ export function openSceneCreator({ arcId } = {}) {
         scene.imageUrl = res.url;
         scene.width = res.width || scene.width;
         scene.height = res.height || scene.height;
-      } else if (file && cloud) {
-        cancel.hidden = false; cancel.disabled = false;
-        Object.assign(scene, await account.uploadScene(file, scene, n => { status.textContent = `Uploading image to server · ${n}%`; }));
-      } else {
-        if (file) src = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+      } else if (file) {
+        src = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
         scene.imageUrl = src;
+      } else {
+        scene.imageUrl = src;
+      }
+      if (saveToAccount && account.user) {
+        status.textContent = 'Guardando escena en tu biblioteca...';
+        await account.saveScene(scene);
       }
       if (arcId) scene.arcId = arcId;
       if (!store.addMap(scene)) throw new Error('Cannot create a scene while joining a game.');

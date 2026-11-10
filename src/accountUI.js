@@ -107,6 +107,7 @@ export function openAccount() {
     const isUnauthorizedDomain = err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain');
     const isPopupClosed = err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup-closed-by-user');
     const isOpNotAllowed = err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed');
+    const isPermissionDenied = err.code === 'permission-denied' || String(err.message || '').toLowerCase().includes('permissions') || String(err.message || '').toLowerCase().includes('permission');
     const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'tu-dominio.netlify.app';
 
     if (isUnauthorizedDomain) {
@@ -117,7 +118,7 @@ export function openAccount() {
             <strong style="color: #f87171; font-size: 13px;">Dominio no autorizado en Firebase Authentication</strong>
           </div>
           <p style="margin: 0 0 8px; font-size: 12px; color: #cbd5e1; line-height: 1.4;">
-            Google bloquea las conexiones desde este dominio porque aún no está en la lista de dominios autorizados de tu proyecto Firebase.
+            Google y Firebase bloquean las conexiones desde este dominio porque aún no está en la lista de dominios autorizados de tu proyecto Firebase.
           </p>
           <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 6px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
             <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: bold;">Dominio actual:</span>
@@ -151,6 +152,25 @@ export function openAccount() {
         modal.remove();
         openAccount();
       }));
+      return;
+    }
+
+    if (isPermissionDenied) {
+      error.innerHTML = sanitizeHTML(`
+        <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 12px; margin-top: 10px; text-align: left;">
+          <strong style="color: #fbbf24; font-size: 13px;">⚠️ Reglas de Firestore restringidas en Firebase</strong>
+          <p style="margin: 6px 0 8px; font-size: 12px; color: #cbd5e1; line-height: 1.4;">
+            Firebase Firestore ha devuelto "Missing or insufficient permissions". Tus personajes y parámetros se están guardando localmente de forma segura en este navegador. Para sincronizarlos entre distintos dispositivos, despliega las reglas de seguridad de Firestore.
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="https://console.firebase.google.com/project/veilfarers-vtt/firestore/rules" target="_blank" rel="noopener noreferrer" class="hud-btn hud-btn-primary hud-btn-xs" style="text-decoration: none;">
+              🔗 Editar Reglas de Firestore
+            </a>
+            <button type="button" class="hud-btn hud-btn-secondary hud-btn-xs" id="btn_dismiss_perm_warn">Entendido</button>
+          </div>
+        </div>
+      `);
+      modal.querySelector('#btn_dismiss_perm_warn')?.addEventListener('click', () => { error.innerHTML = ''; });
       return;
     }
 

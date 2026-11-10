@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 const channel = 'veil:lan';
 const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(value);
-const validKey = value => typeof value === 'string' && /^[a-zA-Z0-9-]{20,100}$/.test(value);
+const validKey = value => typeof value === 'string' && /^[a-zA-Z0-9-]{5,100}$/.test(value);
 
 // Use the LAN launcher's existing WebSocket. All replies are unicast to the
 // recipient's socket. The Keeper still validates HELLOs, ownership and moves.

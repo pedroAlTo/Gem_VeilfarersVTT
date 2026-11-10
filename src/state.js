@@ -338,6 +338,51 @@ class StateStore {
   }
   getControlledTokens() { return this.getTokensForActiveMap().filter(token => this.canEditToken(token.id)); }
 
+  setTokenSpotlight(tokenId, active = true) {
+    const target = this.state.tokens.find(t => t.id === tokenId);
+    if (!target) return false;
+    if (!this.remoteApplying && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
+
+    if (active) {
+      const isAdversary = target.actorType === 'adversary' || !target.isPlayer;
+      if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
+        if ((this.state.fear ?? 0) < 1) {
+          notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
+          return false;
+        }
+        this.spendFear(1, `Foco en adversario: ${target.name}`);
+      }
+    }
+
+    if (this.sessionRole === 'player' && !this.remoteApplying) {
+      return this.updateToken(tokenId, { hasSpotlight: Boolean(active) });
+    }
+
+    this._beforeTacticalMutation(active ? `Activar foco en ${target.name}` : `Desactivar foco en ${target.name}`);
+    const spotConfig = target.spotlight || { radius: 140, color: '#fbbf24', intensity: 0.85 };
+    const tokens = this.state.tokens.map(t => {
+      if (t.id === tokenId) {
+        return {
+          ...t,
+          hasSpotlight: Boolean(active),
+          spotlight: { ...(t.spotlight || spotConfig), enabled: Boolean(active) }
+        };
+      }
+      // El foco sólo lo puede tener un token a la vez: al activarse en uno, se apaga en los demás
+      if (active && (t.hasSpotlight || t.spotlight?.enabled)) {
+        return {
+          ...t,
+          hasSpotlight: false,
+          spotlight: { ...(t.spotlight || {}), enabled: false }
+        };
+      }
+      return t;
+    });
+
+    this.update({ tokens });
+    return true;
+  }
+
   updateToken(tokenId, partial) {
     if (!this.remoteApplying && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
     if (this.sessionRole === 'player' && !this.remoteApplying) {
@@ -345,9 +390,13 @@ class StateStore {
       return false;
     }
     this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
+    const turningOnSpotlight = Boolean(partial.hasSpotlight || partial.spotlight?.enabled);
     const tokens = this.state.tokens.map(t => {
       if (t.id === tokenId) {
         return { ...t, ...partial };
+      }
+      if (turningOnSpotlight && (t.hasSpotlight || t.spotlight?.enabled)) {
+        return { ...t, hasSpotlight: false, spotlight: { ...(t.spotlight || {}), enabled: false } };
       }
       return t;
     });

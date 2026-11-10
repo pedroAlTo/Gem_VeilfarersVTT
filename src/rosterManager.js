@@ -52,9 +52,9 @@ export class RosterManager {
                     </span>
                   </div>
                   <div class="roster-stats-row">
-                    <span>HP: ${tok.hp.current}/${tok.hp.max}</span>
+                    <span>HP: ${tok.hp?.current ?? 0}/${tok.hp?.max ?? 0}</span>
                     <span>ARMOR: ${tok.armor?.current || 0}</span>
-                    <span>${escapeHTML(tok.isPlayer ? tok.path : 'EVASION ' + (tok.evasion ?? '—'))}</span>
+                    <span>${escapeHTML(tok.isPlayer ? (tok.path || '') : 'EVASION ' + (tok.evasion ?? '—'))}</span>
                   </div>
                 </div>
                 <div class="roster-card-actions">

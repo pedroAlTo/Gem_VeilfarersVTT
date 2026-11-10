@@ -329,17 +329,10 @@ export class TokenHUD {
         const curTok = store.state.tokens.find(t => t.id === token.id);
         if (!curTok || !store.canEditToken(curTok.id)) return;
         const newSpotlight = !curTok.hasSpotlight;
-        const spotConfig = curTok.spotlight || { radius: 140, color: '#fbbf24', intensity: 0.85 };
-        store.updateToken(curTok.id, {
-          hasSpotlight: newSpotlight,
-          ...(store.sessionRole === 'player' ? {} : { spotlight: { ...spotConfig, enabled: newSpotlight } })
-        });
-        if (store.sessionRole !== 'player') network.broadcast?.({
-          type: 'TOKEN_UPDATE',
-          tokenId: curTok.id,
-          partial: { hasSpotlight: newSpotlight, spotlight: { ...spotConfig, enabled: newSpotlight } }
-        });
-        notify(newSpotlight ? '✨ Borde dorado brillante activado con pulso.' : '✨ Foco desactivado.');
+        const ok = store.setTokenSpotlight(curTok.id, newSpotlight);
+        if (ok) {
+          notify(newSpotlight ? '✨ Borde dorado brillante activado con pulso.' : '✨ Foco desactivado.');
+        }
       };
     }
 
@@ -1124,6 +1117,16 @@ export class TokenHUD {
       };
 
       try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
+      if (updated.hasSpotlight && !token.hasSpotlight) {
+        const isAdversary = updated.actorType === 'adversary' || !updated.isPlayer;
+        if (isAdversary && (store.state.userRole === 'keeper' || store.sessionRole !== 'player')) {
+          if ((store.state.fear ?? 0) < 1) {
+            notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
+            return;
+          }
+          store.spendFear(1, `Foco en adversario: ${updated.name}`);
+        }
+      }
       store.updateToken(token.id, updated);
       if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
       modal.remove();

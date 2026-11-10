@@ -397,6 +397,160 @@ test('scene telemetry & image size limit: MAP_LOAD_STATUS updates keeper UI and 
   modal.remove();
 });
 
+test('viewport frustum culling: getViewportBounds accurately maps screen viewport to world coordinates', async () => {
+  const { CanvasEngine } = await import('../src/canvasEngine.js');
+  const canvasEl = document.createElement('canvas');
+  canvasEl.width = 1000;
+  canvasEl.height = 600;
+  const engine = new CanvasEngine(canvasEl);
+  engine.displayWidth = 1000;
+  engine.displayHeight = 600;
+  engine.panX = 100;
+  engine.panY = 50;
+  engine.zoom = 2;
+
+  const vp = engine.getViewportBounds(0);
+  assert.equal(vp.minX, -50);
+  assert.equal(vp.minY, -25);
+  assert.equal(vp.maxX, 450);
+  assert.equal(vp.maxY, 275);
+
+  const paddedVp = engine.getViewportBounds(10);
+  assert.equal(paddedVp.minX, -60);
+  assert.equal(paddedVp.minY, -35);
+  assert.equal(paddedVp.maxX, 460);
+  assert.equal(paddedVp.maxY, 285);
+});
+
+test('cloudinary image compression and account scene library: compressImageForUpload and saveScene', async () => {
+  const { compressImageForUpload } = await import('../src/cloudinaryService.js');
+  const { account } = await import('../src/cloudAccount.js');
+
+  // 1. Image under limit passes through untouched
+  const smallMockFile = { name: 'small_map.png', size: 1024, type: 'image/png' };
+  const result = await compressImageForUpload(smallMockFile);
+  assert.equal(result.name, 'small_map.png');
+
+  // 2. Account saveScene and removeScene
+  account.user = { uid: 'user_scene_test', isNetlify: true, displayName: 'Keeper Test' };
+  const sceneId = await account.saveScene({
+    name: 'Derelict Station Hangar',
+    gridSize: 70,
+    ambientLight: 0.5,
+    width: 3000,
+    height: 2000,
+    imageUrl: 'https://res.cloudinary.com/demo/image/upload/map.webp'
+  });
+
+  assert.ok(sceneId, 'Scene saved with ID');
+  const scenes = await account.list('scenes');
+  const found = scenes.find(s => s.name === 'Derelict Station Hangar');
+  assert.ok(found, 'Saved scene found in account library');
+  assert.equal(found.gridSize, 70);
+  assert.equal(found.imageUrl, 'https://res.cloudinary.com/demo/image/upload/map.webp');
+
+  await account.removeScene(sceneId);
+  const updatedScenes = await account.list('scenes');
+  assert.equal(updatedScenes.some(s => s.id === sceneId), false, 'Scene removed from account library');
+});
+
+test('spotlight exclusivity and adversary fear cost: only one token spotlighted, adversary costs 1 fear', async () => {
+  const { store } = await import('../src/state.js');
+  await store.ready;
+
+  const playerA = {
+    id: 'tok_pc_a',
+    name: 'PC Alpha',
+    actorType: 'player',
+    isPlayer: true,
+    hasSpotlight: false,
+    hp: { current: 10, max: 10 },
+    armor: { current: 2, max: 2 },
+    mapId: store.state.activeMapId || 'scene_default'
+  };
+  const playerB = {
+    id: 'tok_pc_b',
+    name: 'PC Beta',
+    actorType: 'player',
+    isPlayer: true,
+    hasSpotlight: false,
+    hp: { current: 10, max: 10 },
+    armor: { current: 2, max: 2 },
+    mapId: store.state.activeMapId || 'scene_default'
+  };
+  const adversary = {
+    id: 'tok_adv_c',
+    name: 'Alien Hunter',
+    actorType: 'adversary',
+    isPlayer: false,
+    hasSpotlight: false,
+    hp: { current: 12, max: 12 },
+    armor: { current: 0, max: 0 },
+    mapId: store.state.activeMapId || 'scene_default'
+  };
+
+  store.state.tokens = [playerA, playerB, adversary];
+  store.state.userRole = 'keeper';
+  store.sessionRole = 'host';
+  store.state.fear = 0;
+
+  // 1. Activate spotlight on PC Alpha
+  const ok1 = store.setTokenSpotlight('tok_pc_a', true);
+  assert.equal(ok1, true);
+  assert.equal(store.state.tokens.find(t => t.id === 'tok_pc_a').hasSpotlight, true);
+
+  // 2. Activate spotlight on PC Beta -> PC Alpha loses spotlight
+  const ok2 = store.setTokenSpotlight('tok_pc_b', true);
+  assert.equal(ok2, true);
+  assert.equal(store.state.tokens.find(t => t.id === 'tok_pc_a').hasSpotlight, false);
+  assert.equal(store.state.tokens.find(t => t.id === 'tok_pc_b').hasSpotlight, true);
+
+  // 3. Attempt to activate spotlight on Adversary with 0 Fear -> fails
+  const okAdvFail = store.setTokenSpotlight('tok_adv_c', true);
+  assert.equal(okAdvFail, false, 'Should fail without Fear');
+  assert.equal(store.state.tokens.find(t => t.id === 'tok_adv_c').hasSpotlight, false);
+  assert.equal(store.state.fear, 0);
+
+  // 4. Grant Fear to Keeper and activate spotlight on Adversary -> costs 1 Fear and succeeds
+  store.state.fear = 2;
+  const okAdvSuccess = store.setTokenSpotlight('tok_adv_c', true);
+  assert.equal(okAdvSuccess, true, 'Should succeed with Fear');
+  assert.equal(store.state.fear, 1, '1 Fear was spent');
+  assert.equal(store.state.tokens.find(t => t.id === 'tok_adv_c').hasSpotlight, true);
+  assert.equal(store.state.tokens.find(t => t.id === 'tok_pc_b').hasSpotlight, false, 'PC Beta lost spotlight');
+});
+
+test('simplified invitation code: 3-char prefix from campaign name + 5-char random suffix', async () => {
+  const { NetworkManager } = await import('../src/networkManager.js');
+  const { parseInvitation } = await import('../src/sessionLobby.js');
+  const { store } = await import('../src/state.js');
+  const { EventEmitter } = await import('node:events');
+
+  store.state.campaignName = 'USC Nostromo Outpost';
+  const nm = new NetworkManager({
+    stateStore: store,
+    peerFactory: (room) => {
+      const emitter = new EventEmitter();
+      emitter.destroy = () => {};
+      setTimeout(() => emitter.emit('open', room), 5);
+      return emitter;
+    }
+  });
+
+  const room = await nm.hostSession();
+  assert.match(room, /^USC-[A-Z0-9]{5}$/, 'Code has 3 chars of name + 5 random chars');
+  nm.disconnect();
+
+  // Test parseInvitation on short codes and URLs
+  assert.deepEqual(parseInvitation('USC-K89FA'), { room: 'USC-K89FA', invite: 'USC-K89FA' });
+  assert.deepEqual(parseInvitation('https://vfvtt.netlify.app/?join=USC-K89FA'), { room: 'USC-K89FA', invite: 'USC-K89FA' });
+
+  // Malformed or incomplete codes throw
+  assert.throws(() => parseInvitation('USC'), /Pega el código o enlace/);
+  assert.throws(() => parseInvitation('VEIL-ABC'), /Pega el código o enlace/);
+});
+
+
 
 
 

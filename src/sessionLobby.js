@@ -8,27 +8,45 @@ import { openAccount, useCharacter, initAccount } from './accountUI.js';
 import { isDrone } from './tokenPermissions.js';
 import { mountSessionNavigation } from './sessionNavigation.js';
 
-export function invitationCode() { return network.room && network.invite ? `${network.room}.${network.invite}` : ''; }
+export function invitationCode() { return network.room || ''; }
 export function magicInvitationLink() {
   const code = invitationCode();
   if (!code) return '';
   return `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(code)}`;
 }
 export function parseInvitation(value) {
-  let room, invite;
+  let room = '', invite = '';
+  const trimmed = String(value || '').trim();
+  const isShortCode = (str) => /^[a-zA-Z0-9]{3}-[a-zA-Z0-9]{5}$/i.test(str);
+
   try {
-    const url = new URL(value);
+    const url = new URL(trimmed);
     const joinParam = url.searchParams.get('join') || url.searchParams.get('room');
     if (joinParam && joinParam.includes('.')) {
       [room, invite] = joinParam.trim().split('.');
+    } else if (joinParam && isShortCode(joinParam.trim())) {
+      room = joinParam.trim().toUpperCase();
+      invite = room;
     } else {
-      room = joinParam;
-      invite = new URLSearchParams(url.hash.slice(1)).get('invite') || url.searchParams.get('invite');
+      room = (url.searchParams.get('room') || joinParam || '').trim();
+      invite = (new URLSearchParams(url.hash.slice(1)).get('invite') || url.searchParams.get('invite') || '').trim();
     }
   } catch {
-    [room, invite] = value.trim().split('.');
+    if (trimmed.includes('.')) {
+      [room, invite] = trimmed.split('.');
+    } else if (isShortCode(trimmed)) {
+      room = trimmed.toUpperCase();
+      invite = room;
+    }
   }
-  if (!room || !invite || !/^[a-zA-Z0-9_-]{1,100}$/.test(room) || !/^[a-zA-Z0-9-]{20,100}$/.test(invite)) throw new Error('Paste the complete invitation code or link from the Keeper.');
+
+  if (room && isShortCode(room) && (!invite || invite === room)) {
+    return { room, invite: room };
+  }
+
+  if (!room || !invite || !/^[a-zA-Z0-9_-]{1,100}$/.test(room) || !/^[a-zA-Z0-9-]{20,100}$/.test(invite)) {
+    throw new Error('Pega el código o enlace de invitación del Keeper.');
+  }
   return { room, invite };
 }
 export async function copyText(value, button) {
@@ -79,8 +97,9 @@ export function initSessionBar() {
         const peers = (s.connectedPeers || []).filter(p => p.id && p.id !== myMemberId);
         const activeMap = store.getActiveMap();
         const activeMapId = activeMap?.id;
+        const isKeeper = s.userRole === 'keeper' || s.isHosting;
         const myStatus = network.mapLoadStatuses?.get(myMemberId) || network.mapLoadStatuses?.get('local');
-        const selfReady = myStatus ? (myStatus.mapId === activeMapId && myStatus.loaded) : (window.veilCanvas?.isMapLoaded !== false);
+        const selfReady = myStatus ? (myStatus.mapId === activeMapId && (myStatus.loaded || myStatus.progress >= 100)) : (isKeeper || Boolean(window.veilCanvas?.isMapLoaded));
         
         let total = 1;
         let ready = selfReady ? 1 : 0;
@@ -92,8 +111,13 @@ export function initSessionBar() {
           const st = network.mapLoadStatuses?.get(peer.id) ||
                      (p ? network.mapLoadStatuses?.get(p.id) : null) ||
                      (peer.name ? network.mapLoadStatuses?.get(peer.name) : null) ||
-                     [...network.mapLoadStatuses.values()].find(x => (peer.name && x.name === peer.name) || x.peerId === peer.id || (p && x.peerId === p.id));
-          const isPeerReady = st ? (st.mapId === activeMapId && st.loaded) : (!s.isHosting);
+                     [...network.mapLoadStatuses.values()].find(x => 
+                       (x.peerId && (x.peerId === peer.id || (p && x.peerId === p.id))) ||
+                       (x.memberId && (x.memberId === peer.id || (p && x.memberId === p.id))) ||
+                       (peer.name && x.name === peer.name) ||
+                       (p?.name && x.name === p.name)
+                     );
+          const isPeerReady = Boolean(st && (st.loaded || st.progress >= 100));
           if (isPeerReady) {
             ready++;
           } else {
@@ -136,9 +160,13 @@ export function initSessionBar() {
           const st = network.mapLoadStatuses?.get(p.id) ||
                      (peer ? network.mapLoadStatuses?.get(peer.id) : null) ||
                      network.mapLoadStatuses?.get(p.name) ||
-                     [...network.mapLoadStatuses.values()].find(x => x.name === p.name || x.peerId === p.id || (peer && x.peerId === peer.id));
-          const isReady = st ? (st.mapId === activeMapId && st.loaded) : false;
-          const progress = isReady ? 100 : (st?.mapId === activeMapId ? st.progress : 0);
+                     [...network.mapLoadStatuses.values()].find(x => 
+                       (x.peerId && (x.peerId === p.id || (peer && x.peerId === peer.id))) ||
+                       (x.memberId && (x.memberId === p.id || (peer && x.memberId === peer.id))) ||
+                       (x.name && (x.name === p.name || (peer?.name && x.name === peer.name)))
+                     );
+          const isReady = Boolean(st && (st.loaded || st.progress >= 100));
+          const progress = isReady ? 100 : (st ? Math.min(99, Math.max(0, st.progress || 0)) : 0);
           const syncBadge = !isOnline ? '' : (isReady ?
             '<span style="color:#10b981; font-size:10px; margin-left:2px;" title="Escena descargada al 100%">✅</span>' :
             `<span style="color:#fbbf24; font-size:9px; margin-left:2px; background:rgba(245,158,11,0.2); padding:1px 3px; border-radius:3px;" title="Cargando escena: ${progress}%">⏳ ${progress}%</span>`
@@ -350,14 +378,14 @@ export function openMapSyncTelemetryModal() {
     const players = s.players || [];
     const activeMapId = activeMap.id;
 
+    const isKeeper = s.userRole === 'keeper' || s.isHosting;
     const myMemberId = store.memberId || store.peerId || 'local';
     const myStatus = network.mapLoadStatuses?.get(myMemberId) || network.mapLoadStatuses?.get('local');
-    const selfLoaded = myStatus ? (myStatus.mapId === activeMapId && myStatus.loaded) : (window.veilCanvas?.isMapLoaded !== false);
+    const selfLoaded = myStatus ? (myStatus.mapId === activeMapId && (myStatus.loaded || myStatus.progress >= 100)) : (isKeeper || Boolean(window.veilCanvas?.isMapLoaded));
     const selfProgress = selfLoaded ? 100 : (myStatus?.progress || 0);
-    const isKeeper = s.userRole === 'keeper';
 
     const keeperStatus = network.mapLoadStatuses?.get('keeper') || [...network.mapLoadStatuses.values()].find(x => x.role === 'keeper');
-    const isKeeperReady = keeperStatus ? (keeperStatus.mapId === activeMapId && keeperStatus.loaded) : true;
+    const isKeeperReady = keeperStatus ? (keeperStatus.mapId === activeMapId && (keeperStatus.loaded || keeperStatus.progress >= 100)) : true;
     const keeperRow = isKeeper ? null : {
       name: 'Director de Juego (Keeper)',
       role: 'KEEPER',
@@ -385,9 +413,14 @@ export function openMapSyncTelemetryModal() {
         const st = network.mapLoadStatuses?.get(peer.id) ||
                    (p ? network.mapLoadStatuses?.get(p.id) : null) ||
                    (peer.name ? network.mapLoadStatuses?.get(peer.name) : null) ||
-                   [...network.mapLoadStatuses.values()].find(x => (peer.name && x.name === peer.name) || x.peerId === peer.id || (p && x.peerId === p.id));
-        const isReady = st ? (st.mapId === activeMapId && st.loaded) : (!s.isHosting);
-        const progress = isReady ? 100 : (st?.mapId === activeMapId ? st.progress : 0);
+                   [...network.mapLoadStatuses.values()].find(x => 
+                     (x.peerId && (x.peerId === peer.id || (p && x.peerId === p.id))) ||
+                     (x.memberId && (x.memberId === peer.id || (p && x.memberId === p.id))) ||
+                     (peer.name && x.name === peer.name) ||
+                     (p?.name && x.name === p.name)
+                   );
+        const isReady = Boolean(st && (st.loaded || st.progress >= 100));
+        const progress = isReady ? 100 : (st ? Math.min(99, Math.max(0, st.progress || 0)) : 0);
         return {
           name: peer.name || p?.name || 'Operativo',
           role: 'OPERATIVO',

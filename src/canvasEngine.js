@@ -52,8 +52,9 @@ export class CanvasEngine {
 
     // Map Cache
     this.currentMapId = null;
-    this.mapImage = new Image();
+    this.mapImage = typeof Image !== 'undefined' ? new Image() : { width: 1000, height: 600, naturalWidth: 1000, naturalHeight: 600 };
     this.isMapLoaded = false;
+    this.currentMapProgress = 0;
     this.tokenImages = new Map();
 
     // Drag / Edit State
@@ -105,15 +106,19 @@ export class CanvasEngine {
   }
 
   resize() {
-    const parent = this.canvas.parentElement;
-    const dpr = window.devicePixelRatio || 1;
-    const w = parent.clientWidth;
-    const h = parent.clientHeight;
+    const parent = this.canvas?.parentElement;
+    const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    const w = parent ? parent.clientWidth : (this.canvas?.clientWidth || this.canvas?.width || 1000);
+    const h = parent ? parent.clientHeight : (this.canvas?.clientHeight || this.canvas?.height || 600);
 
-    this.canvas.width = w * dpr;
-    this.canvas.height = h * dpr;
-    this.canvas.style.width = w + 'px';
-    this.canvas.style.height = h + 'px';
+    if (this.canvas) {
+      this.canvas.width = w * dpr;
+      this.canvas.height = h * dpr;
+      if (this.canvas.style) {
+        this.canvas.style.width = w + 'px';
+        this.canvas.style.height = h + 'px';
+      }
+    }
 
     this.displayWidth = w;
     this.displayHeight = h;
@@ -295,6 +300,17 @@ export class CanvasEngine {
     return {
       x: wx * this.zoom + this.panX,
       y: wy * this.zoom + this.panY
+    };
+  }
+
+  getViewportBounds(pad = 0) {
+    const tl = this.screenToWorld(0, 0);
+    const br = this.screenToWorld(this.displayWidth, this.displayHeight);
+    return {
+      minX: Math.min(tl.x, br.x) - pad,
+      minY: Math.min(tl.y, br.y) - pad,
+      maxX: Math.max(tl.x, br.x) + pad,
+      maxY: Math.max(tl.y, br.y) + pad
     };
   }
 
@@ -2513,6 +2529,7 @@ export class CanvasEngine {
   }
 
   startLoop() {
+    if (typeof requestAnimationFrame === 'undefined') return;
     const loop = (now) => {
       this.render(now);
       this.animFrameId = requestAnimationFrame(loop);
@@ -2546,11 +2563,29 @@ export class CanvasEngine {
     ctx.translate(this.panX, this.panY);
     ctx.scale(this.zoom, this.zoom);
 
-    // 1. LAYER: MAP / TERRAIN
+    // 1. LAYER: MAP / TERRAIN (Optimizada con recorte de viewport / Frustum Culling)
     if (state.layerVisibility.map !== false) {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(this.mapImage, 0, 0);
+      const mapW = this.mapImage.naturalWidth || this.mapImage.width;
+      const mapH = this.mapImage.naturalHeight || this.mapImage.height;
+      if (mapW > 0 && mapH > 0) {
+        // Frustum culling: renderiza exclusivamente la región visible en pantalla
+        const vp = this.getViewportBounds(4);
+        const sx = Math.max(0, Math.floor(vp.minX));
+        const sy = Math.max(0, Math.floor(vp.minY));
+        const sRight = Math.min(mapW, Math.ceil(vp.maxX));
+        const sBottom = Math.min(mapH, Math.ceil(vp.maxY));
+        const sw = sRight - sx;
+        const sh = sBottom - sy;
+        if (sw > 0 && sh > 0) {
+          if (sx === 0 && sy === 0 && sw === mapW && sh === mapH) {
+            ctx.drawImage(this.mapImage, 0, 0);
+          } else {
+            ctx.drawImage(this.mapImage, sx, sy, sw, sh, sx, sy, sw, sh);
+          }
+        }
+      }
     }
 
     // 2. LAYER: WATER & HAZARDS
@@ -2883,13 +2918,24 @@ export class CanvasEngine {
     ctx.lineWidth = 1;
     ctx.beginPath();
 
-    for (let x = offX; x <= w; x += size) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
+    const vp = this.getViewportBounds(size);
+    const startX = Math.max(offX, Math.floor((Math.max(0, vp.minX) - offX) / size) * size + offX);
+    const endX = Math.min(w, Math.ceil((Math.min(w, vp.maxX) - offX) / size) * size + offX);
+    const startY = Math.max(offY, Math.floor((Math.max(0, vp.minY) - offY) / size) * size + offY);
+    const endY = Math.min(h, Math.ceil((Math.min(h, vp.maxY) - offY) / size) * size + offY);
+
+    const lineTop = Math.max(0, Math.floor(vp.minY));
+    const lineBottom = Math.min(h, Math.ceil(vp.maxY));
+    const lineLeft = Math.max(0, Math.floor(vp.minX));
+    const lineRight = Math.min(w, Math.ceil(vp.maxX));
+
+    for (let x = startX; x <= endX; x += size) {
+      ctx.moveTo(x, lineTop);
+      ctx.lineTo(x, lineBottom);
     }
-    for (let y = offY; y <= h; y += size) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+    for (let y = startY; y <= endY; y += size) {
+      ctx.moveTo(lineLeft, y);
+      ctx.lineTo(lineRight, y);
     }
     ctx.stroke();
 
@@ -4966,14 +5012,7 @@ export class CanvasEngine {
     }
 
     // 2. High-Performance Tactical FX Simulation with Map Effects & Frustum Culling
-    const tl = this.screenToWorld(0, 0);
-    const br = this.screenToWorld(this.canvas.width, this.canvas.height);
-    const viewport = {
-      minX: Math.min(tl.x, br.x) - 160,
-      minY: Math.min(tl.y, br.y) - 160,
-      maxX: Math.max(tl.x, br.x) + 160,
-      maxY: Math.max(tl.y, br.y) + 160
-    };
+    const viewport = this.getViewportBounds(160);
     this.fx.updateAndRender(ctx, dt, mapEffects, viewport);
   }
 }

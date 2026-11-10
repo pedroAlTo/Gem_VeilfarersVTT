@@ -50,8 +50,15 @@ export class NetworkManager {
     requireNetworkMode();
     await this.store.ready;
     this.disconnect();
-    this.room = customCode || `VEIL-${id().slice(0, 8).toUpperCase()}`;
-    this.invite = id();
+    if (customCode) {
+      this.room = customCode.toUpperCase();
+    } else {
+      const rawName = (this.store.state.campaignName || 'VTT').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      const prefix = (rawName.slice(0, 3) || 'VTT').padEnd(3, 'X');
+      const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+      this.room = `${prefix}-${randomPart}`;
+    }
+    this.invite = this.room;
     this.lastRevision = -1;
     this.peer = this.peerFactory(this.room, { debug: 0 });
     const peer = this.peer;
@@ -102,6 +109,7 @@ export class NetworkManager {
       userRole: 'player',
       gmVision: false,
       userName: playerName,
+      playerName: playerName,
       joiningSession: true,
       isHosting: false,
       isConnected: false,
@@ -152,7 +160,7 @@ export class NetworkManager {
     }, 10000);
     conn.on('data', (data) => {
       if (!this.members.has(conn.peer)) {
-        if (data?.type !== 'HELLO' || data.room !== this.room || data.invite !== this.invite) {
+        if (data?.type !== 'HELLO' || data.room !== this.room || (data.invite && data.invite !== this.invite && data.invite !== this.room)) {
           conn.close();
           return;
         }
@@ -172,6 +180,18 @@ export class NetworkManager {
         this.seats.set(resume, memberId);
         const name = String(data.playerName || 'Player').slice(0, 80);
         this.members.set(conn.peer, { id: memberId, name });
+        const activeMap = this.store.getActiveMap();
+        this.mapLoadStatuses.set(memberId, {
+          peerId: memberId,
+          memberId,
+          name,
+          role: 'player',
+          mapId: activeMap?.id || '',
+          progress: 0,
+          loaded: false,
+          text: 'Descargando escena...',
+          updatedAt: Date.now()
+        });
         this.store.update({ players: [...(this.store.state.players || []).filter(p => p.id !== memberId), { id: memberId, name }] });
         this.updatePeersList();
         this.syncPeer(conn);
@@ -445,16 +465,18 @@ export class NetworkManager {
   }
   broadcastMapLoadStatus({ mapId, progress, loaded, text }) {
     const memberId = this.store.memberId || this.store.peerId || 'local';
-    const name = this.store.state.userRole === 'keeper' ? 'Keeper' : (this.store.state.playerName || 'Operativo');
+    const name = this.store.state.userRole === 'keeper' ? 'Keeper' : (this.store.state.userName || this.store.state.playerName || 'Operativo');
+    const isReady = loaded ?? (progress >= 100);
     const status = {
       type: 'MAP_LOAD_STATUS',
       peerId: memberId,
+      memberId,
       name,
       role: this.store.state.userRole,
       mapId,
-      progress: Math.round(progress),
-      loaded: loaded ?? (progress >= 100),
-      text: text || `${Math.round(progress)}%`,
+      progress: isReady ? 100 : Math.round(progress),
+      loaded: Boolean(isReady),
+      text: text || (isReady ? 'Matriz cargada al 100%' : `${Math.round(progress)}%`),
       updatedAt: Date.now()
     };
     this.mapLoadStatuses.set(memberId, status);
@@ -733,9 +755,18 @@ export class NetworkManager {
             partial[k] = { ...token[k], current: partial[k].current };
           }
         if ('hasSpotlight' in partial) partial.spotlight = { ...token.spotlight, enabled: partial.hasSpotlight };
+        const turnOnSpotlight = Boolean(partial.hasSpotlight);
         // Membership was checked above. Keeper's local Player-preview selection is irrelevant.
         this.store._beforeTacticalMutation?.('Cambio de jugador', 'tok_' + token.id);
-        this.store.update({ tokens: this.store.state.tokens.map(t => t.id === token.id ? { ...t, ...partial } : t) });
+        this.store.update({
+          tokens: this.store.state.tokens.map(t => {
+            if (t.id === token.id) return { ...t, ...partial };
+            if (turnOnSpotlight && (t.hasSpotlight || t.spotlight?.enabled)) {
+              return { ...t, hasSpotlight: false, spotlight: { ...(t.spotlight || {}), enabled: false } };
+            }
+            return t;
+          })
+        });
       } catch (error) {
         conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', sequence: data.sequence, error: error.message }));
       } finally {
@@ -768,13 +799,15 @@ export class NetworkManager {
     }
     if (data.type === 'MAP_LOAD_STATUS') {
       const member = this.members.get(senderId);
-      const peerId = member?.id || data.peerId || senderId;
-      const status = { ...data, peerId };
+      const peerId = member?.id || data.memberId || data.peerId || senderId;
+      const statusName = member?.name || data.name;
+      const status = { ...data, peerId, name: statusName };
       this.mapLoadStatuses.set(peerId, status);
       if (member?.id) this.mapLoadStatuses.set(member.id, status);
       if (data.peerId) this.mapLoadStatuses.set(data.peerId, status);
+      if (data.memberId) this.mapLoadStatuses.set(data.memberId, status);
       if (senderId) this.mapLoadStatuses.set(senderId, status);
-      if (status.name) this.mapLoadStatuses.set(status.name, status);
+      if (statusName) this.mapLoadStatuses.set(statusName, status);
       this.ephemeral(status);
       this.broadcast(status);
     }
@@ -813,10 +846,6 @@ export class NetworkManager {
         }
       }
     }
-    if (data.type === 'MAP_LOAD_STATUS') {
-      this.mapLoadStatuses.set(data.peerId, data);
-      window.dispatchEvent(new CustomEvent('veil:map-load-status', { detail: data }));
-    }
   }
   disconnect(reason = new Error('Session closed. Check the invitation and try again.')) {
     this.closing = true;
@@ -824,7 +853,7 @@ export class NetworkManager {
     this.clearTokenPatches(); this.tokenPatchAcks.clear(); this.tokenPatchSequence = 0;
     const peer = this.peer;
     this.peer = null;
-    peer?.destroy();
+    peer?.destroy?.();
     this.hostConn = null;
     this.connections.clear();
     this.members.clear();

@@ -43,6 +43,15 @@ Persistencia del acceso, telemetría de escena y optimización compacta de panel
 - El Director de Juego (Keeper) puede asignar cualquier token a un observador desde el lobby o el panel de asignación; la transición es fluida e inmediata, centrando la vista en el token y activando sus controles tácticos.
 - Indicador interactivo en la barra superior «👁️ Observador», que permite al usuario seguir la partida en tiempo real y reclamar o importar un personaje si cambia de opinión.
 
+### Foco táctico exclusivo, códigos simplificados y renderizado optimizado
+
+- Regla canónica de foco exclusivo: solo un token puede tener el foco activado a la vez en todo el mapa táctico; al encenderlo en un token se apaga automáticamente en los demás.
+- Coste de activación de foco en adversarios: otorgar el foco a un adversario le cuesta 1 punto de Miedo (Fear) al Director de Juego (Keeper). Si el Keeper cuenta con 0 Fear, la activación se bloquea y emite un aviso explicativo.
+- Códigos de invitación ultracompactos: el código de sala pasa de ser una cadena de más de 40 caracteres a un formato conciso de 3 caracteres del nombre de campaña + guion + 5 caracteres alfanuméricos (ej. USC-K89FA).
+- Frustum culling en capa de mapa táctico: el motor gráfico calcula el viewport visible según zoom y traslación para rasterizar únicamente el rectángulo de escena que entra en pantalla, optimizando radicalmente el rendimiento en mapas de ultra-alta resolución (4K/8K).
+- Compresión adaptativa cliente para Cloudinary: las imágenes superiores a 9.5 MB se escalan y transcodifican fluidamente a WebP en el navegador, asegurando compatibilidad con el límite de 10 MB del nivel gratuito y admitiendo archivos de hasta 100 MB.
+- Biblioteca de escenas en cuenta: guardado persistente de escenas en la cuenta del usuario (account.saveScene) y recuperación con fallback seguro en localStorage si Firestore restringe permisos.
+
 ## [1.3.0] — 2026-11-10
 
 Catálogo de equipo alienígena, drones tácticos, mitigación con escudos, spotlight cenital y niebla autoritaria
