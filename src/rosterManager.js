@@ -1,6 +1,6 @@
 import { openCharacterImport } from './characterManager.js';
 import { dossierDialog } from './dossierUI.js';
-import { sanitizeHTML, escapeHTML, notify } from './ui.js';
+import { sanitizeHTML, escapeHTML, notify, confirmAction } from './ui.js';
 import { isDrone } from './tokenPermissions.js';
 // src/rosterManager.js
 // Operative Roster and NPC/Adversary Manager
@@ -22,6 +22,7 @@ export class RosterManager {
   render() {
     const state = store.getState();
     const tokens = store.getTokensForActiveMap();
+    const reserveTokens = store.getReserveTokens ? store.getReserveTokens() : state.tokens.filter(t => t.inReserve || t.mapId === 'reserve');
     const isKeeper = state.userRole === 'keeper';
 
     this.container.innerHTML = sanitizeHTML(`
@@ -59,12 +60,53 @@ export class RosterManager {
                     <button class="hud-btn hud-btn-xs toggle-hide-btn ${tok.hidden ? 'text-purple' : ''}" data-id="${tok.id}" title="${tok.hidden ? 'Make Visible' : 'Hide from Players'}">
                       ${tok.hidden ? '👁️‍🗨️' : '👁️'}
                     </button>
+                    <button class="hud-btn hud-btn-xs send-reserve-btn" data-id="${tok.id}" title="Mover a Reserva (Quitar del mapa)">📦</button>
                   ` : ''}
                 </div>
               </div>
             `;
           }).join('')}
         </div>
+
+        <!-- SECCIÓN BANCO DE RESERVA -->
+        <div class="sidebar-header-row" style="margin-top: 14px; border-top: 1px solid rgba(0, 243, 255, 0.2); padding-top: 10px;">
+          <span class="sidebar-title" style="color: #fbbf24;">BANCO DE RESERVA (${reserveTokens.length})</span>
+        </div>
+
+        ${reserveTokens.length === 0 ? `
+          <div style="font-size: 11px; color: #64748b; padding: 6px 4px; font-style: italic;">
+            No hay operativos en reserva. (Pulsa [Supr] o el botón 📦 para retirar tokens del mapa a la reserva).
+          </div>
+        ` : `
+          <div class="roster-tokens-list roster-reserve-list">
+            ${reserveTokens.map(tok => {
+              return `
+                <div class="roster-token-card glass-panel reserve-token-card" data-id="${tok.id}" style="border-color: rgba(245, 158, 11, 0.35); background: rgba(15, 23, 42, 0.7); cursor: pointer;" title="Haz clic para ver o editar su ficha">
+                  <img src="${tok.avatarUrl || '/assets/tokens/captain_harker.jpg'}" class="roster-token-avatar" style="border: 2px solid #f59e0b;" />
+                  <div class="roster-token-info">
+                    <div class="roster-name-row">
+                      <span class="roster-name" style="color: #fbbf24;">${escapeHTML(tok.name)}</span>
+                      <span class="roster-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);">
+                        RESERVA
+                      </span>
+                    </div>
+                    <div class="roster-stats-row">
+                      <span>HP: ${tok.hp?.current ?? '?'}/${tok.hp?.max ?? '?'}</span>
+                      <span>ARMOR: ${tok.armor?.current || 0}</span>
+                      <span>${escapeHTML(tok.isPlayer ? tok.path || 'PC' : tok.actorType || 'NPC')}</span>
+                    </div>
+                  </div>
+                  <div class="roster-card-actions" style="display: flex; gap: 4px; align-items: center;">
+                    <button class="hud-btn hud-btn-xs hud-btn-primary deploy-reserve-btn" data-id="${tok.id}" title="Desplegar Operativo en el mapa actual">🚀</button>
+                    ${isKeeper ? `
+                      <button class="hud-btn hud-btn-xs hud-btn-danger delete-reserve-btn" data-id="${tok.id}" title="Eliminar definitivamente de la campaña">🗑️</button>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
       </div>
     `);
 
@@ -80,11 +122,23 @@ export class RosterManager {
       catch (error) { notify(error.message, 'error'); }
     };
     // Select & focus token
-    this.container.querySelectorAll('.roster-token-card').forEach(card => {
+    this.container.querySelectorAll('.roster-tokens-list:not(.roster-reserve-list) .roster-token-card').forEach(card => {
       card.onclick = (e) => {
-        if (e.target.closest('.focus-token-btn') || e.target.closest('.toggle-hide-btn')) return;
+        if (e.target.closest('.focus-token-btn') || e.target.closest('.toggle-hide-btn') || e.target.closest('.send-reserve-btn')) return;
         const tokId = card.dataset.id;
         store.update({ selectedTokenId: tokId });
+      };
+    });
+
+    // Clicking reserve token card opens character sheet
+    this.container.querySelectorAll('.reserve-token-card').forEach(card => {
+      card.onclick = (e) => {
+        if (e.target.closest('.deploy-reserve-btn') || e.target.closest('.delete-reserve-btn')) return;
+        const tokId = card.dataset.id;
+        const tok = store.getState().tokens.find(t => t.id === tokId);
+        if (tok && window.veilTokenHUD) {
+          window.veilTokenHUD.openCharacterSheetModal(tok);
+        }
       };
     });
 
@@ -98,6 +152,57 @@ export class RosterManager {
           cv.panX = cv.displayWidth / 2 - tok.x * cv.zoom;
           cv.panY = cv.displayHeight / 2 - tok.y * cv.zoom;
           store.update({ selectedTokenId: tok.id });
+        }
+      };
+    });
+
+    // Send to reserve button in active list
+    this.container.querySelectorAll('.send-reserve-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const tokId = btn.dataset.id;
+        const tok = store.getState().tokens.find(t => t.id === tokId);
+        if (tok) {
+          store.sendTokenToReserve(tokId);
+          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: tokId, partial: { mapId: 'reserve', inReserve: true } });
+          network.syncAll?.();
+          notify(`📦 "${tok.name}" retirado a la Reserva.`);
+        }
+      };
+    });
+
+    // Deploy from reserve button
+    this.container.querySelectorAll('.deploy-reserve-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const tokId = btn.dataset.id;
+        const tok = store.getState().tokens.find(t => t.id === tokId);
+        if (tok) {
+          store.deployTokenFromReserve(tokId);
+          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: tokId, partial: { mapId: store.state.activeMapId, inReserve: false } });
+          network.syncAll?.();
+          const deployedTok = store.getState().tokens.find(t => t.id === tokId);
+          if (deployedTok && window.veilCanvas) {
+            const cv = window.veilCanvas;
+            cv.panX = cv.displayWidth / 2 - deployedTok.x * cv.zoom;
+            cv.panY = cv.displayHeight / 2 - deployedTok.y * cv.zoom;
+          }
+          notify(`🚀 "${tok.name}" desplegado en el mapa.`);
+        }
+      };
+    });
+
+    // Delete token in reserve permanently
+    this.container.querySelectorAll('.delete-reserve-btn').forEach(btn => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const tokId = btn.dataset.id;
+        const tok = store.getState().tokens.find(t => t.id === tokId);
+        if (tok && await confirmAction(`¿Eliminar definitivamente a "${tok.name}" de la campaña?`)) {
+          store.deleteToken(tokId);
+          network.broadcast?.({ type: 'TOKEN_DELETE', tokenId: tokId });
+          network.syncAll?.();
+          notify(`🗑️ "${tok.name}" eliminado definitivamente.`);
         }
       };
     });
@@ -207,7 +312,11 @@ export function openClaimCharacterModal() {
           store.assignTokenControllers(tokenId, [store.memberId || 'player']);
         }
         store.update({ selectedTokenId: tokenId, claimedTokenId: tokenId, activeTool: 'select', activeLayer: 'tokens' });
-        const targetToken = store.getState().tokens.find(t => t.id === tokenId);
+        let targetToken = store.getState().tokens.find(t => t.id === tokenId);
+        if (targetToken && (targetToken.mapId === 'reserve' || targetToken.inReserve)) {
+          store.deployTokenFromReserve(targetToken.id);
+          targetToken = store.getState().tokens.find(t => t.id === tokenId);
+        }
         if (targetToken && window.veilCanvas) {
           const cv = window.veilCanvas;
           cv.panX = cv.displayWidth / 2 - targetToken.x * cv.zoom;

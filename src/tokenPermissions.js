@@ -21,7 +21,7 @@ export function assignControls(tokens, tokenId, playerIds, knownPlayers) {
 export function movePartyToScene(tokens, map) {
   let slot = 0;
   return tokens.map(token => {
-    if (token.mapId === map.id || !isPartyToken(token)) return token;
+    if (token.mapId === map.id || !isPartyToken(token) || token.mapId === 'reserve' || token.inReserve) return token;
     const grid = map.gridSize || 70, margin = Math.max(grid, grid * (token.size || 1) / 2);
     const previous = token.scenePositions?.[map.id];
     const point = previous || { x: margin + (slot % 5) * grid * 2, y: margin + Math.floor(slot / 5) * grid * 2 };

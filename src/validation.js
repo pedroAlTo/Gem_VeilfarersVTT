@@ -79,7 +79,7 @@ export function validateCampaign(data) {
   }
   for (const t of data.tokens) {
     validateActor(t);
-    assert(data.maps.some(m => m.id === t.mapId), 'Token refers to an unknown map.');
+    assert(t.mapId === 'reserve' || t.inReserve || data.maps.some(m => m.id === t.mapId), 'Token refers to an unknown map.');
   }
   for (const c of data.clocks)
     assert(

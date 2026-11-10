@@ -99,6 +99,7 @@ export class TokenHUD {
             <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
             <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${store.canEditToken(token.id) ? '' : 'disabled'}>EQUIPO</button>
             <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>
+            ${isKeeper || store.canEditToken(token.id) ? `<button class="hud-btn hud-btn-xs" id="quick_reserve_btn" title="Retirar a Reserva (Ocultar del mapa sin borrar)">📦 RESERVA</button>` : ''}
             <button class="hud-btn hud-btn-xs hud-btn-primary" id="toggle_expand_btn" title="Expandir Panel Completo">▲ EXPANDIR</button>
           </div>
         </div>
@@ -120,6 +121,7 @@ export class TokenHUD {
           <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Open Full Character Sheet">SHEET</button>
           <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
           <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${store.canEditToken(token.id) ? '' : 'disabled'}>EQUIPO</button>
+          ${isKeeper || store.canEditToken(token.id) ? `<button class="hud-btn hud-btn-xs" id="quick_reserve_btn" title="Retirar a Reserva (Ocultar del mapa sin borrar)">📦 RESERVA</button>` : ''}
         </div>
 
         <div class="tok-qb-divider"></div>
@@ -313,6 +315,17 @@ export class TokenHUD {
     const sheetBtn = this.container.querySelector('#open_sheet_btn');
     if (sheetBtn) {
       sheetBtn.onclick = () => this.openCharacterSheetModal(token);
+    }
+
+    // Quick Reserve Button
+    const quickReserveBtn = this.container.querySelector('#quick_reserve_btn');
+    if (quickReserveBtn) {
+      quickReserveBtn.onclick = () => {
+        store.sendTokenToReserve(token.id);
+        network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { mapId: 'reserve', inReserve: true } });
+        network.syncAll?.();
+        notify(`📦 "${token.name}" retirado a la Reserva.`);
+      };
     }
 
     // HP Plus / Minus
@@ -718,11 +731,14 @@ export class TokenHUD {
             </div>
           </div>
 
-          <div class="modal-actions-row sheet-actions">
-            <button class="hud-btn hud-btn-danger" id="sheet_delete_btn">DELETE TOKEN</button>
+          <div class="modal-actions-row sheet-actions" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
             <div style="display: flex; gap: 8px;">
-              <button class="hud-btn hud-btn-secondary modal-cancel-btn">CANCEL</button>
-              <button class="hud-btn hud-btn-primary" id="sheet_save_btn">APPLY DOSSIER</button>
+              <button type="button" class="hud-btn" id="sheet_reserve_btn" style="background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fbbf24;" title="Retirar token del mapa y guardarlo en la reserva">📦 RETIRAR A RESERVA</button>
+              <button type="button" class="hud-btn hud-btn-danger" id="sheet_delete_btn" title="Eliminar token permanentemente de la campaña">ELIMINAR DEFINITIVAMENTE</button>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="hud-btn hud-btn-secondary modal-cancel-btn">CANCEL</button>
+              <button type="button" class="hud-btn hud-btn-primary" id="sheet_save_btn">APPLY DOSSIER</button>
             </div>
           </div>
         </div>
@@ -868,11 +884,25 @@ export class TokenHUD {
       avatarPreview.src = avatarUrlInput.value;
     };
 
+    // Reserve token
+    const sheetReserveBtn = modal.querySelector('#sheet_reserve_btn');
+    if (sheetReserveBtn) {
+      sheetReserveBtn.onclick = () => {
+        store.sendTokenToReserve(token.id);
+        network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: { mapId: 'reserve', inReserve: true } });
+        network.syncAll?.();
+        notify(`📦 [${token.name}] retirado a la Reserva.`);
+        modal.remove();
+      };
+    }
+
     // Delete token
     modal.querySelector('#sheet_delete_btn').onclick = async () => {
-      if (await confirmAction(`Confirm termination of token [${token.name}]?`)) {
+      if (await confirmAction(`¿Confirmar la eliminación definitiva del token [${token.name}]?`)) {
         store.deleteToken(token.id);
-        network.broadcast({ type: 'TOKEN_DELETE', tokenId: token.id });
+        network.broadcast?.({ type: 'TOKEN_DELETE', tokenId: token.id });
+        network.syncAll?.();
+        notify(`🗑️ Token [${token.name}] eliminado.`);
         modal.remove();
       }
     };

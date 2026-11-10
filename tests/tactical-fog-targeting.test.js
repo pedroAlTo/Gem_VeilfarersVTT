@@ -169,3 +169,55 @@ test('fx engine: triggers weapon attack FX and scalable explosion', () => {
   const latestWave = fx.shockwaves[fx.shockwaves.length - 1];
   assert.ok(latestWave.maxRadius >= 180 * 2.0, 'Shockwave maxRadius should scale with intensity');
 });
+
+test('token reserve system: send to reserve, deploy to scene and delete permanently', () => {
+  const activeMapId = store.getState().activeMapId;
+  const initialActiveCount = store.getTokensForActiveMap().length;
+  const initialReserveCount = store.getReserveTokens().length;
+
+  // 1. Add a new token
+  const testToken = store.addToken({
+    name: 'Operativo Alpha',
+    actorType: 'player',
+    isPlayer: true,
+    hp: { current: 10, max: 10, majorThreshold: 5, severeThreshold: 10 },
+    x: 200,
+    y: 200
+  });
+
+  assert.ok(testToken, 'Token should be created');
+  assert.equal(store.getTokensForActiveMap().length, initialActiveCount + 1);
+
+  // 2. Send token to reserve
+  store.update({ selectedTokenId: testToken.id });
+  assert.equal(store.getState().selectedTokenId, testToken.id);
+
+  const sent = store.sendTokenToReserve(testToken.id);
+  assert.equal(sent, true);
+  assert.equal(store.getState().selectedTokenId, null, 'Deselects when sent to reserve');
+  assert.equal(store.getTokensForActiveMap().length, initialActiveCount, 'Token not on active map');
+  assert.equal(store.getReserveTokens().length, initialReserveCount + 1, 'Token in reserve pool');
+
+  const reserveTok = store.getState().tokens.find(t => t.id === testToken.id);
+  assert.equal(reserveTok.mapId, 'reserve');
+  assert.equal(reserveTok.inReserve, true);
+  assert.equal(reserveTok.lastMapId, activeMapId);
+
+  // 3. Deploy token back from reserve
+  const deployed = store.deployTokenFromReserve(testToken.id, 750, 550);
+  assert.equal(deployed, true);
+  assert.equal(store.getState().selectedTokenId, testToken.id, 'Selected upon deployment');
+  assert.equal(store.getTokensForActiveMap().length, initialActiveCount + 1);
+  assert.equal(store.getReserveTokens().length, initialReserveCount);
+
+  const deployedTok = store.getState().tokens.find(t => t.id === testToken.id);
+  assert.equal(deployedTok.mapId, activeMapId);
+  assert.equal(deployedTok.inReserve, false);
+  assert.equal(deployedTok.x, 750);
+  assert.equal(deployedTok.y, 550);
+
+  // 4. Delete token permanently
+  store.deleteToken(testToken.id);
+  assert.equal(store.getState().tokens.some(t => t.id === testToken.id), false, 'Token permanently removed');
+  assert.equal(store.getTokensForActiveMap().length, initialActiveCount);
+});

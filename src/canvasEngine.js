@@ -14,7 +14,7 @@ import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
 import { pointInWater } from './waterGeometry.js';
-import { notify } from './ui.js';
+import { notify, confirmAction } from './ui.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -485,6 +485,31 @@ export class CanvasEngine {
           return;
         }
         const state = store.getState();
+        if (state.selectedTokenId && (state.userRole === 'keeper' || store.canEditToken(state.selectedTokenId))) {
+          const tok = state.tokens.find(t => t.id === state.selectedTokenId);
+          if (tok) {
+            e.preventDefault();
+            if (e.shiftKey) {
+              (async () => {
+                const ok = await confirmAction(`¿Eliminar definitivamente al token "${tok.name}" de la campaña?`);
+                if (ok) {
+                  store.deleteToken(tok.id);
+                  network.broadcast?.({ type: 'TOKEN_DELETE', tokenId: tok.id });
+                  network.syncAll?.();
+                  audio.playLaserShot();
+                  notify(`🗑️ Token "${tok.name}" eliminado definitivamente.`);
+                }
+              })();
+            } else {
+              store.sendTokenToReserve(tok.id);
+              network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: tok.id, partial: { mapId: 'reserve', inReserve: true } });
+              network.syncAll?.();
+              audio.playClockTick();
+              notify(`📦 "${tok.name}" retirado a la Reserva (Roster).`);
+            }
+            return;
+          }
+        }
         if (state.userRole === 'keeper') {
           if (state.selectedWallId) {
             store.deleteWall(state.selectedWallId);

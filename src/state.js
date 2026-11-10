@@ -189,10 +189,14 @@ class StateStore {
   getTokensForActiveMap() {
     const isPlayer = this.state.userRole === 'player';
     return this.state.tokens.filter(t => {
-      if (t.mapId !== this.state.activeMapId) return false;
+      if (t.inReserve || t.mapId === 'reserve' || t.mapId !== this.state.activeMapId) return false;
       if (isPlayer && t.hidden) return false;
       return true;
     });
+  }
+
+  getReserveTokens() {
+    return this.state.tokens.filter(t => t.inReserve || t.mapId === 'reserve');
   }
 
   getSelectedToken() {
@@ -378,6 +382,64 @@ class StateStore {
       tokens: this.state.tokens.filter(t => t.id !== tokenId),
       selectedTokenId: this.state.selectedTokenId === tokenId ? null : this.state.selectedTokenId
     });
+  }
+
+  sendTokenToReserve(tokenId) {
+    const token = this.state.tokens.find(t => t.id === tokenId);
+    if (!token) return false;
+    this._beforeTacticalMutation(`Retirar a reserva: ${token.name}`);
+    const lastMapId = token.mapId && token.mapId !== 'reserve' ? token.mapId : (token.lastMapId || this.state.activeMapId);
+    const tokens = this.state.tokens.map(t => {
+      if (t.id === tokenId) {
+        return { ...t, mapId: 'reserve', inReserve: true, lastMapId };
+      }
+      return t;
+    });
+    this.update({
+      tokens,
+      selectedTokenId: this.state.selectedTokenId === tokenId ? null : this.state.selectedTokenId
+    });
+    return true;
+  }
+
+  deployTokenFromReserve(tokenId, x = null, y = null) {
+    const token = this.state.tokens.find(t => t.id === tokenId);
+    if (!token) return false;
+    this._beforeTacticalMutation(`Desplegar desde reserva: ${token.name}`);
+
+    let targetX = x;
+    let targetY = y;
+    if (targetX === null || targetY === null) {
+      if (typeof window !== 'undefined' && window.veilCanvas) {
+        const cv = window.veilCanvas;
+        const center = cv.screenToWorld ? cv.screenToWorld(cv.displayWidth / 2, cv.displayHeight / 2) : { x: 600, y: 400 };
+        targetX = Math.round(center.x);
+        targetY = Math.round(center.y);
+      } else {
+        const map = this.getActiveMap();
+        targetX = map ? Math.round((map.width || 2000) / 2) : 600;
+        targetY = map ? Math.round((map.height || 2000) / 2) : 400;
+      }
+    }
+
+    const tokens = this.state.tokens.map(t => {
+      if (t.id === tokenId) {
+        return {
+          ...t,
+          mapId: this.state.activeMapId,
+          inReserve: false,
+          x: targetX,
+          y: targetY
+        };
+      }
+      return t;
+    });
+
+    this.update({
+      tokens,
+      selectedTokenId: tokenId
+    });
+    return true;
   }
 
   // --- Sleeping Character Mechanics ---
