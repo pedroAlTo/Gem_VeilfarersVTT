@@ -109,3 +109,4 @@ export async function uploadToCloudinary(file, onProgress = () => {}) {
     xhr.send(formData);
   });
 }
+
