@@ -36,7 +36,7 @@ export function saveCloudinaryConfig(cloudName, preset) {
   }
 }
 
-export async function compressImageForUpload(file, maxBytes = 9.8 * 1024 * 1024) {
+export async function compressImageForUpload(file, maxBytes = 9.5 * 1024 * 1024) {
   if (!file || typeof window === 'undefined' || typeof document === 'undefined') return file;
   if (file.size <= maxBytes) return file;
 
@@ -46,7 +46,7 @@ export async function compressImageForUpload(file, maxBytes = 9.8 * 1024 * 1024)
     img.onload = () => {
       URL.revokeObjectURL(url);
       let { width, height } = img;
-      const MAX_DIM = 6000;
+      const MAX_DIM = 4096;
       if (width > MAX_DIM || height > MAX_DIM) {
         if (width >= height) {
           height = Math.round((height * MAX_DIM) / width);
@@ -57,33 +57,48 @@ export async function compressImageForUpload(file, maxBytes = 9.8 * 1024 * 1024)
         }
       }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
+      const getBlob = (w, h, q) => new Promise(res => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(b => res(b), 'image/webp', q);
+        } catch { res(null); }
+      });
 
-      const tryExport = (quality) => {
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              resolve(file);
-              return;
-            }
-            if (blob.size > maxBytes && quality > 0.6) {
-              tryExport(quality - 0.12);
-              return;
-            }
+      (async () => {
+        let curW = width, curH = height, q = 0.86;
+        let blob = await getBlob(curW, curH, q);
+
+        while (blob && blob.size > maxBytes && q > 0.45) {
+          q -= 0.12;
+          blob = await getBlob(curW, curH, q);
+        }
+
+        while (blob && blob.size > maxBytes && curW > 1200) {
+          curW = Math.round(curW * 0.78);
+          curH = Math.round(curH * 0.78);
+          blob = await getBlob(curW, curH, Math.max(0.45, q));
+        }
+
+        if (blob && blob.size <= maxBytes) {
+          const cleanName = (file.name || 'map').replace(/\.[^/.]+$/, '') + '.webp';
+          resolve(new File([blob], cleanName, { type: 'image/webp' }));
+        } else if (blob) {
+          // If still over, final lower quality attempt
+          const finalBlob = await getBlob(Math.round(curW * 0.7), Math.round(curH * 0.7), 0.4);
+          if (finalBlob) {
             const cleanName = (file.name || 'map').replace(/\.[^/.]+$/, '') + '.webp';
-            const compressed = new File([blob], cleanName, { type: 'image/webp' });
-            resolve(compressed);
-          },
-          'image/webp',
-          quality
-        );
-      };
-
-      tryExport(0.88);
+            resolve(new File([finalBlob], cleanName, { type: 'image/webp' }));
+            return;
+          }
+          resolve(file);
+        } else {
+          resolve(file);
+        }
+      })().catch(() => resolve(file));
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);

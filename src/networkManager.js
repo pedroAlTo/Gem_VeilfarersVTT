@@ -11,6 +11,72 @@ import { notify } from './ui.js';
 import { TABLE, KEEPER, chatRequest, validateChatEntry, chatVisibleTo, chatHistoryFor, appendChat } from './chat.js';
 const Peer = PeerJS?.Peer || PeerJS?.default || PeerJS;
 import { newId as id } from './persistence.js';
+
+export const SESSION_PERSIST_KEY = 'veil_active_session';
+
+export function getActiveSession() {
+  try {
+    const raw = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SESSION_PERSIST_KEY)) ||
+      (typeof localStorage !== 'undefined' && localStorage.getItem(SESSION_PERSIST_KEY));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveActiveSession(sessionData) {
+  try {
+    const payload = JSON.stringify({ ...sessionData, timestamp: Date.now() });
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(SESSION_PERSIST_KEY, payload);
+    if (typeof localStorage !== 'undefined') localStorage.setItem(SESSION_PERSIST_KEY, payload);
+  } catch {}
+}
+
+export function clearActiveSession() {
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(SESSION_PERSIST_KEY);
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(SESSION_PERSIST_KEY);
+  } catch {}
+}
+
+export const INVITED_SESSIONS_KEY = 'veil_invited_sessions';
+
+export function getInvitedSessions() {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(INVITED_SESSIONS_KEY) : null;
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveInvitedSession({ room, invite, playerName, campaignName }) {
+  if (!room) return;
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const existing = getInvitedSessions().filter(s => s.room?.toUpperCase() !== room?.toUpperCase());
+    const updated = [
+      {
+        room: room.toUpperCase(),
+        invite: invite || room,
+        playerName: playerName || 'Player',
+        campaignName: campaignName || room,
+        lastVisited: Date.now()
+      },
+      ...existing
+    ].slice(0, 8);
+    localStorage.setItem(INVITED_SESSIONS_KEY, JSON.stringify(updated));
+  } catch {}
+}
+
+export function removeInvitedSession(room) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const filtered = getInvitedSessions().filter(s => s.room?.toUpperCase() !== room?.toUpperCase());
+    localStorage.setItem(INVITED_SESSIONS_KEY, JSON.stringify(filtered));
+  } catch {}
+}
+
 export class NetworkManager {
   constructor({ stateStore = store, peerFactory } = {}) {
     this.store = stateStore;
@@ -46,6 +112,31 @@ export class NetworkManager {
   envelope(message) {
     return { ...message, room: this.room, messageId: message.messageId || id() };
   }
+  saveSeats() {
+    try {
+      if (typeof sessionStorage !== 'undefined' && this.room) {
+        const obj = Object.fromEntries(this.seats.entries());
+        sessionStorage.setItem('veil.host_seats.' + this.room, JSON.stringify(obj));
+      }
+    } catch {}
+  }
+  loadSeats(room) {
+    const seats = new Map();
+    try {
+      if (typeof sessionStorage !== 'undefined' && room) {
+        const raw = sessionStorage.getItem('veil.host_seats.' + room);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          for (const [k, v] of Object.entries(parsed)) seats.set(k, v);
+        }
+      }
+    } catch {}
+    return seats;
+  }
+  leaveSession(reason = new Error('Session closed.')) {
+    clearActiveSession();
+    return this.disconnect(reason, { clearPersist: true });
+  }
   async hostSession(customCode) {
     requireNetworkMode();
     await this.store.ready;
@@ -59,6 +150,7 @@ export class NetworkManager {
       this.room = `${prefix}-${randomPart}`;
     }
     this.invite = this.room;
+    this.seats = this.loadSeats(this.room);
     this.lastRevision = -1;
     this.peer = this.peerFactory(this.room, { debug: 0 });
     const peer = this.peer;
@@ -74,6 +166,13 @@ export class NetworkManager {
         this.store.sessionRole = 'host';
         this.store.peerId = peerId;
         this.store.update({ isHosting: true, isConnected: true, roomCode: peerId, userRole: 'keeper' });
+        saveActiveSession({
+          role: 'host',
+          room: this.room,
+          invite: this.invite,
+          campaignName: this.store.state.campaignName,
+          optionalEfforts: Boolean(this.store.state.optionalEfforts)
+        });
         resolve(peerId);
       });
       this.peer.on('connection', (conn) => { if (this.peer === peer) this.setupConnection(conn); else conn.close(); });
@@ -98,10 +197,11 @@ export class NetworkManager {
     await this.store.ready;
     await this.store.saveQueue;
     this.localCampaign = this.store.serializeCampaign();
-    this.room = roomCode;
+    const normRoom = String(roomCode || '').trim().toUpperCase();
+    this.room = normRoom;
     this.invite = invite;
     this.lastRevision = -1;
-    const seatKey = 'veil.resume.' + roomCode + '.' + invite;
+    const seatKey = 'veil.resume.' + normRoom + '.' + invite;
     let resume = id();
     try { resume = window.sessionStorage.getItem(seatKey) || resume; window.sessionStorage.setItem(seatKey, resume); } catch {}
     this.store.sessionRole = 'player';
@@ -113,7 +213,7 @@ export class NetworkManager {
       joiningSession: true,
       isHosting: false,
       isConnected: false,
-      roomCode,
+      roomCode: normRoom,
     });
     this.peer = this.peerFactory({ debug: 0 });
     const peer = this.peer;
@@ -126,12 +226,25 @@ export class NetworkManager {
       this.joinReady = () => {
         this.joinFailed = null;
         clearTimeout(timer);
-        resolve(roomCode);
+        saveActiveSession({
+          role: 'player',
+          room: normRoom,
+          invite,
+          playerName,
+          isObserver: Boolean(this.store.state.isObserver)
+        });
+        saveInvitedSession({
+          room: normRoom,
+          invite,
+          playerName,
+          campaignName: this.store.state.campaignName
+        });
+        resolve(normRoom);
       };
       this.peer.on('open', (peerId) => {
         if (this.peer !== peer) return;
         this.store.peerId = peerId;
-        const conn = this.peer.connect(roomCode, { reliable: true });
+        const conn = this.peer.connect(normRoom, { reliable: true });
         this.hostConn = conn;
         conn.on('open', () =>
           conn.send(this.envelope({ type: 'HELLO', invite, resume, playerName: playerName.slice(0, 80) }))
@@ -160,28 +273,51 @@ export class NetworkManager {
     }, 10000);
     conn.on('data', (data) => {
       if (!this.members.has(conn.peer)) {
-        if (data?.type !== 'HELLO' || data.room !== this.room || (data.invite && data.invite !== this.invite && data.invite !== this.room)) {
+        const roomMatches = String(data?.room || '').toUpperCase() === String(this.room || '').toUpperCase();
+        const inviteMatches = !data?.invite || data.invite === this.invite || data.invite === this.room ||
+          String(data.invite).toUpperCase() === String(this.invite).toUpperCase() ||
+          String(data.invite).toUpperCase() === String(this.room).toUpperCase();
+        if (data?.type !== 'HELLO' || !roomMatches || !inviteMatches) {
           conn.close();
           return;
         }
-        if (this.members.size >= 6) {
-          conn.close();
-          return;
-        }
-        clearTimeout(expiry);
+
+        const name = String(data.playerName || 'Player').slice(0, 80);
         const resume = typeof data.resume === 'string' && /^[a-zA-Z0-9-]{20,100}$/.test(data.resume) ? data.resume : id();
-        const memberId = this.seats.get(resume) || 'player_' + id();
+        const existingMemberByResume = this.seats.get(resume);
+        const existingMemberByName = (this.store.state.players || []).find(p => p.name === name)?.id;
+        const memberId = existingMemberByResume || existingMemberByName || 'player_' + id();
+
         if (this.kickedMembers.has(memberId) || this.kickedMembers.has(resume) || this.kickedMembers.has(conn.peer)) {
           conn.close();
           return;
         }
-        if ([...this.members.values()].some(m => m.id === memberId)) { conn.close(); return; }
+
+        const isReconnecting = Boolean(existingMemberByResume || existingMemberByName);
+        if (!isReconnecting && this.members.size >= 6) {
+          conn.close();
+          return;
+        }
+
+        clearTimeout(expiry);
+
+        // Evict old stale peer connection for this member if reconnecting
+        for (const [oldPeerId, oldMember] of this.members.entries()) {
+          if ((oldMember.id === memberId || oldPeerId === conn.peer) && oldPeerId !== conn.peer) {
+            const oldConn = this.connections.get(oldPeerId);
+            this.connections.delete(oldPeerId);
+            this.members.delete(oldPeerId);
+            this.tokenPatchAcks.delete(oldPeerId);
+            try { oldConn?.close(); } catch {}
+          }
+        }
+
         this.connections.set(conn.peer, conn);
         this.seats.set(resume, memberId);
-        const name = String(data.playerName || 'Player').slice(0, 80);
+        this.saveSeats();
         this.members.set(conn.peer, { id: memberId, name });
         const activeMap = this.store.getActiveMap();
-        this.mapLoadStatuses.set(memberId, {
+        const initialStatus = {
           peerId: memberId,
           memberId,
           name,
@@ -191,7 +327,10 @@ export class NetworkManager {
           loaded: false,
           text: 'Descargando escena...',
           updatedAt: Date.now()
-        });
+        };
+        this.mapLoadStatuses.set(memberId, initialStatus);
+        this.mapLoadStatuses.set(conn.peer, initialStatus);
+        this.mapLoadStatuses.set(name, initialStatus);
         this.store.update({ players: [...(this.store.state.players || []).filter(p => p.id !== memberId), { id: memberId, name }] });
         this.updatePeersList();
         this.syncPeer(conn);
@@ -591,9 +730,10 @@ export class NetworkManager {
     return result;
   }
   async handleIncomingMessage(data, senderId) {
+    const roomMatches = String(data?.room || '').trim().toUpperCase() === String(this.room || '').trim().toUpperCase();
     if (
       !data ||
-      data.room !== this.room ||
+      !roomMatches ||
       typeof data.messageId !== 'string' ||
       this.seen.has(data.messageId)
     )
@@ -633,22 +773,6 @@ export class NetworkManager {
           const isInitialJoin = Boolean(this.joinReady);
           this.joinReady?.();
           this.joinReady = null;
-
-          // Notify host of our local map load status once upon joining
-          if (isInitialJoin) {
-            const activeMap = this.store.getActiveMap();
-            if (activeMap) {
-              const canvas = window.veilCanvas;
-              const isLoaded = !!(canvas?.isMapLoaded && (canvas?.currentMapId === activeMap.id || canvas?.currentMapKey?.includes(activeMap.id)));
-              const currentProgress = isLoaded ? 100 : (canvas?.currentMapProgress || 10);
-              this.broadcastMapLoadStatus({
-                mapId: activeMap.id,
-                progress: currentProgress,
-                loaded: isLoaded,
-                text: isLoaded ? 'Matriz cargada al 100%' : 'Descargando escena...'
-              });
-            }
-          }
 
           if (wasObserver && isNowAssigned && selectedId) {
             const newlyAssigned = assigned.find(t => t.id === selectedId) || assigned[0];
@@ -695,7 +819,8 @@ export class NetworkManager {
         }
       } else if (data.type === 'KICKED') {
         const reason = data.reason || 'Has sido expulsado de la sesión por el Director de Juego.';
-        this.disconnect(new Error(reason));
+        clearActiveSession();
+        this.disconnect(new Error(reason), { clearPersist: true });
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('veil:kicked', { detail: { reason } }));
         }
@@ -847,7 +972,8 @@ export class NetworkManager {
       }
     }
   }
-  disconnect(reason = new Error('Session closed. Check the invitation and try again.')) {
+  disconnect(reason = new Error('Session closed. Check the invitation and try again.'), { clearPersist = false } = {}) {
+    if (clearPersist) clearActiveSession();
     this.closing = true;
     clearTimeout(this.syncTimer);
     this.clearTokenPatches(); this.tokenPatchAcks.clear(); this.tokenPatchSequence = 0;

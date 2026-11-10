@@ -31,12 +31,14 @@ export function openSceneCreator({ arcId } = {}) {
         ${cConfig.isConfigured ? `Conectado al cloud [${e(cConfig.cloudName)}]. Optimización WebP/AVIF (f_auto, q_auto) en CDN global para todos los jugadores.` : 'Sin Cloudinary, la imagen se almacena en la campaña local o pegando una URL web.'}
       </small>
     </div>
-    <div class="session-options" style="margin: 8px 0;">
+    <div class="session-options" style="margin: 8px 0; background: rgba(16, 185, 129, 0.08); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);">
       <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-        <input id="scene_save_account" type="checkbox" ${account.user ? 'checked' : ''} ${!account.user ? 'disabled' : ''}>
-        <span>💾 Guardar escena en mi biblioteca de cuenta ${account.user ? `[${e(account.user.displayName || 'Conectado')}]` : ''}</span>
+        <input id="scene_save_account" type="checkbox" checked>
+        <span style="color: #34d399; font-weight: 600;">🔥 Guardar automáticamente en la base de datos de Firebase ${account.user ? `[${e(account.user.displayName || 'Conectado')}]` : ''}</span>
       </label>
-      ${!account.user ? '<button type="button" class="hud-btn hud-btn-xs" id="scene_account" style="margin-left: 8px;">Conectar cuenta</button>' : ''}
+      <small style="color: #94a3b8; display: block; margin-top: 4px;">
+        La escena y todos sus componentes (muros, luces, efectos, agua y fichas) se guardarán en tu base de datos de cuenta en Firebase.
+      </small>
     </div>
     <p class="dossier-muted">Las imágenes se optimizan y sirven desde Cloudinary. Al guardar en tu cuenta, podrás reutilizar la escena en cualquier campaña.</p>
     <img id="scene_preview" class="scene-upload-preview" alt="Map preview" hidden>
@@ -67,7 +69,19 @@ export function openSceneCreator({ arcId } = {}) {
           </div>
         </article>
       `).join('') : '<p class="dossier-muted">No tienes escenas guardadas todavía.</p>');
-      list.querySelectorAll('[data-scene]').forEach(b => b.onclick = () => { store.addMap(rows[Number(b.dataset.scene)]); modal.remove(); });
+      list.querySelectorAll('[data-scene]').forEach(b => b.onclick = () => {
+        const item = rows[Number(b.dataset.scene)];
+        store.addMap(item);
+        if (item.walls?.length) store.updateMapWalls(item.id, item.walls);
+        if (item.lights?.length) store.updateMapLights(item.id, item.lights);
+        if (item.effects?.length) store.updateMapEffects(item.id, item.effects);
+        if (item.tokens?.length) {
+          const newTokens = item.tokens.map(t => ({ ...t, mapId: item.id, id: 'tok_' + Math.random().toString(36).substring(2, 9) }));
+          store.update({ tokens: [...store.state.tokens, ...newTokens] });
+        }
+        modal.remove();
+        notify(`Escena "${item.name}" cargada con sus componentes desde Firebase.`);
+      });
       list.querySelectorAll('[data-delete-scene]').forEach(b => b.onclick = async () => {
         const item = rows[Number(b.dataset.deleteScene)];
         if (await confirmAction(`¿Eliminar la escena "${item.name}" de tu cuenta?`)) {
@@ -117,12 +131,26 @@ export function openSceneCreator({ arcId } = {}) {
       } else {
         scene.imageUrl = src;
       }
-      if (saveToAccount && account.user) {
-        status.textContent = 'Guardando escena en tu biblioteca...';
-        await account.saveScene(scene);
-      }
       if (arcId) scene.arcId = arcId;
       if (!store.addMap(scene)) throw new Error('Cannot create a scene while joining a game.');
+
+      // Persist automatically to Firebase database with all components
+      if (saveToAccount || account.user) {
+        status.textContent = 'Guardando escena en base de datos Firebase...';
+        try {
+          await account.saveScene(scene, {
+            walls: scene.walls || [],
+            lights: scene.lights || [],
+            effects: scene.effects || [],
+            water: scene.water || [],
+            tokens: store.state.tokens.filter(t => t.mapId === scene.id)
+          });
+        } catch (saveErr) {
+          console.warn('Firebase saveScene error:', saveErr);
+          notify(`Aviso: Escena creada localmente. Error en Firebase: ${saveErr.message}`, 'error');
+        }
+      }
+
       modal.remove(); notify('¡Escena creada y desplegada con éxito!');
     } catch (err) { error.textContent = err.message || 'Image could not be saved.'; status.textContent = 'Scene was not created.'; }
     finally { delete modal.dataset.busy; controls.forEach(c => c.disabled = false); cancel.hidden = true; }

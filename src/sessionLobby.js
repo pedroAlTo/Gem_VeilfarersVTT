@@ -1,5 +1,5 @@
 import { store } from './state.js';
-import { network } from './networkManager.js';
+import { network, getInvitedSessions, removeInvitedSession, getActiveSession } from './networkManager.js';
 import { LOCAL_ONLY, LAN_SESSIONS, connectionDisplay } from './runtimeMode.js';
 import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
@@ -54,9 +54,27 @@ export async function copyText(value, button) {
   catch { const modal = dossierDialog('COPY INVITATION', '<p>Copy this text with Ctrl+C or Cmd+C.</p><input class="hud-input" id="manual_copy" readonly>'); const input = modal.querySelector('input'); input.value = value; input.focus(); input.select(); }
 }
 export function initSessionBar() {
-  const bar = document.createElement('div'); bar.className = 'session-strip';
-  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn hud-btn-primary" id="session_magic_btn" hidden title="Copiar Enlace Mágico de Invitación para Jugadores">🔗 Enlace Invitación</button><button class="hud-btn" id="session_crew">Crew · 0</button><div class="session-crew-pills" id="session_crew_pills" style="display:none; align-items:center; gap:4px; margin-left:6px;"></div><button class="hud-btn hud-btn-xs" id="session_map_sync" style="display:none; margin-left:6px; font-weight:600; cursor:pointer;" title="Telemetría de sincronización de escena">🛰️ Escena: 100%</button><button class="hud-btn" id="session_join" hidden>Join game</button><button class="hud-btn" id="session_my_tokens" hidden>My tokens</button>';
-  document.querySelector('.header-hud').after(bar);
+  const bar = document.createElement('div'); bar.className = 'session-strip session-strip-inline';
+  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name" style="display:none;"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" placeholder="Código (ej. USC-K89FA)"></label><button class="hud-btn hud-btn-xs" id="session_copy" title="Copiar código de invitación">Copiar</button><button class="hud-btn hud-btn-xs hud-btn-primary" id="session_magic_btn" hidden title="Copiar Enlace Mágico de Invitación para Jugadores">🔗</button><button class="hud-btn hud-btn-xs" id="session_crew">Crew · 0</button><div class="session-crew-pills" id="session_crew_pills" style="display:none; align-items:center; gap:4px; margin-left:4px;"></div><button class="hud-btn hud-btn-xs" id="session_map_sync" style="display:none; margin-left:4px; font-weight:600; cursor:pointer;" title="Telemetría de sincronización de escena">🛰️ 100%</button><button class="hud-btn hud-btn-xs" id="session_join" hidden>Unirse</button><button class="hud-btn hud-btn-xs" id="session_my_tokens" hidden>Tokens</button>';
+  
+  const slot = document.getElementById('session_bar_slot');
+  if (slot) {
+    slot.appendChild(bar);
+  } else {
+    const headerHud = document.querySelector('.header-hud');
+    if (headerHud) headerHud.appendChild(bar);
+    else document.body.prepend(bar);
+  }
+
+  const codeInput = bar.querySelector('#session_code');
+  codeInput.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = codeInput.value.trim();
+      if (val) openSessionLobby(val, { joinOnly: true });
+    }
+  };
+
   bar.querySelector('#session_state').onclick = () => openSessionLobby();
   bar.querySelector('#session_crew').onclick = () => openSessionLobby();
   bar.querySelector('#session_map_sync').onclick = () => openMapSyncTelemetryModal();
@@ -73,7 +91,18 @@ export function initSessionBar() {
     bar.querySelector('#session_state').dataset.online = String(s.isConnected);
     bar.querySelector('#session_name').textContent = s.campaignName;
     bar.querySelector('#session_name').title = s.campaignName;
-    bar.querySelector('#session_code').value = invitationCode() || 'Local session';
+
+    if (store.sessionRole === 'local' || !invitationCode()) {
+      codeInput.readOnly = false;
+      if (!codeInput.matches(':focus')) {
+        codeInput.value = '';
+        codeInput.placeholder = 'Código invitación (Enter)';
+      }
+    } else {
+      codeInput.readOnly = true;
+      codeInput.value = invitationCode();
+    }
+
     bar.querySelector('#session_copy').disabled = !invitationCode();
     const magicBtn = bar.querySelector('#session_magic_btn');
     if (magicBtn) magicBtn.hidden = !invitationCode() || store.sessionRole === 'player';
@@ -82,8 +111,8 @@ export function initSessionBar() {
     mine.hidden = s.userRole !== 'player';
     mine.disabled = false;
     mine.textContent = controlled.length
-      ? `My tokens · ${controlled.length}`
-      : (s.isObserver ? '👁️ Observador' : 'My tokens · 0');
+      ? `Tokens · ${controlled.length}`
+      : (s.isObserver ? '👁️ Observador' : 'Tokens · 0');
     mine.title = controlled.length
       ? 'Select and control your character or a shared drone'
       : (s.isObserver ? 'Modo Observador activo: el Keeper te asignará un token' : 'Ask the Keeper to assign a token');
@@ -265,29 +294,55 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
     if (fromStorage && !savedName) savedName = fromStorage;
   } catch {}
 
+  const invitedList = getInvitedSessions();
+  const invitedHTML = invitedList.length ? `
+    <div class="invited-sessions-section" style="margin: 16px 0; border: 1px solid rgba(0, 243, 255, 0.25); border-radius: 8px; padding: 12px; background: rgba(13, 20, 36, 0.7);">
+      <span class="dossier-eyebrow" style="color: var(--cyan-pearl); font-size: 10px;">HISTORIAL DE CONEXIONES RECIENTES</span>
+      <h4 style="margin: 4px 0 8px; color: #fff; font-size: 13px;">Tus sesiones e invitaciones guardadas</h4>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        ${invitedList.map(inv => `
+          <div class="invited-session-card" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(100, 116, 139, 0.3); border-radius: 6px;">
+            <div>
+              <strong style="color: #fff; font-size: 12px;">${e(inv.campaignName || inv.room)}</strong>
+              <div style="font-size: 10px; color: #94a3b8; font-family: var(--font-mono, monospace);">
+                <span>Sala: <b style="color: var(--cyan-pearl);">${e(inv.room)}</b></span>
+                ${inv.playerName ? ` · Indicativo: <span>${e(inv.playerName)}</span>` : ''}
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button type="button" class="hud-btn hud-btn-xs hud-btn-primary btn-rejoin-invited" data-room="${e(inv.room)}" data-invite="${e(inv.invite || inv.room)}" data-player="${e(inv.playerName || '')}">🚀 Unirse</button>
+              <button type="button" class="hud-btn hud-btn-xs hud-btn-danger btn-remove-invited" data-room="${e(inv.room)}" title="Eliminar del historial">✕</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
   const modal = dossierDialog(joinOnly ? 'UNIRSE A LA PARTIDA' : 'SESIONES', `
     <span class="dossier-eyebrow">${s.isConnected ? 'ONLINE' : 'OFFLINE'}${LAN_SESSIONS ? ' · LAN' : ''} / ${joinOnly || joined ? 'PLAYER' : 'KEEPER'}</span><h2>${joinOnly ? 'Unirse a la misión' : e(s.campaignName)}</h2>
     <p class="dossier-muted">${joinOnly ? 'Introduce tu nombre o indicativo de llamada. La sesión táctica se abrirá en cuanto la conexión esté lista.' : active ? joined ? 'Importa tu personaje o reclama uno disponible de la tripulación. Los drones pueden compartirse.' : 'Comparte el enlace de invitación y asigna personajes a tu tripulación.' : 'Inicia una partida online o pega un enlace para unirte a tus compañeros. No se requiere cuenta para jugar.'}</p>
     ${!active ? (joinOnly ? `
-      <div class="session-join-compact" style="max-width: 440px; margin: 0 auto;">
+      <div class="session-join-compact" style="max-width: 650px; width: 100%; margin: 0 auto;">
         <form id="join_form" class="session-card">
           <span class="dossier-eyebrow">CONEXIÓN RÁPIDA / JUGADOR</span>
           <h3>Unirse a la misión ${prefill ? `[${e(prefill.split('.')[0])}]` : ''}</h3>
           <label class="dossier-field">Nombre de Jugador / Indicativo
-            <input class="hud-input" id="join_name" maxlength="80" required value="${e(savedName)}" placeholder="Tu nombre de jugador">
+            <input class="hud-input" id="join_name" maxlength="80" required value="${e(savedName)}" placeholder="Tu nombre de jugador" style="min-height: 40px; font-size: 13px;">
           </label>
           <label class="dossier-field" ${prefill ? 'style="display:none;"' : ''}>Código o Enlace de Invitación
-            <input class="hud-input" id="join_code" required value="${e(prefill)}" placeholder="Pega el código o enlace">
+            <input class="hud-input" id="join_code" required value="${e(prefill)}" placeholder="Pega el código o enlace (ej. USC-K89FA)" style="min-height: 40px; font-size: 13px;">
           </label>
           <label class="dossier-field" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:8px;">
             <input type="checkbox" id="join_as_observer" ${s.isObserver ? 'checked' : ''}>
             <span>👁️ Unirme como Observador (el Keeper asignará el token)</span>
           </label>
-          <button class="hud-btn hud-btn-primary" id="btn_direct_join" style="width: 100%; margin-top: 10px;" ${LOCAL_ONLY ? 'disabled' : ''}>🚀 Entrar</button>
+          <button class="hud-btn hud-btn-primary" id="btn_direct_join" style="width: 100%; margin-top: 10px; min-height: 40px;" ${LOCAL_ONLY ? 'disabled' : ''}>🚀 Entrar</button>
         </form>
+        ${invitedHTML}
       </div>
     ` : `<div class="session-lobby-grid"><form id="host_form" class="session-card"><span class="dossier-eyebrow">01 / HOST</span><h3>Create an online game</h3><label class="dossier-field">Session name<input class="hud-input" id="host_name" maxlength="200" required value="${e(s.campaignName)}"></label><label><input type="checkbox" id="host_efforts" ${s.optionalEfforts ? 'checked' : ''}> Optional Efforts</label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Host game</button></form>
-    <form id="join_form" class="session-card"><span class="dossier-eyebrow">02 / JOIN</span><h3>Join your crew</h3><label class="dossier-field">Your call sign<input class="hud-input" id="join_name" maxlength="80" required value="${e(savedName)}" placeholder="Your name"></label><label class="dossier-field">Invitation code or link<input class="hud-input" id="join_code" required value="${e(prefill)}" placeholder="Paste invitation"></label><label class="dossier-field" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:8px;"><input type="checkbox" id="join_as_observer" ${s.isObserver ? 'checked' : ''}> <span>👁️ Unirme como observador (el Keeper asignará el token)</span></label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Join game</button></form></div>${LOCAL_ONLY ? '<p class="import-warning">Local test mode. Use INICIAR_VTT_ONLINE.bat for online features.</p>' : ''}`) : `
+    <form id="join_form" class="session-card"><span class="dossier-eyebrow">02 / JOIN</span><h3>Join your crew</h3><label class="dossier-field">Your call sign<input class="hud-input" id="join_name" maxlength="80" required value="${e(savedName)}" placeholder="Your name"></label><label class="dossier-field">Invitation code or link<input class="hud-input" id="join_code" required value="${e(prefill)}" placeholder="Paste invitation"></label><label class="dossier-field" style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:8px;"><input type="checkbox" id="join_as_observer" ${s.isObserver ? 'checked' : ''}> <span>👁️ Unirme como observador (el Keeper asignará el token)</span></label><button class="hud-btn hud-btn-primary" ${LOCAL_ONLY ? 'disabled' : ''}>Join game</button></form></div>${invitedHTML}${LOCAL_ONLY ? '<p class="import-warning">Local test mode. Use INICIAR_VTT_ONLINE.bat for online features.</p>' : ''}`) : `
     <div class="session-invitation"><label class="dossier-field">Invitation code<input class="hud-input" readonly value="${e(invitationCode())}"></label><button class="hud-btn" id="lobby_copy">Copy code</button><button class="hud-btn hud-btn-primary" id="lobby_link">🔗 Copiar Enlace Mágico</button></div><div class="session-actions"><button class="hud-btn hud-btn-primary" id="lobby_import">Import my character</button><button class="hud-btn" id="lobby_library">My saved characters</button><button class="hud-btn" id="lobby_leave">${joined ? 'Leave game' : 'Close online game'}</button>${!s.isConnected && joined ? '<button class="hud-btn" id="lobby_reconnect">Reconnect</button>' : ''}</div>`}
     <p id="lobby_status" role="status"></p><p class="dossier-error" role="alert"></p>
     ${joinOnly ? '' : '<h3>Player roster</h3>'}<div id="lobby_roster" ${joinOnly ? 'hidden' : ''}></div>
@@ -355,13 +410,50 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
       openSessionLobby();
     });
   });
+  modal.querySelectorAll('.btn-rejoin-invited').forEach(btn => {
+    btn.onclick = () => {
+      const room = btn.dataset.room;
+      const invite = btn.dataset.invite;
+      const player = btn.dataset.player || savedName;
+      modal.remove();
+      run(async () => {
+        status.textContent = 'Conectando con la sesión guardada...';
+        await network.joinSession(room, player, invite);
+        openSessionLobby();
+      });
+    };
+  });
+
+  modal.querySelectorAll('.btn-remove-invited').forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      const room = btn.dataset.room;
+      removeInvitedSession(room);
+      btn.closest('.invited-session-card')?.remove();
+    };
+  });
+
   const bind = (id, fn) => { const b = modal.querySelector(id); if (b) b.onclick = fn; };
   bind('#lobby_copy', event => copyText(invitationCode(), event.currentTarget));
   bind('#lobby_link', event => copyText(magicInvitationLink(), event.currentTarget));
   bind('#lobby_library', openAccount);
   bind('#lobby_import', () => openCharacterImport({ single: joined, onImport: async entries => { for (const entry of entries) await useCharacter(entry.token); return entries.length; } }));
-  bind('#lobby_leave', () => run(async () => { if (await confirmAction(joined ? 'Leave this game and return to your local campaign?' : 'Close this online game for all players? The campaign remains saved locally.')) { network.disconnect(); modal.remove(); openSessionLobby(); } }));
-  bind('#lobby_reconnect', () => run(async () => { const { room, invite } = network, name = s.userName; await network.joinSession(room, name, invite); modal.remove(); openSessionLobby(); }));
+  bind('#lobby_leave', () => run(async () => {
+    if (await confirmAction(joined ? '¿Abandonar la partida online y regresar a tu campaña local?' : '¿Cerrar esta partida online para todos los jugadores? Tu campaña queda guardada localmente.')) {
+      network.leaveSession();
+      modal.remove();
+      openSessionLobby();
+    }
+  }));
+  bind('#lobby_reconnect', () => run(async () => {
+    const active = getActiveSession();
+    const room = active?.room || network.room;
+    const invite = active?.invite || network.invite;
+    const name = active?.playerName || s.userName;
+    await network.joinSession(room, name, invite);
+    modal.remove();
+    openSessionLobby();
+  }));
   modal.querySelector('#broadcast_form')?.addEventListener('submit', event => { event.preventDefault(); const input = modal.querySelector('#broadcast_text'), text = input.value.trim(); if (!text) return; network.broadcast({ type: 'ANNOUNCEMENT', text }); status.textContent = `Broadcast sent to ${network.connections.size} connected players.`; input.value = ''; });
   return modal;
 }

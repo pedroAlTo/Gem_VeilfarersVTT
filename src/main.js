@@ -19,7 +19,7 @@ import { sanitizeHTML, confirmAction, notify } from './ui.js';
 import { initOrbitalUI } from './orbitalUI.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
-import { network } from './networkManager.js';
+import { network, getActiveSession, clearActiveSession } from './networkManager.js';
 import { CanvasEngine } from './canvasEngine.js';
 import { FearMeterHUD } from './fearMeter.js';
 import { ClocksManager } from './clocksManager.js';
@@ -111,7 +111,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupKeyboardShortcuts();
   initSessionBar();
   window.addEventListener("veil:remote-roll", event => { if (store.state.dice3d !== false && event.detail.actorId !== store.state.claimedTokenId) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(event.detail)).catch(() => {}); });
-  setupAutoJoinFromURL();
+  setupSessionPersistence();
 });
 
 // --- Clocks Tab Pane ---
@@ -664,15 +664,15 @@ function setupKeyboardShortcuts() {
 
 // --- Multiplayer Modal ---
 function openMultiplayerModal() { return openSessionLobby(); }
-function setupAutoJoinFromURL() {
+function setupSessionPersistence() {
   if (LOCAL_ONLY) return;
   const searchParams = new URLSearchParams(location.search);
   const joinParam = searchParams.get('join') || searchParams.get('room');
   const hashInvite = new URLSearchParams(location.hash.slice(1)).get('invite');
   const searchInvite = searchParams.get('invite');
+  const active = getActiveSession();
 
   if (joinParam) {
-    // Fase 1: Enrutamiento directo por URL — forzar automáticamente rol a player para invitados
     store.update({ userRole: 'player' });
 
     let fullCode = joinParam;
@@ -682,7 +682,36 @@ function setupAutoJoinFromURL() {
       fullCode = `${joinParam}.${hashInvite || searchInvite}`;
     }
 
+    const rawRoom = joinParam.split('.')[0].trim().toUpperCase();
+    if (active && active.role === 'player' && active.room?.toUpperCase() === rawRoom) {
+      notify(`Reconectando automáticamente a la sesión [${rawRoom}]...`);
+      network.joinSession(active.room, active.playerName || 'Player', active.invite || active.room)
+        .catch(err => {
+          console.warn('Seamless auto-join failed, opening lobby:', err);
+          openSessionLobby(fullCode, { joinOnly: true });
+        });
+      return;
+    }
+
     openSessionLobby(fullCode, { joinOnly: true });
+    return;
+  }
+
+  // Si no hay parámetro de URL pero el usuario estaba en una sesión activa antes de F5
+  if (active && active.room) {
+    if (active.role === 'host') {
+      notify(`Restaurando sesión de Keeper [${active.room}] tras recargar...`);
+      network.hostSession(active.room).catch(err => {
+        console.warn('Auto-rehost falló:', err);
+        clearActiveSession();
+      });
+    } else if (active.role === 'player') {
+      notify(`Reconectando sesión como ${active.playerName} [${active.room}]...`);
+      network.joinSession(active.room, active.playerName || 'Player', active.invite || active.room).catch(err => {
+        console.warn('Auto-rejoin falló:', err);
+        clearActiveSession();
+      });
+    }
   }
 }
 

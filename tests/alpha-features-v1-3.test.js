@@ -550,6 +550,140 @@ test('simplified invitation code: 3-char prefix from campaign name + 5-char rand
   assert.throws(() => parseInvitation('VEIL-ABC'), /Pega el código o enlace/);
 });
 
+test('single line header & compact session bar: session controls dock inside header and inline fear meter', async () => {
+  const { initSessionBar } = await import('../src/sessionLobby.js');
+  document.body.innerHTML = `
+    <header class="header-hud">
+      <div class="header-left">
+        <div id="session_bar_slot"></div>
+      </div>
+      <div id="fear_meter_container"></div>
+      <div class="header-right"></div>
+    </header>
+  `;
+
+  initSessionBar();
+  const slot = document.getElementById('session_bar_slot');
+  const bar = slot.querySelector('.session-strip');
+  assert.ok(bar, 'Session strip mounted inside header slot');
+  assert.ok(bar.classList.contains('session-strip-inline'), 'Session strip has inline class');
+  assert.ok(bar.querySelector('#session_code'), 'Code input exists');
+  assert.ok(bar.querySelector('#session_crew'), 'Crew count exists');
+});
+
+test('firebase full scene persistence: saves and restores scene with all components (walls, lights, tokens)', async () => {
+  const { account } = await import('../src/cloudAccount.js');
+  
+  // Mock Firebase / user identity
+  account.user = { uid: 'test_user_fb', isNetlify: false, displayName: 'Test GM' };
+  account.dbAPI = {
+    doc: (_, ...parts) => parts.join('/'),
+    setDoc: async (path, data) => { account._lastSavedDoc = { path, data }; },
+    getDocsFromServer: async () => ({ docs: [{ id: 'scene_test_1', data: () => account._lastSavedDoc?.data || {} }] })
+  };
+  account.db = {};
+
+  const fullScene = {
+    id: 'scene_station_alpha',
+    name: 'Estación Deep Void - Sector 7',
+    gridSize: 70,
+    ambientLight: 0.25,
+    width: 2560,
+    height: 1440,
+    imageUrl: 'https://res.cloudinary.com/demo/image/upload/map.webp',
+    walls: [
+      { id: 'w1', x1: 100, y1: 100, x2: 500, y2: 100, wallType: 'wall', isDoor: false },
+      { id: 'w2', x1: 500, y1: 100, x2: 500, y2: 600, wallType: 'wall', isDoor: true, isOpen: false }
+    ],
+    lights: [
+      { id: 'l1', x: 300, y: 300, radius: 250, color: '#00f3ff', intensity: 0.8 }
+    ],
+    effects: [
+      { id: 'fx1', type: 'voidRift', x: 400, y: 400, radius: 100 }
+    ],
+    water: [
+      { id: 'wt1', points: [{ x: 100, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 200 }] }
+    ],
+    tokens: [
+      { id: 'tok_npc1', name: 'Sentry Drone', x: 250, y: 250, actorType: 'drone' }
+    ],
+    notes: ['Acceso restringido con clave bio-métrica']
+  };
+
+  const savedId = await account.saveScene(fullScene);
+  assert.equal(savedId, 'scene_station_alpha');
+  assert.ok(account._lastSavedDoc, 'Doc was written to Firestore');
+  
+  const savedData = account._lastSavedDoc.data;
+  assert.equal(savedData.name, 'Estación Deep Void - Sector 7');
+  assert.equal(savedData.walls.length, 2, 'Walls preserved');
+  assert.equal(savedData.lights.length, 1, 'Lights preserved');
+  assert.equal(savedData.effects.length, 1, 'Effects preserved');
+  assert.equal(savedData.water.length, 1, 'Water preserved');
+  assert.equal(savedData.tokens.length, 1, 'Tokens preserved');
+  assert.equal(savedData.notes.length, 1, 'Notes preserved');
+});
+
+test('session persistence & invited sessions list: persists active session, invited history and case-insensitive room routing', async () => {
+  const {
+    saveActiveSession,
+    getActiveSession,
+    clearActiveSession,
+    saveInvitedSession,
+    getInvitedSessions,
+    removeInvitedSession,
+    NetworkManager
+  } = await import('../src/networkManager.js');
+  const { store } = await import('../src/state.js');
+
+  // 1. Save and retrieve active session
+  saveActiveSession({ role: 'player', room: 'USC-ALPHA', invite: 'USC-ALPHA', playerName: 'Ripley' });
+  let active = getActiveSession();
+  assert.ok(active, 'Active session stored');
+  assert.equal(active.room, 'USC-ALPHA');
+  assert.equal(active.playerName, 'Ripley');
+
+  clearActiveSession();
+  assert.equal(getActiveSession(), null, 'Active session cleared on explicit leave');
+
+  // 2. Invited sessions list
+  saveInvitedSession({ room: 'USC-BETA', invite: 'USC-BETA', playerName: 'Dallas', campaignName: 'Nostromo Mission' });
+  saveInvitedSession({ room: 'USC-GAMMA', invite: 'USC-GAMMA', playerName: 'Kane', campaignName: 'Derelict Ship' });
+  let invited = getInvitedSessions();
+  assert.equal(invited.length, 2);
+  assert.equal(invited[0].room, 'USC-GAMMA');
+  assert.equal(invited[1].room, 'USC-BETA');
+
+  // Remove an invited session
+  removeInvitedSession('USC-BETA');
+  invited = getInvitedSessions();
+  assert.equal(invited.length, 1);
+  assert.equal(invited[0].room, 'USC-GAMMA');
+
+  // 3. Case-insensitive room matching in NetworkManager
+  store.state.isHosting = true;
+  store.sessionRole = 'host';
+  const nm = new NetworkManager({ stateStore: store });
+  nm.room = 'USC-K89FA';
+  let messageHandled = false;
+  nm.members.set('peer_test', { id: 'player_1', name: 'Kane' });
+  nm.ephemeral = () => { messageHandled = true; };
+  nm.broadcast = () => {};
+
+  // Send MAP_LOAD_STATUS with lowercase room code 'usc-k89fa'
+  await nm.handleIncomingMessage({
+    type: 'MAP_LOAD_STATUS',
+    room: 'usc-k89fa', // lowercase!
+    messageId: 'msg_test_case_1',
+    peerId: 'peer_test',
+    progress: 100,
+    loaded: true
+  }, 'peer_test');
+
+  assert.equal(messageHandled, true, 'Case-insensitive room matching accepted the message');
+  nm.disconnect();
+});
+
 
 
 

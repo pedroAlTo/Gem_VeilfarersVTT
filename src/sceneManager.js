@@ -5,6 +5,7 @@ import { openSceneCreator } from './sceneCreator.js';
 import { sanitizeHTML, escapeHTML as e, confirmAction, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
+import { account } from './cloudAccount.js';
 import { store } from './state.js';
 import { openEnvironment } from './environmentUI.js';
 import { network } from './networkManager.js';
@@ -107,6 +108,7 @@ export class SceneManager {
                             ` : ''}
                           </div>
                           <div style="display: flex; gap: 2px;">
+                            ${isKeeper ? `<button class="hud-btn hud-btn-xs sync-firebase-scene-btn" data-id="${map.id}" title="Guardar esta escena y sus componentes (muros, luces, fichas) en Firebase">☁️</button>` : ''}
                             ${isKeeper && !isActive ? `
                               <button class="hud-btn hud-btn-xs hud-btn-secondary switch-scene-btn" data-id="${map.id}" title="Desplegar escena">ENGAGE</button>
                             ` : ''}
@@ -147,7 +149,7 @@ export class SceneManager {
                   <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: rgba(15,23,42,0.6); border-radius: 4px;">
                     <span style="font-size: 11px; color: #fff;">${e(m.name)}</span>
                     <div style="display: flex; gap: 4px; align-items: center;">
-                      ${isKeeper ? `<vf-select class="hud-select move-scene-arc-select" data-map-id="${m.id}" aria-label="Destino de ${e(m.name)}"><option value="" selected>Sin arco</option>${arcs.map(a => `<option value="${a.id}">${e(a.name)}</option>`).join('')}</vf-select><button class="hud-btn hud-btn-xs scene-environment-btn" data-map-id="${m.id}">Entorno</button>${m.id !== state.activeMapId ? `<button class="hud-btn hud-btn-xs switch-scene-btn" data-id="${m.id}">ENGAGE</button>` : '<span>ACTIVA</span>'}` : ''}
+                      ${isKeeper ? `<button class="hud-btn hud-btn-xs sync-firebase-scene-btn" data-id="${m.id}" title="Guardar esta escena y sus componentes en Firebase">☁️</button><vf-select class="hud-select move-scene-arc-select" data-map-id="${m.id}" aria-label="Destino de ${e(m.name)}"><option value="" selected>Sin arco</option>${arcs.map(a => `<option value="${a.id}">${e(a.name)}</option>`).join('')}</vf-select><button class="hud-btn hud-btn-xs scene-environment-btn" data-map-id="${m.id}">Entorno</button>${m.id !== state.activeMapId ? `<button class="hud-btn hud-btn-xs switch-scene-btn" data-id="${m.id}">ENGAGE</button>` : '<span>ACTIVA</span>'}` : ''}
                       <button class="hud-btn hud-btn-xs hud-btn-danger delete-scene-btn" data-id="${m.id}" data-name="${e(m.name)}">🗑️</button>
                     </div>
                   </div>
@@ -246,6 +248,28 @@ export class SceneManager {
       if (addArcBtn) {
         addArcBtn.onclick = () => this.openCreateArcModal();
       }
+
+      // Sync Scene to Firebase button
+      this.container.querySelectorAll('.sync-firebase-scene-btn').forEach(btn => {
+        btn.onclick = async () => {
+          const mapId = btn.dataset.id;
+          const map = store.state.maps?.find(m => m.id === mapId);
+          if (!map) return;
+          try {
+            notify(`Sincronizando "${map.name}" con Firebase...`);
+            await account.saveScene(map, {
+              walls: map.walls || [],
+              lights: map.lights || [],
+              effects: map.effects || [],
+              water: map.water || [],
+              tokens: store.state.tokens.filter(t => t.mapId === mapId)
+            });
+            notify(`✅ Escena "${map.name}" y sus componentes guardados en Firebase.`);
+          } catch (err) {
+            notify(`Error al guardar en Firebase: ${err.message}`, 'error');
+          }
+        };
+      });
 
       // Delete Scene buttons
       this.container.querySelectorAll('.delete-scene-btn').forEach(btn => {

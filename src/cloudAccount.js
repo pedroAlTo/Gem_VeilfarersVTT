@@ -215,9 +215,21 @@ export class CloudAccount {
     } finally { this.signingOut = false; this.publishUser(); }
   }
   async identity() {
+    if (this.user?.uid) return this.user.uid;
     if (this.user?.isNetlify) return this.user.uid;
     await this.init();
-    if (!this.user) throw new Error('Sign in to use your cloud library.');
+    if (!this.user) {
+      if (this.authAPI?.signInAnonymously && this.auth) {
+        try {
+          const cred = await this.authAPI.signInAnonymously(this.auth);
+          this.setFirebaseUser(cred.user, false);
+          return cred.user.uid;
+        } catch (e) {
+          console.warn('Firebase anonymous authentication error:', e);
+        }
+      }
+      throw new Error('Inicia sesión en tu cuenta para acceder a la base de datos de escenas en Firebase.');
+    }
     return this.user.uid;
   }
   async list(kind) {
@@ -303,7 +315,7 @@ export class CloudAccount {
       throw err;
     }
   }
-  async saveScene(scene) {
+  async saveScene(scene, extra = {}) {
     const uid = await this.identity();
     const id = scene.id || newId();
     const entry = {
@@ -314,6 +326,15 @@ export class CloudAccount {
       width: Number(scene.width) || 1920,
       height: Number(scene.height) || 1080,
       imageUrl: scene.imageUrl || '',
+      walls: Array.isArray(scene.walls) ? scene.walls : (Array.isArray(extra.walls) ? extra.walls : []),
+      lights: Array.isArray(scene.lights) ? scene.lights : (Array.isArray(extra.lights) ? extra.lights : []),
+      effects: Array.isArray(scene.effects) ? scene.effects : (Array.isArray(extra.effects) ? extra.effects : []),
+      water: Array.isArray(scene.water) ? scene.water : (Array.isArray(extra.water) ? extra.water : []),
+      fow: scene.fow !== undefined ? scene.fow : (extra.fow !== undefined ? extra.fow : null),
+      notes: Array.isArray(scene.notes) ? scene.notes : (Array.isArray(extra.notes) ? extra.notes : []),
+      tokens: Array.isArray(scene.tokens) ? scene.tokens.map(t => portableCharacter(t)) : (Array.isArray(extra.tokens) ? extra.tokens.map(t => portableCharacter(t)) : []),
+      arcId: scene.arcId || extra.arcId || null,
+      createdAt: scene.createdAt || Date.now(),
       updatedAt: Date.now()
     };
 
@@ -329,15 +350,22 @@ export class CloudAccount {
     try {
       const d = this.dbAPI;
       await d.setDoc(d.doc(this.db, 'users', uid, 'scenes', id), entry);
-    } catch (err) {
-      console.warn('Firestore permission error in saveScene; caching locally in account storage:', err);
+      // Cache as backup
       try {
         const list = (await this.list('scenes')).filter(s => s.id !== id);
         list.unshift(entry);
         localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
       } catch {}
+      return id;
+    } catch (err) {
+      console.warn('Firestore error in saveScene:', err);
+      try {
+        const list = (await this.list('scenes')).filter(s => s.id !== id);
+        list.unshift(entry);
+        localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
+      } catch {}
+      throw new Error(`Error al guardar en Firebase Firestore: ${err.message || 'Sin permisos de base de datos'}`);
     }
-    return id;
   }
   async removeScene(id) {
     const uid = await this.identity();
