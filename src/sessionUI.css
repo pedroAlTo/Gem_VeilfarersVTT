@@ -3,3 +3,106 @@
 .session-strip #session_my_tokens[hidden]{display:none!important}
 
 #session_join[hidden],.session-join-only #host_form[hidden],#lobby_roster[hidden]{display:none!important}
+
+/* Holographic Map Loading Progress HUD */
+.map-loader-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 15, 26, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 120;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  pointer-events: none;
+}
+.map-loader-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.map-loader-card {
+  width: 380px;
+  max-width: 90vw;
+  padding: 16px 20px;
+  background: rgba(13, 20, 36, 0.95);
+  border: 1px solid var(--cyan-pearl, #00f3ff);
+  box-shadow: 0 0 30px rgba(0, 243, 255, 0.25), inset 0 0 15px rgba(0, 243, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+.map-loader-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.map-loader-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 243, 255, 0.3);
+  border-top-color: #00f3ff;
+  border-radius: 50%;
+  animation: mapSpin 0.8s linear infinite;
+}
+@keyframes mapSpin {
+  to { transform: rotate(360deg); }
+}
+.map-loader-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #00f3ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-loader-bar-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(0, 243, 255, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.map-loader-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f3ff, #38bdf8);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.6);
+  transition: width 0.15s ease-out;
+}
+.map-loader-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: var(--font-mono, monospace);
+}
+.map-loader-percent {
+  color: #00f3ff;
+  font-weight: 700;
+}
+.crew-map-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: var(--font-mono, monospace);
+}
+.crew-map-badge.badge-ready {
+  color: #10b981;
+}
+.crew-map-badge.badge-loading {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+

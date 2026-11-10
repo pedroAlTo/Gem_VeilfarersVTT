@@ -221,3 +221,50 @@ test('token reserve system: send to reserve, deploy to scene and delete permanen
   assert.equal(store.getState().tokens.some(t => t.id === testToken.id), false, 'Token permanently removed');
   assert.equal(store.getTokensForActiveMap().length, initialActiveCount);
 });
+
+test('map load progress and multiplayer scene synchronization telemetry', async () => {
+  const { network } = await import('../src/networkManager.js');
+  const { openMapSyncTelemetryModal } = await import('../src/sessionLobby.js');
+
+  // 1. Broadcast map load progress
+  let receivedEvent = null;
+  const listener = (e) => { receivedEvent = e.detail; };
+  window.addEventListener('veil:map-load-status', listener);
+
+  network.broadcastMapLoadStatus({
+    mapId: 'map-test-1',
+    progress: 45,
+    loaded: false,
+    text: '3.2 / 7.1 MB'
+  });
+
+  assert.ok(receivedEvent, 'Event veil:map-load-status should be dispatched');
+  assert.equal(receivedEvent.progress, 45);
+  assert.equal(receivedEvent.loaded, false);
+  assert.equal(receivedEvent.text, '3.2 / 7.1 MB');
+
+  // Verify status is tracked in network.mapLoadStatuses
+  const myStatus = network.mapLoadStatuses.get(receivedEvent.peerId);
+  assert.ok(myStatus, 'Map status should be stored in network.mapLoadStatuses');
+  assert.equal(myStatus.progress, 45);
+
+  // 2. Broadcast completed load
+  network.broadcastMapLoadStatus({
+    mapId: 'map-test-1',
+    progress: 100,
+    loaded: true,
+    text: 'Listo'
+  });
+  assert.equal(receivedEvent.progress, 100);
+  assert.equal(receivedEvent.loaded, true);
+
+  // 3. Open telemetry modal
+  const modal = openMapSyncTelemetryModal();
+  assert.ok(modal, 'Telemetry modal should be returned and created');
+  assert.match(modal.textContent, /TELEMETRÍA/i);
+  assert.match(modal.textContent, /SINCRONIZACIÓN DE MATRIZ TÁCTICA/i);
+  assert.match(modal.textContent, /100%/);
+  modal.remove();
+
+  window.removeEventListener('veil:map-load-status', listener);
+});

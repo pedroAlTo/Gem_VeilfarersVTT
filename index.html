@@ -203,6 +203,23 @@
         <section class="canvas-viewport" id="canvas_viewport_root">
           <canvas id="tactical_canvas"></canvas>
 
+          <!-- Floating Map Loading Progress HUD -->
+          <div class="map-loader-overlay hidden" id="map_loader_overlay">
+            <div class="map-loader-card glass-panel">
+              <div class="map-loader-header">
+                <span class="map-loader-spinner"></span>
+                <span class="map-loader-title" id="map_loader_title">SINCRONIZANDO MATRIZ TÁCTICA...</span>
+              </div>
+              <div class="map-loader-bar-track">
+                <div class="map-loader-bar-fill" id="map_loader_bar_fill" style="width: 0%;"></div>
+              </div>
+              <div class="map-loader-footer">
+                <span class="map-loader-status" id="map_loader_status">Descargando mapa...</span>
+                <span class="map-loader-percent" id="map_loader_percent">0%</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Floating Tactical Layers HUD -->
           <div class="layer-hud-container" id="layer_hud_container">
             <!-- Rendered by layerManager.js -->

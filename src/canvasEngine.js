@@ -118,6 +118,39 @@ export class CanvasEngine {
     this.displayHeight = h;
   }
 
+  updateMapProgress(mapData, percent, statusText) {
+    if (typeof document === 'undefined') return;
+    const overlay = document.getElementById('map_loader_overlay');
+    const barFill = document.getElementById('map_loader_bar_fill');
+    const percentEl = document.getElementById('map_loader_percent');
+    const statusEl = document.getElementById('map_loader_status');
+    const titleEl = document.getElementById('map_loader_title');
+
+    if (overlay && barFill && percentEl && statusEl) {
+      overlay.classList.remove('hidden');
+      if (titleEl) titleEl.textContent = `SINCRONIZANDO // ${mapData.name || 'ESCENA TÁCTICA'}`.toUpperCase();
+      barFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+      percentEl.textContent = `${Math.round(percent)}%`;
+      if (statusText) statusEl.textContent = statusText;
+
+      if (percent >= 100) {
+        clearTimeout(this._loaderHideTimer);
+        this._loaderHideTimer = setTimeout(() => {
+          overlay.classList.add('hidden');
+        }, 400);
+      }
+    }
+
+    try {
+      network.broadcastMapLoadStatus?.({
+        mapId: mapData.id,
+        progress: Math.round(percent),
+        loaded: percent >= 100,
+        text: statusText
+      });
+    } catch { /* network not ready or offline */ }
+  }
+
   loadMap(mapData) {
     const campaignId = store.getState().campaignId;
     const key = `${campaignId}:${mapData.id}:${mapData.imageUrl}`;
@@ -133,14 +166,98 @@ export class CanvasEngine {
     this.currentMapId = mapData.id;
     this.isMapLoaded = false;
 
-    this.mapImage = new Image();
-    this.mapImage.onload = () => {
+    this.updateMapProgress(mapData, 5, 'Iniciando conexión con matriz...');
+
+    // If it's a data URL, blob URL or we are in a non-browser environment
+    if (!mapData.imageUrl || mapData.imageUrl.startsWith('data:') || typeof XMLHttpRequest === 'undefined') {
+      this.mapImage = new Image();
+      this.mapImage.onload = () => {
+        if (this.currentMapKey !== key) return;
+        this.isMapLoaded = true;
+        this.updateMapProgress(mapData, 100, 'Matriz cargada');
+        this.fitMapToViewport();
+      };
+      this.mapImage.onerror = () => {
+        if (this.currentMapKey === key) {
+          this.isMapLoaded = false;
+          this.updateMapProgress(mapData, 0, 'Error al decodificar mapa');
+        }
+      };
+      this.mapImage.src = mapData.imageUrl;
+      return;
+    }
+
+    // Network / HTTP image: use XMLHttpRequest with onprogress for real byte tracking
+    let xhrDone = false;
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', mapData.imageUrl, true);
+    xhr.responseType = 'blob';
+
+    xhr.onprogress = (e) => {
       if (this.currentMapKey !== key) return;
-      this.isMapLoaded = true;
-      this.fitMapToViewport();
+      if (e.lengthComputable && e.total > 0) {
+        const percent = Math.min(95, Math.round((e.loaded / e.total) * 100));
+        const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+        const totalMB = (e.total / (1024 * 1024)).toFixed(1);
+        this.updateMapProgress(mapData, percent, `${loadedMB} / ${totalMB} MB (${percent}%)`);
+      } else {
+        const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+        this.updateMapProgress(mapData, 50, `${loadedMB} MB transferidos...`);
+      }
     };
-    this.mapImage.onerror = () => { if (this.currentMapKey === key) this.isMapLoaded = false; };
-    this.mapImage.src = mapData.imageUrl;
+
+    const fallbackDirect = () => {
+      if (xhrDone || this.currentMapKey !== key) return;
+      xhrDone = true;
+      this.mapImage = new Image();
+      this.mapImage.onload = () => {
+        if (this.currentMapKey !== key) return;
+        this.isMapLoaded = true;
+        this.updateMapProgress(mapData, 100, 'Matriz cargada');
+        this.fitMapToViewport();
+      };
+      this.mapImage.onerror = () => {
+        if (this.currentMapKey === key) {
+          this.isMapLoaded = false;
+          this.updateMapProgress(mapData, 0, 'Error al cargar mapa');
+        }
+      };
+      this.mapImage.src = mapData.imageUrl;
+    };
+
+    xhr.onload = () => {
+      if (this.currentMapKey !== key) return;
+      if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) {
+        xhrDone = true;
+        const blob = xhr.response;
+        const blobUrl = URL.createObjectURL(blob);
+        this.mapImage = new Image();
+        this.mapImage.onload = () => {
+          URL.revokeObjectURL(blobUrl);
+          if (this.currentMapKey !== key) return;
+          this.isMapLoaded = true;
+          this.updateMapProgress(mapData, 100, 'Matriz cargada');
+          this.fitMapToViewport();
+        };
+        this.mapImage.onerror = () => {
+          URL.revokeObjectURL(blobUrl);
+          fallbackDirect();
+        };
+        this.mapImage.src = blobUrl;
+      } else {
+        fallbackDirect();
+      }
+    };
+
+    xhr.onerror = () => {
+      fallbackDirect();
+    };
+
+    try {
+      xhr.send();
+    } catch {
+      fallbackDirect();
+    }
   }
 
   fitMapToViewport() {

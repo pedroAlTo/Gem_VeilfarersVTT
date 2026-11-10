@@ -24,6 +24,7 @@ export class NetworkManager {
     this.pending = new Map();
     this.hostConn = null;
     this.seen = new Set();
+    this.mapLoadStatuses = new Map();
     this.invite = '';
     this.room = '';
     this.revision = 0;
@@ -338,9 +339,36 @@ export class NetworkManager {
       this.syncAll();
       return;
     }
-    if (['DICE_ROLL', 'PING', 'SPECIAL_FX', 'ATTACK_FX', 'TARGET_SELECT', 'TRANSMISSION', 'ANNOUNCEMENT'].includes(message.type))
+    if (['DICE_ROLL', 'PING', 'SPECIAL_FX', 'ATTACK_FX', 'TARGET_SELECT', 'TRANSMISSION', 'ANNOUNCEMENT', 'MAP_LOAD_STATUS'].includes(message.type))
       for (const conn of this.connections.values())
         if (conn.open) conn.send(this.envelope(message));
+  }
+  broadcastMapLoadStatus({ mapId, progress, loaded, text }) {
+    const memberId = this.store.memberId || this.store.peerId || 'local';
+    const name = this.store.state.userRole === 'keeper' ? 'Keeper' : (this.store.state.playerName || 'Operativo');
+    const status = {
+      type: 'MAP_LOAD_STATUS',
+      peerId: memberId,
+      name,
+      role: this.store.state.userRole,
+      mapId,
+      progress: Math.round(progress),
+      loaded: loaded ?? (progress >= 100),
+      text: text || `${Math.round(progress)}%`,
+      updatedAt: Date.now()
+    };
+    this.mapLoadStatuses.set(memberId, status);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('veil:map-load-status', { detail: status }));
+    }
+
+    if (this.store.sessionRole === 'player') {
+      this.sendToHost(status);
+    } else if (this.store.state.isHosting) {
+      for (const conn of this.connections.values()) {
+        if (conn.open) conn.send(this.envelope(status));
+      }
+    }
   }
   sendToHost(message) {
     if (this.hostConn?.open) this.hostConn.send(this.envelope(message));
@@ -503,6 +531,14 @@ export class NetworkManager {
       this.ephemeral(data);
       this.broadcast(data);
     }
+    if (data.type === 'MAP_LOAD_STATUS') {
+      const member = this.members.get(senderId);
+      const peerId = member?.id || data.peerId || senderId;
+      const status = { ...data, peerId };
+      this.mapLoadStatuses.set(peerId, status);
+      this.ephemeral(status);
+      this.broadcast(status);
+    }
   }
   ephemeral(data) {
     // The authoritative snapshot contains logs; the event is only for presentation.
@@ -520,6 +556,10 @@ export class NetworkManager {
       window.veilCanvas?.triggerAttackFX(data.params);
     if (data.type === 'TARGET_SELECT')
       window.veilCanvas?.setAttackTarget(data.attackerId, data.targetId);
+    if (data.type === 'MAP_LOAD_STATUS') {
+      this.mapLoadStatuses.set(data.peerId, data);
+      window.dispatchEvent(new CustomEvent('veil:map-load-status', { detail: data }));
+    }
   }
   disconnect(reason = new Error('Session closed. Check the invitation and try again.')) {
     this.closing = true;
@@ -530,6 +570,7 @@ export class NetworkManager {
     this.hostConn = null;
     this.connections.clear();
     this.members.clear();
+    this.mapLoadStatuses.clear();
     for (const p of this.pending.values()) {
       clearTimeout(p.timer);
       p.reject(new Error('Session closed'));

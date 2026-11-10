@@ -36,10 +36,11 @@ export async function copyText(value, button) {
 }
 export function initSessionBar() {
   const bar = document.createElement('div'); bar.className = 'session-strip';
-  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn hud-btn-primary" id="session_magic_btn" hidden title="Copiar Enlace Mágico de Invitación para Jugadores">🔗 Enlace Invitación</button><button class="hud-btn" id="session_crew">Crew · 0</button><div class="session-crew-pills" id="session_crew_pills" style="display:none; align-items:center; gap:4px; margin-left:6px;"></div><button class="hud-btn" id="session_join" hidden>Join game</button><button class="hud-btn" id="session_my_tokens" hidden>My tokens</button><button class="hud-btn" id="session_account" data-account-label>Sign in</button>';
+  bar.innerHTML = '<button class="session-state" id="session_state">OFFLINE</button><span class="session-strip-name" id="session_name"></span><label class="session-code-label">INVITE <input aria-label="Invitation code" id="session_code" readonly></label><button class="hud-btn" id="session_copy">Copy code</button><button class="hud-btn hud-btn-primary" id="session_magic_btn" hidden title="Copiar Enlace Mágico de Invitación para Jugadores">🔗 Enlace Invitación</button><button class="hud-btn" id="session_crew">Crew · 0</button><div class="session-crew-pills" id="session_crew_pills" style="display:none; align-items:center; gap:4px; margin-left:6px;"></div><button class="hud-btn hud-btn-xs" id="session_map_sync" style="display:none; margin-left:6px; font-weight:600; cursor:pointer;" title="Telemetría de sincronización de escena">🛰️ Escena: 100%</button><button class="hud-btn" id="session_join" hidden>Join game</button><button class="hud-btn" id="session_my_tokens" hidden>My tokens</button><button class="hud-btn" id="session_account" data-account-label>Sign in</button>';
   document.querySelector('.header-hud').after(bar);
   bar.querySelector('#session_state').onclick = () => openSessionLobby();
   bar.querySelector('#session_crew').onclick = () => openSessionLobby();
+  bar.querySelector('#session_map_sync').onclick = () => openMapSyncTelemetryModal();
   bar.querySelector('#session_account').onclick = openAccount;
   bar.querySelector('#session_join').onclick = () => openSessionLobby('', { joinOnly: true });
   bar.querySelector('#session_my_tokens').onclick = openPlayerTokens;
@@ -63,22 +64,73 @@ export function initSessionBar() {
     mine.hidden = s.userRole !== 'player'; mine.disabled = !controlled.length; mine.textContent = `My tokens · ${controlled.length}`;
     mine.title = controlled.length ? 'Select and control your character or a shared drone' : 'Ask the Keeper to assign a token';
 
+    // Live Scene Synchronization Status Button
+    const mapSyncBtn = bar.querySelector('#session_map_sync');
+    if (mapSyncBtn) {
+      if (s.isConnected || s.isHosting) {
+        mapSyncBtn.style.display = 'inline-flex';
+        const peers = s.connectedPeers || [];
+        const activeMap = store.getActiveMap();
+        const activeMapId = activeMap?.id;
+        const myMemberId = store.memberId || store.peerId || 'local';
+        const myStatus = network.mapLoadStatuses?.get(myMemberId);
+        const selfReady = myStatus ? (myStatus.mapId === activeMapId && myStatus.loaded) : (window.veilCanvas?.isMapLoaded !== false);
+        
+        let total = 1;
+        let ready = selfReady ? 1 : 0;
+        let minProgress = selfReady ? 100 : (myStatus?.progress || 0);
+
+        for (const peer of peers) {
+          total++;
+          const st = network.mapLoadStatuses?.get(peer.id);
+          const isPeerReady = st ? (st.mapId === activeMapId && st.loaded) : false;
+          if (isPeerReady) {
+            ready++;
+          } else {
+            const prog = st ? (st.mapId === activeMapId ? st.progress : 0) : 0;
+            if (prog < minProgress) minProgress = prog;
+          }
+        }
+
+        if (ready === total) {
+          mapSyncBtn.textContent = '🛰️ Escena: 100% ✅';
+          mapSyncBtn.style.borderColor = '#10b981';
+          mapSyncBtn.style.color = '#7de8d0';
+        } else {
+          mapSyncBtn.textContent = `⏳ Escena: ${ready}/${total} (${minProgress}%)`;
+          mapSyncBtn.style.borderColor = '#f59e0b';
+          mapSyncBtn.style.color = '#fbbf24';
+        }
+      } else {
+        mapSyncBtn.style.display = 'none';
+      }
+    }
+
     // Fase 4: Live Crew status pills for the GM
     const crewPills = bar.querySelector('#session_crew_pills');
     if (crewPills) {
       if (s.isHosting) {
         const players = s.players || [];
         const peers = s.connectedPeers || [];
+        const activeMapId = store.getActiveMap()?.id;
         crewPills.style.display = 'inline-flex';
         crewPills.innerHTML = sanitizeHTML(players.map(p => {
           const isOnline = peers.some(c => c.id === p.id);
           const tok = s.tokens.find(t => !isDrone(t) && t.ownerId === p.id);
           const avatar = tok?.avatarUrl || '';
+          const st = network.mapLoadStatuses?.get(p.id);
+          const isReady = st ? (st.mapId === activeMapId && st.loaded) : false;
+          const progress = isReady ? 100 : (st?.mapId === activeMapId ? st.progress : 0);
+          const syncBadge = !isOnline ? '' : (isReady ?
+            '<span style="color:#10b981; font-size:10px; margin-left:2px;" title="Escena descargada al 100%">✅</span>' :
+            `<span style="color:#fbbf24; font-size:9px; margin-left:2px; background:rgba(245,158,11,0.2); padding:1px 3px; border-radius:3px;" title="Cargando escena: ${progress}%">⏳ ${progress}%</span>`
+          );
           return `
             <span class="crew-live-pill ${isOnline ? 'online' : 'offline'}" style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:12px; font-size:10px; background:${isOnline ? 'rgba(0, 243, 255, 0.15)' : 'rgba(100, 116, 139, 0.2)'}; border:1px solid ${isOnline ? '#00f3ff' : '#64748b'}; color:#fff;" title="${e(p.name)} (${isOnline ? 'En línea' : 'Desconectado'}) — ${tok ? e(tok.name) : 'Sin personaje asignado'}">
               <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${isOnline ? '#10b981' : '#64748b'};"></span>
               ${avatar ? `<img src="${e(avatar)}" style="width:14px; height:14px; border-radius:50%; object-fit:cover;" alt="" />` : ''}
               <strong>${e(p.name)}</strong>
+              ${syncBadge}
               <small style="color:${tok ? 'var(--cyan-pearl)' : '#fbbf24'}; opacity:0.85;">${tok ? e(tok.name) : '⏳ Sin ficha'}</small>
             </span>
           `;
@@ -90,6 +142,7 @@ export function initSessionBar() {
     }
   };
   store.subscribe(update); update(); initAccount();
+  window.addEventListener('veil:map-load-status', () => update());
   window.addEventListener('veil:announcement', event => dossierDialog('KEEPER BROADCAST', `<span class="dossier-eyebrow">${e(store.state.campaignName)}</span><p class="broadcast-message">${e(event.detail)}</p>`));
 }
 
@@ -201,4 +254,87 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
   bind('#lobby_reconnect', () => run(async () => { const { room, invite } = network, name = s.userName; await network.joinSession(room, name, invite); modal.remove(); openSessionLobby(); }));
   modal.querySelector('#broadcast_form')?.addEventListener('submit', event => { event.preventDefault(); const input = modal.querySelector('#broadcast_text'), text = input.value.trim(); if (!text) return; network.broadcast({ type: 'ANNOUNCEMENT', text }); status.textContent = `Broadcast sent to ${network.connections.size} connected players.`; input.value = ''; });
   return modal;
+}
+
+export function openMapSyncTelemetryModal() {
+  const s = store.state;
+  const activeMap = store.getActiveMap() || { name: 'Escena actual' };
+  const peers = s.connectedPeers || [];
+  const players = s.players || [];
+  const activeMapId = activeMap.id;
+
+  const myMemberId = store.memberId || store.peerId || 'local';
+  const myStatus = network.mapLoadStatuses?.get(myMemberId);
+  const selfLoaded = myStatus ? (myStatus.mapId === activeMapId && myStatus.loaded) : (window.veilCanvas?.isMapLoaded !== false);
+  const selfProgress = selfLoaded ? 100 : (myStatus?.progress || 0);
+  const isKeeper = s.userRole === 'keeper';
+
+  const rows = [
+    {
+      name: isKeeper ? 'Keeper' : (s.playerName || 'Mi Terminal'),
+      role: isKeeper ? 'KEEPER' : 'OPERATIVO',
+      tokenName: isKeeper ? 'Director de Juego' : (store.getSelectedToken()?.name || 'Operativo'),
+      progress: selfProgress,
+      loaded: selfLoaded,
+      statusText: selfLoaded ? 'Matriz cargada al 100%' : (myStatus?.text || 'Descargando...'),
+      isSelf: true
+    },
+    ...peers.map(peer => {
+      const p = players.find(x => x.id === peer.id);
+      const tok = s.tokens.find(t => !isDrone(t) && t.ownerId === peer.id);
+      const st = network.mapLoadStatuses?.get(peer.id);
+      const isReady = st ? (st.mapId === activeMapId && st.loaded) : false;
+      const progress = isReady ? 100 : (st?.mapId === activeMapId ? st.progress : 0);
+      return {
+        name: peer.name || p?.name || 'Operativo',
+        role: 'OPERATIVO',
+        tokenName: tok ? tok.name : 'Sin personaje asignado',
+        progress,
+        loaded: isReady,
+        statusText: isReady ? 'Matriz cargada al 100%' : (st?.text || 'Descargando escena...'),
+        isSelf: false
+      };
+    })
+  ];
+
+  const allReady = rows.every(r => r.loaded);
+  const readyCount = rows.filter(r => r.loaded).length;
+
+  return dossierDialog('TELEMETRÍA // ESTADO DE ESCENA', `
+    <span class="dossier-eyebrow">SINCRONIZACIÓN DE MATRIZ TÁCTICA // MULTIJUGADOR</span>
+    <h2>${e(activeMap.name)}</h2>
+    <p class="dossier-muted">Estado de descarga y decodificación del mapa táctico en las terminales de la tripulación (${readyCount}/${rows.length} sincronizados).</p>
+
+    <div style="margin: 16px 0; display: flex; flex-direction: column; gap: 10px;">
+      ${rows.map(row => `
+        <div class="glass-panel" style="padding: 10px 14px; border-radius: 6px; border: 1px solid ${row.loaded ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}; background: rgba(13, 20, 36, 0.7);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${row.loaded ? '#10b981' : '#fbbf24'}; box-shadow: 0 0 8px ${row.loaded ? '#10b981' : '#fbbf24'};"></span>
+              <strong style="color: #fff; font-size: 13px;">${e(row.name)} ${row.isSelf ? '<small style="color:var(--cyan-pearl);">(Tú)</small>' : ''}</strong>
+              <span style="font-size: 10px; color: #94a3b8;">[${e(row.tokenName)}]</span>
+            </div>
+            <span style="font-family: var(--font-mono, monospace); font-weight: 700; color: ${row.loaded ? '#10b981' : '#fbbf24'}; font-size: 12px;">
+              ${row.loaded ? '100% ✅' : `${row.progress}% ⏳`}
+            </span>
+          </div>
+
+          <div style="width: 100%; height: 6px; background: rgba(15, 23, 42, 0.8); border-radius: 3px; overflow: hidden;">
+            <div style="height: 100%; width: ${row.progress}%; background: ${row.loaded ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #f59e0b, #fbbf24)'}; transition: width 0.3s ease;"></div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 4px; font-family: var(--font-mono, monospace);">
+            <span>${e(row.statusText)}</span>
+            <span>${row.loaded ? 'Listo para el combate' : 'Esperando datos de escena...'}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="padding: 10px; border-radius: 6px; text-align: center; background: ${allReady ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; border: 1px solid ${allReady ? '#10b981' : '#f59e0b'};">
+      <strong style="color: ${allReady ? '#10b981' : '#fbbf24'}; font-size: 12px;">
+        ${allReady ? '🚀 TODOS LOS OPERATIVOS ESTÁN SINCRONIZADOS Y LISTOS' : '⏳ ESPERANDO A QUE TODOS LOS OPERATIVOS COMPLETEN LA CARGA DEL MAPA'}
+      </strong>
+    </div>
+  `);
 }
