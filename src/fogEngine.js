@@ -91,6 +91,39 @@ export class FogOfWarEngine {
   }
 
   /**
+   * Tests if a world coordinate (x, y) has been visited/explored by players.
+   * Unvisited coordinates return false (pitch dark).
+   */
+  isPointExplored(x, y, mapId) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+    const canvas = this.exploredCanvases.get(mapId);
+    if (!canvas) return false;
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    if (ix < 0 || iy < 0 || ix >= canvas.width || iy >= canvas.height) return false;
+    try {
+      const ctx = canvas.getContext('2d');
+      const pixel = ctx.getImageData(ix, iy, 1, 1).data;
+      return pixel[0] > 64 || pixel[3] > 64;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Tests if a wall, window or door has been discovered in an explored zone.
+   * If both endpoints and its center are completely in unexplored darkness, returns false.
+   */
+  isWallExplored(wall, mapId) {
+    if (!wall) return false;
+    if (this.isPointExplored(wall.x1, wall.y1, mapId)) return true;
+    if (this.isPointExplored(wall.x2, wall.y2, mapId)) return true;
+    const midX = (wall.x1 + wall.x2) / 2;
+    const midY = (wall.y1 + wall.y2) / 2;
+    return this.isPointExplored(midX, midY, mapId);
+  }
+
+  /**
    * Core Fog of War Renderer:
    * 1. Zone A: Unvisited areas = 100% black (pitch dark)
    * 2. Zone B: Explored areas out of current vision angle / LOS = 80%-95% black transparency (darker, harder to see)
@@ -192,9 +225,9 @@ export class FogOfWarEngine {
     fCtx.globalCompositeOperation = 'destination-out';
     fCtx.drawImage(exploredCanvas, 0, 0);
 
-    // 4. Fill behind the cutouts with the Explored Shroud opacity (80% - 95% darkness)
-    // Explored areas outside current FOV will have this opacity
-    const shroudAlpha = Math.max(0.80, Math.min(0.95, exploredOpacity));
+    // 4. Fill behind the cutouts with the Explored Shroud opacity (default 50% darkness, adjustable)
+    // Explored areas outside current FOV and outside lights will have this attenuation
+    const shroudAlpha = Math.max(0.05, Math.min(0.95, exploredOpacity ?? 0.50));
     fCtx.globalCompositeOperation = 'destination-over';
     fCtx.fillStyle = `rgba(5, 8, 15, ${shroudAlpha})`;
     fCtx.fillRect(0, 0, mapWidth, mapHeight);
@@ -212,15 +245,15 @@ export class FogOfWarEngine {
       fCtx.fill();
     }
 
-    // Also cut out illumination from visited map lights so explored lit zones remain illuminated
-    for (const { poly, intensity } of visitedLightPolygons) {
+    // Also cut out illumination from visited map lights so explored lit zones remain completely clear (no attenuation)
+    for (const { poly } of visitedLightPolygons) {
       fCtx.beginPath();
       fCtx.moveTo(poly[0].x, poly[0].y);
       for (let i = 1; i < poly.length; i++) {
         fCtx.lineTo(poly[i].x, poly[i].y);
       }
       fCtx.closePath();
-      fCtx.fillStyle = `rgba(0, 0, 0, ${Math.min(1.0, Math.max(0.65, intensity))})`;
+      fCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
       fCtx.fill();
     }
 

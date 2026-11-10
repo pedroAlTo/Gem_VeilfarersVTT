@@ -65,11 +65,27 @@ export class FXEngine {
       case 'void_rift':
         this.createVoidRift(x, y, params);
         break;
+      case 'void':
+      case 'void_beam':
+        this.createVoidBeam(x, y, params);
+        break;
       case 'radiant':
         this.createRadiantBurst(x, y, params);
         break;
       case 'laser':
         this.createLaserBurst(x, y, params);
+        break;
+      case 'plasma':
+        this.createPlasmaBurst(x, y, params);
+        break;
+      case 'ballistic':
+      case 'kinetic':
+      case 'bullet':
+        this.createBallisticBurst(x, y, params);
+        break;
+      case 'melee':
+      case 'slash':
+        this.createMeleeSlash(x, y, params);
         break;
       case 'emp':
         this.createEMP(x, y, params);
@@ -493,6 +509,144 @@ export class FXEngine {
     });
 
     this.createImpactSparks(targetX, targetY, color, 12);
+  }
+
+  createPlasmaBurst(x, y, params = {}) {
+    const targetX = params.targetX || (x + 280);
+    const targetY = params.targetY || y;
+    const color = params.color || '#10b981';
+
+    this.particles.push({
+      type: 'laser_shot',
+      x1: x,
+      y1: y,
+      x2: targetX,
+      y2: targetY,
+      color,
+      width: params.width || 10,
+      life: 1.0,
+      decay: 0.07
+    });
+
+    if (this.shockwaves.length < this.maxShockwaves) {
+      this.shockwaves.push({
+        x: targetX,
+        y: targetY,
+        radius: 6,
+        maxRadius: 75,
+        speed: 280,
+        lineWidth: 5,
+        color,
+        edgeColor: '#ffffff',
+        alpha: 0.9,
+        decay: 3.2
+      });
+    }
+
+    this.createImpactSparks(targetX, targetY, color, 16);
+  }
+
+  createBallisticBurst(x, y, params = {}) {
+    const targetX = params.targetX || (x + 280);
+    const targetY = params.targetY || y;
+    const tracerColor = params.color || '#fbbf24';
+
+    this.particles.push({
+      type: 'flash',
+      x,
+      y,
+      radius: 25,
+      color: '#fef08a',
+      alpha: 0.85,
+      life: 1.0,
+      decay: 0.16
+    });
+
+    for (let i = 0; i < 3; i++) {
+      const jx = (Math.random() - 0.5) * 8;
+      const jy = (Math.random() - 0.5) * 8;
+      this.particles.push({
+        type: 'laser_shot',
+        x1: x + jx,
+        y1: y + jy,
+        x2: targetX + (Math.random() - 0.5) * 12,
+        y2: targetY + (Math.random() - 0.5) * 12,
+        color: tracerColor,
+        width: 3.5,
+        life: 1.0,
+        decay: 0.10 + i * 0.03
+      });
+    }
+
+    this.createImpactSparks(targetX, targetY, '#f59e0b', 10);
+  }
+
+  createMeleeSlash(x, y, params = {}) {
+    const targetX = params.targetX || x;
+    const targetY = params.targetY || y;
+    const color = params.color || '#00f3ff';
+    const angle = Math.atan2(targetY - y, targetX - x) + Math.PI / 2;
+    const slashLen = 45;
+
+    this.particles.push({
+      type: 'laser_shot',
+      x1: targetX - Math.cos(angle) * slashLen,
+      y1: targetY - Math.sin(angle) * slashLen,
+      x2: targetX + Math.cos(angle) * slashLen,
+      y2: targetY + Math.sin(angle) * slashLen,
+      color,
+      width: 7,
+      life: 1.0,
+      decay: 0.09
+    });
+
+    this.particles.push({
+      type: 'flash',
+      x: targetX,
+      y: targetY,
+      radius: 35,
+      color,
+      alpha: 0.8,
+      life: 1.0,
+      decay: 0.12
+    });
+
+    this.createImpactSparks(targetX, targetY, color, 14);
+  }
+
+  createVoidBeam(x, y, params = {}) {
+    const targetX = params.targetX || (x + 280);
+    const targetY = params.targetY || y;
+    const color = params.color || '#a855f7';
+
+    this.particles.push({
+      type: 'laser_shot',
+      x1: x,
+      y1: y,
+      x2: targetX,
+      y2: targetY,
+      color,
+      width: 8,
+      life: 1.0,
+      decay: 0.06
+    });
+
+    if (this.shockwaves.length < this.maxShockwaves) {
+      this.shockwaves.push({
+        x: targetX,
+        y: targetY,
+        radius: 8,
+        maxRadius: 95,
+        speed: 220,
+        lineWidth: 6,
+        color: '#c084fc',
+        edgeColor: '#6b21a8',
+        alpha: 0.95,
+        decay: 2.6
+      });
+    }
+
+    this.createImpactSparks(targetX, targetY, '#d8b4fe', 16);
   }
 
   createImpactSparks(x, y, color = '#00f3ff', count = 8) {

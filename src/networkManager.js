@@ -338,7 +338,7 @@ export class NetworkManager {
       this.syncAll();
       return;
     }
-    if (['DICE_ROLL', 'PING', 'SPECIAL_FX', 'TRANSMISSION', 'ANNOUNCEMENT'].includes(message.type))
+    if (['DICE_ROLL', 'PING', 'SPECIAL_FX', 'ATTACK_FX', 'TARGET_SELECT', 'TRANSMISSION', 'ANNOUNCEMENT'].includes(message.type))
       for (const conn of this.connections.values())
         if (conn.open) conn.send(this.envelope(message));
   }
@@ -516,6 +516,10 @@ export class NetworkManager {
       );
     if (data.type === 'SPECIAL_FX' && data.params)
       window.veilCanvas?.triggerFX(data.fxType, data.params);
+    if (data.type === 'ATTACK_FX' && data.params)
+      window.veilCanvas?.triggerAttackFX(data.params);
+    if (data.type === 'TARGET_SELECT')
+      window.veilCanvas?.setAttackTarget(data.attackerId, data.targetId);
   }
   disconnect(reason = new Error('Session closed. Check the invitation and try again.')) {
     this.closing = true;

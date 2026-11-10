@@ -78,6 +78,12 @@ export class CanvasEngine {
     this.waterStart = null;
     this.waterCurrent = null;
     this.waterPolyPoints = [];
+
+    // Fog of War Ghost Memory (Enemy last known positions in explored areas)
+    this.lastKnownEnemyPositions = new Map();
+
+    // Tactical Attack Targeting
+    this.attackTarget = null; // { attackerId, targetId }
     this.cursorWorld = null;
 
     // AAA Particle FX & Pings
@@ -323,8 +329,9 @@ export class CanvasEngine {
         const now = Date.now();
         const timeDiff = now - lastTapTime;
         const distFromLastTap = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
-        if (timeDiff < 360 && timeDiff > 40 && distFromLastTap < 32) {
+        if (timeDiff < 480 && timeDiff > 40 && distFromLastTap < 48) {
           clearLongPress();
+          if (e.cancelable) e.preventDefault();
           const rect = this.canvas.getBoundingClientRect();
           const sx = touch.clientX - rect.left;
           const sy = touch.clientY - rect.top;
@@ -762,6 +769,43 @@ export class CanvasEngine {
             }
           }
 
+          // 0b. TOKENS HAVE MAXIMUM PREFERENCE OVER ANY OTHER ELEMENT
+          const gridSize = map.gridSize || 64;
+          let clickedToken = null;
+          for (let i = allTokens.length - 1; i >= 0; i--) {
+            const tok = allTokens[i];
+            const radius = ((tok.size || 1) * gridSize) / 2;
+            const dist = Math.hypot(world.x - tok.x, world.y - tok.y);
+            if (dist <= radius) {
+              if (!isKeeper && !tok.isPlayer && !this.isTokenVisibleToPlayers(tok, allTokens, map)) {
+                continue;
+              }
+              clickedToken = tok;
+              break;
+            }
+          }
+
+          if (clickedToken) {
+            const canMove = store.canEditToken(clickedToken.id);
+            if (canMove) {
+              this.draggedToken = clickedToken;
+              this.draggedTokenOrigX = clickedToken.x;
+              this.draggedTokenOrigY = clickedToken.y;
+              this.dragOffsetX = world.x - clickedToken.x;
+              this.dragOffsetY = world.y - clickedToken.y;
+            }
+            this.activeTemplate = null;
+            store.update({
+              selectedTokenId: clickedToken.id,
+              selectedWallId: null,
+              selectedLightId: null,
+              selectedWaterId: null,
+              selectedEffectId: null,
+              selectedTemplateId: null
+            });
+            return;
+          }
+
           // 1. Template Handle Interaction (Delete, 2nd Controller Rotate/Scale, Cone Aperture, Line Width, Center Move, Body Drag)
           for (let i = this.templates.length - 1; i >= 0; i--) {
             const tmpl = this.templates[i];
@@ -1135,47 +1179,15 @@ export class CanvasEngine {
             }
           }
 
-          // 4. Token Selection & Move
-          const tokens = store.getTokensForActiveMap();
-          const gridSize = map.gridSize || 64;
-          let clickedToken = null;
-
-          for (let i = tokens.length - 1; i >= 0; i--) {
-            const tok = tokens[i];
-            const radius = (tok.size * gridSize) / 2;
-            const dist = Math.hypot(world.x - tok.x, world.y - tok.y);
-            if (dist <= radius) {
-              // Players cannot select or interact with adversaries hidden in the dark/fog
-              if (!isKeeper && !tok.isPlayer && !this.isTokenVisibleToPlayers(tok, tokens, map)) {
-                continue;
-              }
-              clickedToken = tok;
-              break;
-            }
-          }
-
-          if (clickedToken) {
-            const canMove = store.canEditToken(clickedToken.id);
-            if (canMove) {
-              this.draggedToken = clickedToken;
-              this.draggedTokenOrigX = clickedToken.x;
-              this.draggedTokenOrigY = clickedToken.y;
-              this.dragOffsetX = world.x - clickedToken.x;
-              this.dragOffsetY = world.y - clickedToken.y;
-            }
-            this.activeTemplate = null;
-            store.update({ selectedTokenId: clickedToken.id, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null });
-          } else {
-            // Clicked background -> clear selections & initiate Stage Pan (Move Tool)
-            this.activeTemplate = null;
-            store.update({ selectedTokenId: null, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null });
-            window.dispatchEvent(new CustomEvent('veil:template_deselected'));
-            if (state.activeTool === 'select') {
-              this.isPanning = true;
-              this.panStartX = sx - this.panX;
-              this.panStartY = sy - this.panY;
-              this.canvas.style.cursor = 'grabbing';
-            }
+          // 4. Clicked background -> clear selections & initiate Stage Pan (Move Tool)
+          this.activeTemplate = null;
+          store.update({ selectedTokenId: null, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null, targetTokenId: null });
+          window.dispatchEvent(new CustomEvent('veil:template_deselected'));
+          if (state.activeTool === 'select') {
+            this.isPanning = true;
+            this.panStartX = sx - this.panX;
+            this.panStartY = sy - this.panY;
+            this.canvas.style.cursor = 'grabbing';
           }
         }
       }
@@ -1989,6 +2001,55 @@ export class CanvasEngine {
     const world = { x: worldX, y: worldY };
     const map = store.getActiveMap() || {};
 
+    // 0. TOKENS HAVE MAXIMUM PREFERENCE OVER ANY OTHER ELEMENT
+    const tokens = store.getTokensForActiveMap();
+    const gridSize = map.gridSize || 64;
+
+    for (let i = tokens.length - 1; i >= 0; i--) {
+      const tok = tokens[i];
+      const radius = ((tok.size || 1) * gridSize) / 2;
+      if (Math.hypot(world.x - tok.x, world.y - tok.y) <= radius + 6) {
+        if (!isKeeper && !tok.isPlayer && !this.isTokenVisibleToPlayers(tok, tokens, map)) {
+          continue;
+        }
+        if (window.veilTokenHUD) {
+          window.veilTokenHUD.openCharacterSheetModal(tok);
+        }
+        return;
+      }
+    }
+
+    // 0b. DOORS: Double click toggles door open/closed
+    for (const wall of (map.walls || [])) {
+      const isDoor = wall.isDoor || wall.wallType === 'door';
+      if (isDoor) {
+        if (wall.isSecret && !isKeeper) continue;
+        const midX = (wall.x1 + wall.x2) / 2;
+        const midY = (wall.y1 + wall.y2) / 2;
+        if (Math.hypot(world.x - midX, world.y - midY) <= 28) {
+          if (wall.isLocked && !isKeeper) {
+            audio.playError();
+            store.addCombatLog({
+              type: 'SYSTEM',
+              title: '🔒 PUERTA BLOQUEADA',
+              details: 'La compuerta está cerrada con cerrojo de seguridad.'
+            });
+            return;
+          }
+          const newOpen = !wall.isOpen;
+          store.updateWall(wall.id, { isOpen: newOpen });
+          network.broadcast({ type: 'WALL_UPDATE', wallId: wall.id, data: { isOpen: newOpen } });
+          audio.playClockTick();
+          store.addCombatLog({
+            type: 'SYSTEM',
+            title: newOpen ? '🚪 COMPUERTA ABIERTA' : '🚪 COMPUERTA CERRADA',
+            details: `La escotilla ha sido ${newOpen ? 'abierta' : 'cerrada'}.`
+          });
+          return;
+        }
+      }
+    }
+
     // --- KEEPER ELEMENT HANDLES (Walls, Anomalies, Water) ---
     if (isKeeper) {
       // A. Check Endpoints: si dos puntos están juntos unelos en un trazado compuesto, haciendo doble click se separan
@@ -2190,21 +2251,6 @@ export class CanvasEngine {
         }
       }
     }
-
-    // --- TOKEN CHARACTER SHEET ---
-    const tokens = store.getTokensForActiveMap();
-    const gridSize = map.gridSize || 64;
-
-    for (let i = tokens.length - 1; i >= 0; i--) {
-      const tok = tokens[i];
-      const radius = (tok.size * gridSize) / 2;
-      if (Math.hypot(world.x - tok.x, world.y - tok.y) <= radius) {
-        if (window.veilTokenHUD) {
-          window.veilTokenHUD.openCharacterSheetModal(tok);
-        }
-        break;
-      }
-    }
   }
 
   // --- Particle FX Engine ---
@@ -2222,6 +2268,50 @@ export class CanvasEngine {
 
   triggerFX(type, params = {}) {
     this.fx.trigger(type, params);
+  }
+
+  setAttackTarget(attackerId, targetId) {
+    if (!targetId) {
+      this.attackTarget = null;
+      store.update({ targetTokenId: null });
+    } else {
+      this.attackTarget = { attackerId, targetId };
+      store.update({ targetTokenId: targetId });
+    }
+  }
+
+  triggerAttackFX(params = {}) {
+    const { attacker, target, weaponType, isCritical } = params;
+    if (!attacker || !target) return;
+    const x1 = attacker.x;
+    const y1 = attacker.y;
+    const x2 = target.x;
+    const y2 = target.y;
+
+    let fxType = 'laser';
+    const typeStr = (weaponType || '').toLowerCase();
+    if (typeStr.includes('plasma') || typeStr.includes('ion') || typeStr.includes('blaster') || typeStr.includes('termico')) {
+      fxType = 'plasma';
+    } else if (typeStr.includes('arc') || typeStr.includes('rayo') || typeStr.includes('shock') || typeStr.includes('electr') || typeStr.includes('lightning') || typeStr.includes('volt')) {
+      fxType = 'lightning';
+    } else if (typeStr.includes('bala') || typeStr.includes('bullet') || typeStr.includes('kinetic') || typeStr.includes('cinet') || typeStr.includes('rifle') || typeStr.includes('shotgun') || typeStr.includes('pistol')) {
+      fxType = 'ballistic';
+    } else if (typeStr.includes('saber') || typeStr.includes('sword') || typeStr.includes('espada') || typeStr.includes('blade') || typeStr.includes('melee') || typeStr.includes('cuerpo') || typeStr.includes('filo') || typeStr.includes('daga')) {
+      fxType = 'melee';
+    } else if (typeStr.includes('void') || typeStr.includes('vacio') || typeStr.includes('gravity') || typeStr.includes('grav') || typeStr.includes('entrop')) {
+      fxType = 'void_beam';
+    } else if (typeStr.includes('laser') || typeStr.includes('haz') || typeStr.includes('beam')) {
+      fxType = 'laser';
+    }
+
+    this.fx.trigger(fxType, {
+      x: x1,
+      y: y1,
+      targetX: x2,
+      targetY: y2,
+      isCritical,
+      color: isCritical ? '#f59e0b' : undefined
+    });
   }
 
   startLoop() {
@@ -2281,6 +2371,11 @@ export class CanvasEngine {
 
     // A. Dynamic Lighting Pass (Ambient darkness, light fixtures, sirens)
     if (state.layerVisibility.walls_lights !== false && !isKeeperGM) {
+      const fullMapId = `${state.campaignId}:${map.id}`;
+      const activeLights = (map.lights || []).filter(l => {
+        if (isKeeperGM || state.fogOfWar === false) return true;
+        return this.fog.isPointExplored(l.x, l.y, fullMapId);
+      });
       const lightingTokens = activeTokens.map(tok => {
         if (this.draggedToken && tok.id === this.draggedToken.id && this.draggedTokenOrigX != null && state.userRole === 'player') {
           return { ...tok, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY };
@@ -2294,7 +2389,7 @@ export class CanvasEngine {
         ambientLight: map.ambientLight ?? 0.25,
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
-        lights: map.lights || [],
+        lights: activeLights,
         tokens: lightingTokens,
         time: now * 0.001
       });
@@ -2407,6 +2502,7 @@ export class CanvasEngine {
     if (state.layerVisibility.overlay !== false) {
       this.renderParticlesAndPings(ctx, dt, map.effects || []);
       this.renderEffectMarkers(ctx, map.effects || []);
+      this.renderAttackTargeting(ctx, map, now * 0.001);
       for (const tmpl of this.templates) {
         this.renderTemplate(ctx, tmpl, tmpl === this.activeTemplate);
       }
@@ -2693,6 +2789,83 @@ export class CanvasEngine {
       }
     }
 
+    // 5. Test if targetTok is inside the illuminated radius of any EXPLORED light source
+    const fullMapId = `${state.campaignId}:${map.id}`;
+    for (const light of (map.lights || [])) {
+      if (light.enabled === false) continue;
+      if (!this.fog.isPointExplored(light.x, light.y, fullMapId)) continue;
+
+      const lx = light.x;
+      const ly = light.y;
+      const tx = targetTok.x;
+      const ty = targetTok.y;
+      const dist = Math.hypot(tx - lx, ty - ly);
+      const lRadius = light.radius || 200;
+      if (dist > lRadius) continue;
+
+      const lAngle = light.visionAngle ?? 360;
+      if (lAngle < 360) {
+        const fAngle = light.facingAngle ?? 0;
+        const angleToTarget = Math.atan2(ty - ly, tx - lx);
+        let diff = angleToTarget - fAngle;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        const halfFov = (lAngle * Math.PI) / 360;
+        if (Math.abs(diff) > halfFov) continue;
+      }
+
+      let losBlocked = false;
+      for (const wall of (map.walls || [])) {
+        const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
+        if (wallType === 'window') continue;
+        if (wallType === 'door' && wall.isOpen) continue;
+        if (this.checkLineIntersection(lx, ly, tx, ty, wall.x1, wall.y1, wall.x2, wall.y2)) {
+          losBlocked = true;
+          break;
+        }
+      }
+
+      if (!losBlocked) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // --- Check if a point is within active vision/light of any player token ---
+  isPointInPlayerVision(x, y, allTokens, map) {
+    let viewers = allTokens.filter(isPartyToken);
+    for (const viewer of viewers) {
+      if (viewer.hidden) continue;
+      const vx = viewer.x;
+      const vy = viewer.y;
+      const dist = Math.hypot(x - vx, y - vy);
+      const vRange = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 400);
+      if (dist > vRange) continue;
+
+      const vAngle = viewer.visionAngle ?? 360;
+      if (vAngle < 360) {
+        const fAngle = viewer.facingAngle ?? 0;
+        const angleToTarget = Math.atan2(y - vy, x - vx);
+        let diff = angleToTarget - fAngle;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        if (Math.abs(diff) > (vAngle * Math.PI) / 360) continue;
+      }
+
+      let losBlocked = false;
+      for (const wall of (map.walls || [])) {
+        const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
+        if (wallType === 'window') continue;
+        if (wallType === 'door' && wall.isOpen) continue;
+        if (this.checkLineIntersection(vx, vy, x, y, wall.x1, wall.y1, wall.x2, wall.y2)) {
+          losBlocked = true;
+          break;
+        }
+      }
+      if (!losBlocked) return true;
+    }
     return false;
   }
 
@@ -2753,9 +2926,16 @@ export class CanvasEngine {
       // Wall lines are ONLY visible for the Keeper.
       // Players see no wall lines (the walls block LOS and movement without drawing neon lines).
       // Secret doors are completely hidden from players.
-      if (!isKeeper) {
-        if (isWall) continue;
-        if (isDoor && isSecret) continue;
+      // In Fog of War: Unexplored walls, doors and windows are completely hidden from players.
+      if (!isKeeper || !state.gmVision) {
+        if (state.fogOfWar !== false) {
+          const fullMapId = `${state.campaignId}:${state.activeMapId}`;
+          if (!this.fog.isWallExplored(w, fullMapId)) continue;
+        }
+        if (!isKeeper) {
+          if (isWall) continue;
+          if (isDoor && isSecret) continue;
+        }
       }
 
       ctx.save();
@@ -2972,11 +3152,35 @@ export class CanvasEngine {
       const isSelected = tok.id === state.selectedTokenId;
 
       // Visibility Check:
-      // Adversary / NPC tokens remain in the dark and are ONLY drawn if a player is facing them in LOS
+      // Adversary / NPC tokens remain in the dark and are ONLY drawn if a player is facing them in LOS or inside an illuminated explored light
       const isVisibleToPlayers = this.isTokenVisibleToPlayers(tok, tokens, map);
-      if (!isVisibleToPlayers && !isKeeperGM) {
-        // Completely hidden from players in the dark/fog!
-        // Note: If tremorsense/vibration detected it, the acoustic sonar pulse was already drawn above!
+      const fullMapId = `${state.campaignId}:${map.id}`;
+
+      if (isVisibleToPlayers) {
+        if (!tok.isPlayer) {
+          this.lastKnownEnemyPositions.set(tok.id, {
+            x: tok.x,
+            y: tok.y,
+            size: tok.size,
+            avatar: tok.avatar,
+            name: tok.name,
+            color: tok.color,
+            mapId: map.id
+          });
+        }
+      } else if (!isKeeperGM) {
+        // Token is out of real-time vision.
+        // If players previously spotted this enemy in explored territory, show frozen last known position
+        const lastPos = this.lastKnownEnemyPositions.get(tok.id);
+        if (lastPos && lastPos.mapId === map.id) {
+          if (this.isPointInPlayerVision(lastPos.x, lastPos.y, tokens, map)) {
+            // Player is looking right at the spot and sees it is now empty: remove ghost
+            this.lastKnownEnemyPositions.delete(tok.id);
+          } else if (this.fog.isPointExplored(lastPos.x, lastPos.y, fullMapId)) {
+            // Draw frozen last known position in the fog shroud
+            this.renderGhostToken(ctx, lastPos, gridSize, time);
+          }
+        }
         continue;
       }
 
@@ -3199,6 +3403,211 @@ export class CanvasEngine {
 
       ctx.restore();
     }
+  }
+
+  // --- Render Ghost / Last Known Position of Enemy in Fog of War ---
+  renderGhostToken(ctx, ghost, gridSize, time) {
+    const radius = ((ghost.size || 1) * gridSize) / 2;
+    ctx.save();
+    ctx.translate(ghost.x, ghost.y);
+
+    // Ghost transparency & radar border
+    ctx.globalAlpha = 0.45;
+
+    // Outer scanning dashed ring
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Token base
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Portrait / initial
+    const img = this.getTokenImage(ghost.avatar);
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img, -radius, -radius, radius * 2, radius * 2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `bold ${Math.round(radius * 0.7)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((ghost.name || '?')[0].toUpperCase(), 0, 0);
+    }
+
+    // Badge
+    ctx.globalAlpha = 0.85;
+    ctx.font = 'bold 9px "Rajdhani", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillText('ÚLTIMA POS.', 0, radius + 12);
+
+    ctx.restore();
+  }
+
+  // --- Tactical Attack Targeting LOS & Distance Rendering ---
+  renderAttackTargeting(ctx, map, time) {
+    const state = store.getState();
+    const tokens = store.getTokensForActiveMap();
+    if (!tokens || tokens.length < 2) return;
+
+    let targetId = this.attackTarget?.targetId || state.targetTokenId;
+    let attackerId = this.attackTarget?.attackerId;
+
+    if (!targetId) return;
+
+    const target = tokens.find(t => t.id === targetId);
+    if (!target) return;
+
+    let attacker = tokens.find(t => t.id === attackerId);
+    if (!attacker) {
+      if (state.selectedTokenId && state.selectedTokenId !== targetId) {
+        attacker = tokens.find(t => t.id === state.selectedTokenId);
+      } else if (state.claimedTokenId && state.claimedTokenId !== targetId) {
+        attacker = tokens.find(t => t.id === state.claimedTokenId);
+      }
+    }
+
+    if (!attacker || attacker.id === target.id) return;
+
+    // Visibility test for players: do not reveal adversaries out of sight
+    const isKeeperGM = state.userRole === 'keeper' && state.gmVision;
+    if (!isKeeperGM && !target.isPlayer && !this.isTokenVisibleToPlayers(target, tokens, map)) {
+      return;
+    }
+
+    const x1 = attacker.x;
+    const y1 = attacker.y;
+    const x2 = target.x;
+    const y2 = target.y;
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const distPx = Math.hypot(dx, dy);
+    if (distPx < 1) return;
+
+    const gridSize = map.gridSize || 64;
+    const distSquares = (distPx / gridSize).toFixed(1);
+    const distMeters = ((distPx / gridSize) * 1.5).toFixed(1);
+
+    // LOS obstruction test against walls and closed doors
+    let losBlocked = false;
+    for (const wall of (map.walls || [])) {
+      const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
+      if (wallType === 'window') continue;
+      if (wallType === 'door' && wall.isOpen) continue;
+      if (this.checkLineIntersection(x1, y1, x2, y2, wall.x1, wall.y1, wall.x2, wall.y2)) {
+        losBlocked = true;
+        break;
+      }
+    }
+
+    ctx.save();
+
+    // 1. Draw Targeting Laser Line
+    const beamColor = losBlocked ? '#ef4444' : '#00f3ff';
+    const coreColor = losBlocked ? '#fca5a5' : '#e0f2fe';
+
+    ctx.strokeStyle = beamColor;
+    ctx.lineWidth = 4 / this.zoom;
+    ctx.shadowColor = beamColor;
+    ctx.shadowBlur = 10;
+    if (losBlocked) {
+      ctx.setLineDash([10 / this.zoom, 6 / this.zoom]);
+    } else {
+      ctx.lineDashOffset = -(time * 40) % 32;
+      ctx.setLineDash([16 / this.zoom, 8 / this.zoom]);
+    }
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    ctx.strokeStyle = coreColor;
+    ctx.lineWidth = 1.5 / this.zoom;
+    ctx.shadowBlur = 0;
+    ctx.stroke();
+
+    // 2. Crosshair Reticle on Target
+    const targetRadius = ((target.size || 1) * gridSize) / 2;
+    const reticleRadius = targetRadius + 14 / this.zoom;
+
+    ctx.save();
+    ctx.translate(x2, y2);
+    ctx.rotate(time * 1.5);
+
+    ctx.strokeStyle = beamColor;
+    ctx.lineWidth = 2 / this.zoom;
+    ctx.setLineDash([8 / this.zoom, 6 / this.zoom]);
+    ctx.beginPath();
+    ctx.arc(0, 0, reticleRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    const bracketSize = 8 / this.zoom;
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(reticleRadius - bracketSize, -reticleRadius);
+      ctx.lineTo(reticleRadius, -reticleRadius);
+      ctx.lineTo(reticleRadius, -reticleRadius + bracketSize);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Center Crosshair Pip
+    ctx.save();
+    ctx.translate(x2, y2);
+    ctx.strokeStyle = beamColor;
+    ctx.lineWidth = 1.5 / this.zoom;
+    ctx.beginPath();
+    const pip = 6 / this.zoom;
+    ctx.moveTo(-pip, 0); ctx.lineTo(pip, 0);
+    ctx.moveTo(0, -pip); ctx.lineTo(0, pip);
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Tactical HUD Tag at midpoint
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+
+    const titleText = `🎯 ${target.name.toUpperCase()}`;
+    const statusText = losBlocked ? `⚠️ BLOQUEADO · ${distMeters}m (${distSquares} cas)` : `⚡ DESPEJADO · ${distMeters}m (${distSquares} cas)`;
+
+    ctx.font = `bold ${Math.max(10, Math.round(11 / this.zoom))}px "Rajdhani", sans-serif`;
+    const titleWidth = ctx.measureText(titleText).width;
+    const statusWidth = ctx.measureText(statusText).width;
+    const badgeW = Math.max(titleWidth, statusWidth) + 20 / this.zoom;
+    const badgeH = 34 / this.zoom;
+
+    ctx.fillStyle = 'rgba(7, 16, 29, 0.92)';
+    ctx.strokeStyle = beamColor;
+    ctx.lineWidth = 1.5 / this.zoom;
+    ctx.beginPath();
+    ctx.roundRect(midX - badgeW / 2, midY - badgeH / 2, badgeW, badgeH, 4 / this.zoom);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(titleText, midX, midY - 6 / this.zoom);
+
+    ctx.font = `${Math.max(9, Math.round(10 / this.zoom))}px "Rajdhani", sans-serif`;
+    ctx.fillStyle = losBlocked ? '#ef4444' : '#10b981';
+    ctx.fillText(statusText, midX, midY + 8 / this.zoom);
+
+    ctx.restore();
   }
 
   // Helper to determine if a token is a horror, adversary, or has its identity masked from players

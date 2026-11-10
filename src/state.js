@@ -73,7 +73,8 @@ class StateStore {
       templateRadius: 4, // grid units
       gmVision: true, // If true, Keeper sees all without fog/darkness
       fogOfWar: true, // If true, unexplored areas are completely dark, explored areas out of vision are shrouded
-      fogExploredOpacity: 0.88, // Darkness opacity for explored areas out of vision (0.80 to 0.95)
+      fogExploredOpacity: 0.50, // Darkness opacity for explored areas out of vision (50% default, adjustable)
+      targetTokenId: null, // Selected target token for combat targeting & tactical LOS
       showGrid: true,
       gridSnap: true,
       snapToGrid: true,
@@ -600,7 +601,8 @@ class StateStore {
   }
 
   setFogExploredOpacity(opacity) {
-    this.update({ fogExploredOpacity: Math.max(0.80, Math.min(0.95, opacity)) });
+    const val = Number.isFinite(opacity) ? Math.max(0.05, Math.min(0.95, opacity)) : 0.50;
+    this.update({ fogExploredOpacity: val });
   }
 
   resetMapFog(mapId = null) {

@@ -424,6 +424,15 @@ export class DiceRollerSidebar {
         this.container.querySelector('#dmg_major_thresh').value = tok.hp.majorThreshold;
         this.container.querySelector('#dmg_severe_thresh').value = tok.hp.severeThreshold;
       }
+      const attackerId = this.currentActor?.id || store.getState().selectedTokenId;
+      if (window.veilCanvas) {
+        window.veilCanvas.setAttackTarget(attackerId, select.value || null);
+      }
+      network.broadcast({
+        type: 'TARGET_SELECT',
+        attackerId,
+        targetId: select.value || null
+      });
     };
 
     if (tokens.length > 0) {
@@ -560,6 +569,29 @@ export class DiceRollerSidebar {
     this.container.querySelector('#dmg_detail_text').textContent = (secret ? 'SOLO KEEPER · ' : '') + detailText;
     if (secret) store.addLog({ visibility: 'keeper', type: 'DAMAGE', sender: 'Keeper', title: 'Daño · ' + (targetToken?.name || 'Sin objetivo'), details: detailText });
 
+    // Trigger weapon attack trajectory FX from attacker to target
+    const currentTokens = store.getTokensForActiveMap();
+    const attackerId = this.currentActor?.id || store.getState().selectedTokenId;
+    const attacker = currentTokens.find(t => t.id === attackerId);
+    if (attacker && targetToken && window.veilCanvas) {
+      const weaponType = formula || 'laser';
+      window.veilCanvas.triggerAttackFX({
+        attacker,
+        target: targetToken,
+        weaponType,
+        isCritical
+      });
+      network.broadcast({
+        type: 'ATTACK_FX',
+        params: {
+          attacker: { x: attacker.x, y: attacker.y },
+          target: { x: targetToken.x, y: targetToken.y },
+          weaponType,
+          isCritical
+        }
+      });
+    }
+
     // Apply button
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
     let applied=false;
@@ -592,10 +624,24 @@ export class DiceRollerSidebar {
           }
         });
 
-        // Trigger explosion FX on target position!
+        // Trigger impact explosion FX with size directly proportional to damage produced!
+        const finalHp = currentDamage.finalHpDamage || 0;
+        const rawDmg = dmgResult.rawDamage || 0;
+        const fxIntensity = Math.max(0.6, Math.min(3.5, 0.6 + (finalHp * 0.35) + (rawDmg * 0.08)));
+
         if (window.veilCanvas) {
-          window.veilCanvas.triggerFX('explosion', { x: targetToken.x, y: targetToken.y });
+          window.veilCanvas.triggerFX('explosion', {
+            x: targetToken.x,
+            y: targetToken.y,
+            intensity: fxIntensity
+          });
         }
+
+        network.broadcast({
+          type: 'SPECIAL_FX',
+          fxType: 'explosion',
+          params: { x: targetToken.x, y: targetToken.y, intensity: fxIntensity }
+        });
 
         store.addLog({
           sender: 'Combat',

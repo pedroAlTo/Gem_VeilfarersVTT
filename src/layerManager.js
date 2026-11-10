@@ -156,14 +156,14 @@ export class LayerManagerHUD {
           ${isKeeper ? `
             <div class="layer-fow-section" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0, 243, 255, 0.25);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: 'Rajdhani', sans-serif;">🌫️ NIEBLA DE GUERRA</span>
+                <span style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: 'Rajdhani', sans-serif;">🌫️ NIEBLA DE COMBATE (FOG OF WAR)</span>
                 <button class="hud-btn hud-btn-xs ${state.fogOfWar !== false ? 'active' : ''}" id="btn_toggle_fow_layer" style="font-size: 10px; padding: 2px 8px;">
                   ${state.fogOfWar !== false ? 'ON' : 'OFF'}
                 </button>
               </div>
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 10px; color: #94a3b8;">
-                <span>Oscuridad Explorada (${Math.round((state.fogExploredOpacity ?? 0.88) * 100)}%):</span>
-                <input type="range" id="input_fow_opacity" min="80" max="95" value="${Math.round((state.fogExploredOpacity ?? 0.88) * 100)}" style="width: 75px; accent-color: #00f3ff; cursor: pointer;">
+                <span id="lbl_fow_opacity">Atenuación Explorada (${Math.round((state.fogExploredOpacity ?? 0.50) * 100)}%):</span>
+                <input type="range" id="input_fow_opacity" min="10" max="90" step="5" value="${Math.round((state.fogExploredOpacity ?? 0.50) * 100)}" style="width: 75px; accent-color: #00f3ff; cursor: pointer;">
               </div>
               <div style="display: flex; gap: 6px;">
                 <button class="hud-btn hud-btn-xs" id="btn_reset_fow" style="flex: 1; font-size: 9px; padding: 4px;" title="Reiniciar exploración (todo el mapa oscuro)">
@@ -177,7 +177,7 @@ export class LayerManagerHUD {
 
             <div class="layer-weather-section" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0, 243, 255, 0.25);">
               <div style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: 'Rajdhani', sans-serif; margin-bottom: 6px;">
-                🌧️ EFECTOS OVERLAY & CLIMA
+                🌧️ CLIMA & EFECTOS ATMOSFÉRICOS (WEATHER OVERLAY)
               </div>
               <div style="display: flex; gap: 6px; margin-bottom: 6px;">
                 <button class="hud-btn hud-btn-xs ${isRain ? 'active' : ''}" id="layer_btn_toggle_rain" style="flex: 1; font-size: 10px; padding: 4px;" title="Alternar Lluvia en Capa Overlay">
@@ -188,11 +188,11 @@ export class LayerManagerHUD {
                 </button>
               </div>
               <div style="display: flex; gap: 6px;">
-                <button class="hud-btn hud-btn-xs ${isFog ? 'active' : ''}" id="layer_btn_toggle_fog" style="flex: 1; font-size: 10px; padding: 4px;" title="Alternar Niebla Ambiental">
-                  ${isFog ? '🌫️ NIEBLA ON' : '🌫️ NIEBLA OFF'}
+                <button class="hud-btn hud-btn-xs ${isFog ? 'active' : ''}" id="layer_btn_toggle_fog" style="flex: 1; font-size: 10px; padding: 4px;" title="Alternar Bruma Ambiental de Clima">
+                  ${isFog ? '🌫️ BRUMA ON' : '🌫️ BRUMA OFF'}
                 </button>
-                <button class="hud-btn hud-btn-xs" id="layer_btn_cycle_fog" style="font-size: 9px; padding: 4px;" title="Densidad: Bruma, Media, Densa">
-                  ${fogDensity === 'light' ? 'Bruma' : fogDensity === 'dense' ? 'Densa' : 'Media'}
+                <button class="hud-btn hud-btn-xs" id="layer_btn_cycle_fog" style="font-size: 9px; padding: 4px;" title="Densidad: Bruma Ligera, Media, Densa">
+                  ${fogDensity === 'light' ? 'Bruma Ligera' : fogDensity === 'dense' ? 'Densa' : 'Media'}
                 </button>
               </div>
             </div>
@@ -263,9 +263,12 @@ export class LayerManagerHUD {
     }
 
     const fowSlider = this.container.querySelector('#input_fow_opacity');
+    const fowLabel = this.container.querySelector('#lbl_fow_opacity');
     if (fowSlider) {
       fowSlider.oninput = (e) => {
-        store.setFogExploredOpacity(parseInt(e.target.value, 10) / 100);
+        const val = parseInt(e.target.value, 10);
+        if (fowLabel) fowLabel.textContent = `Atenuación Explorada (${val}%):`;
+        store.setFogExploredOpacity(val / 100);
       };
     }
 
