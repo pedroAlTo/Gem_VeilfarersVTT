@@ -54,6 +54,14 @@ export const RELEASES = [
         ],
       },
       {
+        title: 'Autenticación en la Nube y Compatibilidad Multiplataforma',
+        items: [
+          'Resolución del error EBADPLATFORM en Netlify (Linux): eliminado @rollup/rollup-win32-x64-msvc de las dependencias directas para que Rollup resuelva dinámicamente el binario nativo según el sistema operativo del entorno de despliegue.',
+          'Corrección del cierre inmediato del popup de Google: soporte de redirección directa (signInWithRedirect) que evita bloqueos de popups y políticas de aislamiento de origen (COOP), con reanudación automática de sesión vía getRedirectResult al recargar.',
+          'Integración completa de Netlify Identity: widget integrado en el encabezado, detección y persistencia automática de sesión, y botón dedicado en el modal de cuenta con fallback inmediato si falla el popup.',
+        ],
+      },
+      {
         title: 'Respaldo de Campaña y Lanzadores Locales',
         items: [
           'Copia de seguridad automática rotativa (auto-backup) en almacenamiento local durante cada guardado de campaña.',

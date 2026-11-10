@@ -46,6 +46,12 @@ Catálogo de equipo alienígena, drones tácticos, mitigación con escudos, spot
 - Las acciones de "Reiniciar niebla" y "Revelar todo" actualizan la campaña y se sincronizan instantáneamente a todos los jugadores mediante el mensaje de red FOG_SYNC.
 - Persistencia total ante recargas de página, reconexiones tardías y suspensiones de pestañas en navegadores móviles.
 
+### Autenticación en la Nube y Compatibilidad Multiplataforma
+
+- Resolución del error EBADPLATFORM en Netlify (Linux): eliminado @rollup/rollup-win32-x64-msvc de las dependencias directas para que Rollup resuelva dinámicamente el binario nativo según el sistema operativo del entorno de despliegue.
+- Corrección del cierre inmediato del popup de Google: soporte de redirección directa (signInWithRedirect) que evita bloqueos de popups y políticas de aislamiento de origen (COOP), con reanudación automática de sesión vía getRedirectResult al recargar.
+- Integración completa de Netlify Identity: widget integrado en el encabezado, detección y persistencia automática de sesión, y botón dedicado en el modal de cuenta con fallback inmediato si falla el popup.
+
 ### Respaldo de Campaña y Lanzadores Locales
 
 - Copia de seguridad automática rotativa (auto-backup) en almacenamiento local durante cada guardado de campaña.

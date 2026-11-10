@@ -256,3 +256,35 @@ test('campaign backup: rolling snapshot in localStorage and export reminder for 
   assert.ok(parsed.campaignId);
   assert.ok(parsed.data);
 });
+
+test('cloud account & login: Google popup, redirect fallback and Netlify Identity integration', async () => {
+  const { CloudAccount } = await import('../src/cloudAccount.js');
+
+  const c = new CloudAccount();
+
+  // 1. Netlify User setting & session restoration
+  c.setNetlifyUser({ id: 'netlify_pilot_1', email: 'pilot@veil.org', user_metadata: { full_name: 'Captain Harker' } });
+  assert.equal(c.user.uid, 'netlify_pilot_1');
+  assert.equal(c.user.email, 'pilot@veil.org');
+  assert.equal(c.user.displayName, 'Captain Harker');
+  assert.equal(c.user.isNetlify, true);
+
+  // 2. Google sign-in with redirect option
+  let redirectCalled = false;
+  let popupCalled = false;
+  c.authAPI = {
+    GoogleAuthProvider: class { setCustomParameters() {} },
+    signInWithRedirect: async () => { redirectCalled = true; },
+    signInWithPopup: async () => { popupCalled = true; return { user: { uid: 'google_user_1', email: 'g@test.com' } }; }
+  };
+  c.auth = {};
+
+  await c.signInWithGoogle({ useRedirect: true });
+  assert.equal(redirectCalled, true, 'signInWithRedirect called when useRedirect is true');
+
+  const popupUser = await c.signInWithGoogle({ useRedirect: false });
+  assert.equal(popupCalled, true, 'signInWithPopup called when useRedirect is false');
+  assert.equal(popupUser.uid, 'google_user_1');
+});
+
+

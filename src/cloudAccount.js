@@ -50,9 +50,37 @@ export class CloudAccount {
         let first = true;
         auth.onAuthStateChanged(this.auth, user => { this.user = user; this.epoch++; this.emit(); if (first) { first = false; resolve(); } });
       });
+      try {
+        const redirectResult = await auth.getRedirectResult(this.auth);
+        if (redirectResult?.user) {
+          this.user = redirectResult.user;
+          this.epoch++;
+          this.emit();
+        }
+      } catch (e) {
+        console.warn('Firebase getRedirectResult error:', e);
+      }
+      if (typeof window !== 'undefined' && window.netlifyIdentity && !this.user) {
+        try {
+          const netlifyUser = window.netlifyIdentity.currentUser();
+          if (netlifyUser) this.setNetlifyUser(netlifyUser);
+        } catch {}
+      }
       return this;
     })().catch(error => { this.loading = null; throw error; });
     return this.loading;
+  }
+  setNetlifyUser(user) {
+    if (!user) return;
+    this.user = {
+      uid: user.id || user.email || 'netlify_' + Date.now(),
+      email: user.email || '',
+      displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Operative',
+      isNetlify: true,
+      netlifyUser: user
+    };
+    this.epoch++;
+    this.emit();
   }
   async signIn(email, password, { create = false, name = '', remember = true } = {}) {
     await this.init();
@@ -61,18 +89,30 @@ export class CloudAccount {
     const credential = await (create ? a.createUserWithEmailAndPassword : a.signInWithEmailAndPassword)(this.auth, email.trim(), password);
     if (create && name.trim()) { await a.updateProfile(credential.user, { displayName: name.trim().slice(0, 80) }); this.emit(); }
   }
-  async signInWithGoogle() {
-    if (cloudConfigured) {
+  async signInWithGoogle(options = {}) {
+    const { useRedirect = false } = options;
+    if (this.authAPI || cloudConfigured) {
+      const a = this.authAPI || (await this.init()).authAPI;
+      const provider = new a.GoogleAuthProvider();
+      if (typeof provider.setCustomParameters === 'function') {
+        provider.setCustomParameters({ prompt: 'select_account' });
+      }
+      if (useRedirect) {
+        await a.signInWithRedirect(this.auth, provider);
+        return null;
+      }
       try {
-        await this.init();
-        const a = this.authAPI;
-        const provider = new a.GoogleAuthProvider();
         const credential = await a.signInWithPopup(this.auth, provider);
-        return credential.user;
+        return credential?.user || credential;
       } catch (err) {
-        if (!err.message?.includes('popup-closed-by-user')) {
-          // If Firebase Google popup fails or is disabled in console, attempt Netlify Identity
-          return this.signInWithNetlify('google');
+        console.warn('Firebase Google popup failed:', err);
+        // If popup was blocked or closed immediately, try Netlify Identity if available
+        if (typeof window !== 'undefined' && window.netlifyIdentity) {
+          try {
+            return await this.signInWithNetlify('google');
+          } catch (niErr) {
+            console.warn('Netlify Identity fallback failed:', niErr);
+          }
         }
         throw err;
       }
@@ -82,53 +122,58 @@ export class CloudAccount {
   async initNetlifyIdentity() {
     if (typeof window === 'undefined') return null;
     if (window.netlifyIdentity) return window.netlifyIdentity;
+    if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent)) return null;
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(window.netlifyIdentity || null), 2000);
       const existing = document.querySelector('script[src*="netlify-identity-widget"]');
       if (existing) {
+        if (window.netlifyIdentity) {
+          clearTimeout(timer);
+          try { window.netlifyIdentity.init(); } catch {}
+          resolve(window.netlifyIdentity);
+          return;
+        }
         existing.addEventListener('load', () => {
+          clearTimeout(timer);
           if (window.netlifyIdentity) {
-            window.netlifyIdentity.init();
+            try { window.netlifyIdentity.init(); } catch {}
             resolve(window.netlifyIdentity);
+          } else {
+            resolve(null);
           }
         });
+        existing.addEventListener('error', () => { clearTimeout(timer); resolve(null); });
         return;
       }
       const script = document.createElement('script');
       script.src = 'https://identity.netlify.com/v1/netlify-identity-widget.js';
       script.async = true;
       script.onload = () => {
+        clearTimeout(timer);
         if (window.netlifyIdentity) {
-          window.netlifyIdentity.init();
+          try { window.netlifyIdentity.init(); } catch {}
           resolve(window.netlifyIdentity);
         } else {
-          reject(new Error('Netlify Identity could not be initialized.'));
+          resolve(null);
         }
       };
-      script.onerror = () => reject(new Error('Failed to load Netlify Identity script.'));
+      script.onerror = () => { clearTimeout(timer); resolve(null); };
       document.head.appendChild(script);
     });
   }
-  async signInWithNetlify(provider = 'google') {
+  async signInWithNetlify(provider = '') {
     const ni = await this.initNetlifyIdentity();
-    if (!ni) throw new Error('Netlify Identity is not available in this environment.');
+    if (!ni) throw new Error('Netlify Identity no está disponible en este entorno.');
     return new Promise((resolve, reject) => {
       const onLogin = user => {
-        this.user = {
-          uid: user.id || user.email || 'netlify_' + Date.now(),
-          email: user.email || '',
-          displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Operative',
-          isNetlify: true,
-          netlifyUser: user
-        };
-        this.epoch++;
-        this.emit();
+        this.setNetlifyUser(user);
         try { ni.close(); } catch {}
         resolve(this.user);
       };
       ni.on('login', onLogin);
       ni.on('error', err => reject(err));
-      ni.open(provider ? 'login' : undefined);
+      ni.open('login');
     });
   }
   async resetPassword(email) { await this.init(); await this.authAPI.sendPasswordResetEmail(this.auth, email.trim()); }

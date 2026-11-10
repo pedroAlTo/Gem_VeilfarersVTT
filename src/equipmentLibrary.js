@@ -511,3 +511,4 @@ export function equipCatalogItem(inventory, catalogItem) {
   }
   return draft;
 }
+

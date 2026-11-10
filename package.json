@@ -13,7 +13,6 @@
     "release:check": "node scripts/release-notes.mjs --check"
   },
   "dependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.65.1",
     "cannon-es": "^0.20.0",
     "dompurify": "^3.4.17",
     "firebase": "^13.1.0",

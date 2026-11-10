@@ -14,6 +14,14 @@ export function initAccount() {
       catch (error) { notify('Preferences could not be loaded: ' + error.message, 'error'); }
     }
   });
+  if (typeof window !== 'undefined' && window.netlifyIdentity) {
+    try {
+      window.netlifyIdentity.on('init', user => { if (user && !account.user) account.setNetlifyUser(user); });
+      window.netlifyIdentity.on('login', user => { if (user) account.setNetlifyUser(user); });
+      window.netlifyIdentity.on('logout', () => { if (account.user?.isNetlify) account.signOut(); });
+      window.netlifyIdentity.init();
+    } catch {}
+  }
   if (cloudConfigured) account.init().catch(error => notify(error.message, 'error'));
 }
 export async function useCharacter(token) {
@@ -48,9 +56,15 @@ export function openAccount() {
   ` : `
     <span class="dossier-eyebrow">YOUR CHARACTERS / YOUR SETTINGS</span><h2>Bring your crew with you.</h2><p class="dossier-muted">Sign in to save characters, preferences and scene images. Local play is always available.</p>
 
-    <div style="margin-bottom: 16px;">
+    <div style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
       <button class="hud-btn hud-btn-primary" type="button" id="btn_google_signin" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; padding: 10px;">
-        <span style="font-size: 16px;">🌐</span> Iniciar sesión con Google (Netlify / Google Account)
+        <span style="font-size: 16px;">🌐</span> Iniciar sesión con Google (Ventana emergente)
+      </button>
+      <button class="hud-btn hud-btn-secondary" type="button" id="btn_google_redirect" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 8px; font-size: 12px;">
+        <span>🔄</span> Iniciar sesión con Google (Redirección directa · Si falla el popup)
+      </button>
+      <button class="hud-btn hud-btn-secondary" type="button" id="btn_netlify_signin" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 8px; font-size: 12px;">
+        <span>⚡</span> Iniciar sesión con Netlify Identity (Google / Email)
       </button>
     </div>
 
@@ -82,7 +96,44 @@ export function openAccount() {
     modal.querySelector('#btn_signin_account')?.addEventListener('click', () => { submitMode = 'signin'; });
 
     modal.querySelector('#btn_google_signin')?.addEventListener('click', () => run(async () => {
-      await account.signInWithGoogle();
+      try {
+        const user = await account.signInWithGoogle({ useRedirect: false });
+        if (user) {
+          modal.remove();
+          openAccount();
+        }
+      } catch (err) {
+        if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup-closed-by-user')) {
+          error.innerHTML = sanitizeHTML(`
+            <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 10px; margin-top: 8px;">
+              <p style="margin: 0 0 6px; font-weight: bold; color: #f87171;">La ventana emergente de Google se cerró antes de completar el acceso.</p>
+              <p style="margin: 0 0 8px; font-size: 12px; color: #cbd5e1;">Esto suele ocurrir si el navegador bloquea popups o si el dominio no está autorizado en Firebase Console.</p>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="hud-btn hud-btn-primary hud-btn-xs" id="quick_google_redirect">Reintentar con Redirección Directa</button>
+                <button type="button" class="hud-btn hud-btn-secondary hud-btn-xs" id="quick_netlify_login">Usar Netlify Identity</button>
+              </div>
+            </div>
+          `);
+          modal.querySelector('#quick_google_redirect')?.addEventListener('click', () => {
+            account.signInWithGoogle({ useRedirect: true });
+          });
+          modal.querySelector('#quick_netlify_login')?.addEventListener('click', () => run(async () => {
+            await account.signInWithNetlify();
+            modal.remove();
+            openAccount();
+          }));
+        } else {
+          throw err;
+        }
+      }
+    }));
+
+    modal.querySelector('#btn_google_redirect')?.addEventListener('click', () => run(async () => {
+      await account.signInWithGoogle({ useRedirect: true });
+    }));
+
+    modal.querySelector('#btn_netlify_signin')?.addEventListener('click', () => run(async () => {
+      await account.signInWithNetlify();
       modal.remove();
       openAccount();
     }));
