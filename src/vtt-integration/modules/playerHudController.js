@@ -2,7 +2,11 @@ import { getDatabase, ref, onValue, update } from "firebase/database";
 
 export class PlayerHudController {
   constructor(charId, roomId, diceSync) {
-    this.db = getDatabase();
+    try {
+      this.db = getDatabase();
+    } catch {
+      this.db = null;
+    }
     this.charId = charId;
     this.roomId = roomId;
     this.diceSync = diceSync;
@@ -23,6 +27,7 @@ export class PlayerHudController {
   }
 
   subscribeToCharacter() {
+    if (!this.db || !this.charId) return;
     const charRef = ref(this.db, `character_vault/${this.charId}`);
 
     onValue(charRef, (snapshot) => {
@@ -126,6 +131,7 @@ export class PlayerHudController {
   }
 
   async updateDynamicStat(statKey, newValue) {
+    if (!this.db) return;
     const updates = {};
     updates[`character_vault/${this.charId}/dynamicState/${statKey}`] = newValue;
 

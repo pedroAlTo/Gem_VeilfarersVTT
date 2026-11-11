@@ -98,6 +98,22 @@ export class RoomController {
       this.presenceTimer = setInterval(() => this.checkPresence(), 1000);
       this.heartbeatTimer = setInterval(() => this.heartbeat().catch(error => this.fail(error)), ROOM_HEARTBEAT_MS);
       this.checkPresence(); this.emit();
+      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        import('./vtt-integration/vttIntegrationInit.js').then(async ({ initVeilfarersVTTModules }) => {
+          const user = this.service.account?.user || { uid: this.service.uid, displayName: this.service.name || 'Viajero' };
+          await initVeilfarersVTTModules({
+            roomId: id,
+            currentUser: {
+              uid: this.service.uid,
+              displayName: user.displayName || this.service.name || 'Viajero',
+              role: this.isKeeper ? 'keeper' : 'player'
+            },
+            activeCharId: this.isKeeper ? null : (this.store.state.claimedTokenId || null)
+          });
+        }).catch(err => {
+          console.warn('[Veilfarers Integration] No se pudo inicializar los módulos VTT:', err);
+        });
+      }
     } catch (error) { await this.leave({ preserveRemembered: true, save: false }); throw error; }
   }
   applyRoster() {
@@ -229,6 +245,11 @@ export class RoomController {
     for (const wire of this.wires.values()) wire.close(); this.wires.clear();
     this.network.disconnect(); this.room = null; this.members = []; this.wireRows = []; this.epoch = ''; this.serverConfirmed = false;
     this.store.update({ persistentRoomId: '', roomName: '', roomPaused: false, roomSaveStatus: '' });
+    if (typeof document !== 'undefined') {
+      const pHud = document.getElementById('vf-player-hud'); if (pHud) pHud.style.display = 'none';
+      const kHud = document.getElementById('vf-keeper-hud'); if (kHud) kHud.style.display = 'none';
+      const fBadge = document.getElementById('vf-shared-fear-badge'); if (fBadge) fBadge.style.display = 'none';
+    }
     this.leaving = false; this.emit();
   }
 }

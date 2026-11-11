@@ -2,7 +2,11 @@ import { getDatabase, ref, runTransaction } from "firebase/database";
 
 export class DualityResourceManager {
   constructor() {
-    this.db = getDatabase();
+    try {
+      this.db = getDatabase();
+    } catch {
+      this.db = null;
+    }
   }
 
   /**
@@ -17,6 +21,8 @@ export class DualityResourceManager {
       fearDelta: 0,
       summaryText: ""
     };
+
+    if (!this.db) return changesApplied;
 
     // 1. CASO FEAR: Suma +1 a la reserva del Keeper en la sala
     if (outcomeType === 'fear' && roomId) {
@@ -82,6 +88,7 @@ export class DualityResourceManager {
    * Permite revertir la transacción desde el botón Deshacer
    */
   async revertOutcome({ roomId, charId, changesApplied }) {
+    if (!this.db) return;
     if (changesApplied.fearDelta > 0 && roomId) {
       const fearRef = ref(this.db, `rooms/${roomId}/combatTracker/fearPool`);
       await runTransaction(fearRef, (val) => Math.max(0, (Number(val) || 0) - changesApplied.fearDelta));

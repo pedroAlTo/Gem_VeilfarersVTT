@@ -2,7 +2,11 @@ import { getDatabase, ref, onValue, runTransaction, push, serverTimestamp } from
 
 export class KeeperHudController {
   constructor(roomId, currentUser, diceSync) {
-    this.db = getDatabase();
+    try {
+      this.db = getDatabase();
+    } catch {
+      this.db = null;
+    }
     this.roomId = roomId;
     this.currentUser = currentUser;
     this.diceSync = diceSync;
@@ -17,6 +21,7 @@ export class KeeperHudController {
   }
 
   subscribeToFearPool() {
+    if (!this.db) return;
     const fearRef = ref(this.db, `rooms/${this.roomId}/combatTracker/fearPool`);
     onValue(fearRef, (snapshot) => {
       const currentFear = Number(snapshot.val()) || 0;
@@ -65,6 +70,7 @@ export class KeeperHudController {
   }
 
   async adjustFear(delta) {
+    if (!this.db) return;
     const fearRef = ref(this.db, `rooms/${this.roomId}/combatTracker/fearPool`);
     await runTransaction(fearRef, (current) => {
       const val = Number(current) || 0;
@@ -73,11 +79,13 @@ export class KeeperHudController {
   }
 
   async setFearValue(targetVal) {
+    if (!this.db) return;
     const fearRef = ref(this.db, `rooms/${this.roomId}/combatTracker/fearPool`);
     await runTransaction(fearRef, () => Math.max(0, Math.min(this.maxFear, targetVal)));
   }
 
   subscribeToRoomParty() {
+    if (!this.db) return;
     const roomRef = ref(this.db, `rooms/${this.roomId}`);
 
     onValue(roomRef, (snapshot) => {
@@ -104,6 +112,7 @@ export class KeeperHudController {
   }
 
   subscribeToPartyMember(charId) {
+    if (!this.db || !charId) return;
     const charRef = ref(this.db, `character_vault/${charId}`);
     const unsubscribe = onValue(charRef, (snapshot) => {
       const charData = snapshot.val();
@@ -211,8 +220,10 @@ export class KeeperHudController {
           serverTimestamp: serverTimestamp()
         };
 
-        const rollsListRef = ref(this.db, `rooms/${this.roomId}/diceLog`);
-        await push(rollsListRef, rollPayload);
+        if (this.db) {
+          const rollsListRef = ref(this.db, `rooms/${this.roomId}/diceLog`);
+          await push(rollsListRef, rollPayload);
+        }
       });
     });
   }

@@ -9,7 +9,12 @@ import { KeeperHudController } from './modules/keeperHudController.js';
  * @param {Object} config - { roomId, currentUser: { uid, displayName, role }, activeCharId }
  */
 export async function initVeilfarersVTTModules({ roomId, currentUser, activeCharId }) {
-  const db = getDatabase();
+  let db = null;
+  try {
+    db = getDatabase();
+  } catch (err) {
+    console.warn('[Veilfarers Integration] Firebase RTDB aún no inicializado:', err);
+  }
 
   // 1. Inyectar contenedores DOM para Dados 3D, Player HUD y Keeper HUD
   injectOverlayAndHudDOM();
@@ -18,8 +23,11 @@ export async function initVeilfarersVTTModules({ roomId, currentUser, activeChar
   const diceEngine = new VeilfarersDiceEngine('#vf-dice-canvas-container');
   await diceEngine.init();
 
-  const diceSync = new VTTDiceSync(roomId, currentUser, diceEngine);
-  diceSync.listenToRoomRolls();
+  let diceSync = null;
+  if (db) {
+    diceSync = new VTTDiceSync(roomId, currentUser, diceEngine);
+    diceSync.listenToRoomRolls();
+  }
 
   const playerHudEl = document.getElementById('vf-player-hud');
   const keeperHudEl = document.getElementById('vf-keeper-hud');
@@ -31,7 +39,7 @@ export async function initVeilfarersVTTModules({ roomId, currentUser, activeChar
     if (sharedFearBadgeEl) sharedFearBadgeEl.style.display = 'none';
     if (keeperHudEl) keeperHudEl.style.display = 'flex';
 
-    const keeperHud = new KeeperHudController(roomId, currentUser, diceSync);
+    const keeperHud = db ? new KeeperHudController(roomId, currentUser, diceSync) : null;
     return { diceEngine, diceSync, keeperHud };
   } else {
     // Modo Jugador: Ocultar consola de Keeper, mostrar badge global de Fear y montar su Ficha
@@ -39,13 +47,15 @@ export async function initVeilfarersVTTModules({ roomId, currentUser, activeChar
     if (sharedFearBadgeEl) sharedFearBadgeEl.style.display = 'flex';
 
     // Escuchar el contador de Fear para que el jugador vea la tensión acumulada
-    onValue(ref(db, `rooms/${roomId}/combatTracker/fearPool`), (snap) => {
-      const countEl = document.getElementById('shared-fear-counter-val');
-      if (countEl) countEl.textContent = Number(snap.val()) || 0;
-    });
+    if (db) {
+      onValue(ref(db, `rooms/${roomId}/combatTracker/fearPool`), (snap) => {
+        const countEl = document.getElementById('shared-fear-counter-val');
+        if (countEl) countEl.textContent = Number(snap.val()) || 0;
+      });
+    }
 
     let playerHud = null;
-    if (activeCharId) {
+    if (activeCharId && db) {
       // Registrar este personaje en la sala activa para que el Party Tracker del Keeper lo detecte al instante
       await set(ref(db, `rooms/${roomId}/activeCharacters/${currentUser.uid}`), activeCharId);
       playerHud = new PlayerHudController(activeCharId, roomId, diceSync);
@@ -170,4 +180,8 @@ function injectOverlayAndHudDOM() {
     </aside>
   `;
   document.body.appendChild(wrapper);
+}
+
+if (typeof window !== 'undefined') {
+  window.initVeilfarersVTTModules = initVeilfarersVTTModules;
 }

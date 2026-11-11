@@ -3,7 +3,11 @@ import { DualityResourceManager } from "./dualityResourceManager.js";
 
 export class VTTDiceSync {
   constructor(roomId, currentUser, diceEngine) {
-    this.db = getDatabase();
+    try {
+      this.db = getDatabase();
+    } catch {
+      this.db = null;
+    }
     this.roomId = roomId;
     this.currentUser = currentUser;
     this.diceEngine = diceEngine;
@@ -12,6 +16,7 @@ export class VTTDiceSync {
   }
 
   listenToRoomRolls() {
+    if (!this.db) return;
     const rollsRef = query(ref(this.db, `rooms/${this.roomId}/diceLog`), limitToLast(1));
 
     onChildAdded(rollsRef, async (snapshot) => {
@@ -84,8 +89,10 @@ export class VTTDiceSync {
       serverTimestamp: serverTimestamp()
     };
 
-    const rollsListRef = ref(this.db, `rooms/${this.roomId}/diceLog`);
-    await push(rollsListRef, rollPayload);
+    if (this.db) {
+      const rollsListRef = ref(this.db, `rooms/${this.roomId}/diceLog`);
+      await push(rollsListRef, rollPayload);
+    }
     return rollPayload;
   }
 }
