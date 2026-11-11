@@ -9,6 +9,10 @@ export function portableCharacter(token) {
   const data = structuredClone(token);
   for (const key of ['id', 'mapId', 'ownerId', 'controllerIds', 'scenePositions', 'hidden', 'hideName']) delete data[key];
   data.x = 200; data.y = 200;
+  for (const k of ['species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes']) {
+    if (data[k] == null) delete data[k];
+    else if (typeof data[k] !== 'string') data[k] = String(data[k]);
+  }
   return data;
 }
 export const preferenceKeys = [

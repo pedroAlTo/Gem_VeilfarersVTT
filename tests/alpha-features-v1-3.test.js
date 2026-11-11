@@ -687,6 +687,44 @@ test('session persistence & invited sessions list: persists active session, invi
   nm.disconnect();
 });
 
+test('null token fields resilience: tokens with null species, community or roleTag connect and validate safely', async () => {
+  const { validateCampaign, validateActor } = await import('../src/validation.js');
+  const rawToken = {
+    id: 'tok_resilient',
+    name: 'Operative X',
+    x: 100,
+    y: 100,
+    species: null, // from Firestore / network serialization
+    community: null,
+    characterClass: null,
+    subclass: null,
+    roleTag: null,
+    ownerId: null,
+    hp: { current: 10, max: 10 }
+  };
+
+  const validated = validateActor(rawToken);
+  assert.equal(validated.species, undefined, 'species: null safely normalized without error');
+  assert.equal(validated.community, undefined, 'community: null safely normalized without error');
+  assert.equal(validated.ownerId, undefined, 'ownerId: null safely normalized without error');
+
+  const campaign = {
+    campaignName: 'Test Resilient Campaign',
+    fear: 0,
+    maps: [{ id: 'map1', name: 'Map 1', imageUrl: 'http://test.com/m.png', gridSize: 70 }],
+    tokens: [{ ...rawToken, mapId: 'map1' }],
+    clocks: [],
+    handouts: [],
+    starship: {
+      name: 'Vessel', maxHull: 10, hull: 10, heat: 0, heatCap: 10, pearls: 0,
+      shieldArcs: { fore: 0, aft: 0, port: 0, starboard: 0, maxPerArc: 4 }
+    }
+  };
+
+  const validCampaign = validateCampaign(campaign);
+  assert.ok(validCampaign, 'Campaign validates cleanly without throwing invalid species');
+});
+
 
 
 

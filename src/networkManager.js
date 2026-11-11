@@ -386,6 +386,11 @@ export class NetworkManager {
             copy.bossStatus = { index: copy.boss.index, total: copy.boss.states.length, name: copy.boss.states[copy.boss.index].name, defeated: !!copy.boss.defeated, pending: !copy.boss.defeated && (copy.boss.index < copy.boss.states.length - 1 || copy.boss.states[copy.boss.index].defeat === 'objective') };
             delete copy.boss;
           }
+          for (const k of ['species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes']) {
+            if (copy[k] == null) copy[k] = '';
+            else if (typeof copy[k] !== 'string') copy[k] = String(copy[k]);
+          }
+          if (copy.ownerId == null) copy.ownerId = '';
           if (!controlsToken(copy, memberId) && !copy.isPlayer && (copy.hideName || copy.actorType === 'adversary')) {
             copy.name = 'Unknown contact';
             copy.roleTag = 'Unidentified';
@@ -745,6 +750,17 @@ export class NetworkManager {
       if (data.type === 'INITIAL_STATE') {
         try {
           if (Number.isFinite(data.revision) && data.revision <= this.lastRevision) return;
+          if (Array.isArray(data.state?.tokens)) {
+            for (const tok of data.state.tokens) {
+              if (tok && typeof tok === 'object') {
+                for (const k of ['species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes']) {
+                  if (tok[k] == null) tok[k] = '';
+                  else if (typeof tok[k] !== 'string') tok[k] = String(tok[k]);
+                }
+                if (tok.ownerId == null) tok.ownerId = '';
+              }
+            }
+          }
           const s = validateCampaign(data.state);
           this.lastRevision = data.revision;
           this.store.memberId = data.state.memberId || this.store.peerId;

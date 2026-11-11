@@ -206,17 +206,31 @@ export function validateActor(t) {
           'Invalid character Traits.'
         );
 
-  for (const key of ['majorThreshold', 'severeThreshold']) if (t.hp[key] !== undefined) assert(finite(t.hp[key], 0, 10000), 'Invalid damage thresholds.');
-  if (t.hp.majorThreshold !== undefined && t.hp.severeThreshold !== undefined) assert(t.hp.severeThreshold >= t.hp.majorThreshold, 'Severe debe ser igual o mayor que Major.');
-  for (const key of ['level', 'proficiency', 'evasion', 'attackModifier', 'honedEdgeBonus']) if (t[key] !== undefined) assert(finite(t[key], key === 'attackModifier' ? -100 : 0, 100), `Invalid ${key}.`);
-  for (const key of ['name', 'species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes']) if (t[key] !== undefined) assert(typeof t[key] === 'string' && t[key].length <= 100000, `Invalid ${key}.`);
-  if (t.actorType !== undefined) assert(['player', 'npc', 'adversary', 'drone'].includes(t.actorType), 'Invalid actor type.');
-  if (t.ownerId !== undefined) assert(typeof t.ownerId === 'string' && t.ownerId.length <= 200, 'Invalid owner.');
-  if (t.controllerIds !== undefined) assert(Array.isArray(t.controllerIds) && t.controllerIds.length <= 100 && t.controllerIds.every(x => typeof x === 'string' && x.length <= 200), 'Invalid controllers.');
-  if (t.scenePositions !== undefined) assert(t.scenePositions && typeof t.scenePositions === 'object' && Object.keys(t.scenePositions).length <= 100 && Object.values(t.scenePositions).every(p => p && finite(p.x) && finite(p.y)), 'Invalid scene positions.');
-  if (t.isPlayer === true && t.path !== undefined) assert(['Awakened', 'Sleeping'].includes(t.path), 'Invalid character Path.');
-  if (t.resolve?.dieType !== undefined) assert(['d4', 'd6'].includes(t.resolve.dieType), 'Invalid Resolve die.');
-  if (t.size !== undefined) assert(finite(t.size, 0.1, 20), 'Invalid token size.');
-  if (t.sourceCharacter !== undefined) assert(t.sourceCharacter && typeof t.sourceCharacter === 'object' && t.sourceCharacter.document?.app === 'Veilfarers Character Sheet' && t.sourceCharacter.document?.fields && typeof t.sourceCharacter.document.fields === 'object', 'Invalid source character.');
+  for (const key of ['majorThreshold', 'severeThreshold']) if (t.hp[key] !== undefined && t.hp[key] !== null) assert(finite(t.hp[key], 0, 10000), 'Invalid damage thresholds.');
+  if (t.hp.majorThreshold !== undefined && t.hp.severeThreshold !== undefined && t.hp.majorThreshold !== null && t.hp.severeThreshold !== null) assert(t.hp.severeThreshold >= t.hp.majorThreshold, 'Severe debe ser igual o mayor que Major.');
+  for (const key of ['level', 'proficiency', 'evasion', 'attackModifier', 'honedEdgeBonus']) if (t[key] !== undefined && t[key] !== null) assert(finite(t[key], key === 'attackModifier' ? -100 : 0, 100), `Invalid ${key}.`);
+  for (const key of ['species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes']) {
+    if (t[key] === null) delete t[key];
+    else if (t[key] !== undefined) {
+      if (typeof t[key] !== 'string') t[key] = String(t[key]);
+      assert(t[key].length <= 100000, `Invalid ${key}.`);
+    }
+  }
+  if (t.name !== undefined) {
+    if (typeof t.name !== 'string') t.name = String(t.name || 'Token');
+    assert(t.name.length <= 100000, 'Invalid name.');
+  }
+  if (t.actorType !== undefined && t.actorType !== null) assert(['player', 'npc', 'adversary', 'drone'].includes(t.actorType), 'Invalid actor type.');
+  if (t.ownerId !== undefined) {
+    if (t.ownerId === null) delete t.ownerId;
+    else if (typeof t.ownerId !== 'string') t.ownerId = String(t.ownerId);
+    if (t.ownerId !== undefined) assert(t.ownerId.length <= 200, 'Invalid owner.');
+  }
+  if (t.controllerIds !== undefined && t.controllerIds !== null) assert(Array.isArray(t.controllerIds) && t.controllerIds.length <= 100 && t.controllerIds.every(x => typeof x === 'string' && x.length <= 200), 'Invalid controllers.');
+  if (t.scenePositions !== undefined && t.scenePositions !== null) assert(t.scenePositions && typeof t.scenePositions === 'object' && Object.keys(t.scenePositions).length <= 100 && Object.values(t.scenePositions).every(p => p && finite(p.x) && finite(p.y)), 'Invalid scene positions.');
+  if (t.isPlayer === true && t.path !== undefined && t.path !== null && t.path !== '') assert(['Awakened', 'Sleeping'].includes(t.path), 'Invalid character Path.');
+  if (t.resolve?.dieType !== undefined && t.resolve?.dieType !== null) assert(['d4', 'd6'].includes(t.resolve.dieType), 'Invalid Resolve die.');
+  if (t.size !== undefined && t.size !== null) assert(finite(t.size, 0.1, 20), 'Invalid token size.');
+  if (t.sourceCharacter !== undefined && t.sourceCharacter !== null) assert(t.sourceCharacter && typeof t.sourceCharacter === 'object' && t.sourceCharacter.document?.app === 'Veilfarers Character Sheet' && t.sourceCharacter.document?.fields && typeof t.sourceCharacter.document.fields === 'object', 'Invalid source character.');
   return t;
 }

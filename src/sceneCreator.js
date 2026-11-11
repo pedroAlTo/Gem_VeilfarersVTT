@@ -76,7 +76,15 @@ export function openSceneCreator({ arcId } = {}) {
         if (item.lights?.length) store.updateMapLights(item.id, item.lights);
         if (item.effects?.length) store.updateMapEffects(item.id, item.effects);
         if (item.tokens?.length) {
-          const newTokens = item.tokens.map(t => ({ ...t, mapId: item.id, id: 'tok_' + Math.random().toString(36).substring(2, 9) }));
+          const newTokens = item.tokens.map(t => {
+            const tok = { ...t, mapId: item.id, id: 'tok_' + Math.random().toString(36).substring(2, 9) };
+            for (const k of ['species', 'community', 'characterClass', 'subclass', 'roleTag', 'damageExpression', 'attackRange', 'featureNotes']) {
+              if (tok[k] == null) tok[k] = '';
+              else if (typeof tok[k] !== 'string') tok[k] = String(tok[k]);
+            }
+            if (tok.ownerId == null) tok.ownerId = '';
+            return tok;
+          });
           store.update({ tokens: [...store.state.tokens, ...newTokens] });
         }
         modal.remove();
