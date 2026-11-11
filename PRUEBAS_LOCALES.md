@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v1.3.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.3.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.3.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.3.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v1.4.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.4.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.4.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.4.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -158,3 +158,28 @@ Para probar el control de jugadores en LAN, abre una partida con `INICIAR_VTT_RE
 - Abre SESIONES y alterna Partida y tripulación / Sesiones guardadas. Debe quedar una sola ventana; crear, guardar e importar campañas sigue disponible en el archivo local.
 - Sin cuenta, la esquina superior derecha muestra Iniciar sesión, Offline y un piloto rojo. Tras acceder, muestra tu nombre, Conectado y un piloto verde. Cierra la cuenta y comprueba que vuelve al estado rojo.
 - Crea una partida sin iniciar sesión en una cuenta: la partida debe figurar online y la cuenta Offline. El archivo impide cambiar de campaña hasta cerrar la partida.
+
+## Salas persistentes y edición · v1.4.0
+
+Las pruebas automatizadas de salas usan **Node 24.12+ y Java 21+**, un proyecto `demo-veilfarers-vtt` y el emulador local. No necesitan una cuenta de Google ni escriben en un proyecto real:
+
+```sh
+npm ci
+npm test
+npm run test:rooms
+npm run build
+```
+
+Para probar la interfaz online, publica primero las reglas del proyecto **del VTT** según FIREBASE_SETUP.md y abre la misma versión en dos perfiles con cuentas Firebase diferentes:
+
+1. Keeper: abre una campaña local con arcos/escenas y crea una sala. Jugador: acepta el código; el Keeper le asigna un token.
+2. Mueve el token varias veces y cambia HP. Recarga ambos perfiles. Deben recuperar la sala, el token y los cambios confirmados; no una campaña inicial.
+3. Cierra la pestaña del Keeper sin salir. En unos 20 segundos el jugador debe seguir dentro, en pausa, sin poder mover ni actuar. Reabre como el propietario: se reanuda la misma campaña.
+4. Desconecta y reconecta la red de cada perfil. Comprueba recuperación automática, sin duplicar jugadores ni requerir de nuevo el código. Usa «Volver a conectar» si el navegador no restablece su conexión.
+5. Regenera la invitación. Un tercer usuario no debe entrar con la antigua; los miembros existentes deben poder volver desde sus salas. Expulsa al jugador: pierde acceso y asignaciones, incluso con el código actual. Readmítelo: vuelve a aparecer en sus salas.
+6. Abre una segunda sala y cambia entre ambas: no se mezclan arcos, tokens ni miembros. Un usuario puede dirigir una sala y jugar en otra. Abrir como Keeper en dos pestañas a la vez debe rechazar la segunda conexión activa.
+7. Dibuja en los tres grosores y cambia el color con la paleta. Cambia de herramienta mientras trazas: no debe quedarse enganchada. Borra un trazo atravesando un token, una luz y una zona de agua: solo desaparece el dibujo.
+8. Ctrl+C/V sobre tokens, paredes, agua poligonal y dibujos: IDs independientes, geometría correcta y tokens copiados sin asignación. En un campo de texto, los atajos siguen copiando texto. El jugador no puede borrar dibujos ajenos ni pegar durante la pausa.
+9. Cambia de escena y vuelve: dibujos y campaña guardados. Los trazos no destapan la niebla de guerra. El Keeper puede deshacer el dibujo y el borrado.
+
+La verificación automática usa el SDK y las reglas reales del emulador. No sustituye una prueba de carga ni una partida de varias horas en tu despliegue. La revisión visual del navegador no pudo completarse en este entorno; comprueba también los paneles en tu resolución habitual.

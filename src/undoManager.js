@@ -274,6 +274,7 @@ class UndoManager {
         bosses: (snap.tokens || []).map(t => [t.id, t.boss]),
         tok: (snap.tokens || []).map(t => `${t.id}:${t.x}:${t.y}:${t.hp?.current}:${t.stress?.current}`),
         maps: (snap.maps || []).map(m => `${m.id}:${m.walls?.length}:${m.lights?.length}:${m.waterZones?.length}:${m.effects?.length}:${m.gridSize}`),
+        drawings: (snap.maps || []).map(m => [m.id, m.drawings || []]),
         water: (snap.maps || []).map(m => ({ id:m.id, zones:m.waterZones || [] })),
         clocks: (snap.clocks || []).map(c => `${c.id}:${c.filled}:${c.isKeeperOnly}`),
         tmpls: (snap.templates || []).map(t => `${t.id}:${t.type}:${t.x}:${t.y}:${t.radius}`)

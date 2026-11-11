@@ -2,6 +2,8 @@
 // High-Resolution Tactical Canvas Engine with Water Depths (0-5), Editable Walls & Lights,
 // Drag-Resizable Templates, Expanded Particle FX, and Multi-Layer Support
 
+import { FreehandTool } from './freehand.js';
+import { MapClipboard } from './mapClipboard.js';
 import { LightingEngine } from './lightingEngine.js';
 import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
@@ -620,6 +622,8 @@ export class CanvasEngine {
     return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId);
   }
   initEvents() {
+    this.freehand = new FreehandTool(this, store, network, notify);
+    this.mapClipboard = new MapClipboard(store, network, this, notify);
     this.tokenUnsubscribe = store.subscribe(() => this.reconcileTokenDrag());
     const waterContext = s => JSON.stringify([s.campaignId,s.activeMapId,s.activeTool,s.waterDrawMode,s.userRole,s.activeLayer,s.layerVisibility.water,s.layerLocked.water]);
     let previousWaterContext = waterContext(store.state);
@@ -627,9 +631,9 @@ export class CanvasEngine {
       const context = waterContext(state);
       if (context !== previousWaterContext) { previousWaterContext = context; this.cancelWaterDrawing(); }
     });
-    window.addEventListener('blur', () => { this.cancelWaterDrawing(); this.cancelTokenDrag(); this.isSpacePressed=false; this.isPanning=false; });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { this.cancelWaterDrawing(); this.cancelTokenDrag(); } });
-    this.canvas.addEventListener('pointercancel', () => { this.cancelWaterDrawing(); this.cancelTokenDrag(); });
+    window.addEventListener('blur', () => { this.cancelWaterDrawing(); this.cancelTokenDrag(); this.freehand.cancel(); this.isSpacePressed=false; this.isPanning=false; });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { this.cancelWaterDrawing(); this.cancelTokenDrag(); this.freehand.cancel(); } });
+    this.canvas.addEventListener('pointercancel', () => { this.cancelWaterDrawing(); this.cancelTokenDrag(); this.freehand.cancel(); });
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => {
       setTimeout(() => this.resize(), 120);
@@ -640,7 +644,8 @@ export class CanvasEngine {
     if(e.defaultPrevented || e.target.closest?.('vf-select,.orbital-listbox,.veil-modal-backdrop,[contenteditable="true"]'))return;
       if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
       if (e.target.closest?.('button') && (e.key === 'Enter' || e.code === 'Space')) return;
-      if (e.key === 'Escape') this.cancelTokenDrag();
+      if (this.mapClipboard.keydown(e)) return;
+      if (e.key === 'Escape') { this.cancelTokenDrag(); this.freehand.cancel(); }
 
       if (e.code === 'Space' && !e.repeat) {
         this.isSpacePressed = true;
@@ -649,6 +654,9 @@ export class CanvasEngine {
 
       // Delete key deletes active area template or selected wall/light/water zone
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (store.state.selectedDrawingId) {
+          e.preventDefault(); network.editDrawing('erase', { mapId: store.state.activeMapId, ids: [store.state.selectedDrawingId] }).catch(error => notify(error.message, 'error')); return;
+        }
         if (e.key === 'Backspace' && this.canDrawWater() && this.waterPolyPoints.length) {
           e.preventDefault(); this.waterPolyPoints.pop(); this.waterDraftChanged(); return;
         }
@@ -865,6 +873,8 @@ export class CanvasEngine {
       }
 
       if (e.button === 0) {
+        if (this.freehand.start(world)) return;
+        if (state.activeTool === 'select') store.update({ selectedDrawingId: null });
         this.preDragSnapshot = undoManager.captureSnapshot('Acción Táctica');
         // Alt + Click triggers tactical ping
         if (e.altKey || state.activeTool === 'ping') {
@@ -1411,6 +1421,7 @@ export class CanvasEngine {
             }
           }
 
+          if (state.activeTool === 'select' && this.freehand.select(world)) { this.activeTemplate = null; return; }
           // 4. Clicked background -> clear selections & initiate Stage Pan (Move Tool)
           this.activeTemplate = null;
           store.update({ selectedTokenId: null, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null, targetTokenId: null });
@@ -1441,6 +1452,7 @@ export class CanvasEngine {
         return;
       }
 
+      if (this.freehand.move(world)) return;
       if (this.gridCalibStart && state.activeTool === 'grid_scale') {
         this.gridCalibCurrent = { x: world.x, y: world.y };
         return;
@@ -1731,6 +1743,7 @@ export class CanvasEngine {
 
     // MOUSE UP
     window.addEventListener('mouseup', (e) => {
+      if (this.freehand.finish()) return;
       const state = store.getState();
       if (this.gridCalibStart) {
         if (this.gridCalibCurrent) {
@@ -2597,6 +2610,9 @@ export class CanvasEngine {
     if (state.showGrid && map.gridSize) {
       this.renderGrid(ctx, map);
     }
+
+    // Annotations sit under lighting/fog; drawing cannot reveal unexplored map areas.
+    this.freehand.render(ctx);
 
     // 3. LAYER: WALLS & LIGHTING & FOG OF WAR
     const isKeeperGM = state.userRole === 'keeper' && state.gmVision;

@@ -5,6 +5,8 @@ import { sanitizeHTML, notify } from './ui.js';
 import './orbital.css';
 import './orbital-v2.css';
 const icons = {
+  draw: 'M4 20l4-1L20 7l-3-3L5 16z M13 8l3 3',
+  erase: 'M4 14l9-10 8 7-8 10H9z M8 10l8 7 M13 21h8',
   select: 'M4 3l15 9-7 1-3 7z',
   measure: 'M4 18L18 4l3 3L7 21z M8 14l3 3 M12 10l3 3 M16 6l3 3',
   template: 'M12 3v18 M3 12h18 M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16',
@@ -24,6 +26,8 @@ const icon = (k) =>
 export function initOrbitalUI() {
   const labels = {
     tool_select: ['select', 'Move'],
+    tool_draw: ['draw', 'Dibujar'],
+    tool_erase_draw: ['erase', 'Borrar'],
     tool_measure: ['measure', 'Measure'],
     tool_template: ['template', 'Area'],
     tool_fx: ['fx', 'Effects'],

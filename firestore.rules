@@ -2,6 +2,107 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function roomData(roomId) { return get(/databases/$(database)/documents/rooms/$(roomId)).data; }
+    function roomOwner(roomId) { return request.auth != null && roomData(roomId).ownerUid == request.auth.uid; }
+    function member(roomId, uid) {
+      return exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(uid))
+        && get(/databases/$(database)/documents/rooms/$(roomId)/members/$(uid)).data.status == 'active';
+    }
+    function live(room) { return room.hostEpoch != '' && room.hostSeenAt is timestamp && request.time < room.hostSeenAt + duration.value(20, 's'); }
+    match /users/{uid}/connection/clock {
+      allow read: if owner(uid);
+      allow create, update: if owner(uid) && request.resource.data.keys().hasOnly(['time']) && request.resource.data.time == request.time;
+    }
+    match /users/{uid}/rooms/{roomId} {
+      allow read, delete: if owner(uid);
+      allow create, update: if owner(uid) && request.resource.data.keys().hasOnly(['roomId']) && request.resource.data.roomId == roomId
+        && (getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == uid
+          || getAfter(/databases/$(database)/documents/rooms/$(roomId)/members/$(uid)).data.status == 'active');
+    }
+    match /roomInvites/{code} {
+      // Unguessable invitation IDs are capabilities; their collection is never listed.
+      allow get: if request.auth != null;
+      allow create: if request.auth != null && code.matches('VF-[A-F0-9]{32}')
+        && request.resource.data.keys().hasOnly(['roomId', 'ownerUid', 'name'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/rooms/$(request.resource.data.roomId)).data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/rooms/$(request.resource.data.roomId)).data.inviteCode == code;
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
+    match /rooms/{roomId} {
+      allow get: if request.auth != null && (resource.data.ownerUid == request.auth.uid || member(roomId, request.auth.uid));
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['ownerUid', 'name', 'campaignId', 'inviteCode', 'hostEpoch', 'hostSeenAt', 'checkpoint', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 200
+        && request.resource.data.campaignId is string && request.resource.data.campaignId.size() <= 100
+        && request.resource.data.inviteCode.matches('VF-[A-F0-9]{32}')
+        && request.resource.data.hostEpoch == '' && request.resource.data.hostSeenAt == null
+        && request.resource.data.checkpoint == null && request.resource.data.createdAt == request.time;
+      allow update: if request.auth != null && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'inviteCode', 'checkpoint', 'hostEpoch', 'hostSeenAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 200
+        && request.resource.data.inviteCode.matches('VF-[A-F0-9]{32}')
+        && (request.resource.data.checkpoint == null || (request.resource.data.checkpoint.keys().hasOnly(['id', 'parts'])
+          && request.resource.data.checkpoint.id is string && request.resource.data.checkpoint.parts is int
+          && request.resource.data.checkpoint.parts > 0 && request.resource.data.checkpoint.parts <= 1050))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['checkpoint']) || resource.data.hostEpoch == '' || live(resource.data) || (request.resource.data.hostEpoch == resource.data.hostEpoch && request.resource.data.hostSeenAt == request.time))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['hostEpoch', 'hostSeenAt'])
+          || (request.resource.data.hostEpoch == '' && request.resource.data.hostSeenAt == null)
+          || (request.resource.data.hostEpoch is string && request.resource.data.hostEpoch.size() >= 20
+            && request.resource.data.hostEpoch.size() <= 100 && request.resource.data.hostSeenAt == request.time
+            && (request.resource.data.hostEpoch == resource.data.hostEpoch || !live(resource.data))));
+      match /members/{uid} {
+        allow get: if owner(uid) || roomOwner(roomId);
+        allow list: if roomOwner(roomId);
+        allow create: if owner(uid) && request.resource.data.keys().hasOnly(['uid', 'name', 'status', 'inviteCode', 'joinedAt'])
+          && request.resource.data.uid == uid && request.resource.data.name is string && request.resource.data.name.size() <= 80
+          && request.resource.data.status == 'active' && request.resource.data.joinedAt == request.time
+          && request.resource.data.inviteCode == roomData(roomId).inviteCode
+          && get(/databases/$(database)/documents/roomInvites/$(request.resource.data.inviteCode)).data.roomId == roomId;
+        // A revoked membership stays present: knowing an invitation cannot undo a kick.
+        allow update: if roomOwner(roomId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status in ['active', 'revoked'];
+      }
+      match /saves/{saveId} {
+        allow read, delete: if roomOwner(roomId);
+        allow create: if roomOwner(roomId) && request.resource.data.keys().hasOnly(['hashes', 'createdAt'])
+          && request.resource.data.hashes is list && request.resource.data.hashes.size() > 0 && request.resource.data.hashes.size() <= 1050
+          && request.resource.data.createdAt == request.time;
+      }
+      match /chunks/{hash} {
+        allow read, delete: if roomOwner(roomId);
+        allow update: if roomOwner(roomId) && request.resource.data == resource.data;
+        allow create: if roomOwner(roomId) && request.resource.data.keys().hasOnly(['text'])
+          && request.resource.data.text is string && request.resource.data.text.size() <= 240000;
+      }
+      match /wires/{wireId} {
+        function wire() { return get(/databases/$(database)/documents/rooms/$(roomId)/wires/$(wireId)).data; }
+        function participant() { return request.auth != null && (roomOwner(roomId) || (wire().uid == request.auth.uid && member(roomId, request.auth.uid))); }
+        function currentWire() { return live(roomData(roomId)) && wire().epoch == roomData(roomId).hostEpoch && member(roomId, wire().uid); }
+        allow read: if roomOwner(roomId) || (request.auth != null && resource.data.uid == request.auth.uid && member(roomId, request.auth.uid));
+        allow create: if request.auth != null && member(roomId, request.auth.uid) && live(roomData(roomId))
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'epoch', 'seenAt'])
+          && request.resource.data.uid == request.auth.uid && request.resource.data.epoch == roomData(roomId).hostEpoch
+          && request.resource.data.name is string && request.resource.data.name.size() <= 80 && request.resource.data.seenAt == request.time;
+        allow update: if request.auth != null && resource.data.uid == request.auth.uid && member(roomId, request.auth.uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenAt']) && request.resource.data.seenAt == request.time;
+        allow delete: if roomOwner(roomId) || (request.auth != null && resource.data.uid == request.auth.uid);
+        match /{direction}/{messageId} {
+          function validPart() {
+            return request.resource.data.keys().hasOnly(['seq', 'part', 'total', 'text'])
+              && request.resource.data.seq is int && request.resource.data.seq > 0
+              && request.resource.data.part is int && request.resource.data.total is int
+              && request.resource.data.total > 0 && request.resource.data.total <= 1050
+              && request.resource.data.part >= 0 && request.resource.data.part < request.resource.data.total
+              && request.resource.data.text is string && request.resource.data.text.size() <= 240000;
+          }
+          allow read: if direction in ['up', 'down'] && participant();
+          allow create: if direction in ['up', 'down'] && participant() && currentWire() && validPart()
+            && ((direction == 'up' && request.auth.uid == wire().uid) || (direction == 'down' && roomOwner(roomId)));
+          allow delete: if direction in ['up', 'down'] && participant();
+        }
+      }
+    }
     match /users/{uid}/characters/{characterId} {
       allow read, delete: if owner(uid);
       allow create: if owner(uid) && request.resource.data.keys().hasOnly(['name', 'payload', 'updatedAt'])

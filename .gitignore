@@ -25,3 +25,7 @@ Thumbs.db
 System/*.pdf
 *.pdf
 
+
+# Local Firebase emulator state/logs
+.firebase/
+*-debug.log

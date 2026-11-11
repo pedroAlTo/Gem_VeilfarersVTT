@@ -174,6 +174,7 @@ class StateStore {
 
   validateSelections() {
     const map = this.getActiveMap();
+    if (this.state.selectedDrawingId && !(map?.drawings || []).some(d => d.id === this.state.selectedDrawingId)) this.state.selectedDrawingId = null;
     if (this.state.selectedTokenId && !this.state.tokens.some(t => t.id === this.state.selectedTokenId)) {
       this.state.selectedTokenId = null;
     }
@@ -1102,7 +1103,7 @@ class StateStore {
       await writeCampaign(data.campaignId, data);
       selectCampaign(data.campaignId);
       for (const key of CAMPAIGN_KEYS) this.state[key] = data[key];
-      Object.assign(this.state, { selectedTokenId: null, claimedTokenId: null, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null, activeTransmission: null, activeTool: 'select', activeLayer: 'tokens', saveStatus: 'saved', savedAt: data.savedAt });
+      Object.assign(this.state, { selectedDrawingId: null, selectedTokenId: null, claimedTokenId: null, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null, activeTransmission: null, activeTool: 'select', activeLayer: 'tokens', saveStatus: 'saved', savedAt: data.savedAt });
       this.undoManager?.clear?.();
       this._storageEvent();
       for (const listener of this.listeners) listener(this.state, [...CAMPAIGN_KEYS, 'selectedTokenId', 'selectedWallId', 'selectedLightId', 'selectedWaterId', 'selectedEffectId', 'selectedTemplateId', 'activeTransmission', 'activeTool', 'activeLayer']);
