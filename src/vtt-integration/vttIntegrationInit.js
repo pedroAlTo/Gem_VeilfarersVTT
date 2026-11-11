@@ -3,6 +3,26 @@ import { VeilfarersDiceEngine } from './modules/diceEngine3D.js';
 import { VTTDiceSync } from './modules/vttDiceSync.js';
 import { PlayerHudController } from './modules/playerHudController.js';
 import { KeeperHudController } from './modules/keeperHudController.js';
+import { VeilfarersLobbyGateway } from './modules/lobbyGateway.js';
+
+/**
+ * Punto de entrada general: Muestra primero el Lobby (Login + Character Vault + Creador + Salas)
+ * y al entrar a una sala inicializa el VTT con Dados 3D y el HUD de Jugador o Keeper.
+ */
+export function initVeilfarersApp(options = {}) {
+  const lobby = new VeilfarersLobbyGateway(async ({ roomId, currentUser, activeCharId }) => {
+    await initVeilfarersVTTModules({ roomId, currentUser, activeCharId });
+    if (typeof options.onEnterRoom === 'function') {
+      options.onEnterRoom({ roomId, currentUser, activeCharId });
+    }
+    if (typeof options.onJoinRoom === 'function') {
+      options.onJoinRoom({ roomId, currentUser, activeCharId });
+    }
+  });
+  return lobby;
+}
+
+export const launchVTTSession = initVeilfarersVTTModules;
 
 /**
  * Inicializa el Overlay de Dados 3D y el HUD correspondiente (Keeper o Jugador) en la sala activa.
@@ -184,4 +204,5 @@ function injectOverlayAndHudDOM() {
 
 if (typeof window !== 'undefined') {
   window.initVeilfarersVTTModules = initVeilfarersVTTModules;
+  window.initVeilfarersApp = initVeilfarersApp;
 }

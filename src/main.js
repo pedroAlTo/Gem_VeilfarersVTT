@@ -843,6 +843,22 @@ function setupUndoRedoEvents() {
 
 // --- Veilfarers Integration (3D Dice, Player HUD Drawer & Keeper HUD Console) ---
 function setupVeilfarersIntegration() {
+  // Initialize the Lobby Suite (Auth + Character Vault + Room Gateway)
+  import('./vtt-integration/vttIntegrationInit.js').then(({ initVeilfarersApp }) => {
+    initVeilfarersApp({
+      onEnterRoom: ({ roomId, currentUser, activeCharId }) => {
+        console.log(`Sesión iniciada en sala ${roomId} como ${currentUser.role}`);
+        store.update({
+          persistentRoomId: roomId,
+          userRole: currentUser.role,
+          claimedTokenId: activeCharId
+        });
+      }
+    });
+  }).catch((err) => {
+    console.warn('[Veilfarers VTT] Error al inicializar Lobby Gateway:', err);
+  });
+
   let initializedKey = '';
   const checkAndInit = async () => {
     const s = store.getState();
