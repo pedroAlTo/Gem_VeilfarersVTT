@@ -1,0 +1,85 @@
+.vf-dice-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 500;
+  overflow: hidden;
+}
+
+#vf-dice-canvas-container,
+#vf-dice-canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+  background: transparent !important;
+}
+
+.vf-roll-banner {
+  position: absolute;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(12, 16, 28, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 14px 28px;
+  text-align: center;
+  color: #f0f4f8;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: auto;
+  font-family: system-ui, -apple-system, sans-serif;
+  min-width: 260px;
+}
+
+.vf-roll-banner.hidden {
+  opacity: 0;
+  transform: translate(-50%, 25px);
+  pointer-events: none;
+}
+
+.vf-roll-banner.outcome-hope { border-color: #f5b041; box-shadow: 0 0 25px rgba(245, 176, 65, 0.35); }
+.vf-roll-banner.outcome-fear { border-color: #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.4); }
+.vf-roll-banner.outcome-crit { border-color: #22c55e; box-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+
+.roll-header { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }
+.roll-skill { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; margin-top: 2px; }
+.roll-total { font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin: 4px 0; }
+.roll-outcome { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.outcome-hope .roll-outcome { color: #fbbf24; }
+.outcome-fear .roll-outcome { color: #c084fc; }
+.outcome-crit .roll-outcome { color: #4ade80; }
+.roll-breakdown { font-size: 0.72rem; color: #94a3b8; margin-top: 4px; }
+
+.roll-resource-feedback {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.78rem;
+  color: #38bdf8;
+}
+
+.roll-resource-feedback.hidden {
+  display: none;
+}
+
+.btn-undo-resource {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.btn-undo-resource:hover {
+  background: rgba(239, 68, 68, 0.4);
+}
