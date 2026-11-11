@@ -44,7 +44,7 @@ export class DiceRollerSidebar {
     this.is3D = store.state.dice3d !== false;
     const btn = this.container.querySelector('#btn_toggle_dice_mode');
     if (btn) {
-      btn.textContent = this.is3D ? '🎲 3D DICE' : '📄 2D FAST';
+      btn.textContent = this.is3D ? '🎲 3D' : '📄 2D';
       btn.className = `dice-mode-toggle-btn ${this.is3D ? 'mode-3d' : 'mode-2d'}`;
     }
     const textureGroup = this.container.querySelector('#texture_pills_group');
@@ -194,25 +194,6 @@ export class DiceRollerSidebar {
         <label class="keeper-roll-switch" hidden><input type="checkbox" id="secret_roll"> Tirada secreta · solo Keeper</label>
         <p class="dossier-muted" data-secret-help hidden>El resultado y el registro son privados. Los cambios de recursos en fichas visibles se siguen compartiendo.</p>
         
-        <!-- Top Toolbar: 2D/3D Mode Toggle & Texture Selector -->
-        <div class="dice-top-toolbar">
-          <button type="button" class="dice-mode-toggle-btn ${this.is3D ? 'mode-3d' : 'mode-2d'}" id="btn_toggle_dice_mode" title="Alternar entre animación 3D y modo 2D rápido">
-            ${this.is3D ? '🎲 3D DICE' : '📄 2D FAST'}
-          </button>
-          <div class="texture-pills" id="texture_pills_group" style="${this.is3D ? 'display:flex;' : 'display:none;'}">
-            <button type="button" class="texture-pill ${this.diceTextureSet === 'plain' ? 'active' : ''}" data-texture="plain" id="btn_texture_plain">PLAIN</button>
-            <button type="button" class="texture-pill ${this.diceTextureSet === 'tech' ? 'active' : ''}" data-texture="tech" id="btn_texture_tech">TECH</button>
-            <button type="button" class="texture-pill ${this.diceTextureSet === 'crystal' ? 'active' : ''}" data-texture="crystal" id="btn_texture_crystal">CRYSTAL</button>
-          </div>
-        </div>
-
-        <!-- Quick Polyhedral Dice Bar (Always accessible) -->
-        <div class="quick-polyhedral-bar" title="Lanzador rápido de dados poliédricos">
-          ${[4, 6, 8, 10, 12, 20, 100].map(d => `
-            <button type="button" class="quick-die-btn" data-sides="${d}">d${d === 100 ? '%' : d}</button>
-          `).join('')}
-        </div>
-
         <!-- Tab Navigation: 3 tabs matching player-tool.jsx and VTT -->
         <div class="sidebar-subtabs dice-mode-subtabs">
           <button class="subtab-btn active" id="tab_check_btn">DUALITY (2d12)</button>
@@ -220,54 +201,118 @@ export class DiceRollerSidebar {
           <button class="subtab-btn" id="tab_damage_btn">DAMAGE &amp; THRESHOLDS</button>
         </div>
 
+        <!-- Sleek Utility Row: 2D/3D Mode Toggle & Quick Polyhedral Bar -->
+        <div class="dice-utility-bar">
+          <div class="dice-utility-left">
+            <button type="button" class="dice-mode-toggle-btn ${this.is3D ? 'mode-3d' : 'mode-2d'}" id="btn_toggle_dice_mode" title="Alternar entre animación 3D y modo 2D rápido">
+              ${this.is3D ? '🎲 3D' : '📄 2D'}
+            </button>
+            <div class="texture-pills" id="texture_pills_group" style="${this.is3D ? 'display:flex;' : 'display:none;'}">
+              <button type="button" class="texture-pill ${this.diceTextureSet === 'plain' ? 'active' : ''}" data-texture="plain" id="btn_texture_plain">PLAIN</button>
+              <button type="button" class="texture-pill ${this.diceTextureSet === 'tech' ? 'active' : ''}" data-texture="tech" id="btn_texture_tech">TECH</button>
+              <button type="button" class="texture-pill ${this.diceTextureSet === 'crystal' ? 'active' : ''}" data-texture="crystal" id="btn_texture_crystal">CRYSTAL</button>
+            </div>
+          </div>
+          <!-- Quick Polyhedral Dice Bar -->
+          <div class="quick-polyhedral-bar" title="Lanzador rápido de dados poliédricos">
+            ${[4, 6, 8, 10, 12, 20, 100].map(d => `
+              <button type="button" class="quick-die-btn" data-sides="${d}">d${d === 100 ? '%' : d}</button>
+            `).join('')}
+          </div>
+        </div>
+
         <!-- Section 1: Hope & Fear Action Check (Duality) -->
         <div class="dice-section" id="section_action_check">
-          <!-- Segmented Roll Type Bar: DIS / NORM / ADV -->
-          <div class="roll-type-segmented">
-            <button type="button" class="roll-type-btn ${this.playerRollType === 'disadvantage' ? 'active-dis' : ''}" id="btn_roll_dis" data-type="disadvantage">DIS</button>
-            <button type="button" class="roll-type-btn ${this.playerRollType === 'normal' ? 'active-norm' : ''}" id="btn_roll_norm" data-type="normal">NORM</button>
-            <button type="button" class="roll-type-btn ${this.playerRollType === 'advantage' ? 'active-adv' : ''}" id="btn_roll_adv" data-type="advantage">ADV</button>
+          <!-- Operative Header -->
+          <div class="dice-actor-bar">
+            <span class="actor-tag">OPERATIVE:</span>
+            <span class="actor-name" id="dice_actor_name">Capt. Jonathan Harker (Awakened)</span>
           </div>
 
-          <!-- Live Duality Readout Preview Squares (HOPE, FEAR, ADV/DIS) -->
-          <div class="duality-live-boxes">
-            <div class="duality-live-card">
-              <span class="duality-live-label hope-label">HOPE</span>
-              <div class="duality-live-box hope-box" id="cube_hope">
-                <span id="cube_hope_num">?</span>
+          <!-- Traits Selector: 3x2 Grid -->
+          <div class="trait-selector-grid trait-selector-compact" id="dice_trait_selector">
+            ${TRAITS.map(t => `
+              <button class="trait-select-pill ${t.id === this.selectedTraitId ? 'active' : ''}" data-id="${t.id}" data-name="${t.name}">
+                <span class="pill-name">${t.short}</span>
+                <span class="pill-mod" id="trait_mod_${t.id}">+0</span>
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Subtrait & DC Ladder: 2 columns side by side -->
+          <div class="dice-context-grid">
+            <div class="dice-context-col">
+              <label>Subtrait / Specialty</label>
+              <vf-select id="dice_subtrait_select" class="hud-select">
+                <option value="">None / General</option>
+                ${SUBTRAITS.map(st => `
+                  <option value="${st.id}">${st.name}</option>
+                `).join('')}
+              </vf-select>
+            </div>
+            <div class="dice-context-col">
+              <label>Target DC</label>
+              <vf-select id="dice_dc_select" class="hud-select">
+                ${DC_LADDER.map(l => `
+                  <option value="${l.dc}" ${l.dc === 15 ? 'selected' : ''}>
+                    DC ${l.dc} (${l.name})
+                  </option>
+                `).join('')}
+              </vf-select>
+            </div>
+          </div>
+
+          <!-- Action Cockpit: Roll Type + Modifier Stepper + Live Cubes -->
+          <div class="dice-action-cockpit">
+            <div class="dice-action-left">
+              <!-- Segmented Roll Type: DIS / NORM / ADV -->
+              <div class="roll-type-segmented">
+                <button type="button" class="roll-type-btn ${this.playerRollType === 'disadvantage' ? 'active-dis' : ''}" id="btn_roll_dis" data-type="disadvantage">DIS</button>
+                <button type="button" class="roll-type-btn ${this.playerRollType === 'normal' ? 'active-norm' : ''}" id="btn_roll_norm" data-type="normal">NORM</button>
+                <button type="button" class="roll-type-btn ${this.playerRollType === 'advantage' ? 'active-adv' : ''}" id="btn_roll_adv" data-type="advantage">ADV</button>
+              </div>
+
+              <!-- Modifier Stepper Row -->
+              <div class="duality-mod-stepper-row">
+                <span class="stepper-label">MOD:</span>
+                <div class="stepper-row">
+                  <button type="button" class="stepper-btn" id="btn_mod_minus">−</button>
+                  <input type="number" id="dice_custom_mod" class="hud-input" value="0" min="-20" max="20" style="text-align: center; width: 44px;" />
+                  <button type="button" class="stepper-btn" id="btn_mod_plus">+</button>
+                </div>
               </div>
             </div>
-            <div class="duality-live-card">
-              <span class="duality-live-label fear-label">FEAR</span>
-              <div class="duality-live-box fear-box" id="cube_fear">
-                <span id="cube_fear_num">?</span>
+
+            <!-- Live Duality Readout Preview Squares (HOPE, FEAR, ADV/DIS) -->
+            <div class="duality-live-boxes">
+              <div class="duality-live-card">
+                <span class="duality-live-label hope-label">HOPE</span>
+                <div class="duality-live-box hope-box" id="cube_hope">
+                  <span id="cube_hope_num">?</span>
+                </div>
               </div>
-            </div>
-            <div class="duality-live-card" id="card_extra_die" style="${this.playerRollType !== 'normal' ? 'display:flex' : 'display:none'}">
-              <span class="duality-live-label" id="label_extra_die">${this.playerRollType === 'advantage' ? 'ADV (+d6)' : 'DIS (-d6)'}</span>
-              <div class="duality-live-box" id="cube_extra" style="border-color:${this.playerRollType === 'advantage' ? '#22c55e' : '#ef4444'}; color:${this.playerRollType === 'advantage' ? '#86efac' : '#fca5a5'}">
-                <span id="cube_extra_num">?</span>
+              <div class="duality-live-card">
+                <span class="duality-live-label fear-label">FEAR</span>
+                <div class="duality-live-box fear-box" id="cube_fear">
+                  <span id="cube_fear_num">?</span>
+                </div>
+              </div>
+              <div class="duality-live-card" id="card_extra_die" style="${this.playerRollType !== 'normal' ? 'display:flex' : 'display:none'}">
+                <span class="duality-live-label" id="label_extra_die">${this.playerRollType === 'advantage' ? '+d6' : '-d6'}</span>
+                <div class="duality-live-box" id="cube_extra" style="border-color:${this.playerRollType === 'advantage' ? '#22c55e' : '#ef4444'}; color:${this.playerRollType === 'advantage' ? '#86efac' : '#fca5a5'}">
+                  <span id="cube_extra_num">?</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Modifier Stepper Row -->
-          <div class="duality-mod-stepper-row">
-            <span class="stepper-label">MODIFIER:</span>
-            <div class="stepper-row">
-              <button type="button" class="stepper-btn" id="btn_mod_minus">−</button>
-              <input type="number" id="dice_custom_mod" class="hud-input" value="0" min="-20" max="20" style="text-align: center; width: 64px;" />
-              <button type="button" class="stepper-btn" id="btn_mod_plus">+</button>
-            </div>
-          </div>
-
-          <!-- BIG DUALITY ROLL BUTTON: Visible immediately, no scrolling! -->
-          <button class="hud-btn hud-btn-primary hud-btn-lg roll-trigger-btn btn-duality-gradient" id="roll_check_btn" style="margin: 8px 0 12px;">
+          <!-- BIG DUALITY ROLL BUTTON -->
+          <button class="hud-btn hud-btn-primary roll-trigger-btn btn-duality-gradient" id="roll_check_btn">
             <span class="btn-glow-text">ROLL 2d12 (HOPE &amp; FEAR)</span>
           </button>
 
           <!-- Interactive Dice Result Display -->
-          <div class="dice-result-panel glass-panel" id="dice_result_display" style="display: none; margin-bottom: 12px;">
+          <div class="dice-result-panel glass-panel" id="dice_result_display" style="display: none;">
             <div class="dice-total-row">
               <div class="total-big-readout">
                 <span class="readout-label">TOTAL</span>
@@ -288,96 +333,54 @@ export class DiceRollerSidebar {
             </div>
           </div>
 
-          <!-- Collapsible Tactical & Advanced Options Block -->
-          <details class="dice-advanced-details" open>
+          <!-- Hidden inputs for Advantage/Disadvantage backwards compatibility -->
+          <div class="dice-modifiers-grid" style="display:none;">
+            <label class="hud-checkbox-label">
+              <input type="checkbox" id="dice_advantage" ${this.playerRollType === 'advantage' ? 'checked' : ''} />
+              <span>Advantage (+1d6)</span>
+            </label>
+            <label class="hud-checkbox-label">
+              <input type="checkbox" id="dice_disadvantage" ${this.playerRollType === 'disadvantage' ? 'checked' : ''} />
+              <span>Disadvantage (-1d6)</span>
+            </label>
+          </div>
+
+          <!-- Collapsible Secondary & Path Options (Closed by default to guarantee ZERO scroll) -->
+          <details class="dice-advanced-details">
             <summary class="dice-advanced-summary">
-              <span>OPCIONES AVANZADAS Y RASGOS</span>
+              <span>+ RESOLVE, EXPERIENCE &amp; PATH OPTIONS</span>
               <span class="arrow-indicator">▼</span>
             </summary>
             <div class="dice-advanced-content">
-              <div class="dice-actor-bar">
-                <span class="actor-tag">OPERATIVE:</span>
-                <span class="actor-name" id="dice_actor_name">Capt. Jonathan Harker (Awakened)</span>
-              </div>
-
-              <!-- Trait Selector -->
-              <div class="dice-input-block">
-                <label class="dice-label">CHOOSE TRAIT</label>
-                <div class="trait-selector-grid" id="dice_trait_selector">
-                  ${TRAITS.map(t => `
-                    <button class="trait-select-pill ${t.id === this.selectedTraitId ? 'active' : ''}" data-id="${t.id}" data-name="${t.name}">
-                      <span class="pill-name">${t.short}</span>
-                      <span class="pill-mod" id="trait_mod_${t.id}">+0</span>
-                    </button>
-                  `).join('')}
-                </div>
-              </div>
-
-              <!-- Subtrait Selector -->
-              <div class="dice-input-block">
-                <label class="dice-label">SUBTRAIT / SPECIALTY</label>
-                <vf-select id="dice_subtrait_select" class="hud-select">
-                  <option value="">None / General Trait</option>
-                  ${SUBTRAITS.map(st => `
-                    <option value="${st.id}">${st.name} (Parent: ${st.parent.toUpperCase()})</option>
-                  `).join('')}
-                </vf-select>
-              </div>
-
-              <!-- DC Ladder -->
-              <div class="dice-input-block">
-                <label class="dice-label">TARGET DIFFICULTY (DC LADDER)</label>
-                <vf-select id="dice_dc_select" class="hud-select">
-                  ${DC_LADDER.map(l => `
-                    <option value="${l.dc}" ${l.dc === 15 ? 'selected' : ''}>
-                      DC ${l.dc} - ${l.name}
-                    </option>
-                  `).join('')}
-                </vf-select>
-              </div>
-
-              <!-- Hidden inputs for Advantage/Disadvantage backwards compatibility -->
-              <div class="dice-modifiers-grid" style="display:none;">
-                <label class="hud-checkbox-label">
-                  <input type="checkbox" id="dice_advantage" ${this.playerRollType === 'advantage' ? 'checked' : ''} />
-                  <span>Advantage (+1d6)</span>
-                </label>
-                <label class="hud-checkbox-label">
-                  <input type="checkbox" id="dice_disadvantage" ${this.playerRollType === 'disadvantage' ? 'checked' : ''} />
-                  <span>Disadvantage (-1d6)</span>
-                </label>
-              </div>
-
-              <!-- Roll Modifiers -->
-              <div class="dice-modifiers-grid">
+              <div class="dice-modifiers-grid" style="margin: 2px 0 6px;">
                 <label class="hud-checkbox-label">
                   <input type="checkbox" id="dice_use_resolve" />
                   <span>Spend Resolve (+1d4)</span>
                 </label>
               </div>
 
-              <div class="form-row critical-choice-row">
-                <div class="form-group">
-                  <label>Sleeping critical · extra point</label>
-                  <vf-select id="critical_resource" class="hud-select">
+              <div class="form-row critical-choice-row" style="margin-bottom: 6px;">
+                <div class="form-group" style="flex:1;">
+                  <label style="font-size: 9px;">Sleeping critical</label>
+                  <vf-select id="critical_resource" class="hud-select" style="height: 24px; font-size: 10px;">
                     <option value="effort">Effort (Resolve if full)</option>
                     <option value="resolve">Resolve</option>
                   </vf-select>
                 </div>
-                <label class="hud-checkbox-label"><input type="checkbox" id="meaningful_roll" checked /> Meaningful roll</label>
+                <label class="hud-checkbox-label" style="align-self: center; font-size: 10px;"><input type="checkbox" id="meaningful_roll" checked /> Meaningful</label>
               </div>
 
               <!-- Flat Modifier & Experience -->
-              <div class="form-group">
-                <label>Experiencia de la ficha</label>
-                <vf-select id="dice_experience_select" class="hud-select">
-                  <option value="">Sin experiencia</option>
-                </vf-select>
-              </div>
-              <div class="form-row" style="margin-top: 10px;">
-                <div class="form-group">
-                  <label>Experience Mod</label>
-                  <input type="number" id="dice_exp_mod" class="hud-input" value="0" min="0" max="10" />
+              <div class="dice-context-grid" style="margin-bottom: 2px;">
+                <div class="dice-context-col">
+                  <label>Experiencia</label>
+                  <vf-select id="dice_experience_select" class="hud-select" style="height: 24px; font-size: 10px;">
+                    <option value="">Sin experiencia</option>
+                  </vf-select>
+                </div>
+                <div class="dice-context-col">
+                  <label>Exp Mod</label>
+                  <input type="number" id="dice_exp_mod" class="hud-input" value="0" min="0" max="10" style="height: 24px; font-size: 10px;" />
                 </div>
               </div>
             </div>
