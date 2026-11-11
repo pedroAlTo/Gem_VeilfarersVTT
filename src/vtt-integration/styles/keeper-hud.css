@@ -1,22 +1,8 @@
+#vf-shared-fear-badge,
 .vf-shared-fear-badge {
-  position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(18, 12, 32, 0.92);
-  border: 1px solid rgba(168, 85, 247, 0.45);
-  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.3);
-  color: #f3e8ff;
-  padding: 6px 16px;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  z-index: 890;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  pointer-events: none;
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .vf-keeper-hud {

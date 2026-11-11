@@ -290,3 +290,35 @@ test('assigned players can open their sheet, change current resources and choose
   store.state.isConnected = false; assert.equal(store.canEditToken(owned.id), false);
   store.sessionRole = 'local'; store.state.claimedTokenId = owned.id; store.memberId = null; store.peerId = null; assert.equal(store.canEditToken(owned.id), true); assert.equal(store.canEditToken(other.id), false);
 });
+
+test('dice callout displays player name, token name, result and applied modifiers, and no shared fear badge exists', async () => {
+  const { VeilfarersDiceEngine } = await import('../src/vtt-integration/modules/diceEngine3D.js');
+  const engine = new VeilfarersDiceEngine();
+
+  engine.showCallout({
+    playerName: 'Pedro',
+    tokenName: 'Capt. Jonathan Harker',
+    label: 'Ataque con Espada',
+    total: 15,
+    outcomeLabel: 'CON HOPE',
+    details: 'Hope [8] + Fear [5] + 2 = 15 vs DC 12'
+  });
+
+  const stack = document.getElementById('vf-callouts-stack');
+  assert.ok(stack, 'Callouts stack must exist in DOM');
+  const card = stack.querySelector('.vf-callout-card');
+  assert.ok(card, 'Callout card must be rendered in stack');
+
+  const cardText = card.textContent;
+  assert.ok(cardText.includes('Nombre del jugador:'), 'Must label Nombre del jugador:');
+  assert.ok(cardText.includes('Pedro'), 'Must display player name Pedro');
+  assert.ok(cardText.includes('Nombre del token:'), 'Must label Nombre del token:');
+  assert.ok(cardText.includes('Capt. Jonathan Harker'), 'Must display token name Capt. Jonathan Harker');
+  assert.ok(cardText.includes('Resultado:'), 'Must label Resultado:');
+  assert.ok(cardText.includes('15'), 'Must display total 15');
+  assert.ok(cardText.includes('Modificadores aplicados:'), 'Must label Modificadores aplicados:');
+  assert.ok(cardText.includes('Hope [8] + Fear [5] + 2 = 15 vs DC 12'), 'Must display details/modifiers');
+
+  // Ensure no vf-shared-fear-badge exists
+  assert.equal(document.getElementById('vf-shared-fear-badge'), null, 'vf-shared-fear-badge must not exist in DOM');
+});

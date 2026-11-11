@@ -290,18 +290,26 @@ export class KeeperHudController {
         const rollPayload = {
           type: 'standard',
           uid: this.currentUser.uid,
-          playerName: isSecret ? 'Keeper (Oculta)' : 'Keeper',
+          playerName: this.currentUser.displayName || 'Keeper',
+          tokenName: isSecret ? 'Director de Juego (Oculta)' : 'Director de Juego',
+          actorName: isSecret ? 'Director de Juego (Oculta)' : 'Director de Juego',
           label: label,
           extraDice: [{ sides, value: result }],
           total: result,
           outcomeType: 'fear',
           outcomeLabel: isSecret ? '🔒 TIRADA OCULTA' : `DADO D${sides}`,
-          breakdown: `1d${sides} [${result}]`,
+          breakdown: `Dado: 1d${sides} [${result}] = ${result}`,
+          details: `Dado: 1d${sides} [${result}] = ${result}`,
           isSecret: isSecret,
+          visibility: isSecret ? 'keeper' : 'table',
           skipAutoResource: true,
           clientTimestamp: Date.now(),
           serverTimestamp: serverTimestamp()
         };
+
+        if (this.diceSync?.diceEngine && typeof this.diceSync.diceEngine.showCallout === 'function') {
+          this.diceSync.diceEngine.showCallout(rollPayload);
+        }
 
         if (this.db) {
           const rollsListRef = ref(this.db, `rooms/${this.roomId}/diceLog`);

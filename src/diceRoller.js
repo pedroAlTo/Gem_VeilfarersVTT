@@ -910,32 +910,42 @@ export class DiceRollerSidebar {
     }
 
     const actor = this.currentActor || store.getSelectedToken() || { name: 'Operativo' };
+    const playerName = store.state.userName || store.state.playerName || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador');
+    const tokenName = actor.name || 'Operativo';
+    const breakdownText = `Dados: [${rolls.join(', ')}] (d${sides})${mod !== 0 ? (mod > 0 ? ` + Mod (${mod})` : ` - Mod (${Math.abs(mod)})`) : ''} = ${total}`;
+
     if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
       window.veilDiceEngine.showCallout({
-        actorName: actor.name,
-        label: `Standard Roll: ${label}`,
+        playerName,
+        tokenName,
+        actorName: tokenName,
+        label: `Tirada: ${label}`,
         total,
         outcomeTitle: `Total ${total}`,
-        details: `[${rolls.join(', ')}]${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = ${total}`,
+        details: breakdownText,
+        breakdown: breakdownText,
         visibility: broadcast ? 'table' : 'keeper'
       });
     }
 
     if (broadcast) {
-      const actor = this.currentActor || store.getSelectedToken() || { name: 'Operativo' };
-      const chatText = `🎲 ${actor.name || 'Operativo'}: ${label} ➔ ${total} (${rolls.join(' + ')}${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''})`;
+      const chatText = `🎲 ${playerName} (${tokenName}): ${label} ➔ ${total} (${rolls.join(' + ')}${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''})`;
       network.sendChat({ text: chatText, recipientId: 'table' }).catch(() => {
-        store.addChatMessage({ senderName: actor.name || 'Operativo', text: chatText, channel: 'table' });
+        store.addChatMessage({ senderName: tokenName, text: chatText, channel: 'table' });
       });
       network.broadcast({
         type: 'DICE_ROLL',
         result: {
           id: String(Date.now()),
-          actorName: actor.name,
+          playerName,
+          tokenName,
+          actorName: tokenName,
           total,
-          label: `Standard Roll: ${label}`,
+          label: `Tirada: ${label}`,
           rolls: rolls.map(v => ({ value: v, sides, role: 'Standard' })),
-          outcome: `${total}`
+          outcome: `${total}`,
+          details: breakdownText,
+          breakdown: breakdownText
         }
       });
     }
@@ -996,10 +1006,15 @@ export class DiceRollerSidebar {
     }
 
     let result;
+    const playerName = store.state.userName || store.state.playerName || store.sessionAuthorName?.() || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador');
+    const tokenName = actor.name || 'Operativo';
+
     try {
       result = await network.requestAction({
         type: 'CHECK',
         actorId: actor.id,
+        playerName,
+        tokenName,
         visibility: this.rollVisibility(),
         options: {
           traitId: this.selectedTraitId,
@@ -1051,7 +1066,9 @@ export class DiceRollerSidebar {
     // Show callout notification on screen:
     if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
       window.veilDiceEngine.showCallout({
-        actorName: actor.name,
+        playerName,
+        tokenName,
+        actorName: tokenName,
         label,
         total: result.total,
         outcomeTitle: result.outcomeTitle,
@@ -1060,6 +1077,7 @@ export class DiceRollerSidebar {
         fearVal: result.fearVal,
         dc: result.dc,
         details: result.log?.details || `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}`,
+        breakdown: result.log?.details || `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}`,
         visibility: this.rollVisibility()
       });
     }

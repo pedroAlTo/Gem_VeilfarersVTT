@@ -140,10 +140,23 @@ export class VTTDiceSync {
     const modText = modifier >= 0 ? `+${modifier}` : `${modifier}`;
     const advText = advVal !== 0 ? ` | Vent/Desv (${advVal > 0 ? '+' + advVal : advVal})` : '';
 
+    let tokenName = 'Operativo';
+    if (typeof window !== 'undefined' && window.veilStore) {
+      const tok = window.veilStore.getTokens?.()?.find(t => t.characterId === charId || t.id === charId);
+      if (tok?.name) {
+        tokenName = tok.name;
+      } else {
+        const c = window.veilStore.getState?.()?.characters?.[charId];
+        if (c?.name) tokenName = c.name;
+        else if (window.veilStore.getSelectedToken?.()?.name) tokenName = window.veilStore.getSelectedToken().name;
+      }
+    }
+
     const rollPayload = {
       type: 'duality',
       uid: this.currentUser.uid,
-      playerName: this.currentUser.displayName || 'Viajero',
+      playerName: this.currentUser.displayName || (typeof window !== 'undefined' && (window.veilStore?.state?.userName || window.veilStore?.state?.playerName)) || 'Jugador',
+      tokenName: tokenName,
       charId: charId,
       label: label,
       hopeVal: hopeVal,
@@ -154,6 +167,7 @@ export class VTTDiceSync {
       outcomeType: outcomeType,
       outcomeLabel: outcomeLabel,
       breakdown: `Hope [${hopeVal}] + Fear [${fearVal}] ${modText}${advText}`,
+      details: `Hope [${hopeVal}] + Fear [${fearVal}] ${modText}${advText}`,
       isSecret: false,
       clientTimestamp: Date.now(),
       serverTimestamp: serverTimestamp()

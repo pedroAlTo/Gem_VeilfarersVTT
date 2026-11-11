@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.1**.
-Paquete: `VeilFarers_VTT_v1.4.1.zip`.
+Versión actual del VTT: **v1.4.2**.
+Paquete: `VeilFarers_VTT_v1.4.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.4.2] — 2026-11-11
+
+Callout de Tiradas Estructurado y Limpieza de Interfaz
+
+### Callouts de Tiradas
+
+- Formato estructurado en cada tarjeta de resultado con 4 campos explícitos: Nombre del jugador, Nombre del token, Resultado y Modificadores aplicados.
+- Sincronización de identificadores de jugador y token en tiradas de acción, comprobaciones Duality y dados rápidos del Keeper.
+- Eliminación completa del badge redundante de "FEAR EN MESA" sobre la cabecera de sesión.
 
 ## [1.4.1] — 2026-11-11
 

@@ -758,7 +758,9 @@ export class NetworkManager {
       const rollPayload = {
         id: result.id,
         actorId: result.actorId,
-        actorName: result.log?.sender || 'Operativo',
+        actorName: action.tokenName || result.log?.sender || 'Operativo',
+        tokenName: action.tokenName || result.log?.sender || 'Operativo',
+        playerName: action.playerName || this.store.state.userName || this.store.state.playerName || 'Jugador',
         hope: result.hopeVal,
         hopeVal: result.hopeVal,
         fear: result.fearVal,
@@ -769,7 +771,8 @@ export class NetworkManager {
         outcome: result.outcomeTitle,
         crit: !!result.isCritical,
         isCritical: !!result.isCritical,
-        details: result.log?.details || ''
+        details: result.log?.details || '',
+        breakdown: result.log?.details || ''
       };
       this.broadcast({ type: 'DICE_ROLL', logEntry: result.log, result: rollPayload });
     }

@@ -174,10 +174,11 @@ export class VeilfarersDiceEngine {
     if (!rollData) return;
 
     // Verificar si es tirada oculta: solo visible para el Keeper
-    const isSecret = !!(rollData.isSecret || rollData.visibility === 'keeper');
-    const isKeeper = typeof window !== 'undefined' && window.veilStore
-      ? (window.veilStore.sessionRole !== 'player' && window.veilStore.state.userRole === 'keeper')
-      : true;
+    const isSecret = !!(rollData.isSecret || rollData.secret || rollData.visibility === 'keeper');
+    let isKeeper = false;
+    if (typeof window !== 'undefined' && window.veilStore) {
+      isKeeper = (window.veilStore.sessionRole !== 'player' && window.veilStore.state.userRole === 'keeper');
+    }
     if (isSecret && !isKeeper) return;
 
     let stack = document.getElementById('vf-callouts-stack');
@@ -188,10 +189,27 @@ export class VeilfarersDiceEngine {
       document.body.appendChild(stack);
     }
 
-    const tokenName = rollData.actorName || rollData.playerName || rollData.tokenName || 'Operativo';
-    const label = rollData.label || rollData.title || (rollData.type === 'duality' ? 'Acción Duality' : 'Tirada de dados');
-    const total = rollData.total ?? (rollData.value ?? 0);
+    // 1. Nombre del jugador
+    let playerName = rollData.playerName || rollData.userDisplayName || rollData.userName || rollData.authorName || '';
+    if (!playerName && typeof window !== 'undefined' && window.veilStore?.state) {
+      playerName = window.veilStore.state.userName || window.veilStore.state.playerName || '';
+    }
+    if (!playerName) {
+      playerName = isSecret ? 'Keeper' : 'Jugador';
+    }
 
+    // 2. Nombre del token
+    let tokenName = rollData.tokenName || rollData.actorName || rollData.actor || '';
+    if (!tokenName && typeof window !== 'undefined' && window.veilStore) {
+      const selected = window.veilStore.getSelectedToken?.();
+      if (selected?.name) tokenName = selected.name;
+    }
+    if (!tokenName) {
+      tokenName = isKeeper ? 'Director de Juego' : 'Operativo';
+    }
+
+    // 3. Resultado
+    const total = rollData.total != null ? rollData.total : (rollData.value != null ? rollData.value : (Number(rollData.hopeVal || 0) + Number(rollData.fearVal || 0)));
     let outcomeType = rollData.outcomeType;
     let outcomeLabel = rollData.outcomeLabel || rollData.outcomeTitle || rollData.outcome || '';
     if (!outcomeType) {
@@ -201,35 +219,68 @@ export class VeilfarersDiceEngine {
       } else if (Number(rollData.fearVal || rollData.fear) > Number(rollData.hopeVal || rollData.hope)) {
         outcomeType = 'fear';
         outcomeLabel = outcomeLabel || 'CON FEAR';
-      } else {
+      } else if (rollData.hopeVal != null && rollData.fearVal != null) {
         outcomeType = 'hope';
-        outcomeLabel = outcomeLabel || (rollData.type === 'duality' ? 'CON HOPE' : '');
+        outcomeLabel = outcomeLabel || 'CON HOPE';
       }
     }
 
-    const modifiers = rollData.breakdown || rollData.details || rollData.modifiers || (rollData.hopeVal != null ? `Hope [${rollData.hopeVal}] + Fear [${rollData.fearVal}] ${rollData.modifier ? (rollData.modifier >= 0 ? '+' + rollData.modifier : rollData.modifier) : ''}${rollData.dc ? ` vs DC ${rollData.dc}` : ''}` : '');
+    // 4. Modificadores aplicados
+    let modifiers = rollData.breakdown || rollData.details || rollData.modifiers || '';
+    if (!modifiers) {
+      if (rollData.hopeVal != null && rollData.fearVal != null) {
+        const modNum = Number(rollData.modifier || rollData.totalMod || 0);
+        const modStr = modNum !== 0 ? (modNum > 0 ? ` + ${modNum}` : ` - ${Math.abs(modNum)}`) : '';
+        const dcStr = rollData.dc ? ` vs DC ${rollData.dc}` : '';
+        modifiers = `Hope [${rollData.hopeVal}] + Fear [${rollData.fearVal}]${modStr}${dcStr}`;
+      } else if (Array.isArray(rollData.rolls)) {
+        modifiers = `Dados: [${rollData.rolls.map(r => r.value ?? r).join(', ')}]`;
+      } else {
+        modifiers = 'Sin modificadores adicionales';
+      }
+    }
+
+    const label = rollData.label || rollData.title || (rollData.type === 'duality' ? 'Acción Duality' : 'Tirada de dados');
 
     const card = document.createElement('div');
     card.className = `vf-callout-card outcome-${outcomeType || 'hope'}`;
     const secretTag = isSecret ? '<span class="vf-callout-secret-badge">🔒 SECRETA KEEPER</span>' : '';
     const badgeHtml = outcomeLabel ? `<div class="vf-callout-badge">${escapeHtml(outcomeLabel)}</div>` : '';
-    const modHtml = modifiers ? `<div class="vf-callout-modifiers">${escapeHtml(modifiers)}</div>` : '';
 
     card.innerHTML = `
       <div class="vf-callout-header">
-        <div class="vf-callout-actor">
+        <div class="vf-callout-title-row">
           <span class="vf-callout-icon">🎲</span>
-          <strong class="vf-callout-name">${escapeHtml(tokenName)}</strong>
+          <span class="vf-callout-action">${escapeHtml(label)}</span>
           ${secretTag}
         </div>
         <button type="button" class="vf-callout-close" title="Cerrar">×</button>
       </div>
-      <div class="vf-callout-action">${escapeHtml(label)}</div>
-      <div class="vf-callout-main">
-        <div class="vf-callout-total">${escapeHtml(String(total))}</div>
-        ${badgeHtml}
+
+      <div class="vf-callout-body">
+        <div class="vf-callout-row vf-callout-player-row">
+          <span class="vf-callout-field-label">Nombre del jugador:</span>
+          <strong class="vf-callout-field-value vf-callout-player-name">${escapeHtml(playerName)}</strong>
+        </div>
+
+        <div class="vf-callout-row vf-callout-token-row">
+          <span class="vf-callout-field-label">Nombre del token:</span>
+          <strong class="vf-callout-field-value vf-callout-token-name">${escapeHtml(tokenName)}</strong>
+        </div>
+
+        <div class="vf-callout-row vf-callout-result-row">
+          <span class="vf-callout-field-label">Resultado:</span>
+          <div class="vf-callout-result-box">
+            <span class="vf-callout-total">${escapeHtml(String(total))}</span>
+            ${badgeHtml}
+          </div>
+        </div>
+
+        <div class="vf-callout-row vf-callout-mod-row">
+          <span class="vf-callout-field-label">Modificadores aplicados:</span>
+          <div class="vf-callout-modifiers-text">${escapeHtml(modifiers)}</div>
+        </div>
       </div>
-      ${modHtml}
     `;
 
     const closeBtn = card.querySelector('.vf-callout-close');

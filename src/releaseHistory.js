@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.2', date: '2026-11-11', title: 'Callout de Tiradas Estructurado y Limpieza de Interfaz',
+    sections: [
+      { title: 'Callouts de Tiradas', items: [
+        'Formato estructurado en cada tarjeta de resultado con 4 campos explícitos: Nombre del jugador, Nombre del token, Resultado y Modificadores aplicados.',
+        'Sincronización de identificadores de jugador y token en tiradas de acción, comprobaciones Duality y dados rápidos del Keeper.',
+        'Eliminación completa del badge redundante de "FEAR EN MESA" sobre la cabecera de sesión.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.1', date: '2026-11-11', title: 'Veilfarers Suite: Dados 3D Optimizados, Callouts Remotos, Asignación Múltiple y HUD Movible',
     sections: [
       { title: 'Dados 3D y Notificaciones de Tirada', items: [

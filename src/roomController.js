@@ -248,7 +248,7 @@ export class RoomController {
     if (typeof document !== 'undefined') {
       const pHud = document.getElementById('vf-player-hud'); if (pHud) pHud.style.display = 'none';
       const kHud = document.getElementById('vf-keeper-hud'); if (kHud) kHud.style.display = 'none';
-      const fBadge = document.getElementById('vf-shared-fear-badge'); if (fBadge) fBadge.style.display = 'none';
+      const fBadge = document.getElementById('vf-shared-fear-badge'); if (fBadge) fBadge.remove();
     }
     this.leaving = false; this.emit();
   }

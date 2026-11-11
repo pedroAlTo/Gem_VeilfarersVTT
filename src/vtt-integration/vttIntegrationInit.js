@@ -51,20 +51,19 @@ export async function initVeilfarersVTTModules({ roomId, currentUser, activeChar
 
   const playerHudEl = document.getElementById('vf-player-hud');
   const keeperHudEl = document.getElementById('vf-keeper-hud');
-  const sharedFearBadgeEl = document.getElementById('vf-shared-fear-badge');
+  const staleFearBadge = document.getElementById('vf-shared-fear-badge');
+  if (staleFearBadge) staleFearBadge.remove();
 
   // 3. Enrutamiento de interfaz según el Rol en la mesa
   if (currentUser.role === 'keeper') {
     if (playerHudEl) playerHudEl.style.display = 'none';
-    if (sharedFearBadgeEl) sharedFearBadgeEl.style.display = 'none';
     if (keeperHudEl) keeperHudEl.style.display = 'flex';
 
     const keeperHud = db ? new KeeperHudController(roomId, currentUser, diceSync) : null;
     return { diceEngine, diceSync, keeperHud };
   } else {
-    // Modo Jugador: Ocultar consola de Keeper, mostrar badge global de Fear y montar su Ficha
+    // Modo Jugador: Ocultar consola de Keeper y montar su Ficha
     if (keeperHudEl) keeperHudEl.style.display = 'none';
-    if (sharedFearBadgeEl) sharedFearBadgeEl.style.display = 'flex';
 
     // Escuchar el contador de Fear para que el jugador vea la tensión acumulada
     if (db) {
