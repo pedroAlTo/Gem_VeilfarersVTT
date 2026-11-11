@@ -32,30 +32,24 @@ export class FearMeterHUD {
   render() {
     this.container.innerHTML = sanitizeHTML(`
       <div class="fear-meter-wrapper" id="fear_meter_root">
-        <div class="fear-header">
-          <div class="fear-label">
-            <span class="fear-icon">▲</span>
-            <span class="fear-title">GLOBAL FEAR</span>
-            <span class="fear-counter" id="fear_counter_val">0 / 12</span>
-          </div>
-          <div class="fear-header-actions" id="fear_header_actions">
-            <!-- Rendered based on user role -->
-          </div>
+        <div class="fear-label">
+          <span class="fear-icon">▲</span>
+          <span class="fear-title">GLOBAL FEAR</span>
+          <span class="fear-counter" id="fear_counter_val">0 / 12</span>
         </div>
-
-        <!-- Track Row: [-] [12 Segments] [+] as per user mockup -->
-        <div class="fear-track-row">
-          <button class="hud-btn hud-btn-xs fear-step-btn" id="fear_minus_btn" title="Disminuir Miedo (-1)">−</button>
-          <div class="fear-cells-track" id="fear_cells_track" title="Clic para ajustar nivel de Miedo">
-            ${Array.from({ length: 12 }, (_, i) => `
-              <div class="fear-cell" data-index="${i + 1}">
-                <div class="fear-cell-fill"></div>
-                <div class="fear-cell-number">${i + 1}</div>
-              </div>
-            `).join('')}
-          </div>
-          <button class="hud-btn hud-btn-xs hud-btn-danger fear-step-btn" id="fear_plus_btn" title="Aumentar Miedo (+1)">+</button>
+        <div class="fear-header-actions" id="fear_header_actions">
+          <!-- Rendered based on user role -->
         </div>
+        <button class="hud-btn hud-btn-xs fear-step-btn" id="fear_minus_btn" title="Disminuir Miedo (-1)">−</button>
+        <div class="fear-cells-track" id="fear_cells_track" title="Clic para ajustar nivel de Miedo">
+          ${Array.from({ length: 12 }, (_, i) => `
+            <div class="fear-cell" data-index="${i + 1}">
+              <div class="fear-cell-fill"></div>
+              <div class="fear-cell-number">${i + 1}</div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="hud-btn hud-btn-xs hud-btn-danger fear-step-btn" id="fear_plus_btn" title="Aumentar Miedo (+1)">+</button>
       </div>
     `);
 
@@ -124,8 +118,8 @@ export class FearMeterHUD {
     const minusBtn = this.container.querySelector('#fear_minus_btn');
     const plusBtn = this.container.querySelector('#fear_plus_btn');
     if (minusBtn && plusBtn) {
-      minusBtn.style.visibility = isKeeper ? 'visible' : 'hidden';
-      plusBtn.style.visibility = isKeeper ? 'visible' : 'hidden';
+      minusBtn.style.display = isKeeper ? 'inline-grid' : 'none';
+      plusBtn.style.display = isKeeper ? 'inline-grid' : 'none';
     }
 
     // Update Segments

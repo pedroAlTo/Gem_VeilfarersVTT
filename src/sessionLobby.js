@@ -82,6 +82,14 @@ export function initSessionBar() {
   bar.querySelector('#session_my_tokens').onclick = openPlayerTokens;
   bar.querySelector('#session_copy').onclick = event => copyText(invitationCode(), event.currentTarget);
   bar.querySelector('#session_magic_btn').onclick = event => copyText(magicInvitationLink(), event.currentTarget);
+
+  const playersOverlayRoot = document.getElementById('players_overlay_hud');
+  if (playersOverlayRoot) {
+    playersOverlayRoot.addEventListener('pointerdown', (e) => e.stopPropagation());
+    playersOverlayRoot.addEventListener('mousedown', (e) => e.stopPropagation());
+    playersOverlayRoot.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    playersOverlayRoot.addEventListener('dblclick', (e) => e.stopPropagation());
+  }
   const update = () => {
     const s = store.state;
     const { label, detail } = connectionDisplay(s, store.sessionRole);
@@ -117,79 +125,50 @@ export function initSessionBar() {
       ? 'Select and control your character or a shared drone'
       : (s.isObserver ? 'Modo Observador activo: el Keeper te asignará un token' : 'Ask the Keeper to assign a token');
 
-    // Live Scene Synchronization Status Button
+    // Scene sync button kept hidden from header to keep single-line header compact
     const mapSyncBtn = bar.querySelector('#session_map_sync');
     if (mapSyncBtn) {
-      if (s.isConnected || s.isHosting) {
-        mapSyncBtn.style.display = 'inline-flex';
-        const myMemberId = store.memberId || store.peerId || 'local';
-        const peers = (s.connectedPeers || []).filter(p => p.id && p.id !== myMemberId);
-        const activeMap = store.getActiveMap();
-        const activeMapId = activeMap?.id;
-        const isKeeper = s.userRole === 'keeper' || s.isHosting;
-        const myStatus = network.mapLoadStatuses?.get(myMemberId) || network.mapLoadStatuses?.get('local');
-        const selfReady = myStatus ? (myStatus.mapId === activeMapId && (myStatus.loaded || myStatus.progress >= 100)) : (isKeeper || Boolean(window.veilCanvas?.isMapLoaded));
-        
-        let total = 1;
-        let ready = selfReady ? 1 : 0;
-        let minProgress = selfReady ? 100 : (myStatus?.progress || 0);
-
-        for (const peer of peers) {
-          total++;
-          const p = (s.players || []).find(x => x.id === peer.id);
-          const st = network.mapLoadStatuses?.get(peer.id) ||
-                     (p ? network.mapLoadStatuses?.get(p.id) : null) ||
-                     (peer.name ? network.mapLoadStatuses?.get(peer.name) : null) ||
-                     [...network.mapLoadStatuses.values()].find(x => 
-                       (x.peerId && (x.peerId === peer.id || (p && x.peerId === p.id))) ||
-                       (x.memberId && (x.memberId === peer.id || (p && x.memberId === p.id))) ||
-                       (peer.name && x.name === peer.name) ||
-                       (p?.name && x.name === p.name)
-                     );
-          const isPeerReady = Boolean(st && (st.loaded || st.progress >= 100));
-          if (isPeerReady) {
-            ready++;
-          } else {
-            const prog = st ? (st.mapId === activeMapId ? st.progress : 0) : 0;
-            if (prog < minProgress) minProgress = prog;
-          }
-        }
-
-        if (ready >= total) {
-          mapSyncBtn.textContent = '🛰️ Escena: 100% ✅';
-          mapSyncBtn.style.borderColor = '#10b981';
-          mapSyncBtn.style.color = '#7de8d0';
-        } else if (selfReady) {
-          mapSyncBtn.textContent = `🛰️ Escena: 100% (Tripulación: ${ready}/${total})`;
-          mapSyncBtn.style.borderColor = '#10b981';
-          mapSyncBtn.style.color = '#7de8d0';
-        } else {
-          mapSyncBtn.textContent = `⏳ Escena: ${ready}/${total} (${minProgress}%)`;
-          mapSyncBtn.style.borderColor = '#f59e0b';
-          mapSyncBtn.style.color = '#fbbf24';
-        }
-      } else {
-        mapSyncBtn.style.display = 'none';
-      }
+      mapSyncBtn.style.display = 'none';
     }
 
-    // Fase 4: Live Crew status pills for the GM
+    // Keep header crew pills hidden; crew is displayed in the transparent overlay HUD
     const crewPills = bar.querySelector('#session_crew_pills');
     if (crewPills) {
-      if (s.isHosting) {
-        const players = s.players || [];
-        const peers = s.connectedPeers || [];
-        const activeMapId = store.getActiveMap()?.id;
-        crewPills.style.display = 'inline-flex';
-        crewPills.innerHTML = sanitizeHTML(players.map(p => {
+      crewPills.style.display = 'none';
+      crewPills.innerHTML = '';
+    }
+
+    // Render live crew status in the transparent HUD overlay below tactical layers
+    const playersOverlay = document.getElementById('players_overlay_hud');
+    if (playersOverlay) {
+      const isHosting = s.isHosting || s.userRole === 'keeper';
+      const isConnected = s.isConnected || isHosting;
+      const players = s.players || [];
+      const peers = s.connectedPeers || [];
+
+      // Collect unique players to display
+      const displayPlayers = [];
+      for (const p of players) {
+        if (p && p.id && !displayPlayers.some(x => x.id === p.id)) {
+          displayPlayers.push(p);
+        }
+      }
+      for (const peer of peers) {
+        if (peer && peer.id && !displayPlayers.some(x => x.id === peer.id)) {
+          displayPlayers.push({ id: peer.id, name: peer.name || 'Agente' });
+        }
+      }
+
+      if (isConnected && displayPlayers.length > 0) {
+        playersOverlay.style.display = 'flex';
+        playersOverlay.innerHTML = sanitizeHTML(displayPlayers.map(p => {
           const isOnline = peers.some(c => c.id === p.id);
-          const tok = s.tokens.find(t => !isDrone(t) && t.ownerId === p.id);
-          const avatar = tok?.avatarUrl || '';
+          const tok = (s.tokens || []).find(t => !isDrone(t) && t.ownerId === p.id);
           const peer = peers.find(c => c.id === p.id);
           const st = network.mapLoadStatuses?.get(p.id) ||
                      (peer ? network.mapLoadStatuses?.get(peer.id) : null) ||
                      network.mapLoadStatuses?.get(p.name) ||
-                     [...network.mapLoadStatuses.values()].find(x => 
+                     [...(network.mapLoadStatuses?.values() || [])].find(x => 
                        (x.peerId && (x.peerId === p.id || (peer && x.peerId === peer.id))) ||
                        (x.memberId && (x.memberId === p.id || (peer && x.memberId === peer.id))) ||
                        (x.name && (x.name === p.name || (peer?.name && x.name === peer.name)))
@@ -197,34 +176,44 @@ export function initSessionBar() {
           const isReady = Boolean(st && (st.loaded || st.progress >= 100));
           const progress = isReady ? 100 : (st ? Math.min(99, Math.max(0, st.progress || 0)) : 0);
           const syncBadge = !isOnline ? '' : (isReady ?
-            '<span style="color:#10b981; font-size:10px; margin-left:2px;" title="Escena descargada al 100%">✅</span>' :
-            `<span style="color:#fbbf24; font-size:9px; margin-left:2px; background:rgba(245,158,11,0.2); padding:1px 3px; border-radius:3px;" title="Cargando escena: ${progress}%">⏳ ${progress}%</span>`
+            '<span class="crew-sync-status ready" title="Escena descargada al 100%">✅ 100%</span>' :
+            `<span class="crew-sync-status loading" title="Descargando escena: ${progress}%">⏳ ${progress}%</span>`
           );
+          const kickBtn = (isHosting && isOnline) ?
+            `<button class="crew-player-kick-btn" data-kick-player="${e(p.id)}" title="Expulsar a ${e(p.name)} de la sesión">✕</button>` : '';
+
           return `
-            <span class="crew-live-pill ${isOnline ? 'online' : 'offline'}" style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:12px; font-size:10px; background:${isOnline ? 'rgba(0, 243, 255, 0.15)' : 'rgba(100, 116, 139, 0.2)'}; border:1px solid ${isOnline ? '#00f3ff' : '#64748b'}; color:#fff;" title="${e(p.name)} (${isOnline ? 'En línea' : 'Desconectado'}) — ${tok ? e(tok.name) : 'Sin personaje asignado'}">
-              <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${isOnline ? '#10b981' : '#64748b'};"></span>
-              ${avatar ? `<img src="${e(avatar)}" style="width:14px; height:14px; border-radius:50%; object-fit:cover;" alt="" />` : ''}
-              <strong>${e(p.name)}</strong>
+            <div class="crew-player-row ${isOnline ? 'online' : 'offline'}" data-player-id="${e(p.id)}">
+              <span class="crew-player-status-dot ${isOnline ? 'online' : 'offline'}" title="${isOnline ? 'En línea' : 'Desconectado'}">●</span>
+              <strong class="crew-player-name">${e(p.name)}</strong>
+              <span class="crew-player-token">${tok ? '· ' + e(tok.name) : '· (Sin ficha)'}</span>
               ${syncBadge}
-              <small style="color:${tok ? 'var(--cyan-pearl)' : '#fbbf24'}; opacity:0.85;">${tok ? e(tok.name) : '⏳ Sin ficha'}</small>
-              <button class="crew-kick-pill-btn" data-kick-player="${e(p.id)}" title="Expulsar a ${e(p.name)} de la sesión" style="margin-left:3px; padding:0 3px; font-size:9px; line-height:1; color:#ef4444; border:none; background:transparent; cursor:pointer; font-weight:bold;">✕</button>
-            </span>
+              ${kickBtn}
+            </div>
           `;
         }).join(''));
-        crewPills.querySelectorAll('[data-kick-player]').forEach(btn => {
+
+        playersOverlay.querySelectorAll('[data-kick-player]').forEach(btn => {
           btn.onclick = async (ev) => {
             ev.stopPropagation();
             const playerId = btn.dataset.kickPlayer;
-            const targetPlayer = players.find(p => p.id === playerId);
+            const targetPlayer = displayPlayers.find(p => p.id === playerId);
             const name = targetPlayer?.name || 'este jugador';
             if (await confirmAction(`¿Expulsar a "${name}" de la sesión activa? Se revocará su acceso y se liberará su personaje asignado.`)) {
               network.kickPlayer(playerId);
             }
           };
         });
+
+        playersOverlay.querySelectorAll('.crew-sync-status').forEach(el => {
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            openMapSyncTelemetryModal();
+          };
+        });
       } else {
-        crewPills.style.display = 'none';
-        crewPills.innerHTML = '';
+        playersOverlay.style.display = 'none';
+        playersOverlay.innerHTML = '';
       }
     }
   };
