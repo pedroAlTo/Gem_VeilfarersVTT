@@ -273,7 +273,16 @@ export function openAccount() {
     run(refresh);
     modal.querySelector('#account_import').onclick = () => openCharacterImport({ onImport: async entries => { for (const x of entries) await account.saveCharacter(x.token); await refresh(); return entries.length; } });
     modal.querySelector('#account_save_actor').onclick = () => run(async () => { const token = store.getSelectedToken(); if (!token || (store.sessionRole === 'player' && !store.canEditToken(token.id))) throw new Error('Select a character you control first.'); await account.saveCharacter(token); await refresh(); notify('Character saved to your account.'); });
-    modal.querySelector('#account_signout').onclick = () => run(async () => { if (network.roomController?.room) await network.roomController.leave(); await account.signOut(); modal.remove(); openAccount(); });
+    modal.querySelector('#account_signout').onclick = () => run(async () => {
+      if (network.roomController?.room) await network.roomController.leave();
+      await account.signOut();
+      modal.remove();
+      if (typeof window !== 'undefined' && window.vfLobbyGateway && typeof window.vfLobbyGateway.showLoginScreen === 'function') {
+        window.vfLobbyGateway.showLoginScreen();
+      } else {
+        openAccount();
+      }
+    });
     modal.querySelector('#account_preferences').onclick = () => run(async () => {
       const fogOpVal = parseFloat(modal.querySelector('#pref_fog_opacity')?.value) || 0.5;
       const values = {

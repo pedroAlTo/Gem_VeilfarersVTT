@@ -322,3 +322,21 @@ test('dice callout displays player name, token name, result and applied modifier
   // Ensure no vf-shared-fear-badge exists
   assert.equal(document.getElementById('vf-shared-fear-badge'), null, 'vf-shared-fear-badge must not exist in DOM');
 });
+
+test('logout returns to login screen and lobby gateway responds to signout events', async () => {
+  const { VeilfarersLobbyGateway } = await import('../src/vtt-integration/modules/lobbyGateway.js');
+  const gateway = new VeilfarersLobbyGateway();
+
+  gateway.hideLobby();
+  const root = document.getElementById('vf-lobby-gateway');
+  assert.ok(root.classList.contains('hidden'));
+
+  gateway.showLoginScreen();
+  assert.ok(!root.classList.contains('hidden'), 'Lobby gateway must be visible upon showLoginScreen');
+  assert.ok(!document.getElementById('vf-auth-screen').classList.contains('hidden'), 'Auth screen must be visible');
+  assert.ok(document.getElementById('vf-hub-screen').classList.contains('hidden'), 'Hub screen must be hidden');
+
+  gateway.hideLobby();
+  window.dispatchEvent(new dom.window.CustomEvent('veil:auth-signout'));
+  assert.ok(!root.classList.contains('hidden'), 'Lobby gateway must reopen on veil:auth-signout');
+});

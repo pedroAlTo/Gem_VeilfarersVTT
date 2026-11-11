@@ -1,10 +1,27 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.3**.
-Paquete: `VeilFarers_VTT_v1.4.3.zip`.
+Versión actual del VTT: **v1.4.4**.
+Paquete: `VeilFarers_VTT_v1.4.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.4.4] — 2026-11-12
+
+Terminal Táctico AAA: Hub de Operativos Rediseñado, Flujo de Logout y Precarga de Dados 3D
+
+### Hub de Operativos y Portal AAA
+
+- Rediseño premium con calidad de estudio AAA de la pantalla del Hub táctico, tipografías Orbitron/Rajdhani y ambientación Sci-Fi Pearl Era.
+- Character Vault estilizado: tarjetas tácticas de operativo con avatar holográfico, indicadores de estado [ACTIVO], micropips para HP, Stress, Hope, Armour Shields y Slots de mejora.
+- Panel de despliegue con frecuencias de sala rápidas y diagnóstico de enlace cuántico en tiempo real.
+- Creador de personajes reestructurado en tres secciones tácticas con matriz Duality 2d12 de atributos y blindaje exotáctico.
+
+### Ciclo de Acceso y Sesión
+
+- Carga inmediata del portal en el arranque sin destellos previos del mapa ni de la mesa de juego.
+- Flujo de retorno al portal de login automático y coherente tras cualquier cierre de sesión (botón de desconexión del Hub, menú de cuenta de la mesa o desautenticación remota).
+- Precarga y precalentamiento en segundo plano del motor 3D de dados, física WASM y audio mientras el usuario interactúa con la pantalla de acceso.
 
 ## [1.4.3] — 2026-11-12
 

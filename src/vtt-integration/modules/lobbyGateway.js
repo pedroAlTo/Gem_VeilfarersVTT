@@ -26,9 +26,17 @@ export class VeilfarersLobbyGateway {
       : (optionsOrCallback?.onJoinRoom || optionsOrCallback?.onEnterRoom);
 
     this.currentUser = null;
+    this.wasLoggedIn = false;
     this.selectedRole = 'player';
     this.selectedCharId = null;
     this.vaultCharacters = {};
+
+    if (typeof window !== 'undefined') {
+      window.vfLobbyGateway = this;
+      window.addEventListener('veil:auth-signout', () => {
+        this.showLoginScreen();
+      });
+    }
 
     this.injectLobbyDOM();
     this.bindEvents();
@@ -36,10 +44,47 @@ export class VeilfarersLobbyGateway {
   }
 
   init() {
-    // Compatibility with alternative initialization style
     if (!document.getElementById('vf-lobby-gateway')) {
       this.injectLobbyDOM();
       this.bindEvents();
+    }
+  }
+
+  showLoginScreen() {
+    const root = document.getElementById('vf-lobby-gateway');
+    if (root) {
+      root.classList.remove('hidden');
+    }
+    const authScreen = document.getElementById('vf-auth-screen');
+    const hubScreen = document.getElementById('vf-hub-screen');
+    const modal = document.getElementById('vf-creator-modal');
+    modal?.classList.add('hidden');
+    hubScreen?.classList.add('hidden');
+    authScreen?.classList.remove('hidden');
+
+    const pass = document.getElementById('vf-auth-pass');
+    if (pass) pass.value = '';
+    const err = document.getElementById('vf-auth-error');
+    if (err) err.textContent = '';
+  }
+
+  showHubScreen() {
+    const root = document.getElementById('vf-lobby-gateway');
+    if (root) {
+      root.classList.remove('hidden');
+    }
+    const authScreen = document.getElementById('vf-auth-screen');
+    const hubScreen = document.getElementById('vf-hub-screen');
+    const modal = document.getElementById('vf-creator-modal');
+    modal?.classList.add('hidden');
+    authScreen?.classList.add('hidden');
+    hubScreen?.classList.remove('hidden');
+  }
+
+  hideLobby() {
+    const root = document.getElementById('vf-lobby-gateway');
+    if (root) {
+      root.classList.add('hidden');
     }
   }
 
@@ -56,18 +101,22 @@ export class VeilfarersLobbyGateway {
         <button type="button" class="vf-btn-close-lobby" id="vf-btn-dismiss-lobby" title="Cerrar y entrar a la mesa VTT">✕</button>
 
         <div class="vf-brand-header">
-          <span class="vf-brand-badge">✦ VEILFARERS // TERMINAL DE ACCESO</span>
+          <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
           <h1>PORTAL TÁCTICO</h1>
-          <p>Vault de Personajes, Campañas Persistentes y Mesa Virtual</p>
+          <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
         </div>
 
         <form id="vf-email-auth-form" class="vf-auth-form">
           <div class="vf-input-group">
-            <span class="vf-input-icon">📧</span>
+            <span class="vf-input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </span>
             <input type="email" id="vf-auth-email" placeholder="Correo electrónico o indicativo" required autocomplete="email" />
           </div>
           <div class="vf-input-group">
-            <span class="vf-input-icon">🔒</span>
+            <span class="vf-input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
             <input type="password" id="vf-auth-pass" placeholder="Contraseña de acceso" required autocomplete="current-password" />
           </div>
           <div class="vf-auth-actions">
@@ -84,7 +133,7 @@ export class VeilfarersLobbyGateway {
         </button>
 
         <button type="button" id="vf-btn-guest" class="vf-btn vf-btn-guest">
-          🚀 Entrar como Invitado / Modo Local
+          <span class="guest-icon">🚀</span> Entrar como Invitado / Modo Local
         </button>
 
         <p id="vf-auth-error" class="vf-error-msg"></p>
@@ -95,46 +144,82 @@ export class VeilfarersLobbyGateway {
       <div id="vf-hub-screen" class="vf-hub-container hidden">
         <header class="vf-hub-topbar">
           <div class="vf-hub-logo">
-            <h2>VEILFARERS // TERMINAL DE ACCESO</h2>
-            <span id="vf-user-welcome">Conectado</span>
+            <div class="hub-brand-title">
+              <span class="hub-brand-glyph">✦</span>
+              <h2>VEILFARERS // CENTRO DE MANDO</h2>
+            </div>
+            <div class="vf-user-chip">
+              <span class="user-pulse"></span>
+              <span class="chip-label">OPERATIVO:</span>
+              <strong id="vf-user-welcome">Conectando...</strong>
+            </div>
           </div>
-          <div class="vf-role-switcher">
-            <button type="button" id="role-btn-player" class="role-btn active">Modo Jugador</button>
-            <button type="button" id="role-btn-keeper" class="role-btn">Modo Keeper (Director)</button>
+          <div class="vf-role-switcher" role="radiogroup" aria-label="Selector de rol táctico">
+            <button type="button" id="role-btn-player" class="role-btn active">
+              <span class="role-icon">◈</span> MODO JUGADOR
+            </button>
+            <button type="button" id="role-btn-keeper" class="role-btn">
+              <span class="role-icon">⚡</span> MODO KEEPER (DIRECTOR)
+            </button>
           </div>
-          <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-ghost">Cerrar Sesión</button>
+          <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-logout" title="Desconectar y volver al portal de acceso">
+            <span class="logout-icon">⏻</span> Cerrar Sesión
+          </button>
         </header>
 
         <div class="vf-hub-grid">
           <!-- COLUMNA IZQUIERDA: CHARACTER VAULT -->
-          <section id="vf-vault-section" class="vf-hub-panel">
+          <section id="vf-vault-section" class="vf-hub-panel vault-panel">
             <div class="panel-header">
-              <h3>Character Vault</h3>
+              <div class="panel-title-group">
+                <h3><span class="panel-icon">📂</span> CHARACTER VAULT</h3>
+                <span class="panel-badge">EXPEDIENTES TÁCTICOS</span>
+              </div>
               <div class="vault-actions">
-                <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary">+ Nuevo Personaje</button>
-                <label class="vf-btn vf-btn-secondary" style="cursor:pointer;">
-                  Importar JSON
+                <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs">
+                  <span class="btn-icon">+</span> Nuevo Personaje
+                </button>
+                <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
+                  <span class="btn-icon">⬇</span> Importar JSON
                   <input type="file" id="vf-import-json" accept=".json" style="display:none;" />
                 </label>
               </div>
             </div>
-            <p class="panel-hint">Selecciona con qué personaje entrarás a la sesión del VTT:</p>
+            <p class="panel-hint">Selecciona el operativo activo que se desplegará en la mesa táctica:</p>
             <div id="vf-vault-list" class="vf-vault-list"></div>
           </section>
 
           <!-- COLUMNA DERECHA: CONEXIÓN A SALA -->
           <section class="vf-hub-panel room-panel">
             <div class="panel-header">
-              <h3>Conexión a Sala Persistente</h3>
+              <div class="panel-title-group">
+                <h3><span class="panel-icon">🛰️</span> ENLACE A SALA PERSISTENTE</h3>
+                <span class="panel-badge status-live">CANAL CUÁNTICO</span>
+              </div>
             </div>
             <div class="room-form-group">
-              <label for="vf-room-code-input">Código de la Sala / Campaña</label>
-              <input type="text" id="vf-room-code-input" placeholder="Ej: sector-acheron-01" value="mesa-principal" />
+              <label for="vf-room-code-input">
+                <span class="field-code">// SALA</span> Código o Frecuencia de Campaña
+              </label>
+              <div class="room-input-container">
+                <span class="room-input-icon">⌖</span>
+                <input type="text" id="vf-room-code-input" placeholder="Ej: mesa-principal" value="mesa-principal" autocomplete="off" />
+              </div>
+              <div class="room-presets-row">
+                <span class="presets-label">Frecuencias sugeridas:</span>
+                <button type="button" class="room-preset-btn" data-room="mesa-principal">mesa-principal</button>
+                <button type="button" class="room-preset-btn" data-room="sector-acheron">sector-acheron</button>
+                <button type="button" class="room-preset-btn" data-room="estacion-pearl">estacion-pearl</button>
+              </div>
             </div>
             <div id="vf-selected-summary" class="vf-selected-summary">
-              Rol activo: <strong>Jugador</strong> | Personaje: <em id="vf-summary-char-name">Ninguno seleccionado</em>
+              <!-- Rendered dynamically -->
             </div>
-            <button type="button" id="vf-btn-join-vtt" class="vf-btn vf-btn-launch">ENTRAR A LA MESA VTT</button>
+            <button type="button" id="vf-btn-join-vtt" class="vf-btn vf-btn-launch">
+              <span class="btn-launch-icon">🚀</span>
+              <span class="btn-launch-text">ENTRAR A LA MESA VTT</span>
+              <span class="btn-launch-glow"></span>
+            </button>
           </section>
         </div>
       </div>
@@ -143,43 +228,85 @@ export class VeilfarersLobbyGateway {
       <div id="vf-creator-modal" class="vf-modal-backdrop hidden">
         <div class="vf-creator-dialog">
           <header class="creator-header">
-            <h3>Creador de Personajes Veilfarers</h3>
-            <button type="button" id="vf-btn-close-creator" class="vf-btn vf-btn-ghost">✕</button>
+            <div class="creator-header-title">
+              <span class="creator-badge">✦ VEILFARERS // EXPEDIENTE TÁCTICO</span>
+              <h3>CREADOR DE PERSONAJES</h3>
+            </div>
+            <button type="button" id="vf-btn-close-creator" class="vf-btn vf-btn-close-dialog" title="Cerrar">✕</button>
           </header>
           <form id="vf-creator-form" class="creator-form">
-            <div class="creator-row">
-              <label>Nombre del Viajero
-                <input type="text" id="cr-name" required placeholder="Ej: Kaelen Vance" />
-              </label>
-              <label>Especie
-                <input type="text" id="cr-species" required placeholder="Ej: Humano / Voidborn" />
-              </label>
-              <label>Trasfondo / Clase
-                <input type="text" id="cr-background" required placeholder="Ej: Vanguardia" />
-              </label>
+            <!-- SECCIÓN 1: IDENTIDAD -->
+            <div class="creator-section">
+              <div class="creator-section-header">
+                <span class="sec-number">01</span>
+                <span class="sec-title">IDENTIDAD DEL OPERATIVO</span>
+              </div>
+              <div class="creator-row">
+                <label>Nombre del Viajero
+                  <input type="text" id="cr-name" required placeholder="Ej: Kaelen Vance" />
+                </label>
+                <label>Especie / Subespecie
+                  <input type="text" id="cr-species" required placeholder="Ej: Humano / Voidborn" />
+                </label>
+                <label>Trasfondo / Especialización
+                  <input type="text" id="cr-background" required placeholder="Ej: Vanguardia / Explorador" />
+                </label>
+              </div>
             </div>
 
-            <h4>Atributos (Duality 2d12)</h4>
-            <div class="creator-attrs-grid">
-              <label>Agility <input type="number" id="cr-attr-agility" value="1" min="-2" max="5" /></label>
-              <label>Strength <input type="number" id="cr-attr-strength" value="0" min="-2" max="5" /></label>
-              <label>Finesse <input type="number" id="cr-attr-finesse" value="2" min="-2" max="5" /></label>
-              <label>Instinct <input type="number" id="cr-attr-instinct" value="1" min="-2" max="5" /></label>
-              <label>Presence <input type="number" id="cr-attr-presence" value="0" min="-2" max="5" /></label>
-              <label>Knowledge <input type="number" id="cr-attr-knowledge" value="-1" min="-2" max="5" /></label>
+            <!-- SECCIÓN 2: ATRIBUTOS DUALITY -->
+            <div class="creator-section">
+              <div class="creator-section-header">
+                <span class="sec-number">02</span>
+                <span class="sec-title">MATRIZ DE ATRIBUTOS (DUALITY 2d12)</span>
+              </div>
+              <div class="creator-attrs-grid">
+                <div class="attr-box">
+                  <span class="attr-code">AGI</span>
+                  <label>Agility <input type="number" id="cr-attr-agility" value="1" min="-2" max="5" /></label>
+                </div>
+                <div class="attr-box">
+                  <span class="attr-code">STR</span>
+                  <label>Strength <input type="number" id="cr-attr-strength" value="0" min="-2" max="5" /></label>
+                </div>
+                <div class="attr-box">
+                  <span class="attr-code">FIN</span>
+                  <label>Finesse <input type="number" id="cr-attr-finesse" value="2" min="-2" max="5" /></label>
+                </div>
+                <div class="attr-box">
+                  <span class="attr-code">INS</span>
+                  <label>Instinct <input type="number" id="cr-attr-instinct" value="1" min="-2" max="5" /></label>
+                </div>
+                <div class="attr-box">
+                  <span class="attr-code">PRE</span>
+                  <label>Presence <input type="number" id="cr-attr-presence" value="0" min="-2" max="5" /></label>
+                </div>
+                <div class="attr-box">
+                  <span class="attr-code">KNO</span>
+                  <label>Knowledge <input type="number" id="cr-attr-knowledge" value="-1" min="-2" max="5" /></label>
+                </div>
+              </div>
             </div>
 
-            <h4>Armadura (Armour Shields A.S. y Slots de Mejora)</h4>
-            <div class="creator-row">
-              <label>Nombre de Armadura
-                <input type="text" id="cr-armour-name" value="Traje Exo-Táctico" />
-              </label>
-              <label title="Cantidad de escudos que puedes marcar para evitar daño">🛡️ Armour Shields (A.S.)
-                <input type="number" id="cr-armour-as" value="3" min="0" max="10" />
-              </label>
-              <label title="Capacidad de mejoras instalables en la armadura">🔧 Slots de Mejora
-                <input type="number" id="cr-armour-slots" value="2" min="0" max="6" />
-              </label>
+            <!-- SECCIÓN 3: ARMADURA Y SISTEMAS -->
+            <div class="creator-section">
+              <div class="creator-section-header">
+                <span class="sec-number">03</span>
+                <span class="sec-title">BLINDAJE EXOTÁCTICO & MEJORAS</span>
+              </div>
+              <div class="creator-row">
+                <label>Nombre de Armadura
+                  <input type="text" id="cr-armour-name" value="Traje Exo-Táctico" />
+                </label>
+                <label title="Cantidad de escudos de armadura que puedes marcar para evitar daño">
+                  🛡️ Armour Shields (A.S.)
+                  <input type="number" id="cr-armour-as" value="3" min="0" max="10" />
+                </label>
+                <label title="Capacidad de mejoras instalables en la armadura">
+                  🔧 Slots de Mejora
+                  <input type="number" id="cr-armour-slots" value="2" min="0" max="6" />
+                </label>
+              </div>
             </div>
 
             <div class="creator-footer">
@@ -197,7 +324,7 @@ export class VeilfarersLobbyGateway {
     if (typeof document === 'undefined') return;
 
     const closeLobby = () => {
-      document.getElementById('vf-lobby-gateway')?.classList.add('hidden');
+      this.hideLobby();
     };
 
     document.getElementById('vf-btn-dismiss-lobby')?.addEventListener('click', closeLobby);
@@ -209,7 +336,7 @@ export class VeilfarersLobbyGateway {
           roomId: 'mesa-principal',
           currentUser: {
             uid: 'guest_' + Date.now(),
-            displayName: 'Invitado',
+            displayName: 'Invitado Local',
             role: 'player'
           },
           activeCharId: null
@@ -219,7 +346,7 @@ export class VeilfarersLobbyGateway {
 
     document.getElementById('vf-email-auth-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!this.auth) return this.showError('Firebase Auth no disponible.');
+      if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
       const email = document.getElementById('vf-auth-email').value.trim();
       const pass = document.getElementById('vf-auth-pass').value;
       try {
@@ -230,7 +357,7 @@ export class VeilfarersLobbyGateway {
     });
 
     document.getElementById('vf-btn-register')?.addEventListener('click', async () => {
-      if (!this.auth) return this.showError('Firebase Auth no disponible.');
+      if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
       const email = document.getElementById('vf-auth-email').value.trim();
       const pass = document.getElementById('vf-auth-pass').value;
       if (!email || !pass) return this.showError('Introduce correo y contraseña para registrarte.');
@@ -242,7 +369,7 @@ export class VeilfarersLobbyGateway {
     });
 
     document.getElementById('vf-btn-google')?.addEventListener('click', async () => {
-      if (!this.auth) return this.showError('Firebase Auth no disponible.');
+      if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
       try {
         const provider = new GoogleAuthProvider();
         await signInWithPopup(this.auth, provider);
@@ -251,10 +378,23 @@ export class VeilfarersLobbyGateway {
       }
     });
 
-    document.getElementById('vf-btn-logout')?.addEventListener('click', () => {
-      if (this.auth) signOut(this.auth);
+    // Desconectar / Cerrar Sesión -> Regresar a la pantalla de login
+    document.getElementById('vf-btn-logout')?.addEventListener('click', async () => {
+      try {
+        if (this.auth) await signOut(this.auth);
+      } catch (err) {
+        console.warn('[Lobby] Error al cerrar sesión de Firebase:', err);
+      }
+      try {
+        const { account } = await import('../../cloudAccount.js');
+        if (account) await account.signOut();
+      } catch (e) {}
+      this.currentUser = null;
+      this.wasLoggedIn = false;
+      this.showLoginScreen();
     });
 
+    // Segmented Role Switcher
     const btnPlayer = document.getElementById('role-btn-player');
     const btnKeeper = document.getElementById('role-btn-keeper');
 
@@ -263,7 +403,10 @@ export class VeilfarersLobbyGateway {
       btnPlayer.classList.add('active');
       btnKeeper?.classList.remove('active');
       const vSec = document.getElementById('vf-vault-section');
-      if (vSec) vSec.style.opacity = '1';
+      if (vSec) {
+        vSec.style.opacity = '1';
+        vSec.style.pointerEvents = 'auto';
+      }
       this.updateSummaryText();
     });
 
@@ -272,10 +415,23 @@ export class VeilfarersLobbyGateway {
       btnKeeper.classList.add('active');
       btnPlayer?.classList.remove('active');
       const vSec = document.getElementById('vf-vault-section');
-      if (vSec) vSec.style.opacity = '0.5';
+      if (vSec) {
+        vSec.style.opacity = '0.55';
+      }
       this.updateSummaryText();
     });
 
+    // Presets de sala rápida
+    document.querySelectorAll('.room-preset-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const roomInput = document.getElementById('vf-room-code-input');
+        if (roomInput && btn.dataset.room) {
+          roomInput.value = btn.dataset.room;
+        }
+      });
+    });
+
+    // Modal Creador
     const modal = document.getElementById('vf-creator-modal');
     document.getElementById('vf-btn-open-creator')?.addEventListener('click', () => modal?.classList.remove('hidden'));
     document.getElementById('vf-btn-close-creator')?.addEventListener('click', () => modal?.classList.add('hidden'));
@@ -289,28 +445,31 @@ export class VeilfarersLobbyGateway {
 
     document.getElementById('vf-import-json')?.addEventListener('change', (e) => this.handleImportJSON(e));
 
+    // Entrar a la Mesa VTT
     document.getElementById('vf-btn-join-vtt')?.addEventListener('click', () => {
       const roomInput = document.getElementById('vf-room-code-input');
       const roomId = (roomInput?.value || '').trim() || 'mesa-principal';
       if (this.selectedRole === 'player' && !this.selectedCharId) {
-        alert('Selecciona o crea un personaje en tu Vault antes de entrar como Jugador.');
+        alert('Selecciona o crea un operativo en tu Vault antes de entrar como Jugador.');
         return;
       }
 
-      document.getElementById('vf-lobby-gateway')?.classList.add('hidden');
+      this.hideLobby();
 
       if (this.onEnterRoomCallback) {
         this.onEnterRoomCallback({
           roomId,
           currentUser: {
             uid: this.currentUser?.uid || 'guest_' + Date.now(),
-            displayName: this.currentUser?.displayName || this.currentUser?.email || (this.selectedRole === 'keeper' ? 'Keeper' : 'Viajero'),
+            displayName: this.currentUser?.displayName || this.currentUser?.email || (this.selectedRole === 'keeper' ? 'Keeper (Director)' : 'Viajero Táctico'),
             role: this.selectedRole
           },
           activeCharId: this.selectedRole === 'keeper' ? null : this.selectedCharId
         });
       }
     });
+
+    this.updateSummaryText();
   }
 
   listenAuth() {
@@ -328,14 +487,20 @@ export class VeilfarersLobbyGateway {
       const hubScreen = document.getElementById('vf-hub-screen');
 
       if (user) {
+        this.wasLoggedIn = true;
         authScreen?.classList.add('hidden');
         hubScreen?.classList.remove('hidden');
         const welcome = document.getElementById('vf-user-welcome');
         if (welcome) welcome.textContent = user.displayName || user.email;
         this.subscribeToUserVault(user.uid);
       } else {
-        authScreen?.classList.remove('hidden');
-        hubScreen?.classList.add('hidden');
+        if (this.wasLoggedIn) {
+          this.wasLoggedIn = false;
+          this.showLoginScreen();
+        } else {
+          authScreen?.classList.remove('hidden');
+          hubScreen?.classList.add('hidden');
+        }
       }
     });
   }
@@ -364,7 +529,14 @@ export class VeilfarersLobbyGateway {
 
     const entries = Object.entries(this.vaultCharacters);
     if (entries.length === 0) {
-      container.innerHTML = `<div class="vault-empty">No tienes personajes todavía. Pulsa "+ Nuevo Personaje" para crear uno.</div>`;
+      container.innerHTML = `
+        <div class="vault-empty">
+          <div class="vault-empty-icon">📂</div>
+          <div class="vault-empty-title">REGISTRO DE OPERATIVOS VACÍO</div>
+          <p>No tienes personajes guardados en este terminal. Pulsa <strong>"+ Nuevo Personaje"</strong> o importa una ficha JSON para comenzar.</p>
+        </div>
+      `;
+      this.updateSummaryText();
       return;
     }
 
@@ -381,20 +553,30 @@ export class VeilfarersLobbyGateway {
       const card = document.createElement('div');
       card.className = `vault-char-card ${isSelected ? 'selected' : ''}`;
       card.innerHTML = `
-        <div class="vault-card-main">
-          <h4>${st.name || 'Viajero'}</h4>
-          <span>${st.species || 'Especie'} • ${st.background || 'Explorador'}</span>
-          <div class="vault-card-stats">
-            <span>❤️ HP: ${dyn.hp || 0}/${st.maxHp || 6}</span>
-            <span>⚡ Stress: ${dyn.stress || 0}/${st.maxStress || 6}</span>
-            <span>✨ Hope: ${dyn.hope ?? 2}/${st.maxHope || 6}</span>
-            <span>🛡️ A.S.: ${(armour.shieldsAS || 3) - (dyn.armourShieldsUsed || 0)}/${armour.shieldsAS || 3}</span>
-            <span>🔧 Slots: ${armour.slots || 2}</span>
+        <div class="vault-card-body">
+          <div class="vault-card-avatar">◈</div>
+          <div class="vault-card-main">
+            <div class="vault-card-header-row">
+              <h4>${st.name || 'Operativo'}</h4>
+              <span class="vault-card-status">${isSelected ? '✦ ACTIVO' : 'SELECCIONAR'}</span>
+            </div>
+            <div class="vault-card-meta">
+              <span class="meta-tag">${st.species || 'Especie'}</span>
+              <span class="meta-divider">•</span>
+              <span class="meta-tag">${st.background || 'Explorador'}</span>
+            </div>
+            <div class="vault-card-stats">
+              <span class="stat-pill hp" title="Health Points">❤️ <strong>HP:</strong> ${dyn.hp || 0}/${st.maxHp || 6}</span>
+              <span class="stat-pill stress" title="Stress Táctico">⚡ <strong>STR:</strong> ${dyn.stress || 0}/${st.maxStress || 6}</span>
+              <span class="stat-pill hope" title="Hope / Determinación">✨ <strong>HOP:</strong> ${dyn.hope ?? 2}/${st.maxHope || 6}</span>
+              <span class="stat-pill as" title="Armour Shields Disponibles">🛡️ <strong>A.S.:</strong> ${(armour.shieldsAS || 3) - (dyn.armourShieldsUsed || 0)}/${armour.shieldsAS || 3}</span>
+              <span class="stat-pill slots" title="Slots de Mejora">🔧 <strong>SLT:</strong> ${armour.slots || 2}</span>
+            </div>
           </div>
         </div>
         <div class="vault-card-actions">
           <button type="button" class="vf-btn-sm btn-export-json" title="Exportar Ficha JSON">⬇ JSON</button>
-          <button type="button" class="vf-btn-sm btn-delete-char" title="Eliminar">🗑️</button>
+          <button type="button" class="vf-btn-sm btn-delete-char" title="Eliminar Operativo">🗑️</button>
         </div>
       `;
 
@@ -508,10 +690,54 @@ export class VeilfarersLobbyGateway {
     if (!summaryEl) return;
 
     if (this.selectedRole === 'keeper') {
-      summaryEl.innerHTML = `Rol activo: <strong>Keeper (Director de Juego)</strong> | Se cargará la Consola de Fear y Party Tracker`;
+      summaryEl.innerHTML = `
+        <div class="summary-line">
+          <span class="summary-label">MODO ACTIVO:</span>
+          <span class="summary-value keeper-badge">⚡ KEEPER (DIRECTOR DE JUEGO)</span>
+        </div>
+        <div class="summary-line">
+          <span class="summary-label">ACCESO:</span>
+          <span class="summary-value text-dim">Consola de Fear, Party Tracker, Niebla & Visión Global</span>
+        </div>
+        <div class="summary-status status-ready">
+          <span class="status-pulse-dot">●</span> ENLACE AUTORIZADO // LISTO PARA DESPLIEGUE
+        </div>
+      `;
     } else {
-      const charName = this.vaultCharacters[this.selectedCharId]?.staticData?.name || 'Ninguno seleccionado';
-      summaryEl.innerHTML = `Rol activo: <strong>Jugador</strong> | Personaje activo: <strong>${charName}</strong>`;
+      const char = this.vaultCharacters[this.selectedCharId];
+      const charName = char?.staticData?.name;
+      const species = char?.staticData?.species || 'Especie';
+      const background = char?.staticData?.background || 'Clase';
+
+      if (charName) {
+        summaryEl.innerHTML = `
+          <div class="summary-line">
+            <span class="summary-label">MODO ACTIVO:</span>
+            <span class="summary-value player-badge">◈ JUGADOR // OPERATIVO</span>
+          </div>
+          <div class="summary-line">
+            <span class="summary-label">PERSONAJE:</span>
+            <span class="summary-value char-name-highlight"><strong>${charName}</strong> <small class="text-dim">(${species} • ${background})</small></span>
+          </div>
+          <div class="summary-status status-ready">
+            <span class="status-pulse-dot">●</span> OPERATIVO VINCULADO // LISTO PARA DESPLEGAR
+          </div>
+        `;
+      } else {
+        summaryEl.innerHTML = `
+          <div class="summary-line">
+            <span class="summary-label">MODO ACTIVO:</span>
+            <span class="summary-value player-badge">◈ JUGADOR // OPERATIVO</span>
+          </div>
+          <div class="summary-line">
+            <span class="summary-label">PERSONAJE:</span>
+            <span class="summary-value text-warning">Ninguno seleccionado</span>
+          </div>
+          <div class="summary-status status-warning">
+            <span class="status-pulse-dot">⚠️</span> SELECCIONA O CREA UN OPERATIVO EN EL VAULT
+          </div>
+        `;
+      }
     }
   }
 

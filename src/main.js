@@ -8,6 +8,7 @@ import './chat.css';
 import { ChatPanel } from './chatPanel.js';
 import { initWaterControls } from './waterControls.js';
 import './waterControls.css';
+import { initVeilfarersApp } from './vtt-integration/vttIntegrationInit.js';
 import './help.css';
 import { APP_LABEL } from './version.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
@@ -54,6 +55,7 @@ if (typeof window !== 'undefined') {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+  setupVeilfarersIntegration();
   await store.ready;
   initOrbitalUI();
   const helpButton = document.getElementById('help_btn');
@@ -861,9 +863,12 @@ function setupUndoRedoEvents() {
 }
 
 // --- Veilfarers Integration (3D Dice, Player HUD Drawer & Keeper HUD Console) ---
+let veilfarersAppInitialized = false;
 function setupVeilfarersIntegration() {
+  if (veilfarersAppInitialized) return;
+  veilfarersAppInitialized = true;
   // Initialize the Lobby Suite (Auth + Character Vault + Room Gateway)
-  import('./vtt-integration/vttIntegrationInit.js').then(({ initVeilfarersApp }) => {
+  try {
     initVeilfarersApp({
       onEnterRoom: ({ roomId, currentUser, activeCharId }) => {
         console.log(`Sesión iniciada en sala ${roomId} como ${currentUser.role}`);
@@ -874,9 +879,9 @@ function setupVeilfarersIntegration() {
         });
       }
     });
-  }).catch((err) => {
+  } catch (err) {
     console.warn('[Veilfarers VTT] Error al inicializar Lobby Gateway:', err);
-  });
+  }
 
   let initializedKey = '';
   const checkAndInit = async () => {

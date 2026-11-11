@@ -11,6 +11,29 @@ import { VeilfarersLobbyGateway } from './modules/lobbyGateway.js';
  * y al entrar a una sala inicializa el VTT con Dados 3D y el HUD de Jugador o Keeper.
  */
 export function initVeilfarersApp(options = {}) {
+  // 1. Inyectar de inmediato el contenedor DOM para Dados 3D y HUDs
+  injectOverlayAndHudDOM();
+
+  // 2. Precalentar inmediatamente el motor 3D de dados en segundo plano durante la pantalla de login
+  if (typeof window !== 'undefined') {
+    if (window.VFDice3D && typeof window.VFDice3D.preload === 'function') {
+      window.VFDice3D.preload().catch(() => {});
+    }
+    try {
+      const audioPreload = new Audio('/assets/dados_1.mp3');
+      audioPreload.preload = 'auto';
+      audioPreload.load();
+    } catch {}
+
+    const diceEngine = new VeilfarersDiceEngine('#vf-dice-canvas-container');
+    diceEngine.init().then(() => {
+      console.log('[Veilfarers 3D Dice] Motor 3D precalentado con éxito durante la pantalla de login.');
+    }).catch((err) => {
+      console.warn('[Veilfarers 3D Dice] Precalentamiento de dados diferido:', err);
+    });
+    window.veilDiceEngine = diceEngine;
+  }
+
   const lobby = new VeilfarersLobbyGateway(async ({ roomId, currentUser, activeCharId }) => {
     await initVeilfarersVTTModules({ roomId, currentUser, activeCharId });
     if (typeof options.onEnterRoom === 'function') {
@@ -40,9 +63,14 @@ export async function initVeilfarersVTTModules({ roomId, currentUser, activeChar
   // 1. Inyectar contenedores DOM para Dados 3D, Player HUD y Keeper HUD
   injectOverlayAndHudDOM();
 
-  // 2. Arrancar Motor 3D y Sincronización por Firebase
-  const diceEngine = new VeilfarersDiceEngine('#vf-dice-canvas-container');
-  await diceEngine.init();
+  // 2. Reutilizar motor 3D precalentado durante el login o inicializarlo si no estuviera listo
+  let diceEngine = (typeof window !== 'undefined' && window.veilDiceEngine?.isReady)
+    ? window.veilDiceEngine
+    : new VeilfarersDiceEngine('#vf-dice-canvas-container');
+  if (!diceEngine.isReady) {
+    await diceEngine.init();
+    if (typeof window !== 'undefined') window.veilDiceEngine = diceEngine;
+  }
 
   let diceSync = null;
   if (db) {

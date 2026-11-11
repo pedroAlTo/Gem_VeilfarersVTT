@@ -216,7 +216,13 @@ export class CloudAccount {
       const ni = this.netlifyIdentity || (typeof window !== 'undefined' && window.netlifyIdentity);
       if (ni) await ni.logout();
       this.firebaseUser = null; this.netlifyUser = null;
-    } finally { this.signingOut = false; this.publishUser(); }
+    } finally {
+      this.signingOut = false;
+      this.publishUser();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('veil:auth-signout'));
+      }
+    }
   }
   async identity() {
     if (this.user?.uid) return this.user.uid;

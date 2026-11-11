@@ -1,6 +1,22 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.4', date: '2026-11-12', title: 'Terminal Táctico AAA: Hub de Operativos Rediseñado, Flujo de Logout y Precarga de Dados 3D',
+    sections: [
+      { title: 'Hub de Operativos y Portal AAA', items: [
+        'Rediseño premium con calidad de estudio AAA de la pantalla del Hub táctico, tipografías Orbitron/Rajdhani y ambientación Sci-Fi Pearl Era.',
+        'Character Vault estilizado: tarjetas tácticas de operativo con avatar holográfico, indicadores de estado [ACTIVO], micropips para HP, Stress, Hope, Armour Shields y Slots de mejora.',
+        'Panel de despliegue con frecuencias de sala rápidas y diagnóstico de enlace cuántico en tiempo real.',
+        'Creador de personajes reestructurado en tres secciones tácticas con matriz Duality 2d12 de atributos y blindaje exotáctico.',
+      ] },
+      { title: 'Ciclo de Acceso y Sesión', items: [
+        'Carga inmediata del portal en el arranque sin destellos previos del mapa ni de la mesa de juego.',
+        'Flujo de retorno al portal de login automático y coherente tras cualquier cierre de sesión (botón de desconexión del Hub, menú de cuenta de la mesa o desautenticación remota).',
+        'Precarga y precalentamiento en segundo plano del motor 3D de dados, física WASM y audio mientras el usuario interactúa con la pantalla de acceso.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.3', date: '2026-11-12', title: 'Diseño Táctico del Portal de Acceso y Modo Local / Invitado',
     sections: [
       { title: 'Portal y Acceso', items: [

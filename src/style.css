@@ -2,6 +2,7 @@
 /* VEILVTT - Pearl Era High-Tech Sci-Fi Glassmorphic Design System */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+@import './vtt-integration/styles/lobby.css';
 
 :root {
   --bg-deep: #05070d;
