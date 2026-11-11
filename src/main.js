@@ -112,6 +112,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupSidebarTabNavigation();
   setupKeyboardShortcuts();
   initSessionBar();
+  setupVeilfarersIntegration();
   window.addEventListener("veil:remote-roll", event => { if (store.state.dice3d !== false && event.detail.actorId !== store.state.claimedTokenId) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(event.detail)).catch(() => {}); });
   setupSessionPersistence().catch(error => notify(error.message, 'error'));
 });
@@ -832,3 +833,45 @@ function setupUndoRedoEvents() {
     setInterval(checkBackupReminder, 20 * 60 * 1000);
   }, 15 * 60 * 1000);
 }
+
+// --- Veilfarers Integration (3D Dice, Player HUD Drawer & Keeper HUD Console) ---
+function setupVeilfarersIntegration() {
+  let initializedKey = '';
+  const checkAndInit = async () => {
+    const s = store.getState();
+    const roomId = s.persistentRoomId || s.roomCode;
+    if (!s.isConnected || !roomId) return;
+    const isKeeper = s.userRole === 'keeper';
+    const role = isKeeper ? 'keeper' : 'player';
+    const charId = isKeeper ? null : (s.claimedTokenId || s.selectedTokenId || null);
+    const key = `${roomId}_${role}_${charId || 'none'}`;
+    if (key === initializedKey) return;
+    initializedKey = key;
+
+    try {
+      const { initVeilfarersVTTModules } = await import('./vtt-integration/vttIntegrationInit.js');
+      const { account } = await import('./cloudAccount.js');
+      const accountUser = account.user;
+      await initVeilfarersVTTModules({
+        roomId,
+        currentUser: {
+          uid: accountUser?.uid || accountUser?.id || s.userName || 'user_' + Date.now(),
+          displayName: accountUser?.displayName || accountUser?.name || s.userName || 'Viajero',
+          role
+        },
+        activeCharId: charId
+      });
+    } catch (err) {
+      console.warn('[Veilfarers VTT] Error al inicializar módulos de integración:', err);
+    }
+  };
+
+  store.subscribe((state, keys) => {
+    if (keys.includes('isConnected') || keys.includes('roomCode') || keys.includes('persistentRoomId') || keys.includes('userRole') || keys.includes('claimedTokenId')) {
+      checkAndInit();
+    }
+  });
+
+  checkAndInit();
+}
+

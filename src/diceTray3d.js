@@ -179,4 +179,50 @@ export class DiceTray {
     if (tray === this) tray = null;
   }
 }
-export function openDiceTray(result) { if (!tray?.modal.isConnected) tray = new DiceTray(); if (result) tray.show(result); else if (!tray.lastResult) tray.show({ demo: true }, true); return tray; }
+export function openDiceTray(result) {
+  if (typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.roll === 'function') {
+    try {
+      const audio = new Audio('/assets/dados_1.mp3');
+      audio.volume = 0.85;
+      audio.play().catch(() => {});
+    } catch (_) {}
+
+    const hopeVal = Number(result?.hope ?? (result?.dice?.[0]?.value ?? Math.floor(Math.random() * 12) + 1));
+    const fearVal = Number(result?.fear ?? (result?.dice?.[1]?.value ?? Math.floor(Math.random() * 12) + 1));
+    const isCrit = hopeVal === fearVal;
+
+    const groups = [
+      { qty: 1, sides: 12, theme: 'vfHope', role: 'hope' },
+      { qty: 1, sides: 12, theme: 'vfFear', role: 'fear' }
+    ];
+
+    const label = result?.label || (result?.demo ? 'Tirada de Prueba 3D' : 'Tirada Duality');
+    const outcome = isCrit ? 'CRITICAL SUCCESS' : (fearVal > hopeVal ? 'WITH FEAR' : 'WITH HOPE');
+
+    window.VFDice3D.roll(groups, { label, style: 'box', deferResults: true }).then(() => {
+      window.VFDice3D.showResults({
+        label,
+        outcome,
+        hope: hopeVal,
+        fear: fearVal,
+        crit: isCrit,
+        rolls: [
+          { value: hopeVal, sides: 12, role: 'hope' },
+          { value: fearVal, sides: 12, role: 'fear' }
+        ],
+        style: 'box'
+      });
+    }).catch(err => {
+      console.warn('[VFDice3D] Fallback a DiceTray tras error:', err);
+      if (!tray?.modal?.isConnected) tray = new DiceTray();
+      if (result) tray.show(result); else if (!tray.lastResult) tray.show({ demo: true }, true);
+    });
+
+    return tray;
+  }
+
+  if (!tray?.modal?.isConnected) tray = new DiceTray();
+  if (result) tray.show(result);
+  else if (!tray.lastResult) tray.show({ demo: true }, true);
+  return tray;
+}
