@@ -107,45 +107,54 @@ function injectOverlayAndHudDOM() {
       </div>
     </div>
 
-    <!-- 2. BADGE DE FEAR PARA JUGADORES -->
-    <div id="vf-shared-fear-badge" class="vf-shared-fear-badge" style="display: none;">
-      <span>⚡ FEAR EN MESA:</span>
-      <strong id="shared-fear-counter-val">0</strong>
+    <!-- 2. KEEPER HUD (Consola Flotante Movible y Minimizable a Icono ⚡) -->
+    <div id="vf-keeper-hud" class="vf-keeper-hud is-minimized" style="display: none;">
+      <!-- Botón minimizado (Icono ⚡ flotante con contador) -->
+      <button type="button" class="vf-keeper-hud-toggle" id="btn-toggle-keeper-hud" title="Abrir Consola Flotante del Keeper">
+        <span class="hud-toggle-icon">⚡</span>
+        <span class="hud-toggle-label" id="keeper-min-fear-val">0</span>
+      </button>
+
+      <!-- Panel flotante expandible -->
+      <div class="vf-keeper-panel" id="vf-keeper-panel">
+        <div class="keeper-panel-header" id="vf-keeper-drag-handle">
+          <div class="panel-header-title">
+            <span class="drag-grip">⋮⋮</span>
+            <span>⚡ KEEPER CONTROLS</span>
+          </div>
+          <button type="button" class="btn-keeper-minimize" id="btn-minimize-keeper-hud" title="Minimizar a icono">−</button>
+        </div>
+
+        <div class="keeper-panel-body">
+          <div class="keeper-fear-module">
+            <div class="keeper-fear-controls">
+              <span class="keeper-fear-tag">⚡ Fear: <strong id="keeper-fear-count">0</strong></span>
+              <button type="button" id="btn-fear-spend" class="btn-fear-action" title="Gastar 1 de Fear">-1 Gastar</button>
+              <button type="button" id="btn-fear-gain" class="btn-fear-action" title="Añadir 1 de Fear">+1 Ganar</button>
+            </div>
+          </div>
+
+          <div class="keeper-dice-module">
+            <div class="dice-section-label">DADOS RÁPIDOS:</div>
+            <div class="keeper-dice-row">
+              <button type="button" class="keeper-quick-roll-btn" data-sides="20" data-label="Ataque Adversario (d20)">d20</button>
+              <button type="button" class="keeper-quick-roll-btn" data-sides="12" data-label="Dado d12">d12</button>
+              <button type="button" class="keeper-quick-roll-btn" data-sides="8" data-label="Daño (d8)">d8</button>
+              <button type="button" class="keeper-quick-roll-btn" data-sides="6" data-label="Daño (d6)">d6</button>
+            </div>
+            <label class="keeper-secret-label">
+              <input type="checkbox" id="keeper-secret-roll-toggle" checked />
+              <span>🔒 Tirada oculta</span>
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 3. KEEPER HUD (Consola Superior: Fear Pool + Party Tracker + Dados Director) -->
-    <header id="vf-keeper-hud" class="vf-keeper-hud" style="display: none;">
-      <div class="keeper-fear-module">
-        <div class="fear-module-header">
-          <span>⚡ RESERVA DE FEAR</span>
-          <span id="keeper-fear-count">0 / 12</span>
-        </div>
-        <div class="keeper-fear-controls">
-          <button type="button" id="btn-fear-spend" class="btn-fear-action" title="Gastar 1 de Fear">-1 Gastar</button>
-          <div id="keeper-fear-pips" class="keeper-fear-pips"></div>
-          <button type="button" id="btn-fear-gain" class="btn-fear-action" title="Añadir 1 de Fear">+1</button>
-        </div>
-      </div>
+    <!-- 4. CALLOUTS STACK PARA TODAS LAS TIRADAS (MULTIPLE & APILABLE) -->
+    <div id="vf-callouts-stack" class="vf-callouts-stack"></div>
 
-      <div id="keeper-party-list" class="keeper-party-list">
-        <span class="party-empty-msg">Esperando a que los jugadores entren con su ficha...</span>
-      </div>
-
-      <div class="keeper-dice-module">
-        <div class="keeper-dice-row">
-          <button type="button" class="keeper-quick-roll-btn" data-sides="20" data-label="Ataque Adversario (d20)">d20</button>
-          <button type="button" class="keeper-quick-roll-btn" data-sides="12" data-label="Dado d12">d12</button>
-          <button type="button" class="keeper-quick-roll-btn" data-sides="8" data-label="Daño (d8)">d8</button>
-          <button type="button" class="keeper-quick-roll-btn" data-sides="6" data-label="Daño (d6)">d6</button>
-        </div>
-        <label class="keeper-secret-label">
-          <input type="checkbox" id="keeper-secret-roll-toggle" />
-          🔒 Tirada oculta
-        </label>
-      </div>
-    </header>
-
-    <!-- 4. PLAYER HUD DRAWER (Ficha Interactiva del Jugador) -->
+    <!-- 5. PLAYER HUD DRAWER (Ficha Interactiva del Jugador) -->
     <aside id="vf-player-hud" class="vf-player-hud collapsed">
       <div class="hud-quick-tab" id="hud-toggle-btn" title="Abrir/Cerrar Ficha">
         <span class="toggle-icon">◀</span>

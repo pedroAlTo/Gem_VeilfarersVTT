@@ -219,17 +219,24 @@
   color: #fff;
 }
 
-/* Sleek Utility Bar: 2D/3D Toggle + Quick Polyhedral Bar on one compact row */
+/* Sleek Utility Box: 2D/3D Toggle + Textures on Top Row, Quick Polyhedral Bar on Bottom Row */
 .dice-utility-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 8px;
-  padding: 3px 6px;
+  padding: 4px 6px;
   background: rgba(15, 23, 42, 0.65);
   border: 1px solid rgba(51, 65, 85, 0.45);
   border-radius: 6px;
+  box-sizing: border-box;
+  width: 100%;
+}
+.dice-utility-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
 }
 .dice-utility-left {
   display: flex;
@@ -259,19 +266,22 @@
   color: #cbd5e1;
 }
 
-/* Quick Polyhedral Bar */
+/* Quick Polyhedral Bar: Full width, evenly spaced with zero overflow */
 .quick-polyhedral-bar {
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: space-between;
+  gap: 3px;
   margin: 0;
   padding: 0;
-  flex: 1;
-  justify-content: flex-end;
+  width: 100%;
+  box-sizing: border-box;
 }
 .quick-die-btn {
-  padding: 3px 5px;
-  font-size: 9.5px;
+  flex: 1;
+  min-width: 0;
+  padding: 3px 2px;
+  font-size: 9px;
   font-weight: 800;
   border-radius: 4px;
   border: 1px solid #334155;
@@ -280,7 +290,7 @@
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: center;
-  min-width: 24px;
+  box-sizing: border-box;
 }
 .quick-die-btn:hover {
   background: #1e293b;
@@ -290,6 +300,70 @@
 }
 .quick-die-btn:active {
   transform: translateY(1px);
+}
+
+/* Compact Damage & Attack Section */
+.dmg-quick-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.dmg-quick-weapon-box,
+.dmg-quick-target-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dmg-quick-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.dmg-quick-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.dmg-quick-checkboxes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.btn-damage-gradient {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
+}
+.dmg-advanced-details {
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.5);
+  margin-top: 6px;
+  padding: 4px 8px;
+}
+.dmg-advanced-summary {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+.dmg-advanced-summary:hover {
+  color: #cbd5e1;
+}
+.dmg-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(51, 65, 85, 0.4);
 }
 
 /* Compact Trait Selector 3x2 Grid */

@@ -1,9 +1,18 @@
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[m]));
+}
+
 export class VeilfarersDiceEngine {
   constructor(containerSelector = '#vf-dice-canvas-container') {
     this.containerSelector = containerSelector;
     this.isReady = false;
     this.clearTimer = null;
     this.audio = null;
+    if (typeof window !== 'undefined') {
+      window.veilDiceEngine = this;
+    }
   }
 
   async init() {
@@ -118,6 +127,7 @@ export class VeilfarersDiceEngine {
       }
     }
 
+    this.showCallout(rollData);
     this.showBanner(rollData);
 
     this.clearTimer = setTimeout(() => {
@@ -157,6 +167,88 @@ export class VeilfarersDiceEngine {
   clearCanvas() {
     if (typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.hide === 'function') {
       window.VFDice3D.hide({ reason: 'auto-dismiss' });
+    }
+  }
+
+  showCallout(rollData) {
+    if (!rollData) return;
+
+    // Verificar si es tirada oculta: solo visible para el Keeper
+    const isSecret = !!(rollData.isSecret || rollData.visibility === 'keeper');
+    const isKeeper = typeof window !== 'undefined' && window.veilStore
+      ? (window.veilStore.sessionRole !== 'player' && window.veilStore.state.userRole === 'keeper')
+      : true;
+    if (isSecret && !isKeeper) return;
+
+    let stack = document.getElementById('vf-callouts-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'vf-callouts-stack';
+      stack.className = 'vf-callouts-stack';
+      document.body.appendChild(stack);
+    }
+
+    const tokenName = rollData.actorName || rollData.playerName || rollData.tokenName || 'Operativo';
+    const label = rollData.label || rollData.title || (rollData.type === 'duality' ? 'Acción Duality' : 'Tirada de dados');
+    const total = rollData.total ?? (rollData.value ?? 0);
+
+    let outcomeType = rollData.outcomeType;
+    let outcomeLabel = rollData.outcomeLabel || rollData.outcomeTitle || rollData.outcome || '';
+    if (!outcomeType) {
+      if (rollData.crit || rollData.isCritical) {
+        outcomeType = 'crit';
+        outcomeLabel = outcomeLabel || '¡ÉXITO CRÍTICO!';
+      } else if (Number(rollData.fearVal || rollData.fear) > Number(rollData.hopeVal || rollData.hope)) {
+        outcomeType = 'fear';
+        outcomeLabel = outcomeLabel || 'CON FEAR';
+      } else {
+        outcomeType = 'hope';
+        outcomeLabel = outcomeLabel || (rollData.type === 'duality' ? 'CON HOPE' : '');
+      }
+    }
+
+    const modifiers = rollData.breakdown || rollData.details || rollData.modifiers || (rollData.hopeVal != null ? `Hope [${rollData.hopeVal}] + Fear [${rollData.fearVal}] ${rollData.modifier ? (rollData.modifier >= 0 ? '+' + rollData.modifier : rollData.modifier) : ''}${rollData.dc ? ` vs DC ${rollData.dc}` : ''}` : '');
+
+    const card = document.createElement('div');
+    card.className = `vf-callout-card outcome-${outcomeType || 'hope'}`;
+    const secretTag = isSecret ? '<span class="vf-callout-secret-badge">🔒 SECRETA KEEPER</span>' : '';
+    const badgeHtml = outcomeLabel ? `<div class="vf-callout-badge">${escapeHtml(outcomeLabel)}</div>` : '';
+    const modHtml = modifiers ? `<div class="vf-callout-modifiers">${escapeHtml(modifiers)}</div>` : '';
+
+    card.innerHTML = `
+      <div class="vf-callout-header">
+        <div class="vf-callout-actor">
+          <span class="vf-callout-icon">🎲</span>
+          <strong class="vf-callout-name">${escapeHtml(tokenName)}</strong>
+          ${secretTag}
+        </div>
+        <button type="button" class="vf-callout-close" title="Cerrar">×</button>
+      </div>
+      <div class="vf-callout-action">${escapeHtml(label)}</div>
+      <div class="vf-callout-main">
+        <div class="vf-callout-total">${escapeHtml(String(total))}</div>
+        ${badgeHtml}
+      </div>
+      ${modHtml}
+    `;
+
+    const closeBtn = card.querySelector('.vf-callout-close');
+    const dismiss = () => {
+      card.classList.add('is-dismissing');
+      setTimeout(() => card.remove(), 350);
+    };
+    if (closeBtn) closeBtn.onclick = dismiss;
+
+    // Auto dismiss after 8 seconds
+    const timer = setTimeout(dismiss, 8000);
+    card.dataset.timer = String(timer);
+
+    stack.prepend(card);
+
+    // Mantener como máximo 5 callouts visibles a la vez
+    while (stack.children.length > 5) {
+      const oldest = stack.lastElementChild;
+      if (oldest) oldest.remove();
     }
   }
 

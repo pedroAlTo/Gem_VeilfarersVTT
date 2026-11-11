@@ -148,6 +148,28 @@ export class DiceRollerSidebar {
       this.updateTraitButtons();
       this.updateRollButtonLabel();
     }
+    this.syncWeaponsDropdown(token);
+  }
+
+  syncWeaponsDropdown(token) {
+    const select = this.container.querySelector('#dmg_weapon_select');
+    if (!select) return;
+    const weapons = token ? (tokenInventory(token).weapons || []) : [];
+    if (!weapons.length) {
+      select.innerHTML = '<option value="">Ataque básico (sin armas) · 1d4</option>';
+      select.onchange = null;
+      return;
+    }
+    const currentId = this.preparedWeapon?.id || (weapons[0]?.id || '');
+    select.innerHTML = sanitizeHTML(weapons.map(w => `<option value="${escapeHTML(w.id)}" ${w.id === currentId ? 'selected' : ''}>${escapeHTML(w.name)} (${escapeHTML(w.damage || '1d8')})</option>`).join(''));
+    if (currentId) {
+      select.value = currentId;
+    }
+    select.onchange = () => {
+      if (select.value && token) {
+        this.prepareWeapon(token.id, select.value);
+      }
+    };
   }
 
   updateRollButtonLabel() {
@@ -217,6 +239,8 @@ export class DiceRollerSidebar {
     let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
     this.container.querySelector('[data-weapon-preview]').textContent = [weapon.name, note, weapon.features, warning].filter(Boolean).join(' · ');
     this.preparedWeapon = { id: weaponId, signature: JSON.stringify(weapon) };
+    const wSelect = this.container.querySelector('#dmg_weapon_select');
+    if (wSelect && wSelect.value !== weaponId) wSelect.value = weaponId;
     this.container.querySelector('#dmg_impact_type').value = weaponImpactType(weapon);
     window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
     this.container.querySelector('#tab_damage_btn').click();
@@ -239,17 +263,19 @@ export class DiceRollerSidebar {
 
         <!-- Sleek Utility Row: 2D/3D Mode Toggle & Quick Polyhedral Bar -->
         <div class="dice-utility-bar">
-          <div class="dice-utility-left">
-            <button type="button" class="dice-mode-toggle-btn ${this.is3D ? 'mode-3d' : 'mode-2d'}" id="btn_toggle_dice_mode" title="Alternar entre animación 3D y modo 2D rápido">
-              ${this.is3D ? '🎲 3D' : '📄 2D'}
-            </button>
-            <div class="texture-pills" id="texture_pills_group" style="${this.is3D ? 'display:flex;' : 'display:none;'}">
-              <button type="button" class="texture-pill ${this.diceTextureSet === 'plain' ? 'active' : ''}" data-texture="plain" id="btn_texture_plain">PLAIN</button>
-              <button type="button" class="texture-pill ${this.diceTextureSet === 'tech' ? 'active' : ''}" data-texture="tech" id="btn_texture_tech">TECH</button>
-              <button type="button" class="texture-pill ${this.diceTextureSet === 'crystal' ? 'active' : ''}" data-texture="crystal" id="btn_texture_crystal">CRYSTAL</button>
+          <div class="dice-utility-row-top">
+            <div class="dice-utility-left">
+              <button type="button" class="dice-mode-toggle-btn ${this.is3D ? 'mode-3d' : 'mode-2d'}" id="btn_toggle_dice_mode" title="Alternar entre animación 3D y modo 2D rápido">
+                ${this.is3D ? '🎲 3D' : '📄 2D'}
+              </button>
+              <div class="texture-pills" id="texture_pills_group" style="${this.is3D ? 'display:flex;' : 'display:none;'}">
+                <button type="button" class="texture-pill ${this.diceTextureSet === 'plain' ? 'active' : ''}" data-texture="plain" id="btn_texture_plain">PLAIN</button>
+                <button type="button" class="texture-pill ${this.diceTextureSet === 'tech' ? 'active' : ''}" data-texture="tech" id="btn_texture_tech">TECH</button>
+                <button type="button" class="texture-pill ${this.diceTextureSet === 'crystal' ? 'active' : ''}" data-texture="crystal" id="btn_texture_crystal">CRYSTAL</button>
+              </div>
             </div>
           </div>
-          <!-- Quick Polyhedral Dice Bar -->
+          <!-- Quick Polyhedral Dice Bar: Full width, zero overflow -->
           <div class="quick-polyhedral-bar" title="Lanzador rápido de dados poliédricos">
             ${[4, 6, 8, 10, 12, 20, 100].map(d => `
               <button type="button" class="quick-die-btn" data-sides="${d}">d${d === 100 ? '%' : d}</button>
@@ -474,72 +500,92 @@ export class DiceRollerSidebar {
           </div>
         </div>
 
-        <!-- Section 3: Damage & Thresholds Calculator -->
+        <!-- Section 3: Damage & Thresholds Calculator (Compact + Expandable) -->
         <div class="dice-section" id="section_damage_calc" style="display: none;">
-          <p class="weapon-prepared-note" data-weapon-preview>Prepara un arma desde Ficha → Armas y equipo, o introduce una expresión.</p>
-          <label class="dossier-field"><span>Impacto del arma</span><vf-select class="hud-select" id="dmg_impact_type">${Object.entries(IMPACT_TYPES).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}</vf-select></label>
-          <p class="dossier-muted">Tamaño por HP realmente perdidos: 1 → 50%, 2 → 100%, +20% por HP adicional (máx. 200%). Armor consumido muestra el escudo.</p>
-          <label class="dossier-field"><span>Expresión completa</span><input id="dmg_formula" class="hud-input" maxlength="1000" placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"></label>
-          <p class="field-help">Vacía este campo para usar los dados manuales de abajo. Las propiedades y condiciones se resuelven según su texto.</p>
-          <div class="dice-actor-bar">
-            <span class="actor-tag">TARGET:</span>
-            <vf-select id="dmg_target_select" class="hud-select" style="max-width: 200px;">
-              <!-- Target tokens populated -->
-            </vf-select>
-          </div>
-
-          <div class="form-row"><div class="form-group"><label>Proficiency</label><input type="number" id="dmg_proficiency" value="1" min="1" max="6" class="hud-input" /></div><div class="form-group"><label>Honed Edge (Sleeping)</label><input type="number" id="dmg_honed" value="0" min="0" max="20" class="hud-input" /></div></div><p class="field-help">Enter the printed dice. Proficiency expands one die; Honed Edge is added once. For naval targets use Starship.</p>
-          <div class="form-group">
-            <label>Weapon Damage Dice Expression</label>
-            <div class="form-row">
-              <input type="number" id="dmg_dice_count" class="hud-input" value="2" min="1" max="10" title="Dice count" />
-              <vf-select id="dmg_dice_sides" class="hud-select">
-                <option value="4">d4</option>
-                <option value="6">d6</option>
-                <option value="8" selected>d8</option>
-                <option value="10">d10</option>
-                <option value="12">d12</option>
+          <!-- Compact Weapon & Target Row: Autofilled from character token -->
+          <div class="dmg-quick-header">
+            <div class="dmg-quick-weapon-box">
+              <span class="dmg-quick-label">ARMA / ATAQUE (FICHA):</span>
+              <vf-select id="dmg_weapon_select" class="hud-select">
+                <option value="">Ataque básico · 1d8</option>
               </vf-select>
-              <input type="number" id="dmg_flat_mod" class="hud-input" value="2" title="Flat modifier" />
+              <p class="weapon-prepared-note" data-weapon-preview>Prepara un arma desde Ficha → Armas y equipo, o introduce una expresión.</p>
+            </div>
+
+            <div class="dmg-quick-target-box">
+              <span class="dmg-quick-label">OBJETIVO:</span>
+              <vf-select id="dmg_target_select" class="hud-select">
+                <!-- Target tokens populated -->
+              </vf-select>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Target Major Threshold</label>
-              <input type="number" id="dmg_major_thresh" class="hud-input" value="6" />
+          <!-- Quick Action Bar: Mitigate + Critical + Big Button -->
+          <div class="dmg-quick-controls">
+            <div class="dmg-quick-checkboxes">
+              <label class="hud-checkbox-label">
+                <input type="checkbox" id="dmg_use_armor" checked />
+                <span>Mitigar con Armadura</span>
+              </label>
+              <label class="hud-checkbox-label">
+                <input type="checkbox" id="dmg_is_critical" />
+                <span>Crítico</span>
+              </label>
             </div>
-            <div class="form-group">
-              <label>Target Severe Threshold</label>
-              <input type="number" id="dmg_severe_thresh" class="hud-input" value="12" />
+
+            <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn btn-damage-gradient" id="roll_damage_btn">
+              <span>💥 RESOLVER DAÑO Y UMBRALES</span>
+            </button>
+          </div>
+
+          <!-- Expandable Fine-Tuning Details: Collapsed by default -->
+          <details class="dmg-advanced-details" id="dmg_advanced_details">
+            <summary class="dmg-advanced-summary">⚙️ Opciones avanzadas y dados manuales</summary>
+            <div class="dmg-advanced-body">
+              <label class="dossier-field"><span>Expresión completa</span><input id="dmg_formula" class="hud-input" maxlength="1000" placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"></label>
+              <label class="dossier-field"><span>Impacto del arma</span><vf-select class="hud-select" id="dmg_impact_type">${Object.entries(IMPACT_TYPES).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}</vf-select></label>
+              <div class="form-row">
+                <div class="form-group"><label>Proficiency</label><input type="number" id="dmg_proficiency" value="1" min="1" max="6" class="hud-input" /></div>
+                <div class="form-group"><label>Honed Edge (Sleeping)</label><input type="number" id="dmg_honed" value="0" min="0" max="20" class="hud-input" /></div>
+              </div>
+              <div class="form-group">
+                <label>Dados manuales (si no hay fórmula)</label>
+                <div class="form-row">
+                  <input type="number" id="dmg_dice_count" class="hud-input" value="2" min="1" max="10" title="Dice count" />
+                  <vf-select id="dmg_dice_sides" class="hud-select">
+                    <option value="4">d4</option>
+                    <option value="6">d6</option>
+                    <option value="8" selected>d8</option>
+                    <option value="10">d10</option>
+                    <option value="12">d12</option>
+                  </vf-select>
+                  <input type="number" id="dmg_flat_mod" class="hud-input" value="2" title="Flat modifier" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Umbral Mayor Objetivo</label>
+                  <input type="number" id="dmg_major_thresh" class="hud-input" value="6" />
+                </div>
+                <div class="form-group">
+                  <label>Umbral Severo Objetivo</label>
+                  <input type="number" id="dmg_severe_thresh" class="hud-input" value="12" />
+                </div>
+              </div>
+              <div class="form-row">
+                <label class="hud-checkbox-label">
+                  <input type="checkbox" id="dmg_is_direct" />
+                  <span>Daño directo a HP (ignorar umbrales)</span>
+                </label>
+              </div>
+              <div class="form-group" style="margin-top: 6px;">
+                <label>Damage scale · personal targets</label>
+                <vf-select id="dmg_mount_rating" class="hud-select">
+                  <option value="1" selected>Personal scale · x1</option>
+                </vf-select>
+              </div>
             </div>
-          </div>
-
-          <div class="dice-modifiers-grid">
-            <label class="hud-checkbox-label">
-              <input type="checkbox" id="dmg_use_armor" checked />
-              <span>Spend 1 Armor Slot to Mitigate</span>
-            </label>
-            <label class="hud-checkbox-label">
-              <input type="checkbox" id="dmg_is_critical" />
-              <span>Critical Hit</span>
-            </label>
-            <label class="hud-checkbox-label">
-              <input type="checkbox" id="dmg_is_direct" />
-              <span>Direct HP Damage (Bypass Thresholds)</span>
-            </label>
-          </div>
-
-          <div class="form-group" style="margin-top: 10px;">
-            <label>Damage scale · personal targets</label>
-            <vf-select id="dmg_mount_rating" class="hud-select">
-              <option value="1" selected>Personal scale · x1</option>
-            </vf-select>
-          </div>
-
-          <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn" id="roll_damage_btn" style="margin-top: 16px;">
-            <span>RESOLVE DAMAGE &amp; THRESHOLDS</span>
-          </button>
+          </details>
 
           <!-- Damage Outcome Display -->
           <div class="dice-result-panel glass-panel" id="damage_result_display" style="display: none; margin-top: 14px;">
@@ -863,6 +909,18 @@ export class DiceRollerSidebar {
       resDetail.textContent = `[${rolls.join(', ')}]${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = ${total}`;
     }
 
+    const actor = this.currentActor || store.getSelectedToken() || { name: 'Operativo' };
+    if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
+      window.veilDiceEngine.showCallout({
+        actorName: actor.name,
+        label: `Standard Roll: ${label}`,
+        total,
+        outcomeTitle: `Total ${total}`,
+        details: `[${rolls.join(', ')}]${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = ${total}`,
+        visibility: broadcast ? 'table' : 'keeper'
+      });
+    }
+
     if (broadcast) {
       const actor = this.currentActor || store.getSelectedToken() || { name: 'Operativo' };
       const chatText = `🎲 ${actor.name || 'Operativo'}: ${label} ➔ ${total} (${rolls.join(' + ')}${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''})`;
@@ -988,6 +1046,22 @@ export class DiceRollerSidebar {
           style: 'overlay'
         });
       }
+    }
+
+    // Show callout notification on screen:
+    if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
+      window.veilDiceEngine.showCallout({
+        actorName: actor.name,
+        label,
+        total: result.total,
+        outcomeTitle: result.outcomeTitle,
+        outcomeType: result.isCritical ? 'crit' : (result.fearVal > result.hopeVal ? 'fear' : 'hope'),
+        hopeVal: result.hopeVal,
+        fearVal: result.fearVal,
+        dc: result.dc,
+        details: result.log?.details || `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}`,
+        visibility: this.rollVisibility()
+      });
     }
 
     // Broadcast to table chat so every player sees the roll in chat:

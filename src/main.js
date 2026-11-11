@@ -38,6 +38,20 @@ import { StarshipManager } from './starshipManager.js';
 import { RulesCompendiumModal } from './rulesCompendium.js';
 import { undoManager } from './undoManager.js';
 
+// Global resilience for dynamic chunk updates on Netlify / SPA deployments
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (event) => {
+    console.warn('[Vite] Dynamic chunk preload error, reloading for latest deploy...', event);
+    window.location.reload();
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event.reason?.message?.includes('Failed to fetch dynamically imported module')) {
+      console.warn('[Vite] Chunk hash mismatch detected, auto-reloading page...', event.reason);
+      window.location.reload();
+    }
+  });
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   await store.ready;
   initOrbitalUI();
@@ -120,7 +134,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       window.VFDice3D.init().catch(() => {});
     }
   }
-  window.addEventListener("veil:remote-roll", event => { if (store.state.dice3d !== false && event.detail.actorId !== store.state.claimedTokenId) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(event.detail)).catch(() => {}); });
+  window.addEventListener("veil:remote-roll", event => {
+    if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
+      window.veilDiceEngine.showCallout(event.detail);
+    }
+  });
   setupSessionPersistence().catch(error => notify(error.message, 'error'));
 });
 

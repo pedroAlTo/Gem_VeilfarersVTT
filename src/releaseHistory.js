@@ -1,6 +1,29 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.1', date: '2026-11-11', title: 'Veilfarers Suite: Dados 3D Optimizados, Callouts Remotos, Asignación Múltiple y HUD Movible',
+    sections: [
+      { title: 'Dados 3D y Notificaciones de Tirada', items: [
+        'Los dados 3D se animan exclusivamente en la pantalla del jugador que realiza la tirada. El resto de la mesa recibe un callout visual con el resultado.',
+        'Callouts apilables e independientes: muestran el nombre del token, el resultado total y el desglose de modificadores aplicados, permitiendo ver múltiples tiradas simultáneas.',
+        'Privacidad de tiradas del Keeper: las tiradas ocultas no se notifican a los jugadores y quedan claramente identificadas en la consola del Director.',
+        'Física 3D calibrada: gravedad realista (3.6), fricción (0.95) y restitución reducida (0.12) para que los dados aterricen planos y firmes en sus caras.',
+        'Resolución del bloqueo entre tiradas sucesivas y supresión de la tirada duplicada involuntaria de Hope & Fear al rodar dados estándar.',
+      ] },
+      { title: 'Asignación de Tokens y Drones', items: [
+        'Un jugador puede tener asignados varios tokens a la vez sin que una nueva asignación desasigne sus fichas anteriores.',
+        'Los drones compartidos admiten varios jugadores controladores simultáneos seleccionables por casillas de verificación.',
+      ] },
+      { title: 'Consola del Keeper y Experiencia de Usuario', items: [
+        'Consola flotante del Keeper: elemento movible mediante arrastre que no obstruye la barra de sesión superior y puede minimizarse a un icono compacto ⚡ con contador de Fear.',
+        'Panel de ataque y daño simplificado: precarga el arma y el objetivo directamente desde la ficha, dejando los detalles manuales comprimidos en un panel desplegable.',
+        'Barra de dados poliédricos y texturas ajustada a dos filas para evitar cualquier desbordamiento horizontal en el panel lateral.',
+        'Código de invitación corto: 3 caracteres basados en el nombre de la sala y 5 caracteres aleatorios (ej. EST-8K2MF).',
+        'Resiliencia ante actualizaciones de chunks en despliegues y previsualizaciones de Netlify con recarga automática ante discrepancias de hash.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.0', date: '2026-11-11', title: 'Salas persistentes, reconexión y edición táctica',
     sections: [
       { title: 'Salas y conexión', items: [

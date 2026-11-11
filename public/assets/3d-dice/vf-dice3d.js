@@ -186,8 +186,8 @@ async function init(){
     await assertWebAssemblyExecutionAllowed();
     box=new DiceBox({
       container:'#vf-dice3d-box', assetPath:ASSET_PATH, origin:'', theme:'vfNeutral', preloadThemes:PRELOAD_THEMES,
-      scale:5.4, gravity:1.6, mass:1.2, friction:0.88, restitution:0.35, spinForce:4.5, throwForce:5.2,
-      startingHeight:7.5, settleTimeout:2800, delay:10, lightIntensity:1.15, enableShadows:true,
+      scale:5.2, gravity:3.6, mass:1.4, friction:0.95, restitution:0.12, spinForce:4.0, throwForce:4.8,
+      startingHeight:8.0, settleTimeout:3500, delay:10, lightIntensity:1.15, enableShadows:true,
       shadowTransparency:0.72, offscreen:false
     });
     await box.init();
@@ -451,7 +451,10 @@ function endCancellableRoll(token){
 }
 async function roll(groups, options={}){
   const roller=await init();
-  if (userDismissed) { try { box && box.clear(); } catch(_) {} }
+  if (activeRollController) cancelActiveRoll('superseded');
+  try { if (box) box.clear(); } catch(_) {}
+  clearTimeout(closeTimer);
+  userDismissed = false;
   clearSettledCues();
   applyCritical(false);
   show(options.label || 'Rolling…', options.style, {newRoll:true});

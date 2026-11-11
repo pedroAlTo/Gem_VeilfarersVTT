@@ -14,10 +14,68 @@ export class KeeperHudController {
 
     this.partySubscriptions = new Map();
 
+    this.initWindowControls();
     this.initFearControls();
     this.initKeeperDiceRoller();
     this.subscribeToFearPool();
     this.subscribeToRoomParty();
+  }
+
+  initWindowControls() {
+    const hudEl = document.getElementById('vf-keeper-hud');
+    const toggleBtn = document.getElementById('btn-toggle-keeper-hud');
+    const minBtn = document.getElementById('btn-minimize-keeper-hud');
+    const dragHandle = document.getElementById('vf-keeper-drag-handle');
+
+    if (toggleBtn && hudEl) {
+      toggleBtn.onclick = () => {
+        hudEl.classList.toggle('is-minimized');
+      };
+    }
+    if (minBtn && hudEl) {
+      minBtn.onclick = () => {
+        hudEl.classList.add('is-minimized');
+      };
+    }
+
+    if (dragHandle && hudEl) {
+      let isDragging = false;
+      let startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
+
+      dragHandle.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = hudEl.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        hudEl.style.transition = 'none';
+        dragHandle.setPointerCapture(e.pointerId);
+      });
+
+      dragHandle.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const newLeft = Math.max(10, Math.min(window.innerWidth - hudEl.offsetWidth - 10, initialLeft + dx));
+        const newTop = Math.max(10, Math.min(window.innerHeight - hudEl.offsetHeight - 10, initialTop + dy));
+        hudEl.style.left = `${newLeft}px`;
+        hudEl.style.top = `${newTop}px`;
+        hudEl.style.right = 'auto';
+        hudEl.style.transform = 'none';
+      });
+
+      const stopDrag = (e) => {
+        if (isDragging) {
+          isDragging = false;
+          hudEl.style.transition = '';
+          try { dragHandle.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+      };
+      dragHandle.addEventListener('pointerup', stopDrag);
+      dragHandle.addEventListener('pointercancel', stopDrag);
+    }
   }
 
   subscribeToFearPool() {
@@ -35,7 +93,7 @@ export class KeeperHudController {
     const sharedBannerCount = document.getElementById('shared-fear-counter-val');
 
     if (countEl) {
-      countEl.textContent = `${currentFear} / ${this.maxFear}`;
+      countEl.textContent = currentFear;
       countEl.classList.remove('fear-pulse');
       void countEl.offsetWidth;
       countEl.classList.add('fear-pulse');
@@ -43,6 +101,11 @@ export class KeeperHudController {
 
     if (sharedBannerCount) {
       sharedBannerCount.textContent = currentFear;
+    }
+
+    const minFearEl = document.getElementById('keeper-min-fear-val');
+    if (minFearEl) {
+      minFearEl.textContent = currentFear;
     }
 
     if (!pipsContainer) return;

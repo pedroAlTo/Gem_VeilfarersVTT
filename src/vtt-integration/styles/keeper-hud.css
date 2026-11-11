@@ -21,87 +21,140 @@
 
 .vf-keeper-hud {
   position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 95vw;
-  background: rgba(13, 17, 28, 0.95);
-  border: 1px solid rgba(168, 85, 247, 0.35);
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.75);
-  border-radius: 12px;
-  padding: 10px 16px;
+  top: 68px;
+  right: 20px;
+  z-index: 920;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Floating minimized trigger (Icon button ⚡) */
+.vf-keeper-hud-toggle {
+  display: none;
+  background: rgba(18, 12, 32, 0.94);
+  border: 1px solid rgba(168, 85, 247, 0.6);
+  box-shadow: 0 4px 18px rgba(147, 51, 234, 0.45);
+  color: #f3e8ff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+.vf-keeper-hud-toggle:hover {
+  background: rgba(147, 51, 234, 0.4);
+  border-color: #d8b4fe;
+  transform: scale(1.05);
+}
+.vf-keeper-hud.is-minimized .vf-keeper-hud-toggle {
+  display: flex;
+}
+.vf-keeper-hud.is-minimized .vf-keeper-panel {
+  display: none;
+}
+
+/* Floating expanded panel */
+.vf-keeper-panel {
+  background: rgba(13, 17, 28, 0.96);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.85);
+  border-radius: 10px;
+  padding: 0;
   color: #e2e8f0;
-  z-index: 900;
+  width: 250px;
+  overflow: hidden;
+}
+
+.keeper-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(24, 16, 42, 0.95);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+  cursor: grab;
+  user-select: none;
+}
+.keeper-panel-header:active {
+  cursor: grabbing;
+}
+.panel-header-title {
   display: flex;
   align-items: center;
-  gap: 18px;
-  font-family: system-ui, -apple-system, sans-serif;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #d8b4fe;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.drag-grip {
+  color: #94a3b8;
+  font-size: 14px;
+  letter-spacing: -2px;
+}
+.btn-keeper-minimize {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.btn-keeper-minimize:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.keeper-panel-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .keeper-fear-module {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-right: 16px;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  min-width: 220px;
-}
-
-.fear-module-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #d8b4fe;
-  font-weight: 700;
+  justify-content: space-between;
 }
 
 .keeper-fear-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.keeper-fear-tag {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #d8b4fe;
+  letter-spacing: 0.05em;
 }
 
 .btn-fear-action {
-  background: rgba(147, 51, 234, 0.2);
+  background: rgba(147, 51, 234, 0.25);
   border: 1px solid rgba(168, 85, 247, 0.5);
   color: #f3e8ff;
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 0.75rem;
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-fear-action:hover {
-  background: rgba(147, 51, 234, 0.45);
+  background: rgba(147, 51, 234, 0.5);
   transform: translateY(-1px);
-}
-
-.keeper-fear-pips {
-  display: flex;
-  gap: 4px;
-  flex-wrap: nowrap;
-}
-
-.fear-pip {
-  width: 14px;
-  height: 20px;
-  border-radius: 3px;
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  background: rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  padding: 0;
-  transition: all 0.15s ease;
-}
-
-.fear-pip.active {
-  background: linear-gradient(180deg, #c084fc 0%, #7e22ce 100%);
-  border-color: #e9d5ff;
-  box-shadow: 0 0 8px rgba(168, 85, 247, 0.7);
 }
 
 .keeper-party-list {

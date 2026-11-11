@@ -22,10 +22,10 @@ after(async () => { await store.saveQueue.catch(() => {}); dom.window.close(); }
 const pc = (name = 'Pilot') => createActor({ name }, store.state.activeMapId);
 const drone = () => createActor({ name: 'Scout', actorType: 'drone', controllerIds: ['a', 'b'] }, store.state.activeMapId);
 
-test('assignment moves a player slot atomically; drones stay shared', () => {
+test('un jugador puede estar asignado a varios tokens; drones stay shared', () => {
   const a = { ...pc(), ownerId: 'a' }, b = pc('Other'), d = drone();
   const next = assignControls([a, b, d], b.id, ['a'], ['a', 'b']);
-  assert.equal(next[0].ownerId, ''); assert.equal(next[1].ownerId, 'a'); assert.deepEqual(next[2].controllerIds, ['a', 'b']);
+  assert.equal(next[0].ownerId, 'a'); assert.equal(next[1].ownerId, 'a'); assert.deepEqual(next[2].controllerIds, ['a', 'b']);
   assert.throws(() => assignControls([a, b], 'missing', ['a'], ['a'])); assert.equal(a.ownerId, 'a');
   assert.throws(() => assignControls([a, b], b.id, ['a', 'b'], ['a', 'b']));
   assert.throws(() => assignControls([a], a.id, ['stranger'], ['a']));
@@ -165,8 +165,8 @@ test('two clients complete host/join, token assignment, scene sync, submission a
   const droneToken = hostStore.addToken({ name: 'Shared scout', actorType: 'drone' }); hostStore.assignTokenControllers(droneToken.id, [playerId]); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5));
   assert.ok(guestStore.canEditToken(droneToken.id)); guestStore.updateToken(droneToken.id, { x: 140, y: 280 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === droneToken.id).x, 140);
   const npc = hostStore.addToken({ name: 'Assigned adversary', actorType: 'adversary' }); host.assignToken(playerId, npc.id); await new Promise(resolve => setTimeout(resolve, 5));
-  assert.ok(guestStore.canEditToken(npc.id)); assert.equal(guestStore.canEditToken(token.id), false); assert.equal(guestStore.state.tokens.find(t => t.id === npc.id).name, 'Assigned adversary');
-  guestStore.updateToken(token.id, { x: 999 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).x, 224);
+  assert.ok(guestStore.canEditToken(npc.id)); assert.equal(guestStore.canEditToken(token.id), true); assert.equal(guestStore.state.tokens.find(t => t.id === npc.id).name, 'Assigned adversary');
+  guestStore.updateToken(token.id, { x: 999 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).x, 999);
   guestStore.updateToken(npc.id, { facingAngle: 1.2 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === npc.id).facingAngle, 1.2);
   hostStore.assignTokenControllers(droneToken.id, []); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(guestStore.canEditToken(droneToken.id), false);
 

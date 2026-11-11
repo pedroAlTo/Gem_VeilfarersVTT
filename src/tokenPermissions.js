@@ -4,7 +4,7 @@ export const controlsToken = (token, playerId) => !!playerId && !token?.hidden &
 
 export const isPartyToken = token => !!(token?.isPlayer || token?.actorType === 'player' || (token?.ownerId && token.ownerId !== 'keeper') || (isDrone(token) && token.controllerIds?.length));
 
-// Validate first, then make one atomic update. A drone never occupies a character slot.
+// Validate first, then make one atomic update. Un jugador puede estar asignado a varios tokens y los drones pueden tener varios jugadores asignados a la vez.
 export function assignControls(tokens, tokenId, playerIds, knownPlayers) {
   const target = tokens.find(t => t.id === tokenId);
   if (!target) throw new Error('Token no longer exists.');
@@ -12,8 +12,14 @@ export function assignControls(tokens, tokenId, playerIds, knownPlayers) {
   if (ids.some(id => !knownPlayers.includes(id))) throw new Error('Unknown player.');
   if (!isDrone(target) && ids.length > 1) throw new Error('Only drones can have multiple controllers.');
   return tokens.map(token => {
-    if (token.id === tokenId) return { ...token, ownerId: isDrone(token) ? '' : ids[0] || '', controllerIds: isDrone(token) ? ids : [] };
-    if (!isDrone(token) && ids.includes(token.ownerId) && !isDrone(target)) return { ...token, ownerId: '' };
+    if (token.id === tokenId) {
+      return {
+        ...token,
+        ownerId: isDrone(token) ? '' : ids[0] || '',
+        controllerIds: isDrone(token) ? ids : (token.controllerIds || [])
+      };
+    }
+    // Un jugador puede estar asignado a varios tokens: no se desasignan sus otros tokens
     return token;
   });
 }

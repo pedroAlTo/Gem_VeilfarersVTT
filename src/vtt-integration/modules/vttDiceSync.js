@@ -26,9 +26,9 @@ export class VTTDiceSync {
       if (rollData.clientTimestamp && rollData.clientTimestamp < this.sessionJoinTime) return;
       if (rollData.isSecret && this.currentUser.role !== 'keeper') return;
 
-      // 1. Reproducir animación para clientes remotos (el cliente local ya la ejecutó al rodar)
+      // 1. Mostrar callout para clientes remotos (los dados 3D solo ruedan en el cliente que lanzó)
       if (rollData.uid !== this.currentUser.uid) {
-        await this.diceEngine.playRollAnimation(rollData);
+        this.diceEngine.showCallout(rollData);
       }
 
       // 2. Transacción de recursos ejecutada únicamente por el cliente que lanzó
@@ -158,6 +158,10 @@ export class VTTDiceSync {
       clientTimestamp: Date.now(),
       serverTimestamp: serverTimestamp()
     };
+
+    if (this.diceEngine && typeof this.diceEngine.showCallout === 'function') {
+      this.diceEngine.showCallout(rollPayload);
+    }
 
     if (this.db) {
       const rollsListRef = ref(this.db, `rooms/${this.roomId}/diceLog`);

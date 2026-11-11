@@ -24,6 +24,21 @@ export function roomError(error) {
     : error?.message || 'No se pudo conectar con la sala.';
 }
 
+export function generateInviteCode(roomName = '') {
+  const cleaned = String(roomName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase();
+  const prefix = (cleaned.slice(0, 3) || 'VEI').padEnd(3, 'X');
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let randomSuffix = '';
+  for (let i = 0; i < 5; i++) {
+    randomSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${prefix}-${randomSuffix}`;
+}
+
 // Only Firebase identities are credentials for Firestore. Netlify tokens are never
 // treated as Firebase credentials, and membership never depends on a display name.
 export class RoomService {
@@ -68,7 +83,7 @@ export class RoomService {
     await this.ready();
     name = String(name || '').trim().slice(0, 200);
     if (!name) throw new Error('Escribe un nombre para la sala.');
-    const id = 'room_' + newId(), inviteCode = 'VF-' + newId().replaceAll('-', '').toUpperCase();
+    const id = 'room_' + newId(), inviteCode = generateInviteCode(name);
     const room = { name, ownerUid: this.uid, campaignId: campaign.campaignId, inviteCode, hostEpoch: '', hostSeenAt: null, checkpoint: null, createdAt: this.api.serverTimestamp() };
     const batch = this.api.writeBatch(this.db);
     batch.set(this.ref('rooms', id), room);
@@ -83,7 +98,9 @@ export class RoomService {
     code = String(code || '').trim();
     if (/^https?:/i.test(code)) { const url = new URL(code); code = new URLSearchParams(url.hash.slice(1)).get('roomInvite') || url.searchParams.get('roomInvite') || ''; }
     code = code.toUpperCase();
-    if (!/^VF-[A-F0-9]{32}$/.test(code)) throw new Error('Pega el código VF-… o el enlace de la sala.');
+    if (!/^[A-Z0-9]{3}-[A-Z0-9]{5}$/.test(code) && !/^VF-[A-F0-9]{32}$/.test(code)) {
+      throw new Error('Pega el código de sala (ej. SAL-A1B2C) o el enlace de invitación.');
+    }
     const invitation = await this.api.getDocFromServer(this.ref('roomInvites', code));
     if (!invitation.exists()) throw new Error('Esta invitación no existe o ha sido regenerada. Si ya eres miembro, entra desde Mis salas.');
     const { roomId, ownerUid } = invitation.data();
@@ -98,10 +115,12 @@ export class RoomService {
     return this.getRoom(roomId);
   }
   async rotateInvitation(id) {
-    const code = 'VF-' + newId().replaceAll('-', '').toUpperCase(), a = this.api;
+    const a = this.api;
+    let code = '';
     await a.runTransaction(this.db, async tx => {
       const ref = this.ref('rooms', id), room = (await tx.get(ref)).data();
       if (room.ownerUid !== this.uid) throw new Error('Solo el Keeper dueño de la sala puede regenerar la invitación.');
+      code = generateInviteCode(room.name);
       tx.delete(this.ref('roomInvites', room.inviteCode));
       tx.set(this.ref('roomInvites', code), { roomId: id, ownerUid: this.uid, name: room.name });
       tx.update(ref, { inviteCode: code });

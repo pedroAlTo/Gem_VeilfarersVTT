@@ -8,6 +8,7 @@ import { openCharacterImport } from './characterManager.js';
 import { openAccount, useCharacter, initAccount } from './accountUI.js';
 import { isDrone } from './tokenPermissions.js';
 import { mountSessionNavigation } from './sessionNavigation.js';
+import { openRoomLobby } from './roomUI.js';
 
 export function invitationCode() { return network.roomController?.room?.inviteCode || network.room || ''; }
 export function magicInvitationLink() {
@@ -271,13 +272,13 @@ export function openTokenControl(tokenId) {
   const keeper = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
   const players = store.state.players || [];
   const drone = isDrone(token);
-  const modal = dossierDialog('TOKEN CONTROL', `<h2>${e(token.name)}</h2><p class="dossier-muted">${drone ? 'Shared drone. Select every player who can control it.' : 'One character or NPC per player. Assigning this token releases their previous non-drone token.'}</p>
-    <form><div class="controller-list">${players.length ? players.map(p => `<label><input type="${drone ? 'checkbox' : 'radio'}" name="controller" value="${e(p.id)}" ${(drone ? token.controllerIds?.includes(p.id) : token.ownerId === p.id) ? 'checked' : ''} ${keeper ? '' : 'disabled'}> ${e(p.name)}</label>`).join('') : '<p>Players appear here after joining your session.</p>'}${!drone ? `<label><input type="radio" name="controller" value="" ${!token.ownerId ? 'checked' : ''} ${keeper ? '' : 'disabled'}> Keeper only</label>` : ''}</div><p class="dossier-error" role="alert"></p>${keeper ? '<button class="hud-btn hud-btn-primary">Save control</button>' : ''}</form>`);
+  const modal = dossierDialog('CONTROL DE TOKEN', `<h2>${e(token.name)}</h2><p class="dossier-muted">${drone ? 'Dron compartido: selecciona todos los jugadores que pueden controlarlo simultáneamente.' : 'Asignar jugador al token (un jugador puede controlar varios tokens a la vez).'}</p>
+    <form><div class="controller-list">${players.length ? players.map(p => `<label><input type="${drone ? 'checkbox' : 'radio'}" name="controller" value="${e(p.id)}" ${(drone ? token.controllerIds?.includes(p.id) : token.ownerId === p.id) ? 'checked' : ''} ${keeper ? '' : 'disabled'}> ${e(p.name)}</label>`).join('') : '<p>Los jugadores aparecerán aquí al unirse a la sesión.</p>'}${!drone ? `<label><input type="radio" name="controller" value="" ${!token.ownerId ? 'checked' : ''} ${keeper ? '' : 'disabled'}> Solo Keeper</label>` : ''}</div><p class="dossier-error" role="alert"></p>${keeper ? '<button class="hud-btn hud-btn-primary">Guardar control</button>' : ''}</form>`);
   modal.querySelector('form').onsubmit = event => { event.preventDefault(); try { store.assignTokenControllers(tokenId, [...modal.querySelectorAll('input:checked')].map(x => x.value)); modal.remove(); } catch (error) { modal.querySelector('.dossier-error').textContent = error.message; } };
 }
 
 export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer } = {}) {
-  if (!LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured) return import('./roomUI.js').then(({ openRoomLobby }) => openRoomLobby(prefill)).catch(error => notify(error.message, 'error'));
+  if (!LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured) return openRoomLobby(prefill);
   const s = store.state, joined = store.sessionRole === 'player', active = s.isHosting || joined;
   joinOnly = !active && joinOnly;
   let savedName = s.userName === 'Keeper' ? '' : s.userName;
