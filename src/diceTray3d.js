@@ -204,12 +204,12 @@ export async function openDiceTray(result) {
       { qty: 1, sides: 12, theme: 'vfFear', role: 'fear' }
     ];
 
-    const label = result?.label || (result?.demo ? 'Tirada de Prueba 3D' : 'Tirada Duality');
+    const label = result?.label || (result?.actorName ? `${result.actorName} · Tirada Duality` : (result?.demo ? 'Tirada de Prueba 3D' : 'Tirada Duality'));
 
     try {
       const roll3d = await dice3D.roll(groups, { label, style: 'overlay', deferResults: true });
-      let hopeVal = Number(result?.hope);
-      let fearVal = Number(result?.fear);
+      let hopeVal = Number(result?.hope ?? result?.hopeVal);
+      let fearVal = Number(result?.fear ?? result?.fearVal);
 
       // Si no vienen valores forzados o es una tirada de prueba, se LEE la cara física que ha salido:
       if (!Number.isFinite(hopeVal) || !Number.isFinite(fearVal)) {
@@ -222,8 +222,8 @@ export async function openDiceTray(result) {
         }
       }
 
-      const isCrit = hopeVal === fearVal;
-      const outcome = isCrit ? 'CRITICAL SUCCESS' : (fearVal > hopeVal ? 'WITH FEAR' : 'WITH HOPE');
+      const isCrit = typeof result?.crit === 'boolean' ? result.crit : (typeof result?.isCritical === 'boolean' ? result.isCritical : (hopeVal === fearVal));
+      const outcome = result?.outcome || (isCrit ? 'CRITICAL SUCCESS' : (fearVal > hopeVal ? 'WITH FEAR' : 'WITH HOPE'));
 
       dice3D.showResults({
         label,
@@ -231,6 +231,7 @@ export async function openDiceTray(result) {
         hope: hopeVal,
         fear: fearVal,
         crit: isCrit,
+        value: Number(result?.total ?? (hopeVal + fearVal)),
         rolls: [
           { value: hopeVal, sides: 12, role: 'hope' },
           { value: fearVal, sides: 12, role: 'fear' }

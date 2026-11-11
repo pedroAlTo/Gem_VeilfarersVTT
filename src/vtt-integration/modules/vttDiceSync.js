@@ -165,4 +165,21 @@ export class VTTDiceSync {
     }
     return rollPayload;
   }
+
+  async pushRollLog(payload) {
+    if (!this.db) return;
+    try {
+      const rollsListRef = ref(this.db, `rooms/${this.roomId}/diceLog`);
+      await push(rollsListRef, {
+        type: 'duality',
+        uid: this.currentUser?.uid || 'local',
+        playerName: this.currentUser?.displayName || 'Operativo',
+        clientTimestamp: Date.now(),
+        serverTimestamp: serverTimestamp(),
+        ...payload
+      });
+    } catch (e) {
+      console.warn('[VTTDiceSync] Error pushing roll log:', e);
+    }
+  }
 }

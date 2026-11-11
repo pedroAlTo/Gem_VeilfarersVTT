@@ -145,13 +145,16 @@ function ensureStage(){
   const dismissFromPointer=event=>{
     if (!stage || stage.classList.contains('is-hidden')) return;
     if (event.target && event.target.closest && event.target.closest('#vf-dice3d-close')) return;
-    // The stage owns the entire viewport while visible. Capture on pointerdown so
-    // the physical simulation is stopped immediately, even in transparent overlay
-    // mode and even when the pointer lands over the DiceBox canvas/results layer.
-    event.preventDefault();
-    event.stopPropagation();
-    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-    hide({reason:'user',fallback2D:rollPending && !rollHasResult});
+    // En modo overlay, no interrumpir la física de los dados mientras ruedan
+    if (currentStyle === 'overlay' && rollPending && !rollHasResult) return;
+    // Permitir descartar tras asentarse haciendo clic en el banner o resultado
+    if (!rollPending || rollHasResult) {
+      if (event.target && (event.target.closest('.vf-results') || event.target.closest('.vf-dice3d-outcome') || currentStyle !== 'overlay')) {
+        event.preventDefault();
+        event.stopPropagation();
+        hide({reason:'user'});
+      }
+    }
   };
   stage.addEventListener('pointerdown',dismissFromPointer,true);
   display=new DisplayResults('#vf-dice3d-box');
@@ -182,8 +185,8 @@ async function init(){
     await assertWebAssemblyExecutionAllowed();
     box=new DiceBox({
       container:'#vf-dice3d-box', assetPath:ASSET_PATH, origin:'', theme:'vfNeutral', preloadThemes:PRELOAD_THEMES,
-      scale:5.2, gravity:1.15, mass:1.15, friction:0.72, restitution:0.64, spinForce:6, throwForce:6.5,
-      startingHeight:8, settleTimeout:5000, delay:12, lightIntensity:1.05, enableShadows:true,
+      scale:5.4, gravity:1.6, mass:1.2, friction:0.88, restitution:0.35, spinForce:4.5, throwForce:5.2,
+      startingHeight:7.5, settleTimeout:2800, delay:10, lightIntensity:1.15, enableShadows:true,
       shadowTransparency:0.72, offscreen:false
     });
     await box.init();

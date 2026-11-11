@@ -754,7 +754,25 @@ export class NetworkManager {
   async performAction(action) {
     const { performGameAction } = await import('./gameActions.js');
     const result = performGameAction(action, this.store);
-    if (result.log && result.log.visibility !== 'keeper') this.broadcast({ type: 'DICE_ROLL', logEntry: result.log, result: { id: result.id, actorId: result.actorId, hopeVal: result.hopeVal, fearVal: result.fearVal, total: result.total } });
+    if (result.log && result.log.visibility !== 'keeper') {
+      const rollPayload = {
+        id: result.id,
+        actorId: result.actorId,
+        actorName: result.log?.sender || 'Operativo',
+        hope: result.hopeVal,
+        hopeVal: result.hopeVal,
+        fear: result.fearVal,
+        fearVal: result.fearVal,
+        total: result.total,
+        dc: result.dc,
+        label: result.log?.title || 'Duality Check',
+        outcome: result.outcomeTitle,
+        crit: !!result.isCritical,
+        isCritical: !!result.isCritical,
+        details: result.log?.details || ''
+      };
+      this.broadcast({ type: 'DICE_ROLL', logEntry: result.log, result: rollPayload });
+    }
     return result;
   }
   async handleIncomingMessage(data, senderId) {
@@ -964,6 +982,12 @@ export class NetworkManager {
         );
       }
       return;
+    }
+    if (data.type === 'DICE_ROLL') {
+      this.ephemeral(data);
+      if (this.store.sessionRole !== 'player') {
+        this.broadcast(data);
+      }
     }
     if (data.type === 'PING' && finite(data.x) && finite(data.y)) {
       this.ephemeral(data);
