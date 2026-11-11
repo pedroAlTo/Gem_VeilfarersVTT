@@ -9,17 +9,140 @@
 .session-code-label input:focus{color:#fff;background:rgba(0,243,255,0.08);border-radius:2px;}
 .session-strip .hud-btn{padding:3px 8px;font-size:10px;white-space:nowrap;height:24px;line-height:1;}
 
-/* Compact Single-Row Fear Meter */
-.fear-meter-wrapper{display:inline-flex!important;flex-direction:row!important;align-items:center!important;gap:6px!important;padding:2px 8px!important;height:28px!important;background:rgba(8,12,22,0.7)!important;border:1px solid rgba(255,42,95,0.3)!important;border-radius:4px!important;box-shadow:none!important;}
-.fear-header{display:inline-flex!important;align-items:center!important;gap:6px!important;margin:0!important;}
-.fear-label{display:inline-flex!important;align-items:center!important;gap:4px!important;}
-.fear-title{font-size:8px!important;letter-spacing:0.12em!important;}
-.fear-counter{font-size:10px!important;font-weight:700!important;}
-.fear-cells-track{display:flex!important;align-items:center!important;gap:2px!important;height:8px!important;width:120px!important;min-width:100px!important;max-width:140px!important;margin:0!important;padding:0!important;}
-.fear-cell{height:8px!important;flex:1!important;border-radius:1px!important;}
-.fear-cell-number{display:none!important;}
-.fear-actions{display:inline-flex!important;gap:2px!important;margin:0!important;}
-.fear-btn{height:20px!important;padding:0 4px!important;font-size:9px!important;line-height:1!important;}
+/* Global Fear Meter Floating Overlay: Centered 20px below top menu */
+#fear_meter_container,
+.header-center#fear_meter_container {
+  position: fixed !important;
+  top: 78px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  width: auto !important;
+  max-width: min(520px, calc(100vw - 32px)) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: 0 0 0px !important;
+}
+
+.fear-meter-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  padding: 6px 14px 7px 14px !important;
+  min-width: 380px !important;
+  background: linear-gradient(135deg, rgba(8, 14, 24, 0.94), rgba(18, 12, 28, 0.94)) !important;
+  border: 1px solid rgba(240, 132, 212, 0.4) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75), 0 0 16px rgba(240, 132, 212, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  user-select: none !important;
+}
+
+.fear-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin: 0 !important;
+}
+
+.fear-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.fear-icon {
+  color: #ff5599 !important;
+  font-size: 11px !important;
+  filter: drop-shadow(0 0 6px #ff5599aa);
+}
+
+.fear-title {
+  font-family: var(--font-hud, sans-serif) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.15em !important;
+  color: #ffc4ec !important;
+  text-shadow: 0 0 8px rgba(255, 100, 180, 0.4) !important;
+}
+
+.fear-counter {
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 1px 7px !important;
+  border-radius: 3px !important;
+  background: rgba(255, 42, 95, 0.2) !important;
+  border: 1px solid rgba(255, 42, 95, 0.5) !important;
+  color: #ffaae2 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.fear-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin: 0 !important;
+}
+
+.fear-actions .hud-btn {
+  padding: 2px 7px !important;
+  font-size: 9px !important;
+  height: 20px !important;
+  line-height: 1 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.fear-cells-track {
+  display: flex !important;
+  gap: 5px !important;
+  height: 13px !important;
+  width: 100% !important;
+  min-width: 360px !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.fear-cell {
+  flex: 1 !important;
+  height: 13px !important;
+  transform: skew(-22deg) !important;
+  border: 1px solid rgba(114, 178, 208, 0.35) !important;
+  border-radius: 1px !important;
+  background: rgba(12, 20, 34, 0.7) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.fear-cell:hover {
+  border-color: #8ceaff !important;
+}
+
+.fear-cell.active .fear-cell-fill {
+  background: linear-gradient(135deg, #b18de1, #6ab4eb) !important;
+  box-shadow: 0 0 8px rgba(164, 139, 255, 0.45) !important;
+}
+
+.fear-cell.danger .fear-cell-fill {
+  background: linear-gradient(135deg, #ff8ad7, #9f60cb) !important;
+  box-shadow: 0 0 10px rgba(255, 138, 215, 0.6) !important;
+}
+
+.fear-cell.critical .fear-cell-fill {
+  background: linear-gradient(135deg, #ff3366, #ff0055) !important;
+  box-shadow: 0 0 12px rgba(255, 0, 85, 0.85) !important;
+}
+
+.fear-cell-number {
+  display: none !important;
+}
 
 .session-lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.session-card{display:grid;gap:14px;padding:20px;border:1px solid #86cce92e;border-radius:10px;background:linear-gradient(140deg,#17263799,#0b101e)}.session-card h3{margin:0}.session-actions,.session-options,.session-invitation{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:16px 0}.session-invitation .dossier-field{flex:1;min-width:250px}.session-options label{display:flex;gap:8px;align-items:center}.crew-row{display:flex;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid #83bad51f}.crew-row>div{flex:1;min-width:0}.crew-row strong{display:block;overflow-wrap:anywhere}.crew-row small{display:block;color:#8ea4bb;margin-top:5px}.crew-row vf-select{max-width:220px}.crew-avatar{display:grid;place-items:center;flex:0 0 36px;height:36px;border:1px solid #7cd3eb55;color:#92e5f3;background:#143044;clip-path:polygon(15% 0,100% 0,100% 85%,85% 100%,0 100%,0 15%)}.controller-list{display:grid;gap:14px;margin:22px 0}.controller-list label{display:flex;gap:10px}.scene-upload-preview{width:100%;max-height:180px;object-fit:contain;border-radius:8px}.broadcast-message{font-size:20px;line-height:1.65;white-space:pre-wrap}.session-strip button:focus-visible,.session-strip input:focus-visible{outline:2px solid #81e4ff;outline-offset:3px}@media(max-width:1000px){.session-strip{flex-wrap:wrap;gap:8px}.session-strip-name{max-width:none}.session-code-label{order:6;flex-basis:100%}.session-code-label input{flex:1;min-width:0}.session-lobby-grid{grid-template-columns:1fr}.crew-row{flex-wrap:wrap}.crew-row vf-select{max-width:100%;width:100%}}
 

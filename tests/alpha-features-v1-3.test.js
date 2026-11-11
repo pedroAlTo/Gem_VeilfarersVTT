@@ -550,7 +550,7 @@ test('simplified invitation code: 3-char prefix from campaign name + 5-char rand
   assert.throws(() => parseInvitation('VEIL-ABC'), /Pega el código o enlace/);
 });
 
-test('single line header & compact session bar: session controls dock inside header and inline fear meter', async () => {
+test('single line header & compact session bar: session controls dock inside header and floating fear meter overlay', async () => {
   const { initSessionBar } = await import('../src/sessionLobby.js');
   document.body.innerHTML = `
     <header class="header-hud">
@@ -569,6 +569,9 @@ test('single line header & compact session bar: session controls dock inside hea
   assert.ok(bar.classList.contains('session-strip-inline'), 'Session strip has inline class');
   assert.ok(bar.querySelector('#session_code'), 'Code input exists');
   assert.ok(bar.querySelector('#session_crew'), 'Crew count exists');
+
+  const fearContainer = document.getElementById('fear_meter_container');
+  assert.ok(fearContainer, 'Fear meter container exists in header slot for overlay mounting');
 });
 
 test('firebase full scene persistence: saves and restores scene with all components (walls, lights, tokens)', async () => {

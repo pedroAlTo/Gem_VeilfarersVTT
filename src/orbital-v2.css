@@ -125,10 +125,11 @@ body {background:radial-gradient(ellipse at 72% 4%,#21132f66,transparent 55%),#0
 .right-sidebar {background-image:radial-gradient(ellipse at 90% 0,#ba4f9c12,transparent 40%),linear-gradient(120deg,#0c1a27ed,#090c1aef 75%)}
 
 .layer-hud-container {bottom:154px}
-/* One session entry, with account identity anchored above the header actions. */
-.header-hud {height:auto;min-height:106px}
-.header-right {display:grid;gap:7px;justify-items:end;max-width:520px;flex-shrink:0}
-.header-actions {display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+/* Single-line header: all elements aligned horizontally in one row */
+.header-hud {height:46px!important;min-height:46px!important;max-height:46px!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;flex-wrap:nowrap!important;white-space:nowrap!important;}
+.header-left {display:flex!important;flex-direction:row!important;align-items:center!important;gap:8px!important;flex-wrap:nowrap!important;flex-shrink:0!important;}
+.header-right {display:flex!important;flex-direction:row!important;align-items:center!important;gap:8px!important;flex-wrap:nowrap!important;flex-shrink:0!important;max-width:none!important;}
+.header-actions {display:flex!important;flex-direction:row!important;align-items:center!important;gap:6px!important;flex-wrap:nowrap!important;flex-shrink:0!important;}
 .header-right .account-access {display:flex;align-items:center;gap:9px;min-width:130px;max-width:240px;padding:6px 11px;border-color:#ff79794d;background:linear-gradient(110deg,#21151eaa,#0b1423);text-align:left;letter-spacing:.02em}
 .account-status-dot {width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#ff696f;box-shadow:0 0 9px #ff696f77}
 .account-copy {display:grid;gap:2px;min-width:0}
@@ -142,12 +143,9 @@ body {background:radial-gradient(ellipse at 72% 4%,#21132f66,transparent 55%),#0
 .session-navigation .hud-btn {flex:1;min-height:36px}
 .session-navigation .hud-btn.active {color:#b6f5ff;border-color:#6bddf4;background:#16415888}
 @media(max-width:1100px) {
-  .header-hud {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;min-height:0}
-  .header-left {grid-column:1;grid-row:1}
-  .header-right {display:contents}
-  .header-right .account-access {grid-column:2;grid-row:1;justify-self:end;max-width:210px}
-  .header-actions {grid-column:1/-1;grid-row:2;justify-content:flex-end}
-  .header-center {grid-column:1/-1;grid-row:3;max-width:none;min-width:0;width:100%}
+  .header-hud {display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;min-height:46px!important;max-height:46px!important;}
+  .header-left {flex-shrink:0!important;}
+  .header-right {flex-shrink:0!important;}
 }
 @media(max-width:600px) {
   .header-right .account-access {min-width:0;max-width:160px;padding:5px 8px}

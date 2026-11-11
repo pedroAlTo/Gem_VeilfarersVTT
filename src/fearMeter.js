@@ -17,6 +17,23 @@ export class FearMeterHUD {
         this.updateView();
       }
     });
+    this.updatePosition();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', () => this.updatePosition());
+      window.addEventListener('scroll', () => this.updatePosition());
+    }
+  }
+
+  updatePosition() {
+    if (!this.container || typeof document === 'undefined') return;
+    const headerHud = document.querySelector('.header-hud');
+    if (headerHud && typeof headerHud.getBoundingClientRect === 'function') {
+      const rect = headerHud.getBoundingClientRect();
+      const bottom = Number.isFinite(rect.bottom) && rect.bottom > 0 ? rect.bottom : 58;
+      this.container.style.top = `${Math.round(bottom + 20)}px`;
+    } else {
+      this.container.style.top = '78px';
+    }
   }
 
   render() {
@@ -92,12 +109,16 @@ export class FearMeterHUD {
       cell.classList.toggle('critical', fearVal === 12 && isFilled);
 
       if (isFilled && !wasActive) {
-        gsap.fromTo(cell, { scale: 1.35, filter: 'brightness(2.2)' }, { scale: 1, filter: 'brightness(1)', duration: 0.35, ease: 'back.out(2)' });
+        try {
+          gsap.fromTo(cell, { scale: 1.35, filter: 'brightness(2.2)' }, { scale: 1, filter: 'brightness(1)', duration: 0.35, ease: 'back.out(2)' });
+        } catch { /* headless/JSDOM animation fallback */ }
       }
     });
 
     if (counterEl && fearVal >= 10) {
-      gsap.to(counterEl, { scale: 1.2, repeat: 1, yoyo: true, duration: 0.2, ease: 'power2.out' });
+      try {
+        gsap.to(counterEl, { scale: 1.2, repeat: 1, yoyo: true, duration: 0.2, ease: 'power2.out' });
+      } catch { /* headless/JSDOM animation fallback */ }
     }
 
     // Update Keeper Controls
