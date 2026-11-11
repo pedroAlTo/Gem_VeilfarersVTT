@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.2**.
-Paquete: `VeilFarers_VTT_v1.4.2.zip`.
+Versión actual del VTT: **v1.4.3**.
+Paquete: `VeilFarers_VTT_v1.4.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.4.3] — 2026-11-12
+
+Diseño Táctico del Portal de Acceso y Modo Local / Invitado
+
+### Portal y Acceso
+
+- Rediseño completo de la interfaz de login del portal con estética Sci-Fi/Cyberpunk, fondo con cuadrícula táctica, glassmorphism y controles integrados.
+- Botón directo para entrar como Invitado / Modo Local y botón de cierre rápido para acceder al VTT de inmediato sin requerir cuenta.
+- Información contextual amigable en modo local si la autenticación remota no está configurada, sin mensajes de error invasivos.
+- Soporte completo de estilos CSS para inputs con iconos, botones con gradientes cian, selector de Google y bóveda de personajes.
+- Optimización Canvas2D con willReadFrequently para renderizado acelerado de la niebla de exploración y corrección de metadatos móviles.
 
 ## [1.4.2] — 2026-11-11
 

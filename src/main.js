@@ -1,6 +1,7 @@
 import './encounters.css';
 import './sessionUI.css';
 import './diceTray.css';
+import './vtt-integration/styles/lobby.css';
 import './colorPicker.css';
 import { openColorPickerPopover } from './colorPicker.js';
 import './chat.css';

@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.3', date: '2026-11-12', title: 'Diseño Táctico del Portal de Acceso y Modo Local / Invitado',
+    sections: [
+      { title: 'Portal y Acceso', items: [
+        'Rediseño completo de la interfaz de login del portal con estética Sci-Fi/Cyberpunk, fondo con cuadrícula táctica, glassmorphism y controles integrados.',
+        'Botón directo para entrar como Invitado / Modo Local y botón de cierre rápido para acceder al VTT de inmediato sin requerir cuenta.',
+        'Información contextual amigable en modo local si la autenticación remota no está configurada, sin mensajes de error invasivos.',
+        'Soporte completo de estilos CSS para inputs con iconos, botones con gradientes cian, selector de Google y bóveda de personajes.',
+        'Optimización Canvas2D con willReadFrequently para renderizado acelerado de la niebla de exploración y corrección de metadatos móviles.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.2', date: '2026-11-11', title: 'Callout de Tiradas Estructurado y Limpieza de Interfaz',
     sections: [
       { title: 'Callouts de Tiradas', items: [

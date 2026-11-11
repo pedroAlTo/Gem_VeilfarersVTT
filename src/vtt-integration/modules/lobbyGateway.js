@@ -51,25 +51,44 @@ export class VeilfarersLobbyGateway {
     root.id = 'vf-lobby-gateway';
     root.className = 'vf-lobby-gateway';
     root.innerHTML = `
-      <!-- PANTALLA 1: LOGIN -->
+      <!-- PANTALLA 1: LOGIN Y ACCESO AL PORTAL -->
       <div id="vf-auth-screen" class="vf-lobby-card auth-card">
+        <button type="button" class="vf-btn-close-lobby" id="vf-btn-dismiss-lobby" title="Cerrar y entrar a la mesa VTT">✕</button>
+
         <div class="vf-brand-header">
-          <h1>VEILFARERS VTT</h1>
-          <p>Portal de Exploración, Vault de Personajes y Mesa Virtual</p>
+          <span class="vf-brand-badge">✦ VEILFARERS // TERMINAL DE ACCESO</span>
+          <h1>PORTAL TÁCTICO</h1>
+          <p>Vault de Personajes, Campañas Persistentes y Mesa Virtual</p>
         </div>
 
         <form id="vf-email-auth-form" class="vf-auth-form">
-          <input type="email" id="vf-auth-email" placeholder="Correo electrónico" required />
-          <input type="password" id="vf-auth-pass" placeholder="Contraseña" required />
+          <div class="vf-input-group">
+            <span class="vf-input-icon">📧</span>
+            <input type="email" id="vf-auth-email" placeholder="Correo electrónico o indicativo" required autocomplete="email" />
+          </div>
+          <div class="vf-input-group">
+            <span class="vf-input-icon">🔒</span>
+            <input type="password" id="vf-auth-pass" placeholder="Contraseña de acceso" required autocomplete="current-password" />
+          </div>
           <div class="vf-auth-actions">
             <button type="submit" class="vf-btn vf-btn-primary">Iniciar Sesión</button>
             <button type="button" id="vf-btn-register" class="vf-btn vf-btn-secondary">Crear Cuenta</button>
           </div>
         </form>
 
-        <div class="vf-divider"><span>O CONÉCTATE CON</span></div>
-        <button type="button" id="vf-btn-google" class="vf-btn vf-btn-google">Continuar con Google</button>
+        <div class="vf-divider"><span>O CONÉCTATE MEDIANTE</span></div>
+
+        <button type="button" id="vf-btn-google" class="vf-btn vf-btn-google">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+          Continuar con Google
+        </button>
+
+        <button type="button" id="vf-btn-guest" class="vf-btn vf-btn-guest">
+          🚀 Entrar como Invitado / Modo Local
+        </button>
+
         <p id="vf-auth-error" class="vf-error-msg"></p>
+        <div id="vf-auth-info-banner" class="vf-auth-info" style="display:none;"></div>
       </div>
 
       <!-- PANTALLA 2: HUB PRINCIPAL (VAULT + CREADOR + SALAS) -->
@@ -176,6 +195,28 @@ export class VeilfarersLobbyGateway {
 
   bindEvents() {
     if (typeof document === 'undefined') return;
+
+    const closeLobby = () => {
+      document.getElementById('vf-lobby-gateway')?.classList.add('hidden');
+    };
+
+    document.getElementById('vf-btn-dismiss-lobby')?.addEventListener('click', closeLobby);
+
+    document.getElementById('vf-btn-guest')?.addEventListener('click', () => {
+      closeLobby();
+      if (this.onEnterRoomCallback) {
+        this.onEnterRoomCallback({
+          roomId: 'mesa-principal',
+          currentUser: {
+            uid: 'guest_' + Date.now(),
+            displayName: 'Invitado',
+            role: 'player'
+          },
+          activeCharId: null
+        });
+      }
+    });
+
     document.getElementById('vf-email-auth-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!this.auth) return this.showError('Firebase Auth no disponible.');
@@ -273,7 +314,14 @@ export class VeilfarersLobbyGateway {
   }
 
   listenAuth() {
-    if (!this.auth) return;
+    if (!this.auth) {
+      const banner = document.getElementById('vf-auth-info-banner');
+      if (banner) {
+        banner.style.display = 'block';
+        banner.innerHTML = '✦ <strong>Modo Local Activo</strong> · Autenticación en la nube opcional. Puedes continuar directamente a la mesa.';
+      }
+      return;
+    }
     onAuthStateChanged(this.auth, (user) => {
       this.currentUser = user;
       const authScreen = document.getElementById('vf-auth-screen');
