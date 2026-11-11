@@ -28,6 +28,9 @@ export class DiceRollerSidebar {
     this.render();
     this.syncWithSelectedToken();
     window.veilDiceRoller = this;
+    if (this.is3D && typeof window !== 'undefined') {
+      window.VFDice3D?.preload?.().catch(() => {});
+    }
 
     store.subscribe((state, keys) => {
       if (keys.includes('dice3d')) {

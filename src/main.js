@@ -113,6 +113,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupKeyboardShortcuts();
   initSessionBar();
   setupVeilfarersIntegration();
+  if (typeof window !== 'undefined') {
+    if (window.VFDice3D && typeof window.VFDice3D.preload === 'function') {
+      window.VFDice3D.preload().catch(() => {});
+    } else if (window.VFDice3D && typeof window.VFDice3D.init === 'function') {
+      window.VFDice3D.init().catch(() => {});
+    }
+  }
   window.addEventListener("veil:remote-roll", event => { if (store.state.dice3d !== false && event.detail.actorId !== store.state.claimedTokenId) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(event.detail)).catch(() => {}); });
   setupSessionPersistence().catch(error => notify(error.message, 'error'));
 });

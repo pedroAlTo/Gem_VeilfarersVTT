@@ -8,7 +8,8 @@ const THEME_COLORS = {
 };
 const PRELOAD_THEMES = [
   'vfHope','vfFear','vfDamage','vfNeutral','vfBioHope','vfBioFear','vfBioDamage','vfDiscarded',
-  'vfPlainHope','vfPlainFear','vfPlainDamage','vfPlainNeutral'
+  'vfPlainHope','vfPlainFear','vfPlainDamage','vfPlainNeutral',
+  'vfHopeWin','vfFearWin','vfBioHopeWin','vfBioFearWin','vfPlainHopeWin','vfPlainFearWin'
 ];
 const ASSET_PATH = new URL('./assets/', import.meta.url).href;
 
@@ -671,11 +672,46 @@ function showResults(data){
   closeTimer=setTimeout(hide,9800);
 }
 
+async function preload(){
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+  try {
+    const audio = new Audio('/assets/dados_1.mp3');
+    audio.preload = 'auto';
+    audio.load();
+  } catch (_) {}
+
+  if (document.readyState === 'loading') {
+    return new Promise(resolve => {
+      document.addEventListener('DOMContentLoaded', async () => {
+        try {
+          const res = await init();
+          resolve(res);
+        } catch (e) {
+          console.warn('[VeilFarers 3D Dice] Preload deferred warning:', e);
+          resolve(null);
+        }
+      }, { once: true });
+    });
+  }
+
+  try {
+    return await init();
+  } catch (err) {
+    console.warn('[VeilFarers 3D Dice] Preload immediate warning:', err);
+    return null;
+  }
+}
+
 window.VFDice3D={
-  init,roll,add,showResults,hide,setStyle:applyStyle,setCritical:applyCritical,
+  init,preload,roll,add,showResults,hide,setStyle:applyStyle,setCritical:applyCritical,
   status:()=>({
     ready:!!box,assetPath:ASSET_PATH,style:currentStyle,critical:currentCritical,
     rendererVisuals:lastRendererVisuals.slice(),tracking:trackingSpecs.length,rollPending,rollHasResult,userDismissed,activeRoll:activeRollController?activeRollController.token:null,error:lastError?String(lastError.message||lastError):null
   }),
   version:'@3d-dice/dice-box 1.1.4 + DisplayResults 0.5.2 + VeilFarers quantum HUD v59.81'
 };
+
+// Automatically preload 3D dice engine, physics, WASM and textures on screen load
+preload().catch(err => {
+  console.warn('[VeilFarers 3D Dice] Screen preload warning:', err);
+});
