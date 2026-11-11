@@ -34,11 +34,6 @@
           <div id="session_bar_slot" class="header-session-slot"></div>
         </div>
 
-        <!-- CENTER: GLOBAL FEAR METER -->
-        <div class="header-center" id="fear_meter_container">
-          <!-- Rendered by fearMeter.js -->
-        </div>
-
         <!-- HEADER RIGHT -->
         <div class="header-right">
           <button type="button" class="hud-btn account-access" id="session_account" data-account-label data-signed-in="false" aria-label="Cuenta: Offline. Iniciar sesión">
@@ -210,6 +205,11 @@
         <!-- CANVAS VIEWPORT -->
         <section class="canvas-viewport" id="canvas_viewport_root">
           <canvas id="tactical_canvas"></canvas>
+
+          <!-- Floating Global Fear Meter HUD Overlay (Centered 20px below top menu) -->
+          <div class="fear-meter-overlay" id="fear_meter_container">
+            <!-- Rendered by fearMeter.js -->
+          </div>
 
           <!-- Floating Map Loading Progress HUD -->
           <div class="map-loader-overlay hidden" id="map_loader_overlay">
