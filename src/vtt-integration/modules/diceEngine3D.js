@@ -76,7 +76,7 @@ export class VeilfarersDiceEngine {
       try {
         await window.VFDice3D.roll(groups, {
           label: `${rollerName} · ${label}`,
-          style: 'box',
+          style: 'overlay',
           deferResults: true
         });
 
@@ -105,7 +105,7 @@ export class VeilfarersDiceEngine {
                     role: 'neutral'
                   }))
                 : [{ value: Number(rollData.total) || 0, sides: 20, role: 'neutral' }]),
-          style: 'box'
+          style: 'overlay'
         });
       } catch (err) {
         console.warn('[Veilfarers 3D Dice] Error en simulación 3D:', err);
@@ -133,7 +133,7 @@ export class VeilfarersDiceEngine {
         { qty: 1, sides: 12, theme: 'vfHope', role: 'hope' },
         { qty: 1, sides: 12, theme: 'vfFear', role: 'fear' }
       ];
-      return window.VFDice3D.roll(groups, { label: 'Tirada Duality', style: 'box' });
+      return window.VFDice3D.roll(groups, { label: 'Tirada Duality', style: 'overlay' });
     }
     return new Promise((resolve) => setTimeout(resolve, 1400));
   }
@@ -149,7 +149,7 @@ export class VeilfarersDiceEngine {
             role: 'neutral'
           }))
         : [{ qty: 1, sides: 20, theme: 'vfNeutral', role: 'neutral' }];
-      return window.VFDice3D.roll(groups, { label: 'Tirada Estándar', style: 'box' });
+      return window.VFDice3D.roll(groups, { label: 'Tirada Estándar', style: 'overlay' });
     }
     return new Promise((resolve) => setTimeout(resolve, 1400));
   }

@@ -53,6 +53,9 @@ export function performGameAction(action, store = defaultStore) {
       resolveDieType: actor.resolve?.dieType || 'd4',
       experienceMod: exp,
       customMod: (o.customMod || 0) + (actor.pendingCheckBonus || 0),
+      forcedHope: o.forcedHope,
+      forcedFear: o.forcedFear,
+      forcedAdv: o.forcedAdv,
     });
     const patch = { pendingCheckBonus: 0, pendingAdvantage: false };
     if (!player) {

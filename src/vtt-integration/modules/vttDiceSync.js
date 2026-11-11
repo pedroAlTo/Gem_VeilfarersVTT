@@ -26,8 +26,10 @@ export class VTTDiceSync {
       if (rollData.clientTimestamp && rollData.clientTimestamp < this.sessionJoinTime) return;
       if (rollData.isSecret && this.currentUser.role !== 'keeper') return;
 
-      // 1. Reproducir animación de dados 3D
-      await this.diceEngine.playRollAnimation(rollData);
+      // 1. Reproducir animación para clientes remotos (el cliente local ya la ejecutó al rodar)
+      if (rollData.uid !== this.currentUser.uid) {
+        await this.diceEngine.playRollAnimation(rollData);
+      }
 
       // 2. Transacción de recursos ejecutada únicamente por el cliente que lanzó
       if (rollData.uid === this.currentUser.uid && rollData.type === 'duality' && !rollData.skipAutoResource) {
@@ -49,15 +51,83 @@ export class VTTDiceSync {
   }
 
   async rollDuality({ label = "Acción", modifier = 0, advantageDie = 0, charId = null }) {
-    const hopeVal = Math.floor(Math.random() * 12) + 1;
-    const fearVal = Math.floor(Math.random() * 12) + 1;
-    const advVal = advantageDie ? (Math.floor(Math.random() * 6) + 1) * Math.sign(advantageDie) : 0;
+    let hopeVal = 1;
+    let fearVal = 1;
+    let advVal = 0;
+
+    const groups = [
+      { qty: 1, sides: 12, theme: 'vfHope', role: 'hope' },
+      { qty: 1, sides: 12, theme: 'vfFear', role: 'fear' }
+    ];
+
+    if (advantageDie !== 0) {
+      groups.push({
+        qty: 1,
+        sides: 6,
+        theme: 'vfNeutral',
+        role: advantageDie > 0 ? 'advantage' : 'disadvantage'
+      });
+    }
+
+    if (typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.roll === 'function') {
+      try {
+        const roll3d = await window.VFDice3D.roll(groups, {
+          label: `${this.currentUser.displayName || 'Viajero'} · ${label}`,
+          style: 'overlay',
+          deferResults: true
+        });
+
+        if (roll3d && Array.isArray(roll3d.values) && roll3d.values.length >= 2) {
+          hopeVal = roll3d.values[0];
+          fearVal = roll3d.values[1];
+          if (advantageDie !== 0 && roll3d.values.length >= 3) {
+            advVal = roll3d.values[2] * Math.sign(advantageDie);
+          }
+        } else {
+          hopeVal = Math.floor(Math.random() * 12) + 1;
+          fearVal = Math.floor(Math.random() * 12) + 1;
+          advVal = advantageDie ? (Math.floor(Math.random() * 6) + 1) * Math.sign(advantageDie) : 0;
+        }
+      } catch (err) {
+        console.warn('[VTTDiceSync] Fallback a cálculo local:', err);
+        hopeVal = Math.floor(Math.random() * 12) + 1;
+        fearVal = Math.floor(Math.random() * 12) + 1;
+        advVal = advantageDie ? (Math.floor(Math.random() * 6) + 1) * Math.sign(advantageDie) : 0;
+      }
+    } else {
+      hopeVal = Math.floor(Math.random() * 12) + 1;
+      fearVal = Math.floor(Math.random() * 12) + 1;
+      advVal = advantageDie ? (Math.floor(Math.random() * 6) + 1) * Math.sign(advantageDie) : 0;
+    }
 
     const isCrit = hopeVal === fearVal;
     const total = hopeVal + fearVal + modifier + advVal;
 
     let outcomeType = 'hope';
     let outcomeLabel = 'CON HOPE';
+
+    if (isCrit) {
+      outcomeType = 'crit';
+      outcomeLabel = '¡ÉXITO CRÍTICO!';
+    } else if (fearVal > hopeVal) {
+      outcomeType = 'fear';
+      outcomeLabel = 'CON FEAR';
+    }
+
+    if (typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
+      window.VFDice3D.showResults({
+        label: `${this.currentUser.displayName || 'Viajero'} · ${label}`,
+        outcome: isCrit ? 'CRITICAL SUCCESS' : (fearVal > hopeVal ? 'WITH FEAR' : 'WITH HOPE'),
+        hope: hopeVal,
+        fear: fearVal,
+        crit: isCrit,
+        rolls: [
+          { value: hopeVal, sides: 12, role: 'hope' },
+          { value: fearVal, sides: 12, role: 'fear' }
+        ],
+        style: 'overlay'
+      });
+    }
 
     if (isCrit) {
       outcomeType = 'crit';

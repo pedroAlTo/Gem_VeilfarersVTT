@@ -8,3 +8,230 @@
 .tray-launcher{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;margin-bottom:12px;border:1px solid #8fcae530;border-radius:8px;background:linear-gradient(100deg,#12304180,#351e3c55)}.tray-launcher span{display:block;font:9px var(--font-mono);color:#a4bdce}.tray-launcher strong{font-weight:500;color:#d9f0ff;display:block;margin-top:5px}
 @media(max-width:1100px){.dice-tray-overlay{width:min(300px,calc(100% - 24px))}.tray-stage{height:174px}.tray-header small{display:none}}
 @media(max-width:650px){.dice-tray-overlay{top:8px;right:8px;width:min(264px,calc(100% - 16px));max-height:calc(100% - 16px)}.tray-stage{height:158px}.tray-header{height:40px}.tray-result{padding:8px 10px;grid-template-columns:60px 1fr 60px}}
+
+/* Player Tool Enhanced Dice Roller styles */
+.dice-mode-subtabs {
+  display: flex;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+.dice-mode-subtabs .subtab-btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.dice-mode-subtabs .subtab-btn.active {
+  background: rgba(30, 41, 59, 0.95);
+  color: #f8fafc;
+  border-color: rgba(94, 234, 212, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Advantage / Normal / Disadvantage Segmented Control */
+.roll-type-segmented {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.roll-type-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.18s ease;
+}
+.roll-type-btn.active-dis {
+  background: rgba(127, 29, 29, 0.85);
+  border-color: #ef4444;
+  color: #fef2f2;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+.roll-type-btn.active-norm {
+  background: #1e293b;
+  border-color: #64748b;
+  color: #f8fafc;
+}
+.roll-type-btn.active-adv {
+  background: rgba(20, 83, 45, 0.85);
+  border-color: #22c55e;
+  color: #f0fdf4;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+/* Live Duality Preview Boxes */
+.duality-live-boxes {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0 14px;
+}
+.duality-live-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.duality-live-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.duality-live-label.hope-label { color: #38bdf8; }
+.duality-live-label.fear-label { color: #c084fc; }
+.duality-live-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 900;
+  background: rgba(15, 23, 42, 0.85);
+  border: 2px solid;
+  transition: all 0.25s ease;
+}
+.duality-live-box.hope-box {
+  border-color: #06b6d4;
+  color: #e0f2fe;
+}
+.duality-live-box.fear-box {
+  border-color: #a855f7;
+  color: #f3e8ff;
+}
+.duality-live-box.crit-pulse {
+  animation: vf-3d-critical-glow 1s infinite alternate;
+}
+
+/* Stepper Input */
+.stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stepper-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stepper-btn:hover {
+  background: #1e293b;
+  border-color: #94a3b8;
+}
+
+/* Standard Dice Grid */
+.standard-dice-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.standard-die-btn {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.standard-die-btn.active {
+  background: #7c3aed;
+  border-color: #a855f7;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+/* Big Gradient Roll Button */
+.btn-duality-gradient {
+  background: linear-gradient(to right, #0891b2, #9333ea) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 16px rgba(8, 145, 178, 0.35), 0 4px 16px rgba(147, 51, 234, 0.35) !important;
+  cursor: pointer;
+}
+.btn-duality-gradient:hover {
+  filter: brightness(1.12);
+}
+.btn-standard-gradient {
+  background: linear-gradient(to right, #6b21a8, #d97706) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 16px rgba(107, 33, 168, 0.35) !important;
+  cursor: pointer;
+}
+
+/* Texture set bar */
+.texture-set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.texture-set-row span {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.texture-pills {
+  display: flex;
+  gap: 3px;
+}
+.texture-pill {
+  padding: 3px 7px;
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 4px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.texture-pill.active {
+  background: #0891b2;
+  border-color: #22d3ee;
+  color: #fff;
+}
+

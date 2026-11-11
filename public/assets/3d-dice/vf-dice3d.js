@@ -50,7 +50,7 @@ let trackingRaf = 0;
 let telemetryAt = 0;
 let closeTimer = null;
 let lastError = null;
-let currentStyle = 'box';
+let currentStyle = 'overlay';
 let currentCritical = false;
 let lastFlat = [];
 let cueTransitionToken = 0;
@@ -65,7 +65,7 @@ let userDismissed = false;
 let activeRollController = null;
 let rollSequence = 0;
 
-function normalizeStyle(value){ return value === 'overlay' ? 'overlay' : 'box'; }
+function normalizeStyle(value){ return value === 'box' ? 'box' : 'overlay'; }
 function valuesEqual(a,b){ return String(a) === String(b); }
 function clamp(value,min,max){ return Math.max(min,Math.min(max,value)); }
 function escapeHtml(value){
@@ -120,7 +120,7 @@ function ensureStage(){
   if (stage) return stage;
   stage=document.createElement('section');
   stage.id='vf-dice3d-stage';
-  stage.className='vf-dice3d-stage is-hidden is-boxed';
+  stage.className='vf-dice3d-stage is-hidden is-overlay';
   stage.setAttribute('aria-label','VeilFarers 3D dice roller');
   stage.innerHTML=`
     <div class="vf-dice3d-shell">

@@ -49,19 +49,30 @@ export function rollVeilfarersCheck({
   resolveDieType = 'd4',
   experienceMod = 0,
   experienceLabel = '',
-  customMod = 0
+  customMod = 0,
+  forcedHope = null,
+  forcedFear = null,
+  forcedAdv = null
 }) {
-  // 1 Hope d12 + 1 Fear d12
-  const hopeVal = Math.floor(Math.random() * 12) + 1;
-  const fearVal = Math.floor(Math.random() * 12) + 1;
+  // 1 Hope d12 + 1 Fear d12 (lee la cara física si fue lanzada en 3D, o genera aleatoria)
+  const hopeVal = (forcedHope != null && Number.isFinite(Number(forcedHope)))
+    ? Math.max(1, Math.min(12, Math.round(Number(forcedHope))))
+    : Math.floor(Math.random() * 12) + 1;
+  const fearVal = (forcedFear != null && Number.isFinite(Number(forcedFear)))
+    ? Math.max(1, Math.min(12, Math.round(Number(forcedFear))))
+    : Math.floor(Math.random() * 12) + 1;
 
   // Advantage / Disadvantage (1d6)
   let advVal = 0;
   let disadvVal = 0;
   if (hasAdvantage && !hasDisadvantage) {
-    advVal = Math.floor(Math.random() * 6) + 1;
+    advVal = (forcedAdv != null && Number.isFinite(Number(forcedAdv)))
+      ? Math.max(1, Math.min(6, Math.round(Number(forcedAdv))))
+      : Math.floor(Math.random() * 6) + 1;
   } else if (hasDisadvantage && !hasAdvantage) {
-    disadvVal = Math.floor(Math.random() * 6) + 1;
+    disadvVal = (forcedAdv != null && Number.isFinite(Number(forcedAdv)))
+      ? Math.max(1, Math.min(6, Math.round(Number(forcedAdv))))
+      : Math.floor(Math.random() * 6) + 1;
   }
 
   // Resolve die (+1d4 or +1d6)

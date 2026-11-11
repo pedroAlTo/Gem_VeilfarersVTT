@@ -202,7 +202,27 @@ export class KeeperHudController {
         const sides = parseInt(btn.dataset.sides, 10) || 20;
         const label = btn.dataset.label || `Tirada d${sides}`;
         const isSecret = secretCheckbox ? secretCheckbox.checked : false;
-        const result = Math.floor(Math.random() * sides) + 1;
+        let result = Math.floor(Math.random() * sides) + 1;
+
+        if (typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.roll === 'function') {
+          try {
+            const roll3d = await window.VFDice3D.roll(
+              [{ qty: 1, sides, theme: 'vfNeutral', role: 'neutral' }],
+              { label: `Keeper · ${label}`, style: 'overlay', deferResults: true }
+            );
+            if (roll3d && Array.isArray(roll3d.values) && roll3d.values.length > 0) {
+              result = roll3d.values[0];
+            }
+            window.VFDice3D.showResults({
+              label: isSecret ? 'Keeper (Oculta)' : `Keeper · ${label}`,
+              outcome: isSecret ? '🔒 TIRADA OCULTA' : `D${sides}: ${result}`,
+              rolls: [{ value: result, sides, role: 'neutral' }],
+              style: 'overlay'
+            });
+          } catch (err) {
+            console.warn('[KeeperHUD] Fallback tirada 3D:', err);
+          }
+        }
 
         const rollPayload = {
           type: 'standard',
