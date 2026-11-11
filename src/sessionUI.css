@@ -192,12 +192,14 @@
   text-shadow: 0 0 4px #000 !important;
 }
 
-/* Floating Transparent Players / Crew HUD Overlay (Marked Red Zone: below tactical layers) */
+/* Floating Transparent Players / Crew HUD Overlay (Bottom-left corner) */
 #players_overlay_hud,
 .players-overlay-hud {
   position: absolute !important;
-  top: 130px !important;
-  left: 22px !important;
+  bottom: 20px !important;
+  left: 20px !important;
+  top: auto !important;
+  right: auto !important;
   z-index: 92 !important;
   pointer-events: auto !important;
   display: flex !important;
