@@ -110,8 +110,7 @@ export class DiceRollerSidebar {
     const rollBtn = this.container.querySelector('#roll_check_btn');
     if (rollBtn) {
       rollBtn.disabled = !secret && (!token || !store.canEditToken(token.id));
-      const btnGlow = rollBtn.querySelector('.btn-glow-text') || rollBtn;
-      btnGlow.textContent = secret ? 'TIRADA SECRETA · 2d12' : 'ROLL 2d12 (HOPE & FEAR)';
+      this.updateRollButtonLabel();
     }
     const actorLabel = this.container.querySelector('#dice_actor_name');
     if (!token && actorLabel) actorLabel.textContent = secret ? 'Keeper · sin actor seleccionado' : 'Selecciona un actor';
@@ -144,23 +143,57 @@ export class DiceRollerSidebar {
         actorLabel.textContent = isPC ? `${actorName} (${token.path || 'Unknown'})` : `${actorName} · Attack ${token.attackModifier ?? '—'} · Evasion ${token.evasion ?? '—'}`;
       }
       this.updateTraitButtons();
+      this.updateRollButtonLabel();
     }
   }
 
-  setCheckData({ actor, traitId, traitName, traitMod }) {
-    this.currentActor = actor;
+  updateRollButtonLabel() {
+    const rollBtn = this.container.querySelector('#roll_check_btn');
+    if (!rollBtn) return;
+    const secret = this.rollVisibility() === 'keeper';
+    const actor = this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null);
+    const traitObj = TRAITS.find(t => t.id === this.selectedTraitId);
+    const traitName = traitObj ? traitObj.name : 'Finesse';
+    const traitMod = actor ? (actor.traits?.[this.selectedTraitId] ?? (actor.attackModifier ?? 0)) : 0;
+    const customMod = parseInt(this.container.querySelector('#dice_custom_mod')?.value, 10) || 0;
+    const totalMod = traitMod + customMod;
+    const sign = totalMod >= 0 ? `+${totalMod}` : `${totalMod}`;
+    const btnGlow = rollBtn.querySelector('.btn-glow-text') || rollBtn;
+    btnGlow.textContent = secret ? `TIRADA SECRETA · ${traitName.toUpperCase()} (${sign})` : `ROLL ${traitName.toUpperCase()} (${sign})`;
+  }
+
+  selectTrait(traitId, { rollNow = true } = {}) {
+    if (!traitId) return;
     this.selectedTraitId = traitId;
+    this.container.querySelectorAll('.trait-select-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.id === traitId);
+    });
+
+    const rollBtn = this.container.querySelector('#roll_check_btn');
+    if (rollBtn) {
+      rollBtn.disabled = false;
+      rollBtn.classList.add('pulse-highlight');
+      setTimeout(() => rollBtn.classList.remove('pulse-highlight'), 600);
+    }
+    this.updateRollButtonLabel();
+
+    if (rollNow) {
+      this.executeActionCheck();
+    }
+  }
+
+  setCheckData({ actor, traitId, traitName, traitMod, rollNow = true }) {
+    if (actor) {
+      this.currentActor = actor;
+      if (store.state.selectedTokenId !== actor.id) {
+        store.update({ selectedTokenId: actor.id });
+      }
+    }
+    this.selectedTraitId = traitId || this.selectedTraitId;
     this.selectedSubtraitId = '';
     this.syncWithSelectedToken();
     this.updateTraitButtons();
-
-    // Trigger instant roll if quick action was intended or highlight roll section
-    const rollBtn = this.container.querySelector('#roll_check_btn');
-    if (rollBtn) {
-      rollBtn.scrollIntoView({ behavior: 'smooth' });
-      rollBtn.classList.add('pulse-highlight');
-      setTimeout(() => rollBtn.classList.remove('pulse-highlight'), 1000);
-    }
+    this.selectTrait(this.selectedTraitId, { rollNow });
   }
 
   prepareWeapon(tokenId, weaponId) {
@@ -664,13 +697,18 @@ export class DiceRollerSidebar {
       btnModMinus.onclick = () => {
         const val = (parseInt(customModInput.value, 10) || 0) - 1;
         customModInput.value = Math.max(-20, Math.min(20, val));
+        this.updateRollButtonLabel();
       };
     }
     if (btnModPlus && customModInput) {
       btnModPlus.onclick = () => {
         const val = (parseInt(customModInput.value, 10) || 0) + 1;
         customModInput.value = Math.max(-20, Math.min(20, val));
+        this.updateRollButtonLabel();
       };
+    }
+    if (customModInput) {
+      customModInput.oninput = () => this.updateRollButtonLabel();
     }
 
     // Standard Dice Buttons
@@ -701,12 +739,10 @@ export class DiceRollerSidebar {
     const rollStdBtn = this.container.querySelector('#roll_standard_btn');
     if (rollStdBtn) rollStdBtn.onclick = () => this.executeStandardRoll();
 
-    // Trait selector buttons
+    // Trait selector buttons: selects trait, updates modifier and executes roll immediately
     this.container.querySelectorAll('.trait-select-pill').forEach(btn => {
       btn.onclick = () => {
-        this.container.querySelectorAll('.trait-select-pill').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.selectedTraitId = btn.dataset.id;
+        this.selectTrait(btn.dataset.id, { rollNow: true });
       };
     });
 
@@ -845,14 +881,14 @@ export class DiceRollerSidebar {
   }
 
   async executeActionCheck() {
-    const actor = this.currentActor || store.getSelectedToken() || {
+    const actor = this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null) || {
       name: 'Voidwalker',
       path: 'Awakened',
       traits: { [this.selectedTraitId]: 1 },
       subtraits: {}
     };
 
-    const traitMod = actor.traits?.[this.selectedTraitId] ?? 0;
+    const traitMod = actor.traits?.[this.selectedTraitId] ?? (actor.attackModifier ?? 0);
     const subtraitId = this.container.querySelector('#dice_subtrait_select').value;
     const subtraitMod = subtraitId ? (actor.subtraits?.[subtraitId] ?? 0) : 0;
     const dc = parseInt(this.container.querySelector('#dice_dc_select').value, 10);

@@ -528,13 +528,17 @@ export class TokenHUD {
         const traitName = btn.dataset.traitName;
         const mod = parseInt(btn.dataset.mod, 10);
 
+        // Switch to dice tab in sidebar
+        window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
+
         // Populate and trigger roll in Dice Roller sidebar
         if (window.veilDiceRoller) {
           window.veilDiceRoller.setCheckData({
             actor: token,
             traitId,
             traitName,
-            traitMod: mod
+            traitMod: mod,
+            rollNow: true
           });
         }
       };
