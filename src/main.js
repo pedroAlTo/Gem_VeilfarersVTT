@@ -2,6 +2,7 @@ import './encounters.css';
 import './sessionUI.css';
 import './diceTray.css';
 import './colorPicker.css';
+import { openColorPickerPopover } from './colorPicker.js';
 import './chat.css';
 import { ChatPanel } from './chatPanel.js';
 import { initWaterControls } from './waterControls.js';
@@ -11,7 +12,8 @@ import { APP_LABEL } from './version.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import './dossiers.css';
 import { checkBackupReminder } from './sessionManager.js';
-import { LOCAL_ONLY } from './runtimeMode.js';
+import { LOCAL_ONLY, LAN_SESSIONS } from './runtimeMode.js';
+import { cloudConfigured } from './cloudAccount.js';
 import { sanitizeHTML, confirmAction, notify } from './ui.js';
 // src/main.js
 // Application entry point for VEILVTT
@@ -111,7 +113,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupKeyboardShortcuts();
   initSessionBar();
   window.addEventListener("veil:remote-roll", event => { if (store.state.dice3d !== false && event.detail.actorId !== store.state.claimedTokenId) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(event.detail)).catch(() => {}); });
-  setupSessionPersistence();
+  setupSessionPersistence().catch(error => notify(error.message, 'error'));
 });
 
 // --- Clocks Tab Pane ---
@@ -281,10 +283,19 @@ function updateKeeperUIVisibility(isKeeper) {
 
 // --- Toolbar Events ---
 function setupToolbarEvents() {
-  const tools = ['select', 'measure', 'template', 'fx', 'ping', 'wall', 'light', 'fx_emitter', 'water'];
+  const tools = ['select', 'measure', 'template', 'fx', 'ping', 'wall', 'light', 'fx_emitter', 'water', 'draw', 'erase_draw'];
   const templateFlyout = document.getElementById('template_flyout');
   const fxFlyout = document.getElementById('fx_flyout');
   const waterFlyout = document.getElementById('water_flyout');
+  const drawingFlyout = document.getElementById('drawing_flyout');
+  const drawingColor = document.getElementById('drawing_color');
+  drawingColor.onclick = () => openColorPickerPopover(drawingColor, store.state.drawingColor || '#00dfff', color => {
+    store.update({ drawingColor: color }); drawingColor.style.backgroundColor = color; drawingColor.querySelector('span').textContent = color;
+  });
+  drawingFlyout.querySelectorAll('[data-drawing-width]').forEach(button => button.onclick = () => {
+    const width = Number(button.dataset.drawingWidth); store.update({ drawingWidth: width });
+    drawingFlyout.querySelectorAll('[data-drawing-width]').forEach(b => { const active = Number(b.dataset.drawingWidth) === width; b.classList.toggle('active', active); b.setAttribute('aria-pressed', String(active)); });
+  });
 
   tools.forEach(toolName => {
     const btn = document.getElementById(`tool_${toolName}`);
@@ -516,6 +527,7 @@ function setupToolbarEvents() {
       updateSnapUI();
     }
     if (keys.includes('activeTool')) {
+      drawingFlyout.style.display = ['draw', 'erase_draw'].includes(state.activeTool) ? 'flex' : 'none';
       document.querySelectorAll('.left-toolbar .tool-btn').forEach(b => {
         if (b.dataset.tool) b.classList.toggle('active', b.dataset.tool === state.activeTool);
       });
@@ -641,6 +653,9 @@ function setupKeyboardShortcuts() {
       return;
     }
 
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (key === 'b') document.getElementById('tool_draw')?.click();
+    if (key === 'd') document.getElementById('tool_erase_draw')?.click();
     if (key === 'm' || key === 'v') document.getElementById('tool_select')?.click();
     if (key === 'r') document.getElementById('tool_measure')?.click();
     if (key === 't') document.getElementById('tool_template')?.click();
@@ -664,8 +679,23 @@ function setupKeyboardShortcuts() {
 
 // --- Multiplayer Modal ---
 function openMultiplayerModal() { return openSessionLobby(); }
-function setupSessionPersistence() {
+async function setupSessionPersistence() {
   if (LOCAL_ONLY) return;
+  if (!LAN_SESSIONS && cloudConfigured) {
+    const { initAccount } = await import('./accountUI.js');
+    await initAccount();
+    const { rooms } = await import('./roomController.js');
+    const { account } = await import('./cloudAccount.js');
+    const invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
+    account.subscribe(user => {
+      if (!user || user.isNetlify || rooms.room) return;
+      if (invitation) openSessionLobby(invitation);
+      else rooms.restore().catch(error => notify(error.message, 'error'));
+    });
+    if (invitation) { openSessionLobby(invitation); return; }
+    if (account.user && !account.user.isNetlify) rooms.restore().catch(error => { notify(error.message, 'error'); openSessionLobby(); });
+    return;
+  }
   const searchParams = new URLSearchParams(location.search);
   const joinParam = searchParams.get('join') || searchParams.get('room');
   const hashInvite = new URLSearchParams(location.hash.slice(1)).get('invite');

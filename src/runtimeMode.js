@@ -6,6 +6,7 @@ export function requireNetworkMode() {
 }
 
 export function connectionDisplay(state, role) {
+  if (state.persistentRoomId && state.roomPaused) return { label: 'EN SALA · PAUSADA', detail: 'Esperando al Keeper propietario. No se pueden realizar acciones.' };
   if (state.joiningSession) return { label: 'CONNECTING', detail: 'WAITING FOR MAP' };
   if (role === 'player') return state.isConnected
     ? { label: 'ONLINE', detail: 'LINKED TO KEEPER' }

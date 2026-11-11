@@ -1,0 +1,20 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "chunks",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "up",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "down",
+      "fieldPath": "text",
+      "indexes": []
+    }
+  ]
+}

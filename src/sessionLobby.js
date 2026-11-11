@@ -1,4 +1,5 @@
 import { store } from './state.js';
+import { cloudConfigured } from './cloudAccount.js';
 import { network, getInvitedSessions, removeInvitedSession, getActiveSession } from './networkManager.js';
 import { LOCAL_ONLY, LAN_SESSIONS, connectionDisplay } from './runtimeMode.js';
 import { dossierDialog } from './dossierUI.js';
@@ -8,11 +9,11 @@ import { openAccount, useCharacter, initAccount } from './accountUI.js';
 import { isDrone } from './tokenPermissions.js';
 import { mountSessionNavigation } from './sessionNavigation.js';
 
-export function invitationCode() { return network.room || ''; }
+export function invitationCode() { return network.roomController?.room?.inviteCode || network.room || ''; }
 export function magicInvitationLink() {
   const code = invitationCode();
   if (!code) return '';
-  return `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(code)}`;
+  return network.roomController?.room ? `${window.location.origin}${window.location.pathname}#roomInvite=${encodeURIComponent(code)}` : `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(code)}`;
 }
 export function parseInvitation(value) {
   let room = '', invite = '';
@@ -97,7 +98,8 @@ export function initSessionBar() {
     bar.querySelector('#session_state').title = LAN_SESSIONS ? 'LAN · ' + detail : detail;
     bar.querySelector('#session_join').hidden = LOCAL_ONLY || store.sessionRole !== 'local';
     bar.querySelector('#session_state').dataset.online = String(s.isConnected);
-    bar.querySelector('#session_name').textContent = s.campaignName;
+    bar.querySelector('#session_name').textContent = s.roomName || s.campaignName;
+    bar.querySelector('#session_name').style.display = s.persistentRoomId ? '' : 'none';
     bar.querySelector('#session_name').title = s.campaignName;
 
     if (store.sessionRole === 'local' || !invitationCode()) {
@@ -275,6 +277,7 @@ export function openTokenControl(tokenId) {
 }
 
 export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer } = {}) {
+  if (!LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured) return import('./roomUI.js').then(({ openRoomLobby }) => openRoomLobby(prefill)).catch(error => notify(error.message, 'error'));
   const s = store.state, joined = store.sessionRole === 'player', active = s.isHosting || joined;
   joinOnly = !active && joinOnly;
   let savedName = s.userName === 'Keeper' ? '' : s.userName;

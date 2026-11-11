@@ -1,3 +1,4 @@
+import { validateDrawing } from './freehand.js';
 import { validateEnvironment, validateBoss } from './encounterRules.js';
 import { validateInventory } from './equipment.js';
 import { validateChatHistory } from './chat.js';
@@ -68,6 +69,11 @@ export function validateCampaign(data) {
   }
   for (const m of data.maps) {
     validateEnvironment(m.environment);
+    if (m.drawings !== undefined) {
+      assert(Array.isArray(m.drawings) && m.drawings.length <= 500, 'Invalid drawings.');
+      m.drawings.forEach(validateDrawing);
+      assert(new Set(m.drawings.map(d => d.id)).size === m.drawings.length, 'Duplicate drawing.');
+    }
     assert(
       typeof m.name === 'string' && typeof m.imageUrl === 'string' && finite(m.gridSize, 1, 1000),
       'Invalid map name, image or grid.'

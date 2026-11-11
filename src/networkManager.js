@@ -3,6 +3,7 @@ import { requireNetworkMode, LAN_SESSIONS } from './runtimeMode.js';
 // Keeper-authoritative replication. No cross-room BroadcastChannel.
 import PeerJS from 'peerjs';
 import { store } from './state.js';
+import { validateDrawing, canAnnotate } from './freehand.js';
 import { controlsToken, isDrone } from './tokenPermissions.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
@@ -349,7 +350,8 @@ export class NetworkManager {
   }
   updatePeersList() {
     if (this.closing) return;
-    this.store.update({ connectedPeers: [...this.members].map(([peerId, m]) => ({ id: m.id || peerId, name: m.name })) });
+    const peers = [...this.members].map(([peerId, m]) => ({ id: m.id || peerId, name: m.name }));
+    this.store.update({ connectedPeers: this.roomController?.room ? [...new Map(peers.map(p => [p.id, p])).values()] : peers });
     this.syncAll();
   }
   snapshotFor(peerId) {
@@ -433,7 +435,7 @@ export class NetworkManager {
     }
   }
   syncAll() {
-    if (!this.store.state.isHosting) return;
+    if (!this.store.state.isHosting || (this.roomController?.room && !this.store.state.isConnected)) return;
     for (const conn of this.connections.values()) this.syncPeer(conn);
   }
   assignToken(playerId, tokenId) {
@@ -445,6 +447,7 @@ export class NetworkManager {
     this.syncAll();
   }
   kickPlayer(playerId, reason = 'Has sido expulsado de la sesión por el Director de Juego.') {
+    if (this.roomController?.room) return this.roomController.kick(playerId).catch(error => notify(error.message, 'error'));
     if (!this.store.state.isHosting) return false;
     let targetPeerId = null;
     let targetMember = null;
@@ -555,6 +558,25 @@ export class NetworkManager {
     }
     return entry;
   }
+  async editDrawing(operation, payload) {
+    if (!canAnnotate(this.store)) throw new Error('La sala está en pausa o la capa de dibujo está bloqueada.');
+    if (this.store.sessionRole === 'player') return this.request('DRAWING_EDIT', { operation, ...payload });
+    return this.acceptDrawing({ operation, ...payload }, 'keeper');
+  }
+  acceptDrawing(data, memberId) {
+    if (data.mapId !== this.store.state.activeMapId) throw new Error('La escena ha cambiado. Vuelve a dibujar en la escena activa.');
+    const map = this.store.getActiveMap(), previous = map.drawings || []; let drawings, result;
+    if (data.operation === 'add') {
+      if (previous.length >= 500) throw new Error('Esta escena ya tiene 500 trazos. Borra algunos antes de añadir más.');
+      const source = data.drawing || {}, drawing = validateDrawing({ id: id(), authorId: memberId, color: source.color, width: source.width, points: source.points?.map(p => ({ x: p.x, y: p.y })) });
+      drawings = [...previous, drawing]; result = { id: drawing.id };
+    } else if (data.operation === 'erase') {
+      if (!Array.isArray(data.ids) || data.ids.length > 500 || data.ids.some(x => typeof x !== 'string')) throw new Error('Selección de trazos no válida.');
+      if (memberId !== 'keeper' && previous.some(d => data.ids.includes(d.id) && d.authorId !== memberId)) throw new Error('Solo puedes borrar tus propios dibujos.');
+      drawings = previous.filter(d => !data.ids.includes(d.id)); result = { removed: previous.length - drawings.length };
+    } else throw new Error('Acción de dibujo desconocida.');
+    this.store.updateActiveMap({ drawings }); this.syncAll(); return result;
+  }
   request(type, payload) {
     if (!this.store.state.isConnected) return Promise.reject(new Error('Not connected to the Keeper.'));
     const requestId = id();
@@ -645,6 +667,7 @@ export class NetworkManager {
     }
   }
   sendToHost(message) {
+    if (this.roomController?.room && !this.store.state.isConnected) { notify('Sala en pausa: espera al Keeper.', 'error'); return false; }
     if (this.hostConn?.open) { this.hostConn.send(this.envelope(message)); return true; }
     notify('Not connected to the Keeper.', 'error');
     return false;
@@ -735,6 +758,7 @@ export class NetworkManager {
     return result;
   }
   async handleIncomingMessage(data, senderId) {
+    if (this.roomController?.room && this.store.sessionRole === 'host' && !this.store.state.isConnected) return;
     const roomMatches = String(data?.room || '').trim().toUpperCase() === String(this.room || '').trim().toUpperCase();
     if (
       !data ||
@@ -783,7 +807,7 @@ export class NetworkManager {
             isObserver: nextIsObserver,
             claimedTokenId: data.state.claimedTokenId,
             selectedTokenId: selectedId,
-            ...(newAssignment || !['select', 'measure', 'template', 'fx', 'ping'].includes(this.store.state.activeTool) ? { activeTool: 'select', activeLayer: 'tokens' } : {}),
+            ...(newAssignment || !['select', 'measure', 'template', 'fx', 'ping', 'draw', 'erase_draw'].includes(this.store.state.activeTool) ? { activeTool: 'select', activeLayer: 'tokens' } : {}),
           });
           this.store.validateSelections();
           const isInitialJoin = Boolean(this.joinReady);
@@ -846,6 +870,12 @@ export class NetworkManager {
       return;
     }
     if (!this.store.state.isHosting || !this.members.has(senderId)) return;
+    if (data.type === 'DRAWING_EDIT') {
+      const conn = this.connections.get(senderId);
+      try { const result = this.acceptDrawing(data, this.members.get(senderId).id); conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, result })); }
+      catch (error) { conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error: error.message })); }
+      return;
+    }
     if (data.type === 'CHAT_SEND') {
       const conn = this.connections.get(senderId);
       try {
@@ -870,6 +900,7 @@ export class NetworkManager {
       const conn = this.connections.get(senderId);
       const memberId = this.members.get(senderId)?.id || senderId;
       const target = this.store.state.tokens.find(t => t.id === data.tokenId);
+      if (this.roomController?.room) { conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error: 'El Keeper asigna los tokens de esta sala. También puedes importar tu propio personaje.' })); return; }
       if (target && !isDrone(target) && (!target.ownerId || target.ownerId === 'keeper' || target.ownerId === '')) {
         this.store.assignTokenControllers(data.tokenId, [memberId]);
         this.syncAll();

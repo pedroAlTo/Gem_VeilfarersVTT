@@ -1,6 +1,29 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.0', date: '2026-11-11', title: 'Salas persistentes, reconexión y edición táctica',
+    sections: [
+      { title: 'Salas y conexión', items: [
+        'SESIONES separa las salas que diriges y aquellas en las que participas. La pertenencia y el control de los tokens quedan ligados a la cuenta de Firebase, no al nombre ni a una pestaña.',
+        'Invitación única por sala. El Keeper puede regenerarla sin retirar a los miembros existentes, expulsar y readmitir jugadores, asignar tokens y enviar anuncios. Un personaje por jugador; los drones conservan sus controles compartidos.',
+        'Campaña, arcos, escenas, recursos y asignaciones se guardan en Firestore. Los movimientos se confirman después de guardar. Volver a abrir una sala recupera el guardado existente.',
+        'Los jugadores permanecen dentro si el Keeper pierde la conexión: las acciones se bloquean y se reanudan al regresar el propietario. Un cierre inesperado se detecta al caducar la presencia del servidor, en unos 20 segundos.',
+        'Canales privados y ordenados por conexión, recuperación automática, bloqueo de conexiones antiguas y protección frente a dos Keepers simultáneos. Se mantienen los filtros de información privada.',
+        'Las actualizaciones omiten las secciones sin cambios y el guardado reutiliza fragmentos inmutables de imágenes. El modo LAN y las campañas locales siguen disponibles. Las salas online requieren publicar las nuevas reglas de Firestore.',
+      ] },
+      { title: 'Dibujo y portapapeles', items: [
+        'Dibujo libre con paleta visual propia y tres grosores: fino, medio y grueso. Los trazos se guardan en cada escena y se comparten con la sala.',
+        'El borrador elimina exclusivamente trazos completos de dibujo libre. Los jugadores editan sus propios trazos; el Keeper puede borrar cualquiera. Cambiar de herramienta, escena o conexión cancela el trazo pendiente.',
+        'Ctrl+C y Ctrl+V (Cmd en macOS) copian y pegan el elemento seleccionado: tokens, paredes, luces, agua, anomalías, dibujos y plantillas. Las copias reciben identificadores nuevos y los tokens duplicados no heredan jugadores asignados.',
+        'Los jugadores solo duplican sus dibujos. El portapapeles respeta campos de texto, capas bloqueadas, cambios de campaña y salas en pausa. Los trazos se dibujan debajo de la niebla de guerra.',
+      ] },
+      { title: 'Verificación', items: [
+        'Pruebas con el emulador real de Firestore: permisos entre cuentas, invitaciones, expulsión, canales privados, pérdida de red, reconexión, movimientos confirmados y campañas mayores de 1 MB.',
+        'Pruebas del dibujo, borrador, portapapeles y conservación de los elementos originales. Guía de actualización y comprobaciones manuales incluidas.',
+      ] },
+    ],
+  },
+  {
     version: '1.3.1',
     date: '2026-11-10',
     title: 'Persistencia del acceso, telemetría de escena y optimización compacta de paneles',
