@@ -18,14 +18,65 @@ export class DiceRollerSidebar {
     this.selectedTraitId = 'finesse';
     this.selectedSubtraitId = '';
     this.currentActor = null;
+    this.playerRollType = 'normal';
+    this.stdDieType = 20;
+    this.stdCount = 1;
+    this.stdMod = 0;
+    this.stdBroadcast = true;
+    this.is3D = store.state.dice3d !== false;
+    this.diceTextureSet = typeof localStorage !== 'undefined' ? (localStorage.getItem('veilfarers_dice_texture_set') || 'tech') : 'tech';
     this.render();
     this.syncWithSelectedToken();
     window.veilDiceRoller = this;
+    if (this.is3D && typeof window !== 'undefined') {
+      window.VFDice3D?.preload?.().catch(() => {});
+    }
 
     store.subscribe((state, keys) => {
+      if (keys.includes('dice3d')) {
+        this.is3D = store.state.dice3d !== false;
+        this.updateDiceModeUI();
+      }
       if (keys.some(key => ['selectedTokenId', 'tokens', 'userRole', 'isConnected', 'claimedTokenId'].includes(key))) {
         this.syncWithSelectedToken();
       }
+    });
+  }
+
+  updateDiceModeUI() {
+    this.is3D = store.state.dice3d !== false;
+    const btn = this.container.querySelector('#btn_toggle_dice_mode');
+    if (btn) {
+      btn.textContent = this.is3D ? '🎲 3D' : '📄 2D';
+      btn.className = `dice-mode-toggle-btn ${this.is3D ? 'mode-3d' : 'mode-2d'}`;
+    }
+    const textureGroup = this.container.querySelector('#texture_pills_group');
+    if (textureGroup) {
+      textureGroup.style.display = this.is3D ? 'flex' : 'none';
+    }
+  }
+
+  applyDiceTextureSet(groups) {
+    const plainThemes = {
+      vfHope: 'vfPlainHope',
+      vfFear: 'vfPlainFear',
+      vfDamage: 'vfPlainDamage',
+      vfNeutral: 'vfPlainNeutral'
+    };
+    const crystalThemes = {
+      vfHope: 'vfBioHope',
+      vfFear: 'vfBioFear',
+      vfDamage: 'vfBioDamage',
+      vfNeutral: 'vfNeutral'
+    };
+    return groups.map(g => {
+      let theme = g.theme;
+      if (this.diceTextureSet === 'plain') {
+        theme = plainThemes[g.theme] || g.theme;
+      } else if (this.diceTextureSet === 'crystal') {
+        theme = crystalThemes[g.theme] || g.theme;
+      }
+      return { ...g, theme };
     });
   }
 
@@ -62,8 +113,7 @@ export class DiceRollerSidebar {
     const rollBtn = this.container.querySelector('#roll_check_btn');
     if (rollBtn) {
       rollBtn.disabled = !secret && (!token || !store.canEditToken(token.id));
-      const btnGlow = rollBtn.querySelector('.btn-glow-text') || rollBtn;
-      btnGlow.textContent = secret ? 'TIRADA SECRETA · 2d12' : 'ROLL 2d12 (HOPE & FEAR)';
+      this.updateRollButtonLabel();
     }
     const actorLabel = this.container.querySelector('#dice_actor_name');
     if (!token && actorLabel) actorLabel.textContent = secret ? 'Keeper · sin actor seleccionado' : 'Selecciona un actor';
@@ -96,23 +146,100 @@ export class DiceRollerSidebar {
         actorLabel.textContent = isPC ? `${actorName} (${token.path || 'Unknown'})` : `${actorName} · Attack ${token.attackModifier ?? '—'} · Evasion ${token.evasion ?? '—'}`;
       }
       this.updateTraitButtons();
+      this.updateRollButtonLabel();
+    }
+    this.syncWeaponsDropdown(token);
+  }
+
+  syncWeaponsDropdown(token) {
+    const select = this.container.querySelector('#dmg_weapon_select');
+    if (!select) return;
+    const weapons = token ? (tokenInventory(token).weapons || []) : [];
+    if (!weapons.length) {
+      select.innerHTML = '<option value="">Ataque básico (sin armas) · 1d4</option>';
+      select.onchange = null;
+      return;
+    }
+    const currentId = this.preparedWeapon?.id || '';
+    select.innerHTML = sanitizeHTML(weapons.map(w => `<option value="${escapeHTML(w.id)}" ${w.id === currentId ? 'selected' : ''}>${escapeHTML(w.name)} (${escapeHTML(w.damage || '1d8')})</option>`).join(''));
+    if (currentId) {
+      select.value = currentId;
+    }
+    select.onchange = () => {
+      if (select.value && token) {
+        this.prepareWeapon(token.id, select.value);
+      }
+    };
+  }
+
+  applyWeaponPreset(actor, weapon) {
+    if (!actor || !weapon) return;
+    const preset = weaponPreset(actor, weapon);
+    const formEl = this.container.querySelector('#dmg_formula');
+    if (formEl) formEl.value = preset.formula;
+    this.syncDamageMode();
+    const profEl = this.container.querySelector('#dmg_proficiency');
+    if (profEl) profEl.value = preset.proficiency;
+    const honedEl = this.container.querySelector('#dmg_honed');
+    if (honedEl) honedEl.value = preset.honed;
+    const impEl = this.container.querySelector('#dmg_impact_type');
+    if (impEl) impEl.value = weaponImpactType(weapon);
+    const note = weapon.damageMode === 'final' ? 'Daño final: Proficiency y Honed Edge no se vuelven a sumar.' : 'Daño base: se añade Proficiency al primer grupo de dados y Honed Edge una vez.';
+    let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
+    const prevEl = this.container.querySelector('[data-weapon-preview]');
+    if (prevEl) prevEl.textContent = [weapon.name, note, weapon.features, warning].filter(Boolean).join(' · ');
+    this.preparedWeapon = { id: weapon.id, signature: JSON.stringify(weapon) };
+    const wSelect = this.container.querySelector('#dmg_weapon_select');
+    if (wSelect && wSelect.value !== weapon.id) wSelect.value = weapon.id;
+  }
+
+  updateRollButtonLabel() {
+    const rollBtn = this.container.querySelector('#roll_check_btn');
+    if (!rollBtn) return;
+    const secret = this.rollVisibility() === 'keeper';
+    const actor = this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null);
+    const traitObj = TRAITS.find(t => t.id === this.selectedTraitId);
+    const traitName = traitObj ? traitObj.name : 'Finesse';
+    const traitMod = actor ? (actor.traits?.[this.selectedTraitId] ?? (actor.attackModifier ?? 0)) : 0;
+    const customMod = parseInt(this.container.querySelector('#dice_custom_mod')?.value, 10) || 0;
+    const totalMod = traitMod + customMod;
+    const sign = totalMod >= 0 ? `+${totalMod}` : `${totalMod}`;
+    const btnGlow = rollBtn.querySelector('.btn-glow-text') || rollBtn;
+    btnGlow.textContent = secret ? `TIRADA SECRETA · ${traitName.toUpperCase()} (${sign})` : `ROLL ${traitName.toUpperCase()} (${sign})`;
+  }
+
+  selectTrait(traitId, { rollNow = true } = {}) {
+    if (!traitId) return;
+    this.selectedTraitId = traitId;
+    this.container.querySelectorAll('.trait-select-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.id === traitId);
+    });
+
+    const rollBtn = this.container.querySelector('#roll_check_btn');
+    if (rollBtn) {
+      rollBtn.disabled = false;
+      rollBtn.classList.add('pulse-highlight');
+      setTimeout(() => rollBtn.classList.remove('pulse-highlight'), 600);
+    }
+    this.updateRollButtonLabel();
+
+    if (rollNow) {
+      this.executeActionCheck();
     }
   }
 
-  setCheckData({ actor, traitId, traitName, traitMod }) {
-    this.currentActor = actor;
-    this.selectedTraitId = traitId;
+  setCheckData({ actor, traitId, traitName, traitMod, rollNow = true }) {
+    if (actor) {
+      this.currentActor = actor;
+      if (store.state.selectedTokenId !== actor.id) {
+        store.update({ selectedTokenId: actor.id });
+      }
+    }
+    this.selectedTraitId = traitId || this.selectedTraitId;
     this.selectedSubtraitId = '';
     this.syncWithSelectedToken();
     this.updateTraitButtons();
-
-    // Trigger instant roll if quick action was intended or highlight roll section
-    const rollBtn = this.container.querySelector('#roll_check_btn');
-    if (rollBtn) {
-      rollBtn.scrollIntoView({ behavior: 'smooth' });
-      rollBtn.classList.add('pulse-highlight');
-      setTimeout(() => rollBtn.classList.remove('pulse-highlight'), 1000);
-    }
+    this.selectTrait(this.selectedTraitId, { rollNow });
   }
 
   prepareWeapon(tokenId, weaponId) {
@@ -121,19 +248,10 @@ export class DiceRollerSidebar {
     const weapon = tokenInventory(actor).weapons.find(w => w.id === weaponId);
     if (!weapon) { notify('Este arma ya no está en la ficha.'); return false; }
     store.update({ selectedTokenId: tokenId }); this.syncWithSelectedToken();
-    const preset = weaponPreset(actor, weapon);
-    this.container.querySelector('#dmg_formula').value = preset.formula;
-    this.syncDamageMode();
-    this.container.querySelector('#dmg_proficiency').value = preset.proficiency;
-    this.container.querySelector('#dmg_honed').value = preset.honed;
+    this.applyWeaponPreset(actor, weapon);
     this.container.querySelector('#dmg_is_critical').checked = false;
     this.container.querySelector('#dmg_is_direct').checked = false;
     this.container.querySelector('#damage_result_display').style.display = 'none';
-    const note = weapon.damageMode === 'final' ? 'Daño final: Proficiency y Honed Edge no se vuelven a sumar.' : 'Daño base: se añade Proficiency al primer grupo de dados y Honed Edge una vez.';
-    let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
-    this.container.querySelector('[data-weapon-preview]').textContent = [weapon.name, note, weapon.features, warning].filter(Boolean).join(' · ');
-    this.preparedWeapon = { id: weaponId, signature: JSON.stringify(weapon) };
-    this.container.querySelector('#dmg_impact_type').value = weaponImpactType(weapon);
     window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
     this.container.querySelector('#tab_damage_btn').click();
     this.container.querySelector('#dmg_formula').focus();
@@ -142,110 +260,131 @@ export class DiceRollerSidebar {
 
   render() {
     this.container.innerHTML = sanitizeHTML(`
-      <div class="dice-sidebar-content"><div class="tray-launcher"><div><span>ORBITAL DICE ARRAY</span><strong>3D Hope &amp; Fear</strong></div><button class="hud-btn" id="open_dice_tray">Open tray</button></div>
+      <div class="dice-sidebar-content">
         <label class="keeper-roll-switch" hidden><input type="checkbox" id="secret_roll"> Tirada secreta · solo Keeper</label>
         <p class="dossier-muted" data-secret-help hidden>El resultado y el registro son privados. Los cambios de recursos en fichas visibles se siguen compartiendo.</p>
-        <!-- Tab Navigation -->
-        <div class="sidebar-subtabs">
-          <button class="subtab-btn active" id="tab_check_btn">HOPE & FEAR CHECK</button>
-          <button class="subtab-btn" id="tab_damage_btn">DAMAGE & THRESHOLDS</button>
+        
+        <!-- Tab Navigation: 3 tabs matching player-tool.jsx and VTT -->
+        <div class="sidebar-subtabs dice-mode-subtabs">
+          <button class="subtab-btn active" id="tab_check_btn">DUALITY (2d12)</button>
+          <button class="subtab-btn" id="tab_standard_btn">STANDARD DICE</button>
+          <button class="subtab-btn" id="tab_damage_btn">DAMAGE &amp; THRESHOLDS</button>
         </div>
 
-        <!-- Section 1: Hope & Fear Action Check -->
+        <!-- Sleek Utility Row: 2D/3D Mode Toggle & Quick Polyhedral Bar -->
+        <div class="dice-utility-bar">
+          <div class="dice-utility-row-top">
+            <div class="dice-utility-left">
+              <button type="button" class="dice-mode-toggle-btn ${this.is3D ? 'mode-3d' : 'mode-2d'}" id="btn_toggle_dice_mode" title="Alternar entre animación 3D y modo 2D rápido">
+                ${this.is3D ? '🎲 3D' : '📄 2D'}
+              </button>
+              <div class="texture-pills" id="texture_pills_group" style="${this.is3D ? 'display:flex;' : 'display:none;'}">
+                <button type="button" class="texture-pill ${this.diceTextureSet === 'plain' ? 'active' : ''}" data-texture="plain" id="btn_texture_plain">PLAIN</button>
+                <button type="button" class="texture-pill ${this.diceTextureSet === 'tech' ? 'active' : ''}" data-texture="tech" id="btn_texture_tech">TECH</button>
+                <button type="button" class="texture-pill ${this.diceTextureSet === 'crystal' ? 'active' : ''}" data-texture="crystal" id="btn_texture_crystal">CRYSTAL</button>
+              </div>
+            </div>
+          </div>
+          <!-- Quick Polyhedral Dice Bar: Full width, zero overflow -->
+          <div class="quick-polyhedral-bar" title="Lanzador rápido de dados poliédricos">
+            ${[4, 6, 8, 10, 12, 20, 100].map(d => `
+              <button type="button" class="quick-die-btn" data-sides="${d}">d${d === 100 ? '%' : d}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Section 1: Hope & Fear Action Check (Duality) -->
         <div class="dice-section" id="section_action_check">
+          <!-- Operative Header -->
           <div class="dice-actor-bar">
             <span class="actor-tag">OPERATIVE:</span>
             <span class="actor-name" id="dice_actor_name">Capt. Jonathan Harker (Awakened)</span>
           </div>
 
-          <!-- Trait Selector -->
-          <div class="dice-input-block">
-            <label class="dice-label">CHOOSE TRAIT</label>
-            <div class="trait-selector-grid" id="dice_trait_selector">
-              ${TRAITS.map(t => `
-                <button class="trait-select-pill ${t.id === this.selectedTraitId ? 'active' : ''}" data-id="${t.id}" data-name="${t.name}">
-                  <span class="pill-name">${t.short}</span>
-                  <span class="pill-mod" id="trait_mod_${t.id}">+0</span>
-                </button>
-              `).join('')}
+          <!-- Traits Selector: 3x2 Grid -->
+          <div class="trait-selector-grid trait-selector-compact" id="dice_trait_selector">
+            ${TRAITS.map(t => `
+              <button class="trait-select-pill ${t.id === this.selectedTraitId ? 'active' : ''}" data-id="${t.id}" data-name="${t.name}">
+                <span class="pill-name">${t.short}</span>
+                <span class="pill-mod" id="trait_mod_${t.id}">+0</span>
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Subtrait & DC Ladder: 2 columns side by side -->
+          <div class="dice-context-grid">
+            <div class="dice-context-col">
+              <label>Subtrait / Specialty</label>
+              <vf-select id="dice_subtrait_select" class="hud-select">
+                <option value="">None / General</option>
+                ${SUBTRAITS.map(st => `
+                  <option value="${st.id}">${st.name}</option>
+                `).join('')}
+              </vf-select>
+            </div>
+            <div class="dice-context-col">
+              <label>Target DC</label>
+              <vf-select id="dice_dc_select" class="hud-select">
+                ${DC_LADDER.map(l => `
+                  <option value="${l.dc}" ${l.dc === 15 ? 'selected' : ''}>
+                    DC ${l.dc} (${l.name})
+                  </option>
+                `).join('')}
+              </vf-select>
             </div>
           </div>
 
-          <!-- Subtrait Selector -->
-          <div class="dice-input-block">
-            <label class="dice-label">SUBTRAIT / SPECIALTY</label>
-            <vf-select id="dice_subtrait_select" class="hud-select">
-              <option value="">None / General Trait</option>
-              ${SUBTRAITS.map(st => `
-                <option value="${st.id}">${st.name} (Parent: ${st.parent.toUpperCase()})</option>
-              `).join('')}
-            </vf-select>
-          </div>
+          <!-- Action Cockpit: Roll Type + Modifier Stepper + Live Cubes -->
+          <div class="dice-action-cockpit">
+            <div class="dice-action-left">
+              <!-- Segmented Roll Type: DIS / NORM / ADV -->
+              <div class="roll-type-segmented">
+                <button type="button" class="roll-type-btn ${this.playerRollType === 'disadvantage' ? 'active-dis' : ''}" id="btn_roll_dis" data-type="disadvantage">DIS</button>
+                <button type="button" class="roll-type-btn ${this.playerRollType === 'normal' ? 'active-norm' : ''}" id="btn_roll_norm" data-type="normal">NORM</button>
+                <button type="button" class="roll-type-btn ${this.playerRollType === 'advantage' ? 'active-adv' : ''}" id="btn_roll_adv" data-type="advantage">ADV</button>
+              </div>
 
-          <!-- DC Ladder -->
-          <div class="dice-input-block">
-            <label class="dice-label">TARGET DIFFICULTY (DC LADDER)</label>
-            <vf-select id="dice_dc_select" class="hud-select">
-              ${DC_LADDER.map(l => `
-                <option value="${l.dc}" ${l.dc === 15 ? 'selected' : ''}>
-                  DC ${l.dc} - ${l.name}
-                </option>
-              `).join('')}
-            </vf-select>
-          </div>
-
-          <!-- Roll Modifiers -->
-          <div class="dice-modifiers-grid">
-            <label class="hud-checkbox-label">
-              <input type="checkbox" id="dice_advantage" />
-              <span>Advantage (+1d6)</span>
-            </label>
-            <label class="hud-checkbox-label">
-              <input type="checkbox" id="dice_disadvantage" />
-              <span>Disadvantage (-1d6)</span>
-            </label>
-            <label class="hud-checkbox-label">
-              <input type="checkbox" id="dice_use_resolve" />
-              <span>Spend Resolve (+1d4)</span>
-            </label>
-          </div>
-
-          <div class="form-row critical-choice-row"><div class="form-group"><label>Sleeping critical · extra point</label><vf-select id="critical_resource" class="hud-select"><option value="effort">Effort (Resolve if full)</option><option value="resolve">Resolve</option></vf-select></div><label class="hud-checkbox-label"><input type="checkbox" id="meaningful_roll" checked /> Meaningful roll</label></div>
-          <!-- Flat Modifier & Experience -->
-          <div class="form-group"><label>Experiencia de la ficha</label><vf-select id="dice_experience_select" class="hud-select"><option value="">Sin experiencia</option></vf-select></div>
-          <div class="form-row" style="margin-top: 10px;">
-            <div class="form-group">
-              <label>Experience Mod</label>
-              <input type="number" id="dice_exp_mod" class="hud-input" value="0" min="0" max="10" />
+              <!-- Modifier Stepper Row -->
+              <div class="duality-mod-stepper-row">
+                <span class="stepper-label">MOD:</span>
+                <div class="stepper-row">
+                  <button type="button" class="stepper-btn" id="btn_mod_minus">−</button>
+                  <input type="number" id="dice_custom_mod" class="hud-input" value="0" min="-20" max="20" style="text-align: center; width: 44px;" />
+                  <button type="button" class="stepper-btn" id="btn_mod_plus">+</button>
+                </div>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Custom Modifier</label>
-              <input type="number" id="dice_custom_mod" class="hud-input" value="0" />
+
+            <!-- Live Duality Readout Preview Squares (HOPE, FEAR, ADV/DIS) -->
+            <div class="duality-live-boxes">
+              <div class="duality-live-card">
+                <span class="duality-live-label hope-label">HOPE</span>
+                <div class="duality-live-box hope-box" id="cube_hope">
+                  <span id="cube_hope_num">?</span>
+                </div>
+              </div>
+              <div class="duality-live-card">
+                <span class="duality-live-label fear-label">FEAR</span>
+                <div class="duality-live-box fear-box" id="cube_fear">
+                  <span id="cube_fear_num">?</span>
+                </div>
+              </div>
+              <div class="duality-live-card" id="card_extra_die" style="${this.playerRollType !== 'normal' ? 'display:flex' : 'display:none'}">
+                <span class="duality-live-label" id="label_extra_die">${this.playerRollType === 'advantage' ? '+d6' : '-d6'}</span>
+                <div class="duality-live-box" id="cube_extra" style="border-color:${this.playerRollType === 'advantage' ? '#22c55e' : '#ef4444'}; color:${this.playerRollType === 'advantage' ? '#86efac' : '#fca5a5'}">
+                  <span id="cube_extra_num">?</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Big Roll Button -->
-          <button class="hud-btn hud-btn-primary hud-btn-lg roll-trigger-btn" id="roll_check_btn">
-            <span class="btn-glow-text">ROLL 2d12 (HOPE & FEAR)</span>
+          <!-- BIG DUALITY ROLL BUTTON -->
+          <button class="hud-btn hud-btn-primary roll-trigger-btn btn-duality-gradient" id="roll_check_btn">
+            <span class="btn-glow-text">ROLL 2d12 (HOPE &amp; FEAR)</span>
           </button>
 
           <!-- Interactive Dice Result Display -->
           <div class="dice-result-panel glass-panel" id="dice_result_display" style="display: none;">
-            <!-- Dice Visuals -->
-            <div class="dice-visuals-row">
-              <div class="d12-cube d12-hope" id="cube_hope">
-                <span class="cube-tag">HOPE</span>
-                <span class="cube-num" id="cube_hope_num">?</span>
-              </div>
-              <div class="dice-plus-sign">+</div>
-              <div class="d12-cube d12-fear" id="cube_fear">
-                <span class="cube-tag">FEAR</span>
-                <span class="cube-num" id="cube_fear_num">?</span>
-              </div>
-              <div class="dice-mod-box" id="dice_extra_dice"></div>
-            </div>
-
-            <!-- Total vs DC -->
             <div class="dice-total-row">
               <div class="total-big-readout">
                 <span class="readout-label">TOTAL</span>
@@ -257,83 +396,206 @@ export class DiceRollerSidebar {
               </div>
             </div>
 
-            <!-- Sacred Canon Outcome Banner -->
+            <div class="dice-mod-box" id="dice_extra_dice"></div>
+
             <div class="outcome-banner" id="outcome_banner">
               <div class="outcome-title" id="outcome_title">CRITICAL SUCCESS</div>
               <div class="outcome-desc" id="outcome_desc">Details...</div>
               <div class="outcome-payout" id="outcome_payout">Payout...</div>
             </div>
           </div>
+
+          <!-- Hidden inputs for Advantage/Disadvantage backwards compatibility -->
+          <div class="dice-modifiers-grid" style="display:none;">
+            <label class="hud-checkbox-label">
+              <input type="checkbox" id="dice_advantage" ${this.playerRollType === 'advantage' ? 'checked' : ''} />
+              <span>Advantage (+1d6)</span>
+            </label>
+            <label class="hud-checkbox-label">
+              <input type="checkbox" id="dice_disadvantage" ${this.playerRollType === 'disadvantage' ? 'checked' : ''} />
+              <span>Disadvantage (-1d6)</span>
+            </label>
+          </div>
+
+          <!-- Collapsible Secondary & Path Options (Closed by default to guarantee ZERO scroll) -->
+          <details class="dice-advanced-details">
+            <summary class="dice-advanced-summary">
+              <span>+ RESOLVE, EXPERIENCE &amp; PATH OPTIONS</span>
+              <span class="arrow-indicator">▼</span>
+            </summary>
+            <div class="dice-advanced-content">
+              <div class="dice-modifiers-grid" style="margin: 2px 0 6px;">
+                <label class="hud-checkbox-label">
+                  <input type="checkbox" id="dice_use_resolve" />
+                  <span>Spend Resolve (+1d4)</span>
+                </label>
+              </div>
+
+              <div class="form-row critical-choice-row" style="margin-bottom: 6px;">
+                <div class="form-group" style="flex:1;">
+                  <label style="font-size: 9px;">Sleeping critical</label>
+                  <vf-select id="critical_resource" class="hud-select" style="height: 24px; font-size: 10px;">
+                    <option value="effort">Effort (Resolve if full)</option>
+                    <option value="resolve">Resolve</option>
+                  </vf-select>
+                </div>
+                <label class="hud-checkbox-label" style="align-self: center; font-size: 10px;"><input type="checkbox" id="meaningful_roll" checked /> Meaningful</label>
+              </div>
+
+              <!-- Flat Modifier & Experience -->
+              <div class="dice-context-grid" style="margin-bottom: 2px;">
+                <div class="dice-context-col">
+                  <label>Experiencia</label>
+                  <vf-select id="dice_experience_select" class="hud-select" style="height: 24px; font-size: 10px;">
+                    <option value="">Sin experiencia</option>
+                  </vf-select>
+                </div>
+                <div class="dice-context-col">
+                  <label>Exp Mod</label>
+                  <input type="number" id="dice_exp_mod" class="hud-input" value="0" min="0" max="10" style="height: 24px; font-size: 10px;" />
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
 
-        <!-- Section 2: Damage & Thresholds Calculator -->
-        <div class="dice-section" id="section_damage_calc" style="display: none;">
-          <p class="weapon-prepared-note" data-weapon-preview>Prepara un arma desde Ficha → Armas y equipo, o introduce una expresión.</p>
-          <label class="dossier-field"><span>Impacto del arma</span><vf-select class="hud-select" id="dmg_impact_type">${Object.entries(IMPACT_TYPES).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}</vf-select></label>
-          <p class="dossier-muted">Tamaño por HP realmente perdidos: 1 → 50%, 2 → 100%, +20% por HP adicional (máx. 200%). Armor consumido muestra el escudo.</p>
-          <label class="dossier-field"><span>Expresión completa</span><input id="dmg_formula" class="hud-input" maxlength="1000" placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"></label>
-          <p class="field-help">Vacía este campo para usar los dados manuales de abajo. Las propiedades y condiciones se resuelven según su texto.</p>
-          <div class="dice-actor-bar">
-            <span class="actor-tag">TARGET:</span>
-            <vf-select id="dmg_target_select" class="hud-select" style="max-width: 200px;">
-              <!-- Target tokens populated -->
-            </vf-select>
+        <!-- Section 2: Standard Dice Launcher (d4, d6, d8, d10, d12, d20, d100) -->
+        <div class="dice-section" id="section_standard_dice" style="display: none;">
+          <div class="standard-dice-grid" id="std_dice_grid">
+            ${[4, 6, 8, 10, 12, 20, 100].map(d => `
+              <button type="button" class="standard-die-btn ${d === this.stdDieType ? 'active' : ''}" data-sides="${d}">d${d === 100 ? '%' : d}</button>
+            `).join('')}
           </div>
 
-          <div class="form-row"><div class="form-group"><label>Proficiency</label><input type="number" id="dmg_proficiency" value="1" min="1" max="6" class="hud-input" /></div><div class="form-group"><label>Honed Edge (Sleeping)</label><input type="number" id="dmg_honed" value="0" min="0" max="20" class="hud-input" /></div></div><p class="field-help">Enter the printed dice. Proficiency expands one die; Honed Edge is added once. For naval targets use Starship.</p>
-          <div class="form-group">
-            <label>Weapon Damage Dice Expression</label>
-            <div class="form-row">
-              <input type="number" id="dmg_dice_count" class="hud-input" value="2" min="1" max="10" title="Dice count" />
-              <vf-select id="dmg_dice_sides" class="hud-select">
-                <option value="4">d4</option>
-                <option value="6">d6</option>
-                <option value="8" selected>d8</option>
-                <option value="10">d10</option>
-                <option value="12">d12</option>
-              </vf-select>
-              <input type="number" id="dmg_flat_mod" class="hud-input" value="2" title="Flat modifier" />
+          <div class="form-row" style="margin-bottom: 12px; align-items: flex-end;">
+            <div class="form-group" style="flex: 1;">
+              <label style="font-size: 10px; text-transform: uppercase; color: #94a3b8; font-weight: bold;">Count</label>
+              <div class="stepper-row">
+                <button type="button" class="stepper-btn" id="btn_std_count_minus">−</button>
+                <input type="number" id="std_count" class="hud-input" value="1" min="1" max="99" style="text-align: center;" />
+                <button type="button" class="stepper-btn" id="btn_std_count_plus">+</button>
+              </div>
+            </div>
+            <div style="padding-bottom: 6px; font-weight: 800; color: #94a3b8; font-size: 14px;" id="std_formula_label">
+              d${this.stdDieType} +
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label style="font-size: 10px; text-transform: uppercase; color: #94a3b8; font-weight: bold;">Mod</label>
+              <div class="stepper-row">
+                <button type="button" class="stepper-btn" id="btn_std_mod_minus">−</button>
+                <input type="number" id="std_mod" class="hud-input" value="0" min="-20" max="20" style="text-align: center;" />
+                <button type="button" class="stepper-btn" id="btn_std_mod_plus">+</button>
+              </div>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Target Major Threshold</label>
-              <input type="number" id="dmg_major_thresh" class="hud-input" value="6" />
-            </div>
-            <div class="form-group">
-              <label>Target Severe Threshold</label>
-              <input type="number" id="dmg_severe_thresh" class="hud-input" value="12" />
-            </div>
-          </div>
-
-          <div class="dice-modifiers-grid">
+          <div class="form-row" style="margin-bottom: 14px; justify-content: center;">
             <label class="hud-checkbox-label">
-              <input type="checkbox" id="dmg_use_armor" checked />
-              <span>Spend 1 Armor Slot to Mitigate</span>
-            </label>
-            <label class="hud-checkbox-label">
-              <input type="checkbox" id="dmg_is_critical" />
-              <span>Critical Hit</span>
-            </label>
-            <label class="hud-checkbox-label">
-              <input type="checkbox" id="dmg_is_direct" />
-              <span>Direct HP Damage (Bypass Thresholds)</span>
+              <input type="checkbox" id="std_broadcast" checked />
+              <span>Broadcast to Party / Chat</span>
             </label>
           </div>
 
-          <div class="form-group" style="margin-top: 10px;">
-            <label>Damage scale · personal targets</label>
-            <vf-select id="dmg_mount_rating" class="hud-select">
-              <option value="1" selected>Personal scale · x1</option>
-
-
-            </vf-select>
-          </div>
-
-          <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn" id="roll_damage_btn" style="margin-top: 16px;">
-            <span>RESOLVE DAMAGE & THRESHOLDS</span>
+          <!-- BIG STANDARD ROLL BUTTON -->
+          <button type="button" class="hud-btn hud-btn-primary hud-btn-lg roll-trigger-btn btn-standard-gradient" id="roll_standard_btn" style="margin-bottom: 12px;">
+            <span>ROLL STANDARD DICE</span>
           </button>
+
+          <div class="dice-result-panel glass-panel" id="std_result_display" style="display: none;">
+            <div class="total-big-readout" style="text-align: center;">
+              <span class="readout-label" id="std_res_label">TOTAL</span>
+              <span class="readout-num" id="std_res_total" style="font-size: 36px; color: #f59e0b;">0</span>
+            </div>
+            <div id="std_res_detail" style="text-align: center; font-size: 11px; color: #94a3b8; margin-top: 4px; font-family: monospace;"></div>
+          </div>
+        </div>
+
+        <!-- Section 3: Damage & Thresholds Calculator (Compact + Expandable) -->
+        <div class="dice-section" id="section_damage_calc" style="display: none;">
+          <!-- Compact Weapon & Target Row: Autofilled from character token -->
+          <div class="dmg-quick-header">
+            <div class="dmg-quick-weapon-box">
+              <span class="dmg-quick-label">ARMA / ATAQUE (FICHA):</span>
+              <vf-select id="dmg_weapon_select" class="hud-select">
+                <option value="">Ataque básico · 1d8</option>
+              </vf-select>
+              <p class="weapon-prepared-note" data-weapon-preview>Prepara un arma desde Ficha → Armas y equipo, o introduce una expresión.</p>
+            </div>
+
+            <div class="dmg-quick-target-box">
+              <span class="dmg-quick-label">OBJETIVO:</span>
+              <vf-select id="dmg_target_select" class="hud-select">
+                <!-- Target tokens populated -->
+              </vf-select>
+            </div>
+          </div>
+
+          <!-- Quick Action Bar: Mitigate + Critical + Big Button -->
+          <div class="dmg-quick-controls">
+            <div class="dmg-quick-checkboxes">
+              <label class="hud-checkbox-label">
+                <input type="checkbox" id="dmg_use_armor" checked />
+                <span>Mitigar con Armadura</span>
+              </label>
+              <label class="hud-checkbox-label">
+                <input type="checkbox" id="dmg_is_critical" />
+                <span>Crítico</span>
+              </label>
+            </div>
+
+            <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn btn-damage-gradient" id="roll_damage_btn">
+              <span>💥 RESOLVER DAÑO Y UMBRALES</span>
+            </button>
+          </div>
+
+          <!-- Expandable Fine-Tuning Details: Collapsed by default -->
+          <details class="dmg-advanced-details" id="dmg_advanced_details">
+            <summary class="dmg-advanced-summary">⚙️ Opciones avanzadas y dados manuales</summary>
+            <div class="dmg-advanced-body">
+              <label class="dossier-field"><span>Expresión completa</span><input id="dmg_formula" class="hud-input" maxlength="1000" placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"></label>
+              <label class="dossier-field"><span>Impacto del arma</span><vf-select class="hud-select" id="dmg_impact_type">${Object.entries(IMPACT_TYPES).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}</vf-select></label>
+              <div class="form-row">
+                <div class="form-group"><label>Proficiency</label><input type="number" id="dmg_proficiency" value="1" min="1" max="6" class="hud-input" /></div>
+                <div class="form-group"><label>Honed Edge (Sleeping)</label><input type="number" id="dmg_honed" value="0" min="0" max="20" class="hud-input" /></div>
+              </div>
+              <div class="form-group">
+                <label>Dados manuales (si no hay fórmula)</label>
+                <div class="form-row">
+                  <input type="number" id="dmg_dice_count" class="hud-input" value="2" min="1" max="10" title="Dice count" />
+                  <vf-select id="dmg_dice_sides" class="hud-select">
+                    <option value="4">d4</option>
+                    <option value="6">d6</option>
+                    <option value="8" selected>d8</option>
+                    <option value="10">d10</option>
+                    <option value="12">d12</option>
+                  </vf-select>
+                  <input type="number" id="dmg_flat_mod" class="hud-input" value="2" title="Flat modifier" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Umbral Mayor Objetivo</label>
+                  <input type="number" id="dmg_major_thresh" class="hud-input" value="6" />
+                </div>
+                <div class="form-group">
+                  <label>Umbral Severo Objetivo</label>
+                  <input type="number" id="dmg_severe_thresh" class="hud-input" value="12" />
+                </div>
+              </div>
+              <div class="form-row">
+                <label class="hud-checkbox-label">
+                  <input type="checkbox" id="dmg_is_direct" />
+                  <span>Daño directo a HP (ignorar umbrales)</span>
+                </label>
+              </div>
+              <div class="form-group" style="margin-top: 6px;">
+                <label>Damage scale · personal targets</label>
+                <vf-select id="dmg_mount_rating" class="hud-select">
+                  <option value="1" selected>Personal scale · x1</option>
+                </vf-select>
+              </div>
+            </div>
+          </details>
 
           <!-- Damage Outcome Display -->
           <div class="dice-result-panel glass-panel" id="damage_result_display" style="display: none; margin-top: 14px;">
@@ -370,34 +632,176 @@ export class DiceRollerSidebar {
   }
 
   initEvents() {
-    this.container.querySelector("#open_dice_tray").onclick = async () => { const { openDiceTray } = await import("./diceTray3d.js"); openDiceTray(); };
-    // Subtabs toggle
+    const openTrayBtn = this.container.querySelector("#open_dice_tray");
+    if (openTrayBtn) {
+      openTrayBtn.onclick = async () => { const { openDiceTray } = await import("./diceTray3d.js"); openDiceTray(); };
+    }
+
+    // Toggle 2D / 3D Mode Button
+    const btnToggleMode = this.container.querySelector('#btn_toggle_dice_mode');
+    if (btnToggleMode) {
+      btnToggleMode.onclick = () => {
+        const next3d = !this.is3D;
+        this.is3D = next3d;
+        store.update({ dice3d: next3d });
+        this.updateDiceModeUI();
+      };
+    }
+
+    // Quick Polyhedral Bar Buttons (Clicking directly rolls that die)
+    this.container.querySelectorAll('.quick-die-btn').forEach(btn => {
+      btn.onclick = () => {
+        const sides = parseInt(btn.dataset.sides, 10) || 20;
+        this.stdDieType = sides;
+        // Update selection in standard tab if open
+        this.container.querySelectorAll('.standard-die-btn').forEach(b => {
+          b.classList.toggle('active', parseInt(b.dataset.sides, 10) === sides);
+        });
+        const lbl = this.container.querySelector('#std_formula_label');
+        if (lbl) lbl.textContent = `d${sides} +`;
+        this.executeStandardRoll(sides);
+      };
+    });
+
+    // Subtabs toggle (Duality, Standard, Damage)
     const checkTab = this.container.querySelector('#tab_check_btn');
+    const standardTab = this.container.querySelector('#tab_standard_btn');
     const damageTab = this.container.querySelector('#tab_damage_btn');
     const checkSec = this.container.querySelector('#section_action_check');
+    const standardSec = this.container.querySelector('#section_standard_dice');
     const damageSec = this.container.querySelector('#section_damage_calc');
 
-    checkTab.onclick = () => {
-      checkTab.classList.add('active');
-      damageTab.classList.remove('active');
-      checkSec.style.display = 'block';
-      damageSec.style.display = 'none';
+    if (checkTab && standardTab && damageTab) {
+      checkTab.onclick = () => {
+        checkTab.classList.add('active');
+        standardTab.classList.remove('active');
+        damageTab.classList.remove('active');
+        checkSec.style.display = 'block';
+        standardSec.style.display = 'none';
+        damageSec.style.display = 'none';
+      };
+
+      standardTab.onclick = () => {
+        standardTab.classList.add('active');
+        checkTab.classList.remove('active');
+        damageTab.classList.remove('active');
+        checkSec.style.display = 'none';
+        standardSec.style.display = 'block';
+        damageSec.style.display = 'none';
+      };
+
+      damageTab.onclick = () => {
+        damageTab.classList.add('active');
+        checkTab.classList.remove('active');
+        standardTab.classList.remove('active');
+        checkSec.style.display = 'none';
+        standardSec.style.display = 'none';
+        damageSec.style.display = 'block';
+        this.populateDamageTargets();
+      };
+    }
+
+    // Texture Set Selector
+    this.container.querySelectorAll('.texture-pill').forEach(btn => {
+      btn.onclick = () => {
+        this.container.querySelectorAll('.texture-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.diceTextureSet = btn.dataset.texture;
+        try { localStorage.setItem('veilfarers_dice_texture_set', this.diceTextureSet); } catch (_) {}
+      };
+    });
+
+    // Segmented Roll Type Buttons (DIS / NORM / ADV)
+    const btnDis = this.container.querySelector('#btn_roll_dis');
+    const btnNorm = this.container.querySelector('#btn_roll_norm');
+    const btnAdv = this.container.querySelector('#btn_roll_adv');
+    const chkAdv = this.container.querySelector('#dice_advantage');
+    const chkDis = this.container.querySelector('#dice_disadvantage');
+    const cardExtra = this.container.querySelector('#card_extra_die');
+    const labelExtra = this.container.querySelector('#label_extra_die');
+    const cubeExtra = this.container.querySelector('#cube_extra');
+
+    const updateRollTypeUI = (type) => {
+      this.playerRollType = type;
+      btnDis?.classList.toggle('active-dis', type === 'disadvantage');
+      btnNorm?.classList.toggle('active-norm', type === 'normal');
+      btnAdv?.classList.toggle('active-adv', type === 'advantage');
+
+      if (chkAdv) chkAdv.checked = (type === 'advantage');
+      if (chkDis) chkDis.checked = (type === 'disadvantage');
+
+      if (cardExtra) {
+        if (type === 'normal') {
+          cardExtra.style.display = 'none';
+        } else {
+          cardExtra.style.display = 'flex';
+          if (labelExtra) labelExtra.textContent = type === 'advantage' ? 'ADV (+d6)' : 'DIS (-d6)';
+          if (cubeExtra) {
+            cubeExtra.style.borderColor = type === 'advantage' ? '#22c55e' : '#ef4444';
+            cubeExtra.style.color = type === 'advantage' ? '#86efac' : '#fca5a5';
+          }
+        }
+      }
     };
 
-    damageTab.onclick = () => {
-      damageTab.classList.add('active');
-      checkTab.classList.remove('active');
-      checkSec.style.display = 'none';
-      damageSec.style.display = 'block';
-      this.populateDamageTargets();
-    };
+    if (btnDis) btnDis.onclick = () => updateRollTypeUI('disadvantage');
+    if (btnNorm) btnNorm.onclick = () => updateRollTypeUI('normal');
+    if (btnAdv) btnAdv.onclick = () => updateRollTypeUI('advantage');
 
-    // Trait selector buttons
+    // Steppers for Custom Mod
+    const btnModMinus = this.container.querySelector('#btn_mod_minus');
+    const btnModPlus = this.container.querySelector('#btn_mod_plus');
+    const customModInput = this.container.querySelector('#dice_custom_mod');
+    if (btnModMinus && customModInput) {
+      btnModMinus.onclick = () => {
+        const val = (parseInt(customModInput.value, 10) || 0) - 1;
+        customModInput.value = Math.max(-20, Math.min(20, val));
+        this.updateRollButtonLabel();
+      };
+    }
+    if (btnModPlus && customModInput) {
+      btnModPlus.onclick = () => {
+        const val = (parseInt(customModInput.value, 10) || 0) + 1;
+        customModInput.value = Math.max(-20, Math.min(20, val));
+        this.updateRollButtonLabel();
+      };
+    }
+    if (customModInput) {
+      customModInput.oninput = () => this.updateRollButtonLabel();
+    }
+
+    // Standard Dice Buttons
+    this.container.querySelectorAll('.standard-die-btn').forEach(btn => {
+      btn.onclick = () => {
+        this.container.querySelectorAll('.standard-die-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.stdDieType = parseInt(btn.dataset.sides, 10) || 20;
+        const lbl = this.container.querySelector('#std_formula_label');
+        if (lbl) lbl.textContent = `d${this.stdDieType === 100 ? '%' : this.stdDieType} +`;
+      };
+    });
+
+    // Standard Dice Count & Mod Steppers
+    const stdCount = this.container.querySelector('#std_count');
+    const stdMod = this.container.querySelector('#std_mod');
+    const btnStdCountMinus = this.container.querySelector('#btn_std_count_minus');
+    const btnStdCountPlus = this.container.querySelector('#btn_std_count_plus');
+    const btnStdModMinus = this.container.querySelector('#btn_std_mod_minus');
+    const btnStdModPlus = this.container.querySelector('#btn_std_mod_plus');
+
+    if (btnStdCountMinus && stdCount) btnStdCountMinus.onclick = () => { stdCount.value = Math.max(1, (parseInt(stdCount.value, 10) || 1) - 1); };
+    if (btnStdCountPlus && stdCount) btnStdCountPlus.onclick = () => { stdCount.value = Math.min(99, (parseInt(stdCount.value, 10) || 1) + 1); };
+    if (btnStdModMinus && stdMod) btnStdModMinus.onclick = () => { stdMod.value = Math.max(-20, (parseInt(stdMod.value, 10) || 0) - 1); };
+    if (btnStdModPlus && stdMod) btnStdModPlus.onclick = () => { stdMod.value = Math.min(20, (parseInt(stdMod.value, 10) || 0) + 1); };
+
+    // Roll Standard Dice Button
+    const rollStdBtn = this.container.querySelector('#roll_standard_btn');
+    if (rollStdBtn) rollStdBtn.onclick = () => this.executeStandardRoll();
+
+    // Trait selector buttons: selects trait, updates modifier and executes roll immediately
     this.container.querySelectorAll('.trait-select-pill').forEach(btn => {
       btn.onclick = () => {
-        this.container.querySelectorAll('.trait-select-pill').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.selectedTraitId = btn.dataset.id;
+        this.selectTrait(btn.dataset.id, { rollNow: true });
       };
     });
 
@@ -411,7 +815,11 @@ export class DiceRollerSidebar {
   }
 
   syncDamageMode() {
-    this.container.querySelector('#dmg_dice_count').closest('.form-group').style.display = this.container.querySelector('#dmg_formula').value.trim() ? 'none' : '';
+    const diceCountEl = this.container.querySelector('#dmg_dice_count');
+    if (diceCountEl) {
+      const grp = diceCountEl.closest('.form-group');
+      if (grp) grp.style.display = this.container.querySelector('#dmg_formula')?.value.trim() ? 'none' : '';
+    }
   }
 
   updateTraitButtons() {
@@ -437,8 +845,10 @@ export class DiceRollerSidebar {
     select.onchange = () => {
       const tok = tokens.find(t => t.id === select.value);
       if (tok) {
-        this.container.querySelector('#dmg_major_thresh').value = tok.hp.majorThreshold;
-        this.container.querySelector('#dmg_severe_thresh').value = tok.hp.severeThreshold;
+        const maj = this.container.querySelector('#dmg_major_thresh');
+        const sev = this.container.querySelector('#dmg_severe_thresh');
+        if (maj) maj.value = tok.hp.majorThreshold;
+        if (sev) sev.value = tok.hp.severeThreshold;
       }
       const attackerId = this.currentActor?.id || store.getState().selectedTokenId;
       if (window.veilCanvas) {
@@ -456,15 +866,117 @@ export class DiceRollerSidebar {
     }
   }
 
+  async executeStandardRoll(sidesOverride) {
+    const sides = sidesOverride || this.stdDieType || 20;
+    const count = Math.max(1, Math.min(99, parseInt(this.container.querySelector('#std_count')?.value, 10) || 1));
+    const mod = Math.max(-20, Math.min(20, parseInt(this.container.querySelector('#std_mod')?.value, 10) || 0));
+    const broadcast = this.container.querySelector('#std_broadcast')?.checked ?? true;
+    const label = `${count}d${sides === 100 ? '%' : sides}${mod !== 0 ? (mod > 0 ? `+${mod}` : `${mod}`) : ''}`;
+
+    audio.playDiceRoll();
+
+    const groups = this.applyDiceTextureSet([
+      { qty: count, sides: sides === 100 ? 100 : sides, theme: 'vfNeutral', role: 'Standard' }
+    ]);
+
+    let rolls = [];
+    if (this.is3D && store.state.dice3d !== false && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.roll === 'function') {
+      try {
+        const roll3d = await window.VFDice3D.roll(groups, { label, style: 'overlay', deferResults: true });
+        if (roll3d && Array.isArray(roll3d.values) && roll3d.values.length === count) {
+          rolls = roll3d.values;
+        }
+      } catch (err) {
+        console.warn('[DiceRoller] Standard roll 3D fallback:', err);
+      }
+    }
+
+    if (!rolls.length) {
+      for (let i = 0; i < count; i++) {
+        rolls.push(Math.floor(Math.random() * sides) + 1);
+      }
+    }
+
+    const sum = rolls.reduce((acc, v) => acc + v, 0);
+    const total = sum + mod;
+
+    const actor = this.currentActor || store.getSelectedToken() || { name: 'Operativo' };
+    const playerName = store.state.userName || store.state.playerName || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador');
+    const tokenName = actor.name || 'Operativo';
+    const modText = mod !== 0 ? (mod > 0 ? `+${mod}` : `${mod}`) : 'Ninguno';
+
+    if (this.is3D && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
+      window.VFDice3D.showResults({
+        label: `Standard Roll: ${label}`,
+        playerName,
+        tokenName,
+        skill: label,
+        modifiers: modText,
+        value: total,
+        total,
+        outcome: `${total}`,
+        rolls: rolls.map(v => ({ value: v, sides, role: 'Standard' })),
+        style: 'overlay'
+      });
+    }
+
+    const resDisplay = this.container.querySelector('#std_result_display');
+    const resTotal = this.container.querySelector('#std_res_total');
+    const resDetail = this.container.querySelector('#std_res_detail');
+    if (resDisplay) resDisplay.style.display = 'block';
+    if (resTotal) resTotal.textContent = total;
+    if (resDetail) {
+      resDetail.textContent = `[${rolls.join(', ')}]${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = ${total}`;
+    }
+
+    const breakdownText = `Dados: [${rolls.join(', ')}] (d${sides})${mod !== 0 ? (mod > 0 ? ` + Mod (${mod})` : ` - Mod (${Math.abs(mod)})`) : ''} = ${total}`;
+
+    if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
+      window.veilDiceEngine.showCallout({
+        playerName,
+        tokenName,
+        actorName: tokenName,
+        label: `Tirada: ${label}`,
+        total,
+        outcomeTitle: `Total ${total}`,
+        details: breakdownText,
+        breakdown: breakdownText,
+        visibility: broadcast ? 'table' : 'keeper'
+      });
+    }
+
+    if (broadcast) {
+      const chatText = `🎲 ${playerName} (${tokenName}): ${label} ➔ ${total} (${rolls.join(' + ')}${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''})`;
+      network.sendChat({ text: chatText, recipientId: 'table' }).catch(() => {
+        store.addChatMessage({ senderName: tokenName, text: chatText, channel: 'table' });
+      });
+      network.broadcast({
+        type: 'DICE_ROLL',
+        result: {
+          id: String(Date.now()),
+          playerName,
+          tokenName,
+          actorName: tokenName,
+          total,
+          label: `Tirada: ${label}`,
+          rolls: rolls.map(v => ({ value: v, sides, role: 'Standard' })),
+          outcome: `${total}`,
+          details: breakdownText,
+          breakdown: breakdownText
+        }
+      });
+    }
+  }
+
   async executeActionCheck() {
-    const actor = this.currentActor || store.getSelectedToken() || {
+    const actor = this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null) || {
       name: 'Voidwalker',
       path: 'Awakened',
       traits: { [this.selectedTraitId]: 1 },
       subtraits: {}
     };
 
-    const traitMod = actor.traits?.[this.selectedTraitId] ?? 0;
+    const traitMod = actor.traits?.[this.selectedTraitId] ?? (actor.attackModifier ?? 0);
     const subtraitId = this.container.querySelector('#dice_subtrait_select').value;
     const subtraitMod = subtraitId ? (actor.subtraits?.[subtraitId] ?? 0) : 0;
     const dc = parseInt(this.container.querySelector('#dice_dc_select').value, 10);
@@ -477,15 +989,130 @@ export class DiceRollerSidebar {
     const traitObj = TRAITS.find(t => t.id === this.selectedTraitId);
     const traitName = traitObj ? traitObj.name : 'Finesse';
 
-    // Animate Dice
     audio.playDiceRoll();
 
+    // Prepare 3D dice groups
+    const groups = [
+      { qty: 1, sides: 12, theme: 'vfHope', role: 'Hope' },
+      { qty: 1, sides: 12, theme: 'vfFear', role: 'Fear' }
+    ];
+    if (hasAdvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: 'Advantage' });
+    else if (hasDisadvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: 'Disadvantage' });
+    if (useResolve) groups.push({ qty: 1, sides: 4, theme: 'vfNeutral', role: 'Resolve' });
+
+    const themedGroups = this.applyDiceTextureSet(groups);
+    const label = `${actor.name || 'Operative'} · ${traitName} Check`;
+
+    let forcedHope = null;
+    let forcedFear = null;
+    let forcedAdv = null;
+
+    if (this.is3D && store.state.dice3d !== false && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.roll === 'function') {
+      try {
+        const roll3d = await window.VFDice3D.roll(themedGroups, { label, style: 'overlay', deferResults: true });
+        if (roll3d && Array.isArray(roll3d.values) && roll3d.values.length >= 2) {
+          forcedHope = roll3d.values[0];
+          forcedFear = roll3d.values[1];
+          if ((hasAdvantage || hasDisadvantage) && roll3d.values.length >= 3) {
+            forcedAdv = roll3d.values[2];
+          }
+        }
+      } catch (err) {
+        console.warn('[DiceRoller] 3D roll fallback to random:', err);
+      }
+    }
+
     let result;
+    const playerName = store.state.userName || store.state.playerName || store.sessionAuthorName?.() || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador');
+    const tokenName = actor.name || 'Operativo';
+
     try {
-      result = await network.requestAction({type:'CHECK',actorId:actor.id,visibility:this.rollVisibility(),options:{traitId:this.selectedTraitId,subtraitId,dc,hasAdvantage,hasDisadvantage,useResolve,experienceMod:expMod,customMod,criticalChoice:this.container.querySelector('#critical_resource').value,meaningful:this.container.querySelector('#meaningful_roll').checked}});
-    } catch(e) { notify(e.message,'error'); return; }
-    if (store.state.dice3d !== false) import("./diceTray3d.js").then(({ openDiceTray }) => { if (result.visibility !== 'keeper' || (store.sessionRole !== 'player' && store.state.userRole === 'keeper')) openDiceTray(result); }).catch(() => notify("3D dice unavailable; your roll is shown below."));
-    this.lastResult=result;
+      result = await network.requestAction({
+        type: 'CHECK',
+        actorId: actor.id,
+        playerName,
+        tokenName,
+        visibility: this.rollVisibility(),
+        options: {
+          traitId: this.selectedTraitId,
+          subtraitId,
+          dc,
+          hasAdvantage,
+          hasDisadvantage,
+          useResolve,
+          experienceMod: expMod,
+          customMod,
+          criticalChoice: this.container.querySelector('#critical_resource').value,
+          meaningful: this.container.querySelector('#meaningful_roll').checked,
+          forcedHope,
+          forcedFear,
+          forcedAdv
+        }
+      });
+    } catch(e) {
+      notify(e.message, 'error');
+      return;
+    }
+
+    // Overlay 3D results banner
+    if (this.is3D && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
+      if (result.visibility !== 'keeper' || (store.sessionRole !== 'player' && store.state.userRole === 'keeper')) {
+        const rolls = [
+          { value: result.hopeVal, sides: 12, role: 'Hope' },
+          { value: result.fearVal, sides: 12, role: 'Fear' }
+        ];
+        if (result.extraVal) {
+          rolls.push({ value: result.extraVal, sides: 6, role: hasAdvantage ? 'Advantage' : 'Disadvantage' });
+        }
+        if (result.resolveDie) {
+          rolls.push({ value: result.resolveDie, sides: 4, role: 'Resolve' });
+        }
+        window.VFDice3D.showResults({
+          label,
+          playerName,
+          tokenName,
+          skill: traitName,
+          modifiers: result.breakdown || result.details || (result.totalMod >= 0 ? `+${result.totalMod}` : `${result.totalMod}`),
+          outcome: result.outcomeTitle,
+          hope: result.hopeVal,
+          fear: result.fearVal,
+          crit: result.isCritical,
+          value: result.total,
+          total: result.total,
+          rolls,
+          style: 'overlay'
+        });
+      }
+    }
+
+    // Show callout notification on screen:
+    if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
+      window.veilDiceEngine.showCallout({
+        playerName,
+        tokenName,
+        actorName: tokenName,
+        label,
+        total: result.total,
+        outcomeTitle: result.outcomeTitle,
+        outcomeType: result.isCritical ? 'crit' : (result.fearVal > result.hopeVal ? 'fear' : 'hope'),
+        hopeVal: result.hopeVal,
+        fearVal: result.fearVal,
+        dc: result.dc,
+        details: result.log?.details || `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}`,
+        breakdown: result.log?.details || `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}`,
+        visibility: this.rollVisibility()
+      });
+    }
+
+    // Broadcast to table chat so every player sees the roll in chat:
+    if (this.rollVisibility() !== 'keeper') {
+      const summary = `🎲 ${actor.name} · ${traitName} Check ➔ ${result.total} (Hope ${result.hopeVal} + Fear ${result.fearVal}${result.totalMod ? (result.totalMod >= 0 ? ` + ${result.totalMod}` : ` - ${Math.abs(result.totalMod)}`) : ''}) vs DC ${result.dc} [${result.outcomeTitle}]`;
+      network.sendChat({ text: summary, recipientId: 'table' }).catch(() => {
+        store.addChatMessage({ senderName: actor.name, text: summary, channel: 'table' });
+      });
+    }
+
+    this.lastResult = result;
     this.showResult(result);
   }
 
@@ -494,10 +1121,33 @@ export class DiceRollerSidebar {
     this.lastResult = result;
     // Display Results
     const display = this.container.querySelector('#dice_result_display');
-    display.style.display = 'block';
+    if (display) display.style.display = 'block';
 
     const cubeHope = this.container.querySelector('#cube_hope_num');
     const cubeFear = this.container.querySelector('#cube_fear_num');
+    const cubeExtra = this.container.querySelector('#cube_extra_num');
+    const cardExtra = this.container.querySelector('#card_extra_die');
+    const cubeHopeBox = this.container.querySelector('#cube_hope');
+    const cubeFearBox = this.container.querySelector('#cube_fear');
+
+    if (cubeHope) cubeHope.textContent = result.hopeVal;
+    if (cubeFear) cubeFear.textContent = result.fearVal;
+
+    if (result.isCritical) {
+      cubeHopeBox?.classList.add('crit-pulse');
+      cubeFearBox?.classList.add('crit-pulse');
+    } else {
+      cubeHopeBox?.classList.remove('crit-pulse');
+      cubeFearBox?.classList.remove('crit-pulse');
+    }
+
+    if (result.extraVal && cardExtra && cubeExtra) {
+      cardExtra.style.display = 'flex';
+      cubeExtra.textContent = result.extraVal;
+    } else if (cardExtra && this.playerRollType === 'normal') {
+      cardExtra.style.display = 'none';
+    }
+
     const readoutTotal = this.container.querySelector('#readout_total');
     const readoutDc = this.container.querySelector('#readout_dc');
     const outcomeBanner = this.container.querySelector('#outcome_banner');
@@ -506,15 +1156,15 @@ export class DiceRollerSidebar {
     const outcomePayout = this.container.querySelector('#outcome_payout');
     const extraDiceEl = this.container.querySelector('#dice_extra_dice');
 
-    cubeHope.textContent = result.hopeVal;
-    cubeFear.textContent = result.fearVal;
-    readoutTotal.textContent = result.total;
-    readoutDc.textContent = result.dc;
+    if (readoutTotal) readoutTotal.textContent = result.total;
+    if (readoutDc) readoutDc.textContent = result.dc;
 
-    outcomeBanner.className = 'outcome-banner ' + result.resultType.toLowerCase();
-    outcomeTitle.textContent = (result.visibility === 'keeper' ? 'SOLO KEEPER · ' : '') + result.outcomeTitle;
-    outcomeDesc.textContent = result.outcomeDesc;
-    outcomePayout.textContent = result.pathPayout;
+    if (outcomeBanner) {
+      outcomeBanner.className = 'outcome-banner ' + result.resultType.toLowerCase();
+      if (outcomeTitle) outcomeTitle.textContent = (result.visibility === 'keeper' ? 'SOLO KEEPER · ' : '') + result.outcomeTitle;
+      if (outcomeDesc) outcomeDesc.textContent = result.outcomeDesc;
+      if (outcomePayout) outcomePayout.textContent = result.pathPayout;
+    }
 
     // Extra Dice representation
     let extraStr = '';
@@ -550,7 +1200,15 @@ export class DiceRollerSidebar {
     const proficiency=parseInt(this.container.querySelector('#dmg_proficiency').value,10),honed=parseInt(this.container.querySelector('#dmg_honed').value,10);
     if(!Number.isInteger(proficiency)||proficiency<1||proficiency>10||!Number.isInteger(honed)||honed<0||honed>9){notify('Check Proficiency (1–10) and Honed Edge (0–9).','error');return;}
 
-    const formula = this.container.querySelector('#dmg_formula').value.trim();
+    let formula = this.container.querySelector('#dmg_formula').value.trim();
+    const wSelect = this.container.querySelector('#dmg_weapon_select');
+    if (!formula && wSelect && wSelect.value && this.currentActor) {
+      const activeW = (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value);
+      if (activeW && activeW.damage) {
+        this.applyWeaponPreset(this.currentActor, activeW);
+        formula = this.container.querySelector('#dmg_formula').value.trim();
+      }
+    }
     if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
     const damageOptions = {
       attackerName: this.currentActor?.name || 'Attacker',
@@ -652,28 +1310,57 @@ export class DiceRollerSidebar {
         const newArmor = Math.max(0, currentArmor - spentShields);
         const newHp = Math.max(0, targetToken.hp.current - finalHpDamage);
 
-        store.updateToken(targetToken.id, {
-          hp: { ...targetToken.hp, current: newHp },
-          pendingBrace: isDirect ? targetToken.pendingBrace : false,
-          armor: { ...targetToken.armor, current: newArmor }
-        });
-
-        network.broadcast?.({
-          type: 'TOKEN_UPDATE',
-          tokenId: targetToken.id,
-          partial: {
-            hp: { ...targetToken.hp, current: newHp },
-            armor: { ...targetToken.armor, current: newArmor }
-          }
-        });
-
         const attacker = store.state.tokens.find(t => t.id === attackerId && t.mapId === damageMapId);
+        const hpLost = targetToken.hp.current - newHp;
+        const armorLost = currentArmor - newArmor;
+
+        const damagePayload = {
+          type: 'APPLY_DAMAGE',
+          attackerId: attacker?.id || attackerId,
+          targetId: targetToken.id,
+          newHp,
+          newArmor,
+          hpLoss: hpLost,
+          armorLoss: armorLost,
+          spentShields,
+          isDirect,
+          isCritical,
+          rawDamage: dmgResult.rawDamage,
+          kind: impactKind,
+          secret,
+          logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
+        };
+
+        if (store.sessionRole === 'player') {
+          network.broadcast?.(damagePayload);
+          // Actualización optimista local del target para feedback inmediato
+          store.remoteApplying = true;
+          try {
+            store.update({
+              tokens: store.state.tokens.map(t => t.id === targetToken.id ? {
+                ...t,
+                hp: { ...t.hp, current: newHp },
+                pendingBrace: isDirect ? t.pendingBrace : false,
+                armor: { ...t.armor, current: newArmor }
+              } : t)
+            });
+          } finally {
+            store.remoteApplying = false;
+          }
+        } else {
+          store.updateToken(targetToken.id, {
+            hp: { ...targetToken.hp, current: newHp },
+            pendingBrace: isDirect ? targetToken.pendingBrace : false,
+            armor: { ...targetToken.armor, current: newArmor }
+          });
+        }
+
         const params = attackPresentation({
           attacker: attacker || targetToken,
           target: targetToken,
           mapId: damageMapId,
           kind: impactKind,
-          hpLost: targetToken.hp.current - newHp,
+          hpLost: hpLost,
           armorSlotSpent: spentShields > 0,
           isDirect,
           isCritical,
@@ -685,7 +1372,7 @@ export class DiceRollerSidebar {
           params.attackerId = attacker?.id;
           if (attacker?.hidden) params.attacker = { ...params.target };
           window.veilCanvas?.triggerAttackFX(params);
-          if (!secret && !targetToken.hidden) network.broadcast?.({ type: 'ATTACK_FX', params });
+          if (!secret && !targetToken.hidden && store.sessionRole !== 'player') network.broadcast?.({ type: 'ATTACK_FX', params });
         }
 
         store.addLog({
@@ -693,7 +1380,7 @@ export class DiceRollerSidebar {
           ...(secret ? { visibility: 'keeper' } : {}),
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${targetToken.name}`,
-          details: `Lost ${targetToken.hp.current - newHp} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
+          details: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
         });
       };
 

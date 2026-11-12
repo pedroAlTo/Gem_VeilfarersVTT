@@ -1,15 +1,18 @@
 import './encounters.css';
 import './sessionUI.css';
 import './diceTray.css';
+import './vtt-integration/styles/lobby.css';
 import './colorPicker.css';
 import { openColorPickerPopover } from './colorPicker.js';
 import './chat.css';
 import { ChatPanel } from './chatPanel.js';
 import { initWaterControls } from './waterControls.js';
 import './waterControls.css';
+import { initVeilfarersApp } from './vtt-integration/vttIntegrationInit.js';
 import './help.css';
 import { APP_LABEL } from './version.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
+import { subtitleOverlay } from './subtitleOverlay.js';
 import './dossiers.css';
 import { checkBackupReminder } from './sessionManager.js';
 import { LOCAL_ONLY, LAN_SESSIONS } from './runtimeMode.js';
@@ -38,7 +41,22 @@ import { StarshipManager } from './starshipManager.js';
 import { RulesCompendiumModal } from './rulesCompendium.js';
 import { undoManager } from './undoManager.js';
 
+// Global resilience for dynamic chunk updates on Netlify / SPA deployments
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (event) => {
+    console.warn('[Vite] Dynamic chunk preload error, reloading for latest deploy...', event);
+    window.location.reload();
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event.reason?.message?.includes('Failed to fetch dynamically imported module')) {
+      console.warn('[Vite] Chunk hash mismatch detected, auto-reloading page...', event.reason);
+      window.location.reload();
+    }
+  });
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
+  setupVeilfarersIntegration();
   await store.ready;
   initOrbitalUI();
   const helpButton = document.getElementById('help_btn');
@@ -112,7 +130,20 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupSidebarTabNavigation();
   setupKeyboardShortcuts();
   initSessionBar();
-  window.addEventListener("veil:remote-roll", event => { if (store.state.dice3d !== false && event.detail.actorId !== store.state.claimedTokenId) import("./diceTray3d.js").then(({ openDiceTray }) => openDiceTray(event.detail)).catch(() => {}); });
+  subtitleOverlay.init();
+  setupVeilfarersIntegration();
+  if (typeof window !== 'undefined') {
+    if (window.VFDice3D && typeof window.VFDice3D.preload === 'function') {
+      window.VFDice3D.preload().catch(() => {});
+    } else if (window.VFDice3D && typeof window.VFDice3D.init === 'function') {
+      window.VFDice3D.init().catch(() => {});
+    }
+  }
+  window.addEventListener("veil:remote-roll", event => {
+    if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
+      window.veilDiceEngine.showCallout(event.detail);
+    }
+  });
   setupSessionPersistence().catch(error => notify(error.message, 'error'));
 });
 
@@ -295,6 +326,10 @@ function setupToolbarEvents() {
   drawingFlyout.querySelectorAll('[data-drawing-width]').forEach(button => button.onclick = () => {
     const width = Number(button.dataset.drawingWidth); store.update({ drawingWidth: width });
     drawingFlyout.querySelectorAll('[data-drawing-width]').forEach(b => { const active = Number(b.dataset.drawingWidth) === width; b.classList.toggle('active', active); b.setAttribute('aria-pressed', String(active)); });
+  });
+  drawingFlyout.querySelectorAll('[data-drawing-mode]').forEach(button => button.onclick = () => {
+    const mode = button.dataset.drawingMode;
+    store.update({ activeTool: mode });
   });
 
   tools.forEach(toolName => {
@@ -527,9 +562,16 @@ function setupToolbarEvents() {
       updateSnapUI();
     }
     if (keys.includes('activeTool')) {
-      drawingFlyout.style.display = ['draw', 'erase_draw'].includes(state.activeTool) ? 'flex' : 'none';
+      const isDrawing = ['draw', 'erase_draw'].includes(state.activeTool);
+      drawingFlyout.style.display = isDrawing ? 'flex' : 'none';
       document.querySelectorAll('.left-toolbar .tool-btn').forEach(b => {
-        if (b.dataset.tool) b.classList.toggle('active', b.dataset.tool === state.activeTool);
+        if (b.dataset.tool === 'draw') b.classList.toggle('active', isDrawing);
+        else if (b.dataset.tool) b.classList.toggle('active', b.dataset.tool === state.activeTool);
+      });
+      drawingFlyout.querySelectorAll('[data-drawing-mode]').forEach(b => {
+        const active = b.dataset.drawingMode === state.activeTool;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-pressed', String(active));
       });
       if (gridScaleBtn) gridScaleBtn.classList.toggle('active', state.activeTool === 'grid_scale');
     }
@@ -654,8 +696,8 @@ function setupKeyboardShortcuts() {
     }
 
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (key === 'b') document.getElementById('tool_draw')?.click();
-    if (key === 'd') document.getElementById('tool_erase_draw')?.click();
+    if (key === 'b') store.update({ activeTool: 'draw' });
+    if (key === 'd') store.update({ activeTool: 'erase_draw' });
     if (key === 'm' || key === 'v') document.getElementById('tool_select')?.click();
     if (key === 'r') document.getElementById('tool_measure')?.click();
     if (key === 't') document.getElementById('tool_template')?.click();
@@ -832,3 +874,64 @@ function setupUndoRedoEvents() {
     setInterval(checkBackupReminder, 20 * 60 * 1000);
   }, 15 * 60 * 1000);
 }
+
+// --- Veilfarers Integration (3D Dice, Player HUD Drawer & Keeper HUD Console) ---
+let veilfarersAppInitialized = false;
+function setupVeilfarersIntegration() {
+  if (veilfarersAppInitialized) return;
+  veilfarersAppInitialized = true;
+  // Initialize the Lobby Suite (Auth + Character Vault + Room Gateway)
+  try {
+    initVeilfarersApp({
+      onEnterRoom: ({ roomId, currentUser, activeCharId }) => {
+        console.log(`Sesión iniciada en sala ${roomId} como ${currentUser.role}`);
+        store.update({
+          persistentRoomId: roomId,
+          userRole: currentUser.role,
+          claimedTokenId: activeCharId
+        });
+      }
+    });
+  } catch (err) {
+    console.warn('[Veilfarers VTT] Error al inicializar Lobby Gateway:', err);
+  }
+
+  let initializedKey = '';
+  const checkAndInit = async () => {
+    const s = store.getState();
+    const roomId = s.persistentRoomId || s.roomCode;
+    if (!s.isConnected || !roomId) return;
+    const isKeeper = s.userRole === 'keeper';
+    const role = isKeeper ? 'keeper' : 'player';
+    const charId = isKeeper ? null : (s.claimedTokenId || s.selectedTokenId || null);
+    const key = `${roomId}_${role}_${charId || 'none'}`;
+    if (key === initializedKey) return;
+    initializedKey = key;
+
+    try {
+      const { initVeilfarersVTTModules } = await import('./vtt-integration/vttIntegrationInit.js');
+      const { account } = await import('./cloudAccount.js');
+      const accountUser = account.user;
+      await initVeilfarersVTTModules({
+        roomId,
+        currentUser: {
+          uid: accountUser?.uid || accountUser?.id || s.userName || 'user_' + Date.now(),
+          displayName: accountUser?.displayName || accountUser?.name || s.userName || 'Viajero',
+          role
+        },
+        activeCharId: charId
+      });
+    } catch (err) {
+      console.warn('[Veilfarers VTT] Error al inicializar módulos de integración:', err);
+    }
+  };
+
+  store.subscribe((state, keys) => {
+    if (keys.includes('isConnected') || keys.includes('roomCode') || keys.includes('persistentRoomId') || keys.includes('userRole') || keys.includes('claimedTokenId')) {
+      checkAndInit();
+    }
+  });
+
+  checkAndInit();
+}
+

@@ -2,6 +2,7 @@
 /* VEILVTT - Pearl Era High-Tech Sci-Fi Glassmorphic Design System */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+@import './vtt-integration/styles/lobby.css';
 
 :root {
   --bg-deep: #05070d;
@@ -2891,4 +2892,68 @@ body, html {
   font-size: 11px;
   color: var(--text-dim);
   font-family: var(--font-mono);
+}
+
+/* ==========================================================================
+   VEILFARERS CINEMATIC SUBTITLE OVERLAY (MAP BOTTOM OVERLAY)
+   ========================================================================== */
+.vf-subtitle-overlay {
+  position: fixed;
+  bottom: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 104;
+  pointer-events: none;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: min(88vw, 840px);
+}
+
+.vf-subtitle-overlay.is-hidden {
+  opacity: 0;
+  transform: translate(-50%, 16px) scale(0.96);
+  visibility: hidden;
+}
+
+.vf-subtitle-overlay.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+  visibility: visible;
+}
+
+.vf-subtitle-card {
+  background: rgba(6, 11, 22, 0.90);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(0, 243, 255, 0.4);
+  border-radius: 9999px;
+  padding: 8px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 243, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.vf-subtitle-sender {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.vf-subtitle-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95);
+  white-space: pre-wrap;
+  word-break: break-word;
 }

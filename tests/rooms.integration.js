@@ -71,6 +71,11 @@ test('rooms belong to accounts; invitation rotation preserves members and kicks 
   assert.deepEqual(new Set((await player.list()).map(r => r.id)), new Set([room.id, own.id]));
   const anonymous = env.unauthenticatedContext().firestore();
   await assertFails(dbAPI.getDoc(dbAPI.doc(anonymous, 'roomInvites', freshCode)));
+  await assert.rejects(player.deleteRoom(room.id), /Solo el Keeper/);
+  await keeper.deleteRoom(room.id);
+  await assertFails(keeper.getRoom(room.id));
+  await assertFails(player.getRoom(room.id));
+  assert.equal((await keeper.list()).some(r => r.id === room.id), false);
 });
 
 test('server rules freeze expired/offline rooms, fence old connections and protect private mailboxes', async () => {

@@ -7,7 +7,7 @@ import { MapClipboard } from './mapClipboard.js';
 import { LightingEngine } from './lightingEngine.js';
 import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
-import { drawTokenConditions } from './conditions.js';
+import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
 import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
@@ -2553,6 +2553,7 @@ export class CanvasEngine {
   render(now) {
     const dt = (now - this.lastTime) / 1000;
     this.lastTime = now;
+    this.activeHoveredCondition = null;
     const ctx = this.ctx;
     const state = store.getState();
     const map = store.getActiveMap();
@@ -2789,6 +2790,81 @@ export class CanvasEngine {
       this.renderRainOverlay(ctx, map, now * 0.001);
       this.renderFogOverlay(ctx, map, now * 0.001);
     }
+
+    ctx.restore();
+
+    // Floating tactical condition / state tooltip
+    if (this.activeHoveredCondition) {
+      this.renderHoveredConditionTooltip(ctx, this.activeHoveredCondition);
+    }
+  }
+
+  renderHoveredConditionTooltip(ctx, info) {
+    if (!info || !info.condition) return;
+    const c = info.condition;
+    const sx = info.screenX;
+    const sy = info.screenY;
+    ctx.save();
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const title = `${c.isState ? '💀' : '⚡'} ${c.label} (${c.name})`;
+    const rule = c.rule || '';
+
+    // Measure and wrap rule text
+    ctx.font = 'bold 12px "Rajdhani", sans-serif';
+    const titleW = ctx.measureText(title).width;
+    ctx.font = '11px sans-serif';
+
+    const maxWidth = 260;
+    const words = rule.split(' ');
+    const lines = [];
+    let currentLine = '';
+    for (const w of words) {
+      const testLine = currentLine ? currentLine + ' ' + w : w;
+      if (ctx.measureText(testLine).width > maxWidth) {
+        if (currentLine) lines.push(currentLine);
+        currentLine = w;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    const boxW = Math.max(titleW, maxWidth) + 24;
+    const lineH = 15;
+    const boxH = 26 + lines.length * lineH + 10;
+    let boxX = sx + 14;
+    let boxY = sy - boxH / 2;
+    if (boxX + boxW > this.displayWidth - 10) boxX = sx - boxW - 14;
+    if (boxY < 10) boxY = 10;
+    if (boxY + boxH > this.displayHeight - 10) boxY = this.displayHeight - boxH - 10;
+
+    // Tactical Glass panel
+    ctx.fillStyle = 'rgba(10, 17, 30, 0.95)';
+    ctx.strokeStyle = c.isState ? '#fbbf24' : '#00f3ff';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = c.isState ? 'rgba(251, 191, 36, 0.4)' : 'rgba(0, 243, 255, 0.4)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxW, boxH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    // Title
+    ctx.fillStyle = c.isState ? '#fde68a' : '#38bdf8';
+    ctx.font = 'bold 12px "Rajdhani", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(title, boxX + 12, boxY + 8);
+
+    // Rule lines
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '11px sans-serif';
+    lines.forEach((line, idx) => {
+      ctx.fillText(line, boxX + 12, boxY + 26 + idx * lineH);
+    });
 
     ctx.restore();
   }
@@ -3647,10 +3723,10 @@ export class CanvasEngine {
         ctx.restore();
       } else {
         ctx.save();
-        let rimColor = '#00f3ff';
+        let rimColor = tok.color || '#00f3ff';
         if (isDead) rimColor = '#ef4444';
         else if (tok.path === 'Sleeping') rimColor = '#ffaa00';
-        else if (!tok.isPlayer) rimColor = tok.actorType === 'drone' ? '#72dfce' : '#ef4444';
+        else if (!tok.isPlayer) rimColor = tok.color || (tok.actorType === 'drone' ? '#72dfce' : '#ef4444');
         if (tok.hidden) rimColor = '#a855f7';
 
         ctx.strokeStyle = rimColor;
@@ -3736,6 +3812,13 @@ export class CanvasEngine {
       // Vitals & Nameplate
       this.renderTokenVitals(ctx, tok, radius);
       drawTokenConditions(ctx, tok, radius, this.zoom);
+      if (this.cursorWorld) {
+        const hoveredCond = getHoveredCondition(tok, this.cursorWorld, radius, this.zoom);
+        if (hoveredCond) {
+          const sPos = this.worldToScreen(this.cursorWorld.x, this.cursorWorld.y);
+          this.activeHoveredCondition = { condition: hoveredCond, screenX: sPos.x, screenY: sPos.y };
+        }
+      }
       const bossStatus = tok.boss ? { index: tok.boss.index, total: tok.boss.states.length } : tok.bossStatus;
       if (bossStatus) {
         ctx.save(); ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
@@ -3926,98 +4009,66 @@ export class CanvasEngine {
 
     ctx.save();
 
-    // 1. Draw Targeting Laser Line
-    const beamColor = losBlocked ? '#ef4444' : '#00f3ff';
-    const coreColor = losBlocked ? '#fca5a5' : '#e0f2fe';
-
+    // 1. Draw Discrete Targeting Vector Line
+    const beamColor = losBlocked ? 'rgba(239, 68, 68, 0.55)' : 'rgba(0, 243, 255, 0.45)';
     ctx.strokeStyle = beamColor;
-    ctx.lineWidth = 4 / this.zoom;
-    ctx.shadowColor = beamColor;
-    ctx.shadowBlur = 10;
+    ctx.lineWidth = 1.2 / this.zoom;
+    ctx.shadowBlur = 0;
     if (losBlocked) {
-      ctx.setLineDash([10 / this.zoom, 6 / this.zoom]);
+      ctx.setLineDash([6 / this.zoom, 4 / this.zoom]);
     } else {
-      ctx.lineDashOffset = -(time * 40) % 32;
-      ctx.setLineDash([16 / this.zoom, 8 / this.zoom]);
+      ctx.lineDashOffset = -(time * 24) % 16;
+      ctx.setLineDash([8 / this.zoom, 4 / this.zoom]);
     }
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
 
-    ctx.strokeStyle = coreColor;
-    ctx.lineWidth = 1.5 / this.zoom;
-    ctx.shadowBlur = 0;
-    ctx.stroke();
-
-    // 2. Crosshair Reticle on Target
+    // 2. Discrete Corner Brackets around Target Token (Non-intrusive)
     const targetRadius = ((target.size || 1) * gridSize) / 2;
-    const reticleRadius = targetRadius + 14 / this.zoom;
+    const bracketDist = targetRadius + 4 / this.zoom;
+    const bracketLen = 6 / this.zoom;
 
     ctx.save();
     ctx.translate(x2, y2);
-    ctx.rotate(time * 1.5);
-
-    ctx.strokeStyle = beamColor;
-    ctx.lineWidth = 2 / this.zoom;
-    ctx.setLineDash([8 / this.zoom, 6 / this.zoom]);
-    ctx.beginPath();
-    ctx.arc(0, 0, reticleRadius, 0, Math.PI * 2);
-    ctx.stroke();
-
+    ctx.strokeStyle = losBlocked ? 'rgba(239, 68, 68, 0.7)' : 'rgba(0, 243, 255, 0.65)';
+    ctx.lineWidth = 1 / this.zoom;
     ctx.setLineDash([]);
-    const bracketSize = 8 / this.zoom;
+
+    // 4 subtle corner brackets
     for (let i = 0; i < 4; i++) {
-      ctx.rotate(Math.PI / 2);
       ctx.beginPath();
-      ctx.moveTo(reticleRadius - bracketSize, -reticleRadius);
-      ctx.lineTo(reticleRadius, -reticleRadius);
-      ctx.lineTo(reticleRadius, -reticleRadius + bracketSize);
+      ctx.moveTo(bracketDist - bracketLen, -bracketDist);
+      ctx.lineTo(bracketDist, -bracketDist);
+      ctx.lineTo(bracketDist, -bracketDist + bracketLen);
       ctx.stroke();
+      ctx.rotate(Math.PI / 2);
     }
     ctx.restore();
 
-    // Center Crosshair Pip
-    ctx.save();
-    ctx.translate(x2, y2);
-    ctx.strokeStyle = beamColor;
-    ctx.lineWidth = 1.5 / this.zoom;
-    ctx.beginPath();
-    const pip = 6 / this.zoom;
-    ctx.moveTo(-pip, 0); ctx.lineTo(pip, 0);
-    ctx.moveTo(0, -pip); ctx.lineTo(0, pip);
-    ctx.stroke();
-    ctx.restore();
-
-    // 3. Tactical HUD Tag at midpoint
+    // 3. Compact & Discrete Tactical Distance Pill at Midpoint
     const midX = (x1 + x2) / 2;
     const midY = (y1 + y2) / 2;
 
-    const titleText = `🎯 ${target.name.toUpperCase()}`;
-    const statusText = losBlocked ? `⚠️ BLOQUEADO · ${distMeters}m (${distSquares} cas)` : `⚡ DESPEJADO · ${distMeters}m (${distSquares} cas)`;
+    const distText = losBlocked ? `⚠️ BLOQ · ${distMeters}m (${distSquares}c)` : `⚡ ${distMeters}m (${distSquares}c)`;
+    ctx.font = `${Math.max(8.5, Math.round(9.5 / this.zoom))}px "Rajdhani", sans-serif`;
+    const textW = ctx.measureText(distText).width;
+    const pillW = textW + 12 / this.zoom;
+    const pillH = 15 / this.zoom;
 
-    ctx.font = `bold ${Math.max(10, Math.round(11 / this.zoom))}px "Rajdhani", sans-serif`;
-    const titleWidth = ctx.measureText(titleText).width;
-    const statusWidth = ctx.measureText(statusText).width;
-    const badgeW = Math.max(titleWidth, statusWidth) + 20 / this.zoom;
-    const badgeH = 34 / this.zoom;
-
-    ctx.fillStyle = 'rgba(7, 16, 29, 0.92)';
-    ctx.strokeStyle = beamColor;
-    ctx.lineWidth = 1.5 / this.zoom;
+    ctx.fillStyle = 'rgba(7, 16, 29, 0.72)';
+    ctx.strokeStyle = losBlocked ? 'rgba(239, 68, 68, 0.4)' : 'rgba(0, 243, 255, 0.35)';
+    ctx.lineWidth = 1 / this.zoom;
     ctx.beginPath();
-    ctx.roundRect(midX - badgeW / 2, midY - badgeH / 2, badgeW, badgeH, 4 / this.zoom);
+    ctx.roundRect(midX - pillW / 2, midY - pillH / 2, pillW, pillH, 3 / this.zoom);
     ctx.fill();
     ctx.stroke();
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(titleText, midX, midY - 6 / this.zoom);
-
-    ctx.font = `${Math.max(9, Math.round(10 / this.zoom))}px "Rajdhani", sans-serif`;
-    ctx.fillStyle = losBlocked ? '#ef4444' : '#10b981';
-    ctx.fillText(statusText, midX, midY + 8 / this.zoom);
+    ctx.fillStyle = losBlocked ? '#fca5a5' : '#a5f4ff';
+    ctx.fillText(distText, midX, midY);
 
     ctx.restore();
   }
@@ -4191,7 +4242,7 @@ export class CanvasEngine {
 
       // Nameplate below token
       ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
-      ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
+      ctx.strokeStyle = tok.color ? tok.color : 'rgba(0, 243, 255, 0.3)';
       ctx.lineWidth = 1;
       const nameWidth = Math.max(radius * 2, 70);
       ctx.beginPath();
@@ -4206,7 +4257,7 @@ export class CanvasEngine {
         ? (tok.name.length > 10 ? tok.name.substring(0, 9) + '.. [?]' : `${tok.name} [?]`)
         : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
 
-      ctx.fillStyle = isMasked ? '#f43f5e' : '#e2e8f0';
+      ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
       ctx.font = 'bold 11px "Rajdhani", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -4318,7 +4369,7 @@ export class CanvasEngine {
 
     // 2. Nameplate below token
     ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
-    ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
+    ctx.strokeStyle = tok.color ? tok.color : 'rgba(0, 243, 255, 0.3)';
     ctx.lineWidth = 1;
     const nameWidth = Math.max(radius * 2, 70);
     ctx.beginPath();
@@ -4333,7 +4384,7 @@ export class CanvasEngine {
       ? (tok.name.length > 10 ? tok.name.substring(0, 9) + '.. [?]' : `${tok.name} [?]`)
       : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
 
-    ctx.fillStyle = isMasked ? '#f43f5e' : '#e2e8f0';
+    ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
     ctx.font = 'bold 11px "Rajdhani", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

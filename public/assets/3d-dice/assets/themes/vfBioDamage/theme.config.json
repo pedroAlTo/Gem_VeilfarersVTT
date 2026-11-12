@@ -1,0 +1,29 @@
+{
+  "name": "VeilFarers Biolum Damage",
+  "systemName": "vfBioDamage",
+  "author": "VeilFarers",
+  "version": 1.0,
+  "meshFile": "default.json",
+  "themeColor": "#ffffff",
+  "material": {
+    "type": "color",
+    "diffuseTexture": {
+      "light": "diffuse-light.png",
+      "dark": "diffuse-light.png"
+    },
+    "diffuseLevel": 1,
+    "bumpTexture": "crystal-normal.png",
+    "bumpLevel": 0.07,
+    "specularTexture": "crystal-specular.jpg",
+    "specularPower": 0.62
+  },
+  "diceAvailable": [
+    "d4",
+    "d6",
+    "d8",
+    "d10",
+    "d12",
+    "d20",
+    "d100"
+  ]
+}

@@ -1,5 +1,5 @@
-/* Anchored to the map viewport; no backdrop, focus trap, or full-page blocker. */
-.dice-tray-overlay{position:absolute;z-index:65;top:12px;right:12px;width:min(352px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;color:#dceaf4;background:linear-gradient(135deg,#132435ef,#0b1220f5 62%,#21172bef);border:1px solid #75cee742;border-radius:12px;box-shadow:0 14px 40px #0008,0 0 0 1px #050b16a6,inset 0 1px #a0e5ff0c;backdrop-filter:blur(14px);font-family:var(--font-ui,system-ui);user-select:none;scrollbar-width:thin;scrollbar-color:#39566a transparent}
+/* Anchored to the map viewport; hidden to ensure dice roll cleanly as pure 3D overlay */
+.dice-tray-overlay{display:none!important;position:absolute;z-index:65;top:12px;right:12px;width:min(352px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;color:#dceaf4;background:linear-gradient(135deg,#132435ef,#0b1220f5 62%,#21172bef);border:1px solid #75cee742;border-radius:12px;box-shadow:0 14px 40px #0008,0 0 0 1px #050b16a6,inset 0 1px #a0e5ff0c;backdrop-filter:blur(14px);font-family:var(--font-ui,system-ui);user-select:none;scrollbar-width:thin;scrollbar-color:#39566a transparent}
 .dice-tray-overlay [hidden]{display:none!important}.tray-header{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 9px 0 13px;border-bottom:1px solid #8fcde51a}.tray-header>div{display:flex;align-items:center;gap:8px}.tray-header strong{font-size:12px;font-weight:600;letter-spacing:.2px}.tray-header small{font:8px var(--font-mono,monospace);letter-spacing:1px;color:#8da7bb}.tray-header nav{display:flex;gap:1px}.tray-signal{height:5px;width:5px;border-radius:50%;background:#6de8ff;box-shadow:0 0 9px #6de8ff66}
 .tray-icon,.tray-text-button{border:1px solid transparent;background:transparent;color:#a9bdcf;cursor:pointer;font:12px var(--font-ui,system-ui);border-radius:6px;display:inline-flex;align-items:center;justify-content:center}.tray-icon{width:30px;min-width:30px;height:30px;font-size:18px;line-height:1}.tray-text-button{padding:7px 10px;background:#16314480;border-color:#6de8ff38;color:#d9f4fc;white-space:nowrap}.tray-icon:hover,.tray-icon[aria-expanded=true]#tray_settings_toggle,.tray-text-button:hover{background:#6de8ff14;color:#e3f9ff;border-color:#8acde633}.dice-tray-overlay button:focus-visible{outline:2px solid #6de8ff;outline-offset:-2px}.dice-tray-overlay button:disabled{opacity:.35;cursor:default}
 .tray-stage{height:196px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 75%,#21334790,transparent 70%),#080f1a}.tray-stage canvas{display:block;width:100%;height:100%;touch-action:none}.tray-corner{position:absolute;top:10px;color:#91b2c588;font:7px var(--font-mono,monospace);letter-spacing:1px;pointer-events:none}.tray-corner-left{left:12px}.tray-corner-right{right:12px;color:#6de8ff88}
@@ -8,3 +8,595 @@
 .tray-launcher{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;margin-bottom:12px;border:1px solid #8fcae530;border-radius:8px;background:linear-gradient(100deg,#12304180,#351e3c55)}.tray-launcher span{display:block;font:9px var(--font-mono);color:#a4bdce}.tray-launcher strong{font-weight:500;color:#d9f0ff;display:block;margin-top:5px}
 @media(max-width:1100px){.dice-tray-overlay{width:min(300px,calc(100% - 24px))}.tray-stage{height:174px}.tray-header small{display:none}}
 @media(max-width:650px){.dice-tray-overlay{top:8px;right:8px;width:min(264px,calc(100% - 16px));max-height:calc(100% - 16px)}.tray-stage{height:158px}.tray-header{height:40px}.tray-result{padding:8px 10px;grid-template-columns:60px 1fr 60px}}
+
+/* Player Tool Enhanced Dice Roller styles */
+.dice-mode-subtabs {
+  display: flex;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+.dice-mode-subtabs .subtab-btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.dice-mode-subtabs .subtab-btn.active {
+  background: rgba(30, 41, 59, 0.95);
+  color: #f8fafc;
+  border-color: rgba(94, 234, 212, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Advantage / Normal / Disadvantage Segmented Control */
+.roll-type-segmented {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.roll-type-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.18s ease;
+}
+.roll-type-btn.active-dis {
+  background: rgba(127, 29, 29, 0.85);
+  border-color: #ef4444;
+  color: #fef2f2;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+.roll-type-btn.active-norm {
+  background: #1e293b;
+  border-color: #64748b;
+  color: #f8fafc;
+}
+.roll-type-btn.active-adv {
+  background: rgba(20, 83, 45, 0.85);
+  border-color: #22c55e;
+  color: #f0fdf4;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+/* Live Duality Preview Boxes */
+.duality-live-boxes {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0 14px;
+}
+.duality-live-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.duality-live-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.duality-live-label.hope-label { color: #38bdf8; }
+.duality-live-label.fear-label { color: #c084fc; }
+.duality-live-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 900;
+  background: rgba(15, 23, 42, 0.85);
+  border: 2px solid;
+  transition: all 0.25s ease;
+}
+.duality-live-box.hope-box {
+  border-color: #06b6d4;
+  color: #e0f2fe;
+}
+.duality-live-box.fear-box {
+  border-color: #a855f7;
+  color: #f3e8ff;
+}
+.duality-live-box.crit-pulse {
+  animation: vf-3d-critical-glow 1s infinite alternate;
+}
+
+/* Stepper Input */
+.stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stepper-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stepper-btn:hover {
+  background: #1e293b;
+  border-color: #94a3b8;
+}
+
+/* Standard Dice Grid */
+.standard-dice-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.standard-die-btn {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.standard-die-btn.active {
+  background: #7c3aed;
+  border-color: #a855f7;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+/* Big Gradient Roll Button */
+.btn-duality-gradient {
+  background: linear-gradient(to right, #0891b2, #9333ea) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 16px rgba(8, 145, 178, 0.35), 0 4px 16px rgba(147, 51, 234, 0.35) !important;
+  cursor: pointer;
+}
+.btn-duality-gradient:hover {
+  filter: brightness(1.12);
+}
+.btn-standard-gradient {
+  background: linear-gradient(to right, #6b21a8, #d97706) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 16px rgba(107, 33, 168, 0.35) !important;
+  cursor: pointer;
+}
+
+/* Texture set pills */
+.texture-pills {
+  display: flex;
+  gap: 2px;
+}
+.texture-pill {
+  padding: 2px 6px;
+  font-size: 8.5px;
+  font-weight: 800;
+  border-radius: 4px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.texture-pill.active {
+  background: #0891b2;
+  border-color: #22d3ee;
+  color: #fff;
+}
+
+/* Sleek Utility Box: 2D/3D Toggle + Textures on Top Row, Quick Polyhedral Bar on Bottom Row */
+.dice-utility-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 4px 6px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(51, 65, 85, 0.45);
+  border-radius: 6px;
+  box-sizing: border-box;
+  width: 100%;
+}
+.dice-utility-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.dice-utility-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dice-mode-toggle-btn {
+  padding: 3px 8px;
+  font-size: 9.5px;
+  font-weight: 800;
+  border-radius: 5px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.2s ease;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.dice-mode-toggle-btn.mode-3d {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: #06b6d4;
+  color: #67e8f9;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.35);
+}
+.dice-mode-toggle-btn.mode-2d {
+  background: rgba(51, 65, 85, 0.4);
+  border-color: #64748b;
+  color: #cbd5e1;
+}
+
+/* Quick Polyhedral Bar: Full width, evenly spaced with zero overflow */
+.quick-polyhedral-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.quick-die-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 2px;
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 4px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  box-sizing: border-box;
+}
+.quick-die-btn:hover {
+  background: #1e293b;
+  border-color: #a855f7;
+  color: #f3e8ff;
+  transform: translateY(-1px);
+}
+.quick-die-btn:active {
+  transform: translateY(1px);
+}
+
+/* Compact Damage & Attack Section */
+.dmg-quick-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.dmg-quick-weapon-box,
+.dmg-quick-target-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dmg-quick-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.dmg-quick-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.dmg-quick-checkboxes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.btn-damage-gradient {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
+}
+.dmg-advanced-details {
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.5);
+  margin-top: 6px;
+  padding: 4px 8px;
+}
+.dmg-advanced-summary {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+.dmg-advanced-summary:hover {
+  color: #cbd5e1;
+}
+.dmg-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(51, 65, 85, 0.4);
+}
+
+/* Compact Trait Selector 3x2 Grid */
+.trait-selector-compact {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.trait-selector-compact .trait-select-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px;
+  min-height: 24px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.trait-selector-compact .pill-name {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  font-weight: 700;
+}
+.trait-selector-compact .pill-mod {
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: var(--cyan-pearl);
+  font-weight: 700;
+}
+
+/* Subtrait & DC Ladder: 2-column inline grid */
+.dice-context-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.dice-context-col label {
+  display: block;
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 2px;
+  letter-spacing: 0.04em;
+}
+.dice-context-col .hud-select {
+  width: 100%;
+  padding: 2px 6px;
+  font-size: 10px;
+  height: 25px;
+}
+
+/* Action Cockpit: Roll Type + Stepper + Cubes */
+.dice-action-cockpit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(51, 65, 85, 0.45);
+  border-radius: 6px;
+}
+.dice-action-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.dice-action-cockpit .roll-type-segmented {
+  display: flex;
+  gap: 3px;
+  margin: 0;
+}
+.dice-action-cockpit .roll-type-btn {
+  flex: 1;
+  padding: 3px 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  border-radius: 4px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: center;
+}
+.dice-action-cockpit .duality-mod-stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+.dice-action-cockpit .duality-mod-stepper-row .stepper-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+.dice-action-cockpit .stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.dice-action-cockpit .stepper-btn {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 0;
+}
+.dice-action-cockpit .stepper-row input {
+  height: 22px;
+  font-size: 11px;
+  padding: 0 2px;
+}
+
+/* Compact Duality Preview Cubes */
+.dice-action-cockpit .duality-live-boxes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.dice-action-cockpit .duality-live-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.dice-action-cockpit .duality-live-label {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.dice-action-cockpit .duality-live-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  font-size: 17px;
+  font-weight: 900;
+  border: 2px solid;
+}
+
+/* Big Duality Roll Button */
+.roll-trigger-btn.btn-duality-gradient {
+  margin: 0 0 6px 0 !important;
+  padding: 7px 10px !important;
+  height: 34px !important;
+  font-size: 12px !important;
+  border-radius: 6px !important;
+}
+
+/* Result Panel: Compact layout */
+.dice-result-panel {
+  margin: 0 0 6px 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.dice-result-panel .dice-total-row {
+  margin-bottom: 4px;
+  padding: 3px 6px;
+}
+.dice-result-panel .readout-num,
+.dice-result-panel .readout-dc {
+  font-size: 18px;
+}
+.dice-result-panel .outcome-banner {
+  padding: 5px 8px;
+}
+.dice-result-panel .outcome-title {
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+.dice-result-panel .outcome-desc,
+.dice-result-panel .outcome-payout {
+  font-size: 10px;
+}
+
+/* Collapsible Secondary Details */
+.dice-advanced-details {
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.3);
+  margin-top: 4px;
+  overflow: hidden;
+}
+.dice-advanced-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  cursor: pointer;
+  background: rgba(2, 6, 23, 0.5);
+  user-select: none;
+}
+.dice-advanced-summary:hover {
+  color: #38bdf8;
+  background: rgba(2, 6, 23, 0.75);
+}
+.dice-advanced-content {
+  padding: 6px 8px;
+}
+
+/* 16:9 Screen Optimizations */
+@media (min-aspect-ratio: 16/10) {
+  .sidebar-tab-content-area {
+    padding: 6px 8px;
+  }
+  .dice-actor-bar {
+    padding: 2px 6px;
+    margin-bottom: 4px;
+  }
+  .trait-selector-compact {
+    gap: 3px;
+    margin-bottom: 4px;
+  }
+  .trait-selector-compact .trait-select-pill {
+    padding: 2px 5px;
+    min-height: 22px;
+  }
+}
+
+

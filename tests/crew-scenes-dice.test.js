@@ -22,10 +22,10 @@ after(async () => { await store.saveQueue.catch(() => {}); dom.window.close(); }
 const pc = (name = 'Pilot') => createActor({ name }, store.state.activeMapId);
 const drone = () => createActor({ name: 'Scout', actorType: 'drone', controllerIds: ['a', 'b'] }, store.state.activeMapId);
 
-test('assignment moves a player slot atomically; drones stay shared', () => {
+test('un jugador puede estar asignado a varios tokens; drones stay shared', () => {
   const a = { ...pc(), ownerId: 'a' }, b = pc('Other'), d = drone();
   const next = assignControls([a, b, d], b.id, ['a'], ['a', 'b']);
-  assert.equal(next[0].ownerId, ''); assert.equal(next[1].ownerId, 'a'); assert.deepEqual(next[2].controllerIds, ['a', 'b']);
+  assert.equal(next[0].ownerId, 'a'); assert.equal(next[1].ownerId, 'a'); assert.deepEqual(next[2].controllerIds, ['a', 'b']);
   assert.throws(() => assignControls([a, b], 'missing', ['a'], ['a'])); assert.equal(a.ownerId, 'a');
   assert.throws(() => assignControls([a, b], b.id, ['a', 'b'], ['a', 'b']));
   assert.throws(() => assignControls([a], a.id, ['stranger'], ['a']));
@@ -165,9 +165,23 @@ test('two clients complete host/join, token assignment, scene sync, submission a
   const droneToken = hostStore.addToken({ name: 'Shared scout', actorType: 'drone' }); hostStore.assignTokenControllers(droneToken.id, [playerId]); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5));
   assert.ok(guestStore.canEditToken(droneToken.id)); guestStore.updateToken(droneToken.id, { x: 140, y: 280 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === droneToken.id).x, 140);
   const npc = hostStore.addToken({ name: 'Assigned adversary', actorType: 'adversary' }); host.assignToken(playerId, npc.id); await new Promise(resolve => setTimeout(resolve, 5));
-  assert.ok(guestStore.canEditToken(npc.id)); assert.equal(guestStore.canEditToken(token.id), false); assert.equal(guestStore.state.tokens.find(t => t.id === npc.id).name, 'Assigned adversary');
-  guestStore.updateToken(token.id, { x: 999 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).x, 224);
+  assert.ok(guestStore.canEditToken(npc.id)); assert.equal(guestStore.canEditToken(token.id), true); assert.equal(guestStore.state.tokens.find(t => t.id === npc.id).name, 'Assigned adversary');
+  guestStore.updateToken(token.id, { x: 999 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).x, 999);
   guestStore.updateToken(npc.id, { facingAngle: 1.2 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === npc.id).facingAngle, 1.2);
+  const enemy = hostStore.addToken({ name: 'Enemy Alien', actorType: 'adversary', hp: { current: 10, max: 10 }, armor: { current: 2, max: 2 } });
+  host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5));
+  guest.broadcast({
+    type: 'APPLY_DAMAGE',
+    attackerId: token.id,
+    targetId: enemy.id,
+    hpLoss: 3,
+    newHp: 7,
+    armorLoss: 1,
+    newArmor: 1
+  });
+  await new Promise(resolve => setTimeout(resolve, 15));
+  assert.equal(hostStore.state.tokens.find(t => t.id === enemy.id).hp.current, 7);
+  assert.equal(guestStore.state.tokens.find(t => t.id === enemy.id).hp.current, 7);
   hostStore.assignTokenControllers(droneToken.id, []); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(guestStore.canEditToken(droneToken.id), false);
 
   guest.disconnect(); assert.equal(guestStore.state.campaignName, 'Local backup'); assert.equal(guestStore.sessionRole, 'local'); host.disconnect();
@@ -289,4 +303,71 @@ test('assigned players can open their sheet, change current resources and choose
   modal.querySelector(`[data-control-token="${shared.id}"]`).click(); assert.equal(store.state.selectedTokenId, shared.id); assert.equal(store.state.activeTool, 'select');
   store.state.isConnected = false; assert.equal(store.canEditToken(owned.id), false);
   store.sessionRole = 'local'; store.state.claimedTokenId = owned.id; store.memberId = null; store.peerId = null; assert.equal(store.canEditToken(owned.id), true); assert.equal(store.canEditToken(other.id), false);
+});
+
+test('dice callout displays player name, token name, result and applied modifiers, and no shared fear badge exists', async () => {
+  const { VeilfarersDiceEngine } = await import('../src/vtt-integration/modules/diceEngine3D.js');
+  const engine = new VeilfarersDiceEngine();
+
+  engine.showCallout({
+    playerName: 'Pedro',
+    tokenName: 'Capt. Jonathan Harker',
+    label: 'Ataque con Espada',
+    total: 15,
+    outcomeLabel: 'CON HOPE',
+    details: 'Hope [8] + Fear [5] + 2 = 15 vs DC 12'
+  });
+
+  const stack = document.getElementById('vf-callouts-stack');
+  assert.ok(stack, 'Callouts stack must exist in DOM');
+  const card = stack.querySelector('.vf-callout-card');
+  assert.ok(card, 'Callout card must be rendered in stack');
+
+  const cardText = card.textContent;
+  assert.ok(cardText.includes('Pedro'), 'Must display player name Pedro');
+  assert.ok(cardText.includes('Capt. Jonathan Harker'), 'Must display token name Capt. Jonathan Harker');
+  assert.ok(cardText.includes('15'), 'Must display total 15');
+  assert.ok(cardText.includes('CON HOPE') || cardText.includes('HOPE'), 'Must display outcome');
+  assert.ok(cardText.includes('Hope [8] + Fear [5] + 2 = 15 vs DC 12'), 'Must display details/modifiers');
+
+  // Ensure no vf-shared-fear-badge exists
+  assert.equal(document.getElementById('vf-shared-fear-badge'), null, 'vf-shared-fear-badge must not exist in DOM');
+});
+
+test('logout returns to login screen and lobby gateway responds to signout events', async () => {
+  const { VeilfarersLobbyGateway } = await import('../src/vtt-integration/modules/lobbyGateway.js');
+  const gateway = new VeilfarersLobbyGateway();
+
+  gateway.hideLobby();
+  const root = document.getElementById('vf-lobby-gateway');
+  assert.ok(root.classList.contains('hidden'));
+
+  gateway.showLoginScreen();
+  assert.ok(!root.classList.contains('hidden'), 'Lobby gateway must be visible upon showLoginScreen');
+  assert.ok(!document.getElementById('vf-auth-screen').classList.contains('hidden'), 'Auth screen must be visible');
+  assert.ok(document.getElementById('vf-hub-screen').classList.contains('hidden'), 'Hub screen must be hidden');
+
+  gateway.hideLobby();
+  window.dispatchEvent(new dom.window.CustomEvent('veil:auth-signout'));
+  assert.ok(!root.classList.contains('hidden'), 'Lobby gateway must reopen on veil:auth-signout');
+});
+
+test('dice 3d stage bounds are constrained to tactical map viewport and settleTimeout allows natural deceleration', async () => {
+  const fs = await import('fs');
+  const code = fs.readFileSync('public/assets/3d-dice/vf-dice3d.js', 'utf8');
+
+  // Verify settleTimeout is >= 9000ms so animation is not cut off prematurely
+  const match = code.match(/settleTimeout\s*:\s*(\d+)/);
+  assert.ok(match, 'settleTimeout must be configured in vf-dice3d.js');
+  const settleTimeout = Number(match[1]);
+  assert.ok(settleTimeout >= 9000, `settleTimeout (${settleTimeout}ms) must be >= 9000ms for natural settlement`);
+
+  // Verify syncStageBounds logic bounds box to canvas_viewport_root
+  assert.ok(code.includes('canvas_viewport_root'), 'vf-dice3d.js must query canvas_viewport_root for bounds');
+  assert.ok(code.includes('--vf-dice-top') && code.includes('--vf-dice-width'), 'vf-dice3d.js must set dynamic CSS boundary variables');
+
+  // Verify CSS contains invisible wall constraints for vf-dice3d-box
+  const css = fs.readFileSync('public/assets/3d-dice/vf-dice3d.css', 'utf8');
+  assert.ok(css.includes('--vf-dice-top'), 'vf-dice3d.css must use --vf-dice-top');
+  assert.ok(css.includes('--vf-dice-width'), 'vf-dice3d.css must use --vf-dice-width');
 });

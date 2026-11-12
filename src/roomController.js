@@ -82,22 +82,63 @@ export class RoomController {
       this.unsubscribers.push(a.onSnapshot(this.service.ref('rooms', id), { includeMetadataChanges: true }, snapshot => {
         if (generation !== this.generation || snapshot.metadata.hasPendingWrites) return;
         this.serverConfirmed = !snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites;
-        if (snapshot.exists()) this.room = { ...snapshot.data(), id };
+        if (!snapshot.exists()) {
+          this.remember(null);
+          this.leave({ preserveRemembered: false, save: false }).then(() => {
+            notify('La sala ha sido eliminada por el Keeper.', 'error');
+          });
+          return;
+        }
+        this.room = { ...snapshot.data(), id };
         this.checkPresence(); this.emit();
-      }, error => this.fail(error)));
+      }, error => {
+        if (error?.code === 'permission-denied' && !this.isKeeper) {
+          this.remember(null);
+          this.leave({ preserveRemembered: false, save: false }).then(() => {
+            notify('La sala ha sido eliminada por el Keeper.', 'error');
+          });
+          return;
+        }
+        this.fail(error);
+      }));
       this.unsubscribers.push(a.onSnapshot(this.isKeeper ? this.service.col('rooms', id, 'members') : this.service.ref('rooms', id, 'members', this.service.uid), { includeMetadataChanges: true }, snapshot => {
         if (generation !== this.generation || snapshot.metadata.hasPendingWrites) return;
         this.members = this.isKeeper ? snapshot.docs.map(d => ({ ...d.data(), uid: d.id })) : (snapshot.exists() ? [snapshot.data()] : []);
         if (!this.isKeeper && !this.members.some(m => m.uid === this.service.uid && m.status === 'active')) {
-          this.remember(null); this.leave().then(() => notify('El Keeper ha retirado tu acceso a esta sala.', 'error')); return;
+          this.remember(null); this.leave({ preserveRemembered: false, save: false }).then(() => notify('El Keeper ha retirado tu acceso a esta sala o la sala ha sido eliminada.', 'error')); return;
         }
         if (this.isKeeper) this.applyRoster();
         this.emit();
-      }, error => this.fail(error)));
+      }, error => {
+        if (error?.code === 'permission-denied' && !this.isKeeper) {
+          this.remember(null);
+          this.leave({ preserveRemembered: false, save: false }).then(() => {
+            notify('La sala ha sido eliminada por el Keeper.', 'error');
+          });
+          return;
+        }
+        this.fail(error);
+      }));
       if (this.isKeeper) { this.watchWires(generation); this.service.cleanOldWires(id, this.epoch).catch(() => {}); }
       this.presenceTimer = setInterval(() => this.checkPresence(), 1000);
       this.heartbeatTimer = setInterval(() => this.heartbeat().catch(error => this.fail(error)), ROOM_HEARTBEAT_MS);
       this.checkPresence(); this.emit();
+      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        import('./vtt-integration/vttIntegrationInit.js').then(async ({ initVeilfarersVTTModules }) => {
+          const user = this.service.account?.user || { uid: this.service.uid, displayName: this.service.name || 'Viajero' };
+          await initVeilfarersVTTModules({
+            roomId: id,
+            currentUser: {
+              uid: this.service.uid,
+              displayName: user.displayName || this.service.name || 'Viajero',
+              role: this.isKeeper ? 'keeper' : 'player'
+            },
+            activeCharId: this.isKeeper ? null : (this.store.state.claimedTokenId || null)
+          });
+        }).catch(err => {
+          console.warn('[Veilfarers Integration] No se pudo inicializar los módulos VTT:', err);
+        });
+      }
     } catch (error) { await this.leave({ preserveRemembered: true, save: false }); throw error; }
   }
   applyRoster() {
@@ -207,6 +248,15 @@ export class RoomController {
   }
   async readmit(uid) { if (!this.isKeeper) throw new Error('Solo el Keeper puede readmitir.'); await this.service.setMemberStatus(this.room.id, uid, 'active'); }
   async rotate() { if (!this.isKeeper) throw new Error('Solo el Keeper puede regenerar la invitación.'); return this.service.rotateInvitation(this.room.id); }
+  async deleteRoom(id = this.room?.id) {
+    if (!id) throw new Error('No se ha especificado la sala a eliminar.');
+    await this.service.deleteRoom(id);
+    if (this.room?.id === id) {
+      await this.leave({ preserveRemembered: false, save: false });
+    }
+    this.remember(null);
+    this.emit();
+  }
   fail(error) {
     this.lastError = roomError(error);
     if (!this.isKeeper) this.pausePlayer();
@@ -229,6 +279,11 @@ export class RoomController {
     for (const wire of this.wires.values()) wire.close(); this.wires.clear();
     this.network.disconnect(); this.room = null; this.members = []; this.wireRows = []; this.epoch = ''; this.serverConfirmed = false;
     this.store.update({ persistentRoomId: '', roomName: '', roomPaused: false, roomSaveStatus: '' });
+    if (typeof document !== 'undefined') {
+      const pHud = document.getElementById('vf-player-hud'); if (pHud) pHud.style.display = 'none';
+      const kHud = document.getElementById('vf-keeper-hud'); if (kHud) kHud.style.display = 'none';
+      const fBadge = document.getElementById('vf-shared-fear-badge'); if (fBadge) fBadge.remove();
+    }
     this.leaving = false; this.emit();
   }
 }

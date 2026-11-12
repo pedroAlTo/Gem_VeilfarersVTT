@@ -1,0 +1,29 @@
+{
+  "name": "VeilFarers Fear Tech Winner Glow",
+  "systemName": "vfFearWin",
+  "author": "VeilFarers",
+  "version": 1.0,
+  "meshFile": "default.json",
+  "themeColor": "#ffffff",
+  "material": {
+    "type": "color",
+    "diffuseTexture": {
+      "light": "diffuse-dark.png",
+      "dark": "diffuse-dark.png"
+    },
+    "diffuseLevel": 1.18,
+    "bumpTexture": "tech-normal.png",
+    "bumpLevel": 0.16,
+    "specularTexture": "tech-specular.jpg",
+    "specularPower": 0.92
+  },
+  "diceAvailable": [
+    "d4",
+    "d6",
+    "d8",
+    "d10",
+    "d12",
+    "d20",
+    "d100"
+  ]
+}

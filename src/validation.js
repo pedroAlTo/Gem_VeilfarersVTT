@@ -237,6 +237,10 @@ export function validateActor(t) {
   if (t.isPlayer === true && t.path !== undefined && t.path !== null && t.path !== '') assert(['Awakened', 'Sleeping'].includes(t.path), 'Invalid character Path.');
   if (t.resolve?.dieType !== undefined && t.resolve?.dieType !== null) assert(['d4', 'd6'].includes(t.resolve.dieType), 'Invalid Resolve die.');
   if (t.size !== undefined && t.size !== null) assert(finite(t.size, 0.1, 20), 'Invalid token size.');
+  if (t.color !== undefined && t.color !== null) {
+    if (typeof t.color !== 'string') t.color = String(t.color);
+    assert(t.color.length <= 50, 'Invalid token color.');
+  }
   if (t.sourceCharacter !== undefined && t.sourceCharacter !== null) assert(t.sourceCharacter && typeof t.sourceCharacter === 'object' && t.sourceCharacter.document?.app === 'Veilfarers Character Sheet' && t.sourceCharacter.document?.fields && typeof t.sourceCharacter.document.fields === 'object', 'Invalid source character.');
   return t;
 }

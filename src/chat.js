@@ -9,7 +9,13 @@ export function chatRequest(input) {
   if (!input || !string(input.text, CHAT_TEXT_LIMIT) || !string(input.clientId, 200) || !string(input.recipientId, 200)) {
     throw new Error('Escribe un mensaje de 1 a 2000 caracteres y selecciona un destinatario.');
   }
-  return { text: input.text.trim(), clientId: input.clientId, recipientId: input.recipientId };
+  return {
+    text: input.text.trim(),
+    clientId: input.clientId,
+    recipientId: input.recipientId,
+    ...(input.color ? { color: String(input.color) } : {}),
+    ...(input.senderTokenId ? { senderTokenId: String(input.senderTokenId) } : {})
+  };
 }
 
 export function validateChatEntry(entry) {
@@ -22,8 +28,12 @@ export function validateChatEntry(entry) {
     throw new Error('Mensaje de chat no válido.');
   }
   // Only canonical fields are persisted or forwarded.
-  const { id, clientId, senderId, senderName, recipientId, recipientName, text, sentAt } = entry;
-  return { id, clientId, senderId, senderName, recipientId, recipientName, text, sentAt };
+  const { id, clientId, senderId, senderName, recipientId, recipientName, text, sentAt, color, senderTokenId } = entry;
+  return {
+    id, clientId, senderId, senderName, recipientId, recipientName, text, sentAt,
+    ...(color ? { color: String(color) } : {}),
+    ...(senderTokenId ? { senderTokenId: String(senderTokenId) } : {})
+  };
 }
 
 export function validateChatHistory(messages = []) {

@@ -1,10 +1,214 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.0**.
-Paquete: `VeilFarers_VTT_v1.4.0.zip`.
+Versión actual del VTT: **v1.5.0**.
+Paquete: `VeilFarers_VTT_v1.5.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.5.0] — 2026-11-12
+
+Fidelidad Canónica Total: Lobby Simplificado por Roles, Subtítulos en Overlay, Paleta de Color de Token, Armaduras Activas y Catálogo Integral
+
+### Físicas Canónicas de Dados 3D (@3d-dice/dice-box)
+
+- Animación completa sin cortes prematuros (settleTimeout: 9500ms): los dados ruedan, rebotan y desaceleran hasta su detención natural por fricción y gravedad antes de que el motor resuelva el resultado.
+- Muros invisibles de colisión física (Ammo.js) restringidos exclusivamente al área del mapa táctico (#canvas_viewport_root) con actualización dinámica por ResizeObserver, impidiendo que los dados caigan o reboten sobre los menús superior o laterales.
+- Preservación de las físicas y parámetros canónicos de @3d-dice/dice-box (BabylonJS + Ammo.js) asegurando un movimiento fluido, natural y consistente sin saltos artificiales ni micro-rebotes excesivos.
+
+### Pantalla de Entrada Simplificada (Lobby Táctico)
+
+- Rediseño intuitivo con dos grandes botones Hero principales: [ ◈ ENTRAR COMO JUGADOR ] y [ ⚡ ENTRAR COMO KEEPER ].
+- Modo Jugador: Listado de salas a las que está conectado el usuario con acceso con 1 clic, formulario para unirse a nueva sala con código de invitación y Character Vault.
+- Modo Keeper: Listado de salas creadas por el Keeper para abrirlas o gestionarlas directamente, y formulario de creación de nueva sala/campaña con nombre.
+- Autenticación Segura sin Transición Prematura: Bloqueo de inputs e indicador de progreso ("Verificando credenciales...") mientras se procesa el login; no transiciona al VTT hasta que Firebase Auth confirme la identidad.
+- Visualización de Identidad: Encabezado con chips permanentes del usuario (displayName) y correo electrónico (email) conectado.
+
+### Subtítulos Cinematográficos en Overlay
+
+- Módulo #vf-subtitle-overlay que proyecta mensajes y descripciones en la parte inferior de la pantalla de forma no intrusiva (anclado a bottom: 74px), sin tapar controles tácticos ni HUD.
+
+### Tokens Multicolores y Personalización Coordinada
+
+- Selector de color de token (token.color) integrado en la configuración del token con paleta táctica (Cian, Ámbar, Esmeralda, Púrpura, Rojo, Carmesí, etc.).
+- El color seleccionado define de forma coordinada el borde y nombre del token en mapa, el texto del usuario en chat, el subtítulo en overlay y la caja de resultado de dados (.vf-callout-result-box y .vf-results).
+
+### Precarga Táctica de Daño según Armas Equipadas
+
+- Las armas equipadas en la ficha del token se vinculan directamente al calculador de daño táctico (diceRoller.js), precargando fórmula de daño, modificadores y botón directo 💥 Daño en la barra rápida.
+- Tooltip canónico con nombre y regla oficial al pasar el ratón (mouse-over) sobre marcadores de estado y condiciones en el mapa y HUD.
+- Marcadores de bloqueo de objetivo (target lock) sutiles y discretos con corchetes esquineros ultrafinos (1px).
+
+### Umbrales de Daño Dinámicos según Armadura
+
+- Integración de los Damage Thresholds (Major Threshold / Severe Threshold) y Armor Slots en todas las armaduras canónicas del Corebook y del suplemento Rust & Steel (Casas Solari, Volkov, Valerius, Joric, Amaranth, y especies Lithian, Chitinid, Synthet).
+- Al equipar una armadura desde el inventario del token, se recalculan y actualizan automáticamente sus umbrales activos en combate (Major = Armor Major + Nivel; Severe = Armor Severe + Nivel) y sus ranuras de armadura (current y max).
+- Cálculo de daño en combate ajustado con fidelidad matemática estricta: Menor (1 HP si Daño < Major), Mayor (2 HP si Major <= Daño < Severe), y Severo (3 HP + 1 HP por cada 10 puntos de Overkill si Daño >= Severe).
+- El gasto de ranuras de armadura mitiga la severidad en 1 escalón exacto.
+
+### Catálogo Canónico Integral de Armas, Aumentos y Módulos de Dron
+
+- Ampliación completa del arsenal con Trait de atributo, tipo de daño (Físico, Energía, Vacío), notación de dados canónica, rangos tácticos oficiales (Melee, Close, Far, Very Far) y Burden.
+- Incorporación de Aumentos canónicos con coste de ranura (1 Augment), coste de estrés (Stress Cost), beneficios tácticos automáticos (+1 Slot de armadura, +2 HP, +1 Evasión) y peajes/drawbacks oficiales.
+- Incorporación de Módulos de Dron canónicos con ranuras requeridas y soporte para el módulo oficial Neural Network Control (0 ranuras) que otorga control multi-jugador simultáneo de drones.
+- Actualización visual de la biblioteca de equipamiento (Equipment UI) con pestañas dedicadas y tarjetas técnicas adaptadas a cada tipo de ítem.
+
+### Estados de Personaje y Campaña Canónicos
+
+- Incorporación a las 18 condiciones tácticas de combate de los 6 Estados de Personaje y Campaña canónicos: Overwhelmed (Abrumado), Dying (Moribundo), Final (Estado Final), Long Bruise (Secuela Grave), Blurred (Desfase de Realidad) y Burned Out (Agotamiento Durmiente) con sus respectivos iconos SVG y reglas oficiales.
+- Selector de condiciones reorganizado con secciones visuales claras para condiciones tácticas y estados de campaña.
+
+### Gasto de Miedo (Fear) en Foco de Adversarios
+
+- Al activar el Foco de Combate (Spotlight) en un Adversario o PNJ hostil, el Keeper consume obligatoriamente 1 punto de Miedo del Fear Tracker global.
+- Si no hay Fear disponible (Fear = 0), el sistema bloquea la activación y notifica al Keeper.
+- Los drones aliados y tokens de jugadores están exentos del consumo de Fear.
+- Sincronización en tiempo real mediante FEAR_UPDATE y TOKEN_UPDATE por la red P2P/Firestore.
+
+## [1.4.9] — 2026-11-12
+
+Restauración del Diseño Visual Clásico del Callout 3D con Datos Reales y Jerarquía Estilizada
+
+### Formato Visual Elegante sin Encabezados Redundantes
+
+- Restauración de la estética visual clásica del callout flotante dorado de dados 3D (borde dorado translúcido con desenfoque de fondo y tipografía táctica de alta legibilidad).
+- Supresión de encabezados de formulario repetitivos ("NOMBRE DEL JUGADOR:", "NOMBRE DEL TOKEN:", "HABILIDAD:", "RESULTADO:", "MODIFICADORES APLICADOS:").
+- Jerarquía estilizada: Kicker superior dorado con el nombre de quien hace la tirada (ej. KEEPER o PEDRO); título un poco más grande con el nombre del personaje/adversario (+ habilidad si aplica); tipo de resultado destacado (Failure with Fear, Success with Hope, etc.) bien visible con resplandor cromático según Hope/Fear/Crítico; número enorme (38px) con desglose Dualidad (HOPE 3 < FEAR 8); y pie técnico con tipo de dado y modificadores reales.
+- Soporte completo tanto en el panel de análisis 3D en pantalla (VFDice3D) como en la pila de notificaciones tácticas de tiradas.
+
+## [1.4.8] — 2026-11-12
+
+Entrada Libre de Jugadores sin Personaje Previo y Consolidación de Handover de Decisiones de Diseño
+
+### Entrada Libre y Asignación Flexible de Tokens
+
+- Eliminado el bloqueo obligatorio de personaje en el Hub de acceso: el jugador puede entrar a cualquier mesa o partida sin tener que crear ni seleccionar un operativo previamente.
+- Eliminada la ventana emergente automática (popup de Reclamar personaje) al conectarse a una sesión en la red: el jugador entra de forma limpia y directa a la mesa.
+- Soporte completo para asignación diferida por el Keeper: el jugador entra en modo espectador/jugador y recibe su token y controles en el momento en que el Keeper se lo asigna.
+- Actualización visual del resumen de despliegue en el Hub para reflejar que la entrada sin personaje está lista y autorizada.
+
+### Handover & Preservación de Decisiones de Diseño
+
+- Creación del documento HANDOVER.md en la raíz del repositorio consolidando las 8 decisiones críticas de arquitectura y UX acordadas para evitar regresiones futuras.
+- Vinculación obligatoria del Handover en AGENTS.md para garantizar que todos los agentes y desarrolladores consulten y respeten estas directrices sin excepción.
+
+## [1.4.7] — 2026-11-12
+
+Borrado Permanente de Salas por el Keeper, Expulsión Reactiva de Jugadores y Resolución de Error de Permisos
+
+### Gestión y Borrado de Salas Persistentes
+
+- Permite al Keeper dueño de una sala eliminarla permanentemente mediante un botón de peligro ("Eliminar") tanto desde la lista de "Salas que dirijo" como desde el panel de la sala activa.
+- Cuadro de diálogo de confirmación previo para prevenir eliminaciones accidentales de campañas en la nube.
+- Borrado integral en Firestore: eliminación del documento de sala, sus miembros, subcolecciones de fragmentos y guardados, invitación activa (roomInvites) y registro de usuario.
+- Expulsión en tiempo real de los jugadores conectados: el listener reactivo detecta el borrado de la sala o la revocación del acceso, los desconecta limpiamente, limpia su sesión y muestra notificación explicativa.
+- Actualización de firestore.rules para permitir al propietario el borrado seguro de sus salas (allow delete) y administración de miembros.
+
+### Resiliencia y Corrección de Permisos Firestore
+
+- Eliminación de la rotación automática forzada en segundo plano de códigos de invitación en refresh() y enterRoom() que provocaba permission-denied cuando las reglas remotas de Firestore aún no se habían publicado.
+- Preservación del acceso y estado online para salas existentes con códigos legacy sin interrumpir la sesión del Keeper.
+- Limpieza automática de lastError en refrescos de sala para evitar que mensajes de error transitorios queden fijos en pantalla.
+
+## [1.4.6] — 2026-11-12
+
+Callout Dorado Estructurado, Ficha Condensada sin Scroll, Códigos de Invitación Breves y Herramienta Unificada de Dibujo
+
+### Callout Dorado de Dados 3D
+
+- Sustitución completa del texto genérico por información estructurada y fiel: Nombre del jugador, Nombre del token, Habilidad (si aplica), Resultado (con total y estado Duality) y Modificadores aplicados.
+- Eliminación total de los rótulos TACTICAL SOLUTION y telemetría ficticia VECTOR TELEMETRY LOCKED.
+- Paso explícito de metadatos de jugador, token, habilidad y modificadores en todas las fuentes de tirada (DiceRoller, VttDiceSync, DiceEngine3D y KeeperHud).
+
+### Ficha de Personaje Ultra Condensada
+
+- Rediseño compacto del modal de ficha (Dossier): reducción drástica de espaciados, hero compacto de 44px, inputs optimizados de 28px y área de notas estilizada.
+- Pie de ficha sticky fijado en la parte inferior de la ventana para que el botón "Guardar ficha" esté siempre visible sin necesidad de hacer scroll.
+- Botón de guardado rápido directo añadido en la barra superior de pestañas del dossier.
+
+### Invitaciones y Mesas Persistentes
+
+- Generación de códigos de invitación cortos y legibles con formato de 3 letras de la sala + guion + 5 caracteres aleatorios (ej. NAV-33F44).
+- Auto-migración transparente de códigos heredados largos al nuevo formato breve al abrir o entrar a la sala como Keeper.
+
+### Herramientas de Mesa
+
+- Unificación de Dibujar y Borrar en un único botón en la barra lateral de herramientas con selector de modo integrado en su panel emergente y atajos de teclado [B / D].
+
+## [1.4.5] — 2026-11-12
+
+Inicialización Centralizada y Resiliente de Firebase Auth y Realtime Database
+
+### Conectividad y Autenticación en la Nube
+
+- Centralización de la inicialización de Firebase App, Auth y Realtime Database en un cliente unificado (firebaseClient.js) para evitar errores app/no-app.
+- Sustitución de accesos dinámicos a variables de entorno por propiedades estáticas de Vite con configuración de respaldo pública garantizada.
+- Mensajes de autenticación amigables en español para credenciales incorrectas, contraseñas cortas, ventanas emergentes bloqueadas y cuentas existentes.
+- Vínculo inmediato del Vault de personajes, HUD de Jugador, consola del Keeper y sincronización de dados con Firebase Realtime Database.
+
+## [1.4.4] — 2026-11-12
+
+Terminal Táctico AAA: Hub de Operativos Rediseñado, Flujo de Logout y Precarga de Dados 3D
+
+### Hub de Operativos y Portal AAA
+
+- Rediseño premium con calidad de estudio AAA de la pantalla del Hub táctico, tipografías Orbitron/Rajdhani y ambientación Sci-Fi Pearl Era.
+- Character Vault estilizado: tarjetas tácticas de operativo con avatar holográfico, indicadores de estado [ACTIVO], micropips para HP, Stress, Hope, Armour Shields y Slots de mejora.
+- Panel de despliegue con frecuencias de sala rápidas y diagnóstico de enlace cuántico en tiempo real.
+- Creador de personajes reestructurado en tres secciones tácticas con matriz Duality 2d12 de atributos y blindaje exotáctico.
+
+### Ciclo de Acceso y Sesión
+
+- Carga inmediata del portal en el arranque sin destellos previos del mapa ni de la mesa de juego.
+- Flujo de retorno al portal de login automático y coherente tras cualquier cierre de sesión (botón de desconexión del Hub, menú de cuenta de la mesa o desautenticación remota).
+- Precarga y precalentamiento en segundo plano del motor 3D de dados, física WASM y audio mientras el usuario interactúa con la pantalla de acceso.
+
+## [1.4.3] — 2026-11-12
+
+Diseño Táctico del Portal de Acceso y Modo Local / Invitado
+
+### Portal y Acceso
+
+- Rediseño completo de la interfaz de login del portal con estética Sci-Fi/Cyberpunk, fondo con cuadrícula táctica, glassmorphism y controles integrados.
+- Botón directo para entrar como Invitado / Modo Local y botón de cierre rápido para acceder al VTT de inmediato sin requerir cuenta.
+- Información contextual amigable en modo local si la autenticación remota no está configurada, sin mensajes de error invasivos.
+- Soporte completo de estilos CSS para inputs con iconos, botones con gradientes cian, selector de Google y bóveda de personajes.
+- Optimización Canvas2D con willReadFrequently para renderizado acelerado de la niebla de exploración y corrección de metadatos móviles.
+
+## [1.4.2] — 2026-11-11
+
+Callout de Tiradas Estructurado y Limpieza de Interfaz
+
+### Callouts de Tiradas
+
+- Formato estructurado en cada tarjeta de resultado con 4 campos explícitos: Nombre del jugador, Nombre del token, Resultado y Modificadores aplicados.
+- Sincronización de identificadores de jugador y token en tiradas de acción, comprobaciones Duality y dados rápidos del Keeper.
+- Eliminación completa del badge redundante de "FEAR EN MESA" sobre la cabecera de sesión.
+
+## [1.4.1] — 2026-11-11
+
+Veilfarers Suite: Dados 3D Optimizados, Callouts Remotos, Asignación Múltiple y HUD Movible
+
+### Dados 3D y Notificaciones de Tirada
+
+- Los dados 3D se animan exclusivamente en la pantalla del jugador que realiza la tirada. El resto de la mesa recibe un callout visual con el resultado.
+- Callouts apilables e independientes: muestran el nombre del token, el resultado total y el desglose de modificadores aplicados, permitiendo ver múltiples tiradas simultáneas.
+- Privacidad de tiradas del Keeper: las tiradas ocultas no se notifican a los jugadores y quedan claramente identificadas en la consola del Director.
+- Física 3D calibrada: gravedad realista (3.6), fricción (0.95) y restitución reducida (0.12) para que los dados aterricen planos y firmes en sus caras.
+- Resolución del bloqueo entre tiradas sucesivas y supresión de la tirada duplicada involuntaria de Hope & Fear al rodar dados estándar.
+
+### Asignación de Tokens y Drones
+
+- Un jugador puede tener asignados varios tokens a la vez sin que una nueva asignación desasigne sus fichas anteriores.
+- Los drones compartidos admiten varios jugadores controladores simultáneos seleccionables por casillas de verificación.
+
+### Consola del Keeper y Experiencia de Usuario
+
+- Consola flotante del Keeper: elemento movible mediante arrastre que no obstruye la barra de sesión superior y puede minimizarse a un icono compacto ⚡ con contador de Fear.
+- Panel de ataque y daño simplificado: precarga el arma y el objetivo directamente desde la ficha, dejando los detalles manuales comprimidos en un panel desplegable.
+- Barra de dados poliédricos y texturas ajustada a dos filas para evitar cualquier desbordamiento horizontal en el panel lateral.
+- Código de invitación corto: 3 caracteres basados en el nombre de la sala y 5 caracteres aleatorios (ej. EST-8K2MF).
+- Resiliencia ante actualizaciones de chunks en despliegues y previsualizaciones de Netlify con recarga automática ante discrepancias de hash.
 
 ## [1.4.0] — 2026-11-11
 

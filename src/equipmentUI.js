@@ -80,6 +80,7 @@ export function openEquipmentCatalog(tokenId, onEquipped = null) {
       const isWeapon = item.category === 'weapons';
       const isAugment = item.category === 'augmentations';
       const isArmor = item.category === 'armor';
+      const isDroneMod = item.category === 'drone_modules';
 
       const sourceBadgeColor = item.source === 'rust_and_steel' ? '#f59e0b' : '#00f3ff';
       const sourceBadgeLabel = item.source === 'rust_and_steel' ? 'RUST & STEEL' : 'CORE';
@@ -105,18 +106,38 @@ export function openEquipmentCatalog(tokenId, onEquipped = null) {
           </div>
 
           ${isWeapon ? `
-            <div style="font-size: 11px; display: flex; gap: 10px; color: #38bdf8; font-weight: bold; background: rgba(56, 189, 248, 0.1); padding: 4px 6px; border-radius: 4px;">
-              <span>Daño: ${esc(item.damage)}</span>
-              <span>Trait: ${esc(item.trait)}</span>
-              <span>Alcance: ${esc(item.range)}</span>
+            <div style="font-size: 11px; display: flex; flex-wrap: wrap; gap: 8px; color: #38bdf8; font-weight: bold; background: rgba(56, 189, 248, 0.1); padding: 4px 6px; border-radius: 4px;">
+              <span>⚔️ Daño: ${esc(item.damage)}</span>
+              <span>Atributo: ${esc(item.trait)}</span>
+              <span>Rango: ${esc(item.range)}</span>
+              ${item.burden ? `<span>Carga: ${item.burden}</span>` : ''}
             </div>
             <p style="margin: 0; font-size: 11px; color: #cbd5e1; line-height: 1.4;">${esc(item.features)}</p>
+          ` : isArmor ? `
+            <div style="font-size: 11px; display: flex; flex-wrap: wrap; gap: 8px; color: #34d399; font-weight: bold; background: rgba(52, 211, 153, 0.1); padding: 4px 6px; border-radius: 4px;">
+              ${item.majorThreshold ? `<span>🛡️ Umbrales: Mayor ${item.majorThreshold} / Severo ${item.severeThreshold} (+ Nivel)</span>` : ''}
+              <span>+${item.armorSlots} Slot${item.armorSlots > 1 ? 's' : ''} Armadura</span>
+              ${item.burden ? `<span>Carga: ${item.burden}</span>` : ''}
+            </div>
+            <p style="margin: 0; font-size: 11px; color: #cbd5e1; line-height: 1.4;">
+              ${esc(item.use || item.features || '')}
+            </p>
+          ` : isAugment ? `
+            <div style="font-size: 11px; display: flex; flex-wrap: wrap; gap: 8px; color: #f472b6; font-weight: bold; background: rgba(244, 114, 182, 0.1); padding: 4px 6px; border-radius: 4px;">
+              <span>🧬 Capacidad: 1 pt</span>
+              <span>Coste Estrés: ${item.stressCost ? item.stressCost + ' ⚡' : '0 (Pasivo)'}</span>
+              ${item.cost ? `<span>Coste: ${esc(item.cost)}</span>` : ''}
+            </div>
+            ${item.benefit ? `<p style="margin: 0; font-size: 11px; color: #a7f3d0; line-height: 1.4;"><strong>Beneficio:</strong> ${esc(item.benefit)}</p>` : ''}
+            ${item.drawback ? `<p style="margin: 0; font-size: 10px; color: #fca5a5; line-height: 1.3;"><strong>Peaje:</strong> ${esc(item.drawback)}</p>` : ''}
+          ` : isDroneMod ? `
+            <div style="font-size: 11px; display: flex; flex-wrap: wrap; gap: 8px; color: #a78bfa; font-weight: bold; background: rgba(167, 139, 250, 0.1); padding: 4px 6px; border-radius: 4px;">
+              <span>🤖 Ranuras de Dron: ${item.slots} Slot${item.slots !== 1 ? 's' : ''}</span>
+              <span>Grado: ${esc(item.tier)}</span>
+              ${item.cost ? `<span>Coste: ${esc(item.cost)}</span>` : ''}
+            </div>
+            <p style="margin: 0; font-size: 11px; color: #cbd5e1; line-height: 1.4;">${esc(item.effect || item.use || '')}</p>
           ` : `
-            ${isArmor && item.armorSlots ? `
-              <div style="font-size: 11px; color: #34d399; font-weight: bold;">
-                🛡️ Otorga +${item.armorSlots} Slot${item.armorSlots > 1 ? 's' : ''} de Armadura / Escudos
-              </div>
-            ` : ''}
             <p style="margin: 0; font-size: 11px; color: #cbd5e1; line-height: 1.4;">
               ${esc(item.use || item.features || '')}
             </p>
@@ -140,19 +161,41 @@ export function openEquipmentCatalog(tokenId, onEquipped = null) {
         const updated = equipCatalogItem(inv, itemToEquip);
         validateInventory(updated);
 
-        // If armor gives armor slots, optionally increase max armor if current max is lower
         const updates = { inventory: updated };
-        if (itemToEquip.category === 'armor' && itemToEquip.armorSlots) {
-          const currentMax = currentTok.armor?.max || 0;
-          if (itemToEquip.armorSlots > currentMax) {
+        const charLevel = Number(currentTok.level || currentTok.tier || 1);
+
+        // Armor equip: strictly update token Damage Thresholds and Armor Slots
+        if (itemToEquip.category === 'armor') {
+          if (itemToEquip.majorThreshold && itemToEquip.severeThreshold) {
+            updates.hp = {
+              ...currentTok.hp,
+              majorThreshold: itemToEquip.majorThreshold + charLevel,
+              severeThreshold: itemToEquip.severeThreshold + charLevel
+            };
+          }
+          if (itemToEquip.armorSlots) {
             updates.armor = {
-              current: (currentTok.armor?.current || 0) + (itemToEquip.armorSlots - currentMax),
+              current: itemToEquip.armorSlots,
               max: itemToEquip.armorSlots
             };
           }
         }
 
+        // Augmentation specific stat bonuses
+        if (itemToEquip.id === 'core_aug_subdermal_armor') {
+          const curMax = currentTok.armor?.max || 0;
+          updates.armor = { current: (currentTok.armor?.current || 0) + 1, max: curMax + 1 };
+        } else if (itemToEquip.id === 'core_aug_reinforced_bones') {
+          const curHpMax = currentTok.hp?.max || 6;
+          updates.hp = { ...currentTok.hp, max: curHpMax + 2, current: Math.min(curHpMax + 2, (currentTok.hp?.current || 6) + 2) };
+        } else if (itemToEquip.id === 'core_aug_combat_reflexes') {
+          updates.evasion = (currentTok.evasion || 10) + 1;
+        }
+
         store.updateToken(tokenId, updates);
+        if (store.sessionRole !== 'player') {
+          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: tokenId, partial: updates });
+        }
         if (onEquipped) onEquipped(updated);
         notify(`"${itemToEquip.name}" equipado a ${currentTok.name}.`);
       };

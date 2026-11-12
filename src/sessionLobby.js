@@ -6,8 +6,9 @@ import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
 import { openCharacterImport } from './characterManager.js';
 import { openAccount, useCharacter, initAccount } from './accountUI.js';
-import { isDrone } from './tokenPermissions.js';
+import { isDrone, controlsToken } from './tokenPermissions.js';
 import { mountSessionNavigation } from './sessionNavigation.js';
+import { openRoomLobby } from './roomUI.js';
 
 export function invitationCode() { return network.roomController?.room?.inviteCode || network.room || ''; }
 export function magicInvitationLink() {
@@ -271,13 +272,13 @@ export function openTokenControl(tokenId) {
   const keeper = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
   const players = store.state.players || [];
   const drone = isDrone(token);
-  const modal = dossierDialog('TOKEN CONTROL', `<h2>${e(token.name)}</h2><p class="dossier-muted">${drone ? 'Shared drone. Select every player who can control it.' : 'One character or NPC per player. Assigning this token releases their previous non-drone token.'}</p>
-    <form><div class="controller-list">${players.length ? players.map(p => `<label><input type="${drone ? 'checkbox' : 'radio'}" name="controller" value="${e(p.id)}" ${(drone ? token.controllerIds?.includes(p.id) : token.ownerId === p.id) ? 'checked' : ''} ${keeper ? '' : 'disabled'}> ${e(p.name)}</label>`).join('') : '<p>Players appear here after joining your session.</p>'}${!drone ? `<label><input type="radio" name="controller" value="" ${!token.ownerId ? 'checked' : ''} ${keeper ? '' : 'disabled'}> Keeper only</label>` : ''}</div><p class="dossier-error" role="alert"></p>${keeper ? '<button class="hud-btn hud-btn-primary">Save control</button>' : ''}</form>`);
+  const modal = dossierDialog('CONTROL DE TOKEN', `<h2>${e(token.name)}</h2><p class="dossier-muted">${drone ? 'Dron compartido: selecciona todos los jugadores que pueden controlarlo simultáneamente.' : 'Asignar jugador al token (un jugador puede controlar varios tokens a la vez).'}</p>
+    <form><div class="controller-list">${players.length ? players.map(p => `<label><input type="${drone ? 'checkbox' : 'radio'}" name="controller" value="${e(p.id)}" ${(drone ? token.controllerIds?.includes(p.id) : token.ownerId === p.id) ? 'checked' : ''} ${keeper ? '' : 'disabled'}> ${e(p.name)}</label>`).join('') : '<p>Los jugadores aparecerán aquí al unirse a la sesión.</p>'}${!drone ? `<label><input type="radio" name="controller" value="" ${!token.ownerId ? 'checked' : ''} ${keeper ? '' : 'disabled'}> Solo Keeper</label>` : ''}</div><p class="dossier-error" role="alert"></p>${keeper ? '<button class="hud-btn hud-btn-primary">Guardar control</button>' : ''}</form>`);
   modal.querySelector('form').onsubmit = event => { event.preventDefault(); try { store.assignTokenControllers(tokenId, [...modal.querySelectorAll('input:checked')].map(x => x.value)); modal.remove(); } catch (error) { modal.querySelector('.dossier-error').textContent = error.message; } };
 }
 
 export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer } = {}) {
-  if (!LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured) return import('./roomUI.js').then(({ openRoomLobby }) => openRoomLobby(prefill)).catch(error => notify(error.message, 'error'));
+  if (!LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured) return openRoomLobby(prefill);
   const s = store.state, joined = store.sessionRole === 'player', active = s.isHosting || joined;
   joinOnly = !active && joinOnly;
   let savedName = s.userName === 'Keeper' ? '' : s.userName;
@@ -350,8 +351,10 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
     const state = store.state, players = state.players || [], list = modal.querySelector('#lobby_roster');
     if (list.contains(document.activeElement)) return;
     list.innerHTML = sanitizeHTML(players.length ? players.map(p => {
-      const online = state.connectedPeers?.some(c => c.id === p.id), token = state.tokens.find(t => !isDrone(t) && t.ownerId === p.id), drones = state.tokens.filter(t => isDrone(t) && t.controllerIds?.includes(p.id));
-      return `<article class="crew-row"><span class="crew-avatar">${e(p.name.slice(0, 1).toUpperCase())}</span><div><strong>${e(p.name)}</strong><small>${online ? 'Online' : 'Offline'} · ${e(token?.name || 'No character assigned')}</small>${drones.length ? `<small>Shared drones: ${drones.map(t => e(t.name)).join(', ')}</small>` : ''}</div>${state.isHosting ? `<vf-select class="hud-select" data-assign="${e(p.id)}" aria-label="Character for ${e(p.name)}"><option value="" ${!token ? 'selected' : ''}>Observer</option>${state.tokens.filter(t => !isDrone(t)).map(t => `<option value="${e(t.id)}" ${t.id === token?.id ? 'selected' : ''}>${e(t.name)}</option>`).join('')}</vf-select>` : ''}</article>`;
+      const online = state.connectedPeers?.some(c => c.id === p.id);
+      const myTokens = state.tokens.filter(t => controlsToken(t, p.id));
+      const tokenDesc = myTokens.length ? myTokens.map(t => t.name + (isDrone(t) ? ' 🛸' : '')).join(', ') : 'No character assigned';
+      return `<article class="crew-row"><span class="crew-avatar">${e(p.name.slice(0, 1).toUpperCase())}</span><div><strong>${e(p.name)}</strong><small>${online ? 'Online' : 'Offline'} · ${e(tokenDesc)}</small></div>${state.isHosting ? `<vf-select class="hud-select" data-assign="${e(p.id)}" aria-label="Character for ${e(p.name)}"><option value="">Observer (No token)</option>${state.tokens.map(t => `<option value="${e(t.id)}" ${myTokens.some(mt => mt.id === t.id) ? 'selected' : ''}>${e(t.name)}${isDrone(t) ? ' 🛸' : ''}</option>`).join('')}</vf-select>` : ''}</article>`;
     }).join('') : '<p class="dossier-muted">No players yet. Host a game and share its invitation.</p>');
     list.querySelectorAll('[data-assign]').forEach(select => select.onchange = () => { try { network.assignToken(select.dataset.assign, select.value); } catch (err) { error.textContent = err.message; } });
     if (state.isHosting) list.querySelectorAll('[data-assign]').forEach(select => {

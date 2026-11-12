@@ -24,6 +24,21 @@ export function roomError(error) {
     : error?.message || 'No se pudo conectar con la sala.';
 }
 
+export function generateInviteCode(roomName = '') {
+  const cleaned = String(roomName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase();
+  const prefix = (cleaned.slice(0, 3) || 'VEI').padEnd(3, 'X');
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let randomSuffix = '';
+  for (let i = 0; i < 5; i++) {
+    randomSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${prefix}-${randomSuffix}`;
+}
+
 // Only Firebase identities are credentials for Firestore. Netlify tokens are never
 // treated as Firebase credentials, and membership never depends on a display name.
 export class RoomService {
@@ -59,7 +74,14 @@ export class RoomService {
     const uid = this.uid, rows = await this.api.getDocsFromServer(this.col('users', uid, 'rooms'));
     const rooms = await Promise.all(rows.docs.map(async row => {
       try { return await this.getRoom(row.id); }
-      catch (error) { if (error.code === 'permission-denied') return null; throw error; }
+      catch (error) {
+        if (error.code === 'permission-denied') return null;
+        if (error.message === 'La sala ya no existe.') {
+          this.api.deleteDoc(row.ref).catch(() => {});
+          return null;
+        }
+        throw error;
+      }
     }));
     if (uid !== this.account.user?.uid) throw new Error('La cuenta ha cambiado. Abre de nuevo tus salas.');
     return rooms.filter(Boolean);
@@ -68,7 +90,7 @@ export class RoomService {
     await this.ready();
     name = String(name || '').trim().slice(0, 200);
     if (!name) throw new Error('Escribe un nombre para la sala.');
-    const id = 'room_' + newId(), inviteCode = 'VF-' + newId().replaceAll('-', '').toUpperCase();
+    const id = 'room_' + newId(), inviteCode = generateInviteCode(name);
     const room = { name, ownerUid: this.uid, campaignId: campaign.campaignId, inviteCode, hostEpoch: '', hostSeenAt: null, checkpoint: null, createdAt: this.api.serverTimestamp() };
     const batch = this.api.writeBatch(this.db);
     batch.set(this.ref('rooms', id), room);
@@ -83,7 +105,9 @@ export class RoomService {
     code = String(code || '').trim();
     if (/^https?:/i.test(code)) { const url = new URL(code); code = new URLSearchParams(url.hash.slice(1)).get('roomInvite') || url.searchParams.get('roomInvite') || ''; }
     code = code.toUpperCase();
-    if (!/^VF-[A-F0-9]{32}$/.test(code)) throw new Error('Pega el código VF-… o el enlace de la sala.');
+    if (!/^[A-Z0-9]{3}-[A-Z0-9]{5}$/.test(code) && !/^VF-[A-F0-9]{32}$/.test(code)) {
+      throw new Error('Pega el código de sala (ej. SAL-A1B2C) o el enlace de invitación.');
+    }
     const invitation = await this.api.getDocFromServer(this.ref('roomInvites', code));
     if (!invitation.exists()) throw new Error('Esta invitación no existe o ha sido regenerada. Si ya eres miembro, entra desde Mis salas.');
     const { roomId, ownerUid } = invitation.data();
@@ -98,15 +122,63 @@ export class RoomService {
     return this.getRoom(roomId);
   }
   async rotateInvitation(id) {
-    const code = 'VF-' + newId().replaceAll('-', '').toUpperCase(), a = this.api;
+    const a = this.api;
+    let code = '';
     await a.runTransaction(this.db, async tx => {
       const ref = this.ref('rooms', id), room = (await tx.get(ref)).data();
       if (room.ownerUid !== this.uid) throw new Error('Solo el Keeper dueño de la sala puede regenerar la invitación.');
+      code = generateInviteCode(room.name);
       tx.delete(this.ref('roomInvites', room.inviteCode));
       tx.set(this.ref('roomInvites', code), { roomId: id, ownerUid: this.uid, name: room.name });
       tx.update(ref, { inviteCode: code });
     });
     return code;
+  }
+  async deleteRoom(id) {
+    await this.ready();
+    const roomRef = this.ref('rooms', id);
+    const snap = await this.api.getDocFromServer(roomRef);
+    if (!snap.exists()) return;
+    const room = snap.data();
+    if (room.ownerUid !== this.uid) throw new Error('Solo el Keeper dueño de la sala puede eliminarla.');
+
+    // 1. Delete members
+    try {
+      const membersSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'members'));
+      for (let i = 0; i < membersSnap.docs.length; i += 20) {
+        const batch = this.api.writeBatch(this.db);
+        membersSnap.docs.slice(i, i + 20).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (_) {}
+
+    // 2. Clean up wires
+    try {
+      const wiresSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'wires'));
+      for (const wireDoc of wiresSnap.docs) {
+        await this.deleteWire(id, wireDoc.id).catch(() => {});
+      }
+    } catch (_) {}
+
+    // 3. Clean up saves & chunks
+    try {
+      const savesSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'saves'));
+      const chunksSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'chunks'));
+      const allDocs = [...savesSnap.docs, ...chunksSnap.docs];
+      for (let i = 0; i < allDocs.length; i += 20) {
+        const batch = this.api.writeBatch(this.db);
+        allDocs.slice(i, i + 20).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (_) {}
+
+    // 4. Delete room doc, invite doc and owner's bookmark
+    const finalBatch = this.api.writeBatch(this.db);
+    finalBatch.delete(roomRef);
+    if (room.inviteCode) finalBatch.delete(this.ref('roomInvites', room.inviteCode));
+    finalBatch.delete(this.ref('users', this.uid, 'rooms', id));
+    await finalBatch.commit();
+    this.knownChunks?.delete(id);
   }
   async setMemberStatus(id, uid, status) {
     await this.api.updateDoc(this.ref('rooms', id, 'members', uid), { status });

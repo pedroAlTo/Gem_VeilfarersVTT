@@ -121,6 +121,13 @@ export class ChatPanel {
         const header = document.createElement('header'), name = document.createElement('strong'), time = document.createElement('time'), body = document.createElement('p');
         name.textContent = m.senderName; time.dateTime = new Date(m.sentAt).toISOString(); time.title = new Date(m.sentAt).toLocaleString();
         time.textContent = new Date(m.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const senderToken = this.store.state.tokens?.find(tok => tok.id === m.senderTokenId || tok.name === m.senderName || (tok.isPlayer && tok.ownerId === m.senderId));
+        const color = m.color || senderToken?.color;
+        if (color) {
+          name.style.color = color;
+          article.style.borderLeft = `3px solid ${color}`;
+          body.style.color = color;
+        }
         body.textContent = m.text; header.append(name, time); article.append(header, body); fragment.append(article);
       }
       this.list.replaceChildren(fragment); if (bottom) this.list.scrollTop = this.list.scrollHeight;
@@ -154,7 +161,9 @@ export class ChatPanel {
     const operation = { identity, channel }; this.pending = operation;
     this.error.textContent = ''; this.refreshComposer();
     try {
-      await this.network.sendChat({ text, recipientId: channel, clientId });
+      const activeToken = this.store.getSelectedToken?.() || this.store.state.tokens?.find(t => t.id === this.store.state.claimedTokenId);
+      const color = activeToken?.color;
+      await this.network.sendChat({ text, recipientId: channel, clientId, color, senderTokenId: activeToken?.id });
       if (this.identity !== identity) return;
       if (this.drafts.get(channel)?.text === text) this.drafts.delete(channel);
       if (this.channel === channel && this.input.value === text) { this.input.value = ''; this.retry = null; }

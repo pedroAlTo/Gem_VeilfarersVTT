@@ -345,13 +345,16 @@ class StateStore {
     if (!this.remoteApplying && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
 
     if (active) {
-      const isAdversary = target.actorType === 'adversary' || !target.isPlayer;
+      const isAdversary = (target.actorType === 'adversary' || target.isPlayer === false) && target.actorType !== 'drone';
       if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
         if ((this.state.fear ?? 0) < 1) {
           notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
           return false;
         }
         this.spendFear(1, `Foco en adversario: ${target.name}`);
+        if (typeof window !== 'undefined' && window.network?.broadcast) {
+          window.network.broadcast({ type: 'FEAR_UPDATE', fear: this.state.fear });
+        }
       }
     }
 
@@ -392,6 +395,20 @@ class StateStore {
     }
     this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
     const turningOnSpotlight = Boolean(partial.hasSpotlight || partial.spotlight?.enabled);
+    const targetToken = this.state.tokens.find(t => t.id === tokenId);
+    if (turningOnSpotlight && targetToken && !targetToken.hasSpotlight && !targetToken.spotlight?.enabled) {
+      const isAdversary = (targetToken.actorType === 'adversary' || targetToken.isPlayer === false) && targetToken.actorType !== 'drone';
+      if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
+        if ((this.state.fear ?? 0) < 1) {
+          notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
+          return false;
+        }
+        this.spendFear(1, `Foco en adversario: ${targetToken.name}`);
+        if (typeof window !== 'undefined' && window.network?.broadcast) {
+          window.network.broadcast({ type: 'FEAR_UPDATE', fear: this.state.fear });
+        }
+      }
+    }
     const tokens = this.state.tokens.map(t => {
       if (t.id === tokenId) {
         return { ...t, ...partial };
@@ -402,6 +419,7 @@ class StateStore {
       return t;
     });
     this.update({ tokens });
+    return true;
   }
 
   addToken(tokenData) {

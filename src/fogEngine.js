@@ -5,7 +5,7 @@
 export class FogOfWarEngine {
   constructor() {
     this.fogCanvas = document.createElement('canvas');
-    this.fogCtx = this.fogCanvas.getContext('2d');
+    this.fogCtx = this.fogCanvas.getContext('2d', { willReadFrequently: true });
 
     // Persistent exploration maps: mapId -> HTMLCanvasElement (white = visited)
     this.exploredCanvases = new Map();
@@ -33,7 +33,7 @@ export class FogOfWarEngine {
       canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.clearRect(0, 0, width, height);
       this.exploredCanvases.set(mapId, canvas);
     } else if (canvas.width !== width || canvas.height !== height) {
@@ -41,12 +41,12 @@ export class FogOfWarEngine {
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
-      const tempCtx = tempCanvas.getContext('2d');
+      const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
       tempCtx.drawImage(canvas, 0, 0);
 
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(tempCanvas, 0, 0);
     }
     return canvas;

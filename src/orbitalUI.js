@@ -26,8 +26,7 @@ const icon = (k) =>
 export function initOrbitalUI() {
   const labels = {
     tool_select: ['select', 'Move'],
-    tool_draw: ['draw', 'Dibujar'],
-    tool_erase_draw: ['erase', 'Borrar'],
+    tool_draw: ['draw', 'Dibujo'],
     tool_measure: ['measure', 'Measure'],
     tool_template: ['template', 'Area'],
     tool_fx: ['fx', 'Effects'],

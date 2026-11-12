@@ -403,7 +403,7 @@ export class NetworkManager {
         }),
       clocks: s.clocks.filter((c) => !c.isKeeperOnly),
       handouts: s.handouts.filter((h) => h.sharedWithPlayers),
-      claimedTokenId: s.tokens.find((t) => !isDrone(t) && t.ownerId === memberId)?.id || null,
+      claimedTokenId: s.tokens.find((t) => !isDrone(t) && (t.ownerId === memberId || t.controllerIds?.includes(memberId)))?.id || s.tokens.find((t) => controlsToken(t, memberId))?.id || null,
     };
   }
   syncPeer(conn) {
@@ -442,8 +442,32 @@ export class NetworkManager {
     if (!this.store.state.isHosting) return;
     const memberId = this.members.get(playerId)?.id || playerId;
     if (!tokenId) {
-      this.store.update({ tokens: this.store.state.tokens.map(t => !isDrone(t) && t.ownerId === memberId ? { ...t, ownerId: '' } : t) });
-    } else this.store.assignTokenControllers(tokenId, [memberId]);
+      this.store.update({
+        tokens: this.store.state.tokens.map(t => {
+          const isOwner = t.ownerId === memberId;
+          const isCtrl = Array.isArray(t.controllerIds) && t.controllerIds.includes(memberId);
+          if (isOwner || isCtrl) {
+            return {
+              ...t,
+              ownerId: isOwner ? '' : t.ownerId,
+              controllerIds: (t.controllerIds || []).filter(id => id !== memberId)
+            };
+          }
+          return t;
+        })
+      });
+    } else {
+      const target = this.store.state.tokens.find(t => t.id === tokenId);
+      if (target && isDrone(target)) {
+        // El dron puede ser controlado por más de un jugador: se añade sin sobrescribir controladores previos
+        const currentControllers = Array.isArray(target.controllerIds) ? target.controllerIds : [];
+        const nextControllers = [...new Set([...currentControllers, memberId])];
+        this.store.assignTokenControllers(tokenId, nextControllers);
+      } else {
+        // Los jugadores pueden tener varios tokens asignados (no se desasignan los otros tokens del jugador)
+        this.store.assignTokenControllers(tokenId, [memberId]);
+      }
+    }
     this.syncAll();
   }
   kickPlayer(playerId, reason = 'Has sido expulsado de la sesión por el Director de Juego.') {
@@ -754,7 +778,28 @@ export class NetworkManager {
   async performAction(action) {
     const { performGameAction } = await import('./gameActions.js');
     const result = performGameAction(action, this.store);
-    if (result.log && result.log.visibility !== 'keeper') this.broadcast({ type: 'DICE_ROLL', logEntry: result.log, result: { id: result.id, actorId: result.actorId, hopeVal: result.hopeVal, fearVal: result.fearVal, total: result.total } });
+    if (result.log && result.log.visibility !== 'keeper') {
+      const rollPayload = {
+        id: result.id,
+        actorId: result.actorId,
+        actorName: action.tokenName || result.log?.sender || 'Operativo',
+        tokenName: action.tokenName || result.log?.sender || 'Operativo',
+        playerName: action.playerName || this.store.state.userName || this.store.state.playerName || 'Jugador',
+        hope: result.hopeVal,
+        hopeVal: result.hopeVal,
+        fear: result.fearVal,
+        fearVal: result.fearVal,
+        total: result.total,
+        dc: result.dc,
+        label: result.log?.title || 'Duality Check',
+        outcome: result.outcomeTitle,
+        crit: !!result.isCritical,
+        isCritical: !!result.isCritical,
+        details: result.log?.details || '',
+        breakdown: result.log?.details || ''
+      };
+      this.broadcast({ type: 'DICE_ROLL', logEntry: result.log, result: rollPayload });
+    }
     return result;
   }
   async handleIncomingMessage(data, senderId) {
@@ -824,15 +869,6 @@ export class NetworkManager {
             }
           } else if (hadAssigned && !isNowAssigned) {
             notify('👁️ El Director de Juego ha cambiado tu estado a Observador.');
-          }
-
-          if (assigned.length === 0 && !this.store.state.claimedTokenId && !this.store.state.isObserver) {
-            setTimeout(() => {
-              if (this.store.state.isObserver || this.store.state.claimedTokenId || (this.store.getControlledTokens().length > 0)) return;
-              import('./rosterManager.js').then(({ openClaimCharacterModal }) => {
-                openClaimCharacterModal();
-              }).catch(() => {});
-            }, 300);
           }
         } catch (e) {
           if (this.joinFailed) this.disconnect(new Error('Could not open the Keeper’s map: ' + e.message));
@@ -910,12 +946,88 @@ export class NetworkManager {
       }
       return;
     }
+    if (data.type === 'APPLY_DAMAGE') {
+      const conn = this.connections.get(senderId);
+      try {
+        const attackerId = data.attackerId;
+        const targetId = data.targetId || data.tokenId;
+        const target = this.store.state.tokens.find(t => t.id === targetId);
+        if (!target) throw new Error('Objetivo no encontrado.');
+        if (target.mapId !== this.store.state.activeMapId) throw new Error('El objetivo no está en la escena actual.');
+
+        // Validar que el emisor controla el token atacante o es dueño del objetivo
+        const senderControlsAttacker = attackerId ? owns(attackerId) : false;
+        const senderControlsTarget = owns(targetId);
+        if (!senderControlsAttacker && !senderControlsTarget) {
+          throw new Error('El token atacante no está asignado a ti.');
+        }
+
+        const currentHp = Number.isFinite(target.hp?.current) ? target.hp.current : 0;
+        const currentArmor = Number.isFinite(target.armor?.current) ? target.armor.current : 0;
+
+        let newHp = data.newHp != null ? Number(data.newHp) : (data.hpLoss != null ? Math.max(0, currentHp - Number(data.hpLoss)) : currentHp);
+        let newArmor = data.newArmor != null ? Number(data.newArmor) : (data.armorLoss != null ? Math.max(0, currentArmor - Number(data.armorLoss)) : currentArmor);
+
+        newHp = Math.max(0, Math.min(target.hp?.max ?? newHp, newHp));
+        newArmor = Math.max(0, Math.min(target.armor?.max ?? newArmor, newArmor));
+
+        this.store._beforeTacticalMutation?.('Aplicar daño', 'tok_' + target.id);
+        this.store.update({
+          tokens: this.store.state.tokens.map(t => {
+            if (t.id === target.id) {
+              return {
+                ...t,
+                hp: { ...t.hp, current: newHp },
+                armor: { ...t.armor, current: newArmor },
+                pendingBrace: data.isDirect ? t.pendingBrace : false
+              };
+            }
+            return t;
+          })
+        });
+
+        // Disparar FX de ataque y registrar en log de combate
+        const attacker = this.store.state.tokens.find(t => t.id === attackerId);
+        const params = {
+          targetId: target.id,
+          attackerId: attacker?.id,
+          target: target,
+          attacker: attacker || target,
+          kind: data.kind || 'kinetic',
+          hpLost: currentHp - newHp,
+          armorSlotSpent: (Number(data.spentShields) || 0) > 0,
+          isDirect: Boolean(data.isDirect),
+          isCritical: Boolean(data.isCritical),
+          mapId: target.mapId,
+          gridSize: this.store.getActiveMap()?.gridSize || 64
+        };
+        window.veilCanvas?.triggerAttackFX(params);
+        if (!data.secret && !target.hidden) {
+          this.broadcast({ type: 'ATTACK_FX', params });
+        }
+
+        const logDetails = data.logDetails || `Ataque causó ${currentHp - newHp} daño a ${target.name}. HP restante: ${newHp}/${target.hp?.max ?? newHp}.`;
+        this.store.addLog({
+          sender: 'Combat',
+          ...(data.secret ? { visibility: 'keeper' } : {}),
+          type: 'DAMAGE',
+          title: `DAMAGE APPLIED: ${target.name}`,
+          details: logDetails
+        });
+      } catch (error) {
+        conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', error: error.message }));
+      } finally {
+        this.syncAll();
+      }
+      return;
+    }
     if (data.type === 'TOKEN_UPDATE' || data.type === 'TOKEN_MOVE') {
       const conn = this.connections.get(senderId), sequenced = Number.isSafeInteger(data.sequence) && data.sequence > 0;
       if (sequenced && data.sequence <= (this.tokenPatchAcks.get(senderId) || 0)) { if (conn) this.syncPeer(conn); return; }
       try {
         const partial = structuredClone(data.type === 'TOKEN_MOVE' ? { x: data.x, y: data.y } : data.partial);
-        if (!owns(data.tokenId)) throw new Error('Este token ya no está asignado a ti.');
+        const isDamageApplication = Boolean(data.isDamage && data.attackerId && owns(data.attackerId));
+        if (!owns(data.tokenId) && !isDamageApplication) throw new Error('Este token ya no está asignado a ti.');
         if (!validTokenPatch(partial)) throw new Error('El cambio contiene campos de token no permitidos.');
         const token = this.store.state.tokens.find((t) => t.id === data.tokenId);
         if (token.mapId !== this.store.state.activeMapId || (data.mapId && data.mapId !== token.mapId) || (data.campaignId && data.campaignId !== this.store.state.campaignId)) throw new Error('La escena ha cambiado. Repite el cambio en la escena actual.');
@@ -964,6 +1076,12 @@ export class NetworkManager {
         );
       }
       return;
+    }
+    if (data.type === 'DICE_ROLL') {
+      this.ephemeral(data);
+      if (this.store.sessionRole !== 'player') {
+        this.broadcast(data);
+      }
     }
     if (data.type === 'PING' && finite(data.x) && finite(data.y)) {
       this.ephemeral(data);

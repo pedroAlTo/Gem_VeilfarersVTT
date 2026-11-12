@@ -1,0 +1,26 @@
+{
+  "name": "VeilFarers Plain Fear Winner Glow",
+  "systemName": "vfPlainFearWin",
+  "author": "VeilFarers",
+  "version": 1.0,
+  "meshFile": "default.json",
+  "themeColor": "#ffffff",
+  "material": {
+    "type": "color",
+    "diffuseTexture": {
+      "light": "diffuse.png",
+      "dark": "diffuse.png"
+    },
+    "diffuseLevel": 1.18,
+    "specularPower": 0.92
+  },
+  "diceAvailable": [
+    "d4",
+    "d6",
+    "d8",
+    "d10",
+    "d12",
+    "d20",
+    "d100"
+  ]
+}

@@ -179,4 +179,74 @@ export class DiceTray {
     if (tray === this) tray = null;
   }
 }
-export function openDiceTray(result) { if (!tray?.modal.isConnected) tray = new DiceTray(); if (result) tray.show(result); else if (!tray.lastResult) tray.show({ demo: true }, true); return tray; }
+async function waitForDice3D(timeoutMs = 4000) {
+  if (typeof window === 'undefined') return null;
+  if (window.VFDice3D && typeof window.VFDice3D.roll === 'function') return window.VFDice3D;
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise(r => setTimeout(r, 60));
+    if (window.VFDice3D && typeof window.VFDice3D.roll === 'function') return window.VFDice3D;
+  }
+  return window.VFDice3D || null;
+}
+
+export async function openDiceTray(result) {
+  const dice3D = await waitForDice3D();
+  if (dice3D && typeof dice3D.roll === 'function') {
+    try {
+      const audio = new Audio('/assets/dados_1.mp3');
+      audio.volume = 0.85;
+      audio.play().catch(() => {});
+    } catch (_) {}
+
+    const groups = [
+      { qty: 1, sides: 12, theme: 'vfHope', role: 'hope' },
+      { qty: 1, sides: 12, theme: 'vfFear', role: 'fear' }
+    ];
+
+    const label = result?.label || (result?.actorName ? `${result.actorName} · Tirada Duality` : (result?.demo ? 'Tirada de Prueba 3D' : 'Tirada Duality'));
+
+    try {
+      const roll3d = await dice3D.roll(groups, { label, style: 'overlay', deferResults: true });
+      let hopeVal = Number(result?.hope ?? result?.hopeVal);
+      let fearVal = Number(result?.fear ?? result?.fearVal);
+
+      // Si no vienen valores forzados o es una tirada de prueba, se LEE la cara física que ha salido:
+      if (!Number.isFinite(hopeVal) || !Number.isFinite(fearVal)) {
+        if (roll3d && Array.isArray(roll3d.values) && roll3d.values.length >= 2) {
+          hopeVal = roll3d.values[0];
+          fearVal = roll3d.values[1];
+        } else {
+          hopeVal = Math.floor(Math.random() * 12) + 1;
+          fearVal = Math.floor(Math.random() * 12) + 1;
+        }
+      }
+
+      const isCrit = typeof result?.crit === 'boolean' ? result.crit : (typeof result?.isCritical === 'boolean' ? result.isCritical : (hopeVal === fearVal));
+      const outcome = result?.outcome || (isCrit ? 'CRITICAL SUCCESS' : (fearVal > hopeVal ? 'WITH FEAR' : 'WITH HOPE'));
+
+      dice3D.showResults({
+        label,
+        outcome,
+        hope: hopeVal,
+        fear: fearVal,
+        crit: isCrit,
+        value: Number(result?.total ?? (hopeVal + fearVal)),
+        rolls: [
+          { value: hopeVal, sides: 12, role: 'hope' },
+          { value: fearVal, sides: 12, role: 'fear' }
+        ],
+        style: 'overlay'
+      });
+
+      return { hope: hopeVal, fear: fearVal, isCrit, outcome };
+    } catch (err) {
+      console.warn('[VFDice3D] Error en tirada 3D:', err);
+    }
+    return null;
+  }
+
+  // Si WebGL 3D no está disponible, no mostrar la bandeja modal (overlay puro según requisitos):
+  console.warn('[DiceTray] 3D dice overlay engine not available');
+  return null;
+}
