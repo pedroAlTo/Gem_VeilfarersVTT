@@ -28,6 +28,9 @@ test('room menu separates owned/member rooms and retains pause restrictions afte
   assert.equal(modal.querySelector('[data-room-import]').disabled, true);
   assert.ok(modal.querySelector('[data-room-assign="pilot"]'));
   assert.ok(modal.querySelector('[data-room-broadcast]'));
+  assert.ok(modal.querySelector('[data-room-delete]'));
+  assert.ok(modal.querySelector('[data-delete-room="my-room"]'));
+  assert.equal(modal.querySelector('[data-delete-room="other-room"]'), null);
   store.update({ roomPaused: false, isConnected: true });
   assert.equal(modal.querySelector('[data-room-import]').disabled, false);
   assert.match(modal.querySelector('[data-current-presence]').textContent, /Online/);
@@ -43,6 +46,39 @@ test('player room menu exposes the roster but never owner controls', async () =>
   assert.equal(modal.querySelector('[data-room-error]').textContent, '');
   assert.equal(modal.querySelectorAll('[data-room-roster] .room-card').length, 2);
   assert.equal(modal.querySelector('[data-room-kick]'), null); assert.equal(modal.querySelector('[data-room-rotate]'), null);
+  assert.equal(modal.querySelector('[data-room-delete]'), null); assert.equal(modal.querySelector('[data-delete-room]'), null);
   assert.equal(modal.querySelector('[data-room-import]').disabled, true);
   modal.remove(); await tick();
+});
+
+test('deleteRoom: keeper can delete room, calls deleteRoom on service, and clears active session', async () => {
+  account.user = { uid: 'keeper', displayName: 'Keeper' }; rooms.service.uid = 'keeper';
+  const owned = { id: 'room-to-delete', ownerUid: 'keeper', name: 'Dead Room', inviteCode: 'NAV-12345' };
+  let deletedId = null;
+  const originalDeleteRoom = rooms.service.deleteRoom;
+  rooms.service.deleteRoom = async id => { deletedId = id; };
+  try {
+    rooms.room = owned;
+    assert.equal(rooms.room.id, 'room-to-delete');
+    await rooms.deleteRoom('room-to-delete');
+    assert.equal(deletedId, 'room-to-delete');
+    assert.equal(rooms.room, null);
+  } finally {
+    rooms.service.deleteRoom = originalDeleteRoom;
+  }
+});
+
+test('deleteRoom: service rejects deletion if not the room owner', async () => {
+  account.user = { uid: 'intruder', displayName: 'Intruder' };
+  rooms.service.uid = 'intruder';
+  const snapMock = { exists: () => true, data: () => ({ ownerUid: 'legit-keeper', inviteCode: 'NAV-11111' }) };
+  rooms.service.api = {
+    doc: () => ({}),
+    getDocFromServer: async () => snapMock
+  };
+  rooms.service.ready = async () => {};
+  await assert.rejects(
+    rooms.service.deleteRoom('any-room'),
+    /Solo el Keeper dueño de la sala puede eliminarla/
+  );
 });

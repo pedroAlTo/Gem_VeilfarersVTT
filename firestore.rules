@@ -51,6 +51,7 @@ service cloud.firestore {
           || (request.resource.data.hostEpoch is string && request.resource.data.hostEpoch.size() >= 20
             && request.resource.data.hostEpoch.size() <= 100 && request.resource.data.hostSeenAt == request.time
             && (request.resource.data.hostEpoch == resource.data.hostEpoch || !live(resource.data))));
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
       match /members/{uid} {
         allow get: if owner(uid) || roomOwner(roomId);
         allow list: if roomOwner(roomId);
@@ -62,6 +63,7 @@ service cloud.firestore {
         // A revoked membership stays present: knowing an invitation cannot undo a kick.
         allow update: if roomOwner(roomId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
           && request.resource.data.status in ['active', 'revoked'];
+        allow delete: if roomOwner(roomId);
       }
       match /saves/{saveId} {
         allow read, delete: if roomOwner(roomId);

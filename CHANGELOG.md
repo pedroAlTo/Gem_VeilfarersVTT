@@ -1,10 +1,28 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.6**.
-Paquete: `VeilFarers_VTT_v1.4.6.zip`.
+Versión actual del VTT: **v1.4.7**.
+Paquete: `VeilFarers_VTT_v1.4.7.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.4.7] — 2026-11-12
+
+Borrado Permanente de Salas por el Keeper, Expulsión Reactiva de Jugadores y Resolución de Error de Permisos
+
+### Gestión y Borrado de Salas Persistentes
+
+- Permite al Keeper dueño de una sala eliminarla permanentemente mediante un botón de peligro ("Eliminar") tanto desde la lista de "Salas que dirijo" como desde el panel de la sala activa.
+- Cuadro de diálogo de confirmación previo para prevenir eliminaciones accidentales de campañas en la nube.
+- Borrado integral en Firestore: eliminación del documento de sala, sus miembros, subcolecciones de fragmentos y guardados, invitación activa (roomInvites) y registro de usuario.
+- Expulsión en tiempo real de los jugadores conectados: el listener reactivo detecta el borrado de la sala o la revocación del acceso, los desconecta limpiamente, limpia su sesión y muestra notificación explicativa.
+- Actualización de firestore.rules para permitir al propietario el borrado seguro de sus salas (allow delete) y administración de miembros.
+
+### Resiliencia y Corrección de Permisos Firestore
+
+- Eliminación de la rotación automática forzada en segundo plano de códigos de invitación en refresh() y enterRoom() que provocaba permission-denied cuando las reglas remotas de Firestore aún no se habían publicado.
+- Preservación del acceso y estado online para salas existentes con códigos legacy sin interrumpir la sesión del Keeper.
+- Limpieza automática de lastError en refrescos de sala para evitar que mensajes de error transitorios queden fijos en pantalla.
 
 ## [1.4.6] — 2026-11-12
 

@@ -74,7 +74,14 @@ export class RoomService {
     const uid = this.uid, rows = await this.api.getDocsFromServer(this.col('users', uid, 'rooms'));
     const rooms = await Promise.all(rows.docs.map(async row => {
       try { return await this.getRoom(row.id); }
-      catch (error) { if (error.code === 'permission-denied') return null; throw error; }
+      catch (error) {
+        if (error.code === 'permission-denied') return null;
+        if (error.message === 'La sala ya no existe.') {
+          this.api.deleteDoc(row.ref).catch(() => {});
+          return null;
+        }
+        throw error;
+      }
     }));
     if (uid !== this.account.user?.uid) throw new Error('La cuenta ha cambiado. Abre de nuevo tus salas.');
     return rooms.filter(Boolean);
@@ -126,6 +133,52 @@ export class RoomService {
       tx.update(ref, { inviteCode: code });
     });
     return code;
+  }
+  async deleteRoom(id) {
+    await this.ready();
+    const roomRef = this.ref('rooms', id);
+    const snap = await this.api.getDocFromServer(roomRef);
+    if (!snap.exists()) return;
+    const room = snap.data();
+    if (room.ownerUid !== this.uid) throw new Error('Solo el Keeper dueño de la sala puede eliminarla.');
+
+    // 1. Delete members
+    try {
+      const membersSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'members'));
+      for (let i = 0; i < membersSnap.docs.length; i += 20) {
+        const batch = this.api.writeBatch(this.db);
+        membersSnap.docs.slice(i, i + 20).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (_) {}
+
+    // 2. Clean up wires
+    try {
+      const wiresSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'wires'));
+      for (const wireDoc of wiresSnap.docs) {
+        await this.deleteWire(id, wireDoc.id).catch(() => {});
+      }
+    } catch (_) {}
+
+    // 3. Clean up saves & chunks
+    try {
+      const savesSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'saves'));
+      const chunksSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'chunks'));
+      const allDocs = [...savesSnap.docs, ...chunksSnap.docs];
+      for (let i = 0; i < allDocs.length; i += 20) {
+        const batch = this.api.writeBatch(this.db);
+        allDocs.slice(i, i + 20).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (_) {}
+
+    // 4. Delete room doc, invite doc and owner's bookmark
+    const finalBatch = this.api.writeBatch(this.db);
+    finalBatch.delete(roomRef);
+    if (room.inviteCode) finalBatch.delete(this.ref('roomInvites', room.inviteCode));
+    finalBatch.delete(this.ref('users', this.uid, 'rooms', id));
+    await finalBatch.commit();
+    this.knownChunks?.delete(id);
   }
   async setMemberStatus(id, uid, status) {
     await this.api.updateDoc(this.ref('rooms', id, 'members', uid), { status });

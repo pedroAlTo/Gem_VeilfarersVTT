@@ -64,14 +64,6 @@ export class RoomController {
         const latest = await this.service.getRoom(id), campaign = await this.service.loadCampaign(latest);
         await this.service.cleanUnusedSaves(latest);
         await this.store.changeSession(() => campaign);
-        if (latest.inviteCode && (/^VF-[A-F0-9]{32}$/i.test(latest.inviteCode) || latest.inviteCode.startsWith('VF-'))) {
-          try {
-            const upgraded = await this.service.rotateInvitation(latest.id);
-            latest.inviteCode = upgraded;
-          } catch (e) {
-            console.warn('Auto-migrating legacy invite code failed:', e);
-          }
-        }
         this.room = latest; this.lastSaved = this.campaignText();
         this.store.sessionRole = 'host'; this.store.peerId = this.service.uid;
         this.store.update({ userRole: 'keeper', gmVision: true, isHosting: true, isConnected: true });
@@ -90,18 +82,43 @@ export class RoomController {
       this.unsubscribers.push(a.onSnapshot(this.service.ref('rooms', id), { includeMetadataChanges: true }, snapshot => {
         if (generation !== this.generation || snapshot.metadata.hasPendingWrites) return;
         this.serverConfirmed = !snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites;
-        if (snapshot.exists()) this.room = { ...snapshot.data(), id };
+        if (!snapshot.exists()) {
+          this.remember(null);
+          this.leave({ preserveRemembered: false, save: false }).then(() => {
+            notify('La sala ha sido eliminada por el Keeper.', 'error');
+          });
+          return;
+        }
+        this.room = { ...snapshot.data(), id };
         this.checkPresence(); this.emit();
-      }, error => this.fail(error)));
+      }, error => {
+        if (error?.code === 'permission-denied' && !this.isKeeper) {
+          this.remember(null);
+          this.leave({ preserveRemembered: false, save: false }).then(() => {
+            notify('La sala ha sido eliminada por el Keeper.', 'error');
+          });
+          return;
+        }
+        this.fail(error);
+      }));
       this.unsubscribers.push(a.onSnapshot(this.isKeeper ? this.service.col('rooms', id, 'members') : this.service.ref('rooms', id, 'members', this.service.uid), { includeMetadataChanges: true }, snapshot => {
         if (generation !== this.generation || snapshot.metadata.hasPendingWrites) return;
         this.members = this.isKeeper ? snapshot.docs.map(d => ({ ...d.data(), uid: d.id })) : (snapshot.exists() ? [snapshot.data()] : []);
         if (!this.isKeeper && !this.members.some(m => m.uid === this.service.uid && m.status === 'active')) {
-          this.remember(null); this.leave().then(() => notify('El Keeper ha retirado tu acceso a esta sala.', 'error')); return;
+          this.remember(null); this.leave({ preserveRemembered: false, save: false }).then(() => notify('El Keeper ha retirado tu acceso a esta sala o la sala ha sido eliminada.', 'error')); return;
         }
         if (this.isKeeper) this.applyRoster();
         this.emit();
-      }, error => this.fail(error)));
+      }, error => {
+        if (error?.code === 'permission-denied' && !this.isKeeper) {
+          this.remember(null);
+          this.leave({ preserveRemembered: false, save: false }).then(() => {
+            notify('La sala ha sido eliminada por el Keeper.', 'error');
+          });
+          return;
+        }
+        this.fail(error);
+      }));
       if (this.isKeeper) { this.watchWires(generation); this.service.cleanOldWires(id, this.epoch).catch(() => {}); }
       this.presenceTimer = setInterval(() => this.checkPresence(), 1000);
       this.heartbeatTimer = setInterval(() => this.heartbeat().catch(error => this.fail(error)), ROOM_HEARTBEAT_MS);
@@ -231,6 +248,15 @@ export class RoomController {
   }
   async readmit(uid) { if (!this.isKeeper) throw new Error('Solo el Keeper puede readmitir.'); await this.service.setMemberStatus(this.room.id, uid, 'active'); }
   async rotate() { if (!this.isKeeper) throw new Error('Solo el Keeper puede regenerar la invitación.'); return this.service.rotateInvitation(this.room.id); }
+  async deleteRoom(id = this.room?.id) {
+    if (!id) throw new Error('No se ha especificado la sala a eliminar.');
+    await this.service.deleteRoom(id);
+    if (this.room?.id === id) {
+      await this.leave({ preserveRemembered: false, save: false });
+    }
+    this.remember(null);
+    this.emit();
+  }
   fail(error) {
     this.lastError = roomError(error);
     if (!this.isKeeper) this.pausePlayer();

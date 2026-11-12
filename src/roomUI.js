@@ -26,22 +26,20 @@ export function openRoomLobby(prefill = '') {
     await initAccount();
     if (account.user && !account.user.isNetlify) {
       cached = await rooms.service.list();
-      if (rooms.isKeeper && rooms.room && (/^VF-[A-F0-9]{32}$/i.test(rooms.room.inviteCode) || rooms.room.inviteCode?.startsWith('VF-'))) {
-        try { await rooms.rotate(); } catch {}
-      }
+      rooms.lastError = '';
     }
     paint();
   };
   const paint = () => {
     if (!modal.isConnected) return;
     const signed = account.user && !account.user.isNetlify, current = rooms.room;
-    const card = room => `<article class="room-card"><div><h3>${e(room.name)}</h3><p>${roomOnline(room, rooms.service.now()) ? '<span class="room-live">● Keeper online</span>' : '<span class="room-paused">○ Keeper offline · sala en pausa</span>'}</p></div><button class="hud-btn hud-btn-primary" data-enter-room="${e(room.id)}">${room.id === current?.id ? 'Dentro de la sala' : room.ownerUid === rooms.service.uid ? 'Abrir como Keeper' : 'Entrar'}</button></article>`;
+    const card = room => `<article class="room-card"><div><h3>${e(room.name)}</h3><p>${roomOnline(room, rooms.service.now()) ? '<span class="room-live">● Keeper online</span>' : '<span class="room-paused">○ Keeper offline · sala en pausa</span>'}</p></div><div class="session-actions" style="margin-top:0;"><button class="hud-btn hud-btn-primary" data-enter-room="${e(room.id)}">${room.id === current?.id ? 'Dentro de la sala' : room.ownerUid === rooms.service.uid ? 'Abrir como Keeper' : 'Entrar'}</button>${room.ownerUid === rooms.service.uid ? `<button class="hud-btn hud-btn-danger" data-delete-room="${e(room.id)}" title="Eliminar sala permanentemente">Eliminar</button>` : ''}</div></article>`;
     body.innerHTML = sanitizeHTML(`
       <span class="dossier-eyebrow">SALAS / CAMPAÑAS PERSISTENTES</span><h2>Tus mesas de juego</h2>
       <p class="dossier-muted">Cada sala conserva su campaña, arcos, escenas y miembros. Puedes dirigir tus salas y jugar en las de otros Keepers.</p>
       ${!signed ? `<section class="room-notice"><h3>Entra con tu cuenta</h3><p>Usa Google o correo de Firebase para guardar tu acceso a las salas y volver desde otro equipo.</p><button class="hud-btn hud-btn-primary" data-room-login>Iniciar sesión</button>${account.user?.isNetlify ? '<p>La cuenta Netlify actual guarda su archivo local. Cambia a Google o correo de Firebase para usar salas.</p>' : ''}</section>` : `
       ${current ? `<section class="room-current"><span class="dossier-eyebrow">DENTRO DE LA SALA</span><h2>${e(current.name)}</h2><p data-current-presence class="room-paused"></p><p class="dossier-muted" data-room-save></p>
-        <div class="session-actions"><button class="hud-btn" data-room-leave>Salir de la sala</button><button class="hud-btn" data-room-reconnect>Volver a conectar</button><button class="hud-btn" data-room-import ${store.state.roomPaused ? 'disabled' : ''}>Importar personaje</button><button class="hud-btn" data-room-archive>Mis personajes</button></div>
+        <div class="session-actions"><button class="hud-btn" data-room-leave>Salir de la sala</button><button class="hud-btn" data-room-reconnect>Volver a conectar</button><button class="hud-btn" data-room-import ${store.state.roomPaused ? 'disabled' : ''}>Importar personaje</button><button class="hud-btn" data-room-archive>Mis personajes</button>${rooms.isKeeper ? '<button class="hud-btn hud-btn-danger" data-room-delete title="Eliminar esta sala permanentemente">Eliminar sala</button>' : ''}</div>
         ${rooms.isKeeper ? `<label class="dossier-field">Invitación única<input class="hud-input" readonly value="${e(current.inviteCode)}" aria-label="Invitación de sala"></label><div class="session-actions"><button class="hud-btn" data-room-copy>Copiar código</button><button class="hud-btn" data-room-link>Copiar enlace</button><button class="hud-btn" data-room-rotate>Regenerar invitación</button></div><p class="dossier-muted">Regenerar el código no expulsa a quienes ya son miembros.</p><h3>Jugadores de la sala</h3><div data-room-roster></div>` : '<p class="dossier-muted">Tu acceso y tus asignaciones se conservan al salir. Si el Keeper se desconecta, permanecerás en la sala y el juego se reanudará cuando vuelva.</p><h3>Jugadores de la sala</h3><div data-room-roster></div>'}
         ${rooms.isKeeper ? '<form data-room-broadcast><h3>Anuncio a la sala</h3><label class="dossier-field">Mensaje<textarea class="hud-input" name="message" required maxlength="2000" rows="2"></textarea></label><button class="hud-btn">Enviar anuncio</button></form>' : ''}
       </section>` : ''}
@@ -56,6 +54,26 @@ export function openRoomLobby(prefill = '') {
     bind('[data-room-archive]', openAccount);
     bind('[data-room-leave]', () => run(async () => { await rooms.leave(); await refresh(); }));
     bind('[data-room-reconnect]', () => run(async () => { const id = rooms.room.id; await rooms.leave({ preserveRemembered: true }); await rooms.enter(id); await refresh(); }));
+    bind('[data-room-delete]', () => run(async () => {
+      const roomName = rooms.room?.name || 'esta sala';
+      if (await confirmAction(`¿Eliminar la sala "${roomName}" permanentemente? Se expulsará a los jugadores y se borrará la campaña en la nube.`)) {
+        await rooms.deleteRoom();
+        notify('Sala eliminada correctamente.');
+        await refresh();
+      }
+    }));
+    body.querySelectorAll('[data-delete-room]').forEach(b => {
+      b.onclick = () => run(async () => {
+        const id = b.dataset.deleteRoom;
+        const target = cached.find(r => r.id === id);
+        const name = target?.name || id;
+        if (await confirmAction(`¿Eliminar la sala "${name}" permanentemente? Se expulsará a los jugadores y se borrará la campaña en la nube.`)) {
+          await rooms.deleteRoom(id);
+          notify('Sala eliminada correctamente.');
+          await refresh();
+        }
+      });
+    });
     const broadcast = body.querySelector('[data-room-broadcast]');
     if (broadcast) broadcast.onsubmit = event => { event.preventDefault(); if (!store.state.isConnected) { notify('La sala está en pausa.', 'error'); return; } const text = broadcast.elements.message.value.trim(); if (text) { network.broadcast({ type: 'ANNOUNCEMENT', text }); broadcast.elements.message.value = ''; notify('Anuncio enviado a los jugadores conectados.'); } };
     bind('[data-room-import]', () => openCharacterImport({ single: !rooms.isKeeper, onImport: async entries => { for (const entry of entries) await useCharacter(entry.token); return entries.length; } }));

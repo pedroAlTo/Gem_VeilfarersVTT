@@ -49,6 +49,7 @@ Use two different accounts and two browser profiles. Create an account, sign out
 - Los fragmentos de campaña son inmutables y se reutilizan por contenido. Los mensajes siguientes solo envían secciones modificadas. Mapas alojados por URL evitan transferir imágenes incrustadas; cambiar la imagen o su escena sí requiere enviar esa sección. El límite es 60 MiB de texto JSON por campaña, y 500 trazos de hasta 2000 puntos por escena.
 - Mensajes consumidos se eliminan; las conexiones antiguas y fragmentos de guardados que ya no se usan se limpian al abrir como Keeper. Las operaciones consumen cuotas de Firestore. No se promete disponibilidad si Firebase o la red del usuario están caídos.
 - Las reglas de dibujos permiten a cada jugador crear/borrar sus trazos a través del Keeper. El Keeper valida sus datos y no acepta autorías falsificadas, borrados ajenos o acciones de una escena anterior.
+- Eliminación de salas: El Keeper propietario puede eliminar permanentemente una sala desde la lista o dentro de ella. Esta acción purga la campaña en la nube, elimina la invitación y las conexiones, y expulsa en tiempo real a los jugadores conectados devolviéndolos a su sesión local.
 
 ## Verificación sin producción
 
