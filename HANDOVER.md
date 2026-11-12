@@ -144,7 +144,33 @@
 
 ---
 
-## 13. Regla Operativa de Trabajo (Obligatoria para IA y Desarrolladores)
+## 13. Físicas 3D de Dados, Pantalla de Entrada Simplificada, Subtítulos y Personalización de Tokens
+- **Físicas y Aterrizaje de Dados 3D:**
+  - Los dados caen desde mayor altura (`startingHeight: 22.0`) con gravedad incrementada (`5.4`) y coeficientes de restitución elástica (`restitution: 0.68`, `friction: 0.32`) para rebotar activamente contra el suelo, paredes límite del mapa y entre sí al colisionar.
+  - **Aterrizaje plano obligatorio:** NUNCA hacer equilibrio sobre un vértice o arista. Al detenerse el dado (`handleAsleep`), la función `vfSnapDieFlat` calcula el cuaternión corrector de la cara superior hacia $(0, 1, 0)$ y nivela la base a $y = 0$, asegurando que todos los vértices del lado de apoyo descansen planos contra el suelo.
+- **Pantalla de Entrada Simplificada (Lobby Táctico):**
+  - Dos botones grandes principales: `[ ◈ ENTRAR COMO JUGADOR ]` y `[ ⚡ ENTRAR COMO KEEPER ]`.
+  - **Modo Jugador:** Muestra el listado de salas a las que está conectado el usuario con botón de acceso directo con 1 clic, opción para introducir código de invitación y unirse a una nueva sala, y Character Vault.
+  - **Modo Keeper:** Muestra el listado de salas creadas por el Keeper con botón para abrirlas y gestionarlas, y formulario para crear una nueva sala/campaña con nombre.
+  - **Proceso de Login Seguro:** No transiciona a la mesa ni al hub hasta que Firebase Auth / Netlify confirme el fin del proceso de inicio de sesión, mostrando un spinner indicador y deshabilitando inputs.
+  - **Identidad en Pantalla de Entrada:** El encabezado del hub indica explícitamente el nombre de usuario (`user.displayName`) y el correo de autenticación (`user.email`).
+- **Subtítulos de Mensajes en Overlay:**
+  - Al enviarse un mensaje o tirada, se proyecta un subtítulo cinematográfico flotante en `#vf-subtitle-overlay` en la parte inferior del mapa (anclado a `bottom: 74px`), evitando solapar la barra inferior ni el HUD.
+- **Color de Token y Estilo Coordinado:**
+  - Selector de color de token integrado en la configuración de token (`token.color`).
+  - El color seleccionado define:
+    1. El color del borde y nombre del token en el mapa.
+    2. El color del texto del usuario en el chat.
+    3. El color del subtítulo en overlay.
+    4. El color del borde y resplandor de la caja de resultado de dados (`.vf-callout-result-box` y `.vf-results`).
+- **Cálculo de Daño y Marcadores Tácticos:**
+  - Armas equipadas vinculadas automáticamente a la fórmula de daño táctico y botón de acceso rápido `💥 Daño`.
+  - Mouse-over (hover) en marcadores de estado muestra el tooltip canónico con nombre y regla oficial de *Corebook* / *Rust & Steel*.
+  - Marcadores de lock de objetivo estilizados con líneas discretas ultra-finas (1.2px) y corchetes esquineros de 1px.
+
+---
+
+## 14. Regla Operativa de Trabajo (Obligatoria para IA y Desarrolladores)
 1. **Revisar HANDOVER.md** al inicio de cada tarea o prompt antes de proponer cambios.
 2. **Respetar estrictamente todos los puntos anteriores.** Si una petición del usuario entra en aparente conflicto, aclarar o conciliar sin destruir estas bases.
 3. **Validación:** Ejecutar siempre `npm run build` y la suite de tests (`npm test`) antes de dar por cerrada cualquier tarea.

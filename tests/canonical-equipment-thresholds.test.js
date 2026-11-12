@@ -192,3 +192,4 @@ test('keeper activating spotlight on adversary consumes 1 Fear', async () => {
   assert.equal(store.state.fear, 2, 'Fear decreased from 3 to 2');
   assert.equal(store.state.tokens.find(t => t.id === 'tok_test_adv_spotlight').hasSpotlight, true);
 });
+

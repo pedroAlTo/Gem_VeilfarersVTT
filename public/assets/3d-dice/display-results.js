@@ -59,6 +59,14 @@ export default class DisplayResults {
     }).join('<span class="vf-result-plus">+</span>');
     const modHtml = modifier ? `<span class="vf-result-mod">${modifier > 0 ? '+' : '−'} ${Math.abs(modifier)}</span>` : '';
     current.innerHTML = `${label}${outcomeHtml}<span class="vf-results-equation">${dice}${modHtml}<span class="vf-result-equals">=</span><strong>${this.escape(String(total))}</strong></span>`;
+    const boxColor = data?.color || data?.tokenColor;
+    if (boxColor) {
+      current.style.borderColor = boxColor;
+      current.style.boxShadow = `0 0 20px ${boxColor}, 0 10px 30px rgba(0,0,0,0.55)`;
+    } else {
+      current.style.borderColor = '';
+      current.style.boxShadow = '';
+    }
     clearTimeout(current.hideTimer);
     current.classList.remove('hidden','hideEffect');
     current.classList.add('showEffect');

@@ -81,12 +81,23 @@ export class VeilfarersDiceEngine {
 
       const rollerName = rollData.playerName || 'Viajero';
       const label = rollData.label || (isDuality ? 'Duality Roll' : 'Tirada');
+      let tokenColor = rollData.tokenColor || rollData.color || '';
+      if (!tokenColor && typeof window !== 'undefined' && window.veilStore) {
+        const selected = window.veilStore.getSelectedToken?.();
+        if (selected?.color) tokenColor = selected.color;
+        else if (rollData.tokenId) {
+          const t = window.veilStore.state?.tokens?.find(tok => tok.id === rollData.tokenId);
+          if (t?.color) tokenColor = t.color;
+        }
+      }
+      if (!tokenColor) tokenColor = '#00f3ff';
 
       try {
         await window.VFDice3D.roll(groups, {
           label: `${rollerName} · ${label}`,
           style: 'overlay',
-          deferResults: true
+          deferResults: true,
+          color: tokenColor
         });
 
         let outcome = rollData.outcomeTitle || rollData.outcomeLabel || '';
@@ -136,7 +147,9 @@ export class VeilfarersDiceEngine {
                     role: 'neutral'
                   }))
                 : [{ value: Number(rollData.total) || 0, sides: 20, role: 'neutral' }]),
-          style: 'overlay'
+          style: 'overlay',
+          color: tokenColor,
+          tokenColor: tokenColor
         });
       } catch (err) {
         console.warn('[Veilfarers 3D Dice] Error en simulación 3D:', err);
@@ -230,6 +243,18 @@ export class VeilfarersDiceEngine {
       tokenName = isKeeper ? 'Director de Juego' : 'Operativo';
     }
 
+    // 2.5 Color del token
+    let tokenColor = rollData.tokenColor || rollData.color || '';
+    if (!tokenColor && typeof window !== 'undefined' && window.veilStore) {
+      const selected = window.veilStore.getSelectedToken?.();
+      if (selected?.color) tokenColor = selected.color;
+      else if (rollData.tokenId) {
+        const t = window.veilStore.state?.tokens?.find(tok => tok.id === rollData.tokenId);
+        if (t?.color) tokenColor = t.color;
+      }
+    }
+    if (!tokenColor) tokenColor = '#00f3ff';
+
     // 3. Resultado
     const total = rollData.total != null ? rollData.total : (rollData.value != null ? rollData.value : (Number(rollData.hopeVal || 0) + Number(rollData.fearVal || 0)));
     let outcomeType = rollData.outcomeType;
@@ -283,8 +308,8 @@ export class VeilfarersDiceEngine {
       <div class="vf-callout-body">
         <div class="vf-callout-actor vf-callout-token-name">${escapeHtml(actorDisplay)}</div>
         <div class="vf-callout-result-row">
-          <div class="vf-callout-result-box">
-            <span class="vf-callout-total">${escapeHtml(String(total))}</span>
+          <div class="vf-callout-result-box" style="border-color: ${tokenColor}; box-shadow: 0 0 16px ${tokenColor}, inset 0 0 10px rgba(0,0,0,0.5); color: ${tokenColor};">
+            <span class="vf-callout-total" style="color: #ffffff; text-shadow: 0 0 10px ${tokenColor};">${escapeHtml(String(total))}</span>
             ${badgeHtml}
           </div>
         </div>

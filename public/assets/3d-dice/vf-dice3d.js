@@ -186,8 +186,8 @@ async function init(){
     await assertWebAssemblyExecutionAllowed();
     box=new DiceBox({
       container:'#vf-dice3d-box', assetPath:ASSET_PATH, origin:'', theme:'vfNeutral', preloadThemes:PRELOAD_THEMES,
-      scale:5.2, gravity:3.6, mass:1.4, friction:0.95, restitution:0.12, spinForce:4.0, throwForce:4.8,
-      startingHeight:8.0, settleTimeout:3500, delay:10, lightIntensity:1.15, enableShadows:true,
+      scale:5.2, gravity:5.4, mass:1.4, friction:0.32, restitution:0.68, spinForce:6.2, throwForce:5.8,
+      startingHeight:22.0, settleTimeout:5500, delay:10, lightIntensity:1.15, enableShadows:true,
       shadowTransparency:0.72, offscreen:false
     });
     await box.init();
@@ -480,7 +480,8 @@ async function roll(groups, options={}){
     markTrackingSettled(flat.map((_,index)=>index));
     if (!options.deferResults) display.showResults({
       rolls:flat.map((item,index)=>({value:item.value,sides:item.sides,role:trackingSpecs[index] && trackingSpecs[index].role})),
-      value:flat.reduce((n,item)=>n+item.value,0), label:options.label || ''
+      value:flat.reduce((n,item)=>n+item.value,0), label:options.label || '',
+      color: options.color || options.tokenColor
     });
     closeTimer=setTimeout(hide,9800);
     return {raw:result, flat, values:flat.map(item=>item.value)};

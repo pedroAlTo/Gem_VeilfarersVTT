@@ -160,7 +160,7 @@ export class DiceRollerSidebar {
       select.onchange = null;
       return;
     }
-    const currentId = this.preparedWeapon?.id || (weapons[0]?.id || '');
+    const currentId = this.preparedWeapon?.id || '';
     select.innerHTML = sanitizeHTML(weapons.map(w => `<option value="${escapeHTML(w.id)}" ${w.id === currentId ? 'selected' : ''}>${escapeHTML(w.name)} (${escapeHTML(w.damage || '1d8')})</option>`).join(''));
     if (currentId) {
       select.value = currentId;
@@ -170,6 +170,27 @@ export class DiceRollerSidebar {
         this.prepareWeapon(token.id, select.value);
       }
     };
+  }
+
+  applyWeaponPreset(actor, weapon) {
+    if (!actor || !weapon) return;
+    const preset = weaponPreset(actor, weapon);
+    const formEl = this.container.querySelector('#dmg_formula');
+    if (formEl) formEl.value = preset.formula;
+    this.syncDamageMode();
+    const profEl = this.container.querySelector('#dmg_proficiency');
+    if (profEl) profEl.value = preset.proficiency;
+    const honedEl = this.container.querySelector('#dmg_honed');
+    if (honedEl) honedEl.value = preset.honed;
+    const impEl = this.container.querySelector('#dmg_impact_type');
+    if (impEl) impEl.value = weaponImpactType(weapon);
+    const note = weapon.damageMode === 'final' ? 'Daño final: Proficiency y Honed Edge no se vuelven a sumar.' : 'Daño base: se añade Proficiency al primer grupo de dados y Honed Edge una vez.';
+    let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
+    const prevEl = this.container.querySelector('[data-weapon-preview]');
+    if (prevEl) prevEl.textContent = [weapon.name, note, weapon.features, warning].filter(Boolean).join(' · ');
+    this.preparedWeapon = { id: weapon.id, signature: JSON.stringify(weapon) };
+    const wSelect = this.container.querySelector('#dmg_weapon_select');
+    if (wSelect && wSelect.value !== weapon.id) wSelect.value = weapon.id;
   }
 
   updateRollButtonLabel() {
@@ -227,21 +248,10 @@ export class DiceRollerSidebar {
     const weapon = tokenInventory(actor).weapons.find(w => w.id === weaponId);
     if (!weapon) { notify('Este arma ya no está en la ficha.'); return false; }
     store.update({ selectedTokenId: tokenId }); this.syncWithSelectedToken();
-    const preset = weaponPreset(actor, weapon);
-    this.container.querySelector('#dmg_formula').value = preset.formula;
-    this.syncDamageMode();
-    this.container.querySelector('#dmg_proficiency').value = preset.proficiency;
-    this.container.querySelector('#dmg_honed').value = preset.honed;
+    this.applyWeaponPreset(actor, weapon);
     this.container.querySelector('#dmg_is_critical').checked = false;
     this.container.querySelector('#dmg_is_direct').checked = false;
     this.container.querySelector('#damage_result_display').style.display = 'none';
-    const note = weapon.damageMode === 'final' ? 'Daño final: Proficiency y Honed Edge no se vuelven a sumar.' : 'Daño base: se añade Proficiency al primer grupo de dados y Honed Edge una vez.';
-    let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
-    this.container.querySelector('[data-weapon-preview]').textContent = [weapon.name, note, weapon.features, warning].filter(Boolean).join(' · ');
-    this.preparedWeapon = { id: weaponId, signature: JSON.stringify(weapon) };
-    const wSelect = this.container.querySelector('#dmg_weapon_select');
-    if (wSelect && wSelect.value !== weaponId) wSelect.value = weaponId;
-    this.container.querySelector('#dmg_impact_type').value = weaponImpactType(weapon);
     window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
     this.container.querySelector('#tab_damage_btn').click();
     this.container.querySelector('#dmg_formula').focus();
@@ -1190,7 +1200,15 @@ export class DiceRollerSidebar {
     const proficiency=parseInt(this.container.querySelector('#dmg_proficiency').value,10),honed=parseInt(this.container.querySelector('#dmg_honed').value,10);
     if(!Number.isInteger(proficiency)||proficiency<1||proficiency>10||!Number.isInteger(honed)||honed<0||honed>9){notify('Check Proficiency (1–10) and Honed Edge (0–9).','error');return;}
 
-    const formula = this.container.querySelector('#dmg_formula').value.trim();
+    let formula = this.container.querySelector('#dmg_formula').value.trim();
+    const wSelect = this.container.querySelector('#dmg_weapon_select');
+    if (!formula && wSelect && wSelect.value && this.currentActor) {
+      const activeW = (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value);
+      if (activeW && activeW.damage) {
+        this.applyWeaponPreset(this.currentActor, activeW);
+        formula = this.container.querySelector('#dmg_formula').value.trim();
+      }
+    }
     if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
     const damageOptions = {
       attackerName: this.currentActor?.name || 'Attacker',

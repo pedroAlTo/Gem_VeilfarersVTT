@@ -8,7 +8,36 @@ Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial 
 
 ## [1.5.0] — 2026-11-12
 
-Fidelidad Canónica Total: Umbrales Activos de Armadura, Catálogo Integral de Rust & Steel, Aumentos, Módulos de Dron y Coste de Fear en Foco de Adversarios
+Fidelidad Canónica Total: Físicas 3D de Aterrizaje Plano, Lobby Simplificado por Roles, Subtítulos en Overlay, Paleta de Color de Token, Armaduras Activas y Catálogo Integral
+
+### Físicas 3D de Dados y Aterrizaje Plano Obligatorio
+
+- Simulación física de dados calibrada para rebotes dinámicos: mayor distancia de caída (startingHeight: 22.0), mayor gravedad (gravity: 5.4), restitución elástica (restitution: 0.68) y fricción ajustada (0.32).
+- Rebote interactivo contra el suelo, paredes perimetrales de la escena delimitadas al área del mapa y colisiones reales entre múltiples dados arrojados simultáneamente.
+- Aterrizaje plano garantizado (vfSnapDieFlat): al detenerse el dado se alinea la normal superior verticalmente y se nivela la base a y = 0, asegurando que todos los vértices del lado de apoyo descansen a ras del suelo sin equilibrio sobre vértices.
+
+### Pantalla de Entrada Simplificada (Lobby Táctico)
+
+- Rediseño intuitivo con dos grandes botones Hero principales: [ ◈ ENTRAR COMO JUGADOR ] y [ ⚡ ENTRAR COMO KEEPER ].
+- Modo Jugador: Listado de salas a las que está conectado el usuario con acceso con 1 clic, formulario para unirse a nueva sala con código de invitación y Character Vault.
+- Modo Keeper: Listado de salas creadas por el Keeper para abrirlas o gestionarlas directamente, y formulario de creación de nueva sala/campaña con nombre.
+- Autenticación Segura sin Transición Prematura: Bloqueo de inputs e indicador de progreso ("Verificando credenciales...") mientras se procesa el login; no transiciona al VTT hasta que Firebase Auth confirme la identidad.
+- Visualización de Identidad: Encabezado con chips permanentes del usuario (displayName) y correo electrónico (email) conectado.
+
+### Subtítulos Cinematográficos en Overlay
+
+- Módulo #vf-subtitle-overlay que proyecta mensajes y descripciones en la parte inferior de la pantalla de forma no intrusiva (anclado a bottom: 74px), sin tapar controles tácticos ni HUD.
+
+### Tokens Multicolores y Personalización Coordinada
+
+- Selector de color de token (token.color) integrado en la configuración del token con paleta táctica (Cian, Ámbar, Esmeralda, Púrpura, Rojo, Carmesí, etc.).
+- El color seleccionado define de forma coordinada el borde y nombre del token en mapa, el texto del usuario en chat, el subtítulo en overlay y la caja de resultado de dados (.vf-callout-result-box y .vf-results).
+
+### Precarga Táctica de Daño según Armas Equipadas
+
+- Las armas equipadas en la ficha del token se vinculan directamente al calculador de daño táctico (diceRoller.js), precargando fórmula de daño, modificadores y botón directo 💥 Daño en la barra rápida.
+- Tooltip canónico con nombre y regla oficial al pasar el ratón (mouse-over) sobre marcadores de estado y condiciones en el mapa y HUD.
+- Marcadores de bloqueo de objetivo (target lock) sutiles y discretos con corchetes esquineros ultrafinos (1px).
 
 ### Umbrales de Daño Dinámicos según Armadura
 

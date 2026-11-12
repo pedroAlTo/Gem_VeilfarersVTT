@@ -12,6 +12,7 @@ import { initVeilfarersApp } from './vtt-integration/vttIntegrationInit.js';
 import './help.css';
 import { APP_LABEL } from './version.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
+import { subtitleOverlay } from './subtitleOverlay.js';
 import './dossiers.css';
 import { checkBackupReminder } from './sessionManager.js';
 import { LOCAL_ONLY, LAN_SESSIONS } from './runtimeMode.js';
@@ -129,6 +130,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupSidebarTabNavigation();
   setupKeyboardShortcuts();
   initSessionBar();
+  subtitleOverlay.init();
   setupVeilfarersIntegration();
   if (typeof window !== 'undefined') {
     if (window.VFDice3D && typeof window.VFDice3D.preload === 'function') {

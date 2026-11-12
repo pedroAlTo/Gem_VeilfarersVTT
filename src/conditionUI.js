@@ -5,7 +5,11 @@ import { escapeHTML as esc } from './ui.js';
 import { CONDITIONS, CAMPAIGN_STATES, CONDITION_SOURCE, conditionDefinition, conditionIcon, normalizeConditions } from './conditions.js';
 
 export function conditionBadges(token) {
-  return normalizeConditions(token.conditions).map(name => `<span class="condition-badge">${conditionIcon(name)}${esc(conditionDefinition(name)?.label || name)}</span>`).join('');
+  return normalizeConditions(token.conditions).map(name => {
+    const def = conditionDefinition(name);
+    const title = def ? `${def.label} (${def.name}) — ${def.rule}` : name;
+    return `<span class="condition-badge" title="${esc(title)}" data-tooltip="${esc(title)}">${conditionIcon(name)}${esc(def?.label || name)}</span>`;
+  }).join('');
 }
 
 export function openConditions(tokenId) {
@@ -14,10 +18,10 @@ export function openConditions(tokenId) {
   const modal = dossierDialog('Condiciones y Estados · ' + token().name, `
     <p class="dossier-muted">Marcadores tácticos y estados de campaña. Sus efectos y duración se resuelven en la mesa conforme a las reglas canónicas del Corebook y Rust & Steel.</p>
     <h4 class="dossier-label" style="margin: 8px 0 4px 0; color: #38bdf8;">⚡ CONDICIONES TÁCTICAS DE COMBATE (18)</h4>
-    <div class="condition-picker">${CONDITIONS.map(c => `<button type="button" class="condition-choice" data-condition="${esc(c.name)}" aria-pressed="false">${conditionIcon(c.name)}<span>${esc(c.label)}<small>${esc(c.name)}</small></span></button>`).join('')}</div>
+    <div class="condition-picker">${CONDITIONS.map(c => `<button type="button" class="condition-choice" data-condition="${esc(c.name)}" title="${esc(c.label)} (${esc(c.name)}): ${esc(c.rule)}" aria-pressed="false">${conditionIcon(c.name)}<span>${esc(c.label)}<small>${esc(c.name)}</small></span></button>`).join('')}</div>
     
     <h4 class="dossier-label" style="margin: 12px 0 4px 0; color: #fbbf24;">💀 ESTADOS DE PERSONAJE Y CAMPAÑA</h4>
-    <div class="condition-picker">${CAMPAIGN_STATES.map(c => `<button type="button" class="condition-choice" data-condition="${esc(c.name)}" aria-pressed="false" style="border-color: rgba(251, 191, 36, 0.3);">${conditionIcon(c.name)}<span style="color: #fde68a;">${esc(c.label)}<small>${esc(c.name)}</small></span></button>`).join('')}</div>
+    <div class="condition-picker">${CAMPAIGN_STATES.map(c => `<button type="button" class="condition-choice" data-condition="${esc(c.name)}" title="${esc(c.label)} (${esc(c.name)}): ${esc(c.rule)}" aria-pressed="false" style="border-color: rgba(251, 191, 36, 0.3);">${conditionIcon(c.name)}<span style="color: #fde68a;">${esc(c.label)}<small>${esc(c.name)}</small></span></button>`).join('')}</div>
 
     <article class="condition-rule" aria-live="polite" style="margin-top: 10px;"><strong data-rule-title>Selecciona una condición o estado para consultar su regla.</strong><p data-rule></p><small>${esc(CONDITION_SOURCE)}</small></article>
     <h4 class="dossier-label">Otros marcadores</h4><div class="condition-custom-list" data-custom-list></div>

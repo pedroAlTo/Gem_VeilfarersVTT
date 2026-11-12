@@ -173,6 +173,26 @@ export function conditionMarkers(values = []) {
   const list = normalizeConditions(values);
   return list.length <= 4 ? list : [...list.slice(0, 3), { more: list.length - 3 }];
 }
+export function getHoveredCondition(token, cursorWorld, radius, zoom = 1) {
+  if (!token || !cursorWorld || !token.conditions?.length) return null;
+  const markers = conditionMarkers(token.conditions);
+  if (!markers.length) return null;
+  const scale = Math.max(1, Math.min(1.8, .9 / zoom));
+  const markerX = token.x + radius + 13 * scale;
+  for (let i = 0; i < markers.length; i++) {
+    const marker = markers[i];
+    const markerY = token.y + (i - (markers.length - 1) / 2) * 18 * scale;
+    const half = 10 * scale;
+    if (cursorWorld.x >= markerX - half && cursorWorld.x <= markerX + half &&
+        cursorWorld.y >= markerY - half && cursorWorld.y <= markerY + half) {
+      if (marker.more) {
+        return { label: `+${marker.more} adicionales`, name: 'Más estados', rule: 'Abre el panel de estados para consultar todos los marcadores activos.' };
+      }
+      return conditionDefinition(marker) || { label: marker, name: marker, rule: 'Marcador personalizado de escena.' };
+    }
+  }
+  return null;
+}
 const canvasPaths = new Map();
 export function drawTokenConditions(ctx, token, radius, zoom = 1) {
   const markers = conditionMarkers(token.conditions);

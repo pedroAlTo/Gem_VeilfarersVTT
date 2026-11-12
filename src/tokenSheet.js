@@ -2,6 +2,7 @@ import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
 import { validateActor } from './validation.js';
 import { statGaugeHTML } from './tokenVitals.js';
+import { tokenInventory } from './equipment.js';
 // src/tokenSheet.js
 // Token HUD Quickbar and Holographic Character Sheet Editor
 
@@ -240,6 +241,33 @@ export class TokenHUD {
           `}
         </div>
 
+        <!-- Weapons / Attacks Quick Bar -->
+        ${(() => {
+          const inv = tokenInventory(token);
+          const weaps = inv.weapons || [];
+          if (!weaps.length) return '';
+          return `
+            <div class="tok-qb-divider"></div>
+            <div class="tok-qb-stat-group tok-qb-weapons" style="margin-top: 2px;">
+              <div class="tok-qb-stat-label" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>⚔️ ARMAS / ATAQUES</span>
+                <span style="font-size: 10px; color: var(--text-dim);">${weaps.length} equipada${weaps.length > 1 ? 's' : ''}</span>
+              </div>
+              <div class="tok-qb-weapon-list" style="display:flex; flex-direction:column; gap:3px; margin-top:2px;">
+                ${weaps.slice(0, 3).map(w => `
+                  <div class="tok-qb-weapon-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.65); padding:2px 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.08); gap:6px;">
+                    <div style="font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;">
+                      <strong style="color:#e2e8f0;">${escapeHTML(w.name)}</strong>
+                      <span style="color:#38bdf8; font-size:10px; margin-left:3px;">${escapeHTML(w.damage || '1d8')}</span>
+                    </div>
+                    <button type="button" class="hud-btn hud-btn-xs hud-btn-primary tok-weapon-roll-btn" data-weapon-id="${escapeHTML(w.id)}" style="padding:1px 6px; height:18px; line-height:1;" title="Preparar arma y calcular daño">💥 Daño</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        })()}
+
         <div class="tok-qb-divider"></div>
 
         <!-- Sleeper Common Efforts Collapsible Drawer (If Sleeping) -->
@@ -319,6 +347,15 @@ export class TokenHUD {
   attachEvents(token) {
     this.container.querySelector('#open_conditions_btn')?.addEventListener('click', () => openConditions(token.id));
     this.container.querySelector('#open_equipment_btn')?.addEventListener('click', () => { if (store.canEditToken(token.id)) openDossier(store.state.tokens.find(t => t.id === token.id), actor => this.openTokenSettingsModal(actor), 'equipment'); });
+    this.container.querySelectorAll('.tok-weapon-roll-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const weaponId = btn.dataset.weaponId;
+        if (window.veilDiceRoller && typeof window.veilDiceRoller.prepareWeapon === 'function') {
+          window.veilDiceRoller.prepareWeapon(token.id, weaponId);
+        }
+      };
+    });
     if (!store.canEditToken(token.id)) this.container.querySelectorAll('button').forEach(button => {
       if (!['toggle_expand_btn', 'toggle_moves_drawer'].includes(button.id)) button.disabled = true;
     });
@@ -809,6 +846,25 @@ export class TokenHUD {
                 </div>
               </div>
 
+              <!-- COLOR PERSONALIZADO DEL TOKEN & INTERFAZ -->
+              <h4 class="sheet-section-title" style="margin-top: 16px; color: #00f3ff; border-color: rgba(0, 243, 255, 0.3);">
+                🎨 COLOR IDENTIFICATIVO DEL TOKEN
+              </h4>
+              <div class="form-row" style="gap: 12px; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button type="button" id="sheet_token_color_btn" class="overlay-color-btn" style="width: 34px; height: 34px; border-radius: 6px; border: 2px solid #fff; cursor: pointer; background: ${token.color || '#00f3ff'};" title="Elegir Color del Token"></button>
+                  <input type="hidden" id="sheet_token_color_val" value="${token.color || '#00f3ff'}" />
+                </div>
+                <div class="token-color-presets" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  ${['#00f3ff', '#38bdf8', '#34d399', '#10b981', '#fbbf24', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map(c => `
+                    <button type="button" class="tok-preset-color" data-color="${c}" style="width: 24px; height: 24px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.4); background: ${c}; cursor: pointer;"></button>
+                  `).join('')}
+                </div>
+                <div style="font-size: 11px; color: var(--text-dim); flex: 1; min-width: 220px;">
+                  Define el borde y nombre del token en el mapa, el color de tu texto en comms/subtítulos y el resplandor de la caja de dados.
+                </div>
+              </div>
+
               <!-- BORDE DORADO BRILLANTE / FOCO CON PULSO -->
               <h4 class="sheet-section-title" style="margin-top: 16px; color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">
                 ✨ BORDE DORADO BRILLANTE / FOCO CON PULSO
@@ -879,6 +935,27 @@ export class TokenHUD {
       lightColVal.oninput = () => {
         lightColBtn.style.background = lightColVal.value;
       };
+    }
+
+    // Setup Token Color Picker & Presets
+    const tokColBtn = modal.querySelector('#sheet_token_color_btn');
+    const tokColVal = modal.querySelector('#sheet_token_color_val');
+    if (tokColBtn && tokColVal) {
+      tokColBtn.onclick = () => {
+        openColorPickerPopover(tokColBtn, tokColVal.value, (newCol) => {
+          tokColVal.value = newCol;
+          tokColBtn.style.background = newCol;
+        });
+      };
+      modal.querySelectorAll('.tok-preset-color').forEach(btn => {
+        btn.onclick = () => {
+          const c = btn.dataset.color;
+          if (c) {
+            tokColVal.value = c;
+            tokColBtn.style.background = c;
+          }
+        };
+      });
     }
 
     // Initialize Modular Token Overlays
@@ -1103,6 +1180,7 @@ export class TokenHUD {
         lightRadius: parseInt(modal.querySelector('#sheet_light_rad').value, 10),
         lightColor: modal.querySelector('#sheet_light_col_val').value,
         lightEffect: modal.querySelector('#sheet_light_fx').value,
+        color: modal.querySelector('#sheet_token_color_val')?.value || token.color || '#00f3ff',
         hasSpotlight: modal.querySelector('#sheet_has_spotlight')?.checked ?? false,
         spotlight: {
           enabled: modal.querySelector('#sheet_has_spotlight')?.checked ?? false,

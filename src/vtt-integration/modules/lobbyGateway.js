@@ -9,6 +9,15 @@ import {
 import { ref, onValue, push, set, remove } from "firebase/database";
 import { getFirebaseAuthInstance, getFirebaseDatabaseInstance } from './firebaseClient.js';
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export class VeilfarersLobbyGateway {
   constructor(optionsOrCallback) {
     this.auth = getFirebaseAuthInstance();
@@ -58,6 +67,7 @@ export class VeilfarersLobbyGateway {
     if (pass) pass.value = '';
     const err = document.getElementById('vf-auth-error');
     if (err) err.textContent = '';
+    this.setAuthBusy(false);
   }
 
   showHubScreen() {
@@ -77,6 +87,31 @@ export class VeilfarersLobbyGateway {
     const root = document.getElementById('vf-lobby-gateway');
     if (root) {
       root.classList.add('hidden');
+    }
+  }
+
+  setAuthBusy(busy, msg = 'Verificando credenciales con el servidor...') {
+    const spinner = document.getElementById('vf-auth-spinner');
+    const msgEl = document.getElementById('vf-auth-spinner-msg');
+    const form = document.getElementById('vf-email-auth-form');
+    const btnGoogle = document.getElementById('vf-btn-google');
+    const btnGuest = document.getElementById('vf-btn-guest');
+    const btnRegister = document.getElementById('vf-btn-register');
+
+    if (spinner) {
+      spinner.classList.toggle('hidden', !busy);
+    }
+    if (msgEl) {
+      msgEl.textContent = msg;
+    }
+    if (form) {
+      form.querySelectorAll('input, button').forEach(el => el.disabled = !!busy);
+    }
+    if (btnGoogle) btnGoogle.disabled = !!busy;
+    if (btnGuest) btnGuest.disabled = !!busy;
+    if (btnRegister) btnRegister.disabled = !!busy;
+    if (busy) {
+      this.showError('');
     }
   }
 
@@ -128,11 +163,16 @@ export class VeilfarersLobbyGateway {
           <span class="guest-icon">🚀</span> Entrar como Invitado / Modo Local
         </button>
 
+        <div id="vf-auth-spinner" class="vf-auth-spinner hidden">
+          <span class="auth-loading-dot"></span>
+          <span id="vf-auth-spinner-msg">Verificando credenciales con el servidor...</span>
+        </div>
+
         <p id="vf-auth-error" class="vf-error-msg"></p>
         <div id="vf-auth-info-banner" class="vf-auth-info" style="display:none;"></div>
       </div>
 
-      <!-- PANTALLA 2: HUB PRINCIPAL (VAULT + CREADOR + SALAS) -->
+      <!-- PANTALLA 2: HUB PRINCIPAL (MODO ENTRADA SIMPLIFICADA) -->
       <div id="vf-hub-screen" class="vf-hub-container hidden">
         <header class="vf-hub-topbar">
           <div class="vf-hub-logo">
@@ -140,79 +180,144 @@ export class VeilfarersLobbyGateway {
               <span class="hub-brand-glyph">✦</span>
               <h2>VEILFARERS // CENTRO DE MANDO</h2>
             </div>
-            <div class="vf-user-chip">
-              <span class="user-pulse"></span>
-              <span class="chip-label">OPERATIVO:</span>
-              <strong id="vf-user-welcome">Conectando...</strong>
+            <!-- Identificador de Usuario y Correo de Inicio de Sesión -->
+            <div class="vf-user-identity-box">
+              <div class="vf-user-chip">
+                <span class="user-pulse"></span>
+                <span class="chip-label">USUARIO:</span>
+                <strong id="vf-user-welcome">Conectando...</strong>
+              </div>
+              <div class="vf-email-chip">
+                <span class="chip-label">CORREO:</span>
+                <span id="vf-user-email">...</span>
+              </div>
             </div>
-          </div>
-          <div class="vf-role-switcher" role="radiogroup" aria-label="Selector de rol táctico">
-            <button type="button" id="role-btn-player" class="role-btn active">
-              <span class="role-icon">◈</span> MODO JUGADOR
-            </button>
-            <button type="button" id="role-btn-keeper" class="role-btn">
-              <span class="role-icon">⚡</span> MODO KEEPER (DIRECTOR)
-            </button>
           </div>
           <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-logout" title="Desconectar y volver al portal de acceso">
             <span class="logout-icon">⏻</span> Cerrar Sesión
           </button>
         </header>
 
-        <div class="vf-hub-grid">
-          <!-- COLUMNA IZQUIERDA: CHARACTER VAULT -->
-          <section id="vf-vault-section" class="vf-hub-panel vault-panel">
-            <div class="panel-header">
-              <div class="panel-title-group">
-                <h3><span class="panel-icon">📂</span> CHARACTER VAULT</h3>
-                <span class="panel-badge">EXPEDIENTES TÁCTICOS</span>
-              </div>
-              <div class="vault-actions">
-                <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs">
-                  <span class="btn-icon">+</span> Nuevo Personaje
-                </button>
-                <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
-                  <span class="btn-icon">⬇</span> Importar JSON
-                  <input type="file" id="vf-import-json" accept=".json" style="display:none;" />
-                </label>
-              </div>
+        <!-- DOS BOTONES GRANDES HERO: ENTRAR COMO JUGADOR vs KEEPER -->
+        <div class="vf-hero-role-selector">
+          <button type="button" id="role-btn-player" class="vf-hero-role-card active">
+            <div class="hero-role-header">
+              <span class="hero-role-icon">◈</span>
+              <span class="hero-role-badge">MODO JUGADOR</span>
             </div>
-            <p class="panel-hint">Selecciona el operativo activo que se desplegará en la mesa táctica:</p>
-            <div id="vf-vault-list" class="vf-vault-list"></div>
-          </section>
+            <h3>ENTRAR COMO JUGADOR</h3>
+            <p>Conéctate a tus salas activas o únete con un código de invitación para desplegar tu operativo en la mesa.</p>
+            <div class="hero-role-glow"></div>
+          </button>
 
-          <!-- COLUMNA DERECHA: CONEXIÓN A SALA -->
-          <section class="vf-hub-panel room-panel">
-            <div class="panel-header">
-              <div class="panel-title-group">
-                <h3><span class="panel-icon">🛰️</span> ENLACE A SALA PERSISTENTE</h3>
-                <span class="panel-badge status-live">CANAL CUÁNTICO</span>
-              </div>
+          <button type="button" id="role-btn-keeper" class="vf-hero-role-card">
+            <div class="hero-role-header">
+              <span class="hero-role-icon">⚡</span>
+              <span class="hero-role-badge">MODO KEEPER</span>
             </div>
-            <div class="room-form-group">
-              <label for="vf-room-code-input">
-                <span class="field-code">// SALA</span> Código o Frecuencia de Campaña
-              </label>
-              <div class="room-input-container">
-                <span class="room-input-icon">⌖</span>
-                <input type="text" id="vf-room-code-input" placeholder="Ej: mesa-principal" value="mesa-principal" autocomplete="off" />
+            <h3>ENTRAR COMO KEEPER</h3>
+            <p>Abre y gestiona las campañas y salas que has creado o crea una nueva sala como Director de Juego.</p>
+            <div class="hero-role-glow"></div>
+          </button>
+        </div>
+
+        <!-- VISTA DE JUGADOR: SALAS CONECTADAS + UNIRSE CON CÓDIGO + VAULT -->
+        <div id="vf-player-section" class="vf-hub-section-view">
+          <div class="vf-hub-grid">
+            <section class="vf-hub-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <h3><span class="panel-icon">🛰️</span> SALAS CONECTADAS</h3>
+                  <span class="panel-badge">TUS CAMPAÑAS COMO JUGADOR</span>
+                </div>
               </div>
-              <div class="room-presets-row">
-                <span class="presets-label">Frecuencias sugeridas:</span>
-                <button type="button" class="room-preset-btn" data-room="mesa-principal">mesa-principal</button>
-                <button type="button" class="room-preset-btn" data-room="sector-acheron">sector-acheron</button>
-                <button type="button" class="room-preset-btn" data-room="estacion-pearl">estacion-pearl</button>
+              <p class="panel-hint">Selecciona una sala a la que estás conectado para entrar directamente:</p>
+              <div id="vf-player-rooms-list" class="vf-rooms-list">
+                <div class="vf-room-loading">Cargando salas conectadas...</div>
               </div>
-            </div>
-            <div id="vf-selected-summary" class="vf-selected-summary">
-              <!-- Rendered dynamically -->
-            </div>
-            <button type="button" id="vf-btn-join-vtt" class="vf-btn vf-btn-launch">
-              <span class="btn-launch-icon">🚀</span>
-              <span class="btn-launch-text">ENTRAR A LA MESA VTT</span>
-              <span class="btn-launch-glow"></span>
-            </button>
-          </section>
+
+              <!-- Unirse con código nuevo -->
+              <div class="vf-join-code-box">
+                <h4 class="vf-subheading"><span class="icon">⌖</span> UNIRSE A UNA NUEVA SALA</h4>
+                <div class="room-input-container">
+                  <span class="room-input-icon">🔑</span>
+                  <input type="text" id="vf-join-code-input" placeholder="Código de invitación (ej: VEI-8H2FA)" autocomplete="off" />
+                  <button type="button" id="vf-btn-join-code" class="vf-btn vf-btn-primary">
+                    <span>Unirse</span>
+                  </button>
+                </div>
+              </div>
+              <button type="button" id="vf-btn-join-vtt" class="vf-btn vf-btn-launch" style="width: 100%; margin-top: 14px;">
+                <span class="btn-launch-icon">🚀</span>
+                <span class="btn-launch-text">ENTRAR DIRECTO A LA MESA VTT</span>
+                <span class="btn-launch-glow"></span>
+              </button>
+            </section>
+
+            <section id="vf-vault-section" class="vf-hub-panel vault-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <h3><span class="panel-icon">📂</span> CHARACTER VAULT</h3>
+                  <span class="panel-badge">OPERATIVO TÁCTICO</span>
+                </div>
+                <div class="vault-actions">
+                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs">
+                    <span class="btn-icon">+</span> Nuevo
+                  </button>
+                  <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
+                    <span class="btn-icon">⬇</span> JSON
+                    <input type="file" id="vf-import-json" accept=".json" style="display:none;" />
+                  </label>
+                </div>
+              </div>
+              <p class="panel-hint">Operativo activo seleccionado para la mesa:</p>
+              <div id="vf-vault-list" class="vf-vault-list"></div>
+            </section>
+          </div>
+        </div>
+
+        <!-- VISTA DE KEEPER: SALAS CREADAS + CREAR NUEVA SALA -->
+        <div id="vf-keeper-section" class="vf-hub-section-view hidden">
+          <div class="vf-hub-grid">
+            <section class="vf-hub-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <h3><span class="panel-icon">⚡</span> TUS SALAS CREADAS</h3>
+                  <span class="panel-badge">CAMPAÑAS KEEPER</span>
+                </div>
+              </div>
+              <p class="panel-hint">Salas donde eres Director de Juego (Keeper):</p>
+              <div id="vf-keeper-rooms-list" class="vf-rooms-list">
+                <div class="vf-room-loading">Cargando tus salas creadas...</div>
+              </div>
+            </section>
+
+            <section class="vf-hub-panel">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <h3><span class="panel-icon">🚀</span> CREAR NUEVA SALA</h3>
+                  <span class="panel-badge status-live">NUEVO SECTOR</span>
+                </div>
+              </div>
+              <p class="panel-hint">Genera un nuevo sector o campaña persistente con código propio de invitación:</p>
+              <div class="vf-create-room-box">
+                <div class="room-form-group">
+                  <label for="vf-create-room-name">
+                    <span class="field-code">// NOMBRE</span> Nombre de la Sala o Campaña
+                  </label>
+                  <div class="room-input-container">
+                    <span class="room-input-icon">✦</span>
+                    <input type="text" id="vf-create-room-name" placeholder="Ej: Sector Acheron - Misión 1" autocomplete="off" />
+                  </div>
+                </div>
+                <button type="button" id="vf-btn-create-room" class="vf-btn vf-btn-launch" style="width: 100%; margin-top: 14px;">
+                  <span class="btn-launch-icon">⚡</span>
+                  <span class="btn-launch-text">CREAR Y ABRIR COMO KEEPER</span>
+                  <span class="btn-launch-glow"></span>
+                </button>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
 
@@ -227,7 +332,6 @@ export class VeilfarersLobbyGateway {
             <button type="button" id="vf-btn-close-creator" class="vf-btn vf-btn-close-dialog" title="Cerrar">✕</button>
           </header>
           <form id="vf-creator-form" class="creator-form">
-            <!-- SECCIÓN 1: IDENTIDAD -->
             <div class="creator-section">
               <div class="creator-section-header">
                 <span class="sec-number">01</span>
@@ -246,41 +350,21 @@ export class VeilfarersLobbyGateway {
               </div>
             </div>
 
-            <!-- SECCIÓN 2: ATRIBUTOS DUALITY -->
             <div class="creator-section">
               <div class="creator-section-header">
                 <span class="sec-number">02</span>
                 <span class="sec-title">MATRIZ DE ATRIBUTOS (DUALITY 2d12)</span>
               </div>
               <div class="creator-attrs-grid">
-                <div class="attr-box">
-                  <span class="attr-code">AGI</span>
-                  <label>Agility <input type="number" id="cr-attr-agility" value="1" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">STR</span>
-                  <label>Strength <input type="number" id="cr-attr-strength" value="0" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">FIN</span>
-                  <label>Finesse <input type="number" id="cr-attr-finesse" value="2" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">INS</span>
-                  <label>Instinct <input type="number" id="cr-attr-instinct" value="1" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">PRE</span>
-                  <label>Presence <input type="number" id="cr-attr-presence" value="0" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">KNO</span>
-                  <label>Knowledge <input type="number" id="cr-attr-knowledge" value="-1" min="-2" max="5" /></label>
-                </div>
+                <div class="attr-box"><span class="attr-code">AGI</span><label>Agility <input type="number" id="cr-attr-agility" value="1" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">STR</span><label>Strength <input type="number" id="cr-attr-strength" value="0" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">FIN</span><label>Finesse <input type="number" id="cr-attr-finesse" value="2" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">INS</span><label>Instinct <input type="number" id="cr-attr-instinct" value="1" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">PRE</span><label>Presence <input type="number" id="cr-attr-presence" value="0" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">KNO</span><label>Knowledge <input type="number" id="cr-attr-knowledge" value="-1" min="-2" max="5" /></label></div>
               </div>
             </div>
 
-            <!-- SECCIÓN 3: ARMADURA Y SISTEMAS -->
             <div class="creator-section">
               <div class="creator-section-header">
                 <span class="sec-number">03</span>
@@ -321,63 +405,74 @@ export class VeilfarersLobbyGateway {
 
     document.getElementById('vf-btn-dismiss-lobby')?.addEventListener('click', closeLobby);
 
+    // Guest / Local Mode
     document.getElementById('vf-btn-guest')?.addEventListener('click', () => {
-      closeLobby();
-      if (this.onEnterRoomCallback) {
-        this.onEnterRoomCallback({
-          roomId: 'mesa-principal',
-          currentUser: {
-            uid: 'guest_' + Date.now(),
-            displayName: 'Invitado Local',
-            role: 'player'
-          },
-          activeCharId: null
-        });
-      }
+      this.setAuthBusy(false);
+      this.currentUser = {
+        uid: 'guest_' + Date.now(),
+        displayName: 'Invitado Local',
+        email: 'Modo Local'
+      };
+      const authScreen = document.getElementById('vf-auth-screen');
+      const hubScreen = document.getElementById('vf-hub-screen');
+      authScreen?.classList.add('hidden');
+      hubScreen?.classList.remove('hidden');
+      const welcome = document.getElementById('vf-user-welcome');
+      if (welcome) welcome.textContent = 'Invitado Local';
+      const emailEl = document.getElementById('vf-user-email');
+      if (emailEl) emailEl.textContent = 'Modo Local / Sin correo';
+      this.loadRoomsList();
     });
 
+    // Email / Password Form Submission - STRICT WAITING FOR AUTH TO COMPLETE
     document.getElementById('vf-email-auth-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!this.auth) this.auth = getFirebaseAuthInstance();
       if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
       const email = document.getElementById('vf-auth-email').value.trim();
       const pass = document.getElementById('vf-auth-pass').value;
-      this.showError('');
+      this.setAuthBusy(true, 'Verificando credenciales de acceso con el servidor...');
       try {
         await signInWithEmailAndPassword(this.auth, email, pass);
+        // Do not transition here; onAuthStateChanged will handle it once confirmed
       } catch (err) {
+        this.setAuthBusy(false);
         this.showError(this.friendlyAuthError(err));
       }
     });
 
+    // Register Submission
     document.getElementById('vf-btn-register')?.addEventListener('click', async () => {
       if (!this.auth) this.auth = getFirebaseAuthInstance();
       if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
       const email = document.getElementById('vf-auth-email').value.trim();
       const pass = document.getElementById('vf-auth-pass').value;
       if (!email || !pass) return this.showError('Introduce correo y contraseña para registrarte.');
-      this.showError('');
+      this.setAuthBusy(true, 'Creando nueva cuenta en el servidor...');
       try {
         await createUserWithEmailAndPassword(this.auth, email, pass);
       } catch (err) {
+        this.setAuthBusy(false);
         this.showError(this.friendlyAuthError(err));
       }
     });
 
+    // Google OAuth Submission
     document.getElementById('vf-btn-google')?.addEventListener('click', async () => {
       if (!this.auth) this.auth = getFirebaseAuthInstance();
       if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
-      this.showError('');
+      this.setAuthBusy(true, 'Abriendo autenticación segura con Google...');
       try {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         await signInWithPopup(this.auth, provider);
       } catch (err) {
+        this.setAuthBusy(false);
         this.showError(this.friendlyAuthError(err));
       }
     });
 
-    // Desconectar / Cerrar Sesión -> Regresar a la pantalla de login
+    // Sign Out / Desconectar
     document.getElementById('vf-btn-logout')?.addEventListener('click', async () => {
       try {
         if (this.auth) await signOut(this.auth);
@@ -393,19 +488,18 @@ export class VeilfarersLobbyGateway {
       this.showLoginScreen();
     });
 
-    // Segmented Role Switcher
+    // DOS BOTONES GRANDES HERO: JUGADOR vs KEEPER
     const btnPlayer = document.getElementById('role-btn-player');
     const btnKeeper = document.getElementById('role-btn-keeper');
+    const playerSec = document.getElementById('vf-player-section');
+    const keeperSec = document.getElementById('vf-keeper-section');
 
     btnPlayer?.addEventListener('click', () => {
       this.selectedRole = 'player';
       btnPlayer.classList.add('active');
       btnKeeper?.classList.remove('active');
-      const vSec = document.getElementById('vf-vault-section');
-      if (vSec) {
-        vSec.style.opacity = '1';
-        vSec.style.pointerEvents = 'auto';
-      }
+      playerSec?.classList.remove('hidden');
+      keeperSec?.classList.add('hidden');
       this.updateSummaryText();
     });
 
@@ -413,21 +507,39 @@ export class VeilfarersLobbyGateway {
       this.selectedRole = 'keeper';
       btnKeeper.classList.add('active');
       btnPlayer?.classList.remove('active');
-      const vSec = document.getElementById('vf-vault-section');
-      if (vSec) {
-        vSec.style.opacity = '0.55';
-      }
+      keeperSec?.classList.remove('hidden');
+      playerSec?.classList.add('hidden');
       this.updateSummaryText();
     });
 
-    // Presets de sala rápida
-    document.querySelectorAll('.room-preset-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const roomInput = document.getElementById('vf-room-code-input');
-        if (roomInput && btn.dataset.room) {
-          roomInput.value = btn.dataset.room;
-        }
-      });
+    // Unirse a sala con código
+    document.getElementById('vf-btn-join-code')?.addEventListener('click', () => {
+      const input = document.getElementById('vf-join-code-input');
+      this.joinWithCode(input?.value);
+    });
+
+    document.getElementById('vf-btn-join-vtt')?.addEventListener('click', () => {
+      this.enterRoomTarget('mesa-principal', this.selectedRole || 'player');
+    });
+
+    document.getElementById('vf-join-code-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.joinWithCode(e.target.value);
+      }
+    });
+
+    // Crear nueva sala (Keeper)
+    document.getElementById('vf-btn-create-room')?.addEventListener('click', () => {
+      const input = document.getElementById('vf-create-room-name');
+      this.createNewRoom(input?.value);
+    });
+
+    document.getElementById('vf-create-room-name')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.createNewRoom(e.target.value);
+      }
     });
 
     // Modal Creador
@@ -444,26 +556,6 @@ export class VeilfarersLobbyGateway {
 
     document.getElementById('vf-import-json')?.addEventListener('change', (e) => this.handleImportJSON(e));
 
-    // Entrar a la Mesa VTT
-    document.getElementById('vf-btn-join-vtt')?.addEventListener('click', () => {
-      const roomInput = document.getElementById('vf-room-code-input');
-      const roomId = (roomInput?.value || '').trim() || 'mesa-principal';
-
-      this.hideLobby();
-
-      if (this.onEnterRoomCallback) {
-        this.onEnterRoomCallback({
-          roomId,
-          currentUser: {
-            uid: this.currentUser?.uid || 'guest_' + Date.now(),
-            displayName: this.currentUser?.displayName || this.currentUser?.email || (this.selectedRole === 'keeper' ? 'Keeper (Director)' : 'Viajero Táctico'),
-            role: this.selectedRole
-          },
-          activeCharId: this.selectedRole === 'keeper' ? null : (this.selectedCharId || null)
-        });
-      }
-    });
-
     this.updateSummaryText();
   }
 
@@ -479,6 +571,7 @@ export class VeilfarersLobbyGateway {
     if (banner) {
       banner.style.display = 'none';
     }
+
     onAuthStateChanged(this.auth, (user) => {
       this.currentUser = user;
       const authScreen = document.getElementById('vf-auth-screen');
@@ -486,12 +579,20 @@ export class VeilfarersLobbyGateway {
 
       if (user) {
         this.wasLoggedIn = true;
+        this.setAuthBusy(false);
         authScreen?.classList.add('hidden');
         hubScreen?.classList.remove('hidden');
+
+        // Mostrar usuario y correo con el que ha iniciado sesión
         const welcome = document.getElementById('vf-user-welcome');
-        if (welcome) welcome.textContent = user.displayName || user.email;
+        if (welcome) welcome.textContent = user.displayName || (user.email ? user.email.split('@')[0] : 'Operativo');
+        const emailEl = document.getElementById('vf-user-email');
+        if (emailEl) emailEl.textContent = user.email || 'Modo Local / Sin correo';
+
         this.subscribeToUserVault(user.uid);
+        this.loadRoomsList();
       } else {
+        this.setAuthBusy(false);
         if (this.wasLoggedIn) {
           this.wasLoggedIn = false;
           this.showLoginScreen();
@@ -500,6 +601,240 @@ export class VeilfarersLobbyGateway {
           hubScreen?.classList.add('hidden');
         }
       }
+    });
+  }
+
+  async loadRoomsList() {
+    const playerRoomsEl = document.getElementById('vf-player-rooms-list');
+    const keeperRoomsEl = document.getElementById('vf-keeper-rooms-list');
+    if (!playerRoomsEl && !keeperRoomsEl) return;
+
+    if (playerRoomsEl) playerRoomsEl.innerHTML = '<div class="vf-room-loading">Buscando salas conectadas...</div>';
+    if (keeperRoomsEl) keeperRoomsEl.innerHTML = '<div class="vf-room-loading">Buscando tus salas creadas...</div>';
+
+    let allRooms = [];
+    try {
+      const { rooms } = await import('../../roomController.js');
+      if (rooms && rooms.service) {
+        allRooms = await rooms.service.list().catch(() => []);
+      }
+    } catch (e) {
+      console.warn('[Lobby] Error al listar salas de Firestore:', e);
+    }
+
+    // Also get invited/history rooms from local storage
+    let localHistory = [];
+    try {
+      const { getInvitedSessions } = await import('../../networkManager.js');
+      if (typeof getInvitedSessions === 'function') {
+        localHistory = getInvitedSessions() || [];
+      }
+    } catch (e) {}
+
+    const uid = this.currentUser?.uid;
+    const keeperRooms = allRooms.filter(r => r && r.ownerUid === uid);
+    
+    // Player rooms: rooms where user is not owner, plus localHistory sessions
+    const playerRooms = allRooms.filter(r => r && r.ownerUid !== uid);
+    localHistory.forEach(h => {
+      if (h && h.room && !playerRooms.some(r => r.id === h.room || r.inviteCode === h.invite)) {
+        playerRooms.push({
+          id: h.room,
+          name: h.label || h.room,
+          inviteCode: h.invite || h.room,
+          isLocalHistory: true
+        });
+      }
+    });
+
+    // Provide default local suggestion if empty
+    if (!playerRooms.length && (!this.currentUser || this.currentUser.uid?.startsWith('guest_'))) {
+      playerRooms.push({
+        id: 'mesa-principal',
+        name: 'Mesa Principal (Local)',
+        inviteCode: 'mesa-principal'
+      });
+    }
+
+    this.renderPlayerRooms(playerRooms);
+    this.renderKeeperRooms(keeperRooms);
+  }
+
+  renderPlayerRooms(rooms) {
+    const el = document.getElementById('vf-player-rooms-list');
+    if (!el) return;
+    if (!rooms.length) {
+      el.innerHTML = `
+        <div class="vf-room-empty">
+          <span class="empty-icon">🛰️</span>
+          <p>No tienes salas conectadas todavía.</p>
+          <small>Introduce un código de invitación abajo para unirte a una campaña.</small>
+        </div>
+      `;
+      return;
+    }
+
+    el.innerHTML = rooms.map(r => `
+      <div class="vf-room-card" data-room-id="${escapeHtml(r.id)}">
+        <div class="vf-room-info">
+          <strong class="vf-room-name">${escapeHtml(r.name || r.id)}</strong>
+          <span class="vf-room-code">CÓDIGO: ${escapeHtml(r.inviteCode || r.id)}</span>
+        </div>
+        <button type="button" class="vf-btn vf-btn-primary vf-btn-sm btn-enter-room" data-room-id="${escapeHtml(r.id)}" data-role="player">
+          ▶ Entrar a la sala
+        </button>
+      </div>
+    `).join('');
+
+    el.querySelectorAll('.btn-enter-room').forEach(btn => {
+      btn.onclick = () => {
+        const roomId = btn.dataset.roomId;
+        this.enterRoomTarget(roomId, 'player');
+      };
+    });
+  }
+
+  renderKeeperRooms(rooms) {
+    const el = document.getElementById('vf-keeper-rooms-list');
+    if (!el) return;
+    if (!rooms.length) {
+      el.innerHTML = `
+        <div class="vf-room-empty">
+          <span class="empty-icon">⚡</span>
+          <p>No tienes salas creadas todavía.</p>
+          <small>Crea una nueva sala a la derecha para iniciar tu campaña como Keeper.</small>
+        </div>
+      `;
+      return;
+    }
+
+    el.innerHTML = rooms.map(r => `
+      <div class="vf-room-card is-keeper" data-room-id="${escapeHtml(r.id)}">
+        <div class="vf-room-info">
+          <strong class="vf-room-name">${escapeHtml(r.name || r.id)}</strong>
+          <span class="vf-room-code">INVITACIÓN: ${escapeHtml(r.inviteCode || r.id)}</span>
+        </div>
+        <div class="vf-room-actions">
+          <button type="button" class="vf-btn vf-btn-launch vf-btn-sm btn-enter-room" data-room-id="${escapeHtml(r.id)}" data-role="keeper" title="Abrir mesa de juego como Director">
+            ⚡ Abrir como Keeper
+          </button>
+          <button type="button" class="vf-btn vf-btn-danger vf-btn-sm btn-delete-room" data-room-id="${escapeHtml(r.id)}" data-room-name="${escapeHtml(r.name || r.id)}" title="Eliminar sala definitivamente">
+            🗑️
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    el.querySelectorAll('.btn-enter-room').forEach(btn => {
+      btn.onclick = () => {
+        const roomId = btn.dataset.roomId;
+        this.enterRoomTarget(roomId, 'keeper');
+      };
+    });
+
+    el.querySelectorAll('.btn-delete-room').forEach(btn => {
+      btn.onclick = async () => {
+        const roomId = btn.dataset.roomId;
+        const roomName = btn.dataset.roomName;
+        if (confirm(`¿Confirmar eliminación definitiva de la sala "${roomName}"?`)) {
+          try {
+            const { rooms } = await import('../../roomController.js');
+            if (rooms?.service) {
+              await rooms.service.deleteRoom(roomId);
+            }
+          } catch (e) {
+            console.warn('Error al eliminar sala:', e);
+          }
+          this.loadRoomsList();
+        }
+      };
+    });
+  }
+
+  enterRoomTarget(roomId, role) {
+    this.selectedRole = role;
+    this.hideLobby();
+    if (this.onEnterRoomCallback) {
+      this.onEnterRoomCallback({
+        roomId,
+        currentUser: {
+          uid: this.currentUser?.uid || 'guest_' + Date.now(),
+          displayName: this.currentUser?.displayName || (role === 'keeper' ? 'Keeper' : 'Viajero'),
+          role
+        },
+        activeCharId: role === 'keeper' ? null : (this.selectedCharId || null)
+      });
+    }
+    import('../../roomController.js').then(async ({ rooms }) => {
+      if (rooms) {
+        try {
+          await rooms.enter(roomId);
+        } catch (err) {
+          console.warn('[Lobby] rooms.enter:', err?.message || err);
+        }
+      }
+    }).catch(err => {
+      console.warn('[Lobby] rooms.enter:', err?.message || err);
+    });
+  }
+
+  joinWithCode(code) {
+    const trimmed = String(code || '').trim();
+    if (!trimmed) {
+      alert('Por favor introduce un código de invitación válido.');
+      return;
+    }
+    this.selectedRole = 'player';
+    this.hideLobby();
+    if (this.onEnterRoomCallback) {
+      this.onEnterRoomCallback({
+        roomId: trimmed,
+        currentUser: {
+          uid: this.currentUser?.uid || 'guest_' + Date.now(),
+          displayName: this.currentUser?.displayName || 'Viajero',
+          role: 'player'
+        },
+        activeCharId: this.selectedCharId || null
+      });
+    }
+    import('../../roomController.js').then(async ({ rooms }) => {
+      if (rooms) {
+        try {
+          await rooms.join(trimmed, this.currentUser?.displayName || 'Viajero');
+        } catch (err) {
+          console.warn('[Lobby] rooms.join:', err?.message || err);
+        }
+      }
+    }).catch(err => {
+      console.warn('[Lobby] rooms.join:', err?.message || err);
+    });
+  }
+
+  createNewRoom(name) {
+    const trimmed = String(name || '').trim() || 'Sector Nuevo';
+    this.selectedRole = 'keeper';
+    this.hideLobby();
+    if (this.onEnterRoomCallback) {
+      this.onEnterRoomCallback({
+        roomId: trimmed.toLowerCase().replace(/\s+/g, '-'),
+        currentUser: {
+          uid: this.currentUser?.uid || 'guest_' + Date.now(),
+          displayName: this.currentUser?.displayName || 'Keeper',
+          role: 'keeper'
+        },
+        activeCharId: null
+      });
+    }
+    import('../../roomController.js').then(async ({ rooms }) => {
+      if (rooms) {
+        try {
+          await rooms.create(trimmed);
+        } catch (err) {
+          console.warn('[Lobby] rooms.create:', err?.message || err);
+        }
+      }
+    }).catch(err => {
+      console.warn('[Lobby] rooms.create:', err?.message || err);
     });
   }
 
@@ -555,13 +890,13 @@ export class VeilfarersLobbyGateway {
           <div class="vault-card-avatar">◈</div>
           <div class="vault-card-main">
             <div class="vault-card-header-row">
-              <h4>${st.name || 'Operativo'}</h4>
+              <h4>${escapeHtml(st.name || 'Operativo')}</h4>
               <span class="vault-card-status">${isSelected ? '✦ ACTIVO' : 'SELECCIONAR'}</span>
             </div>
             <div class="vault-card-meta">
-              <span class="meta-tag">${st.species || 'Especie'}</span>
+              <span class="meta-tag">${escapeHtml(st.species || 'Especie')}</span>
               <span class="meta-divider">•</span>
-              <span class="meta-tag">${st.background || 'Explorador'}</span>
+              <span class="meta-tag">${escapeHtml(st.background || 'Explorador')}</span>
             </div>
             <div class="vault-card-stats">
               <span class="stat-pill hp" title="Health Points">❤️ <strong>HP:</strong> ${dyn.hp || 0}/${st.maxHp || 6}</span>
@@ -590,7 +925,7 @@ export class VeilfarersLobbyGateway {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${(st.name || 'veilfarer').toLowerCase().replace(/\\s+/g, '_')}.json`;
+        a.download = `${(st.name || 'veilfarer').toLowerCase().replace(/\s+/g, '_')}.json`;
         a.click();
       });
 
@@ -715,7 +1050,7 @@ export class VeilfarersLobbyGateway {
           </div>
           <div class="summary-line">
             <span class="summary-label">PERSONAJE:</span>
-            <span class="summary-value char-name-highlight"><strong>${charName}</strong> <small class="text-dim">(${species} • ${background})</small></span>
+            <span class="summary-value char-name-highlight"><strong>${escapeHtml(charName)}</strong> <small class="text-dim">(${escapeHtml(species)} • ${escapeHtml(background)})</small></span>
           </div>
           <div class="summary-status status-ready">
             <span class="status-pulse-dot">●</span> OPERATIVO VINCULADO // LISTO PARA DESPLEGAR
