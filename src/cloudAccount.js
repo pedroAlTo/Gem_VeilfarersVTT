@@ -1,8 +1,15 @@
 import { LOCAL_ONLY } from './runtimeMode.js';
 import { newId } from './persistence.js';
 import { exportNativeCharacter, parseCharacterJSON } from './characterImport.js';
-const env = import.meta.env || {};
-export const cloudConfig = Object.fromEntries(['apiKey', 'authDomain', 'projectId', 'storageBucket', 'appId'].map((key, i) => [key, env[['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_PROJECT_ID', 'VITE_FIREBASE_STORAGE_BUCKET', 'VITE_FIREBASE_APP_ID'][i]] || '']));
+export const cloudConfig = {
+  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env?.VITE_FIREBASE_APP_ID || '',
+  databaseURL: import.meta.env?.VITE_FIREBASE_DATABASE_URL || 'https://veilfarers-vtt-default-rtdb.firebaseio.com'
+};
 export const cloudConfigured = !LOCAL_ONLY && ['apiKey', 'authDomain', 'projectId'].every(k => Boolean(cloudConfig[k]));
 export const storageConfigured = cloudConfigured && Boolean(cloudConfig.storageBucket);
 export function portableCharacter(token) {

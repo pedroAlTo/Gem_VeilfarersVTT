@@ -1,13 +1,10 @@
-import { getDatabase, ref, push, onChildAdded, query, limitToLast, serverTimestamp } from "firebase/database";
+import { ref, push, onChildAdded, query, limitToLast, serverTimestamp } from "firebase/database";
 import { DualityResourceManager } from "./dualityResourceManager.js";
+import { getFirebaseDatabaseInstance } from "./firebaseClient.js";
 
 export class VTTDiceSync {
   constructor(roomId, currentUser, diceEngine) {
-    try {
-      this.db = getDatabase();
-    } catch {
-      this.db = null;
-    }
+    this.db = getFirebaseDatabaseInstance();
     this.roomId = roomId;
     this.currentUser = currentUser;
     this.diceEngine = diceEngine;

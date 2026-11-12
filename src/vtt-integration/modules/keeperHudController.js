@@ -1,12 +1,9 @@
-import { getDatabase, ref, onValue, runTransaction, push, serverTimestamp } from "firebase/database";
+import { ref, onValue, runTransaction, push, serverTimestamp } from "firebase/database";
+import { getFirebaseDatabaseInstance } from "./firebaseClient.js";
 
 export class KeeperHudController {
   constructor(roomId, currentUser, diceSync) {
-    try {
-      this.db = getDatabase();
-    } catch {
-      this.db = null;
-    }
+    this.db = getFirebaseDatabaseInstance();
     this.roomId = roomId;
     this.currentUser = currentUser;
     this.diceSync = diceSync;

@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.5', date: '2026-11-12', title: 'Inicialización Centralizada y Resiliente de Firebase Auth y Realtime Database',
+    sections: [
+      { title: 'Conectividad y Autenticación en la Nube', items: [
+        'Centralización de la inicialización de Firebase App, Auth y Realtime Database en un cliente unificado (firebaseClient.js) para evitar errores app/no-app.',
+        'Sustitución de accesos dinámicos a variables de entorno por propiedades estáticas de Vite con configuración de respaldo pública garantizada.',
+        'Mensajes de autenticación amigables en español para credenciales incorrectas, contraseñas cortas, ventanas emergentes bloqueadas y cuentas existentes.',
+        'Vínculo inmediato del Vault de personajes, HUD de Jugador, consola del Keeper y sincronización de dados con Firebase Realtime Database.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.4', date: '2026-11-12', title: 'Terminal Táctico AAA: Hub de Operativos Rediseñado, Flujo de Logout y Precarga de Dados 3D',
     sections: [
       { title: 'Hub de Operativos y Portal AAA', items: [

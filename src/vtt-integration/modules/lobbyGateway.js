@@ -1,5 +1,4 @@
 import {
-  getAuth,
   signInWithPopup,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
@@ -7,20 +6,13 @@ import {
   onAuthStateChanged,
   signOut
 } from "firebase/auth";
-import { getDatabase, ref, onValue, push, set, remove } from "firebase/database";
+import { ref, onValue, push, set, remove } from "firebase/database";
+import { getFirebaseAuthInstance, getFirebaseDatabaseInstance } from './firebaseClient.js';
 
 export class VeilfarersLobbyGateway {
   constructor(optionsOrCallback) {
-    try {
-      this.auth = getAuth();
-    } catch {
-      this.auth = null;
-    }
-    try {
-      this.db = getDatabase();
-    } catch {
-      this.db = null;
-    }
+    this.auth = getFirebaseAuthInstance();
+    this.db = getFirebaseDatabaseInstance();
     this.onEnterRoomCallback = typeof optionsOrCallback === 'function' 
       ? optionsOrCallback 
       : (optionsOrCallback?.onJoinRoom || optionsOrCallback?.onEnterRoom);
@@ -346,35 +338,42 @@ export class VeilfarersLobbyGateway {
 
     document.getElementById('vf-email-auth-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!this.auth) this.auth = getFirebaseAuthInstance();
       if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
       const email = document.getElementById('vf-auth-email').value.trim();
       const pass = document.getElementById('vf-auth-pass').value;
+      this.showError('');
       try {
         await signInWithEmailAndPassword(this.auth, email, pass);
       } catch (err) {
-        this.showError(err.message);
+        this.showError(this.friendlyAuthError(err));
       }
     });
 
     document.getElementById('vf-btn-register')?.addEventListener('click', async () => {
+      if (!this.auth) this.auth = getFirebaseAuthInstance();
       if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
       const email = document.getElementById('vf-auth-email').value.trim();
       const pass = document.getElementById('vf-auth-pass').value;
       if (!email || !pass) return this.showError('Introduce correo y contraseña para registrarte.');
+      this.showError('');
       try {
         await createUserWithEmailAndPassword(this.auth, email, pass);
       } catch (err) {
-        this.showError(err.message);
+        this.showError(this.friendlyAuthError(err));
       }
     });
 
     document.getElementById('vf-btn-google')?.addEventListener('click', async () => {
+      if (!this.auth) this.auth = getFirebaseAuthInstance();
       if (!this.auth) return this.showError('Firebase Auth no configurado o no disponible.');
+      this.showError('');
       try {
         const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         await signInWithPopup(this.auth, provider);
       } catch (err) {
-        this.showError(err.message);
+        this.showError(this.friendlyAuthError(err));
       }
     });
 
@@ -473,13 +472,16 @@ export class VeilfarersLobbyGateway {
   }
 
   listenAuth() {
+    const banner = document.getElementById('vf-auth-info-banner');
     if (!this.auth) {
-      const banner = document.getElementById('vf-auth-info-banner');
       if (banner) {
         banner.style.display = 'block';
         banner.innerHTML = '✦ <strong>Modo Local Activo</strong> · Autenticación en la nube opcional. Puedes continuar directamente a la mesa.';
       }
       return;
+    }
+    if (banner) {
+      banner.style.display = 'none';
     }
     onAuthStateChanged(this.auth, (user) => {
       this.currentUser = user;
@@ -739,6 +741,36 @@ export class VeilfarersLobbyGateway {
         `;
       }
     }
+  }
+
+  friendlyAuthError(err) {
+    if (!err) return 'Error de autenticación desconocido.';
+    const code = err.code || '';
+    if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) {
+      return 'Credenciales incorrectas o usuario no registrado.';
+    }
+    if (code.includes('email-already-in-use')) {
+      return 'Este correo ya tiene una cuenta registrada. Haz clic en Iniciar Sesión.';
+    }
+    if (code.includes('weak-password')) {
+      return 'La contraseña debe contener al menos 6 caracteres.';
+    }
+    if (code.includes('invalid-email')) {
+      return 'El formato del correo electrónico no es válido.';
+    }
+    if (code.includes('popup-closed-by-user')) {
+      return 'Acceso cancelado: Se ha cerrado la ventana de Google.';
+    }
+    if (code.includes('popup-blocked')) {
+      return 'El navegador ha bloqueado la ventana emergente de Google. Habilítala en la barra de direcciones.';
+    }
+    if (code.includes('unauthorized-domain')) {
+      return 'Dominio web no autorizado en la consola de Firebase para OAuth.';
+    }
+    if (code.includes('network-request-failed')) {
+      return 'Error de conexión: Comprueba tu conexión a Internet o cortafuegos.';
+    }
+    return err.message || 'Error al autenticar con Firebase.';
   }
 
   showError(msg) {

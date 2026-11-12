@@ -1,12 +1,9 @@
-import { getDatabase, ref, runTransaction } from "firebase/database";
+import { ref, runTransaction } from "firebase/database";
+import { getFirebaseDatabaseInstance } from "./firebaseClient.js";
 
 export class DualityResourceManager {
   constructor() {
-    try {
-      this.db = getDatabase();
-    } catch {
-      this.db = null;
-    }
+    this.db = getFirebaseDatabaseInstance();
   }
 
   /**

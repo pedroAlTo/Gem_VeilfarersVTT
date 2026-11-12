@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.4**.
-Paquete: `VeilFarers_VTT_v1.4.4.zip`.
+Versión actual del VTT: **v1.4.5**.
+Paquete: `VeilFarers_VTT_v1.4.5.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.4.5] — 2026-11-12
+
+Inicialización Centralizada y Resiliente de Firebase Auth y Realtime Database
+
+### Conectividad y Autenticación en la Nube
+
+- Centralización de la inicialización de Firebase App, Auth y Realtime Database en un cliente unificado (firebaseClient.js) para evitar errores app/no-app.
+- Sustitución de accesos dinámicos a variables de entorno por propiedades estáticas de Vite con configuración de respaldo pública garantizada.
+- Mensajes de autenticación amigables en español para credenciales incorrectas, contraseñas cortas, ventanas emergentes bloqueadas y cuentas existentes.
+- Vínculo inmediato del Vault de personajes, HUD de Jugador, consola del Keeper y sincronización de dados con Firebase Realtime Database.
 
 ## [1.4.4] — 2026-11-12
 

@@ -1,12 +1,9 @@
-import { getDatabase, ref, onValue, update } from "firebase/database";
+import { ref, onValue, update } from "firebase/database";
+import { getFirebaseDatabaseInstance } from "./firebaseClient.js";
 
 export class PlayerHudController {
   constructor(charId, roomId, diceSync) {
-    try {
-      this.db = getDatabase();
-    } catch {
-      this.db = null;
-    }
+    this.db = getFirebaseDatabaseInstance();
     this.charId = charId;
     this.roomId = roomId;
     this.diceSync = diceSync;

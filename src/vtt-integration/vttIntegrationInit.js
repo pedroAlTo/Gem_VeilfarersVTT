@@ -1,4 +1,5 @@
-import { getDatabase, ref, set, onValue } from 'firebase/database';
+import { ref, set, onValue } from 'firebase/database';
+import { getFirebaseDatabaseInstance } from './modules/firebaseClient.js';
 import './styles/lobby.css';
 import { VeilfarersDiceEngine } from './modules/diceEngine3D.js';
 import { VTTDiceSync } from './modules/vttDiceSync.js';
@@ -53,12 +54,7 @@ export const launchVTTSession = initVeilfarersVTTModules;
  * @param {Object} config - { roomId, currentUser: { uid, displayName, role }, activeCharId }
  */
 export async function initVeilfarersVTTModules({ roomId, currentUser, activeCharId }) {
-  let db = null;
-  try {
-    db = getDatabase();
-  } catch (err) {
-    console.warn('[Veilfarers Integration] Firebase RTDB aún no inicializado:', err);
-  }
+  const db = getFirebaseDatabaseInstance();
 
   // 1. Inyectar contenedores DOM para Dados 3D, Player HUD y Keeper HUD
   injectOverlayAndHudDOM();
