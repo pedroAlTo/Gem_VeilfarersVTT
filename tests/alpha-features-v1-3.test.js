@@ -725,6 +725,25 @@ test('null token fields resilience: tokens with null species, community or roleT
   assert.ok(validCampaign, 'Campaign validates cleanly without throwing invalid species');
 });
 
+test('player can enter session without preselected character; keeper assigns token later', async () => {
+  const { VeilfarersLobbyGateway } = await import('../src/vtt-integration/modules/lobbyGateway.js');
+  let enteredConfig = null;
+  const gateway = new VeilfarersLobbyGateway(config => {
+    enteredConfig = config;
+  });
+
+  gateway.selectedRole = 'player';
+  gateway.selectedCharId = null;
+
+  const joinBtn = document.getElementById('vf-btn-join-vtt');
+  assert.ok(joinBtn, 'Join button exists');
+  joinBtn.click();
+
+  assert.ok(enteredConfig, 'onEnterRoomCallback was called');
+  assert.equal(enteredConfig.currentUser.role, 'player');
+  assert.equal(enteredConfig.activeCharId, null, 'activeCharId is null when entering without character');
+});
+
 
 
 

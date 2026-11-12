@@ -1,10 +1,26 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.7**.
-Paquete: `VeilFarers_VTT_v1.4.7.zip`.
+Versión actual del VTT: **v1.4.8**.
+Paquete: `VeilFarers_VTT_v1.4.8.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.4.8] — 2026-11-12
+
+Entrada Libre de Jugadores sin Personaje Previo y Consolidación de Handover de Decisiones de Diseño
+
+### Entrada Libre y Asignación Flexible de Tokens
+
+- Eliminado el bloqueo obligatorio de personaje en el Hub de acceso: el jugador puede entrar a cualquier mesa o partida sin tener que crear ni seleccionar un operativo previamente.
+- Eliminada la ventana emergente automática (popup de Reclamar personaje) al conectarse a una sesión en la red: el jugador entra de forma limpia y directa a la mesa.
+- Soporte completo para asignación diferida por el Keeper: el jugador entra en modo espectador/jugador y recibe su token y controles en el momento en que el Keeper se lo asigna.
+- Actualización visual del resumen de despliegue en el Hub para reflejar que la entrada sin personaje está lista y autorizada.
+
+### Handover & Preservación de Decisiones de Diseño
+
+- Creación del documento HANDOVER.md en la raíz del repositorio consolidando las 8 decisiones críticas de arquitectura y UX acordadas para evitar regresiones futuras.
+- Vinculación obligatoria del Handover en AGENTS.md para garantizar que todos los agentes y desarrolladores consulten y respeten estas directrices sin excepción.
 
 ## [1.4.7] — 2026-11-12
 

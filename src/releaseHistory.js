@@ -1,6 +1,21 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.8', date: '2026-11-12', title: 'Entrada Libre de Jugadores sin Personaje Previo y Consolidación de Handover de Decisiones de Diseño',
+    sections: [
+      { title: 'Entrada Libre y Asignación Flexible de Tokens', items: [
+        'Eliminado el bloqueo obligatorio de personaje en el Hub de acceso: el jugador puede entrar a cualquier mesa o partida sin tener que crear ni seleccionar un operativo previamente.',
+        'Eliminada la ventana emergente automática (popup de Reclamar personaje) al conectarse a una sesión en la red: el jugador entra de forma limpia y directa a la mesa.',
+        'Soporte completo para asignación diferida por el Keeper: el jugador entra en modo espectador/jugador y recibe su token y controles en el momento en que el Keeper se lo asigna.',
+        'Actualización visual del resumen de despliegue en el Hub para reflejar que la entrada sin personaje está lista y autorizada.',
+      ] },
+      { title: 'Handover & Preservación de Decisiones de Diseño', items: [
+        'Creación del documento HANDOVER.md en la raíz del repositorio consolidando las 8 decisiones críticas de arquitectura y UX acordadas para evitar regresiones futuras.',
+        'Vinculación obligatoria del Handover en AGENTS.md para garantizar que todos los agentes y desarrolladores consulten y respeten estas directrices sin excepción.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.7', date: '2026-11-12', title: 'Borrado Permanente de Salas por el Keeper, Expulsión Reactiva de Jugadores y Resolución de Error de Permisos',
     sections: [
       { title: 'Gestión y Borrado de Salas Persistentes', items: [

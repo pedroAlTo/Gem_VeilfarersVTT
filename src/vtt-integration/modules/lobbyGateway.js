@@ -448,10 +448,6 @@ export class VeilfarersLobbyGateway {
     document.getElementById('vf-btn-join-vtt')?.addEventListener('click', () => {
       const roomInput = document.getElementById('vf-room-code-input');
       const roomId = (roomInput?.value || '').trim() || 'mesa-principal';
-      if (this.selectedRole === 'player' && !this.selectedCharId) {
-        alert('Selecciona o crea un operativo en tu Vault antes de entrar como Jugador.');
-        return;
-      }
 
       this.hideLobby();
 
@@ -463,7 +459,7 @@ export class VeilfarersLobbyGateway {
             displayName: this.currentUser?.displayName || this.currentUser?.email || (this.selectedRole === 'keeper' ? 'Keeper (Director)' : 'Viajero Táctico'),
             role: this.selectedRole
           },
-          activeCharId: this.selectedRole === 'keeper' ? null : this.selectedCharId
+          activeCharId: this.selectedRole === 'keeper' ? null : (this.selectedCharId || null)
         });
       }
     });
@@ -733,10 +729,10 @@ export class VeilfarersLobbyGateway {
           </div>
           <div class="summary-line">
             <span class="summary-label">PERSONAJE:</span>
-            <span class="summary-value text-warning">Ninguno seleccionado</span>
+            <span class="summary-value text-dim">Sin personaje vinculado (el Keeper te asignará un token en la mesa)</span>
           </div>
-          <div class="summary-status status-warning">
-            <span class="status-pulse-dot">⚠️</span> SELECCIONA O CREA UN OPERATIVO EN EL VAULT
+          <div class="summary-status status-ready">
+            <span class="status-pulse-dot">●</span> ENLACE LISTO // DESPLIEGUE DIRECTO A LA MESA
           </div>
         `;
       }

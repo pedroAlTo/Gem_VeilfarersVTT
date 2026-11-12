@@ -846,15 +846,6 @@ export class NetworkManager {
           } else if (hadAssigned && !isNowAssigned) {
             notify('👁️ El Director de Juego ha cambiado tu estado a Observador.');
           }
-
-          if (assigned.length === 0 && !this.store.state.claimedTokenId && !this.store.state.isObserver) {
-            setTimeout(() => {
-              if (this.store.state.isObserver || this.store.state.claimedTokenId || (this.store.getControlledTokens().length > 0)) return;
-              import('./rosterManager.js').then(({ openClaimCharacterModal }) => {
-                openClaimCharacterModal();
-              }).catch(() => {});
-            }, 300);
-          }
         } catch (e) {
           if (this.joinFailed) this.disconnect(new Error('Could not open the Keeper’s map: ' + e.message));
           else notify(`Invalid session state: ${e.message}`, 'error');
