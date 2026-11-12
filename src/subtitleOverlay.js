@@ -113,3 +113,4 @@ export const subtitleOverlay = new SubtitleOverlayManager();
 export function displaySubtitle(text, sender, color, duration) {
   subtitleOverlay.show({ text, sender, color, duration });
 }
+

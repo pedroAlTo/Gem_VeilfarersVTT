@@ -8,13 +8,11 @@ Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial 
 
 ## [1.5.0] — 2026-11-12
 
-Fidelidad Canónica Total: Físicas 3D de Aterrizaje Plano, Lobby Simplificado por Roles, Subtítulos en Overlay, Paleta de Color de Token, Armaduras Activas y Catálogo Integral
+Fidelidad Canónica Total: Lobby Simplificado por Roles, Subtítulos en Overlay, Paleta de Color de Token, Armaduras Activas y Catálogo Integral
 
-### Físicas 3D de Dados y Aterrizaje Plano Obligatorio
+### Físicas Canónicas de Dados 3D (@3d-dice/dice-box)
 
-- Simulación física de dados calibrada para rebotes dinámicos: mayor distancia de caída (startingHeight: 22.0), mayor gravedad (gravity: 5.4), restitución elástica (restitution: 0.68) y fricción ajustada (0.32).
-- Rebote interactivo contra el suelo, paredes perimetrales de la escena delimitadas al área del mapa y colisiones reales entre múltiples dados arrojados simultáneamente.
-- Aterrizaje plano garantizado (vfSnapDieFlat): al detenerse el dado se alinea la normal superior verticalmente y se nivela la base a y = 0, asegurando que todos los vértices del lado de apoyo descansen a ras del suelo sin equilibrio sobre vértices.
+- Preservación de las físicas y parámetros canónicos de @3d-dice/dice-box (BabylonJS + Ammo.js) asegurando un movimiento fluido, natural y consistente sin saltos artificiales ni micro-rebotes excesivos.
 
 ### Pantalla de Entrada Simplificada (Lobby Táctico)
 

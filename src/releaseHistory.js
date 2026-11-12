@@ -1,12 +1,10 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
-    version: '1.5.0', date: '2026-11-12', title: 'Fidelidad Canónica Total: Físicas 3D de Aterrizaje Plano, Lobby Simplificado por Roles, Subtítulos en Overlay, Paleta de Color de Token, Armaduras Activas y Catálogo Integral',
+    version: '1.5.0', date: '2026-11-12', title: 'Fidelidad Canónica Total: Lobby Simplificado por Roles, Subtítulos en Overlay, Paleta de Color de Token, Armaduras Activas y Catálogo Integral',
     sections: [
-      { title: 'Físicas 3D de Dados y Aterrizaje Plano Obligatorio', items: [
-        'Simulación física de dados calibrada para rebotes dinámicos: mayor distancia de caída (startingHeight: 22.0), mayor gravedad (gravity: 5.4), restitución elástica (restitution: 0.68) y fricción ajustada (0.32).',
-        'Rebote interactivo contra el suelo, paredes perimetrales de la escena delimitadas al área del mapa y colisiones reales entre múltiples dados arrojados simultáneamente.',
-        'Aterrizaje plano garantizado (vfSnapDieFlat): al detenerse el dado se alinea la normal superior verticalmente y se nivela la base a y = 0, asegurando que todos los vértices del lado de apoyo descansen a ras del suelo sin equilibrio sobre vértices.',
+      { title: 'Físicas Canónicas de Dados 3D (@3d-dice/dice-box)', items: [
+        'Preservación de las físicas y parámetros canónicos de @3d-dice/dice-box (BabylonJS + Ammo.js) asegurando un movimiento fluido, natural y consistente sin saltos artificiales ni micro-rebotes excesivos.',
       ] },
       { title: 'Pantalla de Entrada Simplificada (Lobby Táctico)', items: [
         'Rediseño intuitivo con dos grandes botones Hero principales: [ ◈ ENTRAR COMO JUGADOR ] y [ ⚡ ENTRAR COMO KEEPER ].',
