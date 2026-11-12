@@ -168,7 +168,7 @@ export class VeilfarersDiceEngine {
     this.clearTimer = setTimeout(() => {
       this.clearCanvas();
       this.hideBanner();
-    }, 9000);
+    }, 12000);
   }
 
   async throw3DDuality(hopeVal, fearVal, extraDice = []) {

@@ -145,8 +145,10 @@
 ---
 
 ## 13. Físicas 3D de Dados, Pantalla de Entrada Simplificada, Subtítulos y Personalización de Tokens
-- **Físicas Canónicas de Dados 3D (@3d-dice/dice-box):**
-  - Se utilizan los parámetros calibrados y probados de simulación física en `@3d-dice/dice-box` (`scale: 5.2`, `gravity: 3.6`, `mass: 1.4`, `friction: 0.95`, `restitution: 0.12`, `spinForce: 4.0`, `throwForce: 4.8`, `startingHeight: 8.0`, `settleTimeout: 3500`), garantizando trayectorias naturales, estables y sin saltos ni giros artificiales forzados tras el reposo.
+- **Físicas Canónicas de Dados 3D y Muros Invisibles Delimitados al Mapa (@3d-dice/dice-box):**
+  - Se utilizan los parámetros calibrados y estables de simulación física en `@3d-dice/dice-box` (`scale: 5.2`, `gravity: 3.6`, `mass: 1.4`, `friction: 0.95`, `restitution: 0.12`, `spinForce: 4.0`, `throwForce: 4.8`, `startingHeight: 8.0`, `settleTimeout: 9500`).
+  - **Animación Completa sin Cortes:** `settleTimeout` se amplía a `9500ms`, permitiendo que los dados desaceleren y paren de forma 100% natural según la fricción y gravedad antes de que el motor resuelva la tirada, evitando cualquier corte prematuro o congelación de la animación mientras los dados continúan en movimiento.
+  - **Muros Invisibles Delimitados al Mapa:** El escenario 3D (`#vf-dice3d-box`) y las paredes físicas de colisión de Ammo.js están estrictamente restringidas a las coordenadas y dimensiones de la zona táctica del mapa (`#canvas_viewport_root`). Un `ResizeObserver` reactivo recalcula las barreras invisibles ante cualquier redimensión o apertura/cierre de paneles. Los dados rebotan exclusivamente dentro del área del mapa, impidiendo que caigan o reboten sobre la barra de herramientas izquierda, la cabecera superior (Header HUD) o la barra lateral derecha.
 - **Pantalla de Entrada Simplificada (Lobby Táctico):**
   - Dos botones grandes principales: `[ ◈ ENTRAR COMO JUGADOR ]` y `[ ⚡ ENTRAR COMO KEEPER ]`.
   - **Modo Jugador:** Muestra el listado de salas a las que está conectado el usuario con botón de acceso directo con 1 clic, opción para introducir código de invitación y unirse a una nueva sala, y Character Vault.

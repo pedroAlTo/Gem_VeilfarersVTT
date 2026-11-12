@@ -11,7 +11,7 @@
 .vf-dice3d-shell>footer,
 .vf-dice3d-stage .vf-dice3d-shell>footer{display:none!important}
 .vf-dice3d-box,
-.vf-dice3d-stage .vf-dice3d-box{position:absolute!important;inset:0!important;z-index:12!important;pointer-events:none!important;background:transparent!important}
+.vf-dice3d-stage .vf-dice3d-box{position:fixed!important;top:var(--vf-dice-top, 0)!important;left:var(--vf-dice-left, 0)!important;width:var(--vf-dice-width, 100vw)!important;height:var(--vf-dice-height, 100vh)!important;z-index:12!important;pointer-events:none!important;background:transparent!important;overflow:hidden!important}
 .vf-dice3d-box canvas,
 .vf-dice3d-stage .vf-dice3d-box canvas{position:relative!important;z-index:12!important;width:100%!important;height:100%!important;display:block!important;pointer-events:none!important;background:transparent!important}
 .vf-dice3d-hud{position:absolute!important;top:14px!important;right:14px!important;left:auto!important;z-index:20!important;display:flex!important;align-items:center!important;gap:10px!important;padding:6px 12px!important;border:1px solid rgba(71,85,105,.42)!important;border-radius:999px!important;background:rgba(2,6,23,.65)!important;backdrop-filter:blur(8px)!important;color:#fff!important;box-shadow:0 4px 16px rgba(0,0,0,.35)!important;pointer-events:auto!important}
@@ -60,7 +60,12 @@
   aspect-ratio:auto;
   contain:layout paint size;
 }
-.vf-dice3d-stage.is-overlay .vf-dice3d-box,
+.vf-dice3d-stage.is-overlay .vf-dice3d-box{
+  width:var(--vf-dice-width, 100vw)!important;
+  height:var(--vf-dice-height, 100vh)!important;
+  max-width:none!important;
+  max-height:none!important;
+}
 .vf-dice3d-stage.is-overlay .vf-dice3d-box canvas{
   width:100%!important;
   height:100%!important;

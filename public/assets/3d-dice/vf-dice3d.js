@@ -45,6 +45,7 @@ let cueLayer = null;
 let trackingLayer = null;
 let settledLayer = null;
 let resizeObserver = null;
+let mapResizeObserver = null;
 let resizeRaf = 0;
 let cueRefreshRaf = 0;
 let trackingRaf = 0;
@@ -65,6 +66,50 @@ let rollHasResult = false;
 let userDismissed = false;
 let activeRollController = null;
 let rollSequence = 0;
+
+function syncStageBounds(){
+  if (!stage) return false;
+  const boxEl = stage.querySelector('#vf-dice3d-box');
+  if (!boxEl) return false;
+
+  const mapEl = document.getElementById('canvas_viewport_root');
+  if (mapEl) {
+    const rect = mapEl.getBoundingClientRect();
+    if (rect.width > 20 && rect.height > 20) {
+      const top = Math.round(rect.top);
+      const left = Math.round(rect.left);
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+
+      boxEl.style.setProperty('--vf-dice-top', `${top}px`);
+      boxEl.style.setProperty('--vf-dice-left', `${left}px`);
+      boxEl.style.setProperty('--vf-dice-width', `${width}px`);
+      boxEl.style.setProperty('--vf-dice-height', `${height}px`);
+
+      boxEl.style.setProperty('top', `${top}px`, 'important');
+      boxEl.style.setProperty('left', `${left}px`, 'important');
+      boxEl.style.setProperty('width', `${width}px`, 'important');
+      boxEl.style.setProperty('height', `${height}px`, 'important');
+
+      if (!mapResizeObserver && typeof window !== 'undefined' && 'ResizeObserver' in window) {
+        mapResizeObserver = new ResizeObserver(scheduleResize);
+        mapResizeObserver.observe(mapEl);
+      }
+      return true;
+    }
+  }
+
+  boxEl.style.setProperty('--vf-dice-top', '0px');
+  boxEl.style.setProperty('--vf-dice-left', '0px');
+  boxEl.style.setProperty('--vf-dice-width', '100vw');
+  boxEl.style.setProperty('--vf-dice-height', '100vh');
+
+  boxEl.style.setProperty('top', '0px', 'important');
+  boxEl.style.setProperty('left', '0px', 'important');
+  boxEl.style.setProperty('width', '100vw', 'important');
+  boxEl.style.setProperty('height', '100vh', 'important');
+  return false;
+}
 
 function normalizeStyle(value){ return value === 'box' ? 'box' : 'overlay'; }
 function valuesEqual(a,b){ return String(a) === String(b); }
@@ -97,6 +142,7 @@ function scheduleCueRefresh(){
 function scheduleResize(){
   cancelAnimationFrame(resizeRaf);
   resizeRaf=requestAnimationFrame(()=>{
+    syncStageBounds();
     requestAnimationFrame(()=>{
       try { box && typeof box.resizeWorld === 'function' && box.resizeWorld(); }
       catch(error){ console.warn('3D dice resize failed:', error); }
@@ -118,7 +164,10 @@ function applyCritical(value){
   if (stage) stage.classList.toggle('is-critical', currentCritical);
 }
 function ensureStage(){
-  if (stage) return stage;
+  if (stage) {
+    syncStageBounds();
+    return stage;
+  }
   stage=document.createElement('section');
   stage.id='vf-dice3d-stage';
   stage.className='vf-dice3d-stage is-hidden is-overlay';
@@ -175,6 +224,7 @@ function ensureStage(){
   }
   window.addEventListener('resize',scheduleResize,{passive:true});
   window.addEventListener('orientationchange',scheduleResize,{passive:true});
+  syncStageBounds();
   applyStyle(currentStyle);
   return stage;
 }
@@ -184,10 +234,11 @@ async function init(){
   ensureStage();
   initPromise=(async()=>{
     await assertWebAssemblyExecutionAllowed();
+    syncStageBounds();
     box=new DiceBox({
       container:'#vf-dice3d-box', assetPath:ASSET_PATH, origin:'', theme:'vfNeutral', preloadThemes:PRELOAD_THEMES,
       scale:5.2, gravity:3.6, mass:1.4, friction:0.95, restitution:0.12, spinForce:4.0, throwForce:4.8,
-      startingHeight:8.0, settleTimeout:3500, delay:10, lightIntensity:1.15, enableShadows:true,
+      startingHeight:8.0, settleTimeout:9500, delay:10, lightIntensity:1.15, enableShadows:true,
       shadowTransparency:0.72, offscreen:false
     });
     await box.init();
@@ -209,6 +260,7 @@ function show(label, style, options={}){
   stage.classList.remove('is-hidden');
   stage.classList.add('is-visible');
   clearTimeout(closeTimer);
+  syncStageBounds();
   try { box && box.show(); } catch(_) {}
   scheduleResize();
 }
@@ -483,7 +535,7 @@ async function roll(groups, options={}){
       value:flat.reduce((n,item)=>n+item.value,0), label:options.label || '',
       color: options.color || options.tokenColor
     });
-    closeTimer=setTimeout(hide,9800);
+    closeTimer=setTimeout(hide,12000);
     return {raw:result, flat, values:flat.map(item=>item.value)};
   } finally { endCancellableRoll(token); }
 }
@@ -515,7 +567,7 @@ async function add(groups, options={}){
       rolls:flat.map((item,index)=>({value:item.value,sides:item.sides,role:newSpecs[index] && newSpecs[index].role})),
       value:flat.reduce((n,item)=>n+item.value,0), label:options.label || ''
     });
-    closeTimer=setTimeout(hide,9800);
+    closeTimer=setTimeout(hide,12000);
     return {raw:result, flat, values:flat.map(item=>item.value), offset};
   } finally { endCancellableRoll(token); }
 }

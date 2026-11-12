@@ -4,6 +4,8 @@ export const RELEASES = [
     version: '1.5.0', date: '2026-11-12', title: 'Fidelidad Canónica Total: Lobby Simplificado por Roles, Subtítulos en Overlay, Paleta de Color de Token, Armaduras Activas y Catálogo Integral',
     sections: [
       { title: 'Físicas Canónicas de Dados 3D (@3d-dice/dice-box)', items: [
+        'Animación completa sin cortes prematuros (settleTimeout: 9500ms): los dados ruedan, rebotan y desaceleran hasta su detención natural por fricción y gravedad antes de que el motor resuelva el resultado.',
+        'Muros invisibles de colisión física (Ammo.js) restringidos exclusivamente al área del mapa táctico (#canvas_viewport_root) con actualización dinámica por ResizeObserver, impidiendo que los dados caigan o reboten sobre los menús superior o laterales.',
         'Preservación de las físicas y parámetros canónicos de @3d-dice/dice-box (BabylonJS + Ammo.js) asegurando un movimiento fluido, natural y consistente sin saltos artificiales ni micro-rebotes excesivos.',
       ] },
       { title: 'Pantalla de Entrada Simplificada (Lobby Táctico)', items: [

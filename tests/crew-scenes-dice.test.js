@@ -351,3 +351,23 @@ test('logout returns to login screen and lobby gateway responds to signout event
   window.dispatchEvent(new dom.window.CustomEvent('veil:auth-signout'));
   assert.ok(!root.classList.contains('hidden'), 'Lobby gateway must reopen on veil:auth-signout');
 });
+
+test('dice 3d stage bounds are constrained to tactical map viewport and settleTimeout allows natural deceleration', async () => {
+  const fs = await import('fs');
+  const code = fs.readFileSync('public/assets/3d-dice/vf-dice3d.js', 'utf8');
+
+  // Verify settleTimeout is >= 9000ms so animation is not cut off prematurely
+  const match = code.match(/settleTimeout\s*:\s*(\d+)/);
+  assert.ok(match, 'settleTimeout must be configured in vf-dice3d.js');
+  const settleTimeout = Number(match[1]);
+  assert.ok(settleTimeout >= 9000, `settleTimeout (${settleTimeout}ms) must be >= 9000ms for natural settlement`);
+
+  // Verify syncStageBounds logic bounds box to canvas_viewport_root
+  assert.ok(code.includes('canvas_viewport_root'), 'vf-dice3d.js must query canvas_viewport_root for bounds');
+  assert.ok(code.includes('--vf-dice-top') && code.includes('--vf-dice-width'), 'vf-dice3d.js must set dynamic CSS boundary variables');
+
+  // Verify CSS contains invisible wall constraints for vf-dice3d-box
+  const css = fs.readFileSync('public/assets/3d-dice/vf-dice3d.css', 'utf8');
+  assert.ok(css.includes('--vf-dice-top'), 'vf-dice3d.css must use --vf-dice-top');
+  assert.ok(css.includes('--vf-dice-width'), 'vf-dice3d.css must use --vf-dice-width');
+});
