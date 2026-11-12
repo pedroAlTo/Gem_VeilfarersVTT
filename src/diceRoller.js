@@ -1292,28 +1292,57 @@ export class DiceRollerSidebar {
         const newArmor = Math.max(0, currentArmor - spentShields);
         const newHp = Math.max(0, targetToken.hp.current - finalHpDamage);
 
-        store.updateToken(targetToken.id, {
-          hp: { ...targetToken.hp, current: newHp },
-          pendingBrace: isDirect ? targetToken.pendingBrace : false,
-          armor: { ...targetToken.armor, current: newArmor }
-        });
-
-        network.broadcast?.({
-          type: 'TOKEN_UPDATE',
-          tokenId: targetToken.id,
-          partial: {
-            hp: { ...targetToken.hp, current: newHp },
-            armor: { ...targetToken.armor, current: newArmor }
-          }
-        });
-
         const attacker = store.state.tokens.find(t => t.id === attackerId && t.mapId === damageMapId);
+        const hpLost = targetToken.hp.current - newHp;
+        const armorLost = currentArmor - newArmor;
+
+        const damagePayload = {
+          type: 'APPLY_DAMAGE',
+          attackerId: attacker?.id || attackerId,
+          targetId: targetToken.id,
+          newHp,
+          newArmor,
+          hpLoss: hpLost,
+          armorLoss: armorLost,
+          spentShields,
+          isDirect,
+          isCritical,
+          rawDamage: dmgResult.rawDamage,
+          kind: impactKind,
+          secret,
+          logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
+        };
+
+        if (store.sessionRole === 'player') {
+          network.broadcast?.(damagePayload);
+          // Actualización optimista local del target para feedback inmediato
+          store.remoteApplying = true;
+          try {
+            store.update({
+              tokens: store.state.tokens.map(t => t.id === targetToken.id ? {
+                ...t,
+                hp: { ...t.hp, current: newHp },
+                pendingBrace: isDirect ? t.pendingBrace : false,
+                armor: { ...t.armor, current: newArmor }
+              } : t)
+            });
+          } finally {
+            store.remoteApplying = false;
+          }
+        } else {
+          store.updateToken(targetToken.id, {
+            hp: { ...targetToken.hp, current: newHp },
+            pendingBrace: isDirect ? targetToken.pendingBrace : false,
+            armor: { ...targetToken.armor, current: newArmor }
+          });
+        }
+
         const params = attackPresentation({
           attacker: attacker || targetToken,
           target: targetToken,
           mapId: damageMapId,
           kind: impactKind,
-          hpLost: targetToken.hp.current - newHp,
+          hpLost: hpLost,
           armorSlotSpent: spentShields > 0,
           isDirect,
           isCritical,
@@ -1325,7 +1354,7 @@ export class DiceRollerSidebar {
           params.attackerId = attacker?.id;
           if (attacker?.hidden) params.attacker = { ...params.target };
           window.veilCanvas?.triggerAttackFX(params);
-          if (!secret && !targetToken.hidden) network.broadcast?.({ type: 'ATTACK_FX', params });
+          if (!secret && !targetToken.hidden && store.sessionRole !== 'player') network.broadcast?.({ type: 'ATTACK_FX', params });
         }
 
         store.addLog({
@@ -1333,7 +1362,7 @@ export class DiceRollerSidebar {
           ...(secret ? { visibility: 'keeper' } : {}),
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${targetToken.name}`,
-          details: `Lost ${targetToken.hp.current - newHp} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
+          details: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
         });
       };
 

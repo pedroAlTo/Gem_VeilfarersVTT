@@ -168,6 +168,20 @@ test('two clients complete host/join, token assignment, scene sync, submission a
   assert.ok(guestStore.canEditToken(npc.id)); assert.equal(guestStore.canEditToken(token.id), true); assert.equal(guestStore.state.tokens.find(t => t.id === npc.id).name, 'Assigned adversary');
   guestStore.updateToken(token.id, { x: 999 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === token.id).x, 999);
   guestStore.updateToken(npc.id, { facingAngle: 1.2 }); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(hostStore.state.tokens.find(t => t.id === npc.id).facingAngle, 1.2);
+  const enemy = hostStore.addToken({ name: 'Enemy Alien', actorType: 'adversary', hp: { current: 10, max: 10 }, armor: { current: 2, max: 2 } });
+  host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5));
+  guest.broadcast({
+    type: 'APPLY_DAMAGE',
+    attackerId: token.id,
+    targetId: enemy.id,
+    hpLoss: 3,
+    newHp: 7,
+    armorLoss: 1,
+    newArmor: 1
+  });
+  await new Promise(resolve => setTimeout(resolve, 15));
+  assert.equal(hostStore.state.tokens.find(t => t.id === enemy.id).hp.current, 7);
+  assert.equal(guestStore.state.tokens.find(t => t.id === enemy.id).hp.current, 7);
   hostStore.assignTokenControllers(droneToken.id, []); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(guestStore.canEditToken(droneToken.id), false);
 
   guest.disconnect(); assert.equal(guestStore.state.campaignName, 'Local backup'); assert.equal(guestStore.sessionRole, 'local'); host.disconnect();
@@ -310,13 +324,10 @@ test('dice callout displays player name, token name, result and applied modifier
   assert.ok(card, 'Callout card must be rendered in stack');
 
   const cardText = card.textContent;
-  assert.ok(cardText.includes('Nombre del jugador:'), 'Must label Nombre del jugador:');
   assert.ok(cardText.includes('Pedro'), 'Must display player name Pedro');
-  assert.ok(cardText.includes('Nombre del token:'), 'Must label Nombre del token:');
   assert.ok(cardText.includes('Capt. Jonathan Harker'), 'Must display token name Capt. Jonathan Harker');
-  assert.ok(cardText.includes('Resultado:'), 'Must label Resultado:');
   assert.ok(cardText.includes('15'), 'Must display total 15');
-  assert.ok(cardText.includes('Modificadores aplicados:'), 'Must label Modificadores aplicados:');
+  assert.ok(cardText.includes('CON HOPE') || cardText.includes('HOPE'), 'Must display outcome');
   assert.ok(cardText.includes('Hope [8] + Fear [5] + 2 = 15 vs DC 12'), 'Must display details/modifiers');
 
   // Ensure no vf-shared-fear-badge exists

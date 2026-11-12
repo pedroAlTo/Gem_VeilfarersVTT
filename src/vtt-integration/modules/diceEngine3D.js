@@ -89,11 +89,24 @@ export class VeilfarersDiceEngine {
           deferResults: true
         });
 
-        let outcome = rollData.outcomeLabel || '';
+        let outcome = rollData.outcomeTitle || rollData.outcomeLabel || '';
         if (isDuality) {
-          if (isCrit) outcome = 'CRITICAL SUCCESS';
-          else if (Number(fearVal) > Number(hopeVal)) outcome = 'WITH FEAR';
-          else outcome = 'WITH HOPE';
+          if (isCrit) {
+            outcome = 'CRITICAL SUCCESS';
+          } else {
+            const dominance = Number(fearVal) > Number(hopeVal) ? 'FEAR' : 'HOPE';
+            const isFailure = rollData.resultType?.includes('FAIL') || (rollData.dc != null && Number(rollData.total) < Number(rollData.dc));
+            const isSuccess = rollData.resultType?.includes('SUCC') || (rollData.dc != null && Number(rollData.total) >= Number(rollData.dc));
+            if (!outcome || (!outcome.includes('SUCCESS') && !outcome.includes('FAILURE'))) {
+              if (isSuccess) {
+                outcome = `SUCCESS WITH ${dominance}`;
+              } else if (isFailure) {
+                outcome = `FAILURE WITH ${dominance}`;
+              } else {
+                outcome = `WITH ${dominance}`;
+              }
+            }
+          }
         }
 
         window.VFDice3D.showResults({
@@ -103,10 +116,13 @@ export class VeilfarersDiceEngine {
           skill: (rollData.skill || label || '').replace(/\s*Check$/i, '').trim(),
           modifiers: rollData.breakdown || rollData.details || (rollData.modifier != null ? (rollData.modifier >= 0 ? `+${rollData.modifier}` : `${rollData.modifier}`) : 'Ninguno'),
           outcome: outcome,
+          outcomeTitle: outcome,
+          outcomeLabel: outcome,
           total: Number(rollData.total),
           value: Number(rollData.total),
           hope: Number(hopeVal) || 0,
           fear: Number(fearVal) || 0,
+          dc: rollData.dc,
           crit: isCrit,
           rolls: isDuality
             ? [
@@ -252,40 +268,27 @@ export class VeilfarersDiceEngine {
     card.className = `vf-callout-card outcome-${outcomeType || 'hope'}`;
     const secretTag = isSecret ? '<span class="vf-callout-secret-badge">🔒 SECRETA KEEPER</span>' : '';
     const badgeHtml = outcomeLabel ? `<div class="vf-callout-badge">${escapeHtml(outcomeLabel)}</div>` : '';
+    const actorDisplay = (label && label !== 'Acción Duality' && label !== 'Tirada de dados') ? `${tokenName} · ${label}` : tokenName;
 
     card.innerHTML = `
       <div class="vf-callout-header">
         <div class="vf-callout-title-row">
           <span class="vf-callout-icon">🎲</span>
-          <span class="vf-callout-action">${escapeHtml(label)}</span>
+          <span class="vf-callout-action vf-callout-player-name">${escapeHtml(playerName)}</span>
           ${secretTag}
         </div>
         <button type="button" class="vf-callout-close" title="Cerrar">×</button>
       </div>
 
       <div class="vf-callout-body">
-        <div class="vf-callout-row vf-callout-player-row">
-          <span class="vf-callout-field-label">Nombre del jugador:</span>
-          <strong class="vf-callout-field-value vf-callout-player-name">${escapeHtml(playerName)}</strong>
-        </div>
-
-        <div class="vf-callout-row vf-callout-token-row">
-          <span class="vf-callout-field-label">Nombre del token:</span>
-          <strong class="vf-callout-field-value vf-callout-token-name">${escapeHtml(tokenName)}</strong>
-        </div>
-
-        <div class="vf-callout-row vf-callout-result-row">
-          <span class="vf-callout-field-label">Resultado:</span>
+        <div class="vf-callout-actor vf-callout-token-name">${escapeHtml(actorDisplay)}</div>
+        <div class="vf-callout-result-row">
           <div class="vf-callout-result-box">
             <span class="vf-callout-total">${escapeHtml(String(total))}</span>
             ${badgeHtml}
           </div>
         </div>
-
-        <div class="vf-callout-row vf-callout-mod-row">
-          <span class="vf-callout-field-label">Modificadores aplicados:</span>
-          <div class="vf-callout-modifiers-text">${escapeHtml(modifiers)}</div>
-        </div>
+        <div class="vf-callout-modifiers-text">${escapeHtml(modifiers)}</div>
       </div>
     `;
 

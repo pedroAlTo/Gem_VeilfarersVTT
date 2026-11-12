@@ -638,13 +638,13 @@ function scheduleSettledCues(data){
 }
 function renderAnalysisPanel(data){
   if (!analysisNode) return;
-  const outcome=String((data && (data.outcome || data.outcomeTitle || data.outcomeLabel))||'').trim();
+  let outcome=String((data && (data.outcome || data.outcomeTitle || data.outcomeLabel))||'').trim();
   const hope=Number(data && (data.hope ?? data.hopeVal));
   const fear=Number(data && (data.fear ?? data.fearVal));
   const damageDice=Array.isArray(data && data.damageDiceResults)?data.damageDiceResults:[];
   const damage=Number(data && data.damage);
   const totalVal=data && (data.value ?? data.total);
-  if (!outcome && !damageDice.length && totalVal == null) {
+  if (!outcome && !damageDice.length && totalVal == null && !Number.isFinite(hope)) {
     analysisNode.className='vf-dice3d-analysis is-hidden';
     analysisNode.replaceChildren();
     return;
@@ -683,8 +683,46 @@ function renderAnalysisPanel(data){
   if (tokenName.startsWith('Standard Roll:')) {
     tokenName = tokenName.replace('Standard Roll:', '').trim() || 'Operativo';
   }
+
+  // Detect diceType if skill is a dice expression (e.g. 1d10, 2d12, d20)
+  let diceType = String((data && (data.diceType || data.formula || data.diceFormula)) || '').trim();
+  if (/^\d*d\d+/i.test(skill)) {
+    if (!diceType) diceType = skill;
+    skill = '';
+  }
+  if (/^standard\s*roll$/i.test(skill) || /^ninguna$/i.test(skill)) {
+    skill = '';
+  }
+  if (!diceType && Array.isArray(data && data.rolls) && data.rolls.length) {
+    diceType = data.rolls.map(r => `d${r.sides || 12}`).join(' + ');
+  }
+  if (!diceType) {
+    if (Number.isFinite(hope) && Number.isFinite(fear)) {
+      diceType = '2d12';
+    } else {
+      diceType = 'Tirada';
+    }
+  }
+
+  // Ensure Duality outcome is properly formulated if not explicit
+  if (Number.isFinite(hope) && Number.isFinite(fear) && !outcome) {
+    if (hope === fear && hope > 0) outcome = 'CRITICAL SUCCESS';
+    else if (fear > hope) outcome = 'WITH FEAR';
+    else outcome = 'WITH HOPE';
+  }
+
   if (!modifiers || modifiers === '0') {
     modifiers = 'Ninguno';
+  }
+
+  // Build footer text: tipo de dado y modificadores
+  let footerText = '';
+  if (modifiers === 'Ninguno') {
+    footerText = `${diceType} · Mod: Ninguno`;
+  } else if (modifiers.toLowerCase().includes(diceType.toLowerCase())) {
+    footerText = modifiers;
+  } else {
+    footerText = `${diceType} · Mod: ${modifiers}`;
   }
 
   const outcomeClass=/HOPE/i.test(outcome)?'hope':/FEAR/i.test(outcome)?'fear':/CRITICAL/i.test(outcome)?'critical':'neutral';
@@ -692,23 +730,19 @@ function renderAnalysisPanel(data){
     ? `<div class="vf-analysis-duality"><span>HOPE <b>${hope}</b></span><i>${hope===fear?'=':hope>fear?'&gt;':'&lt;'}</i><span>FEAR <b>${fear}</b></span></div>` : '';
   const damageRows=damageDice.length?`<div class="vf-analysis-damage"><small>DAMAGE VECTOR</small><div>${damageDice.map(die=>`<span class="${die.status==='discarded'?'is-drop':'is-keep'}">${escapeHtml(die.status==='discarded'?'DROP':'KEEP')} <b>${Number(die.value)}</b></span>`).join('')}</div>${Number.isFinite(damage)?`<strong>${damage}</strong>`:''}</div>`:'';
 
-  const skillRow = (skill && !/^standard\s*roll$/i.test(skill) && !/^d\d+$/i.test(skill) && !/^ninguna$/i.test(skill))
-    ? `<div class="vf-analysis-row"><span class="vf-label">Habilidad:</span><strong class="vf-value">${escapeHtml(skill)}</strong></div>`
-    : '';
-
-  const displayOutcome = (Number.isFinite(totalVal) && !outcome.includes(String(totalVal)))
-    ? `${totalVal} · ${outcome}`
-    : (outcome || String(totalVal ?? 'Completado'));
+  const actorDisplay = skill ? `${tokenName} · ${skill}` : tokenName;
 
   analysisNode.className=`vf-dice3d-analysis is-${outcomeClass}`;
   analysisNode.innerHTML=`
-    <div class="vf-analysis-row"><span class="vf-label">Nombre del jugador:</span><strong class="vf-value">${escapeHtml(playerName || 'Jugador')}</strong></div>
-    <div class="vf-analysis-row"><span class="vf-label">Nombre del token:</span><strong class="vf-value">${escapeHtml(tokenName || 'Operativo')}</strong></div>
-    ${skillRow}
-    <div class="vf-analysis-row"><span class="vf-label">Resultado:</span><strong class="vf-value vf-outcome is-${outcomeClass}">${escapeHtml(displayOutcome)}</strong></div>
-    ${duality}
-    <div class="vf-analysis-row"><span class="vf-label">Modificadores aplicados:</span><span class="vf-value vf-modifiers">${escapeHtml(modifiers)}</span></div>
+    <span class="vf-analysis-kicker">${escapeHtml(playerName || 'Jugador')}</span>
+    <div class="vf-analysis-actor">${escapeHtml(actorDisplay || 'Operativo')}</div>
+    ${outcome ? `<div class="vf-analysis-outcome">${escapeHtml(outcome)}</div>` : ''}
+    <div class="vf-analysis-number-box">
+      ${Number.isFinite(totalVal) ? `<strong class="vf-analysis-huge-total">${escapeHtml(String(totalVal))}</strong>` : ''}
+      ${duality}
+    </div>
     ${damageRows}
+    <small class="vf-analysis-status">${escapeHtml(footerText)}</small>
   `;
 }
 function showResults(data){

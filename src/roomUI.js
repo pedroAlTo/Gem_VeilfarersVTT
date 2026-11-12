@@ -8,6 +8,7 @@ import { openAccount, initAccount, useCharacter } from './accountUI.js';
 import { mountSessionNavigation } from './sessionNavigation.js';
 import { openCharacterImport } from './characterManager.js';
 import { escapeHTML as e, sanitizeHTML, confirmAction, notify } from './ui.js';
+import { isDrone, controlsToken } from './tokenPermissions.js';
 
 export function openRoomLobby(prefill = '') {
   const modal = dossierDialog('SESIONES', '<p>Leyendo tus salas…</p>', 'rooms-backdrop');
@@ -96,12 +97,17 @@ export function openRoomLobby(prefill = '') {
     const list = body.querySelector('[data-room-roster]');
     if (list && !list.contains(document.activeElement)) {
       const roster = rooms.isKeeper ? rooms.members : store.state.players.map(p => ({ uid: p.id, name: p.name, status: 'active' }));
-      list.innerHTML = sanitizeHTML(roster.map(m => `<article class="room-card"><div><strong>${e(m.name)}</strong><p>${m.status === 'revoked' ? 'Acceso retirado' : store.state.connectedPeers.some(p => p.id === m.uid) ? '● Online' : '○ Offline'}</p><small>${e(store.state.tokens.find(t => t.ownerId === m.uid)?.name || 'Sin token asignado')}</small></div><div class="session-actions">${!rooms.isKeeper ? '' : m.status === 'active' ? `<button class="hud-btn" data-room-assign="${e(m.uid)}">Asignar token</button><button class="hud-btn hud-btn-danger" data-room-kick="${e(m.uid)}">Expulsar</button>` : `<button class="hud-btn" data-room-readmit="${e(m.uid)}">Readmitir</button>`}</div></article>`).join('') || '<p class="dossier-muted">Comparte la invitación para añadir jugadores.</p>');
+      list.innerHTML = sanitizeHTML(roster.map(m => {
+        const myTokens = store.state.tokens.filter(t => controlsToken(t, m.uid));
+        const tokenLabel = myTokens.length ? myTokens.map(t => t.name + (isDrone(t) ? ' 🛸' : '')).join(', ') : 'Sin token asignado';
+        return `<article class="room-card"><div><strong>${e(m.name)}</strong><p>${m.status === 'revoked' ? 'Acceso retirado' : store.state.connectedPeers.some(p => p.id === m.uid) ? '● Online' : '○ Offline'}</p><small>${e(tokenLabel)}</small></div><div class="session-actions">${!rooms.isKeeper ? '' : m.status === 'active' ? `<button class="hud-btn" data-room-assign="${e(m.uid)}">Asignar token</button><button class="hud-btn hud-btn-danger" data-room-kick="${e(m.uid)}">Expulsar</button>` : `<button class="hud-btn" data-room-readmit="${e(m.uid)}">Readmitir</button>`}</div></article>`;
+      }).join('') || '<p class="dossier-muted">Comparte la invitación para añadir jugadores.</p>');
       list.querySelectorAll('[data-room-kick]').forEach(b => b.onclick = () => run(async () => { if (await confirmAction('¿Expulsar a este jugador? Perderá el acceso a la sala y el control de sus tokens hasta que lo readmitas.')) await rooms.kick(b.dataset.roomKick); }));
       list.querySelectorAll('[data-room-readmit]').forEach(b => b.onclick = () => run(() => rooms.readmit(b.dataset.roomReadmit)));
       list.querySelectorAll('[data-room-assign]').forEach(b => b.onclick = () => {
         const uid = b.dataset.roomAssign;
-        const dialog = dossierDialog('ASIGNAR TOKEN', `<p>Un personaje por jugador. Los drones se comparten desde los controles de cada token.</p><div class="session-actions"><button class="hud-btn" data-token="">Sin personaje</button>${store.state.tokens.filter(t => t.actorType !== 'drone').map(t => `<button class="hud-btn" data-token="${e(t.id)}">${e(t.name)}</button>`).join('')}</div>`);
+        const assignedTokens = store.state.tokens.filter(t => controlsToken(t, uid));
+        const dialog = dossierDialog('ASIGNAR TOKEN', `<p>Un jugador puede controlar varios tokens simultáneamente (personajes y drones compartidos).</p><div class="session-actions"><button class="hud-btn hud-btn-danger" data-token="">Desasignar todos los tokens</button>${store.state.tokens.map(t => `<button class="hud-btn" data-token="${e(t.id)}">${assignedTokens.some(at => at.id === t.id) ? '✓ ' : ''}${e(t.name)}${isDrone(t) ? ' 🛸 (Dron compartido)' : ''}</button>`).join('')}</div>`);
         dialog.querySelectorAll('[data-token]').forEach(button => button.onclick = () => { network.assignToken(uid, button.dataset.token); dialog.remove(); updateLive(); });
       });
     }

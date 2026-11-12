@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.8**.
-Paquete: `VeilFarers_VTT_v1.4.8.zip`.
+Versión actual del VTT: **v1.4.9**.
+Paquete: `VeilFarers_VTT_v1.4.9.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.4.9] — 2026-11-12
+
+Restauración del Diseño Visual Clásico del Callout 3D con Datos Reales y Jerarquía Estilizada
+
+### Formato Visual Elegante sin Encabezados Redundantes
+
+- Restauración de la estética visual clásica del callout flotante dorado de dados 3D (borde dorado translúcido con desenfoque de fondo y tipografía táctica de alta legibilidad).
+- Supresión de encabezados de formulario repetitivos ("NOMBRE DEL JUGADOR:", "NOMBRE DEL TOKEN:", "HABILIDAD:", "RESULTADO:", "MODIFICADORES APLICADOS:").
+- Jerarquía estilizada: Kicker superior dorado con el nombre de quien hace la tirada (ej. KEEPER o PEDRO); título un poco más grande con el nombre del personaje/adversario (+ habilidad si aplica); tipo de resultado destacado (Failure with Fear, Success with Hope, etc.) bien visible con resplandor cromático según Hope/Fear/Crítico; número enorme (38px) con desglose Dualidad (HOPE 3 < FEAR 8); y pie técnico con tipo de dado y modificadores reales.
+- Soporte completo tanto en el panel de análisis 3D en pantalla (VFDice3D) como en la pila de notificaciones tácticas de tiradas.
 
 ## [1.4.8] — 2026-11-12
 

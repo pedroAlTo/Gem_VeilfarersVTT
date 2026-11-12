@@ -1,6 +1,6 @@
 export const isDrone = token => token?.actorType === 'drone';
-export const controlsToken = (token, playerId) => !!playerId && !token?.hidden &&
-  (isDrone(token) ? token.controllerIds?.includes(playerId) : token?.ownerId !== 'keeper' && token?.ownerId === playerId);
+export const controlsToken = (token, playerId) => !!playerId && playerId !== 'keeper' && !token?.hidden &&
+  ((token?.ownerId !== 'keeper' && token?.ownerId === playerId) || (Array.isArray(token?.controllerIds) && token.controllerIds.includes(playerId)));
 
 export const isPartyToken = token => !!(token?.isPlayer || token?.actorType === 'player' || (token?.ownerId && token.ownerId !== 'keeper') || (isDrone(token) && token.controllerIds?.length));
 
@@ -15,11 +15,11 @@ export function assignControls(tokens, tokenId, playerIds, knownPlayers) {
     if (token.id === tokenId) {
       return {
         ...token,
-        ownerId: isDrone(token) ? '' : ids[0] || '',
-        controllerIds: isDrone(token) ? ids : (token.controllerIds || [])
+        ownerId: isDrone(token) ? '' : (ids[0] || ''),
+        controllerIds: isDrone(token) ? ids : (ids.length ? ids : (token.controllerIds || []))
       };
     }
-    // Un jugador puede estar asignado a varios tokens: no se desasignan sus otros tokens
+    // Un jugador puede estar asignado a varios tokens: NUNCA se desasignan sus otros tokens
     return token;
   });
 }

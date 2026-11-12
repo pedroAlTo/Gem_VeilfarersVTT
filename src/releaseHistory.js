@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.9', date: '2026-11-12', title: 'Restauración del Diseño Visual Clásico del Callout 3D con Datos Reales y Jerarquía Estilizada',
+    sections: [
+      { title: 'Formato Visual Elegante sin Encabezados Redundantes', items: [
+        'Restauración de la estética visual clásica del callout flotante dorado de dados 3D (borde dorado translúcido con desenfoque de fondo y tipografía táctica de alta legibilidad).',
+        'Supresión de encabezados de formulario repetitivos ("NOMBRE DEL JUGADOR:", "NOMBRE DEL TOKEN:", "HABILIDAD:", "RESULTADO:", "MODIFICADORES APLICADOS:").',
+        'Jerarquía estilizada: Kicker superior dorado con el nombre de quien hace la tirada (ej. KEEPER o PEDRO); título un poco más grande con el nombre del personaje/adversario (+ habilidad si aplica); tipo de resultado destacado (Failure with Fear, Success with Hope, etc.) bien visible con resplandor cromático según Hope/Fear/Crítico; número enorme (38px) con desglose Dualidad (HOPE 3 < FEAR 8); y pie técnico con tipo de dado y modificadores reales.',
+        'Soporte completo tanto en el panel de análisis 3D en pantalla (VFDice3D) como en la pila de notificaciones tácticas de tiradas.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.8', date: '2026-11-12', title: 'Entrada Libre de Jugadores sin Personaje Previo y Consolidación de Handover de Decisiones de Diseño',
     sections: [
       { title: 'Entrada Libre y Asignación Flexible de Tokens', items: [

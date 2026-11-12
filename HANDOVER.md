@@ -30,14 +30,15 @@
 ---
 
 ## 3. Callout Dorado Estructurado de Tiradas de Dados 3D
-- **Decisión:** El callout flotante dorado que aparece tras lanzar dados 3D debe mostrar única y exclusivamente datos verídicos y estructurados de la tirada.
-- **Campos obligatorios:**
-  1. **Nombre del jugador** (ej. *Capt. Jonathan Harker* o nombre de usuario).
-  2. **Nombre del token** (si aplica).
-  3. **Habilidad en uso** (si no hay habilidad específica asociada a la tirada, este campo no se muestra).
-  4. **Resultado de la tirada** (Total con desglose de Hope / Fear y estado de Dualidad: *Critical Success*, *Success with Hope*, *Failure with Fear*, etc.).
-  5. **Modificadores aplicados** (desglose numérico o lista de bonificadores/penalizadores reales).
+- **Decisión:** El callout flotante dorado que aparece tras lanzar dados 3D debe mostrar única y exclusivamente datos verídicos y estructurados de la tirada, manteniendo estrictamente el formato visual elegante original (marco dorado translúcido con desenfoque).
+- **Jerarquía y diseño visual consolidado (Cero encabezados redundantes):**
+  1. **Línea superior (Kicker dorado `11.5px` uppercase):** Quién ha hecho la tirada (Nombre del jugador, ej. `KEEPER`, `PEDRO`).
+  2. **Identidad del actuante (`13.5px` bold):** Nombre del personaje o adversario (+ habilidad si aplica, ej. `Capt. Jonathan Harker · Finesse` u `Operativo`). Si la habilidad es una notación de dado (ej. `1d10`), se mueve al pie técnico.
+  3. **Tipo de resultado bien visible (`17px` bold uppercase destacado con resplandor):** Estado de la tirada (*FAILURE WITH FEAR*, *SUCCESS WITH HOPE*, *CRITICAL SUCCESS*, *WITH FEAR*, *WITH HOPE*, etc.) coloreado según Hope (`#fde68a`), Fear (`#d8b4fe`) o Crítico (`#ffffff` con halo dorado).
+  4. **Número enorme que ha salido (`38px` tabular monospace):** Total numérico destacado junto al desglose de Dualidad (`HOPE 3 < FEAR 8` con números grandes).
+  5. **Pie técnico (`9px` monospace `#64748b`):** Más pequeño, el tipo de dado y modificadores reales aplicados (ej. `1d10 · Mod: Ninguno` o `2d12 + 2 · Hope [3] + Fear [8]`).
 - **Prohibiciones estrictas:**
+  - **CERO encabezados de formulario repetitivos:** NUNCA mostrar etiquetas como `"NOMBRE DEL JUGADOR:"`, `"NOMBRE DEL TOKEN:"`, `"HABILIDAD:"`, `"RESULTADO:"`, `"MODIFICADORES APLICADOS:"`. La información debe fluir de forma directa y elegante.
   - **NUNCA mostrar el rótulo ficticio `"TACTICAL SOLUTION"`** ni telemetría inventada (`"VECTOR TELEMETRY LOCKED"`, `Q-FLUX`, etc.).
   - **NUNCA mostrar badges residuales flotantes de fear** (`#vf-shared-fear-badge`).
 
@@ -90,8 +91,31 @@
 
 ---
 
-## 9. Regla Operativa de Trabajo (Obligatoria para IA y Desarrolladores)
+## 9. Múltiples Tokens por Jugador y Control Compartido de Drones
+- **Decisión:** Un jugador **PUEDE tener varios tokens asignados simultáneamente** (por ejemplo, controlar su personaje principal y el dron de exploración, o controlar dos personajes/aliados).
+- **Control compartido de drones:**
+  - **EL DRON PUEDE SER CONTROLADO POR MÁS DE UN JUGADOR A LA VEZ**: los drones son recursos tácticos compartidos.
+  - Al asignar un dron a un jugador, **se añade dicho jugador a la lista de controladores del dron (`controllerIds`) sin desasignar ni expulsar a los otros jugadores** que ya lo controlan.
+- **Preservación de tokens asignados:**
+  - **NUNCA desasignar los tokens previos de un jugador cuando el Keeper le asigne otro token adicional**.
+  - Si el Keeper asigna un segundo o tercer token a un jugador, el jugador mantiene el control de todos ellos.
+  - La interfaz de selección y controles de token permite al jugador conmutar libremente entre sus tokens asignados.
+
+---
+
+## 10. Resolución de Daño en Ataques a Tokens Objetivos
+- **Decisión:** Cuando un jugador ejecuta un ataque contra otro token (un enemigo, adversario o cualquier objetivo en la escena) y resuelve el daño, **el daño debe aplicarse limpiamente al objetivo sin bloqueos de permisos**.
+- **Regla de red y permisos:**
+  - Para aplicar daño a un objetivo, la red **NO exige que el jugador posea el token objetivo** (los enemigos y PNJs pertenecen al Keeper).
+  - La validación de permisos en red verifica que el jugador **controle el token ATACANTE** (`owns(attackerId)`).
+  - El mensaje de daño táctico `APPLY_DAMAGE` se transmite al Keeper (autoridad de la sesión), quien aplica la reducción de HP y escudos al objetivo y sincroniza la escena con todos los clientes.
+- **Prohibiciones estrictas:**
+  - **NUNCA emitir el error `"Este token no está asignado a ti"`** al resolver daño contra un objetivo atacado desde un token propio.
+
+---
+
+## 11. Regla Operativa de Trabajo (Obligatoria para IA y Desarrolladores)
 1. **Revisar HANDOVER.md** al inicio de cada tarea o prompt antes de proponer cambios.
-2. **Respetar estrictamente los 8 puntos anteriores.** Si una petición del usuario entra en aparente conflicto, aclarar o conciliar sin destruir estas bases.
+2. **Respetar estrictamente todos los puntos anteriores.** Si una petición del usuario entra en aparente conflicto, aclarar o conciliar sin destruir estas bases.
 3. **Validación:** Ejecutar siempre `npm run build` y la suite de tests (`npm test`) antes de dar por cerrada cualquier tarea.
 4. **Git:** Realizar commit descriptivo y push al repositorio remoto al finalizar.

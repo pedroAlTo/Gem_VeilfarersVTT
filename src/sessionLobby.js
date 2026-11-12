@@ -6,7 +6,7 @@ import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
 import { openCharacterImport } from './characterManager.js';
 import { openAccount, useCharacter, initAccount } from './accountUI.js';
-import { isDrone } from './tokenPermissions.js';
+import { isDrone, controlsToken } from './tokenPermissions.js';
 import { mountSessionNavigation } from './sessionNavigation.js';
 import { openRoomLobby } from './roomUI.js';
 
@@ -351,8 +351,10 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
     const state = store.state, players = state.players || [], list = modal.querySelector('#lobby_roster');
     if (list.contains(document.activeElement)) return;
     list.innerHTML = sanitizeHTML(players.length ? players.map(p => {
-      const online = state.connectedPeers?.some(c => c.id === p.id), token = state.tokens.find(t => !isDrone(t) && t.ownerId === p.id), drones = state.tokens.filter(t => isDrone(t) && t.controllerIds?.includes(p.id));
-      return `<article class="crew-row"><span class="crew-avatar">${e(p.name.slice(0, 1).toUpperCase())}</span><div><strong>${e(p.name)}</strong><small>${online ? 'Online' : 'Offline'} · ${e(token?.name || 'No character assigned')}</small>${drones.length ? `<small>Shared drones: ${drones.map(t => e(t.name)).join(', ')}</small>` : ''}</div>${state.isHosting ? `<vf-select class="hud-select" data-assign="${e(p.id)}" aria-label="Character for ${e(p.name)}"><option value="" ${!token ? 'selected' : ''}>Observer</option>${state.tokens.filter(t => !isDrone(t)).map(t => `<option value="${e(t.id)}" ${t.id === token?.id ? 'selected' : ''}>${e(t.name)}</option>`).join('')}</vf-select>` : ''}</article>`;
+      const online = state.connectedPeers?.some(c => c.id === p.id);
+      const myTokens = state.tokens.filter(t => controlsToken(t, p.id));
+      const tokenDesc = myTokens.length ? myTokens.map(t => t.name + (isDrone(t) ? ' 🛸' : '')).join(', ') : 'No character assigned';
+      return `<article class="crew-row"><span class="crew-avatar">${e(p.name.slice(0, 1).toUpperCase())}</span><div><strong>${e(p.name)}</strong><small>${online ? 'Online' : 'Offline'} · ${e(tokenDesc)}</small></div>${state.isHosting ? `<vf-select class="hud-select" data-assign="${e(p.id)}" aria-label="Character for ${e(p.name)}"><option value="">Observer (No token)</option>${state.tokens.map(t => `<option value="${e(t.id)}" ${myTokens.some(mt => mt.id === t.id) ? 'selected' : ''}>${e(t.name)}${isDrone(t) ? ' 🛸' : ''}</option>`).join('')}</vf-select>` : ''}</article>`;
     }).join('') : '<p class="dossier-muted">No players yet. Host a game and share its invitation.</p>');
     list.querySelectorAll('[data-assign]').forEach(select => select.onchange = () => { try { network.assignToken(select.dataset.assign, select.value); } catch (err) { error.textContent = err.message; } });
     if (state.isHosting) list.querySelectorAll('[data-assign]').forEach(select => {
