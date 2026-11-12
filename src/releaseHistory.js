@@ -1,6 +1,33 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.5.0', date: '2026-11-12', title: 'Fidelidad Canónica Total: Umbrales Activos de Armadura, Catálogo Integral de Rust & Steel, Aumentos, Módulos de Dron y Coste de Fear en Foco de Adversarios',
+    sections: [
+      { title: 'Umbrales de Daño Dinámicos según Armadura', items: [
+        'Integración de los Damage Thresholds (Major Threshold / Severe Threshold) y Armor Slots en todas las armaduras canónicas del Corebook y del suplemento Rust & Steel (Casas Solari, Volkov, Valerius, Joric, Amaranth, y especies Lithian, Chitinid, Synthet).',
+        'Al equipar una armadura desde el inventario del token, se recalculan y actualizan automáticamente sus umbrales activos en combate (Major = Armor Major + Nivel; Severe = Armor Severe + Nivel) y sus ranuras de armadura (current y max).',
+        'Cálculo de daño en combate ajustado con fidelidad matemática estricta: Menor (1 HP si Daño < Major), Mayor (2 HP si Major <= Daño < Severe), y Severo (3 HP + 1 HP por cada 10 puntos de Overkill si Daño >= Severe).',
+        'El gasto de ranuras de armadura mitiga la severidad en 1 escalón exacto.',
+      ] },
+      { title: 'Catálogo Canónico Integral de Armas, Aumentos y Módulos de Dron', items: [
+        'Ampliación completa del arsenal con Trait de atributo, tipo de daño (Físico, Energía, Vacío), notación de dados canónica, rangos tácticos oficiales (Melee, Close, Far, Very Far) y Burden.',
+        'Incorporación de Aumentos canónicos con coste de ranura (1 Augment), coste de estrés (Stress Cost), beneficios tácticos automáticos (+1 Slot de armadura, +2 HP, +1 Evasión) y peajes/drawbacks oficiales.',
+        'Incorporación de Módulos de Dron canónicos con ranuras requeridas y soporte para el módulo oficial Neural Network Control (0 ranuras) que otorga control multi-jugador simultáneo de drones.',
+        'Actualización visual de la biblioteca de equipamiento (Equipment UI) con pestañas dedicadas y tarjetas técnicas adaptadas a cada tipo de ítem.',
+      ] },
+      { title: 'Estados de Personaje y Campaña Canónicos', items: [
+        'Incorporación a las 18 condiciones tácticas de combate de los 6 Estados de Personaje y Campaña canónicos: Overwhelmed (Abrumado), Dying (Moribundo), Final (Estado Final), Long Bruise (Secuela Grave), Blurred (Desfase de Realidad) y Burned Out (Agotamiento Durmiente) con sus respectivos iconos SVG y reglas oficiales.',
+        'Selector de condiciones reorganizado con secciones visuales claras para condiciones tácticas y estados de campaña.',
+      ] },
+      { title: 'Gasto de Miedo (Fear) en Foco de Adversarios', items: [
+        'Al activar el Foco de Combate (Spotlight) en un Adversario o PNJ hostil, el Keeper consume obligatoriamente 1 punto de Miedo del Fear Tracker global.',
+        'Si no hay Fear disponible (Fear = 0), el sistema bloquea la activación y notifica al Keeper.',
+        'Los drones aliados y tokens de jugadores están exentos del consumo de Fear.',
+        'Sincronización en tiempo real mediante FEAR_UPDATE y TOKEN_UPDATE por la red P2P/Firestore.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.9', date: '2026-11-12', title: 'Restauración del Diseño Visual Clásico del Callout 3D con Datos Reales y Jerarquía Estilizada',
     sections: [
       { title: 'Formato Visual Elegante sin Encabezados Redundantes', items: [

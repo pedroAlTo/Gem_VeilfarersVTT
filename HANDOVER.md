@@ -114,7 +114,37 @@
 
 ---
 
-## 11. Regla Operativa de Trabajo (Obligatoria para IA y Desarrolladores)
+## 11. Catálogo Canónico Integral y Umbrales Activos de Armadura
+- **Decisión:** Todo el equipamiento táctico (armaduras, armas, aumentos y módulos de dron) se rige con estricta fidelidad canónica por el *Corebook* y *Rust & Steel* (ubicados en `System/`).
+- **Umbrales de Daño Dinámicos (`Damage Thresholds`):**
+  - Las armaduras definen obligatoriamente `majorThreshold`, `severeThreshold` y `armorSlots`.
+  - Al equipar una armadura desde el inventario del token, el sistema actualiza automáticamente los umbrales del token en combate:
+    $$\text{Major Threshold} = \text{Armor Major} + \text{Nivel}$$
+    $$\text{Severe Threshold} = \text{Armor Severe} + \text{Nivel}$$
+  - Al desequipar o sin armadura, los umbrales base son Major 2 / Severe 4 (+ Nivel), excepto especies acorazadas naturales (Kryllian, Lithian, Sintético) que tienen base Major 4 / Severe 6 (+ Nivel).
+  - La resolución de daño en combate (`rulesEngine.js` y `diceRoller.js`) calcula con precisión matemática:
+    - $\text{Daño} < \text{Major}$: Daño Menor (1 HP).
+    - $\text{Major} \le \text{Daño} < \text{Severe}$: Daño Mayor (2 HP).
+    - $\text{Daño} \ge \text{Severe}$: Daño Severo (3 HP + 1 HP por cada 10 puntos de Overkill por encima de Severe).
+    - El gasto de 1 ranura de armadura reduce la severidad en 1 escalón exacto (Severe → Major → Minor → 0 HP).
+- **Arsenal, Aumentos, Drones y Estados:**
+  - Armas con Trait de atributo, tipo de daño (Físico, Energía, Vacío), notación de dados oficial, rangos y Burden.
+  - Aumentos con slots, costes de estrés y bonos directos automáticos (+1 Armor slot, +2 HP, +1 Evasión).
+  - Módulos de Dron con ranuras y soporte para `Neural Network Control` (0 slots) para mando compartido.
+  - Incorporación de los 6 Estados de Personaje y Campaña canónicos (*Overwhelmed*, *Dying*, *Final*, *Long Bruise*, *Blurred*, *Burned Out*) junto a las 18 condiciones de combate.
+
+---
+
+## 12. Consumo de Fear en Activación de Foco en Adversarios
+- **Decisión:** Cuando el Keeper activa el Foco de Combate (`hasSpotlight`) sobre un token de Adversario o PNJ hostil (`actorType === 'adversary'` o `!isPlayer`, excluyendo drones), **se consume obligatoriamente 1 punto de Miedo (Fear) del pool global del Keeper**.
+- **Reglas del flujo:**
+  - El Keeper debe contar con al menos 1 Fear ($\text{Fear} \ge 1$) para otorgar el foco al adversario. Si $\text{Fear} = 0$, el sistema bloquea la acción y emite una advertencia táctica.
+  - Al otorgarse, se descuenta 1 Fear y se sincroniza en tiempo real con todos los clientes mediante el mensaje `FEAR_UPDATE`.
+  - Los drones aliados y tokens de personajes jugadores están exentos del consumo de Miedo al recibir el foco.
+
+---
+
+## 13. Regla Operativa de Trabajo (Obligatoria para IA y Desarrolladores)
 1. **Revisar HANDOVER.md** al inicio de cada tarea o prompt antes de proponer cambios.
 2. **Respetar estrictamente todos los puntos anteriores.** Si una petición del usuario entra en aparente conflicto, aclarar o conciliar sin destruir estas bases.
 3. **Validación:** Ejecutar siempre `npm run build` y la suite de tests (`npm test`) antes de dar por cerrada cualquier tarea.

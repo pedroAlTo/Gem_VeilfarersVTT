@@ -110,8 +110,56 @@ export const CONDITIONS = [
     "path": "M4 5h16M7 9h10M10 13h4M7 17l5 5 5-5"
   }
 ];
+
+export const CAMPAIGN_STATES = [
+  {
+    "name": "Overwhelmed",
+    "rule": "Stress track at maximum. Disadvantage on all rolls until you clear at least 1 Stress slot (or Overclock per Rust & Steel).",
+    "label": "Abrumado",
+    "path": "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+    "isState": true
+  },
+  {
+    "name": "Dying",
+    "rule": "0 HP. The character is unconscious and makes Dying Progress / Death Moves each Spotlight until stabilized (DC 15) or dead.",
+    "label": "Moribundo",
+    "path": "M9 12h6m-3-3v6m-7 4h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z",
+    "isState": true
+  },
+  {
+    "name": "Final",
+    "rule": "Critical dying state. One step before irreversible death. Further unmitigated damage or failed death moves cause permanent death.",
+    "label": "Estado Final",
+    "path": "M12 2v20M5 7h14M8 12h8",
+    "isState": true
+  },
+  {
+    "name": "Long Bruise",
+    "rule": "Persistent injury from returning from Dying. Reduces maximum HP by 1 until completing a Long Rest.",
+    "label": "Secuela Grave",
+    "path": "M4 4l16 16M4 20L20 4",
+    "isState": true
+  },
+  {
+    "name": "Blurred",
+    "rule": "Alien Species / Void Phase state. Attacks against target have Advantage, target attacks have Disadvantage until end of next Spotlight.",
+    "label": "Desfase (Blurred)",
+    "path": "M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
+    "isState": true
+  },
+  {
+    "name": "Burned Out",
+    "rule": "Sleeping path burnout from spending HP for Effort. Marks 1 Stress automatically and induces internal strain.",
+    "label": "Agotamiento",
+    "path": "M12 22a7 7 0 0 0 7-7c0-2-1-3.9-1-5 0-2-2-4-2-4s-1 2-2 3c-1-2-3-3-3-5 0 0-3 3.5-3 7a7 7 0 0 0 4 6.7V22z",
+    "isState": true
+  }
+];
+
+export const ALL_CONDITIONS_AND_STATES = [...CONDITIONS, ...CAMPAIGN_STATES];
+
 const key = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-export function conditionDefinition(name) { return CONDITIONS.find(c => key(c.name) === key(name) || key(c.label) === key(name)); }
+export function conditionDefinition(name) { return ALL_CONDITIONS_AND_STATES.find(c => key(c.name) === key(name) || key(c.label) === key(name)); }
 export function normalizeConditions(values = []) {
   const seen = new Set();
   return values.filter(v => typeof v === 'string' && v.trim()).map(v => conditionDefinition(v)?.name || v.trim()).filter(v => { const id = key(v); if (seen.has(id)) return false; seen.add(id); return true; });

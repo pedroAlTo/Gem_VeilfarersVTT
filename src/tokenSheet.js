@@ -331,7 +331,12 @@ export class TokenHUD {
         const newSpotlight = !curTok.hasSpotlight;
         const ok = store.setTokenSpotlight(curTok.id, newSpotlight);
         if (ok) {
+          if (store.sessionRole !== 'player') {
+            network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hasSpotlight: newSpotlight, spotlight: { ...(curTok.spotlight || {}), enabled: newSpotlight } } });
+            network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
+          }
           notify(newSpotlight ? '✨ Borde dorado brillante activado con pulso.' : '✨ Foco desactivado.');
+          this.render();
         }
       };
     }
@@ -1122,17 +1127,21 @@ export class TokenHUD {
 
       try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
       if (updated.hasSpotlight && !token.hasSpotlight) {
-        const isAdversary = updated.actorType === 'adversary' || !updated.isPlayer;
+        const isAdversary = (updated.actorType === 'adversary' || !updated.isPlayer) && updated.actorType !== 'drone';
         if (isAdversary && (store.state.userRole === 'keeper' || store.sessionRole !== 'player')) {
           if ((store.state.fear ?? 0) < 1) {
             notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
             return;
           }
           store.spendFear(1, `Foco en adversario: ${updated.name}`);
+          network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
         }
       }
       store.updateToken(token.id, updated);
-      if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
+      if (store.sessionRole !== 'player') {
+        network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
+        network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
+      }
       modal.remove();
     };
   }
