@@ -330,10 +330,13 @@
             <span>📍</span>
           </button>
 
-          <button class="tool-btn" id="tool_draw" data-tool="draw" title="Dibujo libre [B]" aria-label="Dibujo libre"><span>✎</span></button>
-          <button class="tool-btn" id="tool_erase_draw" data-tool="erase_draw" title="Borrar solo trazos de dibujo libre [D]" aria-label="Borrar dibujos"><span>⌫</span></button>
+          <button class="tool-btn" id="tool_draw" data-tool="draw" title="Dibujo y borrador [B / D]" aria-label="Dibujo libre"><span>✎</span></button>
           <div class="tool-flyout-panel drawing-flyout" id="drawing_flyout">
-            <div class="flyout-section-title">DIBUJO LIBRE</div>
+            <div class="flyout-section-title">DIBUJO Y BORRADOR</div>
+            <div class="flyout-btn-row" role="group" aria-label="Modo de dibujo">
+              <button type="button" class="flyout-btn active" data-drawing-mode="draw" aria-pressed="true">✏️ Dibujar</button>
+              <button type="button" class="flyout-btn" data-drawing-mode="erase_draw" aria-pressed="false">🧹 Borrar</button>
+            </div>
             <div class="drawing-color-label">Color <button id="drawing_color" type="button" class="insp-fx-color-button" style="background-color:#00dfff" aria-label="Color del dibujo"><span>#00dfff</span></button></div>
             <div class="flyout-btn-row" role="group" aria-label="Grosor del dibujo">
               <button type="button" class="flyout-btn" data-drawing-width="2" aria-pressed="false">Fino</button>

@@ -64,6 +64,14 @@ export class RoomController {
         const latest = await this.service.getRoom(id), campaign = await this.service.loadCampaign(latest);
         await this.service.cleanUnusedSaves(latest);
         await this.store.changeSession(() => campaign);
+        if (latest.inviteCode && (/^VF-[A-F0-9]{32}$/i.test(latest.inviteCode) || latest.inviteCode.startsWith('VF-'))) {
+          try {
+            const upgraded = await this.service.rotateInvitation(latest.id);
+            latest.inviteCode = upgraded;
+          } catch (e) {
+            console.warn('Auto-migrating legacy invite code failed:', e);
+          }
+        }
         this.room = latest; this.lastSaved = this.campaignText();
         this.store.sessionRole = 'host'; this.store.peerId = this.service.uid;
         this.store.update({ userRole: 'keeper', gmVision: true, isHosting: true, isConnected: true });

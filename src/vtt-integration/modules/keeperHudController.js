@@ -275,7 +275,13 @@ export class KeeperHudController {
             }
             window.VFDice3D.showResults({
               label: isSecret ? 'Keeper (Oculta)' : `Keeper · ${label}`,
+              playerName: this.currentUser.displayName || 'Keeper',
+              tokenName: isSecret ? 'Director de Juego (Oculta)' : 'Director de Juego',
+              skill: isSecret ? '' : label,
+              modifiers: 'Ninguno',
               outcome: isSecret ? '🔒 TIRADA OCULTA' : `D${sides}: ${result}`,
+              total: result,
+              value: result,
               rolls: [{ value: result, sides, role: 'neutral' }],
               style: 'overlay'
             });

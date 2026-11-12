@@ -325,6 +325,10 @@ function setupToolbarEvents() {
     const width = Number(button.dataset.drawingWidth); store.update({ drawingWidth: width });
     drawingFlyout.querySelectorAll('[data-drawing-width]').forEach(b => { const active = Number(b.dataset.drawingWidth) === width; b.classList.toggle('active', active); b.setAttribute('aria-pressed', String(active)); });
   });
+  drawingFlyout.querySelectorAll('[data-drawing-mode]').forEach(button => button.onclick = () => {
+    const mode = button.dataset.drawingMode;
+    store.update({ activeTool: mode });
+  });
 
   tools.forEach(toolName => {
     const btn = document.getElementById(`tool_${toolName}`);
@@ -556,9 +560,16 @@ function setupToolbarEvents() {
       updateSnapUI();
     }
     if (keys.includes('activeTool')) {
-      drawingFlyout.style.display = ['draw', 'erase_draw'].includes(state.activeTool) ? 'flex' : 'none';
+      const isDrawing = ['draw', 'erase_draw'].includes(state.activeTool);
+      drawingFlyout.style.display = isDrawing ? 'flex' : 'none';
       document.querySelectorAll('.left-toolbar .tool-btn').forEach(b => {
-        if (b.dataset.tool) b.classList.toggle('active', b.dataset.tool === state.activeTool);
+        if (b.dataset.tool === 'draw') b.classList.toggle('active', isDrawing);
+        else if (b.dataset.tool) b.classList.toggle('active', b.dataset.tool === state.activeTool);
+      });
+      drawingFlyout.querySelectorAll('[data-drawing-mode]').forEach(b => {
+        const active = b.dataset.drawingMode === state.activeTool;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-pressed', String(active));
       });
       if (gridScaleBtn) gridScaleBtn.classList.toggle('active', state.activeTool === 'grid_scale');
     }
@@ -683,8 +694,8 @@ function setupKeyboardShortcuts() {
     }
 
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (key === 'b') document.getElementById('tool_draw')?.click();
-    if (key === 'd') document.getElementById('tool_erase_draw')?.click();
+    if (key === 'b') store.update({ activeTool: 'draw' });
+    if (key === 'd') store.update({ activeTool: 'erase_draw' });
     if (key === 'm' || key === 'v') document.getElementById('tool_select')?.click();
     if (key === 'r') document.getElementById('tool_measure')?.click();
     if (key === 't') document.getElementById('tool_template')?.click();

@@ -22,7 +22,16 @@ export function openRoomLobby(prefill = '') {
     catch (error) { if (modal.isConnected) { paint(); body.querySelector('[data-room-error]').textContent = roomError(error); } }
     finally { busy = false; delete modal.dataset.busy; modal.querySelectorAll('button').forEach(b => { b.disabled = disabled.has(b); }); updateLive(); }
   };
-  const refresh = async () => { await initAccount(); if (account.user && !account.user.isNetlify) cached = await rooms.service.list(); paint(); };
+  const refresh = async () => {
+    await initAccount();
+    if (account.user && !account.user.isNetlify) {
+      cached = await rooms.service.list();
+      if (rooms.isKeeper && rooms.room && (/^VF-[A-F0-9]{32}$/i.test(rooms.room.inviteCode) || rooms.room.inviteCode?.startsWith('VF-'))) {
+        try { await rooms.rotate(); } catch {}
+      }
+    }
+    paint();
+  };
   const paint = () => {
     if (!modal.isConnected) return;
     const signed = account.user && !account.user.isNetlify, current = rooms.room;
@@ -39,7 +48,7 @@ export function openRoomLobby(prefill = '') {
       <h3>Salas que dirijo</h3><div class="room-grid">${cached.filter(r => r.ownerUid === rooms.service.uid).map(card).join('') || '<p class="dossier-muted">Todavía no diriges ninguna sala.</p>'}</div>
       <h3>Salas en las que juego</h3><div class="room-grid">${cached.filter(r => r.ownerUid !== rooms.service.uid).map(card).join('') || '<p class="dossier-muted">Usa una invitación una vez; después podrás entrar desde aquí.</p>'}</div>
       ${!current ? `<form data-room-create class="session-card"><h3>Crear sala</h3><p class="dossier-muted">Crea una sala independiente con una copia de la campaña local actual, incluidos sus arcos y escenas.</p><label class="dossier-field">Nombre<input class="hud-input" name="roomName" required maxlength="200" value="${e(store.state.campaignName)}"></label><button class="hud-btn hud-btn-primary">Crear y entrar como Keeper</button></form>` : ''}
-      <form data-room-join class="session-card"><h3>Entrar con invitación</h3><label class="dossier-field">Código o enlace<input class="hud-input" name="invitation" required placeholder="VF-…" value="${e(prefill)}"></label><button class="hud-btn hud-btn-primary">Aceptar invitación y entrar</button></form>
+      <form data-room-join class="session-card"><h3>Entrar con invitación</h3><label class="dossier-field">Código o enlace<input class="hud-input" name="invitation" required placeholder="ej. NAV-33F44" value="${e(prefill)}"></label><button class="hud-btn hud-btn-primary">Aceptar invitación y entrar</button></form>
       `}<p class="dossier-error" role="alert" data-room-error></p><button class="hud-btn" data-room-refresh>Actualizar salas</button>`);
     const bind = (selector, fn) => { const b = body.querySelector(selector); if (b) b.onclick = fn; };
     bind('[data-room-login]', () => { modal.remove(); openAccount(); });

@@ -890,10 +890,20 @@ export class DiceRollerSidebar {
     const sum = rolls.reduce((acc, v) => acc + v, 0);
     const total = sum + mod;
 
+    const actor = this.currentActor || store.getSelectedToken() || { name: 'Operativo' };
+    const playerName = store.state.userName || store.state.playerName || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador');
+    const tokenName = actor.name || 'Operativo';
+    const modText = mod !== 0 ? (mod > 0 ? `+${mod}` : `${mod}`) : 'Ninguno';
+
     if (this.is3D && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
       window.VFDice3D.showResults({
         label: `Standard Roll: ${label}`,
+        playerName,
+        tokenName,
+        skill: label,
+        modifiers: modText,
         value: total,
+        total,
         outcome: `${total}`,
         rolls: rolls.map(v => ({ value: v, sides, role: 'Standard' })),
         style: 'overlay'
@@ -909,9 +919,6 @@ export class DiceRollerSidebar {
       resDetail.textContent = `[${rolls.join(', ')}]${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''} = ${total}`;
     }
 
-    const actor = this.currentActor || store.getSelectedToken() || { name: 'Operativo' };
-    const playerName = store.state.userName || store.state.playerName || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador');
-    const tokenName = actor.name || 'Operativo';
     const breakdownText = `Dados: [${rolls.join(', ')}] (d${sides})${mod !== 0 ? (mod > 0 ? ` + Mod (${mod})` : ` - Mod (${Math.abs(mod)})`) : ''} = ${total}`;
 
     if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
@@ -1052,11 +1059,16 @@ export class DiceRollerSidebar {
         }
         window.VFDice3D.showResults({
           label,
+          playerName,
+          tokenName,
+          skill: traitName,
+          modifiers: result.breakdown || result.details || (result.totalMod >= 0 ? `+${result.totalMod}` : `${result.totalMod}`),
           outcome: result.outcomeTitle,
           hope: result.hopeVal,
           fear: result.fearVal,
           crit: result.isCritical,
           value: result.total,
+          total: result.total,
           rolls,
           style: 'overlay'
         });

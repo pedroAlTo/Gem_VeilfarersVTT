@@ -98,7 +98,13 @@ export class VeilfarersDiceEngine {
 
         window.VFDice3D.showResults({
           label: `${rollerName} · ${label}`,
+          playerName: rollData.playerName || rollerName,
+          tokenName: rollData.tokenName || rollData.actorName || 'Operativo',
+          skill: (rollData.skill || label || '').replace(/\s*Check$/i, '').trim(),
+          modifiers: rollData.breakdown || rollData.details || (rollData.modifier != null ? (rollData.modifier >= 0 ? `+${rollData.modifier}` : `${rollData.modifier}`) : 'Ninguno'),
           outcome: outcome,
+          total: Number(rollData.total),
+          value: Number(rollData.total),
           hope: Number(hopeVal) || 0,
           fear: Number(fearVal) || 0,
           crit: isCrit,

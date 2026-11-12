@@ -1,10 +1,35 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.4.5**.
-Paquete: `VeilFarers_VTT_v1.4.5.zip`.
+Versión actual del VTT: **v1.4.6**.
+Paquete: `VeilFarers_VTT_v1.4.6.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [1.4.6] — 2026-11-12
+
+Callout Dorado Estructurado, Ficha Condensada sin Scroll, Códigos de Invitación Breves y Herramienta Unificada de Dibujo
+
+### Callout Dorado de Dados 3D
+
+- Sustitución completa del texto genérico por información estructurada y fiel: Nombre del jugador, Nombre del token, Habilidad (si aplica), Resultado (con total y estado Duality) y Modificadores aplicados.
+- Eliminación total de los rótulos TACTICAL SOLUTION y telemetría ficticia VECTOR TELEMETRY LOCKED.
+- Paso explícito de metadatos de jugador, token, habilidad y modificadores en todas las fuentes de tirada (DiceRoller, VttDiceSync, DiceEngine3D y KeeperHud).
+
+### Ficha de Personaje Ultra Condensada
+
+- Rediseño compacto del modal de ficha (Dossier): reducción drástica de espaciados, hero compacto de 44px, inputs optimizados de 28px y área de notas estilizada.
+- Pie de ficha sticky fijado en la parte inferior de la ventana para que el botón "Guardar ficha" esté siempre visible sin necesidad de hacer scroll.
+- Botón de guardado rápido directo añadido en la barra superior de pestañas del dossier.
+
+### Invitaciones y Mesas Persistentes
+
+- Generación de códigos de invitación cortos y legibles con formato de 3 letras de la sala + guion + 5 caracteres aleatorios (ej. NAV-33F44).
+- Auto-migración transparente de códigos heredados largos al nuevo formato breve al abrir o entrar a la sala como Keeper.
+
+### Herramientas de Mesa
+
+- Unificación de Dibujar y Borrar en un único botón en la barra lateral de herramientas con selector de modo integrado en su panel emergente y atajos de teclado [B / D].
 
 ## [1.4.5] — 2026-11-12
 

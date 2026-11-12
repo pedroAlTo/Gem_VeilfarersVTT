@@ -111,29 +111,6 @@ export class VTTDiceSync {
       outcomeLabel = 'CON FEAR';
     }
 
-    if (typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
-      window.VFDice3D.showResults({
-        label: `${this.currentUser.displayName || 'Viajero'} · ${label}`,
-        outcome: isCrit ? 'CRITICAL SUCCESS' : (fearVal > hopeVal ? 'WITH FEAR' : 'WITH HOPE'),
-        hope: hopeVal,
-        fear: fearVal,
-        crit: isCrit,
-        rolls: [
-          { value: hopeVal, sides: 12, role: 'hope' },
-          { value: fearVal, sides: 12, role: 'fear' }
-        ],
-        style: 'overlay'
-      });
-    }
-
-    if (isCrit) {
-      outcomeType = 'crit';
-      outcomeLabel = '¡ÉXITO CRÍTICO!';
-    } else if (fearVal > hopeVal) {
-      outcomeType = 'fear';
-      outcomeLabel = 'CON FEAR';
-    }
-
     const modText = modifier >= 0 ? `+${modifier}` : `${modifier}`;
     const advText = advVal !== 0 ? ` | Vent/Desv (${advVal > 0 ? '+' + advVal : advVal})` : '';
 
@@ -147,6 +124,28 @@ export class VTTDiceSync {
         if (c?.name) tokenName = c.name;
         else if (window.veilStore.getSelectedToken?.()?.name) tokenName = window.veilStore.getSelectedToken().name;
       }
+    }
+    const playerName = this.currentUser.displayName || (typeof window !== 'undefined' && (window.veilStore?.state?.userName || window.veilStore?.state?.playerName)) || 'Jugador';
+
+    if (typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
+      window.VFDice3D.showResults({
+        label: `${playerName} · ${label}`,
+        playerName,
+        tokenName,
+        skill: label.replace(/\s*Check$/i, '').trim(),
+        modifiers: `${modText}${advText}`,
+        outcome: isCrit ? 'CRITICAL SUCCESS' : (fearVal > hopeVal ? 'WITH FEAR' : 'WITH HOPE'),
+        total,
+        value: total,
+        hope: hopeVal,
+        fear: fearVal,
+        crit: isCrit,
+        rolls: [
+          { value: hopeVal, sides: 12, role: 'hope' },
+          { value: fearVal, sides: 12, role: 'fear' }
+        ],
+        style: 'overlay'
+      });
     }
 
     const rollPayload = {

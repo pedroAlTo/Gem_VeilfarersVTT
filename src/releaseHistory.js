@@ -1,6 +1,28 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '1.4.6', date: '2026-11-12', title: 'Callout Dorado Estructurado, Ficha Condensada sin Scroll, Códigos de Invitación Breves y Herramienta Unificada de Dibujo',
+    sections: [
+      { title: 'Callout Dorado de Dados 3D', items: [
+        'Sustitución completa del texto genérico por información estructurada y fiel: Nombre del jugador, Nombre del token, Habilidad (si aplica), Resultado (con total y estado Duality) y Modificadores aplicados.',
+        'Eliminación total de los rótulos TACTICAL SOLUTION y telemetría ficticia VECTOR TELEMETRY LOCKED.',
+        'Paso explícito de metadatos de jugador, token, habilidad y modificadores en todas las fuentes de tirada (DiceRoller, VttDiceSync, DiceEngine3D y KeeperHud).',
+      ] },
+      { title: 'Ficha de Personaje Ultra Condensada', items: [
+        'Rediseño compacto del modal de ficha (Dossier): reducción drástica de espaciados, hero compacto de 44px, inputs optimizados de 28px y área de notas estilizada.',
+        'Pie de ficha sticky fijado en la parte inferior de la ventana para que el botón "Guardar ficha" esté siempre visible sin necesidad de hacer scroll.',
+        'Botón de guardado rápido directo añadido en la barra superior de pestañas del dossier.',
+      ] },
+      { title: 'Invitaciones y Mesas Persistentes', items: [
+        'Generación de códigos de invitación cortos y legibles con formato de 3 letras de la sala + guion + 5 caracteres aleatorios (ej. NAV-33F44).',
+        'Auto-migración transparente de códigos heredados largos al nuevo formato breve al abrir o entrar a la sala como Keeper.',
+      ] },
+      { title: 'Herramientas de Mesa', items: [
+        'Unificación de Dibujar y Borrar en un único botón en la barra lateral de herramientas con selector de modo integrado en su panel emergente y atajos de teclado [B / D].',
+      ] },
+    ],
+  },
+  {
     version: '1.4.5', date: '2026-11-12', title: 'Inicialización Centralizada y Resiliente de Firebase Auth y Realtime Database',
     sections: [
       { title: 'Conectividad y Autenticación en la Nube', items: [

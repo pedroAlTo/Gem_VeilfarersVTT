@@ -638,22 +638,78 @@ function scheduleSettledCues(data){
 }
 function renderAnalysisPanel(data){
   if (!analysisNode) return;
-  const outcome=String((data && data.outcome)||'').trim();
-  const hope=Number(data && data.hope);
-  const fear=Number(data && data.fear);
+  const outcome=String((data && (data.outcome || data.outcomeTitle || data.outcomeLabel))||'').trim();
+  const hope=Number(data && (data.hope ?? data.hopeVal));
+  const fear=Number(data && (data.fear ?? data.fearVal));
   const damageDice=Array.isArray(data && data.damageDiceResults)?data.damageDiceResults:[];
   const damage=Number(data && data.damage);
-  if (!outcome && !damageDice.length) {
+  const totalVal=data && (data.value ?? data.total);
+  if (!outcome && !damageDice.length && totalVal == null) {
     analysisNode.className='vf-dice3d-analysis is-hidden';
     analysisNode.replaceChildren();
     return;
   }
+
+  let playerName = String((data && (data.playerName || data.rollerName)) || '').trim();
+  let tokenName = String((data && (data.tokenName || data.actorName)) || '').trim();
+  let skill = String((data && (data.skill || data.skillName)) || '').trim();
+  let modifiers = String((data && (data.modifiers || data.modText || data.breakdown || data.details)) || '').trim();
+
+  const rawLabel = String((data && data.label) || '').trim();
+  if (rawLabel) {
+    if (!tokenName || !skill) {
+      const parts = rawLabel.split(/\s*[-·]\s*/);
+      if (parts.length >= 2) {
+        if (!playerName && parts.length >= 3) playerName = parts[0];
+        if (!tokenName) tokenName = parts.length >= 3 ? parts[1] : parts[0];
+        const lastPart = parts[parts.length - 1];
+        if (!skill && /check|tirada/i.test(lastPart)) {
+          skill = lastPart.replace(/\s*(?:check|tirada)\s*$/i, '').trim();
+        } else if (!skill && !/^standard\s*roll/i.test(lastPart)) {
+          skill = lastPart;
+        }
+      } else if (!tokenName) {
+        tokenName = rawLabel.replace(/^Keeper\s*·\s*/i, '').replace(/\s*(?:check|tirada)\s*$/i, '').trim();
+      }
+    }
+  }
+
+  if (!playerName && typeof window !== 'undefined' && window.veilStore?.state) {
+    playerName = window.veilStore.state.userName || window.veilStore.state.playerName || (window.veilStore.state.userRole === 'keeper' ? 'Keeper' : 'Jugador');
+  }
+  if (!tokenName && typeof window !== 'undefined' && window.veilStore?.getSelectedToken) {
+    tokenName = window.veilStore.getSelectedToken()?.name || 'Operativo';
+  }
+  if (tokenName.startsWith('Standard Roll:')) {
+    tokenName = tokenName.replace('Standard Roll:', '').trim() || 'Operativo';
+  }
+  if (!modifiers || modifiers === '0') {
+    modifiers = 'Ninguno';
+  }
+
   const outcomeClass=/HOPE/i.test(outcome)?'hope':/FEAR/i.test(outcome)?'fear':/CRITICAL/i.test(outcome)?'critical':'neutral';
   const duality=Number.isFinite(hope)&&Number.isFinite(fear)
     ? `<div class="vf-analysis-duality"><span>HOPE <b>${hope}</b></span><i>${hope===fear?'=':hope>fear?'&gt;':'&lt;'}</i><span>FEAR <b>${fear}</b></span></div>` : '';
   const damageRows=damageDice.length?`<div class="vf-analysis-damage"><small>DAMAGE VECTOR</small><div>${damageDice.map(die=>`<span class="${die.status==='discarded'?'is-drop':'is-keep'}">${escapeHtml(die.status==='discarded'?'DROP':'KEEP')} <b>${Number(die.value)}</b></span>`).join('')}</div>${Number.isFinite(damage)?`<strong>${damage}</strong>`:''}</div>`:'';
+
+  const skillRow = (skill && !/^standard\s*roll$/i.test(skill) && !/^d\d+$/i.test(skill) && !/^ninguna$/i.test(skill))
+    ? `<div class="vf-analysis-row"><span class="vf-label">Habilidad:</span><strong class="vf-value">${escapeHtml(skill)}</strong></div>`
+    : '';
+
+  const displayOutcome = (Number.isFinite(totalVal) && !outcome.includes(String(totalVal)))
+    ? `${totalVal} · ${outcome}`
+    : (outcome || String(totalVal ?? 'Completado'));
+
   analysisNode.className=`vf-dice3d-analysis is-${outcomeClass}`;
-  analysisNode.innerHTML=`<span class="vf-analysis-kicker">TACTICAL SOLUTION</span><b class="vf-analysis-outcome">${escapeHtml(outcome || 'DAMAGE RESOLVED')}</b>${duality}${damageRows}<small class="vf-analysis-status">VECTOR TELEMETRY LOCKED · Q-FLUX ${(Math.random()*9).toFixed(3)}e-3</small>`;
+  analysisNode.innerHTML=`
+    <div class="vf-analysis-row"><span class="vf-label">Nombre del jugador:</span><strong class="vf-value">${escapeHtml(playerName || 'Jugador')}</strong></div>
+    <div class="vf-analysis-row"><span class="vf-label">Nombre del token:</span><strong class="vf-value">${escapeHtml(tokenName || 'Operativo')}</strong></div>
+    ${skillRow}
+    <div class="vf-analysis-row"><span class="vf-label">Resultado:</span><strong class="vf-value vf-outcome is-${outcomeClass}">${escapeHtml(displayOutcome)}</strong></div>
+    ${duality}
+    <div class="vf-analysis-row"><span class="vf-label">Modificadores aplicados:</span><span class="vf-value vf-modifiers">${escapeHtml(modifiers)}</span></div>
+    ${damageRows}
+  `;
 }
 function showResults(data){
   ensureStage();
