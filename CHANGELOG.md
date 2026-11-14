@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.1.2**.
-Paquete: `VeilFarers_VTT_v2.1.2.zip`.
+Versión actual del VTT: **v2.1.3**.
+Paquete: `VeilFarers_VTT_v2.1.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.1.3] — 2026-11-14
+
+V2 · Consola lateral en violeta
+
+### Interfaz
+
+- El interior de la consola lateral adopta las superficies violetas y pierde las esquinas redondeadas: tarjetas de roster, arcos y escenas, documentos, registro, chat y los contenedores del panel de tiradas.
+- La escena activa, el token seleccionado y los temas de dados conservan su cian y sus colores propios.
 
 ## [2.1.2] — 2026-11-14
 

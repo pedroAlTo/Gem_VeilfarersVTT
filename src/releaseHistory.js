@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.1.3', date: '2026-11-14', title: 'V2 · Consola lateral en violeta',
+    sections: [
+      { title: 'Interfaz', items: [
+        'El interior de la consola lateral adopta las superficies violetas y pierde las esquinas redondeadas: tarjetas de roster, arcos y escenas, documentos, registro, chat y los contenedores del panel de tiradas.',
+        'La escena activa, el token seleccionado y los temas de dados conservan su cian y sus colores propios.',
+      ] },
+    ],
+  },
+  {
     version: '2.1.2', date: '2026-11-14', title: 'V2 · Modales, paneles flotantes y HUD en violeta',
     sections: [
       { title: 'Interfaz', items: [

@@ -147,3 +147,32 @@ html body .room-card { background: rgba(42, 11, 92, 0.28); border-color: var(--v
 html body .room-current,
 html body .room-notice { background: rgba(42, 11, 92, 0.45); border-color: var(--vx-line-strong); border-radius: 0; }
 html body .session-strip { border-color: var(--vx-line); border-radius: 0; }
+
+/* ---- Interior de la consola lateral ---------------------------------------- */
+
+html body .sidebar-subtabs { background: rgba(13, 4, 32, 0.7); border-color: var(--vx-line); border-radius: 0; }
+html body .subtab-btn { border-radius: 0; }
+html body .roster-token-card,
+html body .scene-card,
+html body .arc-card,
+html body .handout-card,
+html body .log-card { background: rgba(42, 11, 92, 0.28); border-color: var(--vx-line); border-radius: 0; }
+html body .scene-card-preview { border-radius: 0; }
+html body .chat-messages { background: rgba(13, 4, 32, 0.6); border-color: var(--vx-line); border-radius: 0; }
+html body .chat-privacy { background: rgba(42, 11, 92, 0.4); }
+html body .stepper-btn { background: rgba(42, 11, 92, 0.45); border-color: var(--vx-line-strong); border-radius: 0; }
+
+/* Panel de tiradas: solo los contenedores; los temas y colores de dados no se tocan. */
+html body .dice-utility-bar,
+html body .dice-actor-bar,
+html body .dice-action-cockpit,
+html body .dice-advanced-details { background: rgba(42, 11, 92, 0.22); border-color: var(--vx-line); border-radius: 0; }
+html body .dice-advanced-summary { background: rgba(13, 4, 32, 0.5); }
+html body .quick-die-btn,
+html body .roll-type-btn { background: rgba(13, 4, 32, 0.7); border-color: var(--vx-line-strong); border-radius: 0; }
+
+/* Tarjetas con estilos en línea: hace falta !important. El estado activo (cian) se respeta. */
+html body .arc-card { background: rgba(42, 11, 92, 0.22) !important; border-color: var(--vx-line-strong) !important; border-radius: 0 !important; }
+html body .scene-card { border-radius: 0 !important; }
+html body .scene-card:not(.active) { background: rgba(42, 11, 92, 0.28) !important; border-color: var(--vx-line) !important; }
+html body .scene-card-preview { border-radius: 0 !important; }
