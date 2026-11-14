@@ -4,6 +4,7 @@ import { tokenInventory } from './equipment.js';
 export const TRAIT_IDS = ['agility', 'strength', 'finesse', 'knowledge', 'instinct', 'presence'];
 const object = v => v && typeof v === 'object' && !Array.isArray(v);
 const text = v => v == null ? '' : String(v);
+const flag = v => v === true || ['true', 'on', '1', 'yes', 'x'].includes(text(v).trim().toLowerCase());
 function number(value, label, min = 0, max = 10000) {
   if (value === '' || value == null || typeof value === 'boolean' || !Number.isInteger(Number(value)) || Number(value) < min || Number(value) > max)
     throw new Error(`${label}: se necesita un entero entre ${min} y ${max}.`);
@@ -95,7 +96,18 @@ export function characterDetails(token) {
     domains: prefix === 'a' ? text(f.a_domain_ref) : '',
     powers: prefix === 'a' ? indexed(/^a_pwr_\d+_n$/, k => ({ name: text(f[k]), description: text(f[k.replace(/_n$/, '_d')]), recall: text(f[k.replace(/_n$/, '_rc')]) })) : [],
     equipment: inventory.items,
-    notes: [['Equipo', f.equipment_notes], ['Notas', f[`${prefix}_quick_notes`]], ['Motivación', f.seed_motive], ['Vínculos', [f.conn_first, f.conn_debt, f.conn_friction].filter(Boolean).join('\n\n')]].filter(([, v]) => v),
+    notes: [['Equipo', f.equipment_notes], ['Notas', f[`${prefix}_quick_notes`]]].filter(([, v]) => v),
+    // Corebook ch. 8: who the character answers to, who they are tied to and why they fly.
+    affiliations: [['affiliation', 'aff_'], ['aff_2_affiliation', 'aff_2_'], ['aff_3_affiliation', 'aff_3_']]
+      .map(([nameKey, p]) => ({ name: text(f[nameKey]).trim(), standing: text(f[`${p}standing`]).trim(), reputation: text(f[`${p}reputation`]).trim(), callUsed: flag(f[`${p}call`]) }))
+      .filter(a => a.name || a.standing || a.reputation),
+    affiliationTokens: text(f.aff_tokens).trim(),
+    factionNotes: [f.aff_notes, f.aff_faction_notes].map(v => text(v).trim()).filter(Boolean).join('\n\n'),
+    connections: [['First Bond', f.conn_first], ['Open Debt', f.conn_debt], ['Friction', f.conn_friction]].map(([k, v]) => [k, text(v).trim()]).filter(([, v]) => v),
+    seeds: [['What keeps you flying?', f.seed_motive], ['Who are you afraid to lose?', f.seed_afraid], ['Why does this crew matter?', f.seed_crew], ['What did the road take?', f.seed_loss]].map(([k, v]) => [k, text(v).trim()]).filter(([, v]) => v),
+    signatureTrait: text(f.signature_trait).trim(),
+    loadoutCap: prefix === 'a' ? text(f.a_loadout_cap).trim() : '',
+    vault: prefix === 'a' ? text(f.a_vault).trim() : '',
   };
 }
 export function exportSystemCharacter(token) {

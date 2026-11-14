@@ -33,9 +33,10 @@ const narrative = (title, value) => `<article class="dossier-narrative"><h4>${e(
 export function openDossier(token, openSettings, initialTab = 'stats') {
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
+  const hasBackground = pc && (d.affiliations.length || d.connections.length || d.seeds.length || d.factionNotes || d.affiliationTokens);
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
     <div class="dossier-hero"><div class="dossier-seal"><span>${pc ? 'LVL' : 'NPC'}</span><strong>${pc ? e(token.level ?? 1) : '◇'}</strong></div><div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
-    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button><button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn" data-tab="source">JSON original</button>' : ''}<button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="margin-left:auto; font-weight:600;">💾 Guardar ficha</button></nav>
+    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn" data-tab="source">JSON original</button>' : ''}<button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="margin-left:auto; font-weight:600;">💾 Guardar ficha</button></nav>
     <form id="dossier_form">
       <div data-panel="stats">
         <div class="dossier-condition-summary"><button type="button" class="hud-btn" data-open-conditions>Condiciones</button><div class="condition-badges" data-condition-badges>${conditionBadges(token)}</div></div>
@@ -53,10 +54,21 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
         ${d.experiences.length ? `<h4 class="dossier-label">EXPERIENCIAS · ${e(token.path)}</h4><div class="dossier-experiences">${d.experiences.map(x => `<article><span>${e(x.name)}</span><strong>${e(x.bonus)}</strong></article>`).join('')}</div>` : ''}
         ${d.armor ? narrative('Armadura', d.armor) : ''}
         ${d.features.map(([k, v]) => narrative(k, v)).join('')}
+        ${d.signatureTrait ? `<h4 class="dossier-label">SIGNATURE TRAIT · ${e(d.signatureTrait)}</h4>` : ''}
         ${d.domains ? `<h4 class="dossier-label">DOMINIOS · ${e(d.domains)}</h4>` : ''}
+        ${d.powers.length ? `<h4 class="dossier-label">LOADOUT · ${d.powers.length}${d.loadoutCap ? ' / ' + e(d.loadoutCap) : ''} PODERES EQUIPADOS</h4>` : ''}
         ${d.powers.map(p => narrative(`${p.name}${p.recall ? ' · Recall ' + p.recall : ''}`, p.description)).join('')}
+        ${d.vault ? narrative('Vault · poderes conocidos sin equipar', d.vault) : ''}
         ${d.notes.map(([k, v]) => narrative(k, v)).join('')}
       </div>
+      ${hasBackground ? `<div data-panel="background" hidden>
+        <p class="dossier-muted">Datos de la ficha importada (Corebook, cap. 8). Son de consulta: el Standing y las Calls se actualizan en la ficha de origen.</p>
+        ${d.affiliations.length ? `<h4 class="dossier-label">AFILIACIONES Y STANDING</h4><div class="dossier-affiliations">${d.affiliations.map(a => `<article><strong>${e(a.name || 'Sin nombre')}</strong><span>Standing <b>${e(a.standing || '—')}</b></span><span>Reputation <b>${e(a.reputation || '—')}</b></span><span>Call <b>${a.callUsed ? 'usada' : 'disponible'}</b></span></article>`).join('')}</div>` : ''}
+        ${d.affiliationTokens ? `<h4 class="dossier-label">TOKENS DE FACCIÓN · ${e(d.affiliationTokens)}</h4>` : ''}
+        ${d.factionNotes ? narrative('Notas de facción', d.factionNotes) : ''}
+        ${d.connections.length ? `<h4 class="dossier-label">CONEXIONES</h4>${d.connections.map(([k, v]) => narrative(k, v)).join('')}` : ''}
+        ${d.seeds.length ? `<h4 class="dossier-label">SEMILLAS DEL PERSONAJE</h4>${d.seeds.map(([k, v]) => narrative(k, v)).join('')}` : ''}
+      </div>` : ''}
       <div data-panel="equipment" hidden></div>
       ${imported ? `<div data-panel="source" hidden><p class="dossier-muted">Original íntegro para consulta, incluidos campos de otras sendas. Exportar al creador conserva esos campos y actualiza los valores editables de esta ficha.</p><pre class="dossier-json">${e(JSON.stringify(token.sourceCharacter.document, null, 2))}</pre></div>` : ''}
       <p class="dossier-error" role="alert"></p>
@@ -67,7 +79,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
     modal.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b === button));
     modal.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== button.dataset.tab; });
   });
-  modal.querySelector(`[data-tab="${['stats', 'reference', 'equipment', 'source'].includes(initialTab) ? initialTab : 'stats'}"]`)?.click();
+  modal.querySelector(`[data-tab="${['stats', 'reference', 'background', 'equipment', 'source'].includes(initialTab) && modal.querySelector(`[data-tab="${initialTab}"]`) ? initialTab : 'stats'}"]`)?.click();
   mountEquipmentPanel(modal.querySelector('[data-panel="equipment"]'), token.id);
   modal.querySelector('[data-open-conditions]').onclick = () => openConditions(token.id);
   const unsubscribeConditions = store.subscribe((_, keys) => {

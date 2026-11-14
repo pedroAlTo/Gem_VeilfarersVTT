@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.1.3**.
-Paquete: `VeilFarers_VTT_v2.1.3.zip`.
+Versión actual del VTT: **v2.2.0**.
+Paquete: `VeilFarers_VTT_v2.2.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.2.0] — 2026-11-14
+
+V2 · Fase 1: Vínculos, afiliaciones y loadout en la ficha
+
+### Fichas
+
+- Nueva pestaña Vínculos en la ficha de los personajes importados: afiliaciones con su Standing, Reputation y estado de la Call, tokens y notas de facción, conexiones (First Bond, Open Debt, Friction) y las semillas del personaje.
+- La pestaña Rasgos muestra el Signature Trait, cuántos poderes hay equipados frente al límite del loadout y el Vault de poderes conocidos sin equipar.
+- Estos datos son de consulta y se leen de la ficha JSON importada; la pestaña solo aparece si la ficha los incluye.
+- El pie de la ficha con Guardar ficha queda siempre a la vista, sin texto asomando por debajo.
 
 ## [2.1.3] — 2026-11-14
 

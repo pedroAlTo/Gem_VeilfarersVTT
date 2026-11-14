@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.2.0', date: '2026-11-14', title: 'V2 · Fase 1: Vínculos, afiliaciones y loadout en la ficha',
+    sections: [
+      { title: 'Fichas', items: [
+        'Nueva pestaña Vínculos en la ficha de los personajes importados: afiliaciones con su Standing, Reputation y estado de la Call, tokens y notas de facción, conexiones (First Bond, Open Debt, Friction) y las semillas del personaje.',
+        'La pestaña Rasgos muestra el Signature Trait, cuántos poderes hay equipados frente al límite del loadout y el Vault de poderes conocidos sin equipar.',
+        'Estos datos son de consulta y se leen de la ficha JSON importada; la pestaña solo aparece si la ficha los incluye.',
+        'El pie de la ficha con Guardar ficha queda siempre a la vista, sin texto asomando por debajo.',
+      ] },
+    ],
+  },
+  {
     version: '2.1.3', date: '2026-11-14', title: 'V2 · Consola lateral en violeta',
     sections: [
       { title: 'Interfaz', items: [

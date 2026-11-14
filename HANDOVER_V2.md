@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.1.3 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.2.0 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -49,12 +49,13 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 - **v2.1.1 — Marco de la mesa en violeta**: `src/theme-violet.css` (importado al final en `main.js`) redefine solo variables de superficie (`--bg-*`, `--border-*`, `--text-dim/muted`) y el aspecto de cabecera, barras, paneles, botones y campos. **No redefine** `--cyan-pearl`, `--crimson-fear`, `--purple-void` ni ningún selector de dados, tokens, Hope o Fear (lo comprueba `tests/lobby-visual.test.js`). **Decisión del usuario (14 nov 2026): el cian se queda como color de selección/activo en la mesa** (pasarlo a violeta lo confundiría con el Fear `#d8b4fe`, y el acento `#fde68a` coincide con el Hope).
 - **v2.1.2 — Modales, paneles flotantes y HUD**: el mismo `theme-violet.css` cubre `veil-modal-*`, `dossier-*`, ayuda, salas, relojes, capas y los contenedores de `vf-player-hud` / `vf-keeper-panel`. El pie sticky de la ficha (HANDOVER.md §4) se conserva; solo cambia su color.
 - **v2.1.3 — Consola lateral**: tarjetas de roster, arcos, escenas, documentos, registro, chat y contenedores del panel de tiradas. Varias tarjetas llevan estilos en línea en el JS (`sceneManager.js`, `rosterManager.js`), por eso el tema usa `!important` en `.arc-card` y `.scene-card:not(.active)`. Sin revisar en pantalla: ficha de personaje completa y el interior de los HUD de jugador/Keeper (solo aparecen dentro de una sala en la nube).
+- **v2.2.0 — Fase 1, primer bloque (ficha)**: `characterDetails()` (`src/characterImport.js`) lee además `affiliations` (campos `affiliation`, `aff_standing`, `aff_reputation`, `aff_call` y sus variantes `aff_2_*`, `aff_3_*`), `affiliationTokens`, `factionNotes`, `connections` (`conn_first/debt/friction`), `seeds` (`seed_motive/afraid/crew/loss`), `signatureTrait`, `loadoutCap` (`a_loadout_cap`) y `vault` (`a_vault`). `openDossier()` los muestra en la pestaña **Vínculos** y en **Rasgos**. Son de solo lectura. Los nombres de campo salen del repo del creador (clonado solo para consulta; no se comparte nada con él). Recovery Anchor ya era editable en la ficha (pestaña Ficha, senda Sleeping). **Subtraits**: la ficha del creador no los guarda; en la VTT se eligen al tirar (selector Subtrait / Specialty del panel de dados).
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).
 
 ## Pendiente inmediato
 1. ~~Desplegar las reglas~~ — **hecho por el usuario el 14 nov 2026** (reglas de v2.0.2, con arcos y notas). Falta comprobarlo en producción: guardar un personaje y una escena con sesión iniciada no debe mostrar el aviso de "guardado solo en este navegador". Si `firestore.rules` vuelve a cambiar, hay que publicarlas otra vez.
-2. **Siguiente: Fase 1 (fichas)**: `characterDetails()` ya lee experiencias, armas y rasgos de clase desde `sourceCharacter.document`; faltan en la ficha afiliación y Standing, conexiones, loadout de poderes, subtraits y Recovery Anchor editable.
+2. **Fase 1, pendiente**: hacer editables en la VTT Standing, Reputation y Call (hoy solo lectura), vistas Básica y Completa de la ficha, subida de nivel y gestión del loadout/vault de poderes dentro de la VTT.
 3. Fase 2 (según decisiones 1 y 2): retirar de la VTT el acceso con Netlify Identity (rama `isNetlify` de `src/cloudAccount.js`, que guarda solo en localStorage) y el `character_vault` global de Realtime Database que usa `src/vtt-integration/` (`lobbyGateway.js`, HUDs). **Preguntar al usuario antes de retirarlos**: puede haber cuentas y fichas en uso.
 
 ## Hallazgos de la auditoría (14 nov 2026)

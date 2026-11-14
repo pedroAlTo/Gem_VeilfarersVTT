@@ -178,3 +178,50 @@ test('dice actor and experiences reset when switching into an empty session', as
   assert.equal(root.querySelector('#roll_check_btn').disabled, true);
   assert.equal(root.querySelector('#dice_exp_mod').value, '0');
 });
+
+test('affiliations with Standing, connections, seeds, loadout and vault are read from the imported sheet', () => {
+  const doc = fixture();
+  Object.assign(doc.fields, {
+    affiliation: 'House Joric', aff_standing: '2', aff_reputation: 'Trusted', aff_call: true,
+    aff_2_affiliation: 'Free Traders', aff_2_standing: '0', aff_2_reputation: '', aff_2_call: '',
+    aff_3_affiliation: '', aff_3_standing: '', aff_tokens: '3', aff_notes: 'Owes the quartermaster.',
+    conn_first: 'Vea pulled me out of the wreck.', conn_debt: '', conn_friction: 'Harker distrusts my methods.',
+    seed_motive: 'The map my mother left.', seed_loss: 'My first ship.',
+    signature_trait: 'Knowledge', a_loadout_cap: '5', a_vault: 'Spark of Hope\nSilver Tongue',
+    a_pwr_0_n: 'Veil Sensitivity', a_pwr_0_d: 'Sense the Veil.', a_pwr_0_rc: '1',
+  });
+  const token = parseCharacterJSON(doc).token, d = characterDetails(token);
+  assert.deepEqual(d.affiliations, [
+    { name: 'House Joric', standing: '2', reputation: 'Trusted', callUsed: true },
+    { name: 'Free Traders', standing: '0', reputation: '', callUsed: false },
+  ]);
+  assert.equal(d.affiliationTokens, '3'); assert.equal(d.factionNotes, 'Owes the quartermaster.');
+  assert.deepEqual(d.connections.map(([k]) => k), ['First Bond', 'Friction']);
+  assert.deepEqual(d.seeds.map(([k]) => k), ['What keeps you flying?', 'What did the road take?']);
+  assert.equal(d.signatureTrait, 'Knowledge'); assert.equal(d.loadoutCap, '5'); assert.match(d.vault, /Silver Tongue/);
+  assert.equal(d.powers[0].name, 'Veil Sensitivity');
+  // A Sleeping character has no power loadout, and a local actor has none of these.
+  token.path = 'Sleeping'; assert.equal(characterDetails(token).vault, ''); assert.equal(characterDetails(token).affiliations.length, 2);
+  const local = characterDetails({ name: 'Local', path: 'Awakened' });
+  assert.deepEqual([local.affiliations, local.connections, local.seeds], [[], [], []]);
+});
+
+test('the sheet shows a Vínculos tab only when the imported character has that data, escaped and with the save button in reach', () => {
+  const doc = fixture();
+  Object.assign(doc.fields, { affiliation: '<b>House Joric</b>', aff_standing: '2', conn_first: 'Vea pulled me out.', a_vault: 'Spark of Hope', a_loadout_cap: '5', a_pwr_0_n: 'Veil Sensitivity', a_pwr_0_d: 'Sense.' });
+  const token = createActor(parseCharacterJSON(doc).token, store.state.activeMapId); store.state.tokens.push(token);
+  const modal = openDossier(token, () => {});
+  const tab = modal.querySelector('[data-tab="background"]'), panel = modal.querySelector('[data-panel="background"]');
+  assert.ok(tab && panel.hidden);
+  tab.click(); assert.equal(panel.hidden, false);
+  assert.equal(panel.querySelectorAll('.dossier-affiliations b').length, 3);
+  assert.equal(panel.querySelector('.dossier-affiliations strong').textContent, '<b>House Joric</b>');
+  assert.match(modal.querySelector('[data-panel="reference"]').textContent, /LOADOUT · 1 \/ 5/);
+  assert.match(modal.querySelector('[data-panel="reference"]').textContent, /Spark of Hope/);
+  assert.ok(modal.querySelector('.dossier-footer button[type=submit], .dossier-tabs button[type=submit]'), 'save stays reachable (HANDOVER §4)');
+  modal.remove();
+  const plain = createActor(parseCharacterJSON(fixture()).token, store.state.activeMapId); store.state.tokens.push(plain);
+  const other = openDossier(plain, () => {});
+  assert.equal(other.querySelector('[data-tab="background"]'), null);
+  other.remove();
+});
