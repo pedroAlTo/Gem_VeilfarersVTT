@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.2.2**.
-Paquete: `VeilFarers_VTT_v2.2.2.zip`.
+Versión actual del VTT: **v2.2.3**.
+Paquete: `VeilFarers_VTT_v2.2.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.2.3] — 2026-11-14
+
+V2 · Vínculos visible en todos los personajes
+
+### Fichas
+
+- Corregido: la pestaña Vínculos solo aparecía en fichas importadas que ya traían afiliaciones o conexiones. Ahora está en la ficha de todos los personajes jugadores, también los creados en la VTT.
+- Las tres afiliaciones de la ficha se pueden rellenar y editar (nombre, Standing, Reputation y Call usada), igual que las conexiones First Bond, Open Debt y Friction.
+- Los cambios se guardan con Guardar ficha y, en fichas importadas, se conservan al exportar al formato del creador.
 
 ## [2.2.2] — 2026-11-14
 

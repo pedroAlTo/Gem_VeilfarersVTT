@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.2.3', date: '2026-11-14', title: 'V2 · Vínculos visible en todos los personajes',
+    sections: [
+      { title: 'Fichas', items: [
+        'Corregido: la pestaña Vínculos solo aparecía en fichas importadas que ya traían afiliaciones o conexiones. Ahora está en la ficha de todos los personajes jugadores, también los creados en la VTT.',
+        'Las tres afiliaciones de la ficha se pueden rellenar y editar (nombre, Standing, Reputation y Call usada), igual que las conexiones First Bond, Open Debt y Friction.',
+        'Los cambios se guardan con Guardar ficha y, en fichas importadas, se conservan al exportar al formato del creador.',
+      ] },
+    ],
+  },
+  {
     version: '2.2.2', date: '2026-11-14', title: 'V2 · Fase 1: Standing, Reputation y Call editables en mesa',
     sections: [
       { title: 'Fichas', items: [

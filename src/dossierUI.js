@@ -1,7 +1,7 @@
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { store } from './state.js';
 import { validateActor } from './validation.js';
-import { characterDetails, setAffiliation, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
+import { characterDetails, setAffiliation, setConnection, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
 import { mountEquipmentPanel } from './equipmentUI.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 
@@ -33,7 +33,7 @@ const narrative = (title, value) => `<article class="dossier-narrative"><h4>${e(
 export function openDossier(token, openSettings, initialTab = 'stats') {
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
-  const hasBackground = pc && (d.affiliations.length || d.connections.length || d.seeds.length || d.factionNotes || d.affiliationTokens);
+  const hasBackground = pc;
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
     <div class="dossier-hero"><div class="dossier-seal"><span>${pc ? 'LVL' : 'NPC'}</span><strong>${pc ? e(token.level ?? 1) : '◇'}</strong></div><div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
     <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn" data-tab="source">JSON original</button>' : ''}<button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="margin-left:auto; font-weight:600;">💾 Guardar ficha</button></nav>
@@ -62,11 +62,13 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
         ${d.notes.map(([k, v]) => narrative(k, v)).join('')}
       </div>
       ${hasBackground ? `<div data-panel="background" hidden>
-        <p class="dossier-muted">Datos de la ficha importada (Corebook, cap. 8). El Keeper puede actualizar Standing, Reputation y la Call durante la partida; se guardan con la ficha y se conservan al exportar.</p>
-        ${d.affiliations.length ? `<h4 class="dossier-label">AFILIACIONES Y STANDING</h4><div class="dossier-affiliations">${d.affiliations.map((a, i) => `<article><strong>${e(a.name || 'Sin nombre')}</strong><input type="hidden" name="aff_${i}_prefix" value="${e(a.prefix)}"><label>Standing <input class="hud-input" name="aff_${i}_standing" value="${e(a.standing)}" maxlength="40"></label><label>Reputation <input class="hud-input" name="aff_${i}_reputation" value="${e(a.reputation)}" maxlength="120"></label><label class="dossier-check"><input type="checkbox" name="aff_${i}_call" ${a.callUsed ? 'checked' : ''}> Call usada</label></article>`).join('')}</div>` : ''}
+        <p class="dossier-muted">Afiliaciones y conexiones del personaje (Corebook, cap. 8). El Keeper las actualiza durante la partida; se guardan con la ficha y se conservan al exportar.</p>
+        <h4 class="dossier-label">AFILIACIONES Y STANDING</h4>
+        <div class="dossier-affiliations">${d.affiliationSlots.map((a, i) => `<article><input type="hidden" name="aff_${i}_prefix" value="${e(a.prefix)}"><label>Afiliación ${i + 1} <input class="hud-input" name="aff_${i}_name" value="${e(a.name)}" maxlength="120" placeholder="Facción, casa o gremio"></label><label>Standing <input class="hud-input" name="aff_${i}_standing" value="${e(a.standing)}" maxlength="40"></label><label>Reputation <input class="hud-input" name="aff_${i}_reputation" value="${e(a.reputation)}" maxlength="120"></label><label class="dossier-check"><input type="checkbox" name="aff_${i}_call" ${a.callUsed ? 'checked' : ''}> Call usada</label></article>`).join('')}</div>
         ${d.affiliationTokens ? `<h4 class="dossier-label">TOKENS DE FACCIÓN · ${e(d.affiliationTokens)}</h4>` : ''}
         ${d.factionNotes ? narrative('Notas de facción', d.factionNotes) : ''}
-        ${d.connections.length ? `<h4 class="dossier-label">CONEXIONES</h4>${d.connections.map(([k, v]) => narrative(k, v)).join('')}` : ''}
+        <h4 class="dossier-label">CONEXIONES</h4>
+        <div class="dossier-connections">${d.connectionSlots.map(c => `<label class="dossier-field"><span>${e(c.label)}</span><textarea class="hud-input" name="${c.key}" rows="2" maxlength="2000">${e(c.value)}</textarea></label>`).join('')}</div>
         ${d.seeds.length ? `<h4 class="dossier-label">SEMILLAS DEL PERSONAJE</h4>${d.seeds.map(([k, v]) => narrative(k, v)).join('')}` : ''}
       </div>` : ''}
       <div data-panel="equipment" hidden></div>
@@ -122,7 +124,8 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
       if (token.path === 'Sleeping') updated.resolve = { current: Number(data.resolve_current), max: Number(data.resolve_max), dieType: data.resolve_die };
     }
     for (let i = 0; `aff_${i}_prefix` in data; i++)
-      setAffiliation(updated, data[`aff_${i}_prefix`], { standing: data[`aff_${i}_standing`], reputation: data[`aff_${i}_reputation`], callUsed: `aff_${i}_call` in data });
+      setAffiliation(updated, data[`aff_${i}_prefix`], { name: data[`aff_${i}_name`], standing: data[`aff_${i}_standing`], reputation: data[`aff_${i}_reputation`], callUsed: `aff_${i}_call` in data });
+    for (const key of ['conn_first', 'conn_debt', 'conn_friction']) if (key in data) setConnection(updated, key, data[key]);
     return validateActor(updated);
   };
   const run = action => { try { action(); } catch (err) { modal.querySelector('.dossier-error').textContent = err.message; } };

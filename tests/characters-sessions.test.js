@@ -206,30 +206,49 @@ test('affiliations with Standing, connections, seeds, loadout and vault are read
   assert.deepEqual([local.affiliations, local.connections, local.seeds], [[], [], []]);
 });
 
-test('the sheet shows a Vínculos tab only when the imported character has that data, escaped and with the save button in reach', () => {
+test('every player character has a Vínculos tab; affiliations and connections are edited, escaped, saved and exported', () => {
   const doc = fixture();
-  Object.assign(doc.fields, { affiliation: '<b>House Joric</b>', aff_standing: '2', conn_first: 'Vea pulled me out.', a_vault: 'Spark of Hope', a_loadout_cap: '5', a_pwr_0_n: 'Veil Sensitivity', a_pwr_0_d: 'Sense.' });
+  Object.assign(doc.fields, { affiliation: '"><b>House Joric</b>', aff_standing: '2', conn_first: 'Vea pulled me out.', a_vault: 'Spark of Hope', a_loadout_cap: '5', a_pwr_0_n: 'Veil Sensitivity', a_pwr_0_d: 'Sense.' });
   const token = createActor(parseCharacterJSON(doc).token, store.state.activeMapId); store.state.tokens.push(token);
   const modal = openDossier(token, () => {});
   const tab = modal.querySelector('[data-tab="background"]'), panel = modal.querySelector('[data-panel="background"]');
   assert.ok(tab && panel.hidden);
   tab.click(); assert.equal(panel.hidden, false);
-  // The Keeper raises Standing and spends the Call; both survive saving and exporting.
-  panel.querySelector('[name=aff_0_standing]').value = '3';
-  panel.querySelector('[name=aff_0_call]').checked = true;
-  modal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-  const saved = store.state.tokens.find(t => t.id === token.id), after = characterDetails(saved).affiliations[0];
-  assert.equal(after.standing, '3'); assert.equal(after.callUsed, true);
-  assert.equal(exportSystemCharacter(saved).fields.aff_standing, '3');
-  assert.throws(() => setAffiliation(saved, 'name', {}), /afiliación/);
-  assert.throws(() => setAffiliation({ name: 'Local' }, 'aff_', {}), /afiliación/);
-  assert.equal(panel.querySelector('.dossier-affiliations strong').textContent, '<b>House Joric</b>');
+  assert.equal(panel.querySelectorAll('.dossier-affiliations article').length, 3, 'the three slots of the sheet');
+  assert.equal(panel.querySelector('[name=aff_0_name]').value, '"><b>House Joric</b>'); assert.equal(panel.querySelectorAll('b').length, 0);
   assert.match(modal.querySelector('[data-panel="reference"]').textContent, /LOADOUT · 1 \/ 5/);
   assert.match(modal.querySelector('[data-panel="reference"]').textContent, /Spark of Hope/);
   assert.ok(modal.querySelector('.dossier-footer button[type=submit], .dossier-tabs button[type=submit]'), 'save stays reachable (HANDOVER §4)');
-  modal.remove();
-  const plain = createActor(parseCharacterJSON(fixture()).token, store.state.activeMapId); store.state.tokens.push(plain);
-  const other = openDossier(plain, () => {});
-  assert.equal(other.querySelector('[data-tab="background"]'), null);
-  other.remove();
+  // The Keeper raises Standing, spends the Call, adds a second affiliation and rewrites a connection.
+  panel.querySelector('[name=aff_0_standing]').value = '3';
+  panel.querySelector('[name=aff_0_call]').checked = true;
+  panel.querySelector('[name=aff_1_name]').value = 'Free Traders';
+  panel.querySelector('[name=conn_friction]').value = 'Harker distrusts my methods.';
+  modal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === token.id), d = characterDetails(saved);
+  assert.equal(d.affiliations[0].standing, '3'); assert.equal(d.affiliations[0].callUsed, true);
+  assert.equal(d.affiliations[1].name, 'Free Traders');
+  assert.deepEqual(d.connections.map(([k]) => k), ['First Bond', 'Friction']);
+  const exported = exportSystemCharacter(saved).fields;
+  assert.equal(exported.aff_standing, '3'); assert.equal(exported.aff_2_affiliation, 'Free Traders'); assert.equal(exported.conn_friction, 'Harker distrusts my methods.');
+  assert.throws(() => setAffiliation(saved, 'name', {}), /afiliación/);
+});
+
+test('a character made in the VTT, with no imported sheet, also keeps affiliations and connections', () => {
+  const local = store.state.tokens.find(t => t.isPlayer && !t.sourceCharacter);
+  assert.ok(local, 'a default crew member');
+  const modal = openDossier(local, () => {});
+  const panel = modal.querySelector('[data-panel="background"]');
+  assert.ok(modal.querySelector('[data-tab="background"]') && panel);
+  panel.querySelector('[name=aff_0_name]').value = 'House Kurogane';
+  panel.querySelector('[name=aff_0_standing]').value = '1';
+  panel.querySelector('[name=conn_debt]').value = 'A favour owed to Vea.';
+  modal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === local.id), d = characterDetails(saved);
+  assert.deepEqual(d.affiliations.map(a => [a.name, a.standing]), [['House Kurogane', '1']]);
+  assert.deepEqual(d.connections, [['Open Debt', 'A favour owed to Vea.']]);
+  assert.equal(saved.sourceCharacter, undefined);
+  // Adversaries have no such tab.
+  const npc = store.state.tokens.find(t => !t.isPlayer);
+  if (npc) { const other = openDossier(npc, () => {}); assert.equal(other.querySelector('[data-tab="background"]'), null); other.remove(); }
 });

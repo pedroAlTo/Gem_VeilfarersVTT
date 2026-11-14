@@ -76,8 +76,10 @@ export function initializeImportedResources(parsed, values) {
   if (token.sourceCharacter && parsed.missing.length) token.sourceCharacter.initializedResources = parsed.missing.map(x => x.key);
   return token;
 }
+// Sheet fields come from the imported document; actors made in the VTT keep theirs in sheetFields.
+const sheetFields = token => token.sourceCharacter?.document?.fields || token.sheetFields || {};
 export function characterDetails(token) {
-  const f = token.sourceCharacter?.document?.fields || {};
+  const f = sheetFields(token);
   const inventory = tokenInventory(token);
   const prefix = token.path === 'Sleeping' ? 's' : 'a';
   const indexed = (regex, build) => Object.keys(f).filter(k => regex.test(k)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).filter(k => text(f[k]).trim()).map(build);
@@ -101,6 +103,10 @@ export function characterDetails(token) {
     affiliations: [['affiliation', 'aff_'], ['aff_2_affiliation', 'aff_2_'], ['aff_3_affiliation', 'aff_3_']]
       .map(([nameKey, p]) => ({ name: text(f[nameKey]).trim(), standing: text(f[`${p}standing`]).trim(), reputation: text(f[`${p}reputation`]).trim(), callUsed: flag(f[`${p}call`]), prefix: p }))
       .filter(a => a.name || a.standing || a.reputation),
+    // All three slots of the sheet, filled or not, for editing.
+    affiliationSlots: [['affiliation', 'aff_'], ['aff_2_affiliation', 'aff_2_'], ['aff_3_affiliation', 'aff_3_']]
+      .map(([nameKey, p]) => ({ name: text(f[nameKey]).trim(), standing: text(f[`${p}standing`]).trim(), reputation: text(f[`${p}reputation`]).trim(), callUsed: flag(f[`${p}call`]), prefix: p })),
+    connectionSlots: [['First Bond', 'conn_first'], ['Open Debt', 'conn_debt'], ['Friction', 'conn_friction']].map(([label, key]) => ({ label, key, value: text(f[key]).trim() })),
     affiliationTokens: text(f.aff_tokens).trim(),
     factionNotes: [f.aff_notes, f.aff_faction_notes].map(v => text(v).trim()).filter(Boolean).join('\n\n'),
     connections: [['First Bond', f.conn_first], ['Open Debt', f.conn_debt], ['Friction', f.conn_friction]].map(([k, v]) => [k, text(v).trim()]).filter(([, v]) => v),
@@ -110,14 +116,25 @@ export function characterDetails(token) {
     vault: prefix === 'a' ? text(f.a_vault).trim() : '',
   };
 }
-// Standing, Reputation and the Call change during play; they live in the imported sheet so
-// exporting back to the creator format keeps them.
-export function setAffiliation(token, prefix, { standing, reputation, callUsed }) {
-  const fields = token.sourceCharacter?.document?.fields;
-  if (!fields || !['aff_', 'aff_2_', 'aff_3_'].includes(prefix)) throw new Error('Esta ficha no tiene esa afiliación.');
+// Affiliations and connections change during play. They are written where the sheet keeps
+// them, so exporting back to the creator format preserves them.
+const AFFILIATION_NAME = { aff_: 'affiliation', aff_2_: 'aff_2_affiliation', aff_3_: 'aff_3_affiliation' };
+function writableFields(token) {
+  if (token.sourceCharacter?.document?.fields) return token.sourceCharacter.document.fields;
+  return token.sheetFields ||= {};
+}
+export function setAffiliation(token, prefix, { name, standing, reputation, callUsed }) {
+  if (!(prefix in AFFILIATION_NAME)) throw new Error('Esta ficha no tiene esa afiliación.');
+  const fields = writableFields(token);
+  if (name !== undefined) fields[AFFILIATION_NAME[prefix]] = text(name).trim().slice(0, 120);
   fields[`${prefix}standing`] = text(standing).trim().slice(0, 40);
   fields[`${prefix}reputation`] = text(reputation).trim().slice(0, 120);
   fields[`${prefix}call`] = !!callUsed;
+  return token;
+}
+export function setConnection(token, key, value) {
+  if (!['conn_first', 'conn_debt', 'conn_friction'].includes(key)) throw new Error('Conexión desconocida.');
+  writableFields(token)[key] = text(value).trim().slice(0, 2000);
   return token;
 }
 export function exportSystemCharacter(token) {
