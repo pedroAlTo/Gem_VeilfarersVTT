@@ -30,13 +30,14 @@ const field = (label, key, value, type = 'text', attrs = '') => `<label class="d
 const stat = (label, key, value, min = 0, max = 10000) => field(label, key, value ?? 0, 'number', `min="${min}" max="${max}" step="1" required`);
 const narrative = (title, value) => `<article class="dossier-narrative"><h4>${e(title)}</h4><p>${e(value).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
 
+const SHEET_VIEW_KEY = 'veil_sheet_view';
 export function openDossier(token, openSettings, initialTab = 'stats') {
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
   const hasBackground = pc;
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
     <div class="dossier-hero"><div class="dossier-seal"><span>${pc ? 'LVL' : 'NPC'}</span><strong>${pc ? e(token.level ?? 1) : '◇'}</strong></div><div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
-    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn" data-tab="source">JSON original</button>' : ''}<button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="margin-left:auto; font-weight:600;">💾 Guardar ficha</button></nav>
+    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn sheet-full" data-tab="source">JSON original</button>' : ''}<span class="dossier-view" role="group" aria-label="Detalle de la ficha"><button type="button" class="hud-btn" data-view="basic" title="Lo que se usa durante la partida">Básica</button><button type="button" class="hud-btn" data-view="full" title="Todos los campos, máximos y exportación">Completa</button></span><button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="font-weight:600;">💾 Guardar ficha</button></nav>
     <form id="dossier_form">
       <div data-panel="stats">
         <div class="dossier-condition-summary"><button type="button" class="hud-btn" data-open-conditions>Condiciones</button><div class="condition-badges" data-condition-badges>${conditionBadges(token)}</div></div>
@@ -83,6 +84,20 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
   });
   modal.querySelector(`[data-tab="${['stats', 'reference', 'background', 'equipment', 'source'].includes(initialTab) && modal.querySelector(`[data-tab="${initialTab}"]`) ? initialTab : 'stats'}"]`)?.click();
   mountEquipmentPanel(modal.querySelector('[data-panel="equipment"]'), token.id);
+  // Básica keeps what is used at the table; Completa adds identity, maximums, exports and tools.
+  for (const name of ['actorName', 'characterClass', 'roleTag', 'subclass', 'species', 'community', 'level', 'hp_max', 'armor_max', 'stress_max', 'resolve_max', 'resolve_die', 'honedEdgeBonus'])
+    modal.querySelector(`[name="${name}"]`)?.closest('label')?.classList.add('sheet-full');
+  for (const id of ['dossier_boss', 'dossier_controls', 'dossier_token', 'dossier_export', 'dossier_system']) modal.querySelector('#' + id)?.classList.add('sheet-full');
+  const setView = view => {
+    view = view === 'full' ? 'full' : 'basic';
+    modal.dataset.sheetView = view;
+    try { localStorage.setItem(SHEET_VIEW_KEY, view); } catch {}
+    modal.querySelectorAll('[data-view]').forEach(b => { b.classList.toggle('active', b.dataset.view === view); b.setAttribute('aria-pressed', String(b.dataset.view === view)); });
+    if (view === 'basic' && modal.querySelector('[data-tab="source"].active')) modal.querySelector('[data-tab="stats"]').click();
+  };
+  modal.querySelectorAll('[data-view]').forEach(b => { b.onclick = () => setView(b.dataset.view); });
+  let storedView = ''; try { storedView = localStorage.getItem(SHEET_VIEW_KEY) || ''; } catch {}
+  setView(storedView || (store.sessionRole === 'player' || store.state.userRole === 'player' ? 'basic' : 'full'));
   modal.querySelector('[data-open-conditions]').onclick = () => openConditions(token.id);
   const unsubscribeConditions = store.subscribe((_, keys) => {
     if (!modal.isConnected) { unsubscribeConditions(); return; }

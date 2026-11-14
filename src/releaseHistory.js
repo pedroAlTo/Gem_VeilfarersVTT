@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.3.0', date: '2026-11-14', title: 'V2 · Fase 1: Ficha en vista Básica o Completa',
+    sections: [
+      { title: 'Fichas', items: [
+        'La ficha tiene dos vistas, con un conmutador junto a Guardar ficha. Básica muestra lo que se usa en mesa: condiciones, Proficiency, Evasion, recursos actuales, umbrales, Traits y notas, sin necesidad de desplazarse.',
+        'Completa añade nombre, clase, ancestry y nivel, los máximos de cada recurso, la configuración de la senda Sleeping, el JSON original, las exportaciones y los ajustes del token.',
+        'Los jugadores abren la ficha en Básica y el Keeper en Completa; la vista elegida se recuerda en el navegador.',
+        'Guardar en vista Básica conserva todos los datos que no se ven.',
+      ] },
+    ],
+  },
+  {
     version: '2.2.3', date: '2026-11-14', title: 'V2 · Vínculos visible en todos los personajes',
     sections: [
       { title: 'Fichas', items: [

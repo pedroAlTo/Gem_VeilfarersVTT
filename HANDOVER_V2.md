@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.2.3 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.3.0 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -53,12 +53,13 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 - **v2.2.1 — Salas en el lobby**: el portal (`firebaseClient.js`) iniciaba sesión con una configuración de reserva, pero `cloudAccount.js` exigía las variables `VITE_FIREBASE_*`; sin ellas `cloudConfigured` era `false`, no se iniciaba la cuenta ni las salas y el lobby mostraba la lista vacía porque tragaba el error. Ahora ambos leen `src/firebaseConfig.js` (`getFirebaseConfig()`; fuera del build de Vite la nube sigue apagada, para los tests). `lobbyGateway.js`: `loadRoomsList()` pinta el error con Reintentar, y `runRoomAction()` devuelve al lobby con el motivo en `#vf-hub-error` si falla abrir, crear o unirse. **Sin confirmar con una cuenta real** (el entorno de trabajo no llega a Firebase): si el usuario sigue sin ver sus salas, el mensaje del lobby dirá la causa.
 - **v2.2.2 — Standing, Reputation y Call editables**: inputs en la pestaña Vínculos; `setAffiliation()` (`src/characterImport.js`) escribe en `sourceCharacter.document.fields`, así que `exportSystemCharacter()` los conserva. Solo el Keeper (o partida local) los cambia; en vista de jugador quedan deshabilitados como el resto de la ficha.
 - **v2.2.3 — Vínculos en todos los PJ**: la pestaña ya no depende de que la ficha importada traiga datos (el usuario no la veía). Se muestra en todo personaje jugador con las 3 afiliaciones y las 3 conexiones editables. Los actores sin ficha importada guardan estos campos en `token.sheetFields` (mismas claves que el creador: `affiliation`, `aff_standing`, `conn_first`…); `characterDetails()` lee de `sourceCharacter.document.fields` o, si no hay, de `sheetFields`. `setAffiliation()` / `setConnection()` escriben donde corresponda. **Lección**: no esconder una función nueva tras una condición de datos; mostrarla vacía y editable.
+- **v2.3.0 — Ficha Básica / Completa**: `openDossier()` marca con la clase `sheet-full` lo que solo sale en Completa (identidad, nivel, máximos, Resolve máx./dado, Honed Edge, pestaña JSON, botones de exportar, Player controls, Ajustes del token, Boss) y pone `data-sheet-view` en el modal; `dossiers.css` lo oculta en Básica. Preferencia en `localStorage['veil_sheet_view']`; por defecto jugador = Básica, Keeper = Completa. Los campos ocultos siguen en el formulario, así que guardar en Básica no pierde nada. El conmutador usa el cian de "activo" (decisión 4).
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).
 
 ## Pendiente inmediato
 1. ~~Desplegar las reglas~~ — **hecho por el usuario el 14 nov 2026** (reglas de v2.0.2, con arcos y notas). Falta comprobarlo en producción: guardar un personaje y una escena con sesión iniciada no debe mostrar el aviso de "guardado solo en este navegador". Si `firestore.rules` vuelve a cambiar, hay que publicarlas otra vez.
-2. **Fase 1, pendiente**: vistas Básica y Completa de la ficha, subida de nivel y gestión del loadout/vault de poderes dentro de la VTT.
+2. **Fase 1, pendiente**: subida de nivel y gestión del loadout/vault de poderes dentro de la VTT.
 3. Fase 2 (según decisiones 1 y 2): retirar de la VTT el acceso con Netlify Identity (rama `isNetlify` de `src/cloudAccount.js`, que guarda solo en localStorage) y el `character_vault` global de Realtime Database que usa `src/vtt-integration/` (`lobbyGateway.js`, HUDs). **Preguntar al usuario antes de retirarlos**: puede haber cuentas y fichas en uso.
 
 ## Hallazgos de la auditoría (14 nov 2026)

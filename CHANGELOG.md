@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.2.3**.
-Paquete: `VeilFarers_VTT_v2.2.3.zip`.
+Versión actual del VTT: **v2.3.0**.
+Paquete: `VeilFarers_VTT_v2.3.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.3.0] — 2026-11-14
+
+V2 · Fase 1: Ficha en vista Básica o Completa
+
+### Fichas
+
+- La ficha tiene dos vistas, con un conmutador junto a Guardar ficha. Básica muestra lo que se usa en mesa: condiciones, Proficiency, Evasion, recursos actuales, umbrales, Traits y notas, sin necesidad de desplazarse.
+- Completa añade nombre, clase, ancestry y nivel, los máximos de cada recurso, la configuración de la senda Sleeping, el JSON original, las exportaciones y los ajustes del token.
+- Los jugadores abren la ficha en Básica y el Keeper en Completa; la vista elegida se recuerda en el navegador.
+- Guardar en vista Básica conserva todos los datos que no se ven.
 
 ## [2.2.3] — 2026-11-14
 

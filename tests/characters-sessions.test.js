@@ -1,5 +1,6 @@
 import test, { beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { parseCharacterJSON, initializeImportedResources, characterDetails, setAffiliation, characterKey, exportSystemCharacter, exportNativeCharacter, TRAIT_IDS } from '../src/characterImport.js';
 import { createActor, replaceActorSheet } from '../src/actors.js';
@@ -251,4 +252,29 @@ test('a character made in the VTT, with no imported sheet, also keeps affiliatio
   // Adversaries have no such tab.
   const npc = store.state.tokens.find(t => !t.isPlayer);
   if (npc) { const other = openDossier(npc, () => {}); assert.equal(other.querySelector('[data-tab="background"]'), null); other.remove(); }
+});
+
+test('the sheet opens in Básica for players and Completa for the Keeper, remembers the choice and never loses data', () => {
+  localStorage.removeItem('veil_sheet_view');
+  const token = store.state.tokens.find(t => t.isPlayer);
+  const keeperModal = openDossier(token, () => {});
+  assert.equal(keeperModal.dataset.sheetView, 'full');
+  const maxLabel = keeperModal.querySelector('[name=hp_max]').closest('label');
+  assert.ok(maxLabel.classList.contains('sheet-full'));
+  for (const name of ['hp_current', 'evasion', 'majorThreshold', 'trait_agility', 'featureNotes'])
+    assert.equal(keeperModal.querySelector(`[name=${name}]`).closest('.sheet-full'), null, name + ' stays in Básica');
+  assert.equal(keeperModal.querySelector('.dossier-footer button[type=submit]').closest('.sheet-full'), null);
+  keeperModal.querySelector('[data-view="basic"]').click();
+  assert.equal(keeperModal.dataset.sheetView, 'basic'); assert.equal(localStorage.getItem('veil_sheet_view'), 'basic');
+  // Hidden fields still travel with the form: saving in Básica keeps maximums and identity.
+  const before = structuredClone(store.state.tokens.find(t => t.id === token.id));
+  keeperModal.querySelector('[name=hp_current]').value = String(before.hp.max - 1);
+  keeperModal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === token.id);
+  assert.equal(saved.hp.current, before.hp.max - 1); assert.equal(saved.hp.max, before.hp.max); assert.equal(saved.name, before.name);
+  const again = openDossier(saved, () => {});
+  assert.equal(again.dataset.sheetView, 'basic', 'remembered');
+  again.remove(); localStorage.removeItem('veil_sheet_view');
+  const css = readFileSync(new URL('../src/dossiers.css', import.meta.url), 'utf8');
+  assert.match(css, /\[data-sheet-view='basic'\] \.sheet-full \{ display:none !important; \}/);
 });

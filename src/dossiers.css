@@ -58,3 +58,6 @@
 .dossier-affiliations label .hud-input { flex:1; }
 .dossier-connections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:10px; }
 @media (max-width:820px) { .dossier-connections { grid-template-columns:1fr; } }
+.dossier-view { display:flex; margin-left:auto; }
+.dossier-view .hud-btn + .hud-btn { border-left:0; }
+.dossier-backdrop[data-sheet-view='basic'] .sheet-full { display:none !important; }
