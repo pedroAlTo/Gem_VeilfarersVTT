@@ -1,6 +1,57 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.0.2', date: '2026-11-14', title: 'V2 · Fase 0: Carga inicial más ligera',
+    sections: [
+      { title: 'Rendimiento', items: [
+        'El archivo principal de la aplicación baja de 1.316 kB a 888 kB (de 338 kB a 249 kB comprimido): Firebase se sirve en archivos propios que el navegador conserva en caché entre versiones.',
+        'El módulo de conexión directa entre navegadores (PeerJS, 122 kB) ya no se descarga al abrir la aplicación; solo se carga al crear o unirse a una sesión directa. Las salas en la nube no lo necesitan.',
+      ] },
+      { title: 'Dados 3D', items: [
+        'Corregida una referencia con mayúsculas incorrectas (Dice.min.js) que impedía iniciar los dados 3D en servidores que distinguen mayúsculas de minúsculas. Las físicas y los parámetros de los dados no cambian.',
+      ] },
+    ],
+  },
+  {
+    version: '2.0.1', date: '2026-11-14', title: 'V2 · Fase 0: Arcos de sala y notas personales en la cuenta',
+    sections: [
+      { title: 'Cuenta y guardado en la nube', items: [
+        'Notas personales por partida: cada usuario puede guardar notas privadas asociadas a una sala; ni el Keeper ni otros jugadores pueden leerlas (modelo y reglas listos; la pantalla llegará con la cuenta de la Fase 2).',
+        'Arcos por sala del Keeper: la sala mantiene en la nube un índice de sus arcos (nombre, descripción, escenas y orden) que se actualiza solo al guardar la campaña y escribe únicamente lo que cambia.',
+        'Al eliminar una sala también se borra su índice de arcos.',
+        'Si las reglas de Firestore publicadas son anteriores a esta versión, la partida se guarda igual y el índice de arcos se omite sin errores.',
+      ] },
+      { title: 'Reglas de Firestore', items: [
+        'Nuevas reglas para rooms/{sala}/arcs (solo el Keeper propietario) y users/{usuario}/notes (solo su autor), con límites de tamaño y campos cerrados. Requiere volver a publicar las reglas.',
+      ] },
+      { title: 'Pruebas', items: [
+        'Las pruebas de reglas de cuenta y de salas se han ejecutado en el emulador de Firestore: guardado de personajes y escenas, notas, arcos, reconexión de Keeper y jugador.',
+        'La reconexión de un jugador con varios tokens asignados conserva el control de todos ellos.',
+      ] },
+    ],
+  },
+  {
+    version: '2.0.0', date: '2026-11-14', title: 'V2 · Fase 0: Estabilización de guardado, fichas y red',
+    sections: [
+      { title: 'Chat', items: [
+        'Los subtítulos de chat en overlay se muestran siempre por encima de cualquier otro elemento (HUD, modales, dados 3D y avisos).',
+      ] },
+      { title: 'Cuenta y guardado en la nube', items: [
+        'Guardar un personaje ya guardado actualiza su entrada en lugar de crear un duplicado.',
+        'Reglas de Firestore corregidas: los personajes admiten actualización y las escenas del Keeper conservan muros, luces, niebla, agua, notas, tokens y arco, con imagen en Firebase Storage o en Cloudinary.',
+        'Si un guardado no llega a la nube y queda solo en el navegador, la aplicación lo avisa de forma visible.',
+        'Luz ambiente por defecto corregida al guardar escenas sin valor definido.',
+      ] },
+      { title: 'Fichas', items: [
+        'El importador acepta las fichas actuales del creador (versiones 2.8x, esquema veilfarers.character/2) sin aviso de versión.',
+        'Hope y Effort respetan el máximo de la ficha en la barra rápida y en los controles de recursos.',
+      ] },
+      { title: 'Red y permisos', items: [
+        'Al resolver daño contra un token ajeno, el jugador solo puede cambiar HP y Armor del objetivo; el resto de campos queda protegido.',
+      ] },
+    ],
+  },
+  {
     version: '1.5.0', date: '2026-11-12', title: 'Fidelidad Canónica Total: Lobby Simplificado por Roles, Subtítulos en Overlay, Paleta de Color de Token, Armaduras Activas y Catálogo Integral',
     sections: [
       { title: 'Físicas Canónicas de Dados 3D (@3d-dice/dice-box)', items: [

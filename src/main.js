@@ -145,6 +145,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   });
   setupSessionPersistence().catch(error => notify(error.message, 'error'));
+  window.addEventListener('veil:cloud-fallback', () => notify('No se pudo guardar en la nube: el cambio queda SOLO en este navegador. Revisa tu conexión o las reglas de Firebase.', 'error'));
 });
 
 // --- Clocks Tab Pane ---

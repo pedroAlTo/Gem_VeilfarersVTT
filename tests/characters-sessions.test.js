@@ -25,6 +25,14 @@ test('final Traits and thresholds are imported once; ancestry never rewrites Str
   const initialized = initializeImportedResources(parseCharacterJSON(fixture()), { hp: 4, armor_slots: 2, stress: 1, a_hope: 2 });
   assert.equal(initialized.hp.current, 4); assert.equal(initialized.hope, 2);
 });
+test('current creator exports (2.84, schema 2) import without a version warning; unknown families still warn', () => {
+  const f = fixture(); f.version = '2.84-RC3.2'; f.schema = 'veilfarers.character/2'; f.characterId = 'abc'; f.fields.character_id = 'abc';
+  const p = parseCharacterJSON(f);
+  assert.ok(!p.warnings.some(w => w.startsWith('Versión')));
+  assert.equal(characterKey(p.token), 'system:abc');
+  const old = fixture(); old.version = '3.10';
+  assert.ok(parseCharacterJSON(old).warnings.some(w => w.startsWith('Versión')));
+});
 test('current resource zeros survive import and no-damage weapons stay no-damage', () => {
   const f = fixture(); f.tracks.current = { hp: 0, stress: 0, armor_slots: 0, a_hope: 0, s_effort: 0, s_resolve: 0 };
   const p = parseCharacterJSON(f); assert.equal(p.missing.length, 0); assert.equal(p.token.hp.current, 0);

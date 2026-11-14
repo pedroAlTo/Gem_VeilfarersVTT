@@ -61,7 +61,7 @@ export function parseCharacterJSON(input) {
     sourceCharacter: { format: 'character-sheet', document: doc, initializedResources: [] },
   };
   if (missing.length) warnings.push('El archivo no incluye todos los recursos actuales. Revisa los valores iniciales antes de importar.');
-  if (!/^2\.80(?:\b|-)/.test(text(doc.version))) warnings.push(`Versión ${text(doc.version) || 'sin indicar'}: se han leído los campos reconocidos; revisa la ficha.`);
+  if (!/^2\.8\d(?:\b|-)/.test(text(doc.version))) warnings.push(`Versión ${text(doc.version) || 'sin indicar'}: se han leído los campos reconocidos; revisa la ficha.`);
   return { token, missing, warnings, format: `Character Sheet ${doc.version || ''}` };
 }
 export function initializeImportedResources(parsed, values) {

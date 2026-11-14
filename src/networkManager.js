@@ -1,7 +1,6 @@
 import { LanPeer } from './lanPeer.js';
 import { requireNetworkMode, LAN_SESSIONS } from './runtimeMode.js';
 // Keeper-authoritative replication. No cross-room BroadcastChannel.
-import PeerJS from 'peerjs';
 import { store } from './state.js';
 import { validateDrawing, canAnnotate } from './freehand.js';
 import { controlsToken, isDrone } from './tokenPermissions.js';
@@ -10,7 +9,13 @@ import { portableCharacter } from './cloudAccount.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
 import { notify } from './ui.js';
 import { TABLE, KEEPER, chatRequest, validateChatEntry, chatVisibleTo, chatHistoryFor, appendChat } from './chat.js';
-const Peer = PeerJS?.Peer || PeerJS?.default || PeerJS;
+// PeerJS only serves direct sessions; cloud rooms never need it, so it loads on first use.
+let Peer;
+async function loadPeer() {
+  if (Peer) return;
+  const module = await import('peerjs'), PeerJS = module.default ?? module;
+  Peer = PeerJS?.Peer || PeerJS?.default || PeerJS;
+}
 import { newId as id } from './persistence.js';
 
 export const SESSION_PERSIST_KEY = 'veil_active_session';
@@ -81,6 +86,7 @@ export function removeInvitedSession(room) {
 export class NetworkManager {
   constructor({ stateStore = store, peerFactory } = {}) {
     this.store = stateStore;
+    this.needsPeerJS = !peerFactory && !LAN_SESSIONS;
     this.peerFactory = peerFactory ?? ((...args) => LAN_SESSIONS
       ? new LanPeer(import.meta.hot, args[0], this.invite)
       : new Peer(...args));
@@ -140,6 +146,7 @@ export class NetworkManager {
   }
   async hostSession(customCode) {
     requireNetworkMode();
+    if (this.needsPeerJS) await loadPeer();
     await this.store.ready;
     this.disconnect();
     if (customCode) {
@@ -193,6 +200,7 @@ export class NetworkManager {
   }
   async joinSession(roomCode, playerName = 'Player', invite = '') {
     requireNetworkMode();
+    if (this.needsPeerJS) await loadPeer();
     if (!invite) throw new Error('An invitation key from the Keeper is required.');
     this.disconnect();
     await this.store.ready;
@@ -1029,6 +1037,8 @@ export class NetworkManager {
         const isDamageApplication = Boolean(data.isDamage && data.attackerId && owns(data.attackerId));
         if (!owns(data.tokenId) && !isDamageApplication) throw new Error('Este token ya no está asignado a ti.');
         if (!validTokenPatch(partial)) throw new Error('El cambio contiene campos de token no permitidos.');
+        // Damage on a token the sender does not own is limited to its HP and Armor.
+        if (!owns(data.tokenId) && Object.keys(partial).some(k => !['hp', 'armor'].includes(k))) throw new Error('Un ataque solo puede cambiar HP y Armor del objetivo.');
         const token = this.store.state.tokens.find((t) => t.id === data.tokenId);
         if (token.mapId !== this.store.state.activeMapId || (data.mapId && data.mapId !== token.mapId) || (data.campaignId && data.campaignId !== this.store.state.campaignId)) throw new Error('La escena ha cambiado. Repite el cambio en la escena actual.');
         for (const k of ['hp', 'armor', 'stress', 'resolve'])

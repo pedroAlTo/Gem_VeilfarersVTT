@@ -65,6 +65,7 @@ export class RoomController {
         await this.service.cleanUnusedSaves(latest);
         await this.store.changeSession(() => campaign);
         this.room = latest; this.lastSaved = this.campaignText();
+        this.persistQueue = this.persistQueue.catch(() => {}).then(() => this.syncArcs(id, campaign));
         this.store.sessionRole = 'host'; this.store.peerId = this.service.uid;
         this.store.update({ userRole: 'keeper', gmVision: true, isHosting: true, isConnected: true });
       } else {
@@ -161,8 +162,19 @@ export class RoomController {
       try { await this.service.saveCampaign(id, JSON.parse(text), epoch); }
       catch (error) { this.saveFailed = true; this.store.update({ roomSaveStatus: 'error', isConnected: false, roomPaused: true }); throw error; }
       if (generation === this.generation) { this.lastSaved = text; this.saveFailed = false; this.lastError = ''; this.store.update({ roomSaveStatus: 'saved' }); this.checkPresence(); }
+      // The arc index is derived from the confirmed save; its failure never blocks play.
+      await this.syncArcs(id, JSON.parse(text));
     });
     this.persistQueue = task; return task;
+  }
+  async syncArcs(id, campaign) {
+    if (this.arcSyncDisabled || !this.service.syncArcs) return;
+    try { await this.service.syncArcs(id, campaign); }
+    catch (error) {
+      // Rules that predate the arc index reject it; stop retrying for this session.
+      if (error?.code === 'permission-denied') this.arcSyncDisabled = true;
+      console.warn('No se pudo actualizar el índice de arcos de la sala:', error);
+    }
   }
   watchWires(generation) {
     const a = this.service.api;
