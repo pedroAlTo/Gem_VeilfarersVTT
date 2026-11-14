@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.1.2', date: '2026-11-14', title: 'V2 · Modales, paneles flotantes y HUD en violeta',
+    sections: [
+      { title: 'Interfaz', items: [
+        'Los modales (ficha, ayuda, compendio, cuenta, salas y sesiones) usan la dirección visual violeta: marco de línea fina con borde superior de acento, sin esquinas redondeadas y títulos en mayúsculas espaciadas.',
+        'Los relojes de escena, el panel de capas y los contenedores del HUD de jugador y del HUD de Keeper adoptan las mismas superficies.',
+        'El pie de la ficha sigue fijo abajo con el botón Guardar ficha siempre a la vista.',
+        'Se mantiene el cian para lo seleccionado o activo y no cambian los colores de dados, Hope, Fear, tokens ni barras de recursos.',
+      ] },
+    ],
+  },
+  {
     version: '2.1.1', date: '2026-11-14', title: 'V2 · Marco de la mesa en violeta',
     sections: [
       { title: 'Mesa de juego', items: [

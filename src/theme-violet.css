@@ -83,3 +83,67 @@ html body .roll-trigger-btn { border-radius: 0; background: linear-gradient(105d
 ::-webkit-scrollbar-track { background: rgba(13, 4, 32, 0.6); }
 ::-webkit-scrollbar-thumb { background: var(--vx-line-strong); border-radius: 0; }
 ::-webkit-scrollbar-thumb:hover { background: var(--vx-light); }
+
+/* ---- Modales --------------------------------------------------------------- */
+
+html body .veil-modal-backdrop,
+html body .dossier-backdrop { background: rgba(13, 4, 32, 0.86); backdrop-filter: blur(6px); }
+html body .veil-modal-box,
+html body .dossier-modal.veil-modal-box,
+html body .sheet-modal-box {
+  background: linear-gradient(180deg, rgba(42, 11, 92, 0.5) 0%, rgba(19, 7, 43, 0) 180px), #13072b;
+  border: 1px solid var(--vx-line-strong);
+  border-top: 2px solid var(--vx-accent);
+  border-radius: 0;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+html body .veil-modal-header,
+html body .dossier-modal .veil-modal-header { background: none; border-bottom: 1px solid var(--vx-line-strong); }
+html body .veil-modal-header h3,
+html body .dossier-modal .veil-modal-header h3 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: none;
+}
+html body .modal-close-btn { border-radius: 0; }
+html body .dossier-eyebrow,
+html body .dossier-label { color: var(--vx-light); }
+html body .dossier-hero p,
+html body .dossier-muted { color: var(--text-dim); }
+html body .dossier-seal { border-radius: 0; border-color: var(--vx-line-strong); }
+html body .dossier-resource { background: rgba(42, 11, 92, 0.32); border-color: var(--vx-line); border-radius: 0; }
+html body .dossier-footer { background: #13072b; backdrop-filter: none; border-top-color: var(--vx-line-strong); }
+html body .import-card { border-color: var(--vx-line); border-radius: 0; }
+html body .session-current { background: rgba(42, 11, 92, 0.32); border-color: var(--vx-line); border-radius: 0; }
+html body .help-dialog .help-hero h2 { font-family: var(--font-body); letter-spacing: 0.12em; color: #fff; }
+html body .help-dialog .help-guide-grid h3,
+html body .help-dialog .help-release h3,
+html body .help-dialog .help-shortcuts h3 { color: #fff; letter-spacing: 0.08em; }
+
+/* ---- Paneles flotantes de la mesa ------------------------------------------ */
+
+html body .clock-widget,
+html body #clocks_layer_overlay .clock-widget { border-radius: 0; background: var(--vx-surface); border-color: var(--vx-line-strong); box-shadow: none; }
+html body .layer-hud-container .glass-panel { border-radius: 0; background: var(--vx-surface); border-color: var(--vx-line-strong); }
+
+/* ---- HUD de jugador y de Keeper (solo contenedores) ------------------------ */
+
+html body .vf-player-hud { background: var(--vx-surface); border-left-color: var(--vx-line-strong); box-shadow: none; }
+html body .hud-quick-tab { background: var(--vx-surface); border-color: var(--vx-line-strong); border-radius: 0; }
+html body .vf-keeper-panel { background: var(--vx-surface); border-color: var(--vx-line-strong); border-radius: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); backdrop-filter: none; }
+html body .vf-keeper-hud-toggle { background: var(--vx-surface); border-color: var(--vx-line-strong); border-radius: 0; box-shadow: none; }
+html body .keeper-party-card { background: rgba(42, 11, 92, 0.32); border-color: var(--vx-line); border-radius: 0; }
+
+/* ---- Interior de modales ---------------------------------------------------- */
+
+html body .dossier-body .hud-input { background: rgba(13, 4, 32, 0.75); }
+html body .dossier-thresholds { background: rgba(42, 11, 92, 0.25); border-color: var(--vx-line); border-radius: 0; }
+html body .help-guide-grid article,
+html body .help-release { background: rgba(42, 11, 92, 0.28); border-color: var(--vx-line); border-radius: 0; }
+html body .room-card { background: rgba(42, 11, 92, 0.28); border-color: var(--vx-line); border-radius: 0; }
+html body .room-current,
+html body .room-notice { background: rgba(42, 11, 92, 0.45); border-color: var(--vx-line-strong); border-radius: 0; }
+html body .session-strip { border-color: var(--vx-line); border-radius: 0; }

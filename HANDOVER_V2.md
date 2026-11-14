@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.1.1 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.1.2 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -18,6 +18,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
    - Retícula de líneas finas, celdas numeradas, títulos en mayúsculas muy espaciadas.
    - Lobby con conmutador **Básico / Avanzado**.
    - **NO cambiar los colores que fija `HANDOVER.md`** (dados, Hope, Fear, tokens) sin preguntar antes al usuario.
+4. **El cian se mantiene como color de selección/activo en la mesa.** La paleta violeta se aplica a superficies, líneas y tipografía.
 
 ## Plan por fases
 - **Fase 0 — Estabilización** (**cerrada en v2.0.2**, reglas publicadas): corregir fallos antes de añadir funciones.
@@ -45,7 +46,8 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
   - Conmutador Básico/Avanzado: `setLobbyMode()`, atributo `data-lobby-mode` en la raíz, `localStorage['veil_lobby_mode']`. Lo que lleva la clase `fx-advanced` solo se ve en Avanzado (creador rápido, estadísticas y acciones de fichas del Vault, borrar sala). **Entrar a la mesa nunca es solo de Avanzado** (HANDOVER.md §1).
   - La web de referencia (fates-world.webflow.io) no era accesible desde el entorno de trabajo: el diseño sale de la descripción del usuario y está pendiente de su visto bueno.
   - Sin rediseñar todavía: el interior del creador rápido.
-- **v2.1.1 — Marco de la mesa en violeta**: `src/theme-violet.css` (importado al final en `main.js`) redefine solo variables de superficie (`--bg-*`, `--border-*`, `--text-dim/muted`) y el aspecto de cabecera, barras, paneles, botones y campos. **No redefine** `--cyan-pearl`, `--crimson-fear`, `--purple-void` ni ningún selector de dados, tokens, Hope o Fear (lo comprueba `tests/lobby-visual.test.js`). **Decisión abierta para el usuario**: el cian sigue marcando selección/activo en la mesa; pasarlo a violeta lo confundiría con el Fear (`#d8b4fe`) y el acento `#fde68a` coincide con el Hope. Pendiente de rediseñar: relojes, capas, modales (dossier, salas, sesiones) y HUD de jugador/Keeper.
+- **v2.1.1 — Marco de la mesa en violeta**: `src/theme-violet.css` (importado al final en `main.js`) redefine solo variables de superficie (`--bg-*`, `--border-*`, `--text-dim/muted`) y el aspecto de cabecera, barras, paneles, botones y campos. **No redefine** `--cyan-pearl`, `--crimson-fear`, `--purple-void` ni ningún selector de dados, tokens, Hope o Fear (lo comprueba `tests/lobby-visual.test.js`). **Decisión del usuario (14 nov 2026): el cian se queda como color de selección/activo en la mesa** (pasarlo a violeta lo confundiría con el Fear `#d8b4fe`, y el acento `#fde68a` coincide con el Hope).
+- **v2.1.2 — Modales, paneles flotantes y HUD**: el mismo `theme-violet.css` cubre `veil-modal-*`, `dossier-*`, ayuda, salas, relojes, capas y los contenedores de `vf-player-hud` / `vf-keeper-panel`. El pie sticky de la ficha (HANDOVER.md §4) se conserva; solo cambia su color. Queda por revisar pantalla a pantalla el interior de cada pestaña de la consola lateral y el contenido de los HUD.
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).
 
