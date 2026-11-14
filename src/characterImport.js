@@ -99,7 +99,7 @@ export function characterDetails(token) {
     notes: [['Equipo', f.equipment_notes], ['Notas', f[`${prefix}_quick_notes`]]].filter(([, v]) => v),
     // Corebook ch. 8: who the character answers to, who they are tied to and why they fly.
     affiliations: [['affiliation', 'aff_'], ['aff_2_affiliation', 'aff_2_'], ['aff_3_affiliation', 'aff_3_']]
-      .map(([nameKey, p]) => ({ name: text(f[nameKey]).trim(), standing: text(f[`${p}standing`]).trim(), reputation: text(f[`${p}reputation`]).trim(), callUsed: flag(f[`${p}call`]) }))
+      .map(([nameKey, p]) => ({ name: text(f[nameKey]).trim(), standing: text(f[`${p}standing`]).trim(), reputation: text(f[`${p}reputation`]).trim(), callUsed: flag(f[`${p}call`]), prefix: p }))
       .filter(a => a.name || a.standing || a.reputation),
     affiliationTokens: text(f.aff_tokens).trim(),
     factionNotes: [f.aff_notes, f.aff_faction_notes].map(v => text(v).trim()).filter(Boolean).join('\n\n'),
@@ -109,6 +109,16 @@ export function characterDetails(token) {
     loadoutCap: prefix === 'a' ? text(f.a_loadout_cap).trim() : '',
     vault: prefix === 'a' ? text(f.a_vault).trim() : '',
   };
+}
+// Standing, Reputation and the Call change during play; they live in the imported sheet so
+// exporting back to the creator format keeps them.
+export function setAffiliation(token, prefix, { standing, reputation, callUsed }) {
+  const fields = token.sourceCharacter?.document?.fields;
+  if (!fields || !['aff_', 'aff_2_', 'aff_3_'].includes(prefix)) throw new Error('Esta ficha no tiene esa afiliación.');
+  fields[`${prefix}standing`] = text(standing).trim().slice(0, 40);
+  fields[`${prefix}reputation`] = text(reputation).trim().slice(0, 120);
+  fields[`${prefix}call`] = !!callUsed;
+  return token;
 }
 export function exportSystemCharacter(token) {
   if (!token.sourceCharacter?.document) throw new Error('Este actor no procede del creador de fichas. Exporta el formato VTT.');

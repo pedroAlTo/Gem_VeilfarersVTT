@@ -1,7 +1,7 @@
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { store } from './state.js';
 import { validateActor } from './validation.js';
-import { characterDetails, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
+import { characterDetails, setAffiliation, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
 import { mountEquipmentPanel } from './equipmentUI.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 
@@ -62,8 +62,8 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
         ${d.notes.map(([k, v]) => narrative(k, v)).join('')}
       </div>
       ${hasBackground ? `<div data-panel="background" hidden>
-        <p class="dossier-muted">Datos de la ficha importada (Corebook, cap. 8). Son de consulta: el Standing y las Calls se actualizan en la ficha de origen.</p>
-        ${d.affiliations.length ? `<h4 class="dossier-label">AFILIACIONES Y STANDING</h4><div class="dossier-affiliations">${d.affiliations.map(a => `<article><strong>${e(a.name || 'Sin nombre')}</strong><span>Standing <b>${e(a.standing || '—')}</b></span><span>Reputation <b>${e(a.reputation || '—')}</b></span><span>Call <b>${a.callUsed ? 'usada' : 'disponible'}</b></span></article>`).join('')}</div>` : ''}
+        <p class="dossier-muted">Datos de la ficha importada (Corebook, cap. 8). El Keeper puede actualizar Standing, Reputation y la Call durante la partida; se guardan con la ficha y se conservan al exportar.</p>
+        ${d.affiliations.length ? `<h4 class="dossier-label">AFILIACIONES Y STANDING</h4><div class="dossier-affiliations">${d.affiliations.map((a, i) => `<article><strong>${e(a.name || 'Sin nombre')}</strong><input type="hidden" name="aff_${i}_prefix" value="${e(a.prefix)}"><label>Standing <input class="hud-input" name="aff_${i}_standing" value="${e(a.standing)}" maxlength="40"></label><label>Reputation <input class="hud-input" name="aff_${i}_reputation" value="${e(a.reputation)}" maxlength="120"></label><label class="dossier-check"><input type="checkbox" name="aff_${i}_call" ${a.callUsed ? 'checked' : ''}> Call usada</label></article>`).join('')}</div>` : ''}
         ${d.affiliationTokens ? `<h4 class="dossier-label">TOKENS DE FACCIÓN · ${e(d.affiliationTokens)}</h4>` : ''}
         ${d.factionNotes ? narrative('Notas de facción', d.factionNotes) : ''}
         ${d.connections.length ? `<h4 class="dossier-label">CONEXIONES</h4>${d.connections.map(([k, v]) => narrative(k, v)).join('')}` : ''}
@@ -121,6 +121,8 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
       updated.traits = Object.fromEntries(TRAIT_IDS.map(k => [k, Number(data[`trait_${k}`])]));
       if (token.path === 'Sleeping') updated.resolve = { current: Number(data.resolve_current), max: Number(data.resolve_max), dieType: data.resolve_die };
     }
+    for (let i = 0; `aff_${i}_prefix` in data; i++)
+      setAffiliation(updated, data[`aff_${i}_prefix`], { standing: data[`aff_${i}_standing`], reputation: data[`aff_${i}_reputation`], callUsed: `aff_${i}_call` in data });
     return validateActor(updated);
   };
   const run = action => { try { action(); } catch (err) { modal.querySelector('.dossier-error').textContent = err.message; } };

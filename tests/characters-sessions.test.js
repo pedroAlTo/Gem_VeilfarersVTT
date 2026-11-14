@@ -1,7 +1,7 @@
 import test, { beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { parseCharacterJSON, initializeImportedResources, characterDetails, characterKey, exportSystemCharacter, exportNativeCharacter, TRAIT_IDS } from '../src/characterImport.js';
+import { parseCharacterJSON, initializeImportedResources, characterDetails, setAffiliation, characterKey, exportSystemCharacter, exportNativeCharacter, TRAIT_IDS } from '../src/characterImport.js';
 import { createActor, replaceActorSheet } from '../src/actors.js';
 import { readCampaign, writeCampaign, listCampaigns } from '../src/persistence.js';
 
@@ -192,8 +192,8 @@ test('affiliations with Standing, connections, seeds, loadout and vault are read
   });
   const token = parseCharacterJSON(doc).token, d = characterDetails(token);
   assert.deepEqual(d.affiliations, [
-    { name: 'House Joric', standing: '2', reputation: 'Trusted', callUsed: true },
-    { name: 'Free Traders', standing: '0', reputation: '', callUsed: false },
+    { name: 'House Joric', standing: '2', reputation: 'Trusted', callUsed: true, prefix: 'aff_' },
+    { name: 'Free Traders', standing: '0', reputation: '', callUsed: false, prefix: 'aff_2_' },
   ]);
   assert.equal(d.affiliationTokens, '3'); assert.equal(d.factionNotes, 'Owes the quartermaster.');
   assert.deepEqual(d.connections.map(([k]) => k), ['First Bond', 'Friction']);
@@ -214,7 +214,15 @@ test('the sheet shows a Vínculos tab only when the imported character has that 
   const tab = modal.querySelector('[data-tab="background"]'), panel = modal.querySelector('[data-panel="background"]');
   assert.ok(tab && panel.hidden);
   tab.click(); assert.equal(panel.hidden, false);
-  assert.equal(panel.querySelectorAll('.dossier-affiliations b').length, 3);
+  // The Keeper raises Standing and spends the Call; both survive saving and exporting.
+  panel.querySelector('[name=aff_0_standing]').value = '3';
+  panel.querySelector('[name=aff_0_call]').checked = true;
+  modal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === token.id), after = characterDetails(saved).affiliations[0];
+  assert.equal(after.standing, '3'); assert.equal(after.callUsed, true);
+  assert.equal(exportSystemCharacter(saved).fields.aff_standing, '3');
+  assert.throws(() => setAffiliation(saved, 'name', {}), /afiliación/);
+  assert.throws(() => setAffiliation({ name: 'Local' }, 'aff_', {}), /afiliación/);
   assert.equal(panel.querySelector('.dossier-affiliations strong').textContent, '<b>House Joric</b>');
   assert.match(modal.querySelector('[data-panel="reference"]').textContent, /LOADOUT · 1 \/ 5/);
   assert.match(modal.querySelector('[data-panel="reference"]').textContent, /Spark of Hope/);

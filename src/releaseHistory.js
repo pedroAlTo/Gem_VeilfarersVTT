@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.2.2', date: '2026-11-14', title: 'V2 · Fase 1: Standing, Reputation y Call editables en mesa',
+    sections: [
+      { title: 'Fichas', items: [
+        'En la pestaña Vínculos, el Keeper puede cambiar el Standing y la Reputation de cada afiliación y marcar su Call como usada. Se guarda con Guardar ficha.',
+        'Los cambios se conservan al exportar la ficha al formato del creador.',
+        'Los jugadores ven estos datos en su ficha, sin poder modificarlos.',
+      ] },
+    ],
+  },
+  {
     version: '2.2.1', date: '2026-11-14', title: 'V2 · El lobby encuentra tus salas y avisa si algo falla',
     sections: [
       { title: 'Salas en el lobby', items: [
