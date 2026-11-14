@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.1.1', date: '2026-11-14', title: 'V2 · Marco de la mesa en violeta',
+    sections: [
+      { title: 'Mesa de juego', items: [
+        'El marco de la mesa adopta la dirección visual del lobby: fondo violeta oscuro con retícula fina, cabecera, barra de herramientas y consola lateral con líneas finas y sin esquinas redondeadas, y títulos en mayúsculas espaciadas.',
+        'Botones, campos, pestañas y la barra rápida del token usan las mismas superficies violetas.',
+        'No cambian los colores con significado en juego: dados, Hope, Fear, tokens, barras de recursos ni el cian que marca la herramienta o pestaña activa.',
+      ] },
+    ],
+  },
+  {
     version: '2.1.0', date: '2026-11-14', title: 'V2 · Nuevo lobby: retícula violeta y vista Básico / Avanzado',
     sections: [
       { title: 'Pantalla de acceso y centro de mando', items: [

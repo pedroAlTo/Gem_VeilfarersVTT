@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.1.0**.
-Paquete: `VeilFarers_VTT_v2.1.0.zip`.
+Versión actual del VTT: **v2.1.1**.
+Paquete: `VeilFarers_VTT_v2.1.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.1.1] — 2026-11-14
+
+V2 · Marco de la mesa en violeta
+
+### Mesa de juego
+
+- El marco de la mesa adopta la dirección visual del lobby: fondo violeta oscuro con retícula fina, cabecera, barra de herramientas y consola lateral con líneas finas y sin esquinas redondeadas, y títulos en mayúsculas espaciadas.
+- Botones, campos, pestañas y la barra rápida del token usan las mismas superficies violetas.
+- No cambian los colores con significado en juego: dados, Hope, Fear, tokens, barras de recursos ni el cian que marca la herramienta o pestaña activa.
 
 ## [2.1.0] — 2026-11-14
 

@@ -50,3 +50,12 @@ test('the lobby stylesheet carries the approved violet palette and hides advance
   assert.match(css, /\[data-lobby-mode='basic'\] \.fx-advanced \{ display: none !important; \}/);
   assert.ok(read('../src/main.js').includes("lobby-fates.css"));
 });
+
+test('the violet table theme restyles the frame only and leaves every in-game colour variable alone', () => {
+  const css = read('../src/theme-violet.css');
+  for (const color of ['#0d0420', '#2a0b5c', '#6d28d9', '#c084fc', '#fde68a']) assert.ok(css.includes(color), color);
+  for (const variable of ['--cyan-pearl', '--cyan-glow', '--crimson-fear', '--purple-void', '--amber-warn', '--emerald-tech'])
+    assert.ok(!new RegExp(variable + '\\s*:').test(css), variable + ' must not be redefined');
+  assert.ok(!/vf-callout|vf-results|dice|token-|hope|fear/i.test(css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/token-quickbar/g, '')), 'no dice, token, Hope or Fear selectors');
+  assert.ok(read('../src/main.js').includes("theme-violet.css"));
+});
