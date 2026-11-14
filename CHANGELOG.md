@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.0.1**.
-Paquete: `VeilFarers_VTT_v2.0.1.zip`.
+Versión actual del VTT: **v2.0.2**.
+Paquete: `VeilFarers_VTT_v2.0.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.0.2] — 2026-11-14
+
+V2 · Fase 0: Carga inicial más ligera
+
+### Rendimiento
+
+- El archivo principal de la aplicación baja de 1.316 kB a 888 kB (de 338 kB a 249 kB comprimido): Firebase se sirve en archivos propios que el navegador conserva en caché entre versiones.
+- El módulo de conexión directa entre navegadores (PeerJS, 122 kB) ya no se descarga al abrir la aplicación; solo se carga al crear o unirse a una sesión directa. Las salas en la nube no lo necesitan.
+
+### Dados 3D
+
+- Corregida una referencia con mayúsculas incorrectas (Dice.min.js) que impedía iniciar los dados 3D en servidores que distinguen mayúsculas de minúsculas. Las físicas y los parámetros de los dados no cambian.
 
 ## [2.0.1] — 2026-11-14
 

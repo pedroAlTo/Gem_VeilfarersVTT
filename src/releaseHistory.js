@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.0.2', date: '2026-11-14', title: 'V2 · Fase 0: Carga inicial más ligera',
+    sections: [
+      { title: 'Rendimiento', items: [
+        'El archivo principal de la aplicación baja de 1.316 kB a 888 kB (de 338 kB a 249 kB comprimido): Firebase se sirve en archivos propios que el navegador conserva en caché entre versiones.',
+        'El módulo de conexión directa entre navegadores (PeerJS, 122 kB) ya no se descarga al abrir la aplicación; solo se carga al crear o unirse a una sesión directa. Las salas en la nube no lo necesitan.',
+      ] },
+      { title: 'Dados 3D', items: [
+        'Corregida una referencia con mayúsculas incorrectas (Dice.min.js) que impedía iniciar los dados 3D en servidores que distinguen mayúsculas de minúsculas. Las físicas y los parámetros de los dados no cambian.',
+      ] },
+    ],
+  },
+  {
     version: '2.0.1', date: '2026-11-14', title: 'V2 · Fase 0: Arcos de sala y notas personales en la cuenta',
     sections: [
       { title: 'Cuenta y guardado en la nube', items: [
