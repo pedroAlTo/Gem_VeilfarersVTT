@@ -20,7 +20,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
    - **NO cambiar los colores que fija `HANDOVER.md`** (dados, Hope, Fear, tokens) sin preguntar antes al usuario.
 
 ## Plan por fases
-- **Fase 0 — Estabilización** (**cerrada en v2.0.2**, salvo el despliegue de reglas que hace el usuario): corregir fallos antes de añadir funciones.
+- **Fase 0 — Estabilización** (**cerrada en v2.0.2**, reglas publicadas): corregir fallos antes de añadir funciones.
 - **Fase 1 — Fichas fieles al sistema** (PRIORIDAD): modelo de ficha propio de la VTT (el esquema `veilfarers.character/2` del creador solo se admite como formato de importación manual); ficha según Corebook cap. 8; vistas Básica y Completa; subida de nivel y vault.
 - **Fase 2 — Cuenta de la VTT**: login general solo de la VTT con Firebase Auth (decisión 2); por usuario: sesiones unidas, personajes, notas y datos personales por partida; por sala de Keeper: arcos, mapas y configuración.
 - **Fase 3 — Onboarding e interfaz**: primer uso guiado, modo Básico/Avanzado, rediseño visual estilo FATES en violeta (decisión 3), accesibilidad, carga más rápida.
@@ -43,7 +43,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).
 
 ## Pendiente inmediato
-1. **Desplegar las reglas** (lo hace el usuario): `firebase deploy --only firestore:rules`. Sin esto, en producción siguen fallando los guardados en la nube de personajes y escenas, y no se crean notas ni el índice de arcos.
+1. ~~Desplegar las reglas~~ — **hecho por el usuario el 14 nov 2026** (reglas de v2.0.2, con arcos y notas). Falta comprobarlo en producción: guardar un personaje y una escena con sesión iniciada no debe mostrar el aviso de "guardado solo en este navegador". Si `firestore.rules` vuelve a cambiar, hay que publicarlas otra vez.
 2. **Siguiente: Fase 1 (fichas)**: `characterDetails()` ya lee experiencias, armas y rasgos de clase desde `sourceCharacter.document`; faltan en la ficha afiliación y Standing, conexiones, loadout de poderes, subtraits y Recovery Anchor editable.
 3. Fase 2 (según decisiones 1 y 2): retirar de la VTT el acceso con Netlify Identity (rama `isNetlify` de `src/cloudAccount.js`, que guarda solo en localStorage) y el `character_vault` global de Realtime Database que usa `src/vtt-integration/` (`lobbyGateway.js`, HUDs). **Preguntar al usuario antes de retirarlos**: puede haber cuentas y fichas en uso.
 
