@@ -31,6 +31,8 @@ export class VeilfarersLobbyGateway {
     this.selectedRole = 'player';
     this.selectedCharId = null;
     this.vaultCharacters = {};
+    this.lobbyMode = 'basic';
+    try { this.lobbyMode = localStorage.getItem('veil_lobby_mode') || 'basic'; } catch {}
 
     if (typeof window !== 'undefined') {
       window.vfLobbyGateway = this;
@@ -40,6 +42,7 @@ export class VeilfarersLobbyGateway {
     }
 
     this.injectLobbyDOM();
+    this.setLobbyMode(this.lobbyMode);
     this.bindEvents();
     this.listenAuth();
   }
@@ -115,6 +118,8 @@ export class VeilfarersLobbyGateway {
     }
   }
 
+  // index.html carries the same markup so the portal is visible before scripts load;
+  // tests/lobby-visual.test.js keeps both copies identical.
   injectLobbyDOM() {
     if (typeof document === 'undefined') return;
     if (document.getElementById('vf-lobby-gateway')) return;
@@ -127,12 +132,18 @@ export class VeilfarersLobbyGateway {
       <div id="vf-auth-screen" class="vf-lobby-card auth-card">
         <button type="button" class="vf-btn-close-lobby" id="vf-btn-dismiss-lobby" title="Cerrar y entrar a la mesa VTT">✕</button>
 
-        <div class="vf-brand-header">
-          <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
-          <h1>PORTAL TÁCTICO</h1>
-          <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
+        <div class="fx-cell fx-cell-brand">
+          <span class="fx-num">01</span>
+          <div class="vf-brand-header">
+            <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
+            <h1>PORTAL TÁCTICO</h1>
+            <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
+          </div>
         </div>
 
+        <div class="fx-cell fx-cell-access">
+        <span class="fx-num">02</span>
+        <span class="fx-cell-title">Acceso</span>
         <form id="vf-email-auth-form" class="vf-auth-form">
           <div class="vf-input-group">
             <span class="vf-input-icon">
@@ -170,6 +181,7 @@ export class VeilfarersLobbyGateway {
 
         <p id="vf-auth-error" class="vf-error-msg"></p>
         <div id="vf-auth-info-banner" class="vf-auth-info" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- PANTALLA 2: HUB PRINCIPAL (MODO ENTRADA SIMPLIFICADA) -->
@@ -193,14 +205,22 @@ export class VeilfarersLobbyGateway {
               </div>
             </div>
           </div>
-          <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-logout" title="Desconectar y volver al portal de acceso">
-            <span class="logout-icon">⏻</span> Cerrar Sesión
-          </button>
+          <div class="vf-hub-controls">
+            <div class="vf-mode-switch" role="group" aria-label="Nivel de detalle del lobby">
+              <span class="mode-label">Vista</span>
+              <button type="button" id="vf-mode-basic" class="mode-btn" title="Solo lo necesario para entrar a jugar">Básico</button>
+              <button type="button" id="vf-mode-advanced" class="mode-btn" title="Muestra todas las opciones de gestión">Avanzado</button>
+            </div>
+            <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-logout" title="Desconectar y volver al portal de acceso">
+              <span class="logout-icon">⏻</span> Cerrar Sesión
+            </button>
+          </div>
         </header>
 
         <!-- DOS BOTONES GRANDES HERO: ENTRAR COMO JUGADOR vs KEEPER -->
         <div class="vf-hero-role-selector">
           <button type="button" id="role-btn-player" class="vf-hero-role-card active">
+            <span class="fx-num">01</span>
             <div class="hero-role-header">
               <span class="hero-role-icon">◈</span>
               <span class="hero-role-badge">MODO JUGADOR</span>
@@ -211,6 +231,7 @@ export class VeilfarersLobbyGateway {
           </button>
 
           <button type="button" id="role-btn-keeper" class="vf-hero-role-card">
+            <span class="fx-num">02</span>
             <div class="hero-role-header">
               <span class="hero-role-icon">⚡</span>
               <span class="hero-role-badge">MODO KEEPER</span>
@@ -225,6 +246,7 @@ export class VeilfarersLobbyGateway {
         <div id="vf-player-section" class="vf-hub-section-view">
           <div class="vf-hub-grid">
             <section class="vf-hub-panel">
+              <span class="fx-num">03</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">🛰️</span> SALAS CONECTADAS</h3>
@@ -255,17 +277,18 @@ export class VeilfarersLobbyGateway {
             </section>
 
             <section id="vf-vault-section" class="vf-hub-panel vault-panel">
+              <span class="fx-num">04</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">📂</span> CHARACTER VAULT</h3>
                   <span class="panel-badge">OPERATIVO TÁCTICO</span>
                 </div>
                 <div class="vault-actions">
-                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs">
-                    <span class="btn-icon">+</span> Nuevo
+                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs fx-advanced">
+                    Creador rápido
                   </button>
                   <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
-                    <span class="btn-icon">⬇</span> JSON
+                    Importar ficha JSON
                     <input type="file" id="vf-import-json" accept=".json" style="display:none;" />
                   </label>
                 </div>
@@ -280,6 +303,7 @@ export class VeilfarersLobbyGateway {
         <div id="vf-keeper-section" class="vf-hub-section-view hidden">
           <div class="vf-hub-grid">
             <section class="vf-hub-panel">
+              <span class="fx-num">03</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">⚡</span> TUS SALAS CREADAS</h3>
@@ -293,6 +317,7 @@ export class VeilfarersLobbyGateway {
             </section>
 
             <section class="vf-hub-panel">
+              <span class="fx-num">04</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">🚀</span> CREAR NUEVA SALA</h3>
@@ -394,6 +419,20 @@ export class VeilfarersLobbyGateway {
       </div>
     `;
     document.body.appendChild(root);
+  }
+
+  // Básico shows only what is needed to get into a game; Avanzado adds management options.
+  setLobbyMode(mode) {
+    this.lobbyMode = mode === 'advanced' ? 'advanced' : 'basic';
+    try { localStorage.setItem('veil_lobby_mode', this.lobbyMode); } catch {}
+    const root = document.getElementById('vf-lobby-gateway');
+    if (!root) return;
+    root.dataset.lobbyMode = this.lobbyMode;
+    for (const [id, value] of [['vf-mode-basic', 'basic'], ['vf-mode-advanced', 'advanced']]) {
+      const button = document.getElementById(id);
+      button?.classList.toggle('active', value === this.lobbyMode);
+      button?.setAttribute('aria-pressed', String(value === this.lobbyMode));
+    }
   }
 
   bindEvents() {
@@ -511,6 +550,9 @@ export class VeilfarersLobbyGateway {
       playerSec?.classList.add('hidden');
       this.updateSummaryText();
     });
+
+    document.getElementById('vf-mode-basic')?.addEventListener('click', () => this.setLobbyMode('basic'));
+    document.getElementById('vf-mode-advanced')?.addEventListener('click', () => this.setLobbyMode('advanced'));
 
     // Unirse a sala con código
     document.getElementById('vf-btn-join-code')?.addEventListener('click', () => {
@@ -718,7 +760,7 @@ export class VeilfarersLobbyGateway {
           <button type="button" class="vf-btn vf-btn-launch vf-btn-sm btn-enter-room" data-room-id="${escapeHtml(r.id)}" data-role="keeper" title="Abrir mesa de juego como Director">
             ⚡ Abrir como Keeper
           </button>
-          <button type="button" class="vf-btn vf-btn-danger vf-btn-sm btn-delete-room" data-room-id="${escapeHtml(r.id)}" data-room-name="${escapeHtml(r.name || r.id)}" title="Eliminar sala definitivamente">
+          <button type="button" class="vf-btn vf-btn-danger vf-btn-sm btn-delete-room fx-advanced" data-room-id="${escapeHtml(r.id)}" data-room-name="${escapeHtml(r.name || r.id)}" title="Eliminar sala definitivamente">
             🗑️
           </button>
         </div>
@@ -866,7 +908,7 @@ export class VeilfarersLobbyGateway {
         <div class="vault-empty">
           <div class="vault-empty-icon">📂</div>
           <div class="vault-empty-title">REGISTRO DE OPERATIVOS VACÍO</div>
-          <p>No tienes personajes guardados en este terminal. Pulsa <strong>"+ Nuevo Personaje"</strong> o importa una ficha JSON para comenzar.</p>
+          <p>No tienes personajes guardados en este terminal. Importa una ficha <strong>JSON</strong> para comenzar.</p>
         </div>
       `;
       this.updateSummaryText();
@@ -898,7 +940,7 @@ export class VeilfarersLobbyGateway {
               <span class="meta-divider">•</span>
               <span class="meta-tag">${escapeHtml(st.background || 'Explorador')}</span>
             </div>
-            <div class="vault-card-stats">
+            <div class="vault-card-stats fx-advanced">
               <span class="stat-pill hp" title="Health Points">❤️ <strong>HP:</strong> ${dyn.hp || 0}/${st.maxHp || 6}</span>
               <span class="stat-pill stress" title="Stress Táctico">⚡ <strong>STR:</strong> ${dyn.stress || 0}/${st.maxStress || 6}</span>
               <span class="stat-pill hope" title="Hope / Determinación">✨ <strong>HOP:</strong> ${dyn.hope ?? 2}/${st.maxHope || 6}</span>
@@ -907,7 +949,7 @@ export class VeilfarersLobbyGateway {
             </div>
           </div>
         </div>
-        <div class="vault-card-actions">
+        <div class="vault-card-actions fx-advanced">
           <button type="button" class="vf-btn-sm btn-export-json" title="Exportar Ficha JSON">⬇ JSON</button>
           <button type="button" class="vf-btn-sm btn-delete-char" title="Eliminar Operativo">🗑️</button>
         </div>

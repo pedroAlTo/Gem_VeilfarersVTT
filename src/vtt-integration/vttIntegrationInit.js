@@ -1,6 +1,7 @@
 import { ref, set, onValue } from 'firebase/database';
 import { getFirebaseDatabaseInstance } from './modules/firebaseClient.js';
 import './styles/lobby.css';
+import './styles/lobby-fates.css';
 import { VeilfarersDiceEngine } from './modules/diceEngine3D.js';
 import { VTTDiceSync } from './modules/vttDiceSync.js';
 import { PlayerHudController } from './modules/playerHudController.js';

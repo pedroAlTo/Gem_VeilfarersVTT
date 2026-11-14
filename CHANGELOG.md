@@ -1,10 +1,30 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.0.2**.
-Paquete: `VeilFarers_VTT_v2.0.2.zip`.
+Versión actual del VTT: **v2.1.0**.
+Paquete: `VeilFarers_VTT_v2.1.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.1.0] — 2026-11-14
+
+V2 · Nuevo lobby: retícula violeta y vista Básico / Avanzado
+
+### Pantalla de acceso y centro de mando
+
+- Nueva dirección visual del lobby: fondo violeta oscuro con retícula de líneas finas, celdas numeradas (01, 02…), títulos en mayúsculas muy espaciadas y etiquetas en tipografía monoespaciada. Sin brillos ni esquinas redondeadas.
+- Paleta violeta aprobada: fondo #0d0420, profundo #2a0b5c, medio #6d28d9, luz #c084fc y acento #fde68a. Los colores de juego (dados, Hope, Fear, tokens) no cambian.
+- El portal de acceso se divide en dos celdas: título a la izquierda y formulario de acceso a la derecha. En pantallas estrechas se apilan.
+- Se mantienen los dos grandes accesos ENTRAR COMO JUGADOR y ENTRAR COMO KEEPER, el usuario y el correo conectados, las salas, el código de invitación y la entrada directa a la mesa.
+
+### Vista Básico / Avanzado
+
+- Conmutador en la cabecera del centro de mando. Básico (por defecto) muestra lo necesario para entrar a jugar, con textos de ayuda; Avanzado añade el creador rápido de personaje, las estadísticas y acciones de cada ficha del Vault (exportar, eliminar) y el borrado de salas.
+- La vista elegida se recuerda en el navegador.
+
+### Accesibilidad
+
+- Foco de teclado visible en botones y campos, y sin animaciones cuando el sistema pide movimiento reducido.
 
 ## [2.0.2] — 2026-11-14
 

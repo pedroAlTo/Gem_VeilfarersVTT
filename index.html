@@ -21,12 +21,18 @@
       <div id="vf-auth-screen" class="vf-lobby-card auth-card">
         <button type="button" class="vf-btn-close-lobby" id="vf-btn-dismiss-lobby" title="Cerrar y entrar a la mesa VTT">✕</button>
 
-        <div class="vf-brand-header">
-          <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
-          <h1>PORTAL TÁCTICO</h1>
-          <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
+        <div class="fx-cell fx-cell-brand">
+          <span class="fx-num">01</span>
+          <div class="vf-brand-header">
+            <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
+            <h1>PORTAL TÁCTICO</h1>
+            <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
+          </div>
         </div>
 
+        <div class="fx-cell fx-cell-access">
+        <span class="fx-num">02</span>
+        <span class="fx-cell-title">Acceso</span>
         <form id="vf-email-auth-form" class="vf-auth-form">
           <div class="vf-input-group">
             <span class="vf-input-icon">
@@ -64,6 +70,7 @@
 
         <p id="vf-auth-error" class="vf-error-msg"></p>
         <div id="vf-auth-info-banner" class="vf-auth-info" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- PANTALLA 2: HUB PRINCIPAL (MODO ENTRADA SIMPLIFICADA) -->
@@ -87,14 +94,22 @@
               </div>
             </div>
           </div>
-          <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-logout" title="Desconectar y volver al portal de acceso">
-            <span class="logout-icon">⏻</span> Cerrar Sesión
-          </button>
+          <div class="vf-hub-controls">
+            <div class="vf-mode-switch" role="group" aria-label="Nivel de detalle del lobby">
+              <span class="mode-label">Vista</span>
+              <button type="button" id="vf-mode-basic" class="mode-btn" title="Solo lo necesario para entrar a jugar">Básico</button>
+              <button type="button" id="vf-mode-advanced" class="mode-btn" title="Muestra todas las opciones de gestión">Avanzado</button>
+            </div>
+            <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-logout" title="Desconectar y volver al portal de acceso">
+              <span class="logout-icon">⏻</span> Cerrar Sesión
+            </button>
+          </div>
         </header>
 
         <!-- DOS BOTONES GRANDES HERO: ENTRAR COMO JUGADOR vs KEEPER -->
         <div class="vf-hero-role-selector">
           <button type="button" id="role-btn-player" class="vf-hero-role-card active">
+            <span class="fx-num">01</span>
             <div class="hero-role-header">
               <span class="hero-role-icon">◈</span>
               <span class="hero-role-badge">MODO JUGADOR</span>
@@ -105,6 +120,7 @@
           </button>
 
           <button type="button" id="role-btn-keeper" class="vf-hero-role-card">
+            <span class="fx-num">02</span>
             <div class="hero-role-header">
               <span class="hero-role-icon">⚡</span>
               <span class="hero-role-badge">MODO KEEPER</span>
@@ -118,8 +134,8 @@
         <!-- VISTA DE JUGADOR: SALAS CONECTADAS + UNIRSE CON CÓDIGO + VAULT -->
         <div id="vf-player-section" class="vf-hub-section-view">
           <div class="vf-hub-grid">
-            <!-- Columna 1: Salas conectadas + unirse con código -->
             <section class="vf-hub-panel">
+              <span class="fx-num">03</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">🛰️</span> SALAS CONECTADAS</h3>
@@ -149,19 +165,19 @@
               </button>
             </section>
 
-            <!-- Columna 2: Character Vault para el jugador -->
             <section id="vf-vault-section" class="vf-hub-panel vault-panel">
+              <span class="fx-num">04</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">📂</span> CHARACTER VAULT</h3>
                   <span class="panel-badge">OPERATIVO TÁCTICO</span>
                 </div>
                 <div class="vault-actions">
-                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs">
-                    <span class="btn-icon">+</span> Nuevo
+                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs fx-advanced">
+                    Creador rápido
                   </button>
                   <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
-                    <span class="btn-icon">⬇</span> JSON
+                    Importar ficha JSON
                     <input type="file" id="vf-import-json" accept=".json" style="display:none;" />
                   </label>
                 </div>
@@ -175,8 +191,8 @@
         <!-- VISTA DE KEEPER: SALAS CREADAS + CREAR NUEVA SALA -->
         <div id="vf-keeper-section" class="vf-hub-section-view hidden">
           <div class="vf-hub-grid">
-            <!-- Columna 1: Salas creadas -->
             <section class="vf-hub-panel">
+              <span class="fx-num">03</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">⚡</span> TUS SALAS CREADAS</h3>
@@ -189,8 +205,8 @@
               </div>
             </section>
 
-            <!-- Columna 2: Crear nueva sala -->
             <section class="vf-hub-panel">
+              <span class="fx-num">04</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">🚀</span> CREAR NUEVA SALA</h3>
@@ -230,7 +246,6 @@
             <button type="button" id="vf-btn-close-creator" class="vf-btn vf-btn-close-dialog" title="Cerrar">✕</button>
           </header>
           <form id="vf-creator-form" class="creator-form">
-            <!-- SECCIÓN 1: IDENTIDAD -->
             <div class="creator-section">
               <div class="creator-section-header">
                 <span class="sec-number">01</span>
@@ -249,41 +264,21 @@
               </div>
             </div>
 
-            <!-- SECCIÓN 2: ATRIBUTOS DUALITY -->
             <div class="creator-section">
               <div class="creator-section-header">
                 <span class="sec-number">02</span>
                 <span class="sec-title">MATRIZ DE ATRIBUTOS (DUALITY 2d12)</span>
               </div>
               <div class="creator-attrs-grid">
-                <div class="attr-box">
-                  <span class="attr-code">AGI</span>
-                  <label>Agility <input type="number" id="cr-attr-agility" value="1" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">STR</span>
-                  <label>Strength <input type="number" id="cr-attr-strength" value="0" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">FIN</span>
-                  <label>Finesse <input type="number" id="cr-attr-finesse" value="2" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">INS</span>
-                  <label>Instinct <input type="number" id="cr-attr-instinct" value="1" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">PRE</span>
-                  <label>Presence <input type="number" id="cr-attr-presence" value="0" min="-2" max="5" /></label>
-                </div>
-                <div class="attr-box">
-                  <span class="attr-code">KNO</span>
-                  <label>Knowledge <input type="number" id="cr-attr-knowledge" value="-1" min="-2" max="5" /></label>
-                </div>
+                <div class="attr-box"><span class="attr-code">AGI</span><label>Agility <input type="number" id="cr-attr-agility" value="1" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">STR</span><label>Strength <input type="number" id="cr-attr-strength" value="0" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">FIN</span><label>Finesse <input type="number" id="cr-attr-finesse" value="2" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">INS</span><label>Instinct <input type="number" id="cr-attr-instinct" value="1" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">PRE</span><label>Presence <input type="number" id="cr-attr-presence" value="0" min="-2" max="5" /></label></div>
+                <div class="attr-box"><span class="attr-code">KNO</span><label>Knowledge <input type="number" id="cr-attr-knowledge" value="-1" min="-2" max="5" /></label></div>
               </div>
             </div>
 
-            <!-- SECCIÓN 3: ARMADURA Y SISTEMAS -->
             <div class="creator-section">
               <div class="creator-section-header">
                 <span class="sec-number">03</span>

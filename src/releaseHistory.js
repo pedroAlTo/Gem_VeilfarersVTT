@@ -1,6 +1,24 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.1.0', date: '2026-11-14', title: 'V2 · Nuevo lobby: retícula violeta y vista Básico / Avanzado',
+    sections: [
+      { title: 'Pantalla de acceso y centro de mando', items: [
+        'Nueva dirección visual del lobby: fondo violeta oscuro con retícula de líneas finas, celdas numeradas (01, 02…), títulos en mayúsculas muy espaciadas y etiquetas en tipografía monoespaciada. Sin brillos ni esquinas redondeadas.',
+        'Paleta violeta aprobada: fondo #0d0420, profundo #2a0b5c, medio #6d28d9, luz #c084fc y acento #fde68a. Los colores de juego (dados, Hope, Fear, tokens) no cambian.',
+        'El portal de acceso se divide en dos celdas: título a la izquierda y formulario de acceso a la derecha. En pantallas estrechas se apilan.',
+        'Se mantienen los dos grandes accesos ENTRAR COMO JUGADOR y ENTRAR COMO KEEPER, el usuario y el correo conectados, las salas, el código de invitación y la entrada directa a la mesa.',
+      ] },
+      { title: 'Vista Básico / Avanzado', items: [
+        'Conmutador en la cabecera del centro de mando. Básico (por defecto) muestra lo necesario para entrar a jugar, con textos de ayuda; Avanzado añade el creador rápido de personaje, las estadísticas y acciones de cada ficha del Vault (exportar, eliminar) y el borrado de salas.',
+        'La vista elegida se recuerda en el navegador.',
+      ] },
+      { title: 'Accesibilidad', items: [
+        'Foco de teclado visible en botones y campos, y sin animaciones cuando el sistema pide movimiento reducido.',
+      ] },
+    ],
+  },
+  {
     version: '2.0.2', date: '2026-11-14', title: 'V2 · Fase 0: Carga inicial más ligera',
     sections: [
       { title: 'Rendimiento', items: [

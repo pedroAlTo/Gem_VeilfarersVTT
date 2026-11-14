@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.0.2 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.1.0 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -39,6 +39,12 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
   - Tests: `tests/account-model.test.js` (sin emulador) y ampliaciones en `tests/account.integration.js` y `tests/rooms.integration.js`.
 - **v2.0.2 — Bundle**: `vite.config.js` usa `manualChunks` como función: `firebase-core` (app, auth, util) y `firebase-rtdb` salen de `main` (1.316 kB → 888 kB); Firestore sigue en su chunk bajo demanda (no añadirlo a `manualChunks`). PeerJS se importa de forma diferida en `src/networkManager.js` (`loadPeer()`, solo si no se inyecta `peerFactory` y no es modo LAN). `main` ya solo contiene código propio; reducirlo más exige cargar bajo demanda módulos de interfaz (compendio, nave, editor de escenas), que hoy se importan de forma estática y cruzada desde `main.js`.
 - Dados 3D: `public/assets/3d-dice/world.*.min.js` importaban `./Dice.min.js` y el archivo es `dice.min.js`; corregido (fallaba en servidores Linux).
+- **v2.1.0 — Lobby nuevo (primer bloque de la Fase 3, adelantado a petición del usuario)**:
+  - Estilos en `src/vtt-integration/styles/lobby-fates.css`, cargados encima de `lobby.css` (que no se ha tocado). Todo va bajo `#vf-lobby-gateway` y usa las variables `--fx-*` de la paleta de la decisión 3; reutilizarlas al rediseñar el resto de pantallas.
+  - El marcado del lobby existe **dos veces**: en `index.html` (para que se vea antes de cargar los scripts) y en la plantilla de `lobbyGateway.js`. `tests/lobby-visual.test.js` exige que sean idénticos: cualquier cambio se hace en la plantilla y se copia a `index.html`.
+  - Conmutador Básico/Avanzado: `setLobbyMode()`, atributo `data-lobby-mode` en la raíz, `localStorage['veil_lobby_mode']`. Lo que lleva la clase `fx-advanced` solo se ve en Avanzado (creador rápido, estadísticas y acciones de fichas del Vault, borrar sala). **Entrar a la mesa nunca es solo de Avanzado** (HANDOVER.md §1).
+  - La web de referencia (fates-world.webflow.io) no era accesible desde el entorno de trabajo: el diseño sale de la descripción del usuario y está pendiente de su visto bueno.
+  - Sin rediseñar todavía: la mesa de juego, los HUD, los modales (`roomUI.js`, `sessionLobby.js`, dossier) y el interior del creador rápido.
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).
 
