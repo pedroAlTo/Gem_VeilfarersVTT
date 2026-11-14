@@ -7,14 +7,23 @@
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
 
-Referencias: reglas en `System/` (Corebook 12.06), herramientas del creador en el repo `pedroAlTo/veilfarerscharcreator` (creador de personajes, player tool, ficha, subida de nivel, vault de poderes y equipo).
+Referencias: reglas en `System/` (Corebook 12.06). El repo `pedroAlTo/veilfarerscharcreator` (creador de personajes, player tool, ficha, subida de nivel, vault de poderes y equipo) es **solo referencia** de qué herramientas reimplementar dentro de la VTT.
 Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
+
+## Decisiones de V2 (consolidadas, NO revertir)
+1. **Creador y VTT son proyectos independientes y NO comparten datos.** Sin login común ni vault compartido. El creador solo sirve de referencia de qué herramientas reimplementar dentro de la VTT. **Único punto de contacto: importar a mano un JSON de ficha** (`src/characterImport.js`).
+2. **El login general es solo de la VTT (Firebase Auth).** Datos por usuario: sesiones unidas, personajes y notas por partida. Datos por sala de Keeper: arcos, mapas y configuración.
+3. **Dirección visual aprobada: estilo FATES** (fates-world.webflow.io) **con paleta violeta**:
+   - fondo `#0d0420` · profundo `#2a0b5c` · medio `#6d28d9` · luz `#c084fc` · acento `#fde68a`.
+   - Retícula de líneas finas, celdas numeradas, títulos en mayúsculas muy espaciadas.
+   - Lobby con conmutador **Básico / Avanzado**.
+   - **NO cambiar los colores que fija `HANDOVER.md`** (dados, Hope, Fear, tokens) sin preguntar antes al usuario.
 
 ## Plan por fases
 - **Fase 0 — Estabilización** (en curso): corregir fallos antes de añadir funciones.
-- **Fase 1 — Fichas fieles al sistema** (PRIORIDAD): modelo único `veilfarers.character/2` compartido con el creador; ficha según Corebook cap. 8; vistas Básica y Completa; subida de nivel y vault.
-- **Fase 2 — Cuenta unificada**: login general; por usuario: sesiones unidas, personajes, notas y datos personales por partida; por sala de Keeper: arcos, mapas y configuración.
-- **Fase 3 — Onboarding e interfaz**: primer uso guiado, modo Básico/Avanzado, rediseño visual más espectacular, accesibilidad, carga más rápida.
+- **Fase 1 — Fichas fieles al sistema** (PRIORIDAD): modelo de ficha propio de la VTT (el esquema `veilfarers.character/2` del creador solo se admite como formato de importación manual); ficha según Corebook cap. 8; vistas Básica y Completa; subida de nivel y vault.
+- **Fase 2 — Cuenta de la VTT**: login general solo de la VTT con Firebase Auth (decisión 2); por usuario: sesiones unidas, personajes, notas y datos personales por partida; por sala de Keeper: arcos, mapas y configuración.
+- **Fase 3 — Onboarding e interfaz**: primer uso guiado, modo Básico/Avanzado, rediseño visual estilo FATES en violeta (decisión 3), accesibilidad, carga más rápida.
 
 ## Hecho en la rama V2
 - Overlay de subtítulos de chat por encima de todo (`src/style.css`, `src/subtitleOverlay.js`).
