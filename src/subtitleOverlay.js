@@ -93,6 +93,11 @@ class SubtitleOverlayManager {
       card.style.boxShadow = `0 6px 28px rgba(0, 0, 0, 0.8), 0 0 16px ${color}33`;
     }
 
+    // Keep the overlay as the last child of <body> so it wins ties against
+    // any other max z-index layer injected later (modals, dice canvas, toasts).
+    if (this.root.parentNode !== document.body || document.body.lastElementChild !== this.root) {
+      document.body.appendChild(this.root);
+    }
     this.root.classList.remove('is-hidden');
     this.root.classList.add('is-visible');
 
