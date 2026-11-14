@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.2.1', date: '2026-11-14', title: 'V2 · El lobby encuentra tus salas y avisa si algo falla',
+    sections: [
+      { title: 'Salas en el lobby', items: [
+        'Corregido: al entrar con tu cuenta, el lobby podía mostrar "No tienes salas" aunque existieran. El portal y el sistema de salas usan ahora siempre la misma configuración de Firebase, también cuando faltan las variables de entorno.',
+        'Si la lista de salas no se puede cargar, el lobby lo dice, explica el motivo y ofrece Reintentar, en lugar de mostrar una lista vacía.',
+        'Si no se puede abrir, crear o unirse a una sala, vuelves al lobby con el motivo a la vista; antes te quedabas en una mesa local sin aviso.',
+        'La mesa local y el modo invitado no consultan la nube.',
+      ] },
+    ],
+  },
+  {
     version: '2.2.0', date: '2026-11-14', title: 'V2 · Fase 1: Vínculos, afiliaciones y loadout en la ficha',
     sections: [
       { title: 'Fichas', items: [

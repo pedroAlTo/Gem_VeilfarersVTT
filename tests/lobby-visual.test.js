@@ -61,3 +61,56 @@ test('the violet table theme restyles the frame only and leaves every in-game co
   assert.ok(!/vf-callout|vf-results|vf-dice|texture-pill|duality|hope|fear|token-|\.pip\b|(?<!:not\()\.active/i.test(rules), 'no dice theme, token, Hope, Fear or active-state selectors');
   assert.ok(read('../src/main.js').includes("theme-violet.css"));
 });
+
+test('the portal and the account use one Firebase project, so a signed-in user finds their rooms', async () => {
+  const { getFirebaseConfig, DEFAULT_FIREBASE_CONFIG } = await import('../src/firebaseConfig.js');
+  const client = await import('../src/vtt-integration/modules/firebaseClient.js');
+  assert.equal(client.getFirebaseConfig, getFirebaseConfig);
+  assert.equal(getFirebaseConfig().projectId, DEFAULT_FIREBASE_CONFIG.projectId);
+  const account = read('../src/cloudAccount.js');
+  assert.match(account, /cloudConfig = env \? getFirebaseConfig\(\)/);
+  // Outside the Vite build nothing reaches the cloud by accident.
+  assert.equal((await import('../src/cloudAccount.js')).cloudConfigured, false);
+});
+
+test('a failed room lookup is shown as an error with a retry, never as an empty list', async () => {
+  const { rooms } = await import('../src/roomController.js');
+  const gateway = new VeilfarersLobbyGateway(), original = rooms.service.list;
+  const warn = console.warn; console.warn = () => {};
+  try {
+    await new Promise(r => setTimeout(r, 60)); // let the initial signed-out auth event pass
+    gateway.currentUser = { uid: 'user-1', displayName: 'Pedro' };
+    rooms.service.list = async () => { throw Object.assign(new Error('denied'), { code: 'permission-denied' }); };
+    await gateway.loadRoomsList();
+    const keeperList = document.getElementById('vf-keeper-rooms-list');
+    assert.match(keeperList.textContent, /No se han podido cargar tus salas/);
+    assert.match(keeperList.textContent, /reglas de Firestore/);
+    assert.ok(!/No tienes salas creadas/.test(keeperList.textContent));
+    rooms.service.list = async () => [{ id: 'room_1', name: 'Nave 1', ownerUid: 'user-1', inviteCode: 'NAV-33F44' }];
+    keeperList.querySelector('.btn-retry-rooms').click();
+    await new Promise(r => setTimeout(r, 20));
+    assert.match(keeperList.textContent, /Nave 1/); assert.match(keeperList.textContent, /NAV-33F44/);
+    // A guest never queries the cloud and still gets the local table.
+    let called = false; rooms.service.list = async () => { called = true; return []; };
+    gateway.currentUser = { uid: 'guest_1' };
+    await gateway.loadRoomsList();
+    assert.equal(called, false);
+    assert.match(document.getElementById('vf-player-rooms-list').textContent, /Mesa Principal/);
+  } finally { rooms.service.list = original; console.warn = warn; rooms.unsubscribeStore?.(); }
+});
+
+test('a room that cannot be opened brings the user back to the lobby with the reason', async () => {
+  const { rooms } = await import('../src/roomController.js');
+  const gateway = new VeilfarersLobbyGateway(), enter = rooms.enter, list = rooms.service.list;
+  const warn = console.warn; console.warn = () => {};
+  try {
+    gateway.currentUser = { uid: 'user-1' };
+    rooms.service.list = async () => [];
+    rooms.enter = async () => { throw new Error('La sala ya no existe.'); };
+    gateway.hideLobby();
+    await gateway.runRoomAction(r => r.enter('room_x'), 'No se pudo abrir la sala');
+    assert.ok(!document.getElementById('vf-lobby-gateway').classList.contains('hidden'));
+    const error = document.getElementById('vf-hub-error');
+    assert.equal(error.hidden, false); assert.match(error.textContent, /No se pudo abrir la sala: La sala ya no existe/);
+  } finally { rooms.enter = enter; rooms.service.list = list; console.warn = warn; }
+});

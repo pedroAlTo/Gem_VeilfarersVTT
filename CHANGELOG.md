@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.2.0**.
-Paquete: `VeilFarers_VTT_v2.2.0.zip`.
+Versión actual del VTT: **v2.2.1**.
+Paquete: `VeilFarers_VTT_v2.2.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.2.1] — 2026-11-14
+
+V2 · El lobby encuentra tus salas y avisa si algo falla
+
+### Salas en el lobby
+
+- Corregido: al entrar con tu cuenta, el lobby podía mostrar "No tienes salas" aunque existieran. El portal y el sistema de salas usan ahora siempre la misma configuración de Firebase, también cuando faltan las variables de entorno.
+- Si la lista de salas no se puede cargar, el lobby lo dice, explica el motivo y ofrece Reintentar, en lugar de mostrar una lista vacía.
+- Si no se puede abrir, crear o unirse a una sala, vuelves al lobby con el motivo a la vista; antes te quedabas en una mesa local sin aviso.
+- La mesa local y el modo invitado no consultan la nube.
 
 ## [2.2.0] — 2026-11-14
 

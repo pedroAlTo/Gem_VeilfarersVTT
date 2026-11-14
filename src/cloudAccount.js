@@ -2,15 +2,12 @@ import { LOCAL_ONLY } from './runtimeMode.js';
 import { newId } from './persistence.js';
 import { exportNativeCharacter, parseCharacterJSON, characterKey } from './characterImport.js';
 import { noteEntry } from './accountModel.js';
-export const cloudConfig = {
-  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env?.VITE_FIREBASE_APP_ID || '',
-  databaseURL: import.meta.env?.VITE_FIREBASE_DATABASE_URL || 'https://veilfarers-vtt-default-rtdb.firebaseio.com'
-};
+import { getFirebaseConfig } from './firebaseConfig.js';
+// The portal signs in with getFirebaseConfig(); the account and the rooms must use the very
+// same project, or a signed-in user would see no rooms. Outside the Vite build (tests, scripts)
+// there is no environment, and the cloud stays off unless it is configured explicitly.
+const env = import.meta.env;
+export const cloudConfig = env ? getFirebaseConfig() : { apiKey: '', authDomain: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '', databaseURL: '' };
 export const cloudConfigured = !LOCAL_ONLY && ['apiKey', 'authDomain', 'projectId'].every(k => Boolean(cloudConfig[k]));
 export const storageConfigured = cloudConfigured && Boolean(cloudConfig.storageBucket);
 export function portableCharacter(token) {

@@ -217,6 +217,8 @@ export class VeilfarersLobbyGateway {
           </div>
         </header>
 
+        <p id="vf-hub-error" class="vf-hub-error" role="alert" hidden></p>
+
         <!-- DOS BOTONES GRANDES HERO: ENTRAR COMO JUGADOR vs KEEPER -->
         <div class="vf-hero-role-selector">
           <button type="button" id="role-btn-player" class="vf-hero-role-card active">
@@ -654,14 +656,16 @@ export class VeilfarersLobbyGateway {
     if (playerRoomsEl) playerRoomsEl.innerHTML = '<div class="vf-room-loading">Buscando salas conectadas...</div>';
     if (keeperRoomsEl) keeperRoomsEl.innerHTML = '<div class="vf-room-loading">Buscando tus salas creadas...</div>';
 
-    let allRooms = [];
-    try {
-      const { rooms } = await import('../../roomController.js');
-      if (rooms && rooms.service) {
-        allRooms = await rooms.service.list().catch(() => []);
+    // A failed lookup must never look like "you have no rooms".
+    let allRooms = [], listError = '';
+    if (this.hasCloudAccount()) {
+      try {
+        const { rooms } = await import('../../roomController.js');
+        allRooms = await rooms.service.list();
+      } catch (e) {
+        console.warn('[Lobby] Error al listar salas de Firestore:', e);
+        listError = this.roomErrorText(e);
       }
-    } catch (e) {
-      console.warn('[Lobby] Error al listar salas de Firestore:', e);
     }
 
     // Also get invited/history rooms from local storage
@@ -700,6 +704,55 @@ export class VeilfarersLobbyGateway {
 
     this.renderPlayerRooms(playerRooms);
     this.renderKeeperRooms(keeperRooms);
+    if (listError) this.renderRoomsError(listError, !playerRooms.length);
+  }
+
+  hasCloudAccount() {
+    const uid = this.currentUser?.uid;
+    return !!uid && !String(uid).startsWith('guest_');
+  }
+
+  roomErrorText(error) {
+    if (error?.code === 'permission-denied') return 'Firebase ha rechazado la consulta. Comprueba que las reglas de Firestore están publicadas.';
+    if (error?.code === 'unavailable' || /offline|network/i.test(error?.message || '')) return 'Sin conexión con el servidor. Revisa tu red y vuelve a intentarlo.';
+    return error?.message || 'Error desconocido.';
+  }
+
+  renderRoomsError(message, replacePlayerList = true) {
+    const html = `
+      <div class="vf-room-empty vf-room-error" role="alert">
+        <p>No se han podido cargar tus salas.</p>
+        <small>${escapeHtml(message)}</small>
+        <button type="button" class="vf-btn vf-btn-secondary vf-btn-sm btn-retry-rooms">Reintentar</button>
+      </div>
+    `;
+    for (const [id, replace] of [['vf-player-rooms-list', replacePlayerList], ['vf-keeper-rooms-list', true]]) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (replace) el.innerHTML = html; else el.insertAdjacentHTML('afterbegin', html);
+      el.querySelectorAll('.btn-retry-rooms').forEach(btn => { btn.onclick = () => this.loadRoomsList(); });
+    }
+  }
+
+  // Runs a cloud room action; on failure the user returns to the lobby and is told why.
+  async runRoomAction(action, label) {
+    this.showHubError('');
+    try {
+      const { rooms } = await import('../../roomController.js');
+      await action(rooms);
+    } catch (err) {
+      console.warn(`[Lobby] ${label}:`, err?.message || err);
+      this.showHubScreen();
+      this.showHubError(`${label}: ${this.roomErrorText(err)}`);
+      this.loadRoomsList();
+    }
+  }
+
+  showHubError(message) {
+    const el = document.getElementById('vf-hub-error');
+    if (!el) return;
+    el.textContent = message || '';
+    el.hidden = !message;
   }
 
   renderPlayerRooms(rooms) {
@@ -807,17 +860,9 @@ export class VeilfarersLobbyGateway {
         activeCharId: role === 'keeper' ? null : (this.selectedCharId || null)
       });
     }
-    import('../../roomController.js').then(async ({ rooms }) => {
-      if (rooms) {
-        try {
-          await rooms.enter(roomId);
-        } catch (err) {
-          console.warn('[Lobby] rooms.enter:', err?.message || err);
-        }
-      }
-    }).catch(err => {
-      console.warn('[Lobby] rooms.enter:', err?.message || err);
-    });
+    // The local table and guests never touch the cloud.
+    if (roomId === 'mesa-principal' || !this.hasCloudAccount()) return;
+    this.runRoomAction(rooms => rooms.enter(roomId), 'No se pudo abrir la sala');
   }
 
   joinWithCode(code) {
@@ -839,17 +884,7 @@ export class VeilfarersLobbyGateway {
         activeCharId: this.selectedCharId || null
       });
     }
-    import('../../roomController.js').then(async ({ rooms }) => {
-      if (rooms) {
-        try {
-          await rooms.join(trimmed, this.currentUser?.displayName || 'Viajero');
-        } catch (err) {
-          console.warn('[Lobby] rooms.join:', err?.message || err);
-        }
-      }
-    }).catch(err => {
-      console.warn('[Lobby] rooms.join:', err?.message || err);
-    });
+    this.runRoomAction(rooms => rooms.join(trimmed, this.currentUser?.displayName || 'Viajero'), 'No se pudo entrar con ese código');
   }
 
   createNewRoom(name) {
@@ -867,17 +902,7 @@ export class VeilfarersLobbyGateway {
         activeCharId: null
       });
     }
-    import('../../roomController.js').then(async ({ rooms }) => {
-      if (rooms) {
-        try {
-          await rooms.create(trimmed);
-        } catch (err) {
-          console.warn('[Lobby] rooms.create:', err?.message || err);
-        }
-      }
-    }).catch(err => {
-      console.warn('[Lobby] rooms.create:', err?.message || err);
-    });
+    this.runRoomAction(rooms => rooms.create(trimmed), 'No se pudo crear la sala');
   }
 
   subscribeToUserVault(uid) {

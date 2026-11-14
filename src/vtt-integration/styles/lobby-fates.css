@@ -625,3 +625,18 @@
 #vf-lobby-gateway .vf-room-info { flex: 1 1 auto; min-width: 0; }
 #vf-lobby-gateway .vf-room-card .vf-btn { flex: 0 0 auto; width: auto; }
 #vf-lobby-gateway .vault-actions .vf-btn { white-space: nowrap; }
+
+/* ---- Errores de salas ------------------------------------------------------ */
+
+#vf-lobby-gateway .vf-hub-error {
+  margin: 0;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--fx-line-strong);
+  background: rgba(244, 63, 94, 0.14);
+  color: #fecdd3;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+#vf-lobby-gateway .vf-hub-error[hidden] { display: none; }
+#vf-lobby-gateway .vf-room-error p { color: #fecdd3; }
+#vf-lobby-gateway .vf-room-error .vf-btn { margin-top: 12px; padding: 9px 16px; font-size: 11px; }
