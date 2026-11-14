@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.0.0 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.0.1 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -33,14 +33,18 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 - Importador: acepta versiones 2.8x del creador (`src/characterImport.js`).
 - Hope/Effort usan `hopeMax` / `effortMax` en `src/tokenSheet.js`.
 - Daño a token ajeno limitado a `hp` y `armor` (`src/networkManager.js`).
+- **v2.0.1 — Arcos y notas** (`src/accountModel.js` define las formas; `firestore.rules` aplica los mismos límites):
+  - Notas personales: `users/{uid}/notes/{id}` = `{id, roomId, title, body, updatedAt}`, privadas del autor. API: `account.saveNote(roomId, note)`, `account.listNotes(roomId)`, `account.removeNote(id)`. **Aún sin pantalla** (Fase 2).
+  - Arcos de sala: `rooms/{roomId}/arcs/{id}` = `{id, name, description, sceneIds, order, updatedAt}`, solo el Keeper propietario. Es un **índice derivado**: la fuente de verdad sigue siendo el guardado de campaña (`state.arcs`). `RoomController.persist()` y la entrada del Keeper llaman a `RoomService.syncArcs()`, que solo escribe lo que cambia; `listArcs()` lo lee; `deleteRoom()` lo purga. Con reglas antiguas publicadas se desactiva solo (`arcSyncDisabled`) sin romper el guardado.
+  - Tests: `tests/account-model.test.js` (sin emulador) y ampliaciones en `tests/account.integration.js` y `tests/rooms.integration.js`.
+- Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).
 
 ## Pendiente inmediato
-1. **Desplegar las reglas**: `firebase deploy --only firestore:rules`. Sin esto, los guardados en la nube siguen fallando en producción.
-2. **Ejecutar `npm run test:account` y `npm run test:rooms`** en una máquina con el emulador de Firestore (no se pudo descargar en el entorno donde se escribieron).
-3. Resto de Fase 0: reglas y modelo para arcos y notas personales; prueba de reconexión de jugador; dividir el bundle principal (1,3 MB).
-4. Decidir el login único: propuesta = Firebase Auth en VTT y creador, migrando el vault de Netlify Identity del creador.
-5. Fase 1: `characterDetails()` ya lee experiencias, armas y rasgos de clase desde `sourceCharacter.document`; faltan en la ficha afiliación y Standing, conexiones, loadout de poderes, subtraits y Recovery Anchor editable.
+1. **Desplegar las reglas** (lo hace el usuario): `firebase deploy --only firestore:rules`. Sin esto, en producción siguen fallando los guardados en la nube de personajes y escenas, y no se crean notas ni el índice de arcos.
+2. Resto de Fase 0: dividir el bundle principal (1,3 MB).
+3. Fase 1: `characterDetails()` ya lee experiencias, armas y rasgos de clase desde `sourceCharacter.document`; faltan en la ficha afiliación y Standing, conexiones, loadout de poderes, subtraits y Recovery Anchor editable.
+4. Fase 2 (según decisiones 1 y 2): retirar de la VTT el acceso con Netlify Identity (rama `isNetlify` de `src/cloudAccount.js`, que guarda solo en localStorage) y el `character_vault` global de Realtime Database que usa `src/vtt-integration/` (`lobbyGateway.js`, HUDs). **Preguntar al usuario antes de retirarlos**: puede haber cuentas y fichas en uso.
 
 ## Hallazgos de la auditoría (14 nov 2026)
 - Creador = Netlify Identity; VTT = Firebase Auth con rama `isNetlify` que guarda solo en localStorage.

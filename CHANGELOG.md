@@ -1,10 +1,30 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.0.0**.
-Paquete: `VeilFarers_VTT_v2.0.0.zip`.
+Versión actual del VTT: **v2.0.1**.
+Paquete: `VeilFarers_VTT_v2.0.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.0.1] — 2026-11-14
+
+V2 · Fase 0: Arcos de sala y notas personales en la cuenta
+
+### Cuenta y guardado en la nube
+
+- Notas personales por partida: cada usuario puede guardar notas privadas asociadas a una sala; ni el Keeper ni otros jugadores pueden leerlas (modelo y reglas listos; la pantalla llegará con la cuenta de la Fase 2).
+- Arcos por sala del Keeper: la sala mantiene en la nube un índice de sus arcos (nombre, descripción, escenas y orden) que se actualiza solo al guardar la campaña y escribe únicamente lo que cambia.
+- Al eliminar una sala también se borra su índice de arcos.
+- Si las reglas de Firestore publicadas son anteriores a esta versión, la partida se guarda igual y el índice de arcos se omite sin errores.
+
+### Reglas de Firestore
+
+- Nuevas reglas para rooms/{sala}/arcs (solo el Keeper propietario) y users/{usuario}/notes (solo su autor), con límites de tamaño y campos cerrados. Requiere volver a publicar las reglas.
+
+### Pruebas
+
+- Las pruebas de reglas de cuenta y de salas se han ejecutado en el emulador de Firestore: guardado de personajes y escenas, notas, arcos, reconexión de Keeper y jugador.
+- La reconexión de un jugador con varios tokens asignados conserva el control de todos ellos.
 
 ## [2.0.0] — 2026-11-14
 

@@ -58,6 +58,13 @@ test('rooms belong to accounts; invitation rotation preserves members and kicks 
   await assertFails(player.setMemberStatus(room.id, 'other', 'revoked'));
   await assertFails(dbAPI.updateDoc(player.ref('rooms', room.id), { ownerUid: 'player' }));
   await assertFails(dbAPI.getDocs(player.col('rooms', room.id, 'chunks')));
+  const arc = { id: 'arc_1', name: 'Arco 1', description: '', sceneIds: [], order: 0, updatedAt: Date.now() };
+  await assertSucceeds(dbAPI.setDoc(keeper.ref('rooms', room.id, 'arcs', 'arc_1'), arc));
+  await assertFails(dbAPI.setDoc(keeper.ref('rooms', room.id, 'arcs', 'arc_2'), arc));
+  await assertFails(dbAPI.setDoc(keeper.ref('rooms', room.id, 'arcs', 'arc_1'), { ...arc, secret: true }));
+  await assertFails(dbAPI.setDoc(player.ref('rooms', room.id, 'arcs', 'arc_1'), arc));
+  await assertFails(dbAPI.getDocs(player.col('rooms', room.id, 'arcs')));
+  await assertFails(dbAPI.getDocs(other.col('rooms', room.id, 'arcs')));
   await assertFails(dbAPI.getDocs(player.col('rooms', room.id, 'saves')));
   await keeper.setMemberStatus(room.id, 'player', 'revoked');
   await assertFails(player.getRoom(room.id));
@@ -177,6 +184,14 @@ test('actual Keeper/player controllers preserve movement, assignments, arcs and 
   assert.deepEqual(resumed.store.state.arcs, originalArcs);
   assert.deepEqual(resumed.store.state.maps, originalMaps);
   assert.equal(player.store.state.tokens.find(t => t.id === token.id).x, x);
+  // The Keeper's arc index follows the saved campaign.
+  await until(async () => (await resumed.service.listArcs(room.id)).length === originalArcs.length, 'arc index');
+  resumed.store.createArc({ name: 'Arco 2: Regreso' });
+  await until(async () => (await resumed.service.listArcs(room.id)).some(a => a.name === 'Arco 2: Regreso'), 'new arc indexed');
+  await assertFails(dbAPI.getDocs(player.service.col('rooms', room.id, 'arcs')));
+  // A second token is added to the player's seat; reconnecting must keep both.
+  const second = resumed.store.state.tokens.find(t => t.isPlayer && t.id !== token.id);
+  if (second) { resumed.network.assignToken('game-player', second.id); await until(() => player.store.canEditToken(second.id), 'second assignment'); }
   await player.leave();
   const returned = await controller('game-player');
   localStorage.setItem(activeRoomKey('game-player'), room.id);
@@ -184,6 +199,7 @@ test('actual Keeper/player controllers preserve movement, assignments, arcs and 
   await until(() => returned.store.state.isConnected, 'direct re-entry without invitation');
   assert.equal(returned.store.memberId, 'game-player');
   assert.equal(returned.store.canEditToken(token.id), true);
+  if (second) assert.equal(returned.store.canEditToken(second.id), true, 'every assigned token survives the reconnection');
   const secondTab = await controller('game-player'); await secondTab.enter(room.id);
   await until(() => secondTab.store.state.isConnected, 'second tab');
   assert.equal(resumed.store.state.connectedPeers.filter(p => p.id === 'game-player').length, 1);
@@ -193,4 +209,10 @@ test('actual Keeper/player controllers preserve movement, assignments, arcs and 
   await until(() => !returned.room && !secondTab.room, 'revoked connections leave');
   await until(() => !resumed.store.state.tokens.find(t => t.id === token.id).ownerId, 'revoked token ownership');
   await resumed.leave();
+  const owner = await service('game-keeper');
+  await owner.deleteRoom(room.id);
+  await assertFails(owner.getRoom(room.id));
+  let leftovers;
+  await env.withSecurityRulesDisabled(async ctx => { leftovers = (await dbAPI.getDocs(dbAPI.collection(ctx.firestore(), 'rooms', room.id, 'arcs'))).size; });
+  assert.equal(leftovers, 0, 'deleting a room purges its arc index');
 });

@@ -1,6 +1,24 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.0.1', date: '2026-11-14', title: 'V2 · Fase 0: Arcos de sala y notas personales en la cuenta',
+    sections: [
+      { title: 'Cuenta y guardado en la nube', items: [
+        'Notas personales por partida: cada usuario puede guardar notas privadas asociadas a una sala; ni el Keeper ni otros jugadores pueden leerlas (modelo y reglas listos; la pantalla llegará con la cuenta de la Fase 2).',
+        'Arcos por sala del Keeper: la sala mantiene en la nube un índice de sus arcos (nombre, descripción, escenas y orden) que se actualiza solo al guardar la campaña y escribe únicamente lo que cambia.',
+        'Al eliminar una sala también se borra su índice de arcos.',
+        'Si las reglas de Firestore publicadas son anteriores a esta versión, la partida se guarda igual y el índice de arcos se omite sin errores.',
+      ] },
+      { title: 'Reglas de Firestore', items: [
+        'Nuevas reglas para rooms/{sala}/arcs (solo el Keeper propietario) y users/{usuario}/notes (solo su autor), con límites de tamaño y campos cerrados. Requiere volver a publicar las reglas.',
+      ] },
+      { title: 'Pruebas', items: [
+        'Las pruebas de reglas de cuenta y de salas se han ejecutado en el emulador de Firestore: guardado de personajes y escenas, notas, arcos, reconexión de Keeper y jugador.',
+        'La reconexión de un jugador con varios tokens asignados conserva el control de todos ellos.',
+      ] },
+    ],
+  },
+  {
     version: '2.0.0', date: '2026-11-14', title: 'V2 · Fase 0: Estabilización de guardado, fichas y red',
     sections: [
       { title: 'Chat', items: [

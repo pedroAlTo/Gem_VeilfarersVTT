@@ -1,6 +1,7 @@
 import { LOCAL_ONLY } from './runtimeMode.js';
 import { newId } from './persistence.js';
 import { exportNativeCharacter, parseCharacterJSON, characterKey } from './characterImport.js';
+import { noteEntry } from './accountModel.js';
 export const cloudConfig = {
   apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || '',
   authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || '',
@@ -412,6 +413,30 @@ export class CloudAccount {
         localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
       } catch {}
     }
+  }
+  // Personal notes: private to this account and grouped by room.
+  async listNotes(roomId) { return (await this.list('notes')).filter(n => n.roomId === roomId); }
+  async cacheNotes(uid, change) {
+    try { localStorage.setItem(`veil_notes_${uid}`, JSON.stringify(change(await this.list('notes')))); } catch {}
+  }
+  async saveNote(roomId, note) {
+    const uid = await this.identity(), entry = noteEntry(roomId, note);
+    const local = () => this.cacheNotes(uid, list => [entry, ...list.filter(n => n.id !== entry.id)]);
+    if (this.user?.isNetlify) { await local(); return entry; }
+    try {
+      await this.dbAPI.setDoc(this.dbAPI.doc(this.db, 'users', uid, 'notes', entry.id), entry);
+    } catch (err) {
+      if (err?.code !== 'permission-denied') throw err;
+      this.reportLocalFallback('notes'); await local();
+    }
+    return entry;
+  }
+  async removeNote(id) {
+    const uid = await this.identity();
+    const local = () => this.cacheNotes(uid, list => list.filter(n => n.id !== id));
+    if (this.user?.isNetlify) return local();
+    try { await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'notes', id)); }
+    catch (err) { if (err?.code !== 'permission-denied') throw err; await local(); }
   }
   decodeCharacter(row) { return portableCharacter(parseCharacterJSON(row.payload).token); }
   async savePreferences(values) {
