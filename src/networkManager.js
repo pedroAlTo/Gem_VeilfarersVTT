@@ -1029,6 +1029,8 @@ export class NetworkManager {
         const isDamageApplication = Boolean(data.isDamage && data.attackerId && owns(data.attackerId));
         if (!owns(data.tokenId) && !isDamageApplication) throw new Error('Este token ya no está asignado a ti.');
         if (!validTokenPatch(partial)) throw new Error('El cambio contiene campos de token no permitidos.');
+        // Damage on a token the sender does not own is limited to its HP and Armor.
+        if (!owns(data.tokenId) && Object.keys(partial).some(k => !['hp', 'armor'].includes(k))) throw new Error('Un ataque solo puede cambiar HP y Armor del objetivo.');
         const token = this.store.state.tokens.find((t) => t.id === data.tokenId);
         if (token.mapId !== this.store.state.activeMapId || (data.mapId && data.mapId !== token.mapId) || (data.campaignId && data.campaignId !== this.store.state.campaignId)) throw new Error('La escena ha cambiado. Repite el cambio en la escena actual.');
         for (const k of ['hp', 'armor', 'stress', 'resolve'])

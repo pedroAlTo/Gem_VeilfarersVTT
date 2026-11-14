@@ -243,6 +243,21 @@ test('owner can move, cannot rename or promote their token', async () => {
   );
   assert.equal(actor().name, old);
 });
+test('damage from an owned attacker only changes the HP and Armor of a target the player does not own', async () => {
+  store.state.isHosting = true;
+  network.members.set('player', { name: 'Player' });
+  const attacker = actor(); attacker.ownerId = 'player';
+  const target = store.addToken({ name: 'Raider', isPlayer: false });
+  const fresh = () => store.state.tokens.find((t) => t.id === target.id);
+  const send = (messageId, partial) => network.handleIncomingMessage(
+    { type: 'TOKEN_UPDATE', room: 'ROOM', messageId, tokenId: target.id, attackerId: attacker.id, isDamage: true, partial }, 'player');
+  await send('dmg-1', { hp: { ...fresh().hp, current: fresh().hp.current - 1 } });
+  assert.equal(fresh().hp.current, target.hp.current - 1);
+  const before = structuredClone(fresh());
+  await send('dmg-2', { hp: { ...fresh().hp, current: 0 }, conditions: ['dying'], hope: 6, x: 1, y: 1 });
+  assert.deepEqual(fresh(), before);
+  store.deleteToken(target.id);
+});
 test('all snapshots filter hidden tokens, private clocks and unshared documents', () => {
   actor().hidden = true;
   store.state.clocks[0].isKeeperOnly = true;

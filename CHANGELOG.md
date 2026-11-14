@@ -1,10 +1,34 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.5.0**.
-Paquete: `VeilFarers_VTT_v1.5.0.zip`.
+Versión actual del VTT: **v2.0.0**.
+Paquete: `VeilFarers_VTT_v2.0.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.0.0] — 2026-11-14
+
+V2 · Fase 0: Estabilización de guardado, fichas y red
+
+### Chat
+
+- Los subtítulos de chat en overlay se muestran siempre por encima de cualquier otro elemento (HUD, modales, dados 3D y avisos).
+
+### Cuenta y guardado en la nube
+
+- Guardar un personaje ya guardado actualiza su entrada en lugar de crear un duplicado.
+- Reglas de Firestore corregidas: los personajes admiten actualización y las escenas del Keeper conservan muros, luces, niebla, agua, notas, tokens y arco, con imagen en Firebase Storage o en Cloudinary.
+- Si un guardado no llega a la nube y queda solo en el navegador, la aplicación lo avisa de forma visible.
+- Luz ambiente por defecto corregida al guardar escenas sin valor definido.
+
+### Fichas
+
+- El importador acepta las fichas actuales del creador (versiones 2.8x, esquema veilfarers.character/2) sin aviso de versión.
+- Hope y Effort respetan el máximo de la ficha en la barra rápida y en los controles de recursos.
+
+### Red y permisos
+
+- Al resolver daño contra un token ajeno, el jugador solo puede cambiar HP y Armor del objetivo; el resto de campos queda protegido.
 
 ## [1.5.0] — 2026-11-12
 

@@ -193,7 +193,7 @@ export class TokenHUD {
             <div class="tok-qb-stat-label" style="display: flex; justify-content: space-between; align-items: center;">
               <span>HOPE</span>
               <div style="display: flex; align-items: center; gap: 4px;">
-                <span class="tok-qb-num text-cyan">${token.hope || 0} / 6</span>
+                <span class="tok-qb-num text-cyan">${token.hope || 0} / ${token.hopeMax ?? 6}</span>
                 ${canEdit ? `<button class="hud-btn hud-btn-xs" data-quick-stat="hope" data-delta="-1" style="padding:0 3px; height:16px; line-height:1;">-</button><button class="hud-btn hud-btn-xs hud-btn-cyan" data-quick-stat="hope" data-delta="1" style="padding:0 3px; height:16px; line-height:1;">+</button>` : ''}
               </div>
             </div>
@@ -210,7 +210,7 @@ export class TokenHUD {
             <div class="tok-qb-stat-label" style="display: flex; justify-content: space-between; align-items: center;">
               <span>EFFORT</span>
               <div style="display: flex; align-items: center; gap: 4px;">
-                <span class="tok-qb-num text-amber">${token.effort || 0} / 6</span>
+                <span class="tok-qb-num text-amber">${token.effort || 0} / ${token.effortMax ?? 6}</span>
                 ${canEdit ? `<button class="hud-btn hud-btn-xs" data-quick-stat="hope" data-delta="-1" style="padding:0 3px; height:16px; line-height:1;">-</button><button class="hud-btn hud-btn-xs hud-btn-amber" data-quick-stat="hope" data-delta="1" style="padding:0 3px; height:16px; line-height:1;">+</button>` : ''}
               </div>
             </div>
@@ -405,11 +405,11 @@ export class TokenHUD {
           if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { stress: { ...curTok.stress, current: newS } } });
         } else if (stat === 'hope') {
           if (curTok.path === 'Sleeping') {
-            const newEffort = Math.max(0, Math.min(6, (curTok.effort ?? 0) + delta));
+            const newEffort = Math.max(0, Math.min(curTok.effortMax ?? 6, (curTok.effort ?? 0) + delta));
             store.updateToken(curTok.id, { effort: newEffort });
             if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { effort: newEffort } });
           } else {
-            const newHope = Math.max(0, Math.min(6, (curTok.hope ?? 0) + delta));
+            const newHope = Math.max(0, Math.min(curTok.hopeMax ?? 6, (curTok.hope ?? 0) + delta));
             store.updateToken(curTok.id, { hope: newHope });
             if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hope: newHope } });
           }
@@ -555,7 +555,7 @@ export class TokenHUD {
             sender: token.name,
             type: 'HOPE_MOVE',
             title: `${escapeHTML(token.name)}: Spent 1 Hope on [${act.toUpperCase()}]`,
-            details: `Remaining Hope: ${token.hope - 1} / 6`
+            details: `Remaining Hope: ${token.hope - 1} / ${token.hopeMax ?? 6}`
           });
         } else {
           notify('Not enough Hope remaining (Requires 1 Hope).');
