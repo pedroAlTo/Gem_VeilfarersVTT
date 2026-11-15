@@ -987,6 +987,8 @@ export class NetworkManager {
                 ...t,
                 hp: { ...t.hp, current: newHp },
                 armor: { ...t.armor, current: newArmor },
+                // A Neural hit may mark exactly 1 Stress; nothing else of the target can change.
+                ...(data.stressMark === 1 && t.stress ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? (t.stress.current || 0) + 1, (t.stress.current || 0) + 1) } } : {}),
                 pendingBrace: data.isDirect ? t.pendingBrace : false
               };
             }

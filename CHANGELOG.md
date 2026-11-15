@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.3.1**.
-Paquete: `VeilFarers_VTT_v2.3.1.zip`.
+Versión actual del VTT: **v2.3.2**.
+Paquete: `VeilFarers_VTT_v2.3.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.3.2] — 2026-11-15
+
+V2 · Daño: Penetración por tipo de daño
+
+### Resolución de daño
+
+- Penetración según el Corebook (cap. 10): el daño Energy baja 2 los umbrales Major y Severe del objetivo para ese impacto; Void y Neural los bajan 4. Physical no los cambia. La Penetración no ignora la armadura.
+- El tipo de daño se toma del arma o de la expresión (por ejemplo "1d8 ene." o "1d10 void") y se puede elegir a mano en Opciones avanzadas.
+- La armadura Reflective anula la Penetración de Energy y un Ward anula la de Void y Neural. La armadura Reflective del objetivo se detecta sola; el Ward se marca en Opciones avanzadas.
+- Un impacto Neural marca además 1 Stress al objetivo.
+- El Overkill (1 HP extra por cada 10 puntos sobre Severe) cuenta desde el umbral ya reducido. El resultado muestra los umbrales originales y los aplicados al impacto.
+- Se pueden gastar tantos Armor Slots como haya disponibles para mitigar un mismo impacto.
 
 ## [2.3.1] — 2026-11-15
 

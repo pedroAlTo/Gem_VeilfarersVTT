@@ -4,13 +4,13 @@ import { dossierDialog } from './dossierUI.js';
 // src/diceRoller.js
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
-import { rollVeilfarersCheck, resolveDamage, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { rollVeilfarersCheck, resolveDamage, damageTypeOf, DAMAGE_TYPES, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { notify, sanitizeHTML, escapeHTML } from './ui.js';
 import { characterDetails } from './characterImport.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
-import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression } from './equipment.js';
+import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses } from './equipment.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -553,6 +553,11 @@ export class DiceRollerSidebar {
             <summary class="dmg-advanced-summary">⚙️ Opciones avanzadas y dados manuales</summary>
             <div class="dmg-advanced-body">
               <label class="dossier-field"><span>Expresión completa</span><input id="dmg_formula" class="hud-input" maxlength="1000" placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"></label>
+              <label class="dossier-field"><span>Tipo de daño · Penetración</span><vf-select class="hud-select" id="dmg_damage_type"><option value="auto" selected>Automático · según el arma</option><option value="physical">Physical · 0</option><option value="energy">Energy · −2 a los umbrales</option><option value="void">Void · −4 a los umbrales</option><option value="neural">Neural · −4 y +1 Stress</option></vf-select></label>
+              <div class="form-row">
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_reflective" /><span>Objetivo con armadura Reflective (anula Energy)</span></label>
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_warded" /><span>Objetivo con Ward (anula Void y Neural)</span></label>
+              </div>
               <label class="dossier-field"><span>Impacto del arma</span><vf-select class="hud-select" id="dmg_impact_type">${Object.entries(IMPACT_TYPES).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}</vf-select></label>
               <div class="form-row">
                 <div class="form-group"><label>Proficiency</label><input type="number" id="dmg_proficiency" value="1" min="1" max="6" class="hud-input" /></div>
@@ -1200,6 +1205,13 @@ export class DiceRollerSidebar {
     const major = parseInt(majorInput.value, 10);
     const severe = parseInt(severeInput.value, 10);
     const useArmor = this.container.querySelector('#dmg_use_armor').checked;
+    // Defences found on the target are ticked for the Keeper; they can still be changed by hand.
+    const reflectiveInput = this.container.querySelector('#dmg_target_reflective'), wardedInput = this.container.querySelector('#dmg_target_warded');
+    if (targetToken && this.defencesReadFor !== targetToken.id) {
+      const found = targetDefenses(targetToken);
+      reflectiveInput.checked = found.reflective; wardedInput.checked = found.warded;
+      this.defencesReadFor = targetToken.id;
+    }
     const isCritical = this.container.querySelector('#dmg_is_critical').checked;
     const isDirect = this.container.querySelector('#dmg_is_direct').checked;
     const mr = 1;
@@ -1215,6 +1227,9 @@ export class DiceRollerSidebar {
         formula = this.container.querySelector('#dmg_formula').value.trim();
       }
     }
+    const chosenType = this.container.querySelector('#dmg_damage_type').value;
+    const activeWeapon = this.currentActor && wSelect?.value ? (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value) : null;
+    const damageType = chosenType && chosenType !== 'auto' ? chosenType : damageTypeOf(formula || activeWeapon || '');
     if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
     const damageOptions = {
       attackerName: this.currentActor?.name || 'Attacker',
@@ -1231,6 +1246,9 @@ export class DiceRollerSidebar {
       currentArmorSlots: targetToken?.armor?.current ?? 2,
       mountRating: mr,
       proficiency, honed,
+      damageType,
+      targetReflective: reflectiveInput.checked,
+      targetWarded: wardedInput.checked,
     };
     let dmgResult;
     try { dmgResult = formula ? resolveDamageExpression(formula, damageOptions) : resolveDamage(damageOptions); }
@@ -1244,7 +1262,11 @@ export class DiceRollerSidebar {
     this.container.querySelector('#dmg_hp_loss_val').textContent = `${dmgResult.finalHpDamage} HP`;
 
     const detailText = (formula ? formula + ' · ' : '') + `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
-      `Compared to Major (${major}) & Severe (${severe}). ` +
+      (dmgResult.penetration
+        ? `${DAMAGE_TYPES[dmgResult.damageType]} · Penetración −${dmgResult.penetration}: umbrales ${major}/${severe} → ${dmgResult.effectiveMajor}/${dmgResult.effectiveSevere} para este impacto. `
+        : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
+      (dmgResult.stressMarked ? 'Neural: +1 Stress. ' : '') +
+      `Compared to Major (${dmgResult.effectiveMajor}) & Severe (${dmgResult.effectiveSevere}). ` +
       (dmgResult.armorSlotSpent ? '1 Armor Slot spent to lower severity step.' : 'No armor slot used.');
     const secret = this.rollVisibility() === 'keeper';
     this.secretDamage = secret;
@@ -1305,7 +1327,10 @@ export class DiceRollerSidebar {
           targetSevereThreshold: targetToken.hp.severeThreshold ?? severe,
           isDirectDamage: isDirect,
           useArmorSlot: spentShields > 0,
-          currentArmorSlots: targetToken.armor?.current || 0
+          currentArmorSlots: targetToken.armor?.current || 0,
+          damageType: dmgResult.damageType,
+          targetReflective: damageOptions.targetReflective,
+          targetWarded: damageOptions.targetWarded
         });
 
         // Each shield spent absorbs damage/reduces severity
@@ -1319,6 +1344,9 @@ export class DiceRollerSidebar {
         const attacker = store.state.tokens.find(t => t.id === attackerId && t.mapId === damageMapId);
         const hpLost = targetToken.hp.current - newHp;
         const armorLost = currentArmor - newArmor;
+        // Neural: 1 Stress on top of the HP, capped by the target's Stress track.
+        const stressMark = currentDamage.stressMarked && targetToken.stress ? 1 : 0;
+        const withStress = t => stressMark ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? t.stress.current + 1, (t.stress.current || 0) + 1) } } : {};
 
         const damagePayload = {
           type: 'APPLY_DAMAGE',
@@ -1329,6 +1357,7 @@ export class DiceRollerSidebar {
           hpLoss: hpLost,
           armorLoss: armorLost,
           spentShields,
+          stressMark,
           isDirect,
           isCritical,
           rawDamage: dmgResult.rawDamage,
@@ -1347,7 +1376,8 @@ export class DiceRollerSidebar {
                 ...t,
                 hp: { ...t.hp, current: newHp },
                 pendingBrace: isDirect ? t.pendingBrace : false,
-                armor: { ...t.armor, current: newArmor }
+                armor: { ...t.armor, current: newArmor },
+                ...withStress(t)
               } : t)
             });
           } finally {
@@ -1357,7 +1387,8 @@ export class DiceRollerSidebar {
           store.updateToken(targetToken.id, {
             hp: { ...targetToken.hp, current: newHp },
             pendingBrace: isDirect ? targetToken.pendingBrace : false,
-            armor: { ...targetToken.armor, current: newArmor }
+            armor: { ...targetToken.armor, current: newArmor },
+            ...withStress(targetToken)
           });
         }
 

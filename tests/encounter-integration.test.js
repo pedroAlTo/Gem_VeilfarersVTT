@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { loadEncounters } from '../scripts/encounter-library.mjs';
 import { createActor } from '../src/actors.js';
+import { resolveDamage, damageTypeOf } from '../src/rulesEngine.js';
 const dom = new JSDOM('<body></body>', { url:'http://localhost/' });
 for (const key of ['window','document','HTMLElement','customElements','MutationObserver','localStorage','Event','CustomEvent','FormData']) globalThis[key] = dom.window[key];
 const { store } = await import('../src/state.js'); await store.ready;
@@ -86,6 +87,47 @@ test('a hit below the Major Threshold marks 1 HP; Armor is never spent unless th
   node.querySelector('#apply_dmg_to_target_btn').click();
   const after=store.state.tokens.find(t=>t.id===target.id);
   assert.equal(after.hp.current,5);assert.equal(after.armor.current,3);
+});
+test('Penetration lowers both thresholds for the hit; Reflective and Wards cancel it; Neural marks 1 Stress (Corebook ch. 10)', () => {
+  const hit=o=>resolveDamage({diceCount:0,flatModifier:8,targetMajorThreshold:10,targetSevereThreshold:16,...o});
+  assert.deepEqual([hit({}).baseSeverity,hit({}).rawHpDamage],['Minor',1]);
+  const energy=hit({damageType:'energy'});assert.deepEqual([energy.effectiveMajor,energy.effectiveSevere,energy.baseSeverity,energy.rawHpDamage],[8,14,'Major',2]);
+  assert.equal(hit({damageType:'energy',targetReflective:true}).baseSeverity,'Minor');
+  assert.equal(hit({damageType:'energy',targetWarded:true}).baseSeverity,'Major','a Ward does nothing against Energy');
+  const voidHit=resolveDamage({diceCount:0,flatModifier:12,targetMajorThreshold:10,targetSevereThreshold:16,damageType:'void'});
+  assert.deepEqual([voidHit.effectiveSevere,voidHit.baseSeverity,voidHit.rawHpDamage],[12,'Severe',3]);
+  assert.equal(resolveDamage({diceCount:0,flatModifier:12,targetMajorThreshold:10,targetSevereThreshold:16,damageType:'void',targetWarded:true}).baseSeverity,'Major');
+  // Overkill counts from the lowered Severe Threshold.
+  assert.equal(resolveDamage({diceCount:0,flatModifier:22,targetMajorThreshold:10,targetSevereThreshold:16,damageType:'void'}).rawHpDamage,4);
+  assert.equal(hit({damageType:'neural'}).stressMarked,1);assert.equal(hit({damageType:'void'}).stressMarked,0);
+  // Direct damage ignores thresholds, so it ignores Penetration too. Thresholds never drop below 1.
+  assert.equal(hit({damageType:'void',isDirectDamage:true}).penetration,0);
+  assert.equal(resolveDamage({diceCount:0,flatModifier:1,targetMajorThreshold:2,targetSevereThreshold:4,damageType:'void'}).effectiveMajor,1);
+  assert.deepEqual(['1d8 ene.','1d10 Void','2d6 Phys','Neural lash 1d6',{damageType:'Energy'},'1d8'].map(damageTypeOf),['energy','void','physical','neural','energy','physical']);
+});
+test('the damage panel reads the weapon type and the target armor: an Energy rifle against Reflective armor loses its Penetration', () => {
+  const {node,dice,target}=damagePanel();window.veilCanvas={triggerAttackFX:()=>{}};network.broadcast=()=>{};
+  store.updateToken(target.id,{hp:{current:6,max:6,majorThreshold:10,severeThreshold:16},armor:{current:3,max:3},stress:{current:0,max:6}});
+  node.querySelector('#dmg_formula').value='8 ene.';
+  dice.executeDamageCalc();
+  assert.equal(node.querySelector('#dmg_severity_val').textContent,'Major');assert.equal(node.querySelector('#dmg_hp_loss_val').textContent,'2 HP');
+  assert.match(node.querySelector('#dmg_detail_text').textContent,/Energy · Penetración −2: umbrales 10\/16 → 8\/14/);
+  node.querySelector('#apply_dmg_to_target_btn').click();
+  assert.equal(store.state.tokens.find(t=>t.id===target.id).hp.current,4,'applied with the same lowered thresholds');
+  // Same hit against Reflective armor: found on the target, no Penetration.
+  node.remove();store.listeners.clear();
+  const second=damagePanel();
+  store.updateToken(second.target.id,{hp:{current:6,max:6,majorThreshold:10,severeThreshold:16},armor:{current:3,max:3},inventory:{weapons:[],items:[{id:'a1',name:'Mirror Weave',quantity:'1',tier:'',use:'Reflective: anula la penetración de Energía.'}]}});
+  second.node.querySelector('#dmg_formula').value='8 ene.';
+  second.dice.executeDamageCalc();
+  assert.equal(second.node.querySelector('#dmg_target_reflective').checked,true);
+  assert.equal(second.node.querySelector('#dmg_severity_val').textContent,'Minor');
+  // Neural, chosen by hand: 1 HP and 1 Stress.
+  second.node.querySelector('#dmg_damage_type').value='neural';second.node.querySelector('#dmg_formula').value='3';
+  store.updateToken(second.target.id,{stress:{current:0,max:6}});
+  second.dice.executeDamageCalc();second.node.querySelector('#apply_dmg_to_target_btn').click();
+  const after=store.state.tokens.find(t=>t.id===second.target.id);
+  assert.equal(after.stress.current,1);assert.equal(after.hp.current,5);
 });
 test('Armor exhausted between preview and apply does not produce a shield; secret impact is not broadcast', () => {
   const {node,dice,target}=damagePanel({secret:true});const effects=[],sent=[];window.veilCanvas={triggerAttackFX:p=>effects.push(p)};network.broadcast=msg=>sent.push(msg);

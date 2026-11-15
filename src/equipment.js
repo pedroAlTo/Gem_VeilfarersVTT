@@ -35,7 +35,7 @@ export function validateInventory(value) {
 export function parseDamageExpression(expression) {
   const error = () => { throw new Error('Usa dados y modificadores (ej.: 2d8+1 o 1d8+1+1d4). Elige una alternativa y resuelve las propiedades especiales según su texto.'); };
   if (typeof expression !== 'string' || expression.length > 1000) return error();
-  const clean = expression.toLowerCase().replaceAll('−', '-').replace(/\b(?:physical|phys|energy|ene|shock|fire|cold|psychic|void|kinetic|sonic|acid)\b\.?/g, '').replace(/\s/g, '');
+  const clean = expression.toLowerCase().replaceAll('−', '-').replace(/\b(?:physical|phys|energy|ene|shock|fire|cold|psychic|void|neural|kinetic|sonic|acid)\b\.?/g, '').replace(/\s/g, '');
   const terms = [...clean.matchAll(/([+-]?)(?:(\d*)d(\d+)|(\d+))/g)];
   if (!terms.length || terms.map(m => m[0]).join('') !== clean || terms.slice(1).some(m => !m[1])) return error();
   const pools = []; let flat = 0;
@@ -68,4 +68,13 @@ export function resolveDamageExpression(expression, options = {}) {
   const flatModifier = parsed.flat + honed;
   const result = resolveDamage({ ...options, diceCount: 0, flatModifier: diceTotal + flatModifier, mountRating: 1 });
   return { ...result, rolls, flatModifier, formula: expression, pools };
+}
+
+// What the target has against Penetration (Corebook ch. 10): Reflective armor cancels
+// Energy; a Ward cancels Void and Neural.
+export function targetDefenses(token) {
+  if (!token) return { reflective: false, warded: false };
+  const f = token.sourceCharacter?.document?.fields || {};
+  const armorText = [...(token.inventory?.items || []).map(i => `${i.name} ${i.use}`), f.armor_name, f.armor_feat, f.armor_mods].join(' ');
+  return { reflective: /\breflective\b/i.test(armorText), warded: token.voidWard === true };
 }
