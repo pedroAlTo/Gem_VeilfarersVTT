@@ -1,7 +1,8 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { applyLevelUp, experienceSlots, levelGrants, optionBlocked, tierOf, isTierAchievement, ADVANCEMENT_OPTIONS } from '../src/advancement.js';
+import { CREATOR_DATA as data } from '../src/creator/creatorData.js';
+import { availablePowers, multiclassChoices, nextSubclassFeature, powerDomains, applyLevelUp, experienceSlots, levelGrants, optionBlocked, tierOf, isTierAchievement, ADVANCEMENT_OPTIONS } from '../src/advancement.js';
 
 const pc = (extra = {}) => ({
   name: 'Maren', isPlayer: true, actorType: 'player', path: 'Awakened', level: 1, proficiency: 1, evasion: 10, x: 0, y: 0,
@@ -94,7 +95,7 @@ test('Experiences stop at +5 and the level-up dialog applies the choices to the 
   store.state.userRole = 'keeper'; store.sessionRole = 'local';
   const actor = createActor(pc(), store.state.activeMapId); store.state.tokens.push(actor);
   assert.equal(canLevelUp(actor), true);
-  const modal = openLevelUp(actor.id), form = modal.querySelector('form');
+  const modal = await openLevelUp(actor.id), form = modal.querySelector('form');
   assert.match(modal.textContent, /1 → 2/); assert.match(modal.querySelector('.level-grants').textContent, /Proficiency/);
   const submit = () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   form.elements.slot_0.value = 'trait'; form.elements.slot_0.onchange();
@@ -109,4 +110,51 @@ test('Experiences stop at +5 and the level-up dialog applies the choices to the 
   assert.equal(document.querySelector('.level-up-dialog'), null);
   store.state.userRole = 'player';
   assert.equal(canLevelUp(saved), false, 'only the Keeper levels characters up');
+});
+
+const pilot = (extra = {}) => pc({ characterClass: 'Pilot', subclass: 'Void Runner', sheetFields: { a_exp_0: 'Lane rat', a_exp_0_bonus: '+2', a_exp_1: 'Fleet lifer', a_exp_1_bonus: '+2', a_domain_ref: 'Void & Tech', a_pwr_0_n: 'Slipstream Jolt', a_vault: '', a_loadout_cap: '5' }, ...extra });
+
+test('a new Power is chosen from the character Domains at a level it can reach, never one it already has, and enters the Vault', () => {
+  const at1 = pilot();
+  assert.deepEqual(powerDomains(at1, data).sort(), ['Tech', 'Void']);
+  const options = availablePowers(at1, data);
+  assert.ok(options.length > 0 && options.every(p => ['Void', 'Tech'].includes(p.d) && p.l <= 2));
+  assert.ok(!options.some(p => p.n === 'Slipstream Jolt'), 'already in the Loadout');
+  const chosen = options[0];
+  const { token, summary } = applyLevelUp(at1, { data, picks: [{ id: 'power', powerId: `${chosen.d}::${chosen.n}` }, { id: 'hp' }], achievementExperiences: ['a_exp_0', 'a_exp_1'] });
+  assert.match(token.sheetFields.a_vault, new RegExp(chosen.n)); assert.match(summary.join(' '), /Nuevo Poder al Vault/);
+  assert.ok(!availablePowers(token, data).some(p => p.n === chosen.n), 'no duplicates');
+  assert.throws(() => applyLevelUp(at1, { data, picks: [{ id: 'power', powerId: 'Lux::Nope' }, { id: 'hp' }], achievementExperiences: ['a_exp_0', 'a_exp_1'] }), /Poder disponible/);
+});
+
+test('a Tier Achievement or a Slot can add a new Experience at +2 instead of raising two; five is the limit', () => {
+  const { token } = applyLevelUp(pilot(), { data, picks: [{ id: 'hp' }, { id: 'stress' }], achievementExperiences: ['a_exp_0'], achievementNewExperience: 'Storm survivor' });
+  assert.deepEqual(experienceSlots(token).map(x => [x.name, x.bonus]), [['Lane rat', 3], ['Fleet lifer', 2], ['Storm survivor', 2]]);
+  assert.throws(() => applyLevelUp(pilot(), { data, picks: [{ id: 'hp' }, { id: 'stress' }], achievementExperiences: ['a_exp_0'], achievementNewExperience: 'lane rat' }), /ya existe/);
+  const full = pilot({ level: 2, sheetFields: Object.fromEntries([0, 1, 2, 3, 4].flatMap(i => [[`a_exp_${i}`, `E${i}`], [`a_exp_${i}_bonus`, '+2']])) });
+  assert.throws(() => applyLevelUp(full, { data, picks: [{ id: 'experiences', experiences: ['a_exp_0'], newExperience: 'Sixth' }, { id: 'hp' }] }), /máximo cinco/);
+});
+
+test('Multiclass adds a second Class with a genuinely new Domain at half level; Subclass upgrades grant the full feature; Loadout grows with the Tier', () => {
+  const at4 = pilot({ level: 4 });
+  const choices = multiclassChoices(at4, data);
+  assert.ok(!choices.some(c => c.name === 'Pilot'));
+  const mystic = choices.find(c => c.id === 'mystic');
+  assert.ok(mystic.domains.includes('Neural') && !mystic.domains.includes('Void'), 'Void is already a Pilot Domain');
+  const pick = { id: 'multiclass', classId: 'mystic', domain: 'Neural', answer: 'I felt the storm speak.' };
+  assert.throws(() => applyLevelUp(at4, { data, picks: [{ ...pick, domain: 'Void' }], achievementExperiences: ['a_exp_0', 'a_exp_1'] }), /Dominio nuevo/);
+  assert.throws(() => applyLevelUp(at4, { data, picks: [{ ...pick, answer: ' ' }], achievementExperiences: ['a_exp_0', 'a_exp_1'] }), /pregunta de trasfondo/);
+  const { token } = applyLevelUp(at4, { data, picks: [pick], achievementExperiences: ['a_exp_0', 'a_exp_1'] });
+  assert.deepEqual([token.level, token.advancement.multiclass.className, token.sheetFields.multiclass], [5, 'Mystic', 'Mystic']);
+  assert.equal(token.sheetFields.a_loadout_cap, '6', 'Tier 2 carries six Powers');
+  assert.deepEqual(powerDomains(token, data).sort(), ['Neural', 'Tech', 'Void']);
+  const next = availablePowers(token, data);
+  assert.ok(next.filter(p => p.d === 'Neural').every(p => p.l <= 3), 'level 6: the multiclass Domain reaches half, rounded up');
+  assert.ok(next.some(p => p.d === 'Void' && p.l > 3));
+  // Subclass: Specialization at Tier 2, with the feature text on the sheet.
+  assert.equal(nextSubclassFeature(token, data).rank, 'Specialization');
+  const upgraded = applyLevelUp(token, { data, picks: [{ id: 'subclass' }] }).token;
+  const feature = data.classes.find(c => c.id === 'pilot').awakenedSubclasses.find(s => s.name === 'Void Runner').specialization;
+  assert.ok(upgraded.sheetFields.features.includes(feature.name)); assert.equal(upgraded.sheetFields.subclass_rank, 'Specialization');
+  assert.equal(nextSubclassFeature(upgraded, data).rank, 'Mastery');
 });

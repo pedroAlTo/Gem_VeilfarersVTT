@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CREATOR_DATA as data } from '../src/creator/creatorData.js';
-import { freshState, setChoice, isStepReady, firstIncompleteStep, characterDomains, levelOnePowers, powerId, equipmentChoices, equipmentEligibility, spend, buildSheetDocument, subclassList, classRules, CREATOR_STEPS, TRAIT_ARRAY, EQUIP_BUDGET } from '../src/creator/creatorModel.js';
+import { affiliationStatus, experienceCount, freshState, setChoice, isStepReady, firstIncompleteStep, characterDomains, levelOnePowers, powerId, equipmentChoices, equipmentEligibility, spend, buildSheetDocument, subclassList, classRules, CREATOR_STEPS, TRAIT_ARRAY, EQUIP_BUDGET } from '../src/creator/creatorModel.js';
 import { parseCharacterJSON, characterDetails } from '../src/characterImport.js';
 import { tokenInventory } from '../src/equipment.js';
 import { weaponRangeBand } from '../src/attackFlow.js';
@@ -43,7 +43,9 @@ test('each step is ready only when its choice is complete, and later choices res
   s.traits = { agility: 2, strength: 2, finesse: 1, instinct: 0, presence: 0, knowledge: -1 };
   assert.equal(isStepReady(s, 4, data), false, 'the array must be used exactly once');
   s.traits.strength = 1; assert.equal(isStepReady(s, 4, data), true);
-  s.experiences = ['A', 'B', ' ']; assert.equal(isStepReady(s, 5, data), false);
+  s.experiences = ['A', ' ', '']; assert.equal(isStepReady(s, 5, data), false);
+  s.experiences = ['A', 'B', '']; assert.equal(isStepReady(s, 5, data), true, 'Awakened: two Experiences');
+  assert.equal(isStepReady({ ...s, path: 'Sleeping' }, 5, data), false, 'Sleeping: three Experiences');
   s.powers = ['x']; s.weapons = ['y'];
   s = pick(s, 'cls', 'pilot');
   assert.deepEqual([s.subclass, s.powers, s.weapons], [null, [], []]);
@@ -72,8 +74,11 @@ test('starting equipment respects the class Technology Access and the 4-credit b
   assert.match(equipmentEligibility(data.weapons.find(w => w.category === 'Rifles'), 'weapon', cls).reason, /entrenamiento/);
   assert.equal(equipmentChoices(pick(scholarState, 'cls', 'soldier'), data, 'weapon').some(w => w.category === 'Heavy Weapons'), true);
   assert.ok(equipmentChoices({ ...scholarState, includeRustAndSteel: true }, data, 'weapon').length > weapons.length);
-  const s = scholar(); s.weapons = data.weapons.filter(w => w.cost === 4).slice(0, 2).map(w => w.name);
-  assert.equal(spend(s.weapons, data.weapons), 8); assert.equal(isStepReady(s, 8, data), false);
+  // Corebook ch. 8: exactly one Tier 1 weapon and one armor piece.
+  const s = scholar(); assert.equal(isStepReady(s, 8, data), true);
+  s.weapons = equipmentChoices(s, data, 'weapon').slice(0, 2).map(w => w.name); assert.equal(isStepReady(s, 8, data), false);
+  s.weapons = []; assert.equal(isStepReady(s, 8, data), false);
+  assert.ok(equipmentChoices(s, data, 'weapon').every(w => w.tierRank === 1 && w.cost <= EQUIP_BUDGET));
 });
 
 test('a finished character becomes a sheet the VTT imports: resources, thresholds, Traits, weapons with range, Powers and links', () => {
@@ -90,7 +95,7 @@ test('a finished character becomes a sheet the VTT imports: resources, threshold
   const weapon = tokenInventory(token).weapons[0], chosen = data.weapons.find(w => w.name === s.weapons[0]);
   assert.equal(weapon.name, chosen.name); assert.equal(weaponRangeBand(weapon), weaponRangeBand(chosen), 'the range travels with the weapon');
   const details = characterDetails(token);
-  assert.deepEqual(details.experiences.map(x => x.bonus), ['+2', '+2', '+2']);
+  assert.deepEqual(details.experiences.map(x => [x.name, x.bonus]), [['Pattern hunter', '+2'], ['Dock rat', '+2']], 'an Awakened character starts with two Experiences');
   assert.equal(details.powers.length, 2); assert.equal(details.loadoutCap, '5');
   assert.equal(details.affiliations[0].name, data.affiliations[0].name);
   assert.equal(details.seeds[0][1], 'The map my mother left.');
@@ -103,8 +108,21 @@ test('a Sleeping character gets Effort, Resolve and the Sleeping class rules; no
   assert.deepEqual([token.path, token.effort, token.resolve.max, token.resolve.current, token.recoveryAnchor], ['Sleeping', 2, 2, 2, 'My field notes']);
   assert.equal(token.hp.max, rules.hp);
   assert.equal(characterDetails(token).powers.length, 0);
+  assert.equal(characterDetails(token).experiences.length, 3, 'a Sleeping character starts with three Experiences');
   assert.throws(() => buildSheetDocument({ ...s, name: '' }, data), /paso 9/);
   assert.throws(() => buildSheetDocument(freshState(), data), /paso 1: Ancestry/);
+});
+
+test('affiliations follow the Corebook list; Independent has a Favor Pool instead of Standing', () => {
+  const kinds = Object.fromEntries(data.affiliations.map(a => [a.id, affiliationStatus(a).kind]));
+  assert.equal(Object.values(kinds).filter(k => k === 'core').length, 9, 'six Houses, Free Fleet, Explorers\' Guild and Independent');
+  assert.deepEqual([kinds['solara-compact'], kinds['commerce-guild']], ['advanced', 'advanced']);
+  assert.match(affiliationStatus(data.affiliations.find(a => a.id === 'solara-compact')).note, /aprobación del Keeper/);
+  assert.deepEqual([experienceCount({ path: 'Awakened' }), experienceCount({ path: 'Sleeping' })], [2, 3]);
+  const s = scholar();
+  const joined = buildSheetDocument({ ...s, affiliation: 'house-joric' }, data).fields, free = buildSheetDocument({ ...s, affiliation: 'independent' }, data).fields;
+  assert.equal(joined.aff_standing, '+1 Good Standing');
+  assert.equal(free.aff_standing, ''); assert.match(free.aff_tokens, /Favor/);
 });
 
 test('the wizard walks the nine steps, keeps a draft and puts the finished character on the table as a token', async () => {

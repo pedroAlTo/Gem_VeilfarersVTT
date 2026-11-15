@@ -6,7 +6,7 @@ import { newId } from '../persistence.js';
 import { dossierDialog } from '../dossierUI.js';
 import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
 import {
-  CREATOR_STEPS, TRAIT_IDS, TRAIT_ARRAY, EQUIP_BUDGET, STARTING_POWERS, freshState, setChoice, isStepReady, firstIncompleteStep,
+  CREATOR_STEPS, TRAIT_IDS, TRAIT_ARRAY, EQUIP_BUDGET, STARTING_POWERS, experienceCount, affiliationStatus, freshState, setChoice, isStepReady, firstIncompleteStep,
   classOf, classRules, subclassList, characterDomains, allDomains, levelOnePowers, powerId, equipmentChoices, spend, buildSheetDocument,
 } from './creatorModel.js';
 
@@ -69,10 +69,14 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
         <p class="dossier-muted">${left.length ? `Quedan por repartir: ${left.map(v => (v > 0 ? '+' : '') + v).join(', ')}.` : 'Todos los valores repartidos.'}</p>
         <button type="button" class="hud-btn" data-act="clear-traits">Vaciar Traits</button>`;
     },
-    5: () => `<h3>Experiencias</h3><p class="dossier-muted">Tres frases que resumen su historia. Cada una empieza en +2 y se invoca gastando Hope o Effort.</p>
-      ${[0, 1, 2].map(i => `<label class="dossier-field"><span>Experiencia ${i + 1} · +2</span><input class="hud-input" data-exp="${i}" maxlength="120" value="${e(state.experiences[i] || '')}" placeholder="Ej.: Criada entre contrabandistas"></label>`).join('')}`,
-    6: () => `<h3>Afiliación</h3><p class="dossier-muted">La facción con la que empieza en buen Standing (+1).</p>
-      <div class="creator-grid">${data.affiliations.map(a => card(`data-set="affiliation" data-value="${e(a.id)}"`, a.id === state.affiliation, a.name, a.tag, `${short(a.benefit, 110)} · Obligación: ${short(a.obligation, 90)}`)).join('')}</div>`,
+    5: () => {
+      if (!state.path) return '<h3>Experiencias</h3><p class="dossier-muted">Elige primero la senda en el paso 3: decide cuántas Experiencias tienes.</p>';
+      const count = experienceCount(state);
+      return `<h3>Experiencias</h3><p class="dossier-muted">${state.path === 'Sleeping' ? 'Un personaje Sleeping empieza con tres Experiencias a +2 y las invoca gratis.' : 'Un personaje Awakened empieza con dos Experiencias a +2 y gasta 1 Hope para invocar una.'} Hazlas personales, aplicables y con un coste.</p>
+        ${Array.from({ length: count }, (_, i) => `<label class="dossier-field"><span>Experiencia ${i + 1} · +2</span><input class="hud-input" data-exp="${i}" maxlength="120" value="${e(state.experiences[i] || '')}" placeholder="Ej.: Criada entre contrabandistas"></label>`).join('')}`;
+    },
+    6: () => `<h3>Afiliación</h3><p class="dossier-muted">La institución a la que responde. Empieza en Standing +1 (Good Standing) con una Call por sesión; Independent cambia eso por una Favor Pool.</p>
+      <div class="creator-grid">${data.affiliations.map(a => { const status = affiliationStatus(a); return card(`data-set="affiliation" data-value="${e(a.id)}"`, a.id === state.affiliation, a.name, status.kind === 'core' ? a.tag : `${a.tag} · ${status.kind === 'advanced' ? 'OPCIÓN AVANZADA' : 'FUERA DEL COREBOOK'}`, `${short(a.benefit, 110)} · Obligación: ${short(a.obligation, 90)}${status.note ? ` · ${status.note}` : ''}`); }).join('')}</div>`,
     7: () => {
       const cls = classOf(state, data);
       if (!cls || !state.path) return '<h3>Poderes</h3><p class="dossier-muted">Elige senda y clase en el paso 3.</p>';
@@ -92,14 +96,14 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const cls = classOf(state, data);
       if (!cls) return '<h3>Equipo</h3><p class="dossier-muted">Elige una clase en el paso 3.</p>';
       const list = (type, names, all) => equipmentChoices(state, data, type).map(item => {
-        const on = names.includes(item.name), over = !on && spend(names, all) + item.cost > EQUIP_BUDGET;
+        const on = names.includes(item.name), over = item.cost > EQUIP_BUDGET;
         const info = type === 'weapon' ? `${item.category} · ${item.trait} · ${item.range} · ${item.damage}` : `${item.category} · Umbrales ${item.thresholds.raw || `${item.thresholds.major} / ${item.thresholds.severe}`} · ${item.armorSlots} Armor Slots`;
         return `<button type="button" class="creator-card ${on ? 'selected' : ''}" aria-pressed="${on}" data-${type}="${e(item.name)}" ${over ? 'disabled title="No cabe en el presupuesto"' : ''}><strong>${e(item.name)}</strong><span class="creator-card-tag">${e(info)} · ${item.cost} Cr${item.pack !== 'core' ? ' · Rust & Steel' : ''}</span>${item.features?.length ? `<span class="creator-card-text">${e(item.features.join(', '))}</span>` : ''}</button>`;
       }).join('');
-      return `<h3>Equipo inicial</h3><p class="dossier-muted">Material Common dentro del acceso tecnológico de ${e(cls.name)}. ${EQUIP_BUDGET} créditos para armas y ${EQUIP_BUDGET} para armadura.</p>
+      return `<h3>Equipo inicial</h3><p class="dossier-muted">Un arma y una armadura de Tier 1 (Common) dentro del acceso tecnológico de ${e(cls.name)}, además de los objetos de clase.</p>
         <label class="hud-checkbox-label"><input type="checkbox" data-rs ${state.includeRustAndSteel ? 'checked' : ''}> Incluir equipo de Rust &amp; Steel</label>
-        <h4 class="dossier-label">ARMAS · ${spend(state.weapons, data.weapons)} / ${EQUIP_BUDGET} CR</h4><div class="creator-grid">${list('weapon', state.weapons, data.weapons)}</div>
-        <h4 class="dossier-label">ARMADURA · ${spend(state.armors, data.armor)} / ${EQUIP_BUDGET} CR</h4><div class="creator-grid">${list('armor', state.armors, data.armor)}</div>
+        <h4 class="dossier-label">ARMA · ${state.weapons.length} / 1</h4><div class="creator-grid">${list('weapon', state.weapons, data.weapons)}</div>
+        <h4 class="dossier-label">ARMADURA · ${state.armors.length} / 1</h4><div class="creator-grid">${list('armor', state.armors, data.armor)}</div>
         <label class="dossier-field"><span>Kit personal (opcional)</span><input class="hud-input" data-field="kit" maxlength="200" value="${e(state.kit)}"></label>`;
     },
     9: () => {
@@ -152,7 +156,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
     else if (el.dataset.set) set(el.dataset.set, el.dataset.value);
     else if (el.dataset.domain) { const d = el.dataset.domain, list = state.sleepingMysticDomains.filter(x => x !== d); if (list.length === state.sleepingMysticDomains.length) { list.push(d); if (list.length > 2) list.shift(); } state = { ...state, sleepingMysticDomains: list }; save(); render(); }
     else if (el.dataset.power) { const id = el.dataset.power, has = state.powers.includes(id); if (!has && state.powers.length >= STARTING_POWERS) { error.textContent = `Solo ${STARTING_POWERS} Poderes iniciales: quita uno para cambiarlo.`; return; } state = { ...state, powers: has ? state.powers.filter(p => p !== id) : [...state.powers, id] }; save(); render(); }
-    else if (el.dataset.weapon || el.dataset.armor) { const key = el.dataset.weapon ? 'weapons' : 'armors', name = el.dataset.weapon || el.dataset.armor, has = state[key].includes(name); state = { ...state, [key]: has ? state[key].filter(n => n !== name) : key === 'armors' ? [name] : [...state[key], name].slice(-2) }; save(); render(); }
+    else if (el.dataset.weapon || el.dataset.armor) { const key = el.dataset.weapon ? 'weapons' : 'armors', name = el.dataset.weapon || el.dataset.armor, has = state[key].includes(name); state = { ...state, [key]: has ? [] : [name] }; save(); render(); }
     else if (el.dataset.finish) finish(el.dataset.finish);
     else if (el.dataset.act === 'prev') { step = Math.max(1, step - 1); render(); }
     else if (el.dataset.act === 'next') { if (!isStepReady(state, step, data)) { error.textContent = `Completa «${CREATOR_STEPS[step - 1].label}» para seguir, o salta a otro paso desde la lista.`; return; } step = Math.min(9, step + 1); render(); }

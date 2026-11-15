@@ -1,10 +1,29 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.6.0**.
-Paquete: `VeilFarers_VTT_v2.6.0.zip`.
+Versión actual del VTT: **v2.6.1**.
+Paquete: `VeilFarers_VTT_v2.6.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.6.1] — 2026-11-15
+
+V2 · Creación y subida de nivel ajustadas al canon del Corebook
+
+### Creación de personaje · correcciones de canon (Corebook 12.06, cap. 8)
+
+- Experiencias iniciales: un personaje Awakened empieza con dos a +2 y uno Sleeping con tres. Antes el creador pedía tres a todos.
+- Equipo inicial: un arma y una armadura de Tier 1, además de los objetos de clase. Antes permitía dos armas dentro de un presupuesto.
+- Afiliaciones: las nueve del Corebook (seis Casas, Free Fleet, Explorers' Guild e Independent) son las opciones normales. Solara Compact y Stellar Commerce Guild aparecen como opción avanzada, y Church of the Eternal Veil y House Kaelen como fuera del Corebook; las cuatro avisan de que requieren aprobación del Keeper.
+- Independent no tiene Standing ni Calls: lleva una Favor Pool de 1 Favor por sesión.
+
+### Subida de nivel con el catálogo de reglas
+
+- Nuevo Poder (Awakened): se elige de una lista con los Poderes de los Dominios del personaje que su nivel permite y que aún no tiene; entra en el Vault.
+- Experiencias: en el Logro de Tier o en un Slot se puede subir dos Experiencias +1 o añadir una nueva a +2 y subir una. El máximo son cinco Experiencias.
+- Multiclass: se elige la segunda Clase, un Dominio realmente nuevo y se responde a su pregunta de trasfondo. El Dominio nuevo progresa a la mitad del nivel, redondeando hacia arriba; en un Sleeping queda latente.
+- Upgraded Subclass: añade a la ficha el rasgo completo de Specialization o de Mastery de la subclase.
+- La capacidad del Loadout sigue el Tier: 5 Poderes en Tier 1, 6 en Tier 2 y 7 en Tier 3.
 
 ## [2.6.0] — 2026-11-15
 

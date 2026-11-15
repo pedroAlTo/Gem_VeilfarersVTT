@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.6.0 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.6.1 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -74,8 +74,17 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
   - `data/*.json`: copia propia de los datos del creador (ancestries, communities, classes, affiliations, powers, weapons, armor), recortada a los campos que se usan. Se cargan bajo demanda (`creatorData.js` → chunk aparte de ~320 kB; no entra en `main`).
   - `creatorModel.js` (puro): `freshState`, `setChoice` (limpia dependientes), `isStepReady`, `characterDomains`, `equipmentChoices`/`equipmentEligibility`, `buildSheetDocument()` → documento "Veilfarers Character Sheet" (`version: '2.84-VTT'`) que pasa por `parseCharacterJSON()`. Portado de `creator.html` (pasos, `isStepReady`, dominios, presupuesto) y de `sheet-bridge.js` (`convert`, mapeo de campos).
   - `creatorUI.js`: `openCharacterCreator()`; al terminar usa `store.importActors([{ token }])` (token nuevo) o `[{ updateId, token }]` (asignar a token existente) o descarga JSON. Borrador en `localStorage['veil_creator_draft']`.
-  - Diferencias deliberadas con el creador: umbrales = armadura + nivel (HANDOVER.md §11) y Stress 7 para Synthetic (Corebook cap. 8).
+  - Diferencias con el creador, todas por canon: ver v2.6.1.
   - **No portado todavía**: herencia humana (The Graft / The Tool), complicaciones de ancestry, ideas de Experiencias, recomendación de Traits y equipo, vista de ficha imprimible, biblioteca de cartas, arte de cartas, y `level-up.js` del creador (65 kB; la subida de nivel de la VTT, v2.5.0, sigue el Corebook y está por contrastar con él). Tampoco guarda en la cuenta: enlazar con `account.saveCharacter()` cuando se haga la pantalla de personajes (Fase 2).
+- **v2.6.1 — Canon y subida de nivel con catálogo**. El usuario pidió verificar que las reglas siguen el canon; **cuando el creador y el Corebook 12.06 difieren, manda el Corebook** (salvo las decisiones de mesa de arriba). Contrastado y corregido:
+  - Experiencias iniciales: Awakened 2, Sleeping 3 (cap. 8, paso 5); máximo 5. `experienceCount()`.
+  - Equipo inicial: un arma y una armadura Tier 1 (cap. 8, Finishing Touches).
+  - Afiliaciones: `affiliationStatus()` marca `core` (9), `advanced` (Solara Compact, Stellar Commerce Guild) y `extra` (Church of the Eternal Veil, House Kaelen); Independent sin Standing, con Favor Pool.
+  - Loadout: 5 / 6 / 7 Poderes por Tier (cap. 18); `applyLevelUp` actualiza `a_loadout_cap`.
+  - Verificado sin cambios: array de Traits; HP y Evasion por clase; Stress 6 (Synthetic 7); Hope 2 / Effort 2; Resolve base 2 y +1 en niveles 3, 5, 7, 9 (tope 6); umbrales = armadura + nivel; 2/4 sin armadura y 4/6 en Kryllian, Rift Spinner y Synthetic; Trait del Mystic Instinct (Awakened) / Knowledge (Sleeping); Vanguard con Neural + rama; Logros de Tier en 2, 5, 8; Trait una vez por Tier; Proficiency máx. 6; Multiclass Tier 2+, una vez, Dominio a medio nivel.
+  - **Divergencias del creador que NO se han copiado**: su `sheet-bridge.js` calcula el Resolve máximo como 2 / 4 / 6 por Tier con tope 10; el Corebook dice base 2, +1 en 3, 5, 7 y 9, tope 6.
+  - `applyLevelUp(token, { data })`: con los datos del creador elige Poder (`availablePowers`), Multiclass (`multiclassChoices`) y Subclass (`nextSubclassFeature`); sin datos cae a notas. `openLevelUp()` es ahora `async` (carga los datos bajo demanda).
+  - **Sin catálogo todavía**: Class Resolve Moves de Sleeping (el creador los carga de otro sitio); el Move se anota a mano.
 - **Intro abre el chat de mesa**: `entersTableChat()` en `src/chatPanel.js`, llamado desde el `keydown` global de `src/main.js`; lanza `veil:open_chat`. Sin sesión en vivo el chat sigue deshabilitado (comportamiento previo).
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).

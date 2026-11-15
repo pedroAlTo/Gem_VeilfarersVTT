@@ -11,8 +11,22 @@ export const CREATOR_STEPS = [
 export const TRAIT_IDS = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'];
 // The starting array: each value goes to exactly one Trait.
 export const TRAIT_ARRAY = [2, 1, 1, 0, 0, -1];
+// Corebook ch. 8, Finishing Touches: one Tier 1 weapon and one armor piece. Tier 1 gear costs
+// at most 4 credits.
 export const EQUIP_BUDGET = 4;
 export const STARTING_POWERS = 2;
+// Corebook ch. 8, Step 5: an Awakened character starts with two Experiences at +2 and a
+// Sleeping one with three.
+export const experienceCount = state => (state.path === 'Sleeping' ? 3 : 2);
+// Corebook ch. 8, Step 6: the six Houses, the Free Fleet, the Explorers' Guild or Independent.
+// Two more are advanced options that need the Keeper's approval; the rest are outside the Corebook.
+const CORE_AFFILIATIONS = ['house-amaranth', 'house-joric', 'house-kurogane', 'house-solari', 'house-valerius', 'house-volkov', 'free-fleet', 'explorers-guild', 'independent'];
+const ADVANCED_AFFILIATIONS = ['solara-compact', 'commerce-guild'];
+export function affiliationStatus(affiliation) {
+  if (CORE_AFFILIATIONS.includes(affiliation?.id)) return { kind: 'core', note: '' };
+  if (ADVANCED_AFFILIATIONS.includes(affiliation?.id)) return { kind: 'advanced', note: 'Opción avanzada (Keeper\'s Companion): requiere aprobación del Keeper.' };
+  return { kind: 'extra', note: 'Fuera de las opciones del Corebook: solo con aprobación del Keeper.' };
+}
 const VANGUARD_BRANCH = { 'Ghost Blade': 'Void', 'Kinetic Echo': 'Kinetic', 'Pure Conduit': 'Lux' };
 const NATURAL_ARMOR = ['kryllian', 'rift-spinner', 'synthetic'];
 
@@ -83,14 +97,14 @@ export function isStepReady(state, step, data) {
     const sorted = list => list.map(Number).sort((a, b) => a - b).join(',');
     return sorted(TRAIT_IDS.map(id => state.traits[id])) === sorted(TRAIT_ARRAY);
   }
-  if (step === 5) return state.experiences.slice(0, 3).every(x => clean(x).length > 0);
+  if (step === 5) return ['Awakened', 'Sleeping'].includes(state.path) && state.experiences.slice(0, experienceCount(state)).every(x => clean(x).length > 0);
   if (step === 6) return !!state.affiliation;
   if (step === 7) {
     if (state.path === 'Sleeping') return state.cls !== 'mystic' || (state.sleepingMysticDomains || []).length === 2;
     const domains = characterDomains(state, data);
     return domains.length === 2 && state.powers.length === STARTING_POWERS && state.powers.every(id => domains.includes(powerById(data, id)?.d));
   }
-  if (step === 8) return state.weapons.length > 0 && state.armors.length > 0 && spend(state.weapons, data.weapons) <= EQUIP_BUDGET && spend(state.armors, data.armor) <= EQUIP_BUDGET;
+  if (step === 8) return state.weapons.length === 1 && state.armors.length === 1 && spend(state.weapons, data.weapons) <= EQUIP_BUDGET && spend(state.armors, data.armor) <= EQUIP_BUDGET;
   if (step === 9) return clean(state.name).length > 0;
   return false;
 }
@@ -114,7 +128,9 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
   const anc = find(data.ancestries, state.ancestry), com = find(data.communities, state.community), aff = find(data.affiliations, state.affiliation);
   const cls = classOf(state, data), rules = classRules(state, data), sub = subclassOf(state, data);
   const strain = (anc.subStrains || []).find(s => s.id === state.subStrain) || null;
-  const weapons = state.weapons.map(n => data.weapons.find(w => w.name === n)).filter(Boolean).slice(0, 2);
+  const weapons = state.weapons.map(n => data.weapons.find(w => w.name === n)).filter(Boolean).slice(0, 1);
+  // Independent trades Standing and Calls for a Favor Pool of 1 token per session.
+  const independent = aff.id === 'independent';
   const armor = data.armor.find(a => a.name === state.armors[0]) || null;
   const powers = sleeping ? [] : state.powers.map(id => powerById(data, id)).filter(Boolean);
   const domains = characterDomains(state, data);
@@ -139,7 +155,7 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
     character_id: characterId, name: clean(state.name), pron: clean(state.pronouns), level: String(level), prof: '1', chosen_path: sleeping ? 'Sleeping' : 'Awakened',
     ancestry: anc.name, ancestry_gift: ancestryText, ancestry_note: '', ailuran_variant: strain ? strain.name : '',
     community: com.name, community_gift: communityText, community_note: '', community_advantages: '',
-    affiliation: aff.name, aff_standing: '+1 Good Standing', aff_reputation: 'Unknown (0)', aff_notes: [affiliationNotes, appearance].filter(Boolean).join('\n\n'), aff_faction_notes: '',
+    affiliation: aff.name, aff_standing: independent ? '' : '+1 Good Standing', aff_reputation: independent ? '' : 'Unknown (0)', aff_tokens: independent ? '1 Favor por sesión (Independent Favor Pool)' : '', aff_notes: [affiliationNotes, appearance].filter(Boolean).join('\n\n'), aff_faction_notes: '',
     class: cls.name, subclass: sub.name, subclass_rank: 'Foundation', signature_trait: clean(sub.trait || rules.spellcastTrait),
     features: [feature(rules.classFeature), foundation, studied].filter(Boolean).join('\n\n'),
     a_featname: sleeping ? '' : clean(pathFeature?.name), a_feattext: sleeping ? '' : clean(pathFeature?.text),
@@ -153,7 +169,7 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
     seed_motive: clean(state.bgAnswer), equipment_notes: clean(state.wound),
   };
   for (const id of TRAIT_IDS) { f[`tr_${id}`] = signed(state.traits[id]); f[`base_tr_${id}`] = signed(state.traits[id]); }
-  state.experiences.slice(0, 3).forEach((value, i) => { for (const p of ['a', 's']) { f[`${p}_exp_${i}`] = clean(value); f[`${p}_exp_${i}_bonus`] = '+2'; } });
+  state.experiences.slice(0, experienceCount(state)).forEach((value, i) => { for (const p of ['a', 's']) { f[`${p}_exp_${i}`] = clean(value); f[`${p}_exp_${i}_bonus`] = '+2'; } });
   weapons.forEach((w, i) => {
     const p = i === 0 ? 'wpri' : 'wsec';
     Object.assign(f, { [`${p}_name`]: w.name, [`${p}_trait`]: w.trait, [`${p}_range`]: w.range, [`${p}_dmg`]: clean(w.damage), [`${p}_feat`]: (w.features || []).join(', '), [`${p}_tier`]: w.tierCode || w.tier });

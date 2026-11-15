@@ -114,7 +114,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
       const { openLevelUp } = await import('./levelUpUI.js');
       // The sheet is reopened with the new values once the level is applied.
       modal.remove();
-      openLevelUp(token.id, () => { const fresh = store.state.tokens.find(t => t.id === token.id); if (fresh) openDossier(fresh, openSettings, 'reference'); });
+      await openLevelUp(token.id, () => { const fresh = store.state.tokens.find(t => t.id === token.id); if (fresh) openDossier(fresh, openSettings, 'reference'); });
     };
   }
   modal.querySelector('#dossier_controls').onclick = async () => { const { openTokenControl } = await import('./sessionLobby.js'); openTokenControl(token.id); };
