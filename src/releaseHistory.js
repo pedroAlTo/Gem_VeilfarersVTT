@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.6.2', date: '2026-11-15', title: 'V2 · Creador: herencia humana y guardado en la cuenta',
+    sections: [
+      { title: 'Creador de personajes', items: [
+        'Humanos: Inheritance of the Builders (Corebook, cap. 3). Al elegir Human se escoge una de las dos herencias: The Graft, un aumento Common o Military gratis y sin inconveniente (el Common no ocupa Augment Slot, el Military ocupa uno), o The Tool, un objeto Experimental de 9 Cr de cualquier catálogo.',
+        'La ficha registra la herencia: el aumento aparece en Rasgos junto al +2 Augment Capacity de Made for the Graft, y The Tool entra en el equipo.',
+        'Guardar en mi cuenta: con la sesión iniciada, el personaje terminado se guarda en tu biblioteca. Guardarlo otra vez actualiza la misma entrada.',
+        'Desde la cuenta, Use in game trae el personaje guardado a la mesa.',
+      ] },
+    ],
+  },
+  {
     version: '2.6.1', date: '2026-11-15', title: 'V2 · Creación y subida de nivel ajustadas al canon del Corebook',
     sections: [
       { title: 'Creación de personaje · correcciones de canon (Corebook 12.06, cap. 8)', items: [

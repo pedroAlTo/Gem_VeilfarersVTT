@@ -93,6 +93,7 @@ export function characterDetails(token) {
       ['Ancestry', [f.ancestry_gift, f.ancestry_note].filter(Boolean).join('\n\n')],
       ['Comunidad', [f.community_gift, f.community_note, f.community_advantages].filter(Boolean).join('\n\n')],
       ['Competencias', f.class_proficiencies],
+      ['Aumentos', [...indexed(/^aug_\d+_name$/, k => [f[k], f[k.replace('_name', '_tier')], f[k.replace('_name', '_benefit')], f[k.replace('_name', '_deg')]].filter(Boolean).join(' · ')), f.augment_notes].filter(Boolean).join('\n')],
       ...(prefix === 's' ? [[f.s_active_move || 'Movimiento activo', f.s_active_move_text], ['Movimientos aprendidos', f.s_learned_moves]] : []),
     ].filter(([, value]) => value && value !== '[]'),
     domains: prefix === 'a' ? text(f.a_domain_ref) : '',

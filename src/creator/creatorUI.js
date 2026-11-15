@@ -5,9 +5,10 @@ import { store } from '../state.js';
 import { newId } from '../persistence.js';
 import { dossierDialog } from '../dossierUI.js';
 import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
+import { account } from '../cloudAccount.js';
 import {
   CREATOR_STEPS, TRAIT_IDS, TRAIT_ARRAY, EQUIP_BUDGET, STARTING_POWERS, experienceCount, affiliationStatus, freshState, setChoice, isStepReady, firstIncompleteStep,
-  classOf, classRules, subclassList, characterDomains, allDomains, levelOnePowers, powerId, equipmentChoices, spend, buildSheetDocument,
+  classOf, classRules, subclassList, inheritanceOptions, characterDomains, allDomains, levelOnePowers, powerId, equipmentChoices, spend, buildSheetDocument,
 } from './creatorModel.js';
 
 const DRAFT_KEY = 'veil_creator_draft';
@@ -43,6 +44,10 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       return `<h3>Ancestry</h3><p class="dossier-muted">La especie de tu personaje y sus dones.</p>
         <div class="creator-grid">${data.ancestries.map(a => card(`data-set="ancestry" data-value="${e(a.id)}"`, a.id === state.ancestry, a.name, a.tag, short(a.desc))).join('')}</div>
         ${anc ? `<div class="creator-detail"><h4>${e(anc.name)} · dones</h4>${(anc.gifts || []).map(g => `<p><strong>${e(g.name)}.</strong> ${e(short(g.text, 400))}</p>`).join('')}</div>` : ''}
+        ${anc?.id === 'human' ? `<h4 class="dossier-label">INHERITANCE OF THE BUILDERS · ELIGE UNA</h4>
+          <div class="creator-grid two">${card('data-set="humanInheritance" data-value="graft"', state.humanInheritance === 'graft', 'The Graft', 'Un aumento gratis, sin inconveniente', 'Common (TT1): no ocupa Augment Slot. Military (TT2): ocupa 1 slot.')}${card('data-set="humanInheritance" data-value="tool"', state.humanInheritance === 'tool', 'The Tool', 'Un objeto Experimental (TT3) de 9 Cr', 'De cualquier catálogo de equipo en juego. Es tuyo y está pagado.')}</div>
+          ${state.humanInheritance ? `<label class="hud-checkbox-label"><input type="checkbox" data-rs ${state.includeRustAndSteel ? 'checked' : ''}> Incluir el catálogo de Rust &amp; Steel</label>
+          <div class="creator-grid">${inheritanceOptions(state, data).map(item => card(`data-set="humanInheritanceItem" data-value="${e(item.id)}"`, item.id === state.humanInheritanceItem, item.name, state.humanInheritance === 'graft' ? `${item.tier} · ${item.capacityCost ? '1 Augment Slot' : '0 Augment Slots'}` : `${item.catalog} · ${item.tier} · ${item.cost} Cr`, state.humanInheritance === 'graft' ? item.benefit : item.summary)).join('')}</div>` : ''}` : ''}
         ${anc?.subStrains?.length ? `<h4 class="dossier-label">ELIGE UNA ESTIRPE</h4><div class="creator-grid">${anc.subStrains.map(s => card(`data-set="subStrain" data-value="${e(s.id)}"`, s.id === state.subStrain, s.name, s.epithet, short(s.featText || s.flavor))).join('')}</div>` : ''}`;
     },
     2: () => `<h3>Community</h3><p class="dossier-muted">Dónde creció y qué le enseñó.</p>
@@ -122,6 +127,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
         <div class="creator-finish">
           ${canPlace ? `<button type="button" class="hud-btn hud-btn-primary" data-finish="token">Crear y poner en la mesa</button>
           ${targets.length ? `<label class="dossier-field"><span>…o llevar la ficha a un token que ya existe</span><select class="hud-input" data-target><option value="">Elegir token</option>${targets.map(t => `<option value="${e(t.id)}">${e(t.name)}</option>`).join('')}</select></label><button type="button" class="hud-btn" data-finish="replace">Asignar a ese token</button>` : ''}` : '<p class="dossier-muted">El Keeper pone los personajes en la mesa. Descarga la ficha y envíasela, o impórtala cuando te asigne un token.</p>'}
+          ${account.user && !account.user.isNetlify ? '<button type="button" class="hud-btn" data-finish="account" title="Guarda el personaje en tu biblioteca de la cuenta">Guardar en mi cuenta</button>' : ''}
           <button type="button" class="hud-btn" data-finish="download">Descargar ficha JSON</button>
         </div>`}`;
     },
@@ -136,11 +142,20 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
     modal.querySelector('.creator-progress').textContent = `Paso ${step} de 9 · ${CREATOR_STEPS.filter(s => isStepReady(state, s.id, data)).length} completos`;
   }
 
-  function finish(kind) {
+  // One id per character, so saving it again updates the same entry instead of duplicating it.
+  let characterId = state.characterId || '';
+  async function finish(kind) {
     try {
-      const doc = buildSheetDocument(state, data, { characterId: 'vtt-' + newId() });
+      if (!characterId) { characterId = 'vtt-' + newId(); state = { ...state, characterId }; save(); }
+      const doc = buildSheetDocument(state, data, { characterId });
       if (kind === 'download') { downloadJSON(doc, `${state.name.trim() || 'personaje'}.json`); notify('Ficha descargada.'); return; }
       const token = parseCharacterJSON(doc).token;
+      if (kind === 'account') {
+        account.lastSaveTarget = 'cloud';
+        await account.saveCharacter({ ...token, x: 0, y: 0 });
+        notify(account.lastSaveTarget === 'local' ? `${token.name} se ha guardado solo en este navegador.` : `${token.name} guardado en tu cuenta.`);
+        return;
+      }
       const updateId = kind === 'replace' ? modal.querySelector('[data-target]')?.value : '';
       if (kind === 'replace' && !updateId) throw new Error('Elige el token que recibe la ficha.');
       store.importActors([updateId ? { updateId, token } : { token }]);
@@ -161,7 +176,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
     else if (el.dataset.act === 'prev') { step = Math.max(1, step - 1); render(); }
     else if (el.dataset.act === 'next') { if (!isStepReady(state, step, data)) { error.textContent = `Completa «${CREATOR_STEPS[step - 1].label}» para seguir, o salta a otro paso desde la lista.`; return; } step = Math.min(9, step + 1); render(); }
     else if (el.dataset.act === 'clear-traits') { state = { ...state, traits: {} }; save(); render(); }
-    else if (el.dataset.act === 'reset') { state = freshState(); step = 1; save(); render(); }
+    else if (el.dataset.act === 'reset') { state = freshState(); characterId = ''; step = 1; save(); render(); }
   });
   modal.addEventListener('change', event => {
     const el = event.target;

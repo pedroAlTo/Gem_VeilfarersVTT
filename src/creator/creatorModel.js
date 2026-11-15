@@ -32,7 +32,7 @@ const NATURAL_ARMOR = ['kryllian', 'rift-spinner', 'synthetic'];
 
 export function freshState() {
   return {
-    ancestry: null, subStrain: null, community: null, path: null, cls: null, subclass: null,
+    ancestry: null, subStrain: null, humanInheritance: null, humanInheritanceItem: null, community: null, path: null, cls: null, subclass: null,
     traits: {}, experiences: ['', '', ''], affiliation: null, veilAlignment: null, sleepingMysticDomains: [], powers: [],
     weapons: [], armors: [], kit: '', includeRustAndSteel: false,
     name: '', pronouns: '', appearance: '', voice: '', bgAnswer: '', anchor: '', wound: '',
@@ -43,6 +43,19 @@ const find = (list, id) => (list || []).find(x => x.id === id) || null;
 const clean = value => String(value ?? '').trim();
 const signed = value => { const n = Number(value) || 0; return n >= 0 ? `+${n}` : String(n); };
 const feature = f => (f ? [clean(f.name), clean(f.text || f.desc)].filter(Boolean).join(' — ') : '');
+
+// Corebook ch. 3, Human — Inheritance of the Builders (choose one at character creation):
+// The Graft, one free Common or Military augmentation with no drawback; or The Tool, one
+// Experimental item worth 9 Cr from any equipment catalog in play.
+export function inheritanceOptions(state, data, kind = state.humanInheritance) {
+  const list = kind === 'graft' ? data.humanInheritance?.grafts : kind === 'tool' ? data.humanInheritance?.tools : [];
+  return (list || []).filter(item => state.includeRustAndSteel || item.pack === 'core');
+}
+export function inheritanceChoice(state, data) {
+  if (state.ancestry !== 'human' || !state.humanInheritance) return null;
+  const all = state.humanInheritance === 'graft' ? data.humanInheritance?.grafts : data.humanInheritance?.tools;
+  return (all || []).find(item => item.id === state.humanInheritanceItem) || null;
+}
 
 export const classOf = (state, data) => find(data.classes, state.cls);
 // Sleeping characters use the class's Sleeping rules (Effort Feature, its own HP and Evasion).
@@ -89,7 +102,11 @@ export function equipmentChoices(state, data, type) {
 }
 
 export function isStepReady(state, step, data) {
-  if (step === 1) { const anc = find(data.ancestries, state.ancestry); return !!anc && (!(anc.subStrains || []).length || !!state.subStrain); }
+  if (step === 1) {
+    const anc = find(data.ancestries, state.ancestry);
+    if (!anc || ((anc.subStrains || []).length && !state.subStrain)) return false;
+    return anc.id !== 'human' || !!inheritanceChoice(state, data);
+  }
   if (step === 2) return !!state.community;
   if (step === 3) return ['Awakened', 'Sleeping'].includes(state.path) && !!classOf(state, data) && !!subclassOf(state, data);
   if (step === 4) {
@@ -113,7 +130,8 @@ export const firstIncompleteStep = (state, data) => CREATOR_STEPS.find(s => !isS
 // Changing an earlier choice clears what depended on it.
 export function setChoice(state, key, value) {
   const next = { ...state, [key]: value };
-  if (key === 'ancestry') next.subStrain = null;
+  if (key === 'ancestry') Object.assign(next, { subStrain: null, humanInheritance: null, humanInheritanceItem: null });
+  if (key === 'humanInheritance') next.humanInheritanceItem = null;
   if (key === 'path' || key === 'cls') Object.assign(next, { subclass: null, powers: [], veilAlignment: null, sleepingMysticDomains: [] });
   if (key === 'cls') Object.assign(next, { weapons: [], armors: [] });
   if (key === 'subclass' || key === 'veilAlignment') next.powers = [];
@@ -135,7 +153,13 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
   const powers = sleeping ? [] : state.powers.map(id => powerById(data, id)).filter(Boolean);
   const domains = characterDomains(state, data);
 
-  const ancestryText = [...(anc.gifts || []).map(feature), feature(anc.extra), strain && [strain.name, strain.featName, strain.featText].filter(Boolean).join(' · ')].filter(Boolean).join('\n\n');
+  const inherited = inheritanceChoice(state, data), graft = state.humanInheritance === 'graft' ? inherited : null, tool = state.humanInheritance === 'tool' ? inherited : null;
+  const slotText = graft ? (graft.capacityCost ? '1 Augment Slot' : '0 Augment Slots') : '';
+  // The printed "The Tool" gift is one of the two inheritances; it is listed only when chosen.
+  const gifts = (anc.gifts || []).filter(g => !(anc.id === 'human' && g.name === 'The Tool' && !tool));
+  const ancestryText = [...gifts.map(feature), feature(anc.extra), strain && [strain.name, strain.featName, strain.featText].filter(Boolean).join(' · '),
+    graft && `Inheritance of the Builders — The Graft: ${graft.name} (${graft.tier}) · ${slotText} · no drawback`,
+    tool && `Inheritance of the Builders — The Tool: ${tool.name} · Experimental (TT3) · 9 Cr · paid for`].filter(Boolean).join('\n\n');
   const communityText = feature(com.feature);
   const pathFeature = sleeping ? rules.effortFeature : rules.hopeFeature;
   const foundation = sub?.foundation ? `${sub.name} · Foundation — ${feature(sub.foundation)}` : '';
@@ -168,6 +192,10 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
     a_loadout_cap: sleeping ? '' : '5', a_vault: '',
     seed_motive: clean(state.bgAnswer), equipment_notes: clean(state.wound),
   };
+  if (inherited) Object.assign(f, { human_inheritance_kind: state.humanInheritance, human_inheritance_item_id: inherited.id, human_inheritance_item_name: inherited.name });
+  if (graft) Object.assign(f, { aug_0_name: graft.name, aug_0_tier: graft.tierCode || graft.tier, aug_0_benefit: clean(graft.benefit), aug_0_deg: `Human inheritance · no drawback · ${slotText}` });
+  if (anc.id === 'human') f.augment_notes = 'Human — Made for the Graft: +2 Augment Capacity.' + (graft ? ' Inherited graft has no drawback.' : '');
+  if (tool) Object.assign(f, { eq_0_name: tool.name, eq_0_tier: tool.tierCode || tool.tier, eq_0_use: `${clean(tool.summary)} · The Tool (human inheritance)`, eq_0_qty: '1' });
   for (const id of TRAIT_IDS) { f[`tr_${id}`] = signed(state.traits[id]); f[`base_tr_${id}`] = signed(state.traits[id]); }
   state.experiences.slice(0, experienceCount(state)).forEach((value, i) => { for (const p of ['a', 's']) { f[`${p}_exp_${i}`] = clean(value); f[`${p}_exp_${i}_bonus`] = '+2'; } });
   weapons.forEach((w, i) => {

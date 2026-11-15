@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.6.1 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.6.2 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -75,7 +75,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
   - `creatorModel.js` (puro): `freshState`, `setChoice` (limpia dependientes), `isStepReady`, `characterDomains`, `equipmentChoices`/`equipmentEligibility`, `buildSheetDocument()` → documento "Veilfarers Character Sheet" (`version: '2.84-VTT'`) que pasa por `parseCharacterJSON()`. Portado de `creator.html` (pasos, `isStepReady`, dominios, presupuesto) y de `sheet-bridge.js` (`convert`, mapeo de campos).
   - `creatorUI.js`: `openCharacterCreator()`; al terminar usa `store.importActors([{ token }])` (token nuevo) o `[{ updateId, token }]` (asignar a token existente) o descarga JSON. Borrador en `localStorage['veil_creator_draft']`.
   - Diferencias con el creador, todas por canon: ver v2.6.1.
-  - **No portado todavía**: herencia humana (The Graft / The Tool), complicaciones de ancestry, ideas de Experiencias, recomendación de Traits y equipo, vista de ficha imprimible, biblioteca de cartas, arte de cartas, y `level-up.js` del creador (65 kB; la subida de nivel de la VTT, v2.5.0, sigue el Corebook y está por contrastar con él). Tampoco guarda en la cuenta: enlazar con `account.saveCharacter()` cuando se haga la pantalla de personajes (Fase 2).
+  - **No portado en este bloque** (ver v2.6.2 para lo que sigue pendiente): complicaciones de ancestry, ideas de Experiencias, recomendación de Traits y equipo, vista de ficha imprimible, biblioteca de cartas, arte de cartas, y `level-up.js` del creador (65 kB; la subida de nivel de la VTT, v2.5.0, sigue el Corebook y está por contrastar con él). Tampoco guarda en la cuenta: enlazar con `account.saveCharacter()` cuando se haga la pantalla de personajes (Fase 2).
 - **v2.6.1 — Canon y subida de nivel con catálogo**. El usuario pidió verificar que las reglas siguen el canon; **cuando el creador y el Corebook 12.06 difieren, manda el Corebook** (salvo las decisiones de mesa de arriba). Contrastado y corregido:
   - Experiencias iniciales: Awakened 2, Sleeping 3 (cap. 8, paso 5); máximo 5. `experienceCount()`.
   - Equipo inicial: un arma y una armadura Tier 1 (cap. 8, Finishing Touches).
@@ -85,6 +85,8 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
   - **Divergencias del creador que NO se han copiado**: su `sheet-bridge.js` calcula el Resolve máximo como 2 / 4 / 6 por Tier con tope 10; el Corebook dice base 2, +1 en 3, 5, 7 y 9, tope 6.
   - `applyLevelUp(token, { data })`: con los datos del creador elige Poder (`availablePowers`), Multiclass (`multiclassChoices`) y Subclass (`nextSubclassFeature`); sin datos cae a notas. `openLevelUp()` es ahora `async` (carga los datos bajo demanda).
   - **Sin catálogo todavía**: Class Resolve Moves de Sleeping (el creador los carga de otro sitio); el Move se anota a mano.
+- **v2.6.2 — Herencia humana y cuenta**: `data/humanInheritance.json` (53 aumentos TT1/TT2 y 65 objetos TT3 de 9 Cr, extraídos de `creator.html`); `inheritanceOptions()` / `inheritanceChoice()`; el paso 1 de un Human exige elegir The Graft o The Tool y su objeto. `buildSheetDocument` escribe `human_inheritance_*`, `aug_0_*` y `augment_notes` (Graft) o `eq_0_*` (Tool); `characterDetails()` muestra los aumentos en Rasgos. El creador guarda en la cuenta con `account.saveCharacter()` (mismo `character_id` → misma entrada) si hay sesión de Firebase. El circuito cuenta → mesa ya existía: Cuenta → "Use in game".
+  - **Del creador, sin portar**: complicaciones de ancestry (tabla d6), sugerencias de Experiencias/Traits/equipo, ficha imprimible, biblioteca y arte de cartas, Resolve Moves de Sleeping (catálogo), Awakening en juego.
 - **Intro abre el chat de mesa**: `entersTableChat()` en `src/chatPanel.js`, llamado desde el `keydown` global de `src/main.js`; lanza `veil:open_chat`. Sin sesión en vivo el chat sigue deshabilitado (comportamiento previo).
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).

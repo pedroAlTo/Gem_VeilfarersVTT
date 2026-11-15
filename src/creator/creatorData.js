@@ -7,5 +7,6 @@ import affiliations from './data/affiliations.json' with { type: 'json' };
 import powers from './data/powers.json' with { type: 'json' };
 import weapons from './data/weapons.json' with { type: 'json' };
 import armor from './data/armor.json' with { type: 'json' };
+import humanInheritance from './data/humanInheritance.json' with { type: 'json' };
 
-export const CREATOR_DATA = Object.freeze({ ancestries, communities, classes, affiliations, powers, weapons, armor });
+export const CREATOR_DATA = Object.freeze({ ancestries, communities, classes, affiliations, powers, weapons, armor, humanInheritance });

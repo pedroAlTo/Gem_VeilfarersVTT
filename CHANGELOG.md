@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.6.1**.
-Paquete: `VeilFarers_VTT_v2.6.1.zip`.
+Versión actual del VTT: **v2.6.2**.
+Paquete: `VeilFarers_VTT_v2.6.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.6.2] — 2026-11-15
+
+V2 · Creador: herencia humana y guardado en la cuenta
+
+### Creador de personajes
+
+- Humanos: Inheritance of the Builders (Corebook, cap. 3). Al elegir Human se escoge una de las dos herencias: The Graft, un aumento Common o Military gratis y sin inconveniente (el Common no ocupa Augment Slot, el Military ocupa uno), o The Tool, un objeto Experimental de 9 Cr de cualquier catálogo.
+- La ficha registra la herencia: el aumento aparece en Rasgos junto al +2 Augment Capacity de Made for the Graft, y The Tool entra en el equipo.
+- Guardar en mi cuenta: con la sesión iniciada, el personaje terminado se guarda en tu biblioteca. Guardarlo otra vez actualiza la misma entrada.
+- Desde la cuenta, Use in game trae el personaje guardado a la mesa.
 
 ## [2.6.1] — 2026-11-15
 
