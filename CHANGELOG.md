@@ -1,10 +1,31 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.5.0**.
-Paquete: `VeilFarers_VTT_v2.5.0.zip`.
+Versión actual del VTT: **v2.6.0**.
+Paquete: `VeilFarers_VTT_v2.6.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.6.0] — 2026-11-15
+
+V2 · Creador de personajes dentro de la VTT
+
+### Creador de personajes
+
+- Nueva sección para crear personajes paso a paso, adaptada del Character Creator: Ancestry, Community, Path con Class y Subclass, Traits, Experiencias, Afiliación, Poderes, Equipo y Detalles.
+- Incluye las 9 ancestries, 7 communities, 9 clases con sus 3 subclases por senda (Awakened y Sleeping), 13 afiliaciones, los Poderes de nivel 1 de los 7 Dominios y el equipo Common del Corebook, con Rust & Steel opcional.
+- Aplica las reglas de creación: los Traits se reparten con los valores +2, +1, +1, 0, 0, −1; tres Experiencias a +2; dos Poderes de nivel 1 de los Dominios de la clase (el Mystic elige Veil Alignment y el Vanguard según su subclase); armas y armadura dentro del acceso tecnológico de la clase, con 4 créditos para cada cosa.
+- Cada paso marca cuándo está completo; cambiar una elección anterior limpia lo que dependía de ella. El borrador se guarda solo en el navegador.
+
+### Llevar la ficha a la mesa
+
+- Al terminar, el Keeper puede crear el personaje como token nuevo en la escena o asignar la ficha a un token que ya existe, que conserva su posición, color y jugador.
+- También se puede descargar la ficha en JSON, en el mismo formato que la VTT ya importa.
+- El personaje llega con sus HP, Evasion, Stress, umbrales (armadura + nivel), Armor Slots, armas con alcance y daño, Poderes, Experiencias y afiliación.
+
+### Dónde está
+
+- Botón + PERSONAJE en la pestaña Roster de la mesa y botón Crear personaje en el Character Vault del lobby.
 
 ## [2.5.0] — 2026-11-15
 

@@ -286,7 +286,10 @@ export class VeilfarersLobbyGateway {
                   <span class="panel-badge">OPERATIVO TÁCTICO</span>
                 </div>
                 <div class="vault-actions">
-                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs fx-advanced">
+                  <button type="button" id="vf-btn-character-creator" class="vf-btn vf-btn-primary vf-btn-xs" title="Crear un personaje paso a paso y descargar su ficha">
+                    Crear personaje
+                  </button>
+                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-secondary vf-btn-xs fx-advanced">
                     Creador rápido
                   </button>
                   <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
@@ -588,6 +591,10 @@ export class VeilfarersLobbyGateway {
 
     // Modal Creador
     const modal = document.getElementById('vf-creator-modal');
+    document.getElementById('vf-btn-character-creator')?.addEventListener('click', async () => {
+      try { const { openCharacterCreator } = await import('../../creator/creatorUI.js'); await openCharacterCreator(); }
+      catch (err) { this.showHubError(`No se pudo abrir el creador: ${err?.message || err}`); }
+    });
     document.getElementById('vf-btn-open-creator')?.addEventListener('click', () => modal?.classList.remove('hidden'));
     document.getElementById('vf-btn-close-creator')?.addEventListener('click', () => modal?.classList.add('hidden'));
     document.getElementById('vf-btn-cancel-creator')?.addEventListener('click', () => modal?.classList.add('hidden'));

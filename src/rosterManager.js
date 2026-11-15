@@ -30,6 +30,7 @@ export class RosterManager {
         <div class="sidebar-header-row">
           <span class="sidebar-title">TACTICAL ROSTER (${tokens.length})</span>
           <div style="display: flex; gap: 4px;">
+            <button class="hud-btn hud-btn-xs hud-btn-cyan" id="create_character_btn" title="Crear un personaje paso a paso: ancestry, clase, traits, poderes y equipo">+ PERSONAJE</button>
             <button class="hud-btn hud-btn-xs hud-btn-cyan" id="add_drone_btn" title="Crear y desplegar nuevo Drone táctico">+ DRONE</button>
             ${isKeeper ? `
               <button class="hud-btn hud-btn-xs" id="add_token_btn">+ ACTOR</button>
@@ -233,6 +234,11 @@ export class RosterManager {
       }
 
       // Deploy new drone modal
+      const createCharacterBtn = this.container.querySelector('#create_character_btn');
+      if (createCharacterBtn) createCharacterBtn.onclick = async () => {
+        try { const { openCharacterCreator } = await import('./creator/creatorUI.js'); await openCharacterCreator(); }
+        catch (error) { notify(`No se pudo abrir el creador: ${error.message}`, 'error'); }
+      };
       const addDroneBtn = this.container.querySelector('#add_drone_btn');
       if (addDroneBtn) {
         addDroneBtn.onclick = () => this.openDeployDroneModal();
