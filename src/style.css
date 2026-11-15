@@ -2902,7 +2902,9 @@ body, html {
   bottom: 74px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 104;
+  /* Chat subtitles must sit above every other layer (HUD, modals, dice, toasts). */
+  z-index: 2147483647;
+  isolation: isolate;
   pointer-events: none;
   transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;

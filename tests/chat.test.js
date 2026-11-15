@@ -130,3 +130,24 @@ test('unread count survives another open conversation and clears when its thread
   p.root.style.display='block';p.refresh();assert.equal(p.unread.size,1);
   p.choose('pilot');assert.equal(p.unread.size,0);
 });
+
+test('Enter on the map opens the table chat, but never steals the key from a field, a button, a dialog or the portal', async () => {
+  const { entersTableChat } = await import('../src/chatPanel.js');
+  const page = new JSDOM('<body><canvas id="map" tabindex="0"></canvas><input id="field"><button id="btn">x</button><div id="vf-lobby-gateway" class="hidden"></div></body>').window.document;
+  const press = (target, extra = {}) => ({ key: 'Enter', target, defaultPrevented: false, ...extra });
+  const map = page.getElementById('map');
+  assert.equal(entersTableChat(press(map), page), true);
+  assert.equal(entersTableChat(press(page.body), page), true);
+  for (const id of ['field', 'btn']) assert.equal(entersTableChat(press(page.getElementById(id)), page), false, id);
+  assert.equal(entersTableChat(press(map, { shiftKey: true }), page), false);
+  assert.equal(entersTableChat(press(map, { defaultPrevented: true }), page), false);
+  assert.equal(entersTableChat(press(map, { repeat: true }), page), false);
+  assert.equal(entersTableChat({ key: 'a', target: map }, page), false);
+  page.getElementById('vf-lobby-gateway').classList.remove('hidden');
+  assert.equal(entersTableChat(press(map), page), false, 'portal open');
+  page.getElementById('vf-lobby-gateway').classList.add('hidden');
+  const dialog = page.createElement('div'); dialog.className = 'veil-modal-backdrop'; page.body.append(dialog);
+  assert.equal(entersTableChat(press(map), page), false, 'a dialog owns Enter');
+  dialog.remove();
+  assert.equal(entersTableChat(press(map), page), true);
+});

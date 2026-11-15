@@ -4,13 +4,15 @@ import { dossierDialog } from './dossierUI.js';
 // src/diceRoller.js
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
-import { rollVeilfarersCheck, resolveDamage, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { rollVeilfarersCheck, resolveDamage, damageTypeOf, weaponTags, usableArmorSlots, canBleed, DAMAGE_TYPES, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { notify, sanitizeHTML, escapeHTML } from './ui.js';
 import { characterDetails } from './characterImport.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
-import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression } from './equipment.js';
+import { normalizeConditions } from './conditions.js';
+import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from './attackFlow.js';
+import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses } from './equipment.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -184,6 +186,8 @@ export class DiceRollerSidebar {
     if (honedEl) honedEl.value = preset.honed;
     const impEl = this.container.querySelector('#dmg_impact_type');
     if (impEl) impEl.value = weaponImpactType(weapon);
+    const tags = weaponTags(weapon);
+    for (const [id, on] of [['#dmg_weapon_crushing', tags.crushing], ['#dmg_weapon_bleed', tags.bleed]]) { const box = this.container.querySelector(id); if (box) box.checked = on; }
     const note = weapon.damageMode === 'final' ? 'Daño final: Proficiency y Honed Edge no se vuelven a sumar.' : 'Daño base: se añade Proficiency al primer grupo de dados y Honed Edge una vez.';
     let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
     const prevEl = this.container.querySelector('[data-weapon-preview]');
@@ -534,8 +538,8 @@ export class DiceRollerSidebar {
           <div class="dmg-quick-controls">
             <div class="dmg-quick-checkboxes">
               <label class="hud-checkbox-label">
-                <input type="checkbox" id="dmg_use_armor" checked />
-                <span>Mitigar con Armadura</span>
+                <input type="checkbox" id="dmg_use_armor" />
+                <span title="Corebook, cap. 10: el defensor PUEDE marcar un Armor Slot para bajar la severidad un escalón. Nunca es automático.">El defensor gasta 1 Armor Slot</span>
               </label>
               <label class="hud-checkbox-label">
                 <input type="checkbox" id="dmg_is_critical" />
@@ -543,9 +547,20 @@ export class DiceRollerSidebar {
               </label>
             </div>
 
-            <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn btn-damage-gradient" id="roll_damage_btn">
-              <span>💥 RESOLVER DAÑO Y UMBRALES</span>
+            <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn btn-damage-gradient" id="roll_attack_btn" title="Tirada de ataque contra la Evasion del objetivo; el daño solo se calcula si impacta">
+              <span>⚔️ ATACAR AL OBJETIVO</span>
             </button>
+            <button class="hud-btn hud-btn-sm" id="roll_damage_btn" title="Para peligros, caídas o daño que no viene de una tirada de ataque" style="width: 100%; margin-top: 6px;">
+              <span>💥 Solo daño (sin tirada de ataque)</span>
+            </button>
+          </div>
+          <div class="dice-result-panel glass-panel" id="attack_result_display" role="status" style="display: none; margin-top: 14px;">
+            <div class="dmg-readout-row">
+              <div class="dmg-stat"><span class="dmg-tag">ATAQUE</span><span class="dmg-val" id="atk_total_val">0</span></div>
+              <div class="dmg-stat"><span class="dmg-tag">EVASION</span><span class="dmg-val" id="atk_evasion_val">0</span></div>
+              <div class="dmg-stat"><span class="dmg-tag">RESULTADO</span><span class="dmg-val" id="atk_outcome_val">—</span></div>
+            </div>
+            <div class="dmg-detail-text" id="atk_detail_text"></div>
           </div>
 
           <!-- Expandable Fine-Tuning Details: Collapsed by default -->
@@ -553,6 +568,18 @@ export class DiceRollerSidebar {
             <summary class="dmg-advanced-summary">⚙️ Opciones avanzadas y dados manuales</summary>
             <div class="dmg-advanced-body">
               <label class="dossier-field"><span>Expresión completa</span><input id="dmg_formula" class="hud-input" maxlength="1000" placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"></label>
+              <label class="dossier-field"><span>Tipo de daño · Penetración</span><vf-select class="hud-select" id="dmg_damage_type"><option value="auto" selected>Automático · según el arma</option><option value="physical">Physical · 0</option><option value="energy">Energy · −2 a los umbrales</option><option value="void">Void · −4 a los umbrales</option><option value="neural">Neural · −4 y +1 Stress</option></vf-select></label>
+              <div class="form-row">
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_reflective" /><span>Objetivo con armadura Reflective (anula Energy)</span></label>
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_warded" /><span>Objetivo con Ward (anula Void y Neural)</span></label>
+              </div>
+              <div class="form-row">
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_weapon_crushing" /><span>Arma Crushing (ignora 1 Armor Slot)</span></label>
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_composite" /><span>Objetivo con armadura Composite (anula Crushing)</span></label>
+              </div>
+              <div class="form-row">
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_weapon_bleed" /><span>Arma Bleed (el impacto deja Bleeding)</span></label>
+              </div>
               <label class="dossier-field"><span>Impacto del arma</span><vf-select class="hud-select" id="dmg_impact_type">${Object.entries(IMPACT_TYPES).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}</vf-select></label>
               <div class="form-row">
                 <div class="form-group"><label>Proficiency</label><input type="number" id="dmg_proficiency" value="1" min="1" max="6" class="hud-input" /></div>
@@ -810,7 +837,8 @@ export class DiceRollerSidebar {
     this.container.querySelector('#roll_check_btn').onclick = () => this.executeActionCheck();
 
     // Roll Damage Button
-    this.container.querySelector('#roll_damage_btn').onclick = () => this.executeDamageCalc();
+    this.container.querySelector('#roll_damage_btn').onclick = () => { this.container.querySelector('#attack_result_display').style.display = 'none'; this.executeDamageCalc(); };
+    this.container.querySelector('#roll_attack_btn').onclick = () => this.executeAttack().catch(error => notify(error.message, 'error'));
     for (const event of ['input', 'change']) damageSec.addEventListener(event, () => { this.syncDamageMode(); this.container.querySelector('#damage_result_display').style.display = 'none'; });
   }
 
@@ -968,7 +996,7 @@ export class DiceRollerSidebar {
     }
   }
 
-  async executeActionCheck() {
+  async executeActionCheck(attack = null) {
     const actor = this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null) || {
       name: 'Voidwalker',
       path: 'Awakened',
@@ -979,9 +1007,11 @@ export class DiceRollerSidebar {
     const traitMod = actor.traits?.[this.selectedTraitId] ?? (actor.attackModifier ?? 0);
     const subtraitId = this.container.querySelector('#dice_subtrait_select').value;
     const subtraitMod = subtraitId ? (actor.subtraits?.[subtraitId] ?? 0) : 0;
-    const dc = parseInt(this.container.querySelector('#dice_dc_select').value, 10);
-    const hasAdvantage = this.container.querySelector('#dice_advantage').checked;
-    const hasDisadvantage = this.container.querySelector('#dice_disadvantage').checked;
+    // An attack is a Trait Roll against the target's Evasion; range may add Disadvantage.
+    const dc = attack ? attack.evasion : parseInt(this.container.querySelector('#dice_dc_select').value, 10);
+    const edge = netEdge(this.container.querySelector('#dice_advantage').checked, this.container.querySelector('#dice_disadvantage').checked || !!attack?.disadvantage);
+    const hasAdvantage = edge.advantage;
+    const hasDisadvantage = edge.disadvantage;
     const useResolve = this.container.querySelector('#dice_use_resolve').checked;
     const expMod = parseInt(this.container.querySelector('#dice_exp_mod').value, 10) || 0;
     const customMod = parseInt(this.container.querySelector('#dice_custom_mod').value, 10) || 0;
@@ -1001,7 +1031,7 @@ export class DiceRollerSidebar {
     if (useResolve) groups.push({ qty: 1, sides: 4, theme: 'vfNeutral', role: 'Resolve' });
 
     const themedGroups = this.applyDiceTextureSet(groups);
-    const label = `${actor.name || 'Operative'} · ${traitName} Check`;
+    const label = attack ? `${actor.name || 'Operative'} · Ataque (${traitName}) vs ${attack.targetName}` : `${actor.name || 'Operative'} · ${traitName} Check`;
 
     let forcedHope = null;
     let forcedFear = null;
@@ -1051,7 +1081,7 @@ export class DiceRollerSidebar {
       });
     } catch(e) {
       notify(e.message, 'error');
-      return;
+      return null;
     }
 
     // Overlay 3D results banner
@@ -1114,6 +1144,60 @@ export class DiceRollerSidebar {
 
     this.lastResult = result;
     this.showResult(result);
+    return result;
+  }
+
+  // The whole attack: declare (weapon, target, range), roll against Evasion and, only on a
+  // hit, work out the damage. Applying it stays a separate step so the defender can spend armor.
+  async executeAttack() {
+    const q = id => this.container.querySelector(id);
+    const attacker = this.currentActor || store.getSelectedToken();
+    const target = store.state.tokens.find(t => t.id === q('#dmg_target_select').value);
+    if (!attacker) throw new Error('Selecciona el token que ataca.');
+    if (!target) throw new Error('Elige un objetivo para atacar.');
+    if (target.id === attacker.id) throw new Error('Un token no puede atacarse a sí mismo.');
+    const bossPhase = attacker.boss?.states?.[attacker.boss.index];
+    if (bossPhase?.canAttack === false) throw new Error('Este estado usa su procedimiento especial; no tiene un ataque estándar.');
+    const weapon = (tokenInventory(attacker).weapons || []).find(w => w.id === q('#dmg_weapon_select').value) || null;
+    const map = store.getActiveMap() || {};
+    const gap = distanceInfo(attacker, target, map), band = gap.band;
+    const range = rangeCheck(weapon, band);
+    const evasion = Number.isFinite(target.evasion) ? target.evasion : 10;
+    const show = (total, outcome, detail, tone) => {
+      q('#attack_result_display').style.display = 'block';
+      q('#atk_total_val').textContent = total; q('#atk_evasion_val').textContent = evasion;
+      const out = q('#atk_outcome_val'); out.textContent = outcome; out.dataset.tone = tone;
+      q('#atk_detail_text').textContent = detail;
+    };
+    q('#damage_result_display').style.display = 'none';
+    const where = `${weapon ? weapon.name : 'Ataque básico'} · objetivo a ${band} (${gap.meters.toFixed(1)} m, ${gap.squares.toFixed(1)} casillas) · ${range.reach ? `alcance del arma ${range.reach}` : 'alcance del arma sin indicar: no se aplica límite'}.`
+      + (gap.blocked ? ' ⚠️ Hay un muro o una puerta cerrada entre atacante y objetivo: línea de tiro bloqueada.' : '');
+    if (!range.allowed) { show('—', 'FUERA DE ALCANCE', `${where} ${range.reason} Acércate o cambia de arma.`, 'miss'); notify(range.reason, 'error'); return { hit: false, blocked: true, band }; }
+
+    let hit, critical, total, detail;
+    if (attacker.isPlayer !== false) {
+      const traitId = weaponTraitId(weapon);
+      if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
+      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage, targetName: target.name });
+      if (!result) return { hit: false, band };
+      hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
+      detail = `Hope ${result.hopeVal} + Fear ${result.fearVal}${result.totalMod ? ` ${result.totalMod > 0 ? '+' : '−'} ${Math.abs(result.totalMod)}` : ''} = ${result.total}.`;
+    } else {
+      audio.playDiceRoll();
+      const roll = rollAdversaryAttack({ attackModifier: attacker.attackModifier ?? 0, evasion, hasAdvantage: q('#dice_advantage').checked, hasDisadvantage: q('#dice_disadvantage').checked || range.disadvantage });
+      hit = roll.hit; critical = roll.isCritical; total = roll.total;
+      detail = `d20 [${roll.d20}] ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6 [${roll.d6}]` : ''} = ${roll.total}.`;
+      const secret = this.rollVisibility() === 'keeper';
+      const summary = `⚔️ ${attacker.name} ataca a ${target.name}: ${detail} vs Evasion ${evasion} → ${critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO'}`;
+      store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'ROLL', sender: 'Keeper', title: `Ataque · ${attacker.name}`, details: summary });
+      if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage({ senderName: attacker.name, text: summary, channel: 'table' }));
+    }
+    const rangeNote = range.disadvantage ? ` ${range.reason}` : '';
+    if (!hit) { show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.`, 'miss'); return { hit: false, critical: false, total, band }; }
+    show(total, critical ? 'CRÍTICO' : 'IMPACTO', `${where}${rangeNote} ${detail} ${critical ? 'Crítico: impacta siempre.' : `Alcanza la Evasion ${evasion}.`} Daño calculado abajo.`, critical ? 'crit' : 'hit');
+    q('#dmg_is_critical').checked = critical;
+    this.executeDamageCalc();
+    return { hit: true, critical, total, band };
   }
 
   showResult(result) {
@@ -1191,9 +1275,27 @@ export class DiceRollerSidebar {
     const diceCount = parseInt(this.container.querySelector('#dmg_dice_count').value, 10);
     const diceSides = parseInt(this.container.querySelector('#dmg_dice_sides').value, 10);
     const flatMod = parseInt(this.container.querySelector('#dmg_flat_mod').value, 10);
-    const major = parseInt(this.container.querySelector('#dmg_major_thresh').value, 10);
-    const severe = parseInt(this.container.querySelector('#dmg_severe_thresh').value, 10);
+    // With a target, its own thresholds decide the hit: the preview must match what is applied.
+    const majorInput = this.container.querySelector('#dmg_major_thresh'), severeInput = this.container.querySelector('#dmg_severe_thresh');
+    if (targetToken?.hp) {
+      if (Number.isFinite(targetToken.hp.majorThreshold)) majorInput.value = targetToken.hp.majorThreshold;
+      if (Number.isFinite(targetToken.hp.severeThreshold)) severeInput.value = targetToken.hp.severeThreshold;
+    }
+    const major = parseInt(majorInput.value, 10);
+    const severe = parseInt(severeInput.value, 10);
     const useArmor = this.container.querySelector('#dmg_use_armor').checked;
+    // Defences found on the target are ticked for the Keeper; they can still be changed by hand.
+    const reflectiveInput = this.container.querySelector('#dmg_target_reflective'), wardedInput = this.container.querySelector('#dmg_target_warded');
+    if (targetToken && this.defencesReadFor !== targetToken.id) {
+      const found = targetDefenses(targetToken);
+      reflectiveInput.checked = found.reflective; wardedInput.checked = found.warded;
+      this.container.querySelector('#dmg_target_composite').checked = found.composite;
+      this.defencesReadFor = targetToken.id;
+    }
+    const crushing = this.container.querySelector('#dmg_weapon_crushing').checked, composite = this.container.querySelector('#dmg_target_composite').checked;
+    const bleed = this.container.querySelector('#dmg_weapon_bleed').checked;
+    // Crushing ignores one of the target's Armor Slots for this hit; Composite armor blunts it.
+    const usableSlots = token => usableArmorSlots(token?.armor?.current, { crushing, composite });
     const isCritical = this.container.querySelector('#dmg_is_critical').checked;
     const isDirect = this.container.querySelector('#dmg_is_direct').checked;
     const mr = 1;
@@ -1209,6 +1311,9 @@ export class DiceRollerSidebar {
         formula = this.container.querySelector('#dmg_formula').value.trim();
       }
     }
+    const chosenType = this.container.querySelector('#dmg_damage_type').value;
+    const activeWeapon = this.currentActor && wSelect?.value ? (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value) : null;
+    const damageType = chosenType && chosenType !== 'auto' ? chosenType : damageTypeOf(formula || activeWeapon || '');
     if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
     const damageOptions = {
       attackerName: this.currentActor?.name || 'Attacker',
@@ -1222,9 +1327,12 @@ export class DiceRollerSidebar {
       targetMajorThreshold: major,
       targetSevereThreshold: severe,
       useArmorSlot: useArmor,
-      currentArmorSlots: targetToken?.armor?.current ?? 2,
+      currentArmorSlots: targetToken ? usableSlots(targetToken) : 2,
       mountRating: mr,
       proficiency, honed,
+      damageType,
+      targetReflective: reflectiveInput.checked,
+      targetWarded: wardedInput.checked,
     };
     let dmgResult;
     try { dmgResult = formula ? resolveDamageExpression(formula, damageOptions) : resolveDamage(damageOptions); }
@@ -1238,7 +1346,13 @@ export class DiceRollerSidebar {
     this.container.querySelector('#dmg_hp_loss_val').textContent = `${dmgResult.finalHpDamage} HP`;
 
     const detailText = (formula ? formula + ' · ' : '') + `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
-      `Compared to Major (${major}) & Severe (${severe}). ` +
+      (dmgResult.penetration
+        ? `${DAMAGE_TYPES[dmgResult.damageType]} · Penetración −${dmgResult.penetration}: umbrales ${major}/${severe} → ${dmgResult.effectiveMajor}/${dmgResult.effectiveSevere} para este impacto. `
+        : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
+      (dmgResult.stressMarked ? 'Neural: +1 Stress. ' : '') +
+      (crushing && !isDirect ? (composite ? 'Crushing anulado por armadura Composite. ' : 'Crushing: ignora 1 Armor Slot del objetivo en este impacto. ') : '') +
+      (bleed ? (targetToken && !canBleed(targetToken) ? 'Bleed: el objetivo no sangra (inmune). ' : 'Bleed: el objetivo queda Bleeding. ') : '') +
+      `Compared to Major (${dmgResult.effectiveMajor}) & Severe (${dmgResult.effectiveSevere}). ` +
       (dmgResult.armorSlotSpent ? '1 Armor Slot spent to lower severity step.' : 'No armor slot used.');
     const secret = this.rollVisibility() === 'keeper';
     this.secretDamage = secret;
@@ -1252,7 +1366,7 @@ export class DiceRollerSidebar {
     const damageMapId = targetToken?.mapId;
 
     let spentShieldsChoice = null;
-    const targetArmorAvailable = targetToken?.armor?.current || 0;
+    const targetArmorAvailable = usableSlots(targetToken);
     const shieldRow = this.container.querySelector('#dmg_shield_mitigation_row');
     const mitigateBtn = this.container.querySelector('#dmg_mitigate_btn');
     if (shieldRow && mitigateBtn) {
@@ -1261,7 +1375,7 @@ export class DiceRollerSidebar {
         mitigateBtn.textContent = `🛡️ Gastar escudos (${targetArmorAvailable} disponible${targetArmorAvailable > 1 ? 's' : ''})`;
         mitigateBtn.onclick = () => {
           const freshTarget = store.state.tokens.find(t => t.id === targetId) || targetToken;
-          promptShieldMitigation(freshTarget, dmgResult.rawDamage, (spent) => {
+          promptShieldMitigation(freshTarget, dmgResult.rawDamage, usableSlots(freshTarget), (spent) => {
             spentShieldsChoice = spent;
             mitigateBtn.textContent = `🛡️ Escudos seleccionados: ${spent}`;
             applyBtn.textContent = `APPLY DAMAGE (${spent} ESCUDO${spent !== 1 ? 'S' : ''} GASTADO${spent !== 1 ? 'S' : ''})`;
@@ -1299,7 +1413,10 @@ export class DiceRollerSidebar {
           targetSevereThreshold: targetToken.hp.severeThreshold ?? severe,
           isDirectDamage: isDirect,
           useArmorSlot: spentShields > 0,
-          currentArmorSlots: targetToken.armor?.current || 0
+          currentArmorSlots: usableSlots(targetToken),
+          damageType: dmgResult.damageType,
+          targetReflective: damageOptions.targetReflective,
+          targetWarded: damageOptions.targetWarded
         });
 
         // Each shield spent absorbs damage/reduces severity
@@ -1313,6 +1430,11 @@ export class DiceRollerSidebar {
         const attacker = store.state.tokens.find(t => t.id === attackerId && t.mapId === damageMapId);
         const hpLost = targetToken.hp.current - newHp;
         const armorLost = currentArmor - newArmor;
+        // Neural: 1 Stress on top of the HP, capped by the target's Stress track.
+        const stressMark = currentDamage.stressMarked && targetToken.stress ? 1 : 0;
+        const addCondition = bleed && canBleed(targetToken) ? 'Bleeding' : '';
+        const withCondition = t => addCondition ? { conditions: normalizeConditions([...(t.conditions || []), addCondition]) } : {};
+        const withStress = t => stressMark ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? t.stress.current + 1, (t.stress.current || 0) + 1) } } : {};
 
         const damagePayload = {
           type: 'APPLY_DAMAGE',
@@ -1323,6 +1445,8 @@ export class DiceRollerSidebar {
           hpLoss: hpLost,
           armorLoss: armorLost,
           spentShields,
+          stressMark,
+          addCondition,
           isDirect,
           isCritical,
           rawDamage: dmgResult.rawDamage,
@@ -1341,7 +1465,8 @@ export class DiceRollerSidebar {
                 ...t,
                 hp: { ...t.hp, current: newHp },
                 pendingBrace: isDirect ? t.pendingBrace : false,
-                armor: { ...t.armor, current: newArmor }
+                armor: { ...t.armor, current: newArmor },
+                ...withStress(t), ...withCondition(t)
               } : t)
             });
           } finally {
@@ -1351,7 +1476,8 @@ export class DiceRollerSidebar {
           store.updateToken(targetToken.id, {
             hp: { ...targetToken.hp, current: newHp },
             pendingBrace: isDirect ? targetToken.pendingBrace : false,
-            armor: { ...targetToken.armor, current: newArmor }
+            armor: { ...targetToken.armor, current: newArmor },
+            ...withStress(targetToken), ...withCondition(targetToken)
           });
         }
 
@@ -1385,7 +1511,7 @@ export class DiceRollerSidebar {
       };
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
-      const currentArmorNow = currentTarget.armor?.current || 0;
+      const currentArmorNow = usableSlots(currentTarget);
       let finalSpentShields = 0;
       if (!isDirect && currentArmorNow > 0) {
         if (spentShieldsChoice !== null && spentShieldsChoice !== undefined) {
@@ -1399,12 +1525,14 @@ export class DiceRollerSidebar {
   }
 }
 
-export function promptShieldMitigation(targetToken, incomingRawDamage, onConfirm) {
+export function promptShieldMitigation(targetToken, incomingRawDamage, usable, onConfirm) {
+  // Older callers pass the callback third; then every available slot is usable.
+  if (typeof usable === 'function') { onConfirm = usable; usable = undefined; }
   if (typeof document === 'undefined' || !document.body) {
     onConfirm(targetToken.armor?.current > 0 ? 1 : 0);
     return;
   }
-  const currentShields = targetToken.armor?.current || 0;
+  const currentShields = Math.max(0, Math.min(targetToken.armor?.current || 0, usable ?? Infinity));
   if (currentShields <= 0) {
     onConfirm(0);
     return;

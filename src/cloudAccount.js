@@ -1,15 +1,13 @@
 import { LOCAL_ONLY } from './runtimeMode.js';
 import { newId } from './persistence.js';
-import { exportNativeCharacter, parseCharacterJSON } from './characterImport.js';
-export const cloudConfig = {
-  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env?.VITE_FIREBASE_APP_ID || '',
-  databaseURL: import.meta.env?.VITE_FIREBASE_DATABASE_URL || 'https://veilfarers-vtt-default-rtdb.firebaseio.com'
-};
+import { exportNativeCharacter, parseCharacterJSON, characterKey } from './characterImport.js';
+import { noteEntry } from './accountModel.js';
+import { getFirebaseConfig } from './firebaseConfig.js';
+// The portal signs in with getFirebaseConfig(); the account and the rooms must use the very
+// same project, or a signed-in user would see no rooms. Outside the Vite build (tests, scripts)
+// there is no environment, and the cloud stays off unless it is configured explicitly.
+const env = import.meta.env;
+export const cloudConfig = env ? getFirebaseConfig() : { apiKey: '', authDomain: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '', databaseURL: '' };
 export const cloudConfigured = !LOCAL_ONLY && ['apiKey', 'authDomain', 'projectId'].every(k => Boolean(cloudConfig[k]));
 export const storageConfigured = cloudConfigured && Boolean(cloudConfig.storageBucket);
 export function portableCharacter(token) {
@@ -275,16 +273,25 @@ export class CloudAccount {
       throw err;
     }
   }
+  // A cloud write that only reached this browser must never look like a cloud save.
+  reportLocalFallback(kind) {
+    this.lastSaveTarget = 'local';
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('veil:cloud-fallback', { detail: { kind } }));
+  }
   async saveCharacter(token) {
     const uid = await this.identity();
     const portable = portableCharacter(token), payload = JSON.stringify(exportNativeCharacter(portable));
     if (new TextEncoder().encode(payload).length > 500000) throw new Error('This character exceeds the 500 KB cloud limit. Use a web URL for its portrait.');
-    const id = newId();
-    const entry = { id, name: token.name.slice(0, 200), payload, updatedAt: Date.now() };
+    // Upsert: saving the same character again replaces its entry instead of duplicating it.
+    const key = characterKey(portable).slice(0, 400);
+    let existing = null;
+    try { existing = (await this.list('characters')).find(c => c.key === key) || null; } catch {}
+    const id = existing?.id || newId();
+    const entry = { id, key, name: token.name.slice(0, 200), payload, updatedAt: Date.now() };
 
     if (this.user?.isNetlify) {
       try {
-        const list = await this.list('characters');
+        const list = (await this.list('characters')).filter(c => c.id !== id);
         list.unshift(entry);
         localStorage.setItem(`veil_characters_${uid}`, JSON.stringify(list));
       } catch {}
@@ -299,6 +306,7 @@ export class CloudAccount {
       const isPerm = err?.code === 'permission-denied' || String(err?.message || '').toLowerCase().includes('permission');
       if (isPerm) {
         console.warn('Firestore permission denied; saving character locally in account cache.');
+        this.reportLocalFallback('characters');
         try {
           const list = (await this.list('characters')).filter(c => c.id !== id);
           list.unshift(entry);
@@ -339,7 +347,7 @@ export class CloudAccount {
       id,
       name: (scene.name || 'Escena táctica').slice(0, 200),
       gridSize: Number(scene.gridSize) || 70,
-      ambientLight: Number(scene.ambientLight) ?? 0.25,
+      ambientLight: Number.isFinite(Number(scene.ambientLight)) && scene.ambientLight != null ? Math.min(1, Math.max(0, Number(scene.ambientLight))) : 0.25,
       width: Number(scene.width) || 1920,
       height: Number(scene.height) || 1080,
       imageUrl: scene.imageUrl || '',
@@ -402,6 +410,30 @@ export class CloudAccount {
         localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
       } catch {}
     }
+  }
+  // Personal notes: private to this account and grouped by room.
+  async listNotes(roomId) { return (await this.list('notes')).filter(n => n.roomId === roomId); }
+  async cacheNotes(uid, change) {
+    try { localStorage.setItem(`veil_notes_${uid}`, JSON.stringify(change(await this.list('notes')))); } catch {}
+  }
+  async saveNote(roomId, note) {
+    const uid = await this.identity(), entry = noteEntry(roomId, note);
+    const local = () => this.cacheNotes(uid, list => [entry, ...list.filter(n => n.id !== entry.id)]);
+    if (this.user?.isNetlify) { await local(); return entry; }
+    try {
+      await this.dbAPI.setDoc(this.dbAPI.doc(this.db, 'users', uid, 'notes', entry.id), entry);
+    } catch (err) {
+      if (err?.code !== 'permission-denied') throw err;
+      this.reportLocalFallback('notes'); await local();
+    }
+    return entry;
+  }
+  async removeNote(id) {
+    const uid = await this.identity();
+    const local = () => this.cacheNotes(uid, list => list.filter(n => n.id !== id));
+    if (this.user?.isNetlify) return local();
+    try { await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'notes', id)); }
+    catch (err) { if (err?.code !== 'permission-denied') throw err; await local(); }
   }
   decodeCharacter(row) { return portableCharacter(parseCharacterJSON(row.payload).token); }
   async savePreferences(values) {

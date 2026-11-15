@@ -1,7 +1,7 @@
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { store } from './state.js';
 import { validateActor } from './validation.js';
-import { characterDetails, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
+import { characterDetails, setAffiliation, setConnection, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
 import { mountEquipmentPanel } from './equipmentUI.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 
@@ -30,12 +30,14 @@ const field = (label, key, value, type = 'text', attrs = '') => `<label class="d
 const stat = (label, key, value, min = 0, max = 10000) => field(label, key, value ?? 0, 'number', `min="${min}" max="${max}" step="1" required`);
 const narrative = (title, value) => `<article class="dossier-narrative"><h4>${e(title)}</h4><p>${e(value).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
 
+const SHEET_VIEW_KEY = 'veil_sheet_view';
 export function openDossier(token, openSettings, initialTab = 'stats') {
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
+  const hasBackground = pc;
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
     <div class="dossier-hero"><div class="dossier-seal"><span>${pc ? 'LVL' : 'NPC'}</span><strong>${pc ? e(token.level ?? 1) : '◇'}</strong></div><div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
-    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button><button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn" data-tab="source">JSON original</button>' : ''}<button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="margin-left:auto; font-weight:600;">💾 Guardar ficha</button></nav>
+    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn sheet-full" data-tab="source">JSON original</button>' : ''}<span class="dossier-view" role="group" aria-label="Detalle de la ficha"><button type="button" class="hud-btn" data-view="basic" title="Lo que se usa durante la partida">Básica</button><button type="button" class="hud-btn" data-view="full" title="Todos los campos, máximos y exportación">Completa</button></span><button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="font-weight:600;">💾 Guardar ficha</button></nav>
     <form id="dossier_form">
       <div data-panel="stats">
         <div class="dossier-condition-summary"><button type="button" class="hud-btn" data-open-conditions>Condiciones</button><div class="condition-badges" data-condition-badges>${conditionBadges(token)}</div></div>
@@ -53,28 +55,68 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
         ${d.experiences.length ? `<h4 class="dossier-label">EXPERIENCIAS · ${e(token.path)}</h4><div class="dossier-experiences">${d.experiences.map(x => `<article><span>${e(x.name)}</span><strong>${e(x.bonus)}</strong></article>`).join('')}</div>` : ''}
         ${d.armor ? narrative('Armadura', d.armor) : ''}
         ${d.features.map(([k, v]) => narrative(k, v)).join('')}
+        ${d.signatureTrait ? `<h4 class="dossier-label">SIGNATURE TRAIT · ${e(d.signatureTrait)}</h4>` : ''}
         ${d.domains ? `<h4 class="dossier-label">DOMINIOS · ${e(d.domains)}</h4>` : ''}
+        ${d.powers.length ? `<h4 class="dossier-label">LOADOUT · ${d.powers.length}${d.loadoutCap ? ' / ' + e(d.loadoutCap) : ''} PODERES EQUIPADOS</h4>` : ''}
         ${d.powers.map(p => narrative(`${p.name}${p.recall ? ' · Recall ' + p.recall : ''}`, p.description)).join('')}
+        ${d.vault ? narrative('Vault · poderes conocidos sin equipar', d.vault) : ''}
+        ${token.advancement?.log?.length ? `<h4 class="dossier-label">HISTORIAL DE AVANCE</h4>${token.advancement.log.map(row => narrative(`Nivel ${row.level} · Tier ${row.tier}`, row.summary.join('\n'))).join('')}` : ''}
         ${d.notes.map(([k, v]) => narrative(k, v)).join('')}
       </div>
+      ${hasBackground ? `<div data-panel="background" hidden>
+        <p class="dossier-muted">Afiliaciones y conexiones del personaje (Corebook, cap. 8). El Keeper las actualiza durante la partida; se guardan con la ficha y se conservan al exportar.</p>
+        <h4 class="dossier-label">AFILIACIONES Y STANDING</h4>
+        <div class="dossier-affiliations">${d.affiliationSlots.map((a, i) => `<article><input type="hidden" name="aff_${i}_prefix" value="${e(a.prefix)}"><label>Afiliación ${i + 1} <input class="hud-input" name="aff_${i}_name" value="${e(a.name)}" maxlength="120" placeholder="Facción, casa o gremio"></label><label>Standing <input class="hud-input" name="aff_${i}_standing" value="${e(a.standing)}" maxlength="40"></label><label>Reputation <input class="hud-input" name="aff_${i}_reputation" value="${e(a.reputation)}" maxlength="120"></label><label class="dossier-check"><input type="checkbox" name="aff_${i}_call" ${a.callUsed ? 'checked' : ''}> Call usada</label></article>`).join('')}</div>
+        ${d.affiliationTokens ? `<h4 class="dossier-label">TOKENS DE FACCIÓN · ${e(d.affiliationTokens)}</h4>` : ''}
+        ${d.factionNotes ? narrative('Notas de facción', d.factionNotes) : ''}
+        <h4 class="dossier-label">CONEXIONES</h4>
+        <div class="dossier-connections">${d.connectionSlots.map(c => `<label class="dossier-field"><span>${e(c.label)}</span><textarea class="hud-input" name="${c.key}" rows="2" maxlength="2000">${e(c.value)}</textarea></label>`).join('')}</div>
+        ${d.seeds.length ? `<h4 class="dossier-label">SEMILLAS DEL PERSONAJE</h4>${d.seeds.map(([k, v]) => narrative(k, v)).join('')}` : ''}
+      </div>` : ''}
       <div data-panel="equipment" hidden></div>
       ${imported ? `<div data-panel="source" hidden><p class="dossier-muted">Original íntegro para consulta, incluidos campos de otras sendas. Exportar al creador conserva esos campos y actualiza los valores editables de esta ficha.</p><pre class="dossier-json">${e(JSON.stringify(token.sourceCharacter.document, null, 2))}</pre></div>` : ''}
       <p class="dossier-error" role="alert"></p>
-      <footer class="dossier-footer">${!pc ? '<button type="button" class="hud-btn" id="dossier_boss">Boss · estados</button>' : ''}<button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
+      <footer class="dossier-footer">${!pc ? '<button type="button" class="hud-btn" id="dossier_boss">Boss · estados</button>' : ''}${pc ? '<button type="button" class="hud-btn" id="dossier_level_up" title="Subida de nivel según el Corebook, cap. 12">Subir de nivel</button>' : ''}<button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
     </form>
   `);
   modal.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => {
     modal.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b === button));
     modal.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== button.dataset.tab; });
   });
-  modal.querySelector(`[data-tab="${['stats', 'reference', 'equipment', 'source'].includes(initialTab) ? initialTab : 'stats'}"]`)?.click();
+  modal.querySelector(`[data-tab="${['stats', 'reference', 'background', 'equipment', 'source'].includes(initialTab) && modal.querySelector(`[data-tab="${initialTab}"]`) ? initialTab : 'stats'}"]`)?.click();
   mountEquipmentPanel(modal.querySelector('[data-panel="equipment"]'), token.id);
+  // Básica keeps what is used at the table; Completa adds identity, maximums, exports and tools.
+  for (const name of ['actorName', 'characterClass', 'roleTag', 'subclass', 'species', 'community', 'level', 'hp_max', 'armor_max', 'stress_max', 'resolve_max', 'resolve_die', 'honedEdgeBonus'])
+    modal.querySelector(`[name="${name}"]`)?.closest('label')?.classList.add('sheet-full');
+  for (const id of ['dossier_boss', 'dossier_level_up', 'dossier_controls', 'dossier_token', 'dossier_export', 'dossier_system']) modal.querySelector('#' + id)?.classList.add('sheet-full');
+  const setView = view => {
+    view = view === 'full' ? 'full' : 'basic';
+    modal.dataset.sheetView = view;
+    try { localStorage.setItem(SHEET_VIEW_KEY, view); } catch {}
+    modal.querySelectorAll('[data-view]').forEach(b => { b.classList.toggle('active', b.dataset.view === view); b.setAttribute('aria-pressed', String(b.dataset.view === view)); });
+    if (view === 'basic' && modal.querySelector('[data-tab="source"].active')) modal.querySelector('[data-tab="stats"]').click();
+  };
+  modal.querySelectorAll('[data-view]').forEach(b => { b.onclick = () => setView(b.dataset.view); });
+  let storedView = ''; try { storedView = localStorage.getItem(SHEET_VIEW_KEY) || ''; } catch {}
+  setView(storedView || (store.sessionRole === 'player' || store.state.userRole === 'player' ? 'basic' : 'full'));
   modal.querySelector('[data-open-conditions]').onclick = () => openConditions(token.id);
   const unsubscribeConditions = store.subscribe((_, keys) => {
     if (!modal.isConnected) { unsubscribeConditions(); return; }
     if (keys.includes('tokens')) modal.querySelector('[data-condition-badges]').innerHTML = conditionBadges(store.state.tokens.find(t => t.id === token.id) || token);
   });
   const observer = new MutationObserver(() => { if (!modal.isConnected) { unsubscribeConditions(); observer.disconnect(); } }); observer.observe(document.body, { childList: true });
+  const levelButton = modal.querySelector('#dossier_level_up');
+  if (levelButton) {
+    const keeper = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
+    levelButton.disabled = !keeper || (token.level || 1) >= 10;
+    if (!keeper) levelButton.title = 'El Keeper sube de nivel a los personajes.';
+    levelButton.onclick = async () => {
+      const { openLevelUp } = await import('./levelUpUI.js');
+      // The sheet is reopened with the new values once the level is applied.
+      modal.remove();
+      await openLevelUp(token.id, () => { const fresh = store.state.tokens.find(t => t.id === token.id); if (fresh) openDossier(fresh, openSettings, 'reference'); });
+    };
+  }
   modal.querySelector('#dossier_controls').onclick = async () => { const { openTokenControl } = await import('./sessionLobby.js'); openTokenControl(token.id); };
   modal.querySelector('#dossier_token').onclick = () => { modal.remove(); openSettings(store.state.tokens.find(t => t.id === token.id) || token); };
   if (!pc) { const bossButton = modal.querySelector('#dossier_boss'); bossButton.disabled = store.sessionRole === 'player' || store.state.userRole !== 'keeper'; bossButton.onclick = async () => { modal.remove(); const { openBossEditor } = await import('./bossUI.js'); openBossEditor(token.id); }; }
@@ -109,6 +151,9 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
       updated.traits = Object.fromEntries(TRAIT_IDS.map(k => [k, Number(data[`trait_${k}`])]));
       if (token.path === 'Sleeping') updated.resolve = { current: Number(data.resolve_current), max: Number(data.resolve_max), dieType: data.resolve_die };
     }
+    for (let i = 0; `aff_${i}_prefix` in data; i++)
+      setAffiliation(updated, data[`aff_${i}_prefix`], { name: data[`aff_${i}_name`], standing: data[`aff_${i}_standing`], reputation: data[`aff_${i}_reputation`], callUsed: `aff_${i}_call` in data });
+    for (const key of ['conn_first', 'conn_debt', 'conn_friction']) if (key in data) setConnection(updated, key, data[key]);
     return validateActor(updated);
   };
   const run = action => { try { action(); } catch (err) { modal.querySelector('.dossier-error').textContent = err.message; } };

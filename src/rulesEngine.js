@@ -173,6 +173,37 @@ export function rollVeilfarersCheck({
  * Severe or above: 3 HP (+ 1 per 10 above Severe)
  * One Armor Slot lowers the hit by one severity step!
  */
+// Corebook ch. 10, Damage Types: Penetration lowers BOTH thresholds for that hit only.
+// It never bypasses armor. Reflective armor cancels Energy; a Ward cancels Void and Neural.
+export const DAMAGE_TYPES = { physical: 'Physical', energy: 'Energy', void: 'Void', neural: 'Neural' };
+const PENETRATION = { physical: 0, energy: 2, void: 4, neural: 4 };
+export function damageTypeOf(source) {
+  const text = (source && typeof source === 'object' ? [source.damageType, source.damage, source.features, source.name].join(' ') : String(source ?? '')).toLowerCase();
+  if (/\bneural\b/.test(text)) return 'neural';
+  if (/\bvoid\b/.test(text)) return 'void';
+  if (/\b(?:energy|ene)\b/.test(text)) return 'energy';
+  return 'physical';
+}
+// Weapon tags (Corebook ch. 10). Crushing: the hit ignores one Armor Slot, unless the target's
+// armor is Composite. Bleed: any hit applies Bleeding, whatever its tier.
+export function weaponTags(source) {
+  const text = source && typeof source === 'object' ? [source.features, source.name].join(' ') : String(source ?? '');
+  return { crushing: /\bcrushing\b/i.test(text), bleed: /\bbleed(?:ing)?\b/i.test(text) };
+}
+export function usableArmorSlots(available, { crushing = false, composite = false } = {}) {
+  const slots = Math.max(0, Number(available) || 0);
+  return crushing && !composite ? Math.max(0, slots - 1) : slots;
+}
+// Targets that do not bleed, including most Synthetics, are immune to Bleeding.
+export function canBleed(token) {
+  return !/synthetic|sint[eé]tic/i.test([token?.species, token?.sourceCharacter?.document?.fields?.ancestry].join(' '));
+}
+export function penetrationFor(type, { reflective = false, warded = false } = {}) {
+  if (type === 'energy' && reflective) return 0;
+  if ((type === 'void' || type === 'neural') && warded) return 0;
+  return PENETRATION[type] ?? 0;
+}
+
 export function resolveDamage({
   attackerName = 'Attacker',
   targetName = 'Target',
@@ -185,7 +216,10 @@ export function resolveDamage({
   isDirectDamage = false,
   targetMajorThreshold = 6,
   targetSevereThreshold = 12,
-  useArmorSlot = true,
+  useArmorSlot = false, // the defender MAY mark an Armor Slot; it is never automatic
+  damageType = 'physical',
+  targetReflective = false,
+  targetWarded = false,
   currentArmorSlots = 2,
   mountRating = 1 // 1 for person, 2 for Tier 2/3 ship, 3 for Tier 4/5 ship
 }) {
@@ -216,6 +250,12 @@ export function resolveDamage({
 
   const rawDamage = (baseDiceTotal + flatModifier) * mountRating;
 
+  const penetration = isDirectDamage ? 0 : penetrationFor(damageType, { reflective: targetReflective, warded: targetWarded });
+  const effectiveMajor = Math.max(1, targetMajorThreshold - penetration);
+  const effectiveSevere = Math.max(effectiveMajor, targetSevereThreshold - penetration);
+  // A Neural hit also frays the mind: 1 Stress on top of its HP.
+  const stressMarked = damageType === 'neural' && !isDirectDamage ? 1 : 0;
+
   let baseSeverity = 'Minor';
   let rawHpDamage = 1;
 
@@ -223,15 +263,15 @@ export function resolveDamage({
     baseSeverity = 'Direct HP';
     rawHpDamage = rawDamage;
   } else {
-    if (rawDamage < targetMajorThreshold) {
+    if (rawDamage < effectiveMajor) {
       baseSeverity = 'Minor';
       rawHpDamage = 1;
-    } else if (rawDamage < targetSevereThreshold) {
+    } else if (rawDamage < effectiveSevere) {
       baseSeverity = 'Major';
       rawHpDamage = 2;
     } else {
       baseSeverity = 'Severe';
-      const excess = rawDamage - targetSevereThreshold;
+      const excess = rawDamage - effectiveSevere;
       const extra = Math.floor(excess / 10);
       rawHpDamage = 3 + extra;
     }
@@ -268,6 +308,11 @@ export function resolveDamage({
     finalSeverity,
     targetMajorThreshold,
     targetSevereThreshold,
+    damageType,
+    penetration,
+    effectiveMajor,
+    effectiveSevere,
+    stressMarked,
     rawHpDamage,
     finalHpDamage,
     armorSlotSpent,

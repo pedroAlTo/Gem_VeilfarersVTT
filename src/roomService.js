@@ -1,5 +1,6 @@
 import { account } from './cloudAccount.js';
 import { newId } from './persistence.js';
+import { arcEntries } from './accountModel.js';
 
 export const ROOM_LEASE_MS = 20000;
 export const ROOM_HEARTBEAT_MS = 5000;
@@ -164,7 +165,8 @@ export class RoomService {
     try {
       const savesSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'saves'));
       const chunksSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'chunks'));
-      const allDocs = [...savesSnap.docs, ...chunksSnap.docs];
+      const arcsSnap = await this.api.getDocsFromServer(this.col('rooms', id, 'arcs')).catch(() => ({ docs: [] }));
+      const allDocs = [...savesSnap.docs, ...chunksSnap.docs, ...arcsSnap.docs];
       for (let i = 0; i < allDocs.length; i += 20) {
         const batch = this.api.writeBatch(this.db);
         allDocs.slice(i, i + 20).forEach(d => batch.delete(d.ref));
@@ -178,7 +180,7 @@ export class RoomService {
     if (room.inviteCode) finalBatch.delete(this.ref('roomInvites', room.inviteCode));
     finalBatch.delete(this.ref('users', this.uid, 'rooms', id));
     await finalBatch.commit();
-    this.knownChunks?.delete(id);
+    this.knownChunks?.delete(id); this.knownArcs?.delete(id);
   }
   async setMemberStatus(id, uid, status) {
     await this.api.updateDoc(this.ref('rooms', id, 'members', uid), { status });
@@ -229,6 +231,28 @@ export class RoomService {
     });
     // Immutable shared chunks keep large images out of subsequent movement saves.
     if (previous) a.deleteDoc(this.ref('rooms', id, 'saves', previous.id)).catch(() => {});
+  }
+  async listArcs(id) {
+    const rows = await this.api.getDocsFromServer(this.col('rooms', id, 'arcs'));
+    return rows.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => a.order - b.order);
+  }
+  // Mirrors the campaign's arcs to rooms/{id}/arcs, writing only what changed.
+  async syncArcs(id, campaign) {
+    const same = (a, b) => JSON.stringify({ ...a, updatedAt: 0 }) === JSON.stringify({ ...b, updatedAt: 0 });
+    this.knownArcs ||= new Map();
+    if (!this.knownArcs.has(id)) this.knownArcs.set(id, new Map((await this.listArcs(id)).map(arc => [arc.id, arc])));
+    const known = this.knownArcs.get(id), next = arcEntries(campaign), ids = new Set(next.map(arc => arc.id));
+    const changes = [...next.filter(arc => !known.has(arc.id) || !same(arc, known.get(arc.id))).map(arc => ({ arc })),
+      ...[...known.keys()].filter(arcId => !ids.has(arcId)).map(arcId => ({ remove: arcId }))];
+    for (let i = 0; i < changes.length; i += 20) {
+      const batch = this.api.writeBatch(this.db);
+      for (const { arc, remove } of changes.slice(i, i + 20)) {
+        if (arc) batch.set(this.ref('rooms', id, 'arcs', arc.id), arc); else batch.delete(this.ref('rooms', id, 'arcs', remove));
+      }
+      await batch.commit();
+      for (const { arc, remove } of changes.slice(i, i + 20)) { if (arc) known.set(arc.id, arc); else known.delete(remove); }
+    }
+    return changes.length;
   }
   async cleanUnusedSaves(room) {
     // Only called under a newly acquired Keeper lease, before accepting players.

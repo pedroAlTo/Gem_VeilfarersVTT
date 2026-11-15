@@ -1,0 +1,181 @@
+/* ==========================================================================
+   VEILFARERS VTT // Marco de la mesa — dirección visual V2 (violeta)
+   Cambia solo superficies, líneas y tipografía del marco (cabecera, barras,
+   paneles). Los colores con significado en juego se quedan como están:
+   dados, Hope, Fear, tokens, barras de recursos y el cian de selección/activo
+   (que además evita que el marco violeta se confunda con el Fear).
+   Paleta: fondo #0d0420 · profundo #2a0b5c · medio #6d28d9 · luz #c084fc · acento #fde68a
+   ========================================================================== */
+
+html:root {
+  --vx-bg: #0d0420;
+  --vx-deep: #2a0b5c;
+  --vx-mid: #6d28d9;
+  --vx-light: #c084fc;
+  --vx-accent: #fde68a;
+  --vx-line: rgba(192, 132, 252, 0.24);
+  --vx-line-strong: rgba(192, 132, 252, 0.42);
+  --vx-surface: rgba(19, 7, 43, 0.96);
+
+  --bg-deep: var(--vx-bg);
+  --bg-panel: var(--vx-surface);
+  --bg-panel-solid: #13072b;
+  --bg-card: rgba(42, 11, 92, 0.38);
+  --border-glass: var(--vx-line);
+  --border-solid: #2a1650;
+  --text-dim: #b9a9d6;
+  --text-muted: #9383b3;
+}
+
+html body {
+  background:
+    linear-gradient(var(--vx-line) 1px, transparent 1px) center top / 96px 96px,
+    linear-gradient(90deg, var(--vx-line) 1px, transparent 1px) center top / 96px 96px,
+    radial-gradient(ellipse 70% 55% at 50% 0%, rgba(42, 11, 92, 0.7), transparent 70%),
+    var(--vx-bg);
+}
+html body #app_root { background-image: none; }
+
+html body .header-hud,
+html body .left-toolbar {
+  background: var(--vx-surface);
+  border: 1px solid var(--vx-line-strong);
+  border-radius: 0;
+  box-shadow: none;
+}
+html body .right-sidebar {
+  background: linear-gradient(180deg, rgba(42, 11, 92, 0.55) 0%, rgba(19, 7, 43, 0) 220px), var(--vx-surface);
+  border: 1px solid var(--vx-line-strong);
+  border-radius: 0;
+  box-shadow: none;
+}
+html body .header-hud:before { background: var(--vx-accent); box-shadow: none; }
+html body .header-hud:after { display: none; }
+html body .brand-logo-icon { border-color: var(--vx-line-strong); border-radius: 0; box-shadow: none; }
+html body .brand-title { letter-spacing: 0.34em; font-family: var(--font-body); font-weight: 600; color: #fff; }
+
+html body .canvas-viewport { border-radius: 0; border-color: var(--vx-line-strong); box-shadow: inset 0 0 40px rgba(13, 4, 32, 0.9); }
+html body .orbital-map-heading { background: linear-gradient(rgba(13, 4, 32, 0.93), transparent); border-top-color: var(--vx-line); }
+html body .orbital-map-heading h1,
+html body .orbital-panel-heading h2 { font-family: var(--font-body); font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: #fff; }
+html body .orbital-map-heading h1 { font-size: 19px; }
+html body .orbital-panel-heading h2 { font-size: 18px; line-height: 1.35; }
+html body .orbital-map-heading .eyebrow,
+html body .orbital-panel-heading .eyebrow { color: var(--vx-light); }
+html body .panel-index { color: var(--vx-accent); }
+html body .orbital-map-frame { border-color: var(--vx-line); }
+html body .orbital-panel-heading { background: none; }
+html body .orbital-panel-heading:after { height: 1px; border: 0; clip-path: none; background: var(--vx-line-strong); }
+html body .orbital-statusbar { border-top-color: var(--vx-line); color: var(--text-dim); }
+
+html body .glass-panel { border-color: var(--vx-line); box-shadow: none; }
+html body .hud-btn { border-radius: 0; background: rgba(42, 11, 92, 0.35); border-color: var(--vx-line-strong); }
+html body .hud-btn:hover:not(:disabled) { background: rgba(109, 40, 217, 0.4); border-color: var(--vx-light); }
+html body .hud-input,
+html body .hud-select { border-radius: 0; background: rgba(13, 4, 32, 0.75); border-color: var(--vx-line-strong); }
+html body .tab-nav-btn { border-radius: 0; }
+html body .tool-btn { border-radius: 0; color: var(--text-dim); }
+html body .left-toolbar { box-shadow: none; }
+html body .trait-select-pill { border-radius: 0; background: rgba(42, 11, 92, 0.35); border-color: var(--vx-line); }
+html body .token-quickbar { border-radius: 0; background: var(--vx-surface); border-color: var(--vx-line-strong); }
+html body .roll-trigger-btn { border-radius: 0; background: linear-gradient(105deg, rgba(109, 40, 217, 0.75), rgba(42, 11, 92, 0.85)) !important; border-color: var(--vx-light); box-shadow: none; }
+
+::-webkit-scrollbar-track { background: rgba(13, 4, 32, 0.6); }
+::-webkit-scrollbar-thumb { background: var(--vx-line-strong); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--vx-light); }
+
+/* ---- Modales --------------------------------------------------------------- */
+
+html body .veil-modal-backdrop,
+html body .dossier-backdrop { background: rgba(13, 4, 32, 0.86); backdrop-filter: blur(6px); }
+html body .veil-modal-box,
+html body .dossier-modal.veil-modal-box,
+html body .sheet-modal-box {
+  background: linear-gradient(180deg, rgba(42, 11, 92, 0.5) 0%, rgba(19, 7, 43, 0) 180px), #13072b;
+  border: 1px solid var(--vx-line-strong);
+  border-top: 2px solid var(--vx-accent);
+  border-radius: 0;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+html body .veil-modal-header,
+html body .dossier-modal .veil-modal-header { background: none; border-bottom: 1px solid var(--vx-line-strong); }
+html body .veil-modal-header h3,
+html body .dossier-modal .veil-modal-header h3 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: none;
+}
+html body .modal-close-btn { border-radius: 0; }
+html body .dossier-eyebrow,
+html body .dossier-label { color: var(--vx-light); }
+html body .dossier-hero p,
+html body .dossier-muted { color: var(--text-dim); }
+html body .dossier-seal { border-radius: 0; border-color: var(--vx-line-strong); }
+html body .dossier-resource { background: rgba(42, 11, 92, 0.32); border-color: var(--vx-line); border-radius: 0; }
+html body .dossier-footer { background: #13072b; backdrop-filter: none; border-top-color: var(--vx-line-strong); }
+html body .import-card { border-color: var(--vx-line); border-radius: 0; }
+html body .session-current { background: rgba(42, 11, 92, 0.32); border-color: var(--vx-line); border-radius: 0; }
+html body .help-dialog .help-hero h2 { font-family: var(--font-body); letter-spacing: 0.12em; color: #fff; }
+html body .help-dialog .help-guide-grid h3,
+html body .help-dialog .help-release h3,
+html body .help-dialog .help-shortcuts h3 { color: #fff; letter-spacing: 0.08em; }
+
+/* ---- Paneles flotantes de la mesa ------------------------------------------ */
+
+html body .clock-widget,
+html body #clocks_layer_overlay .clock-widget { border-radius: 0; background: var(--vx-surface); border-color: var(--vx-line-strong); box-shadow: none; }
+html body .layer-hud-container .glass-panel { border-radius: 0; background: var(--vx-surface); border-color: var(--vx-line-strong); }
+
+/* ---- HUD de jugador y de Keeper (solo contenedores) ------------------------ */
+
+html body .vf-player-hud { background: var(--vx-surface); border-left-color: var(--vx-line-strong); box-shadow: none; }
+html body .hud-quick-tab { background: var(--vx-surface); border-color: var(--vx-line-strong); border-radius: 0; }
+html body .vf-keeper-panel { background: var(--vx-surface); border-color: var(--vx-line-strong); border-radius: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); backdrop-filter: none; }
+html body .vf-keeper-hud-toggle { background: var(--vx-surface); border-color: var(--vx-line-strong); border-radius: 0; box-shadow: none; }
+html body .keeper-party-card { background: rgba(42, 11, 92, 0.32); border-color: var(--vx-line); border-radius: 0; }
+
+/* ---- Interior de modales ---------------------------------------------------- */
+
+html body .dossier-body .hud-input { background: rgba(13, 4, 32, 0.75); }
+html body .dossier-thresholds { background: rgba(42, 11, 92, 0.25); border-color: var(--vx-line); border-radius: 0; }
+html body .help-guide-grid article,
+html body .help-release { background: rgba(42, 11, 92, 0.28); border-color: var(--vx-line); border-radius: 0; }
+html body .room-card { background: rgba(42, 11, 92, 0.28); border-color: var(--vx-line); border-radius: 0; }
+html body .room-current,
+html body .room-notice { background: rgba(42, 11, 92, 0.45); border-color: var(--vx-line-strong); border-radius: 0; }
+html body .session-strip { border-color: var(--vx-line); border-radius: 0; }
+
+/* ---- Interior de la consola lateral ---------------------------------------- */
+
+html body .sidebar-subtabs { background: rgba(13, 4, 32, 0.7); border-color: var(--vx-line); border-radius: 0; }
+html body .subtab-btn { border-radius: 0; }
+html body .roster-token-card,
+html body .scene-card,
+html body .arc-card,
+html body .handout-card,
+html body .log-card { background: rgba(42, 11, 92, 0.28); border-color: var(--vx-line); border-radius: 0; }
+html body .scene-card-preview { border-radius: 0; }
+html body .chat-messages { background: rgba(13, 4, 32, 0.6); border-color: var(--vx-line); border-radius: 0; }
+html body .chat-privacy { background: rgba(42, 11, 92, 0.4); }
+html body .stepper-btn { background: rgba(42, 11, 92, 0.45); border-color: var(--vx-line-strong); border-radius: 0; }
+
+/* Panel de tiradas: solo los contenedores; los temas y colores de dados no se tocan. */
+html body .dice-utility-bar,
+html body .dice-actor-bar,
+html body .dice-action-cockpit,
+html body .dice-advanced-details { background: rgba(42, 11, 92, 0.22); border-color: var(--vx-line); border-radius: 0; }
+html body .dice-advanced-summary { background: rgba(13, 4, 32, 0.5); }
+html body .quick-die-btn,
+html body .roll-type-btn { background: rgba(13, 4, 32, 0.7); border-color: var(--vx-line-strong); border-radius: 0; }
+
+/* Tarjetas con estilos en línea: hace falta !important. El estado activo (cian) se respeta. */
+html body .arc-card { background: rgba(42, 11, 92, 0.22) !important; border-color: var(--vx-line-strong) !important; border-radius: 0 !important; }
+html body .scene-card { border-radius: 0 !important; }
+html body .scene-card:not(.active) { background: rgba(42, 11, 92, 0.28) !important; border-color: var(--vx-line) !important; }
+html body .scene-card-preview { border-radius: 0 !important; }
+
+/* El pie fijo de la ficha llega hasta el borde: nada asoma por debajo. */
+html body .dossier-modal .dossier-body { padding-bottom: 0; }

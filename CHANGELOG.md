@@ -1,10 +1,312 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v1.5.0**.
-Paquete: `VeilFarers_VTT_v1.5.0.zip`.
+Versión actual del VTT: **v2.6.2**.
+Paquete: `VeilFarers_VTT_v2.6.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.6.2] — 2026-11-15
+
+V2 · Creador: herencia humana y guardado en la cuenta
+
+### Creador de personajes
+
+- Humanos: Inheritance of the Builders (Corebook, cap. 3). Al elegir Human se escoge una de las dos herencias: The Graft, un aumento Common o Military gratis y sin inconveniente (el Common no ocupa Augment Slot, el Military ocupa uno), o The Tool, un objeto Experimental de 9 Cr de cualquier catálogo.
+- La ficha registra la herencia: el aumento aparece en Rasgos junto al +2 Augment Capacity de Made for the Graft, y The Tool entra en el equipo.
+- Guardar en mi cuenta: con la sesión iniciada, el personaje terminado se guarda en tu biblioteca. Guardarlo otra vez actualiza la misma entrada.
+- Desde la cuenta, Use in game trae el personaje guardado a la mesa.
+
+## [2.6.1] — 2026-11-15
+
+V2 · Creación y subida de nivel ajustadas al canon del Corebook
+
+### Creación de personaje · correcciones de canon (Corebook 12.06, cap. 8)
+
+- Experiencias iniciales: un personaje Awakened empieza con dos a +2 y uno Sleeping con tres. Antes el creador pedía tres a todos.
+- Equipo inicial: un arma y una armadura de Tier 1, además de los objetos de clase. Antes permitía dos armas dentro de un presupuesto.
+- Afiliaciones: las nueve del Corebook (seis Casas, Free Fleet, Explorers' Guild e Independent) son las opciones normales. Solara Compact y Stellar Commerce Guild aparecen como opción avanzada, y Church of the Eternal Veil y House Kaelen como fuera del Corebook; las cuatro avisan de que requieren aprobación del Keeper.
+- Independent no tiene Standing ni Calls: lleva una Favor Pool de 1 Favor por sesión.
+
+### Subida de nivel con el catálogo de reglas
+
+- Nuevo Poder (Awakened): se elige de una lista con los Poderes de los Dominios del personaje que su nivel permite y que aún no tiene; entra en el Vault.
+- Experiencias: en el Logro de Tier o en un Slot se puede subir dos Experiencias +1 o añadir una nueva a +2 y subir una. El máximo son cinco Experiencias.
+- Multiclass: se elige la segunda Clase, un Dominio realmente nuevo y se responde a su pregunta de trasfondo. El Dominio nuevo progresa a la mitad del nivel, redondeando hacia arriba; en un Sleeping queda latente.
+- Upgraded Subclass: añade a la ficha el rasgo completo de Specialization o de Mastery de la subclase.
+- La capacidad del Loadout sigue el Tier: 5 Poderes en Tier 1, 6 en Tier 2 y 7 en Tier 3.
+
+## [2.6.0] — 2026-11-15
+
+V2 · Creador de personajes dentro de la VTT
+
+### Creador de personajes
+
+- Nueva sección para crear personajes paso a paso, adaptada del Character Creator: Ancestry, Community, Path con Class y Subclass, Traits, Experiencias, Afiliación, Poderes, Equipo y Detalles.
+- Incluye las 9 ancestries, 7 communities, 9 clases con sus 3 subclases por senda (Awakened y Sleeping), 13 afiliaciones, los Poderes de nivel 1 de los 7 Dominios y el equipo Common del Corebook, con Rust & Steel opcional.
+- Aplica las reglas de creación: los Traits se reparten con los valores +2, +1, +1, 0, 0, −1; tres Experiencias a +2; dos Poderes de nivel 1 de los Dominios de la clase (el Mystic elige Veil Alignment y el Vanguard según su subclase); armas y armadura dentro del acceso tecnológico de la clase, con 4 créditos para cada cosa.
+- Cada paso marca cuándo está completo; cambiar una elección anterior limpia lo que dependía de ella. El borrador se guarda solo en el navegador.
+
+### Llevar la ficha a la mesa
+
+- Al terminar, el Keeper puede crear el personaje como token nuevo en la escena o asignar la ficha a un token que ya existe, que conserva su posición, color y jugador.
+- También se puede descargar la ficha en JSON, en el mismo formato que la VTT ya importa.
+- El personaje llega con sus HP, Evasion, Stress, umbrales (armadura + nivel), Armor Slots, armas con alcance y daño, Poderes, Experiencias y afiliación.
+
+### Dónde está
+
+- Botón + PERSONAJE en la pestaña Roster de la mesa y botón Crear personaje en el Character Vault del lobby.
+
+## [2.5.0] — 2026-11-15
+
+V2 · Fase 1: Subida de nivel
+
+### Subida de nivel
+
+- Nuevo botón Subir de nivel en la ficha (vista Completa, solo el Keeper). Aplica las reglas del Corebook, cap. 12, hasta el nivel 10.
+- Cada nivel da dos Advancement Slots: +1 HP, +1 Stress, +1 a dos Experiencias, +1 a un Trait (una vez por Tier y Trait), +1 Evasion, +1 Technology Access, Nuevo Poder o Resolve, y las opciones de dos Slots: +1 Proficiency, Multiclass, Upgraded Subclass y Tempered Resolve. Las que no están disponibles aparecen desactivadas con el motivo.
+- Los niveles 2, 5 y 8 añaden el Logro de Tier: +1 Proficiency y +1 a dos Experiencias.
+- Los personajes Sleeping ganan +1 Resolve máximo en los niveles 3, 5, 7 y 9, hasta 6.
+- Los umbrales Major y Severe suben 1 con el nivel.
+- Si queda un Slot sin gastar, la ficha avisa de que se pierde y pide confirmarlo.
+- El historial de avance queda en la pestaña Rasgos y en el registro de la partida.
+
+## [2.4.1] — 2026-11-15
+
+V2 · Alcance corregido, aviso de muros y bandas en el lock
+
+### Alcance
+
+- Bandas de alcance de la mesa: Melee (casilla adyacente o hasta 1 m), Very Close (hasta 5 m), Close (hasta 10 m), Far (hasta 25 m) y Extreme (más de 25 m). El ataque, la línea de lock y la regla de medir usan ahora las mismas bandas y la misma escala.
+- Corregido: un arma cuya ficha no indicaba alcance no recibía Desventaja a larga distancia. Ahora toma el alcance del arma del catálogo con el mismo nombre; si aun así no se conoce, el resultado lo dice.
+- Corregido: la línea de lock medía a 1,5 m por casilla y la regla a 2 m. Ambas usan la escala del mapa.
+
+### Línea de tiro
+
+- Si hay un muro o una puerta cerrada entre atacante y objetivo, el resultado del ataque avisa de que la línea de tiro está bloqueada. El ataque se puede lanzar igualmente. Ventanas y puertas abiertas no bloquean.
+- La etiqueta de la línea de lock muestra la banda de juego junto a la distancia en metros y casillas, y BLOQUEADO cuando hay un obstáculo.
+- El resultado del ataque muestra la banda, los metros y las casillas hasta el objetivo.
+
+## [2.4.0] — 2026-11-15
+
+V2 · Ataque completo: tirada, alcance y daño solo si impacta
+
+### Ataques
+
+- Nuevo botón ATACAR AL OBJETIVO en el panel de daño: hace el proceso entero. Primero la tirada de ataque contra la Evasion del objetivo y, solo si impacta, calcula el daño. Si falla no hay daño.
+- Los personajes jugadores atacan con Hope y Fear (2d12) más el Trait del arma y sus modificadores; la tirada paga Hope, Effort o Fear como cualquier tirada de Dualidad. Con dados iguales es crítico: impacta siempre y dobla los dados de daño.
+- Los adversarios del Keeper atacan con 1d20 más su modificador de Ataque. Un 20 natural es crítico: impacta siempre y hace el daño máximo.
+- Ventaja y Desventaja suman o restan 1d6 y se anulan entre sí.
+- Aplicar el daño sigue siendo un paso aparte, para que el defensor decida si gasta Armor Slots.
+
+### Alcance
+
+- El ataque mide la distancia entre los dos tokens y la traduce a la banda del Corebook: Melee (casilla adyacente), Very Close (hasta 5 m), Close (hasta 20 m), Far (hasta 100 m) y Very Far.
+- Un arma cuerpo a cuerpo solo puede atacar a un objetivo en Melee; fuera de esa distancia el ataque no se tira.
+- Un arma a distancia usada más allá de la banda que cubre ataca con Desventaja.
+- El resultado indica la banda, el alcance del arma y el motivo de la Desventaja o del bloqueo.
+
+### Chat
+
+- Pulsar Intro sobre el mapa abre el chat de la mesa listo para escribir. No actúa si hay una ventana abierta, un campo o botón con el foco, o una zona de agua a medio dibujar.
+
+### Otros
+
+- El botón de daño directo se mantiene como "Solo daño (sin tirada de ataque)" para peligros, caídas y efectos que no son un ataque.
+
+## [2.3.3] — 2026-11-15
+
+V2 · Daño: armas Crushing y Bleed
+
+### Resolución de daño
+
+- Crushing: el impacto ignora 1 Armor Slot del objetivo, que no puede gastarlo contra ese golpe (con un solo slot, no puede mitigar). El slot ignorado no se consume. La armadura Composite lo anula.
+- Bleed: cualquier impacto deja al objetivo con la condición Bleeding, sea cual sea su gravedad e incluso si la armadura lo absorbe. Los objetivos que no sangran (Synthetics) son inmunes.
+- Ambos tags se leen de las propiedades del arma elegida y la armadura Composite se detecta en el objetivo; los tres se pueden marcar a mano en Opciones avanzadas.
+- El resultado del daño indica cuándo se aplica cada tag o por qué se anula.
+
+## [2.3.2] — 2026-11-15
+
+V2 · Daño: Penetración por tipo de daño
+
+### Resolución de daño
+
+- Penetración según el Corebook (cap. 10): el daño Energy baja 2 los umbrales Major y Severe del objetivo para ese impacto; Void y Neural los bajan 4. Physical no los cambia. La Penetración no ignora la armadura.
+- El tipo de daño se toma del arma o de la expresión (por ejemplo "1d8 ene." o "1d10 void") y se puede elegir a mano en Opciones avanzadas.
+- La armadura Reflective anula la Penetración de Energy y un Ward anula la de Void y Neural. La armadura Reflective del objetivo se detecta sola; el Ward se marca en Opciones avanzadas.
+- Un impacto Neural marca además 1 Stress al objetivo.
+- El Overkill (1 HP extra por cada 10 puntos sobre Severe) cuenta desde el umbral ya reducido. El resultado muestra los umbrales originales y los aplicados al impacto.
+- Se pueden gastar tantos Armor Slots como haya disponibles para mitigar un mismo impacto.
+
+## [2.3.1] — 2026-11-15
+
+V2 · Daño: la armadura ya no se gasta sola
+
+### Resolución de daño
+
+- Corregido: un impacto por debajo del umbral Major aparecía como "Deflected · 0 HP" porque el cálculo gastaba un Armor Slot por su cuenta. Ahora marca 1 HP (Minor), como indica el Corebook.
+- Gastar armadura es decisión del defensor: la casilla "El defensor gasta 1 Armor Slot" empieza desmarcada y el botón Gastar escudos sigue disponible tras calcular.
+- Con un objetivo elegido, el cálculo usa siempre los umbrales Major y Severe de ese token, de modo que lo que se muestra coincide con lo que se aplica aunque los campos manuales tuvieran otros valores.
+
+## [2.3.0] — 2026-11-14
+
+V2 · Fase 1: Ficha en vista Básica o Completa
+
+### Fichas
+
+- La ficha tiene dos vistas, con un conmutador junto a Guardar ficha. Básica muestra lo que se usa en mesa: condiciones, Proficiency, Evasion, recursos actuales, umbrales, Traits y notas, sin necesidad de desplazarse.
+- Completa añade nombre, clase, ancestry y nivel, los máximos de cada recurso, la configuración de la senda Sleeping, el JSON original, las exportaciones y los ajustes del token.
+- Los jugadores abren la ficha en Básica y el Keeper en Completa; la vista elegida se recuerda en el navegador.
+- Guardar en vista Básica conserva todos los datos que no se ven.
+
+## [2.2.3] — 2026-11-14
+
+V2 · Vínculos visible en todos los personajes
+
+### Fichas
+
+- Corregido: la pestaña Vínculos solo aparecía en fichas importadas que ya traían afiliaciones o conexiones. Ahora está en la ficha de todos los personajes jugadores, también los creados en la VTT.
+- Las tres afiliaciones de la ficha se pueden rellenar y editar (nombre, Standing, Reputation y Call usada), igual que las conexiones First Bond, Open Debt y Friction.
+- Los cambios se guardan con Guardar ficha y, en fichas importadas, se conservan al exportar al formato del creador.
+
+## [2.2.2] — 2026-11-14
+
+V2 · Fase 1: Standing, Reputation y Call editables en mesa
+
+### Fichas
+
+- En la pestaña Vínculos, el Keeper puede cambiar el Standing y la Reputation de cada afiliación y marcar su Call como usada. Se guarda con Guardar ficha.
+- Los cambios se conservan al exportar la ficha al formato del creador.
+- Los jugadores ven estos datos en su ficha, sin poder modificarlos.
+
+## [2.2.1] — 2026-11-14
+
+V2 · El lobby encuentra tus salas y avisa si algo falla
+
+### Salas en el lobby
+
+- Corregido: al entrar con tu cuenta, el lobby podía mostrar "No tienes salas" aunque existieran. El portal y el sistema de salas usan ahora siempre la misma configuración de Firebase, también cuando faltan las variables de entorno.
+- Si la lista de salas no se puede cargar, el lobby lo dice, explica el motivo y ofrece Reintentar, en lugar de mostrar una lista vacía.
+- Si no se puede abrir, crear o unirse a una sala, vuelves al lobby con el motivo a la vista; antes te quedabas en una mesa local sin aviso.
+- La mesa local y el modo invitado no consultan la nube.
+
+## [2.2.0] — 2026-11-14
+
+V2 · Fase 1: Vínculos, afiliaciones y loadout en la ficha
+
+### Fichas
+
+- Nueva pestaña Vínculos en la ficha de los personajes importados: afiliaciones con su Standing, Reputation y estado de la Call, tokens y notas de facción, conexiones (First Bond, Open Debt, Friction) y las semillas del personaje.
+- La pestaña Rasgos muestra el Signature Trait, cuántos poderes hay equipados frente al límite del loadout y el Vault de poderes conocidos sin equipar.
+- Estos datos son de consulta y se leen de la ficha JSON importada; la pestaña solo aparece si la ficha los incluye.
+- El pie de la ficha con Guardar ficha queda siempre a la vista, sin texto asomando por debajo.
+
+## [2.1.3] — 2026-11-14
+
+V2 · Consola lateral en violeta
+
+### Interfaz
+
+- El interior de la consola lateral adopta las superficies violetas y pierde las esquinas redondeadas: tarjetas de roster, arcos y escenas, documentos, registro, chat y los contenedores del panel de tiradas.
+- La escena activa, el token seleccionado y los temas de dados conservan su cian y sus colores propios.
+
+## [2.1.2] — 2026-11-14
+
+V2 · Modales, paneles flotantes y HUD en violeta
+
+### Interfaz
+
+- Los modales (ficha, ayuda, compendio, cuenta, salas y sesiones) usan la dirección visual violeta: marco de línea fina con borde superior de acento, sin esquinas redondeadas y títulos en mayúsculas espaciadas.
+- Los relojes de escena, el panel de capas y los contenedores del HUD de jugador y del HUD de Keeper adoptan las mismas superficies.
+- El pie de la ficha sigue fijo abajo con el botón Guardar ficha siempre a la vista.
+- Se mantiene el cian para lo seleccionado o activo y no cambian los colores de dados, Hope, Fear, tokens ni barras de recursos.
+
+## [2.1.1] — 2026-11-14
+
+V2 · Marco de la mesa en violeta
+
+### Mesa de juego
+
+- El marco de la mesa adopta la dirección visual del lobby: fondo violeta oscuro con retícula fina, cabecera, barra de herramientas y consola lateral con líneas finas y sin esquinas redondeadas, y títulos en mayúsculas espaciadas.
+- Botones, campos, pestañas y la barra rápida del token usan las mismas superficies violetas.
+- No cambian los colores con significado en juego: dados, Hope, Fear, tokens, barras de recursos ni el cian que marca la herramienta o pestaña activa.
+
+## [2.1.0] — 2026-11-14
+
+V2 · Nuevo lobby: retícula violeta y vista Básico / Avanzado
+
+### Pantalla de acceso y centro de mando
+
+- Nueva dirección visual del lobby: fondo violeta oscuro con retícula de líneas finas, celdas numeradas (01, 02…), títulos en mayúsculas muy espaciadas y etiquetas en tipografía monoespaciada. Sin brillos ni esquinas redondeadas.
+- Paleta violeta aprobada: fondo #0d0420, profundo #2a0b5c, medio #6d28d9, luz #c084fc y acento #fde68a. Los colores de juego (dados, Hope, Fear, tokens) no cambian.
+- El portal de acceso se divide en dos celdas: título a la izquierda y formulario de acceso a la derecha. En pantallas estrechas se apilan.
+- Se mantienen los dos grandes accesos ENTRAR COMO JUGADOR y ENTRAR COMO KEEPER, el usuario y el correo conectados, las salas, el código de invitación y la entrada directa a la mesa.
+
+### Vista Básico / Avanzado
+
+- Conmutador en la cabecera del centro de mando. Básico (por defecto) muestra lo necesario para entrar a jugar, con textos de ayuda; Avanzado añade el creador rápido de personaje, las estadísticas y acciones de cada ficha del Vault (exportar, eliminar) y el borrado de salas.
+- La vista elegida se recuerda en el navegador.
+
+### Accesibilidad
+
+- Foco de teclado visible en botones y campos, y sin animaciones cuando el sistema pide movimiento reducido.
+
+## [2.0.2] — 2026-11-14
+
+V2 · Fase 0: Carga inicial más ligera
+
+### Rendimiento
+
+- El archivo principal de la aplicación baja de 1.316 kB a 888 kB (de 338 kB a 249 kB comprimido): Firebase se sirve en archivos propios que el navegador conserva en caché entre versiones.
+- El módulo de conexión directa entre navegadores (PeerJS, 122 kB) ya no se descarga al abrir la aplicación; solo se carga al crear o unirse a una sesión directa. Las salas en la nube no lo necesitan.
+
+### Dados 3D
+
+- Corregida una referencia con mayúsculas incorrectas (Dice.min.js) que impedía iniciar los dados 3D en servidores que distinguen mayúsculas de minúsculas. Las físicas y los parámetros de los dados no cambian.
+
+## [2.0.1] — 2026-11-14
+
+V2 · Fase 0: Arcos de sala y notas personales en la cuenta
+
+### Cuenta y guardado en la nube
+
+- Notas personales por partida: cada usuario puede guardar notas privadas asociadas a una sala; ni el Keeper ni otros jugadores pueden leerlas (modelo y reglas listos; la pantalla llegará con la cuenta de la Fase 2).
+- Arcos por sala del Keeper: la sala mantiene en la nube un índice de sus arcos (nombre, descripción, escenas y orden) que se actualiza solo al guardar la campaña y escribe únicamente lo que cambia.
+- Al eliminar una sala también se borra su índice de arcos.
+- Si las reglas de Firestore publicadas son anteriores a esta versión, la partida se guarda igual y el índice de arcos se omite sin errores.
+
+### Reglas de Firestore
+
+- Nuevas reglas para rooms/{sala}/arcs (solo el Keeper propietario) y users/{usuario}/notes (solo su autor), con límites de tamaño y campos cerrados. Requiere volver a publicar las reglas.
+
+### Pruebas
+
+- Las pruebas de reglas de cuenta y de salas se han ejecutado en el emulador de Firestore: guardado de personajes y escenas, notas, arcos, reconexión de Keeper y jugador.
+- La reconexión de un jugador con varios tokens asignados conserva el control de todos ellos.
+
+## [2.0.0] — 2026-11-14
+
+V2 · Fase 0: Estabilización de guardado, fichas y red
+
+### Chat
+
+- Los subtítulos de chat en overlay se muestran siempre por encima de cualquier otro elemento (HUD, modales, dados 3D y avisos).
+
+### Cuenta y guardado en la nube
+
+- Guardar un personaje ya guardado actualiza su entrada en lugar de crear un duplicado.
+- Reglas de Firestore corregidas: los personajes admiten actualización y las escenas del Keeper conservan muros, luces, niebla, agua, notas, tokens y arco, con imagen en Firebase Storage o en Cloudinary.
+- Si un guardado no llega a la nube y queda solo en el navegador, la aplicación lo avisa de forma visible.
+- Luz ambiente por defecto corregida al guardar escenas sin valor definido.
+
+### Fichas
+
+- El importador acepta las fichas actuales del creador (versiones 2.8x, esquema veilfarers.character/2) sin aviso de versión.
+- Hope y Effort respetan el máximo de la ficha en la barra rápida y en los controles de recursos.
+
+### Red y permisos
+
+- Al resolver daño contra un token ajeno, el jugador solo puede cambiar HP y Armor del objetivo; el resto de campos queda protegido.
 
 ## [1.5.0] — 2026-11-12
 

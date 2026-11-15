@@ -1,7 +1,8 @@
 import test, { beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
-import { parseCharacterJSON, initializeImportedResources, characterDetails, characterKey, exportSystemCharacter, exportNativeCharacter, TRAIT_IDS } from '../src/characterImport.js';
+import { parseCharacterJSON, initializeImportedResources, characterDetails, setAffiliation, characterKey, exportSystemCharacter, exportNativeCharacter, TRAIT_IDS } from '../src/characterImport.js';
 import { createActor, replaceActorSheet } from '../src/actors.js';
 import { readCampaign, writeCampaign, listCampaigns } from '../src/persistence.js';
 
@@ -24,6 +25,14 @@ test('final Traits and thresholds are imported once; ancestry never rewrites Str
   assert.throws(() => initializeImportedResources(parseCharacterJSON(fixture()), {}));
   const initialized = initializeImportedResources(parseCharacterJSON(fixture()), { hp: 4, armor_slots: 2, stress: 1, a_hope: 2 });
   assert.equal(initialized.hp.current, 4); assert.equal(initialized.hope, 2);
+});
+test('current creator exports (2.84, schema 2) import without a version warning; unknown families still warn', () => {
+  const f = fixture(); f.version = '2.84-RC3.2'; f.schema = 'veilfarers.character/2'; f.characterId = 'abc'; f.fields.character_id = 'abc';
+  const p = parseCharacterJSON(f);
+  assert.ok(!p.warnings.some(w => w.startsWith('Versión')));
+  assert.equal(characterKey(p.token), 'system:abc');
+  const old = fixture(); old.version = '3.10';
+  assert.ok(parseCharacterJSON(old).warnings.some(w => w.startsWith('Versión')));
 });
 test('current resource zeros survive import and no-damage weapons stay no-damage', () => {
   const f = fixture(); f.tracks.current = { hp: 0, stress: 0, armor_slots: 0, a_hope: 0, s_effort: 0, s_resolve: 0 };
@@ -169,4 +178,103 @@ test('dice actor and experiences reset when switching into an empty session', as
   assert.equal(root.querySelector('#dice_actor_name').textContent, 'Selecciona un actor');
   assert.equal(root.querySelector('#roll_check_btn').disabled, true);
   assert.equal(root.querySelector('#dice_exp_mod').value, '0');
+});
+
+test('affiliations with Standing, connections, seeds, loadout and vault are read from the imported sheet', () => {
+  const doc = fixture();
+  Object.assign(doc.fields, {
+    affiliation: 'House Joric', aff_standing: '2', aff_reputation: 'Trusted', aff_call: true,
+    aff_2_affiliation: 'Free Traders', aff_2_standing: '0', aff_2_reputation: '', aff_2_call: '',
+    aff_3_affiliation: '', aff_3_standing: '', aff_tokens: '3', aff_notes: 'Owes the quartermaster.',
+    conn_first: 'Vea pulled me out of the wreck.', conn_debt: '', conn_friction: 'Harker distrusts my methods.',
+    seed_motive: 'The map my mother left.', seed_loss: 'My first ship.',
+    signature_trait: 'Knowledge', a_loadout_cap: '5', a_vault: 'Spark of Hope\nSilver Tongue',
+    a_pwr_0_n: 'Veil Sensitivity', a_pwr_0_d: 'Sense the Veil.', a_pwr_0_rc: '1',
+  });
+  const token = parseCharacterJSON(doc).token, d = characterDetails(token);
+  assert.deepEqual(d.affiliations, [
+    { name: 'House Joric', standing: '2', reputation: 'Trusted', callUsed: true, prefix: 'aff_' },
+    { name: 'Free Traders', standing: '0', reputation: '', callUsed: false, prefix: 'aff_2_' },
+  ]);
+  assert.equal(d.affiliationTokens, '3'); assert.equal(d.factionNotes, 'Owes the quartermaster.');
+  assert.deepEqual(d.connections.map(([k]) => k), ['First Bond', 'Friction']);
+  assert.deepEqual(d.seeds.map(([k]) => k), ['What keeps you flying?', 'What did the road take?']);
+  assert.equal(d.signatureTrait, 'Knowledge'); assert.equal(d.loadoutCap, '5'); assert.match(d.vault, /Silver Tongue/);
+  assert.equal(d.powers[0].name, 'Veil Sensitivity');
+  // A Sleeping character has no power loadout, and a local actor has none of these.
+  token.path = 'Sleeping'; assert.equal(characterDetails(token).vault, ''); assert.equal(characterDetails(token).affiliations.length, 2);
+  const local = characterDetails({ name: 'Local', path: 'Awakened' });
+  assert.deepEqual([local.affiliations, local.connections, local.seeds], [[], [], []]);
+});
+
+test('every player character has a Vínculos tab; affiliations and connections are edited, escaped, saved and exported', () => {
+  const doc = fixture();
+  Object.assign(doc.fields, { affiliation: '"><b>House Joric</b>', aff_standing: '2', conn_first: 'Vea pulled me out.', a_vault: 'Spark of Hope', a_loadout_cap: '5', a_pwr_0_n: 'Veil Sensitivity', a_pwr_0_d: 'Sense.' });
+  const token = createActor(parseCharacterJSON(doc).token, store.state.activeMapId); store.state.tokens.push(token);
+  const modal = openDossier(token, () => {});
+  const tab = modal.querySelector('[data-tab="background"]'), panel = modal.querySelector('[data-panel="background"]');
+  assert.ok(tab && panel.hidden);
+  tab.click(); assert.equal(panel.hidden, false);
+  assert.equal(panel.querySelectorAll('.dossier-affiliations article').length, 3, 'the three slots of the sheet');
+  assert.equal(panel.querySelector('[name=aff_0_name]').value, '"><b>House Joric</b>'); assert.equal(panel.querySelectorAll('b').length, 0);
+  assert.match(modal.querySelector('[data-panel="reference"]').textContent, /LOADOUT · 1 \/ 5/);
+  assert.match(modal.querySelector('[data-panel="reference"]').textContent, /Spark of Hope/);
+  assert.ok(modal.querySelector('.dossier-footer button[type=submit], .dossier-tabs button[type=submit]'), 'save stays reachable (HANDOVER §4)');
+  // The Keeper raises Standing, spends the Call, adds a second affiliation and rewrites a connection.
+  panel.querySelector('[name=aff_0_standing]').value = '3';
+  panel.querySelector('[name=aff_0_call]').checked = true;
+  panel.querySelector('[name=aff_1_name]').value = 'Free Traders';
+  panel.querySelector('[name=conn_friction]').value = 'Harker distrusts my methods.';
+  modal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === token.id), d = characterDetails(saved);
+  assert.equal(d.affiliations[0].standing, '3'); assert.equal(d.affiliations[0].callUsed, true);
+  assert.equal(d.affiliations[1].name, 'Free Traders');
+  assert.deepEqual(d.connections.map(([k]) => k), ['First Bond', 'Friction']);
+  const exported = exportSystemCharacter(saved).fields;
+  assert.equal(exported.aff_standing, '3'); assert.equal(exported.aff_2_affiliation, 'Free Traders'); assert.equal(exported.conn_friction, 'Harker distrusts my methods.');
+  assert.throws(() => setAffiliation(saved, 'name', {}), /afiliación/);
+});
+
+test('a character made in the VTT, with no imported sheet, also keeps affiliations and connections', () => {
+  const local = store.state.tokens.find(t => t.isPlayer && !t.sourceCharacter);
+  assert.ok(local, 'a default crew member');
+  const modal = openDossier(local, () => {});
+  const panel = modal.querySelector('[data-panel="background"]');
+  assert.ok(modal.querySelector('[data-tab="background"]') && panel);
+  panel.querySelector('[name=aff_0_name]').value = 'House Kurogane';
+  panel.querySelector('[name=aff_0_standing]').value = '1';
+  panel.querySelector('[name=conn_debt]').value = 'A favour owed to Vea.';
+  modal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === local.id), d = characterDetails(saved);
+  assert.deepEqual(d.affiliations.map(a => [a.name, a.standing]), [['House Kurogane', '1']]);
+  assert.deepEqual(d.connections, [['Open Debt', 'A favour owed to Vea.']]);
+  assert.equal(saved.sourceCharacter, undefined);
+  // Adversaries have no such tab.
+  const npc = store.state.tokens.find(t => !t.isPlayer);
+  if (npc) { const other = openDossier(npc, () => {}); assert.equal(other.querySelector('[data-tab="background"]'), null); other.remove(); }
+});
+
+test('the sheet opens in Básica for players and Completa for the Keeper, remembers the choice and never loses data', () => {
+  localStorage.removeItem('veil_sheet_view');
+  const token = store.state.tokens.find(t => t.isPlayer);
+  const keeperModal = openDossier(token, () => {});
+  assert.equal(keeperModal.dataset.sheetView, 'full');
+  const maxLabel = keeperModal.querySelector('[name=hp_max]').closest('label');
+  assert.ok(maxLabel.classList.contains('sheet-full'));
+  for (const name of ['hp_current', 'evasion', 'majorThreshold', 'trait_agility', 'featureNotes'])
+    assert.equal(keeperModal.querySelector(`[name=${name}]`).closest('.sheet-full'), null, name + ' stays in Básica');
+  assert.equal(keeperModal.querySelector('.dossier-footer button[type=submit]').closest('.sheet-full'), null);
+  keeperModal.querySelector('[data-view="basic"]').click();
+  assert.equal(keeperModal.dataset.sheetView, 'basic'); assert.equal(localStorage.getItem('veil_sheet_view'), 'basic');
+  // Hidden fields still travel with the form: saving in Básica keeps maximums and identity.
+  const before = structuredClone(store.state.tokens.find(t => t.id === token.id));
+  keeperModal.querySelector('[name=hp_current]').value = String(before.hp.max - 1);
+  keeperModal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === token.id);
+  assert.equal(saved.hp.current, before.hp.max - 1); assert.equal(saved.hp.max, before.hp.max); assert.equal(saved.name, before.name);
+  const again = openDossier(saved, () => {});
+  assert.equal(again.dataset.sheetView, 'basic', 'remembered');
+  again.remove(); localStorage.removeItem('veil_sheet_view');
+  const css = readFileSync(new URL('../src/dossiers.css', import.meta.url), 'utf8');
+  assert.match(css, /\[data-sheet-view='basic'\] \.sheet-full \{ display:none !important; \}/);
 });

@@ -31,6 +31,8 @@ export class VeilfarersLobbyGateway {
     this.selectedRole = 'player';
     this.selectedCharId = null;
     this.vaultCharacters = {};
+    this.lobbyMode = 'basic';
+    try { this.lobbyMode = localStorage.getItem('veil_lobby_mode') || 'basic'; } catch {}
 
     if (typeof window !== 'undefined') {
       window.vfLobbyGateway = this;
@@ -40,6 +42,7 @@ export class VeilfarersLobbyGateway {
     }
 
     this.injectLobbyDOM();
+    this.setLobbyMode(this.lobbyMode);
     this.bindEvents();
     this.listenAuth();
   }
@@ -115,6 +118,8 @@ export class VeilfarersLobbyGateway {
     }
   }
 
+  // index.html carries the same markup so the portal is visible before scripts load;
+  // tests/lobby-visual.test.js keeps both copies identical.
   injectLobbyDOM() {
     if (typeof document === 'undefined') return;
     if (document.getElementById('vf-lobby-gateway')) return;
@@ -127,12 +132,18 @@ export class VeilfarersLobbyGateway {
       <div id="vf-auth-screen" class="vf-lobby-card auth-card">
         <button type="button" class="vf-btn-close-lobby" id="vf-btn-dismiss-lobby" title="Cerrar y entrar a la mesa VTT">✕</button>
 
-        <div class="vf-brand-header">
-          <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
-          <h1>PORTAL TÁCTICO</h1>
-          <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
+        <div class="fx-cell fx-cell-brand">
+          <span class="fx-num">01</span>
+          <div class="vf-brand-header">
+            <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
+            <h1>PORTAL TÁCTICO</h1>
+            <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
+          </div>
         </div>
 
+        <div class="fx-cell fx-cell-access">
+        <span class="fx-num">02</span>
+        <span class="fx-cell-title">Acceso</span>
         <form id="vf-email-auth-form" class="vf-auth-form">
           <div class="vf-input-group">
             <span class="vf-input-icon">
@@ -170,6 +181,7 @@ export class VeilfarersLobbyGateway {
 
         <p id="vf-auth-error" class="vf-error-msg"></p>
         <div id="vf-auth-info-banner" class="vf-auth-info" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- PANTALLA 2: HUB PRINCIPAL (MODO ENTRADA SIMPLIFICADA) -->
@@ -193,14 +205,24 @@ export class VeilfarersLobbyGateway {
               </div>
             </div>
           </div>
-          <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-logout" title="Desconectar y volver al portal de acceso">
-            <span class="logout-icon">⏻</span> Cerrar Sesión
-          </button>
+          <div class="vf-hub-controls">
+            <div class="vf-mode-switch" role="group" aria-label="Nivel de detalle del lobby">
+              <span class="mode-label">Vista</span>
+              <button type="button" id="vf-mode-basic" class="mode-btn" title="Solo lo necesario para entrar a jugar">Básico</button>
+              <button type="button" id="vf-mode-advanced" class="mode-btn" title="Muestra todas las opciones de gestión">Avanzado</button>
+            </div>
+            <button type="button" id="vf-btn-logout" class="vf-btn vf-btn-logout" title="Desconectar y volver al portal de acceso">
+              <span class="logout-icon">⏻</span> Cerrar Sesión
+            </button>
+          </div>
         </header>
+
+        <p id="vf-hub-error" class="vf-hub-error" role="alert" hidden></p>
 
         <!-- DOS BOTONES GRANDES HERO: ENTRAR COMO JUGADOR vs KEEPER -->
         <div class="vf-hero-role-selector">
           <button type="button" id="role-btn-player" class="vf-hero-role-card active">
+            <span class="fx-num">01</span>
             <div class="hero-role-header">
               <span class="hero-role-icon">◈</span>
               <span class="hero-role-badge">MODO JUGADOR</span>
@@ -211,6 +233,7 @@ export class VeilfarersLobbyGateway {
           </button>
 
           <button type="button" id="role-btn-keeper" class="vf-hero-role-card">
+            <span class="fx-num">02</span>
             <div class="hero-role-header">
               <span class="hero-role-icon">⚡</span>
               <span class="hero-role-badge">MODO KEEPER</span>
@@ -225,6 +248,7 @@ export class VeilfarersLobbyGateway {
         <div id="vf-player-section" class="vf-hub-section-view">
           <div class="vf-hub-grid">
             <section class="vf-hub-panel">
+              <span class="fx-num">03</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">🛰️</span> SALAS CONECTADAS</h3>
@@ -255,17 +279,21 @@ export class VeilfarersLobbyGateway {
             </section>
 
             <section id="vf-vault-section" class="vf-hub-panel vault-panel">
+              <span class="fx-num">04</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">📂</span> CHARACTER VAULT</h3>
                   <span class="panel-badge">OPERATIVO TÁCTICO</span>
                 </div>
                 <div class="vault-actions">
-                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-primary vf-btn-xs">
-                    <span class="btn-icon">+</span> Nuevo
+                  <button type="button" id="vf-btn-character-creator" class="vf-btn vf-btn-primary vf-btn-xs" title="Crear un personaje paso a paso y descargar su ficha">
+                    Crear personaje
+                  </button>
+                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-secondary vf-btn-xs fx-advanced">
+                    Creador rápido
                   </button>
                   <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
-                    <span class="btn-icon">⬇</span> JSON
+                    Importar ficha JSON
                     <input type="file" id="vf-import-json" accept=".json" style="display:none;" />
                   </label>
                 </div>
@@ -280,6 +308,7 @@ export class VeilfarersLobbyGateway {
         <div id="vf-keeper-section" class="vf-hub-section-view hidden">
           <div class="vf-hub-grid">
             <section class="vf-hub-panel">
+              <span class="fx-num">03</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">⚡</span> TUS SALAS CREADAS</h3>
@@ -293,6 +322,7 @@ export class VeilfarersLobbyGateway {
             </section>
 
             <section class="vf-hub-panel">
+              <span class="fx-num">04</span>
               <div class="panel-header">
                 <div class="panel-title-group">
                   <h3><span class="panel-icon">🚀</span> CREAR NUEVA SALA</h3>
@@ -394,6 +424,20 @@ export class VeilfarersLobbyGateway {
       </div>
     `;
     document.body.appendChild(root);
+  }
+
+  // Básico shows only what is needed to get into a game; Avanzado adds management options.
+  setLobbyMode(mode) {
+    this.lobbyMode = mode === 'advanced' ? 'advanced' : 'basic';
+    try { localStorage.setItem('veil_lobby_mode', this.lobbyMode); } catch {}
+    const root = document.getElementById('vf-lobby-gateway');
+    if (!root) return;
+    root.dataset.lobbyMode = this.lobbyMode;
+    for (const [id, value] of [['vf-mode-basic', 'basic'], ['vf-mode-advanced', 'advanced']]) {
+      const button = document.getElementById(id);
+      button?.classList.toggle('active', value === this.lobbyMode);
+      button?.setAttribute('aria-pressed', String(value === this.lobbyMode));
+    }
   }
 
   bindEvents() {
@@ -512,6 +556,9 @@ export class VeilfarersLobbyGateway {
       this.updateSummaryText();
     });
 
+    document.getElementById('vf-mode-basic')?.addEventListener('click', () => this.setLobbyMode('basic'));
+    document.getElementById('vf-mode-advanced')?.addEventListener('click', () => this.setLobbyMode('advanced'));
+
     // Unirse a sala con código
     document.getElementById('vf-btn-join-code')?.addEventListener('click', () => {
       const input = document.getElementById('vf-join-code-input');
@@ -544,6 +591,10 @@ export class VeilfarersLobbyGateway {
 
     // Modal Creador
     const modal = document.getElementById('vf-creator-modal');
+    document.getElementById('vf-btn-character-creator')?.addEventListener('click', async () => {
+      try { const { openCharacterCreator } = await import('../../creator/creatorUI.js'); await openCharacterCreator(); }
+      catch (err) { this.showHubError(`No se pudo abrir el creador: ${err?.message || err}`); }
+    });
     document.getElementById('vf-btn-open-creator')?.addEventListener('click', () => modal?.classList.remove('hidden'));
     document.getElementById('vf-btn-close-creator')?.addEventListener('click', () => modal?.classList.add('hidden'));
     document.getElementById('vf-btn-cancel-creator')?.addEventListener('click', () => modal?.classList.add('hidden'));
@@ -612,14 +663,16 @@ export class VeilfarersLobbyGateway {
     if (playerRoomsEl) playerRoomsEl.innerHTML = '<div class="vf-room-loading">Buscando salas conectadas...</div>';
     if (keeperRoomsEl) keeperRoomsEl.innerHTML = '<div class="vf-room-loading">Buscando tus salas creadas...</div>';
 
-    let allRooms = [];
-    try {
-      const { rooms } = await import('../../roomController.js');
-      if (rooms && rooms.service) {
-        allRooms = await rooms.service.list().catch(() => []);
+    // A failed lookup must never look like "you have no rooms".
+    let allRooms = [], listError = '';
+    if (this.hasCloudAccount()) {
+      try {
+        const { rooms } = await import('../../roomController.js');
+        allRooms = await rooms.service.list();
+      } catch (e) {
+        console.warn('[Lobby] Error al listar salas de Firestore:', e);
+        listError = this.roomErrorText(e);
       }
-    } catch (e) {
-      console.warn('[Lobby] Error al listar salas de Firestore:', e);
     }
 
     // Also get invited/history rooms from local storage
@@ -658,6 +711,55 @@ export class VeilfarersLobbyGateway {
 
     this.renderPlayerRooms(playerRooms);
     this.renderKeeperRooms(keeperRooms);
+    if (listError) this.renderRoomsError(listError, !playerRooms.length);
+  }
+
+  hasCloudAccount() {
+    const uid = this.currentUser?.uid;
+    return !!uid && !String(uid).startsWith('guest_');
+  }
+
+  roomErrorText(error) {
+    if (error?.code === 'permission-denied') return 'Firebase ha rechazado la consulta. Comprueba que las reglas de Firestore están publicadas.';
+    if (error?.code === 'unavailable' || /offline|network/i.test(error?.message || '')) return 'Sin conexión con el servidor. Revisa tu red y vuelve a intentarlo.';
+    return error?.message || 'Error desconocido.';
+  }
+
+  renderRoomsError(message, replacePlayerList = true) {
+    const html = `
+      <div class="vf-room-empty vf-room-error" role="alert">
+        <p>No se han podido cargar tus salas.</p>
+        <small>${escapeHtml(message)}</small>
+        <button type="button" class="vf-btn vf-btn-secondary vf-btn-sm btn-retry-rooms">Reintentar</button>
+      </div>
+    `;
+    for (const [id, replace] of [['vf-player-rooms-list', replacePlayerList], ['vf-keeper-rooms-list', true]]) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (replace) el.innerHTML = html; else el.insertAdjacentHTML('afterbegin', html);
+      el.querySelectorAll('.btn-retry-rooms').forEach(btn => { btn.onclick = () => this.loadRoomsList(); });
+    }
+  }
+
+  // Runs a cloud room action; on failure the user returns to the lobby and is told why.
+  async runRoomAction(action, label) {
+    this.showHubError('');
+    try {
+      const { rooms } = await import('../../roomController.js');
+      await action(rooms);
+    } catch (err) {
+      console.warn(`[Lobby] ${label}:`, err?.message || err);
+      this.showHubScreen();
+      this.showHubError(`${label}: ${this.roomErrorText(err)}`);
+      this.loadRoomsList();
+    }
+  }
+
+  showHubError(message) {
+    const el = document.getElementById('vf-hub-error');
+    if (!el) return;
+    el.textContent = message || '';
+    el.hidden = !message;
   }
 
   renderPlayerRooms(rooms) {
@@ -718,7 +820,7 @@ export class VeilfarersLobbyGateway {
           <button type="button" class="vf-btn vf-btn-launch vf-btn-sm btn-enter-room" data-room-id="${escapeHtml(r.id)}" data-role="keeper" title="Abrir mesa de juego como Director">
             ⚡ Abrir como Keeper
           </button>
-          <button type="button" class="vf-btn vf-btn-danger vf-btn-sm btn-delete-room" data-room-id="${escapeHtml(r.id)}" data-room-name="${escapeHtml(r.name || r.id)}" title="Eliminar sala definitivamente">
+          <button type="button" class="vf-btn vf-btn-danger vf-btn-sm btn-delete-room fx-advanced" data-room-id="${escapeHtml(r.id)}" data-room-name="${escapeHtml(r.name || r.id)}" title="Eliminar sala definitivamente">
             🗑️
           </button>
         </div>
@@ -765,17 +867,9 @@ export class VeilfarersLobbyGateway {
         activeCharId: role === 'keeper' ? null : (this.selectedCharId || null)
       });
     }
-    import('../../roomController.js').then(async ({ rooms }) => {
-      if (rooms) {
-        try {
-          await rooms.enter(roomId);
-        } catch (err) {
-          console.warn('[Lobby] rooms.enter:', err?.message || err);
-        }
-      }
-    }).catch(err => {
-      console.warn('[Lobby] rooms.enter:', err?.message || err);
-    });
+    // The local table and guests never touch the cloud.
+    if (roomId === 'mesa-principal' || !this.hasCloudAccount()) return;
+    this.runRoomAction(rooms => rooms.enter(roomId), 'No se pudo abrir la sala');
   }
 
   joinWithCode(code) {
@@ -797,17 +891,7 @@ export class VeilfarersLobbyGateway {
         activeCharId: this.selectedCharId || null
       });
     }
-    import('../../roomController.js').then(async ({ rooms }) => {
-      if (rooms) {
-        try {
-          await rooms.join(trimmed, this.currentUser?.displayName || 'Viajero');
-        } catch (err) {
-          console.warn('[Lobby] rooms.join:', err?.message || err);
-        }
-      }
-    }).catch(err => {
-      console.warn('[Lobby] rooms.join:', err?.message || err);
-    });
+    this.runRoomAction(rooms => rooms.join(trimmed, this.currentUser?.displayName || 'Viajero'), 'No se pudo entrar con ese código');
   }
 
   createNewRoom(name) {
@@ -825,17 +909,7 @@ export class VeilfarersLobbyGateway {
         activeCharId: null
       });
     }
-    import('../../roomController.js').then(async ({ rooms }) => {
-      if (rooms) {
-        try {
-          await rooms.create(trimmed);
-        } catch (err) {
-          console.warn('[Lobby] rooms.create:', err?.message || err);
-        }
-      }
-    }).catch(err => {
-      console.warn('[Lobby] rooms.create:', err?.message || err);
-    });
+    this.runRoomAction(rooms => rooms.create(trimmed), 'No se pudo crear la sala');
   }
 
   subscribeToUserVault(uid) {
@@ -866,7 +940,7 @@ export class VeilfarersLobbyGateway {
         <div class="vault-empty">
           <div class="vault-empty-icon">📂</div>
           <div class="vault-empty-title">REGISTRO DE OPERATIVOS VACÍO</div>
-          <p>No tienes personajes guardados en este terminal. Pulsa <strong>"+ Nuevo Personaje"</strong> o importa una ficha JSON para comenzar.</p>
+          <p>No tienes personajes guardados en este terminal. Importa una ficha <strong>JSON</strong> para comenzar.</p>
         </div>
       `;
       this.updateSummaryText();
@@ -898,7 +972,7 @@ export class VeilfarersLobbyGateway {
               <span class="meta-divider">•</span>
               <span class="meta-tag">${escapeHtml(st.background || 'Explorador')}</span>
             </div>
-            <div class="vault-card-stats">
+            <div class="vault-card-stats fx-advanced">
               <span class="stat-pill hp" title="Health Points">❤️ <strong>HP:</strong> ${dyn.hp || 0}/${st.maxHp || 6}</span>
               <span class="stat-pill stress" title="Stress Táctico">⚡ <strong>STR:</strong> ${dyn.stress || 0}/${st.maxStress || 6}</span>
               <span class="stat-pill hope" title="Hope / Determinación">✨ <strong>HOP:</strong> ${dyn.hope ?? 2}/${st.maxHope || 6}</span>
@@ -907,7 +981,7 @@ export class VeilfarersLobbyGateway {
             </div>
           </div>
         </div>
-        <div class="vault-card-actions">
+        <div class="vault-card-actions fx-advanced">
           <button type="button" class="vf-btn-sm btn-export-json" title="Exportar Ficha JSON">⬇ JSON</button>
           <button type="button" class="vf-btn-sm btn-delete-char" title="Eliminar Operativo">🗑️</button>
         </div>

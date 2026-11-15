@@ -77,6 +77,18 @@ service cloud.firestore {
         allow create: if roomOwner(roomId) && request.resource.data.keys().hasOnly(['text'])
           && request.resource.data.text is string && request.resource.data.text.size() <= 240000;
       }
+      match /arcs/{arcId} {
+        // Story arcs belong to the Keeper's room; players only see what the live session sends them.
+        allow read, delete: if roomOwner(roomId);
+        allow create, update: if roomOwner(roomId)
+          && request.resource.data.keys().hasOnly(['id', 'name', 'description', 'sceneIds', 'order', 'updatedAt'])
+          && request.resource.data.id == arcId
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 500
+          && request.resource.data.description is string && request.resource.data.description.size() <= 5000
+          && request.resource.data.sceneIds is list && request.resource.data.sceneIds.size() <= 100
+          && request.resource.data.order is int && request.resource.data.order >= 0 && request.resource.data.order < 100
+          && request.resource.data.updatedAt is number;
+      }
       match /wires/{wireId} {
         function wire() { return get(/databases/$(database)/documents/rooms/$(roomId)/wires/$(wireId)).data; }
         function participant() { return request.auth != null && (roomOwner(roomId) || (wire().uid == request.auth.uid && member(roomId, request.auth.uid))); }
@@ -107,9 +119,23 @@ service cloud.firestore {
     }
     match /users/{uid}/characters/{characterId} {
       allow read, delete: if owner(uid);
-      allow create: if owner(uid) && request.resource.data.keys().hasOnly(['name', 'payload', 'updatedAt'])
+      // Create and update share one shape so re-saving a character replaces its entry.
+      allow create, update: if owner(uid) && request.resource.data.keys().hasOnly(['id', 'key', 'name', 'payload', 'updatedAt'])
         && request.resource.data.name is string && request.resource.data.name.size() <= 200
         && request.resource.data.payload is string && request.resource.data.payload.size() <= 500000
+        && (!('id' in request.resource.data) || request.resource.data.id == characterId)
+        && (!('key' in request.resource.data) || (request.resource.data.key is string && request.resource.data.key.size() <= 400))
+        && request.resource.data.updatedAt is number;
+    }
+    match /users/{uid}/notes/{noteId} {
+      // Personal notes are private to their author, even from the room's Keeper.
+      allow read, delete: if owner(uid);
+      allow create, update: if owner(uid)
+        && request.resource.data.keys().hasOnly(['id', 'roomId', 'title', 'body', 'updatedAt'])
+        && request.resource.data.id == noteId
+        && request.resource.data.roomId is string && request.resource.data.roomId.size() > 0 && request.resource.data.roomId.size() <= 200
+        && request.resource.data.title is string && request.resource.data.title.size() <= 200
+        && request.resource.data.body is string && request.resource.data.body.size() <= 20000
         && request.resource.data.updatedAt is number;
     }
     match /users/{uid}/settings/preferences {
@@ -129,15 +155,25 @@ service cloud.firestore {
     }
     match /users/{uid}/scenes/{sceneId} {
       allow read, delete: if owner(uid);
-      allow create: if owner(uid)
-        && request.resource.data.keys().hasOnly(['name', 'gridSize', 'ambientLight', 'width', 'height', 'imageUrl', 'storagePath', 'updatedAt'])
+      // Scenes keep their tactical content (walls, lights, fog, tokens) and may live on
+      // Firebase Storage (storagePath) or on Cloudinary (imageUrl only).
+      allow create, update: if owner(uid)
+        && request.resource.data.keys().hasOnly(['id', 'name', 'gridSize', 'ambientLight', 'width', 'height', 'imageUrl', 'storagePath',
+          'walls', 'lights', 'effects', 'water', 'fow', 'notes', 'tokens', 'arcId', 'createdAt', 'updatedAt'])
         && request.resource.data.name is string && request.resource.data.name.size() <= 200
         && request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() < 4000
-        && request.resource.data.storagePath.matches('users/' + uid + '/maps/[^/]+')
+        && (!('storagePath' in request.resource.data) || request.resource.data.storagePath.matches('users/' + uid + '/maps/[^/]+'))
+        && (!('id' in request.resource.data) || request.resource.data.id == sceneId)
         && request.resource.data.gridSize is number && request.resource.data.gridSize >= 24 && request.resource.data.gridSize <= 250
         && request.resource.data.ambientLight is number && request.resource.data.ambientLight >= 0 && request.resource.data.ambientLight <= 1
-        && request.resource.data.width is number && request.resource.data.width > 0 && request.resource.data.width <= 6000
-        && request.resource.data.height is number && request.resource.data.height > 0 && request.resource.data.height <= 6000
+        && request.resource.data.width is number && request.resource.data.width > 0 && request.resource.data.width <= 12000
+        && request.resource.data.height is number && request.resource.data.height > 0 && request.resource.data.height <= 12000
+        && (!('walls' in request.resource.data) || request.resource.data.walls is list)
+        && (!('lights' in request.resource.data) || request.resource.data.lights is list)
+        && (!('effects' in request.resource.data) || request.resource.data.effects is list)
+        && (!('water' in request.resource.data) || request.resource.data.water is list)
+        && (!('notes' in request.resource.data) || request.resource.data.notes is list)
+        && (!('tokens' in request.resource.data) || request.resource.data.tokens is list)
         && request.resource.data.updatedAt is number;
     }
   }
