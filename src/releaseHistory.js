@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.5.0', date: '2026-11-15', title: 'V2 · Fase 1: Subida de nivel',
+    sections: [
+      { title: 'Subida de nivel', items: [
+        'Nuevo botón Subir de nivel en la ficha (vista Completa, solo el Keeper). Aplica las reglas del Corebook, cap. 12, hasta el nivel 10.',
+        'Cada nivel da dos Advancement Slots: +1 HP, +1 Stress, +1 a dos Experiencias, +1 a un Trait (una vez por Tier y Trait), +1 Evasion, +1 Technology Access, Nuevo Poder o Resolve, y las opciones de dos Slots: +1 Proficiency, Multiclass, Upgraded Subclass y Tempered Resolve. Las que no están disponibles aparecen desactivadas con el motivo.',
+        'Los niveles 2, 5 y 8 añaden el Logro de Tier: +1 Proficiency y +1 a dos Experiencias.',
+        'Los personajes Sleeping ganan +1 Resolve máximo en los niveles 3, 5, 7 y 9, hasta 6.',
+        'Los umbrales Major y Severe suben 1 con el nivel.',
+        'Si queda un Slot sin gastar, la ficha avisa de que se pierde y pide confirmarlo.',
+        'El historial de avance queda en la pestaña Rasgos y en el registro de la partida.',
+      ] },
+    ],
+  },
+  {
     version: '2.4.1', date: '2026-11-15', title: 'V2 · Alcance corregido, aviso de muros y bandas en el lock',
     sections: [
       { title: 'Alcance', items: [

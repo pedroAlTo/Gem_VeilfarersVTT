@@ -61,3 +61,9 @@
 .dossier-view { display:flex; margin-left:auto; }
 .dossier-view .hud-btn + .hud-btn { border-left:0; }
 .dossier-backdrop[data-sheet-view='basic'] .sheet-full { display:none !important; }
+.level-grants { margin:0 0 10px 18px; color:var(--text-dim); font-size:12.5px; line-height:1.7; }
+.level-slot { padding:8px 10px; margin-bottom:8px; border:1px solid var(--border-glass); }
+.level-slot-detail:empty { display:none; }
+.level-slot-detail { margin-top:8px; }
+.level-up-dialog .dossier-modal.veil-modal-box { max-width:760px; }
+.level-up-dialog .dossier-seal { width:auto; min-width:64px; padding:0 8px; }

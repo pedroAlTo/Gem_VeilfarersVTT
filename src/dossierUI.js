@@ -60,6 +60,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
         ${d.powers.length ? `<h4 class="dossier-label">LOADOUT · ${d.powers.length}${d.loadoutCap ? ' / ' + e(d.loadoutCap) : ''} PODERES EQUIPADOS</h4>` : ''}
         ${d.powers.map(p => narrative(`${p.name}${p.recall ? ' · Recall ' + p.recall : ''}`, p.description)).join('')}
         ${d.vault ? narrative('Vault · poderes conocidos sin equipar', d.vault) : ''}
+        ${token.advancement?.log?.length ? `<h4 class="dossier-label">HISTORIAL DE AVANCE</h4>${token.advancement.log.map(row => narrative(`Nivel ${row.level} · Tier ${row.tier}`, row.summary.join('\n'))).join('')}` : ''}
         ${d.notes.map(([k, v]) => narrative(k, v)).join('')}
       </div>
       ${hasBackground ? `<div data-panel="background" hidden>
@@ -75,7 +76,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
       <div data-panel="equipment" hidden></div>
       ${imported ? `<div data-panel="source" hidden><p class="dossier-muted">Original íntegro para consulta, incluidos campos de otras sendas. Exportar al creador conserva esos campos y actualiza los valores editables de esta ficha.</p><pre class="dossier-json">${e(JSON.stringify(token.sourceCharacter.document, null, 2))}</pre></div>` : ''}
       <p class="dossier-error" role="alert"></p>
-      <footer class="dossier-footer">${!pc ? '<button type="button" class="hud-btn" id="dossier_boss">Boss · estados</button>' : ''}<button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
+      <footer class="dossier-footer">${!pc ? '<button type="button" class="hud-btn" id="dossier_boss">Boss · estados</button>' : ''}${pc ? '<button type="button" class="hud-btn" id="dossier_level_up" title="Subida de nivel según el Corebook, cap. 12">Subir de nivel</button>' : ''}<button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
     </form>
   `);
   modal.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => {
@@ -87,7 +88,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
   // Básica keeps what is used at the table; Completa adds identity, maximums, exports and tools.
   for (const name of ['actorName', 'characterClass', 'roleTag', 'subclass', 'species', 'community', 'level', 'hp_max', 'armor_max', 'stress_max', 'resolve_max', 'resolve_die', 'honedEdgeBonus'])
     modal.querySelector(`[name="${name}"]`)?.closest('label')?.classList.add('sheet-full');
-  for (const id of ['dossier_boss', 'dossier_controls', 'dossier_token', 'dossier_export', 'dossier_system']) modal.querySelector('#' + id)?.classList.add('sheet-full');
+  for (const id of ['dossier_boss', 'dossier_level_up', 'dossier_controls', 'dossier_token', 'dossier_export', 'dossier_system']) modal.querySelector('#' + id)?.classList.add('sheet-full');
   const setView = view => {
     view = view === 'full' ? 'full' : 'basic';
     modal.dataset.sheetView = view;
@@ -104,6 +105,18 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
     if (keys.includes('tokens')) modal.querySelector('[data-condition-badges]').innerHTML = conditionBadges(store.state.tokens.find(t => t.id === token.id) || token);
   });
   const observer = new MutationObserver(() => { if (!modal.isConnected) { unsubscribeConditions(); observer.disconnect(); } }); observer.observe(document.body, { childList: true });
+  const levelButton = modal.querySelector('#dossier_level_up');
+  if (levelButton) {
+    const keeper = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
+    levelButton.disabled = !keeper || (token.level || 1) >= 10;
+    if (!keeper) levelButton.title = 'El Keeper sube de nivel a los personajes.';
+    levelButton.onclick = async () => {
+      const { openLevelUp } = await import('./levelUpUI.js');
+      // The sheet is reopened with the new values once the level is applied.
+      modal.remove();
+      openLevelUp(token.id, () => { const fresh = store.state.tokens.find(t => t.id === token.id); if (fresh) openDossier(fresh, openSettings, 'reference'); });
+    };
+  }
   modal.querySelector('#dossier_controls').onclick = async () => { const { openTokenControl } = await import('./sessionLobby.js'); openTokenControl(token.id); };
   modal.querySelector('#dossier_token').onclick = () => { modal.remove(); openSettings(store.state.tokens.find(t => t.id === token.id) || token); };
   if (!pc) { const bossButton = modal.querySelector('#dossier_boss'); bossButton.disabled = store.sessionRole === 'player' || store.state.userRole !== 'keeper'; bossButton.onclick = async () => { modal.remove(); const { openBossEditor } = await import('./bossUI.js'); openBossEditor(token.id); }; }

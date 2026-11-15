@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.4.1 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.5.0 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -69,9 +69,16 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 - **v2.3.3 — Crushing y Bleed**: `weaponTags()`, `usableArmorSlots()` y `canBleed()` en `src/rulesEngine.js`. Crushing resta 1 a los Armor Slots **utilizables** en ese impacto (no lo consume), coherente con la decisión 5; Composite lo anula (`targetDefenses().composite`). Bleed añade la condición `Bleeding` al aplicar (también si el daño queda en 0 HP), salvo a objetivos Synthetic; por red viaja como `addCondition: 'Bleeding'` y el Keeper solo admite ese valor. El Stress por ronda de Bleeding **no** se automatiza: lo lleva la mesa.
 - **v2.4.0 — Ataque completo**: reglas puras en `src/attackFlow.js` (`rangeBandFor`, `tokenDistanceSquares`, `weaponRangeBand`, `rangeCheck`, `weaponTraitId`, `netEdge`, `rollAdversaryAttack`, `dualityAttackHit`). `DiceRollerSidebar.executeAttack()` (`src/diceRoller.js`) orquesta: comprueba alcance, tira (PJ: `executeActionCheck({ evasion, disadvantage, targetName })`, que ahora acepta ese parámetro y devuelve el resultado; adversario: `rollAdversaryAttack`), muestra `#attack_result_display` y, si impacta, marca crítico y llama a `executeDamageCalc()`. Melee = distancia entre centros ≤ 1,5 casillas; el resto por metros con `map.gridScaleMeters` (2 m por casilla si no hay). El ataque del adversario se registra en el log y en el chat de mesa (respetando la tirada secreta). Tests en `tests/attack-flow.test.js`; ojo: `store.addLog` consume `Math.random` para su id, por eso los tests usan daño fijo tras una tirada.
 - **v2.4.1 — Alcance y muros**: `distanceInfo(a, b, map)` devuelve casillas, metros, banda y `blocked` (`lineBlockedByWall`: muros y puertas cerradas sí; ventanas y puertas abiertas no). `weaponRangeBand()` cae al catálogo (`EQUIPMENT_CATALOG`, por nombre sin paréntesis) cuando el arma del inventario no trae `range`. La línea de lock y `renderRuler` de `src/canvasEngine.js` usan `rangeBandFor` y `map.gridScaleMeters` (antes el lock medía a 1,5 m por casilla). 'Very Far' del catálogo equivale a Extreme.
+- **v2.5.0 — Subida de nivel**: reglas puras en `src/advancement.js` (`applyLevelUp`, `optionBlocked`, `levelGrants`, `experienceSlots`, `tierOf`); diálogo en `src/levelUpUI.js` (`openLevelUp`, importado de forma diferida desde `openDossier`). Guarda el rastro en `token.advancement = { log, traitRaises, multiclass, subclassUpgrades, temperedResolve }`. Las Experiencias se leen y suben en los campos de ficha (`a_exp_N_bonus` / `s_exp_N_bonus`). Nuevo Poder, Move, Multiclass y Subclass solo se **anotan** (texto libre): la VTT todavía no tiene catálogo de poderes ni de clases. Hecho siguiendo el Corebook; **pendiente contrastarlo con la lógica de subida de nivel del creador** (ver "Rumbo actual").
 - **Intro abre el chat de mesa**: `entersTableChat()` en `src/chatPanel.js`, llamado desde el `keydown` global de `src/main.js`; lanza `veil:open_chat`. Sin sesión en vivo el chat sigue deshabilitado (comportamiento previo).
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).
+
+## Rumbo actual (indicado por el usuario el 15 nov 2026)
+Orden de trabajo de la Fase 1:
+1. **Creación de personaje dentro de la VTT**, como una sección propia, adaptando el Character Creator del repo `pedroAlTo/veilfarerscharcreator` (clonado solo para consulta en `/home/user/pedroalto/veilfarerscharcreator` durante la sesión; no se comparten datos con él, decisión 1).
+2. **Subida de nivel y ficha**, recuperando la lógica de ese repo y adaptándola a la VTT.
+3. **Llevar las fichas a los tokens**: crear un personaje y asignarlo a un token de la mesa.
 
 ## Pendiente inmediato
 1. ~~Desplegar las reglas~~ — **hecho por el usuario el 14 nov 2026** (reglas de v2.0.2, con arcos y notas). Falta comprobarlo en producción: guardar un personaje y una escena con sesión iniciada no debe mostrar el aviso de "guardado solo en este navegador". Si `firestore.rules` vuelve a cambiar, hay que publicarlas otra vez.
