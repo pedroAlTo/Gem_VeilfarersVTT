@@ -185,7 +185,7 @@ export function resolveDamage({
   isDirectDamage = false,
   targetMajorThreshold = 6,
   targetSevereThreshold = 12,
-  useArmorSlot = true,
+  useArmorSlot = false, // the defender MAY mark an Armor Slot; it is never automatic
   currentArmorSlots = 2,
   mountRating = 1 // 1 for person, 2 for Tier 2/3 ship, 3 for Tier 4/5 ship
 }) {

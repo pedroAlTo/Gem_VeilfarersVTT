@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.3.0**.
-Paquete: `VeilFarers_VTT_v2.3.0.zip`.
+Versión actual del VTT: **v2.3.1**.
+Paquete: `VeilFarers_VTT_v2.3.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.3.1] — 2026-11-15
+
+V2 · Daño: la armadura ya no se gasta sola
+
+### Resolución de daño
+
+- Corregido: un impacto por debajo del umbral Major aparecía como "Deflected · 0 HP" porque el cálculo gastaba un Armor Slot por su cuenta. Ahora marca 1 HP (Minor), como indica el Corebook.
+- Gastar armadura es decisión del defensor: la casilla "El defensor gasta 1 Armor Slot" empieza desmarcada y el botón Gastar escudos sigue disponible tras calcular.
+- Con un objetivo elegido, el cálculo usa siempre los umbrales Major y Severe de ese token, de modo que lo que se muestra coincide con lo que se aplica aunque los campos manuales tuvieran otros valores.
 
 ## [2.3.0] — 2026-11-14
 

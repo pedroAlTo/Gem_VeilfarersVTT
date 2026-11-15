@@ -66,9 +66,26 @@ function damagePanel({ secret=false, direct=false }={}) {
 }
 test('damage preview is silent; applied FX use actual lost HP and real Armor expenditure only once', () => {
   const {node,dice,target}=damagePanel();const effects=[],sent=[];window.veilCanvas={triggerAttackFX:p=>effects.push(p)};network.broadcast=msg=>sent.push(msg);
+  node.querySelector('#dmg_use_armor').checked=true; // the defender chooses to mark an Armor Slot
   dice.executeDamageCalc();assert.equal(effects.length,0);assert.equal(sent.filter(m=>m.type==='ATTACK_FX').length,0);
   node.querySelector('#apply_dmg_to_target_btn').click();assert.equal(effects.length,1);assert.equal(effects[0].hpLost,1);assert.equal(effects[0].shield,true);assert.equal(effects[0].kind,'plasma');assert.equal(store.state.tokens.find(t=>t.id===target.id).armor.current,0);
   node.querySelector('#apply_dmg_to_target_btn').click();assert.equal(effects.length,1);
+});
+test('a hit below the Major Threshold marks 1 HP; Armor is never spent unless the defender chooses to (Corebook ch. 10)', () => {
+  const {node,dice,target}=damagePanel();window.veilCanvas={triggerAttackFX:()=>{}};network.broadcast=()=>{};
+  store.updateToken(target.id,{hp:{current:6,max:6,majorThreshold:10,severeThreshold:16},armor:{current:3,max:3}});
+  // Stale manual thresholds must not win over the target's own.
+  node.querySelector('#dmg_major_thresh').value='10';node.querySelector('#dmg_severe_thresh').value='20';
+  node.querySelector('#dmg_formula').value='6';
+  assert.equal(node.querySelector('#dmg_use_armor').checked,false,'armor is opt-in');
+  dice.executeDamageCalc();
+  assert.equal(node.querySelector('#dmg_raw_val').textContent,'6');
+  assert.equal(node.querySelector('#dmg_severity_val').textContent,'Minor');
+  assert.equal(node.querySelector('#dmg_hp_loss_val').textContent,'1 HP');
+  assert.match(node.querySelector('#dmg_detail_text').textContent,/Major \(10\) & Severe \(16\)\. No armor slot used/);
+  node.querySelector('#apply_dmg_to_target_btn').click();
+  const after=store.state.tokens.find(t=>t.id===target.id);
+  assert.equal(after.hp.current,5);assert.equal(after.armor.current,3);
 });
 test('Armor exhausted between preview and apply does not produce a shield; secret impact is not broadcast', () => {
   const {node,dice,target}=damagePanel({secret:true});const effects=[],sent=[];window.veilCanvas={triggerAttackFX:p=>effects.push(p)};network.broadcast=msg=>sent.push(msg);

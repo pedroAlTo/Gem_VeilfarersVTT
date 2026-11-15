@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.3.1', date: '2026-11-15', title: 'V2 · Daño: la armadura ya no se gasta sola',
+    sections: [
+      { title: 'Resolución de daño', items: [
+        'Corregido: un impacto por debajo del umbral Major aparecía como "Deflected · 0 HP" porque el cálculo gastaba un Armor Slot por su cuenta. Ahora marca 1 HP (Minor), como indica el Corebook.',
+        'Gastar armadura es decisión del defensor: la casilla "El defensor gasta 1 Armor Slot" empieza desmarcada y el botón Gastar escudos sigue disponible tras calcular.',
+        'Con un objetivo elegido, el cálculo usa siempre los umbrales Major y Severe de ese token, de modo que lo que se muestra coincide con lo que se aplica aunque los campos manuales tuvieran otros valores.',
+      ] },
+    ],
+  },
+  {
     version: '2.3.0', date: '2026-11-14', title: 'V2 · Fase 1: Ficha en vista Básica o Completa',
     sections: [
       { title: 'Fichas', items: [

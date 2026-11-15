@@ -534,8 +534,8 @@ export class DiceRollerSidebar {
           <div class="dmg-quick-controls">
             <div class="dmg-quick-checkboxes">
               <label class="hud-checkbox-label">
-                <input type="checkbox" id="dmg_use_armor" checked />
-                <span>Mitigar con Armadura</span>
+                <input type="checkbox" id="dmg_use_armor" />
+                <span title="Corebook, cap. 10: el defensor PUEDE marcar un Armor Slot para bajar la severidad un escalón. Nunca es automático.">El defensor gasta 1 Armor Slot</span>
               </label>
               <label class="hud-checkbox-label">
                 <input type="checkbox" id="dmg_is_critical" />
@@ -1191,8 +1191,14 @@ export class DiceRollerSidebar {
     const diceCount = parseInt(this.container.querySelector('#dmg_dice_count').value, 10);
     const diceSides = parseInt(this.container.querySelector('#dmg_dice_sides').value, 10);
     const flatMod = parseInt(this.container.querySelector('#dmg_flat_mod').value, 10);
-    const major = parseInt(this.container.querySelector('#dmg_major_thresh').value, 10);
-    const severe = parseInt(this.container.querySelector('#dmg_severe_thresh').value, 10);
+    // With a target, its own thresholds decide the hit: the preview must match what is applied.
+    const majorInput = this.container.querySelector('#dmg_major_thresh'), severeInput = this.container.querySelector('#dmg_severe_thresh');
+    if (targetToken?.hp) {
+      if (Number.isFinite(targetToken.hp.majorThreshold)) majorInput.value = targetToken.hp.majorThreshold;
+      if (Number.isFinite(targetToken.hp.severeThreshold)) severeInput.value = targetToken.hp.severeThreshold;
+    }
+    const major = parseInt(majorInput.value, 10);
+    const severe = parseInt(severeInput.value, 10);
     const useArmor = this.container.querySelector('#dmg_use_armor').checked;
     const isCritical = this.container.querySelector('#dmg_is_critical').checked;
     const isDirect = this.container.querySelector('#dmg_is_direct').checked;
