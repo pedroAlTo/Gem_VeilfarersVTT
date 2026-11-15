@@ -103,3 +103,6 @@
   .creator-panel { padding-left:0; max-height:56vh; }
   .creator-traits { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
+.level-power { display:flex; align-items:flex-start; gap:8px; padding:8px 10px; margin-bottom:6px; border:1px solid var(--border-glass); white-space:normal; }
+.level-power small { color:var(--text-dim); line-height:1.45; }
+.level-slot[hidden] { display:none; }

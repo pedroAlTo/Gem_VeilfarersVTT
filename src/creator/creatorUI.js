@@ -8,7 +8,7 @@ import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
 import { account } from '../cloudAccount.js';
 import {
   CREATOR_STEPS, TRAIT_IDS, TRAIT_ARRAY, EQUIP_BUDGET, STARTING_POWERS, experienceCount, affiliationStatus, freshState, setChoice, isStepReady, firstIncompleteStep,
-  classOf, classRules, subclassList, inheritanceOptions, characterDomains, allDomains, levelOnePowers, powerId, equipmentChoices, spend, buildSheetDocument,
+  classOf, classRules, subclassList, inheritanceOptions, startingResolveMoves, characterDomains, allDomains, levelOnePowers, powerId, equipmentChoices, spend, buildSheetDocument,
 } from './creatorModel.js';
 
 const DRAFT_KEY = 'veil_creator_draft';
@@ -86,8 +86,10 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const cls = classOf(state, data);
       if (!cls || !state.path) return '<h3>Poderes</h3><p class="dossier-muted">Elige senda y clase en el paso 3.</p>';
       if (state.path === 'Sleeping') {
-        if (cls.id !== 'mystic') return '<h3>Poderes</h3><p class="dossier-muted">Esta clase Sleeping no usa Poderes de Dominio: trabaja con Effort y Resolve Moves. Puedes continuar.</p>';
-        return `<h3>Starting Uncanny Archive</h3><p class="dossier-muted">Elige dos Dominios distintos. Desbloqueas todos sus Poderes de nivel 1 a través de Uncanny Power.</p>
+        const moves = startingResolveMoves(state, data);
+        const movesHtml = `<h4 class="dossier-label">RESOLVE MOVES · ${moves.length}</h4><p class="dossier-muted">Los dos Moves de tu clase${moves.some(m => m.subclass) ? ' y el de tu subclase' : ''}. Se pagan con dados de Resolve.</p><div class="creator-detail">${moves.map(m => `<p><strong>${e(m.name)}</strong> <em>(${e(m.cost)})</em>. ${e(short(m.text, 420))}</p>`).join('') || '<p>Elige una subclase en el paso 3.</p>'}</div>`;
+        if (cls.id !== 'mystic') return `<h3>Resolve Moves</h3><p class="dossier-muted">Un personaje Sleeping no usa Poderes de Dominio: trabaja con Effort y Resolve Moves. No hay nada que elegir aquí.</p>${movesHtml}`;
+        return `${movesHtml}<h3>Starting Uncanny Archive</h3><p class="dossier-muted">Elige dos Dominios distintos. Desbloqueas todos sus Poderes de nivel 1 a través de Uncanny Power.</p>
           <div class="creator-grid">${allDomains(data).map(d => card(`data-domain="${e(d)}"`, state.sleepingMysticDomains.includes(d), d, `${levelOnePowers(data, d).length} poderes de nivel 1`, levelOnePowers(data, d).map(p => p.n).join(' · '))).join('')}</div>`;
       }
       const domains = characterDomains(state, data);

@@ -89,6 +89,22 @@ export function multiclassChoices(token, data) {
   return (data?.classes || []).filter(c => lower(c.name) !== lower(token.characterClass))
     .map(c => ({ id: c.id, name: c.name, question: c.bgQuestion, domains: c.domainList.filter(d => !own.includes(lower(d))) })).filter(c => c.domains.length);
 }
+// Resolve Moves (Corebook ch. 7). A Sleeping character already holds its two Class Moves and its
+// Subclass Move, so Option 8 only finds a Move when the sheet is missing one of them.
+const moveLine = move => `${move.name} (${move.cost}) — ${move.text}`;
+const baseSubclass = name => String(name ?? '').replace(/\s*\(.*\)\s*$/, '').trim();
+const knowsMove = (token, move) => lower(fields(token).s_learned_moves).includes(lower(move.name));
+export function availableResolveMoves(token, data) {
+  if (token.path !== 'Sleeping' || !data) return [];
+  return (data.resolveMoves || []).filter(m => lower(m.class) === lower(token.characterClass) && (!m.subclass || lower(m.subclass) === lower(token.subclass) || lower(m.subclass) === lower(baseSubclass(token.subclass))) && !knowsMove(token, m));
+}
+// A Sleeping multiclass learns exactly one Class Resolve Move of the second Class.
+export const multiclassMoves = (data, classId) => { const cls = (data?.classes || []).find(c => c.id === classId); return cls ? (data.resolveMoves || []).filter(m => lower(m.class) === lower(cls.name) && !m.subclass) : []; };
+function learnMove(token, move) {
+  const f = writable(token);
+  f.s_learned_moves = [String(f.s_learned_moves ?? '').trim(), moveLine(move)].filter(v => v && v !== '[]').join('\n\n');
+}
+
 // The Subclass feature the next upgrade grants (Specialization, then Mastery).
 export function nextSubclassFeature(token, data) {
   const cls = classByName(data, token.characterClass);
@@ -143,29 +159,36 @@ function raiseExperiences(token, keys, summary, label, newName = '') {
 // achievementExperiences: the two Experiences raised by a Tier Achievement (levels 2, 5, 8).
 // data: the creator rules data. With it, Powers, Multiclass and Subclass are chosen from the
 // rules; without it they are recorded as free-text notes.
-export function applyLevelUp(source, { picks = [], achievementExperiences = [], achievementNewExperience = '', allowUnspent = false, data = null } = {}) {
-  const token = structuredClone(source), level = token.level || 1, next = level + 1, tier = tierOf(next);
+// respend: spend the Advancement Slots refunded by an Awakening. The level does not change and
+// nothing the level itself grants is applied again.
+export function applyLevelUp(source, { picks = [], achievementExperiences = [], achievementNewExperience = '', allowUnspent = false, data = null, respend = false } = {}) {
+  const token = structuredClone(source), level = token.level || 1, next = respend ? level : level + 1, tier = tierOf(next);
+  const budget = respend ? (token.advancement?.refundSlots || 0) : 2;
   if (token.actorType === 'adversary' || token.isPlayer === false) throw new Error('Solo los personajes jugadores suben de nivel.');
-  if (level >= MAX_LEVEL) throw new Error(`El nivel máximo es ${MAX_LEVEL}.`);
+  if (respend && budget < 1) throw new Error('Este personaje no tiene Advancement Slots devueltos por gastar.');
+  if (!respend && level >= MAX_LEVEL) throw new Error(`El nivel máximo es ${MAX_LEVEL}.`);
   const chosen = picks.map(p => ({ ...p, option: option(p.id) }));
   if (chosen.some(p => !p.option)) throw new Error('Opción de avance desconocida.');
   const spent = chosen.reduce((n, p) => n + p.option.slots, 0);
-  if (spent > 2) throw new Error('Cada nivel da dos Advancement Slots.');
-  if (spent < 2 && !allowUnspent) throw new Error('Quedan Advancement Slots sin gastar. Los que no se usen se pierden: confírmalo para continuar.');
-  if (new Set(chosen.map(p => p.id)).size !== chosen.length) throw new Error('Las dos opciones de un Slot deben ser distintas.');
+  if (spent > budget) throw new Error(respend ? `Solo hay ${budget} Advancement Slot${budget === 1 ? '' : 's'} devuelto${budget === 1 ? '' : 's'}.` : 'Cada nivel da dos Advancement Slots.');
+  if (respend && spent < 1) throw new Error('Elige en qué gastar los Slots devueltos.');
+  if (!respend && spent < 2 && !allowUnspent) throw new Error('Quedan Advancement Slots sin gastar. Los que no se usen se pierden: confírmalo para continuar.');
+  if (!respend && new Set(chosen.map(p => p.id)).size !== chosen.length) throw new Error('Las dos opciones de un Slot deben ser distintas.');
   for (const p of chosen) { const why = optionBlocked(token, p.id, next); if (why) throw new Error(why); }
 
   const adv = record(token), summary = [], sleeping = token.path === 'Sleeping';
-  token.level = next;
-  token.hp = { ...token.hp, majorThreshold: (token.hp.majorThreshold || 0) + 1, severeThreshold: (token.hp.severeThreshold || 0) + 1 };
-  if (isTierAchievement(next)) {
+  if (!respend) {
+    token.level = next;
+    token.hp = { ...token.hp, majorThreshold: (token.hp.majorThreshold || 0) + 1, severeThreshold: (token.hp.severeThreshold || 0) + 1 };
+  }
+  if (!respend && isTierAchievement(next)) {
     if ((token.proficiency || 1) < 6) { token.proficiency = (token.proficiency || 1) + 1; summary.push(`Logro de Tier: Proficiency ${token.proficiency}`); }
     if (experienceSlots(token).length) raiseExperiences(token, achievementExperiences, summary, 'Logro de Tier', achievementNewExperience);
     else summary.push('Logro de Tier: +1 a dos Experiencias (anótalas en la ficha)');
   }
   // Loadout capacity is set by Tier: 5 Powers at Tier 1, 6 at Tier 2 and 7 at Tier 3 (ch. 18).
   if (!sleeping) { const cap = 4 + tier; if (Number(fields(token).a_loadout_cap || 5) !== cap) { writable(token).a_loadout_cap = String(cap); if (tier !== tierOf(level)) summary.push(`Loadout: ${cap} Poderes`); } }
-  if (sleeping && RESOLVE_LEVELS.includes(next) && token.resolve && token.resolve.max < 6) { token.resolve = { ...token.resolve, max: token.resolve.max + 1 }; summary.push(`Resolve máximo ${token.resolve.max}`); }
+  if (!respend && sleeping && RESOLVE_LEVELS.includes(next) && token.resolve && token.resolve.max < 6) { token.resolve = { ...token.resolve, max: token.resolve.max + 1 }; summary.push(`Resolve máximo ${token.resolve.max}`); }
 
   for (const p of chosen) {
     const note = String(p.note ?? '').trim().slice(0, 200);
@@ -195,6 +218,10 @@ export function applyLevelUp(source, { picks = [], achievementExperiences = [], 
         const f = writable(token), line = `${power.d} · L${power.l} · ${power.n}`;
         f.a_vault = [String(f.a_vault ?? '').trim(), line].filter(Boolean).join('\n');
         summary.push(`Nuevo Poder al Vault: ${line}`);
+      } else if (sleeping && data) {
+        const move = availableResolveMoves(token, data).find(m => m.id === p.moveId);
+        if (!move) throw new Error('Tu personaje ya tiene todos los Resolve Moves de su clase y subclase: elige +1 Resolve máximo.');
+        learnMove(token, move); summary.push(`Nuevo Resolve Move: ${move.name}`);
       } else summary.push(`${sleeping ? 'Nuevo Resolve Move' : 'Nuevo Poder al Vault'}${note ? `: ${note}` : ''}`);
     }
     if (p.id === 'multiclass') {
@@ -205,12 +232,15 @@ export function applyLevelUp(source, { picks = [], achievementExperiences = [], 
         const answer = String(p.answer ?? '').trim().slice(0, 1000);
         if (!answer) throw new Error(`Responde a la pregunta de trasfondo de ${choice.name}.`);
         const cls = data.classes.find(c => c.id === choice.id), rules = sleeping && cls.sleepingRules ? cls.sleepingRules : cls;
+        const move = sleeping ? multiclassMoves(data, choice.id).find(m => m.id === p.moveId) : null;
+        if (sleeping && !move) throw new Error(`Un multiclass Sleeping aprende un Class Resolve Move de ${choice.name}: elígelo.`);
         const gained = sleeping ? rules.effortFeature : rules.hopeFeature, f = writable(token);
         adv.multiclass = { classId: choice.id, className: choice.name, domain: p.domain, dormant: sleeping };
         f.multiclass = choice.name;
         f.features = [String(f.features ?? '').trim(), `Multiclass · ${choice.name} — ${gained?.name || ''}: ${gained?.text || ''}`, `${choice.question} ${answer}`].filter(Boolean).join('\n\n');
         if (!sleeping) f.a_domain_ref = [String(f.a_domain_ref ?? '').trim(), `Multiclass Domain — ${p.domain}`].filter(Boolean).join(' · ');
-        summary.push(`Multiclass: ${choice.name} · Dominio ${p.domain}${sleeping ? ' (latente)' : ''}`);
+        if (move) learnMove(token, move);
+        summary.push(`Multiclass: ${choice.name} · Dominio ${p.domain}${sleeping ? ` (latente) · Move: ${move.name}` : ''}`);
       } else { adv.multiclass = true; summary.push(`Multiclass${note ? `: ${note}` : ''}`); }
     }
     if (p.id === 'subclass') {
@@ -223,10 +253,79 @@ export function applyLevelUp(source, { picks = [], achievementExperiences = [], 
       }
       summary.push(`Subclass: ${upgrade.rank}${upgrade.feature ? ` · ${upgrade.feature.name}` : note ? ` · ${note}` : ''}`);
     }
+    // Slots spent on the Sleeping engine come back if the character later Awakens (ch. 12).
+    if (sleeping && (p.id === 'power' || p.id === 'tempered')) adv.sleepingSlots = (adv.sleepingSlots || 0) + p.option.slots;
     if (p.id === 'tempered') { adv.temperedResolve = true; token.resolve = { ...token.resolve, dieType: 'd6' }; summary.push('Tempered Resolve: dado d6'); }
   }
-  if (spent < 2) summary.push(`${2 - spent} Advancement Slot sin gastar (perdido)`);
+  if (!respend && spent < 2) summary.push(`${2 - spent} Advancement Slot sin gastar (perdido)`);
+  if (respend) { adv.refundSlots = budget - spent; summary.unshift(`Slots devueltos gastados: ${spent}${adv.refundSlots ? ` (quedan ${adv.refundSlots})` : ''}`); }
   adv.log = [...adv.log, { level: next, tier, summary }].slice(-20);
+  token.advancement = adv;
+  return { token, summary };
+}
+
+// Awakening in play (Corebook ch. 7): a Sleeping character becomes Awakened. A story event the
+// Keeper recognises, resolved in downtime; it is not an Advancement Slot option.
+// powers: the starter pair, two Level 1 Powers of the primary Class's Domains ("Domain::Name").
+export function awakeningDomains(token, data, veilAlignment = '') {
+  const cls = classByName(data, token.characterClass), sub = baseSubclass(token.subclass);
+  if (!cls) return [];
+  if (cls.id === 'mystic') return ['Neural', ['Lux', 'Void'].includes(veilAlignment) ? veilAlignment : ''].filter(Boolean);
+  if (cls.id === 'vanguard') return ['Neural', { 'Ghost Blade': 'Void', 'Kinetic Echo': 'Kinetic', 'Pure Conduit': 'Lux' }[sub]].filter(Boolean);
+  return cls.domainList.slice(0, 2);
+}
+export function awaken(source, { data, powers = [], veilAlignment = '' } = {}) {
+  const token = structuredClone(source);
+  if (token.actorType === 'adversary' || token.isPlayer === false) throw new Error('Solo un personaje jugador puede Despertar.');
+  if (token.path !== 'Sleeping') throw new Error('Solo un personaje Sleeping puede Despertar.');
+  const cls = classByName(data, token.characterClass);
+  if (!cls) throw new Error('No se reconoce la clase del personaje: no se puede aplicar el Awakening.');
+  // The corresponding Awakened Subclass: The Steward becomes The Icon; the rest map by name.
+  const subName = baseSubclass(token.subclass) === 'The Steward' ? 'The Icon' : baseSubclass(token.subclass);
+  const sub = (cls.awakenedSubclasses || []).find(x => lower(x.name) === lower(subName));
+  const domains = awakeningDomains(token, data, veilAlignment);
+  if (cls.id === 'mystic' && domains.length < 2) throw new Error('Un Mystic elige su Veil Alignment (Lux o Void) al Despertar.');
+  if (domains.length < 2) throw new Error('No se pueden determinar los Dominios del personaje.');
+  const starter = [...new Set(powers)].map(id => data.powers.find(p => `${p.d}::${p.n}` === id && p.l === 1 && domains.includes(p.d))).filter(Boolean);
+  if (starter.length !== 2) throw new Error(`Elige dos Poderes de nivel 1 distintos de ${domains.join(' y ')}.`);
+
+  const adv = record(token), f = writable(token), level = token.level || 1, summary = ['Awakening: de Sleeping a Awakened'];
+  const text = value => String(value ?? '').trim();
+  const line = feature => (feature ? `${text(feature.name)} — ${text(feature.text || feature.desc)}` : '');
+  // Effort becomes Hope; the Resolve engine, Honed Edge and the Recovery Anchor are retired.
+  const hope = Math.min(token.effort || 0, token.hopeMax ?? 6);
+  Object.assign(token, { path: 'Awakened', hope, effort: 0, resolve: { current: 0, max: 0, dieType: 'd4' }, honedEdgeBonus: 0, recoveryAnchor: '' });
+  summary.push(`Effort → Hope ${hope}`, 'Se retiran Resolve, Resolve Moves, Honed Edge y Recovery Anchor');
+  // Experiences stay; from now on they cost Hope to invoke.
+  for (const key of Object.keys(f).filter(k => /^s_exp_\d+(_bonus)?$/.test(k))) { const mine = key.replace(/^s_/, 'a_'); if (text(f[key])) f[mine] = f[key]; }
+  // Hope Feature and Class Feature of the Awakened class; the Subclass keeps its upgrade tier.
+  const previousSub = token.subclass;
+  if (sub) { token.subclass = sub.name; f.subclass = sub.name; token.roleTag = [token.characterClass, sub.name].filter(Boolean).join(' · '); }
+  const sleepingRules = cls.sleepingRules || {};
+  const stale = [text(sleepingRules.classFeature?.name), text(previousSub), text(baseSubclass(previousSub)), 'Multiclass ·', 'Studied Domains'].filter(Boolean);
+  const kept = text(f.features).split('\n\n').filter(part => part && !stale.some(prefix => part.startsWith(prefix)));
+  const upgrades = adv.subclassUpgrades || 0, multi = adv.multiclass && typeof adv.multiclass === 'object' ? adv.multiclass : null;
+  const secondClass = multi ? data.classes.find(c => c.id === multi.classId) : null;
+  f.features = [line(cls.classFeature),
+    sub?.foundation && `${sub.name} · Foundation — ${line(sub.foundation)}`,
+    upgrades >= 1 && sub?.specialization && `${sub.name} · Specialization — ${line(sub.specialization)}`,
+    upgrades >= 2 && sub?.mastery && `${sub.name} · Mastery — ${line(sub.mastery)}`,
+    secondClass && `Multiclass · ${secondClass.name} — ${line(secondClass.hopeFeature)}`, ...kept].filter(Boolean).join('\n\n');
+  Object.assign(f, { chosen_path: 'Awakened', a_featname: text(cls.hopeFeature?.name), a_feattext: text(cls.hopeFeature?.text), s_featname: '', s_feattext: '', s_learned_moves: '', s_anchor: '', s_honed: '', s_active_move: '', s_active_move_text: '' });
+  if (sub?.trait || cls.spellcastTrait) f.signature_trait = text(sub?.trait || cls.spellcastTrait);
+  // The Vault and Loadout open with the starter pair. A Dormant multiclass Domain becomes active,
+  // without starter Powers of its own.
+  for (const key of Object.keys(f).filter(k => /^a_pwr_\d+_/.test(k))) delete f[key];
+  starter.forEach((p, i) => Object.assign(f, { [`a_pwr_${i}_n`]: p.n, [`a_pwr_${i}_d`]: [p.d, `L${p.l}`, p.t, p.cost, p.dc].filter(Boolean).join(' · ') + `\n${text(p.txt)}`, [`a_pwr_${i}_rc`]: text(p.rc ?? 0) }));
+  if (multi) { multi.dormant = false; summary.push(`El Dominio latente ${multi.domain} pasa a estar activo`); }
+  f.a_domain_ref = [domains.join(' & '), veilAlignment && cls.id === 'mystic' && `Veil Alignment — ${veilAlignment}`, multi && `Multiclass Domain — ${multi.domain}`].filter(Boolean).join(' · ');
+  f.a_loadout_cap = String(4 + tierOf(level)); f.a_vault = text(f.a_vault);
+  summary.push(`Loadout inicial: ${starter.map(p => p.n).join(' y ')}`);
+  // Slots spent on the Sleeping engine are refunded to be re-spent as an Awakened character.
+  const refund = adv.sleepingSlots || 0;
+  adv.refundSlots = (adv.refundSlots || 0) + refund; adv.sleepingSlots = 0; adv.temperedResolve = false;
+  if (refund) summary.push(`${refund} Advancement Slot${refund === 1 ? '' : 's'} devuelto${refund === 1 ? '' : 's'} para volver a gastar`);
+  adv.log = [...adv.log, { level, tier: tierOf(level), summary }].slice(-20);
   token.advancement = adv;
   return { token, summary };
 }
