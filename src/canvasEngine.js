@@ -18,6 +18,7 @@ import { undoManager } from './undoManager.js';
 import { pointInWater } from './waterGeometry.js';
 import { notify, confirmAction } from './ui.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
+import { rangeBandFor, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -3992,8 +3993,11 @@ export class CanvasEngine {
     if (distPx < 1) return;
 
     const gridSize = map.gridSize || 64;
+    // Same scale and bands as the attack and the ruler.
+    const metersPerSquare = map.gridScaleMeters || DEFAULT_METERS_PER_SQUARE;
     const distSquares = (distPx / gridSize).toFixed(1);
-    const distMeters = ((distPx / gridSize) * 1.5).toFixed(1);
+    const distMeters = ((distPx / gridSize) * metersPerSquare).toFixed(1);
+    const lockBand = rangeBandFor(distPx / gridSize, metersPerSquare).toUpperCase();
 
     // LOS obstruction test against walls and closed doors
     let losBlocked = false;
@@ -4051,7 +4055,7 @@ export class CanvasEngine {
     const midX = (x1 + x2) / 2;
     const midY = (y1 + y2) / 2;
 
-    const distText = losBlocked ? `⚠️ BLOQ · ${distMeters}m (${distSquares}c)` : `⚡ ${distMeters}m (${distSquares}c)`;
+    const distText = losBlocked ? `⚠️ BLOQUEADO · ${lockBand} · ${distMeters}m (${distSquares}c)` : `⚡ ${lockBand} · ${distMeters}m (${distSquares}c)`;
     ctx.font = `${Math.max(8.5, Math.round(9.5 / this.zoom))}px "Rajdhani", sans-serif`;
     const textW = ctx.measureText(distText).width;
     const pillW = textW + 12 / this.zoom;
@@ -4809,17 +4813,12 @@ export class CanvasEngine {
       else rangeBand = 'Extreme';
     } else {
       // Personal Tactical Combat Scale (Veilfarers 12.06 Canon)
-      // Contact (0 - 1.5m), Very Close (1.5 - 3m), Close (3 - 10m), Far (10 - 30m), Extreme (> 30m)
+      // Melee (adjacent or up to 1 m), Very Close (up to 5 m), Close (up to 10 m), Far (up to 25 m), Extreme
       const scaleMeters = map.gridScaleMeters || 2.0;
       distVal = ((distPx / gridSize) * scaleMeters).toFixed(1);
       distUnit = 'm';
 
-      const numM = parseFloat(distVal);
-      if (numM <= 1.5) rangeBand = 'Contact';
-      else if (numM <= 3.0) rangeBand = 'Very Close';
-      else if (numM <= 10.0) rangeBand = 'Close';
-      else if (numM <= 30.0) rangeBand = 'Far';
-      else rangeBand = 'Extreme';
+      rangeBand = rangeBandFor(distPx / gridSize, scaleMeters);
     }
 
     ctx.save();

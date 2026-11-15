@@ -1,10 +1,26 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.4.0**.
-Paquete: `VeilFarers_VTT_v2.4.0.zip`.
+Versión actual del VTT: **v2.4.1**.
+Paquete: `VeilFarers_VTT_v2.4.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.4.1] — 2026-11-15
+
+V2 · Alcance corregido, aviso de muros y bandas en el lock
+
+### Alcance
+
+- Bandas de alcance de la mesa: Melee (casilla adyacente o hasta 1 m), Very Close (hasta 5 m), Close (hasta 10 m), Far (hasta 25 m) y Extreme (más de 25 m). El ataque, la línea de lock y la regla de medir usan ahora las mismas bandas y la misma escala.
+- Corregido: un arma cuya ficha no indicaba alcance no recibía Desventaja a larga distancia. Ahora toma el alcance del arma del catálogo con el mismo nombre; si aun así no se conoce, el resultado lo dice.
+- Corregido: la línea de lock medía a 1,5 m por casilla y la regla a 2 m. Ambas usan la escala del mapa.
+
+### Línea de tiro
+
+- Si hay un muro o una puerta cerrada entre atacante y objetivo, el resultado del ataque avisa de que la línea de tiro está bloqueada. El ataque se puede lanzar igualmente. Ventanas y puertas abiertas no bloquean.
+- La etiqueta de la línea de lock muestra la banda de juego junto a la distancia en metros y casillas, y BLOQUEADO cuando hay un obstáculo.
+- El resultado del ataque muestra la banda, los metros y las casillas hasta el objetivo.
 
 ## [2.4.0] — 2026-11-15
 

@@ -11,7 +11,7 @@ import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
-import { rangeBandFor, tokenDistanceSquares, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from './attackFlow.js';
+import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from './attackFlow.js';
 import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses } from './equipment.js';
 
 export class DiceRollerSidebar {
@@ -1160,7 +1160,7 @@ export class DiceRollerSidebar {
     if (bossPhase?.canAttack === false) throw new Error('Este estado usa su procedimiento especial; no tiene un ataque estándar.');
     const weapon = (tokenInventory(attacker).weapons || []).find(w => w.id === q('#dmg_weapon_select').value) || null;
     const map = store.getActiveMap() || {};
-    const band = rangeBandFor(tokenDistanceSquares(attacker, target, map.gridSize), map.gridScaleMeters || 2);
+    const gap = distanceInfo(attacker, target, map), band = gap.band;
     const range = rangeCheck(weapon, band);
     const evasion = Number.isFinite(target.evasion) ? target.evasion : 10;
     const show = (total, outcome, detail, tone) => {
@@ -1170,7 +1170,8 @@ export class DiceRollerSidebar {
       q('#atk_detail_text').textContent = detail;
     };
     q('#damage_result_display').style.display = 'none';
-    const where = `${weapon ? weapon.name : 'Ataque básico'} · objetivo a ${band}${range.reach ? ` · alcance del arma ${range.reach}` : ''}.`;
+    const where = `${weapon ? weapon.name : 'Ataque básico'} · objetivo a ${band} (${gap.meters.toFixed(1)} m, ${gap.squares.toFixed(1)} casillas) · ${range.reach ? `alcance del arma ${range.reach}` : 'alcance del arma sin indicar: no se aplica límite'}.`
+      + (gap.blocked ? ' ⚠️ Hay un muro o una puerta cerrada entre atacante y objetivo: línea de tiro bloqueada.' : '');
     if (!range.allowed) { show('—', 'FUERA DE ALCANCE', `${where} ${range.reason} Acércate o cambia de arma.`, 'miss'); notify(range.reason, 'error'); return { hit: false, blocked: true, band }; }
 
     let hit, critical, total, detail;

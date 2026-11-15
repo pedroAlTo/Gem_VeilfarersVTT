@@ -1,30 +1,66 @@
 // The complete attack procedure: declare (weapon, target, range), attack roll against
 // Evasion, and damage only on a hit. Pure rules; the dice panel drives it.
 import { TRAITS } from './rulesEngine.js';
+import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 
-// Corebook ch. 10, Range Bands. Melee is arm's reach: an adjacent square, diagonals included.
-export const RANGE_BANDS = ['Melee', 'Very Close', 'Close', 'Far', 'Very Far'];
-export function rangeBandFor(squares, metersPerSquare = 2) {
-  if (squares <= 1.5) return 'Melee';
-  const meters = squares * metersPerSquare;
+// Range bands of the table (user ruling, 15 Nov 2026): Melee up to 1 m or an adjacent square
+// (diagonals included), Very Close up to 5 m, Close up to 10 m, Far up to 25 m, Extreme beyond.
+export const RANGE_BANDS = ['Melee', 'Very Close', 'Close', 'Far', 'Extreme'];
+export const DEFAULT_METERS_PER_SQUARE = 2;
+export function rangeBandFor(squares, metersPerSquare = DEFAULT_METERS_PER_SQUARE) {
+  // Whole metres, as the table reads them: 10.02 m is "10 m" on the label and is still Close.
+  const meters = Math.round(squares * metersPerSquare);
+  if (squares <= 1.5 || meters <= 1) return 'Melee';
   if (meters <= 5) return 'Very Close';
-  if (meters <= 20) return 'Close';
-  if (meters <= 100) return 'Far';
-  return 'Very Far';
+  if (meters <= 10) return 'Close';
+  if (meters <= 25) return 'Far';
+  return 'Extreme';
 }
 export function tokenDistanceSquares(a, b, gridSize) {
   return Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0)) / (gridSize || 64);
 }
 
-// The band a weapon reaches, read from its Range text. Unknown text means no limit is known.
-export function weaponRangeBand(weapon) {
-  const text = String(weapon?.range ?? '').toLowerCase();
-  if (/very\s*far|muy\s*lej/.test(text)) return 'Very Far';
+// Walls and closed doors stop a shot; windows and open doors do not.
+function crosses(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y) {
+  const d = (p2x - p1x) * (p4y - p3y) - (p2y - p1y) * (p4x - p3x);
+  if (Math.abs(d) < 1e-9) return false;
+  const t = ((p3x - p1x) * (p4y - p3y) - (p3y - p1y) * (p4x - p3x)) / d;
+  const u = -((p1x - p3x) * (p2y - p1y) - (p1y - p3y) * (p2x - p1x)) / d;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+export function lineBlockedByWall(a, b, walls = []) {
+  return walls.some(wall => {
+    const type = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
+    if (type === 'window' || (type === 'door' && wall.isOpen)) return false;
+    return crosses(a.x, a.y, b.x, b.y, wall.x1, wall.y1, wall.x2, wall.y2);
+  });
+}
+
+// Everything the table needs to know about the gap between two tokens, in one place:
+// the lock line, the ruler and the attack all read it from here.
+export function distanceInfo(a, b, map = {}) {
+  const squares = tokenDistanceSquares(a, b, map.gridSize), metersPerSquare = map.gridScaleMeters || DEFAULT_METERS_PER_SQUARE;
+  return { squares, meters: squares * metersPerSquare, band: rangeBandFor(squares, metersPerSquare), blocked: lineBlockedByWall(a, b, map.walls || []) };
+}
+
+const bandFromText = value => {
+  const text = String(value ?? '').toLowerCase();
+  if (/very\s*far|extreme|extremo|muy\s*lej/.test(text)) return 'Extreme';
   if (/\bfar\b|lejos|largo/.test(text)) return 'Far';
   if (/very\s*close|muy\s*cerca/.test(text)) return 'Very Close';
   if (/\bclose\b|cerca|corto/.test(text)) return 'Close';
   if (/melee|cuerpo|contact/.test(text)) return 'Melee';
   return '';
+};
+const plainName = value => String(value ?? '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9áéíóúüñ]+/g, ' ').trim();
+// The band a weapon reaches: its own Range text or, when the sheet left it blank, the range
+// of the catalog weapon with the same name. '' means it is not known.
+export function weaponRangeBand(weapon) {
+  const own = bandFromText(weapon?.range);
+  if (own || !weapon?.name) return own;
+  const name = plainName(weapon.name);
+  const match = name && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && plainName(item.name) === name);
+  return match ? bandFromText(match.range) : '';
 }
 
 // Table rule: a melee weapon only works at Melee; a ranged weapon fired beyond the band
