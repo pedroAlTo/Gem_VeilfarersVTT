@@ -110,6 +110,20 @@ export function equipmentEligibility(item, type, cls) {
   if (!all && !categories.includes(item.category)) return { eligible: false, reason: `Fuera del entrenamiento de ${cls.name}.` };
   return { eligible: true, reason: '' };
 }
+// What an equipment feature does. "Paired+2" reads the definition of "Paired".
+export function featureDefinition(data, name) {
+  const defs = data.features || {}, key = String(name ?? '').trim();
+  return defs[key] || defs[key.replace(/[+\s]*\d+$/, '').trim()] || '';
+}
+// A weapon suits a character when it attacks with one of their best Traits.
+export function weaponSuits(state, weapon) {
+  const values = Object.values(state.traits || {}).map(Number).filter(Number.isFinite);
+  if (!values.length) return false;
+  const best = Math.max(...values);
+  return Number(state.traits?.[String(weapon.trait || '').toLowerCase()]) >= Math.max(1, best - 1);
+}
+// Final thresholds of a starting character in an armor: the armor's numbers plus level 1.
+export const startingThresholds = armor => ({ major: Number(armor.thresholds.major) + 1, severe: Number(armor.thresholds.severe) + 1 });
 export const spend = (names, list) => names.reduce((sum, name) => sum + (list.find(x => x.name === name)?.cost || 0), 0);
 export function equipmentChoices(state, data, type) {
   const cls = classOf(state, data), list = type === 'weapon' ? data.weapons : data.armor;

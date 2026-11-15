@@ -8,11 +8,13 @@ import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
 import { account } from '../cloudAccount.js';
 import {
   CREATOR_STEPS, TRAIT_IDS, TRAIT_ARRAY, EQUIP_BUDGET, STARTING_POWERS, experienceCount, affiliationStatus, freshState, setChoice, isStepReady, firstIncompleteStep,
-  classOf, classRules, subclassList, inheritanceOptions, startingResolveMoves, characterDomains, allDomains, levelOnePowers, powerId, equipmentChoices, spend, buildSheetDocument,
+  classOf, classRules, subclassList, inheritanceOptions, startingResolveMoves, featureDefinition, weaponSuits, startingThresholds, characterDomains, allDomains, levelOnePowers, powerId, equipmentChoices, spend, buildSheetDocument,
 } from './creatorModel.js';
 
 const DRAFT_KEY = 'veil_creator_draft';
 const short = (text, max = 190) => { const s = String(text ?? '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim(); return s.length > max ? s.slice(0, max).trim() + '…' : s; };
+const plain = text => String(text ?? '').replace(/\*\*/g, '').replace(/[ \t]+/g, ' ').trim();
+const chip = (label, value) => `<span class="creator-chip"><b>${e(label)}</b> ${e(value)}</span>`;
 const card = (attrs, selected, title, tag, body) => `<button type="button" class="creator-card ${selected ? 'selected' : ''}" aria-pressed="${selected}" ${attrs}><strong>${e(title)}</strong>${tag ? `<span class="creator-card-tag">${e(tag)}</span>` : ''}${body ? `<span class="creator-card-text">${e(body)}</span>` : ''}</button>`;
 
 function loadDraft() {
@@ -37,6 +39,31 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
   const nav = modal.querySelector('.creator-steps'), panel = modal.querySelector('.creator-panel'), error = modal.querySelector('.dossier-error');
   const save = () => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)); } catch {} };
   const set = (key, value) => { state = setChoice(state, key, value); save(); render(); };
+
+  // Step 8 lists, redrawn on their own so typing in the search box is never interrupted.
+  let equipSearch = '';
+  const matches = item => { const q = equipSearch.trim().toLowerCase(); return !q || [item.name, item.category, item.trait, item.range, item.damage, ...(item.features || [])].join(' ').toLowerCase().includes(q); };
+  const featureList = item => (item.features || []).length ? `<span class="creator-features">${item.features.map(f => `<span class="creator-feature"><b>${e(f)}</b>${featureDefinition(data, f) ? ` — ${e(featureDefinition(data, f))}` : ''}</span>`).join('')}</span>` : '';
+  const equipCard = (type, item) => {
+    const on = (type === 'weapon' ? state.weapons : state.armors).includes(item.name), suits = type === 'weapon' && weaponSuits(state, item);
+    const stats = type === 'weapon'
+      ? `${chip('Daño', item.damage)}${chip('Alcance', item.range)}${chip('Trait', item.trait)}${chip('Carga', item.burden ?? '—')}`
+      : `${chip('Umbrales', `${startingThresholds(item).major} / ${startingThresholds(item).severe}`)}${chip('Armor Slots', item.armorSlots)}${item.improvementCapacity != null ? chip('Mejoras', item.improvementCapacity) : ''}`;
+    return `<button type="button" class="creator-card creator-equip ${on ? 'selected' : ''}" aria-pressed="${on}" data-${type}="${e(item.name)}">
+      <span class="creator-power-head"><strong>${suits ? '★ ' : ''}${e(item.name)}</strong><span class="creator-pick">${on ? '✓ Elegida' : 'Elegir'}</span></span>
+      <span class="creator-card-tag">${e(item.category)}${type === 'armor' ? ' armor' : ''} · ${item.cost} Cr${item.pack !== 'core' ? ' · Rust & Steel' : ''}${suits ? ' · Recomendada' : ''}</span>
+      <span class="creator-chips">${stats}</span>${featureList(item)}</button>`;
+  };
+  function equipLists() {
+    const group = (type, title) => {
+      const all = equipmentChoices(state, data, type), shown = all.filter(matches);
+      if (type === 'weapon') shown.sort((x, y) => Number(weaponSuits(state, y)) - Number(weaponSuits(state, x)) || x.category.localeCompare(y.category) || x.name.localeCompare(y.name));
+      const categories = [...new Set(shown.map(i => i.category))];
+      return `<h4 class="dossier-label">${title} · ${(type === 'weapon' ? state.weapons : state.armors).length} / 1 · ${shown.length} de ${all.length} OPCIONES</h4>
+        ${shown.length ? categories.map(c => `<h5 class="creator-category">${e(c)}</h5><div class="creator-grid equip">${shown.filter(i => i.category === c).map(i => equipCard(type, i)).join('')}</div>`).join('') : '<p class="dossier-muted">Nada coincide con la búsqueda.</p>'}`;
+    };
+    return group('weapon', 'ARMA') + group('armor', 'ARMADURA');
+  }
 
   const panels = {
     1: () => {
@@ -93,25 +120,36 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
           <div class="creator-grid">${allDomains(data).map(d => card(`data-domain="${e(d)}"`, state.sleepingMysticDomains.includes(d), d, `${levelOnePowers(data, d).length} poderes de nivel 1`, levelOnePowers(data, d).map(p => p.n).join(' · '))).join('')}</div>`;
       }
       const domains = characterDomains(state, data);
+      const chosen = state.powers.map(id => data.powers.find(p => powerId(p) === id)).filter(Boolean);
+      const powerCard = p => {
+        const on = state.powers.includes(powerId(p)), full = !on && state.powers.length >= STARTING_POWERS;
+        return `<button type="button" class="creator-card creator-power ${on ? 'selected' : ''}" aria-pressed="${on}" data-power="${e(powerId(p))}" ${full ? 'title="Ya tienes dos: quita uno para cambiarlo"' : ''}>
+          <span class="creator-power-head"><strong>${e(p.n)}</strong><span class="creator-pick">${on ? '✓ En tu Loadout' : full ? 'Loadout completo' : 'Elegir'}</span></span>
+          <span class="creator-chips">${chip('Tipo', p.t)}${chip('Coste', p.cost || 'Sin coste')}${p.dc && p.dc !== '—' ? chip('Tirada', p.dc) : ''}${chip('Recall', p.rc ?? '0')}</span>
+          <span class="creator-card-text creator-power-text">${e(plain(p.txt))}</span></button>`;
+      };
       return `<h3>Poderes de Dominio</h3>
-        ${cls.id === 'mystic' ? `<h4 class="dossier-label">VEIL ALIGNMENT</h4><div class="creator-grid two">${['Lux', 'Void'].map(v => card(`data-set="veilAlignment" data-value="${v}"`, state.veilAlignment === v, v, 'Tu segundo Dominio', '')).join('')}</div>` : ''}
+        ${cls.id === 'mystic' ? `<h4 class="dossier-label">VEIL ALIGNMENT</h4><div class="creator-grid two">${['Lux', 'Void'].map(v => card(`data-set="veilAlignment" data-value="${v}"`, state.veilAlignment === v, v, 'Tu segundo Dominio', `Abre los Poderes de ${v}.`)).join('')}</div>` : ''}
         ${cls.id === 'vanguard' && domains.length < 2 ? '<p class="dossier-muted">Elige una subclase en el paso 3: decide tu segundo Dominio.</p>' : ''}
-        <p class="dossier-muted">Elige ${STARTING_POWERS} Poderes de nivel 1 de tus Dominios (${e(domains.join(' y ') || '—')}). Elegidos: ${state.powers.length} / ${STARTING_POWERS}.</p>
-        ${domains.map(d => `<h4 class="dossier-label">${e(d.toUpperCase())}</h4><div class="creator-grid">${levelOnePowers(data, d).map(p => card(`data-power="${e(powerId(p))}"`, state.powers.includes(powerId(p)), p.n, [p.t, p.cost, p.dc].filter(Boolean).join(' · '), short(p.txt, 230))).join('')}</div>`).join('')}`;
+        <div class="creator-summary" role="status"><strong>Starter Loadout · ${state.powers.length} / ${STARTING_POWERS}</strong><span>${chosen.length ? chosen.map(p => `${e(p.n)} (${e(p.d)})`).join(' · ') : `Elige ${STARTING_POWERS} Poderes de nivel 1 entre los ${domains.length * 3} de tus Dominios: ${e(domains.join(' y ') || '—')}.`}</span></div>
+        <p class="dossier-muted"><strong>Coste</strong>: lo que gastas al usarlo. <strong>Tirada</strong>: la dificultad y el Trait, si pide tirar. <strong>Recall</strong>: Stress que cuesta pasarlo del Vault al Loadout en mitad de una escena (gratis en un Long Rest).</p>
+        ${domains.map(d => `<h4 class="dossier-label creator-domain">${e(d.toUpperCase())} · ${levelOnePowers(data, d).length} PODERES DE NIVEL 1</h4><div class="creator-grid powers">${levelOnePowers(data, d).map(powerCard).join('')}</div>`).join('')}`;
     },
     8: () => {
       const cls = classOf(state, data);
       if (!cls) return '<h3>Equipo</h3><p class="dossier-muted">Elige una clase en el paso 3.</p>';
-      const list = (type, names, all) => equipmentChoices(state, data, type).map(item => {
-        const on = names.includes(item.name), over = item.cost > EQUIP_BUDGET;
-        const info = type === 'weapon' ? `${item.category} · ${item.trait} · ${item.range} · ${item.damage}` : `${item.category} · Umbrales ${item.thresholds.raw || `${item.thresholds.major} / ${item.thresholds.severe}`} · ${item.armorSlots} Armor Slots`;
-        return `<button type="button" class="creator-card ${on ? 'selected' : ''}" aria-pressed="${on}" data-${type}="${e(item.name)}" ${over ? 'disabled title="No cabe en el presupuesto"' : ''}><strong>${e(item.name)}</strong><span class="creator-card-tag">${e(info)} · ${item.cost} Cr${item.pack !== 'core' ? ' · Rust & Steel' : ''}</span>${item.features?.length ? `<span class="creator-card-text">${e(item.features.join(', '))}</span>` : ''}</button>`;
-      }).join('');
+      const weapon = data.weapons.find(w => w.name === state.weapons[0]), armor = data.armor.find(x => x.name === state.armors[0]);
+      const access = cls.technologyAccess?.tiers?.find(t => Number(t.rank) === 1);
       return `<h3>Equipo inicial</h3><p class="dossier-muted">Un arma y una armadura de Tier 1 (Common) dentro del acceso tecnológico de ${e(cls.name)}, además de los objetos de clase.</p>
-        <label class="hud-checkbox-label"><input type="checkbox" data-rs ${state.includeRustAndSteel ? 'checked' : ''}> Incluir equipo de Rust &amp; Steel</label>
-        <h4 class="dossier-label">ARMA · ${state.weapons.length} / 1</h4><div class="creator-grid">${list('weapon', state.weapons, data.weapons)}</div>
-        <h4 class="dossier-label">ARMADURA · ${state.armors.length} / 1</h4><div class="creator-grid">${list('armor', state.armors, data.armor)}</div>
-        <label class="dossier-field"><span>Kit personal (opcional)</span><input class="hud-input" data-field="kit" maxlength="200" value="${e(state.kit)}"></label>`;
+        <div class="creator-summary" role="status"><strong>Tu equipo</strong>
+          <span>Arma: ${weapon ? `<b>${e(weapon.name)}</b> · ${e(weapon.damage)} · ${e(weapon.range)} · ataca con ${e(weapon.trait)}` : 'sin elegir'}</span>
+          <span>Armadura: ${armor ? `<b>${e(armor.name)}</b> · umbrales ${startingThresholds(armor).major} / ${startingThresholds(armor).severe} · ${armor.armorSlots} Armor Slots` : 'sin elegir'}</span>
+          <span>Objetos de clase: ${e((classRules(state, data).items || []).join(' · ') || '—')}</span></div>
+        <div class="creator-toolbar"><label class="dossier-field"><span>Buscar por nombre, categoría o propiedad</span><input class="hud-input" data-equip-search type="search" value="${e(equipSearch)}" placeholder="Ej.: pistol, melee, armor piercing"></label>
+          <label class="hud-checkbox-label"><input type="checkbox" data-rs ${state.includeRustAndSteel ? 'checked' : ''}> Incluir equipo de Rust &amp; Steel</label></div>
+        <p class="dossier-muted">${e(cls.name)} puede usar: armas ${e(access?.allWeapons ? 'de cualquier categoría' : (access?.weaponCategories || []).join(', '))}; armadura ${e(access?.allArmor ? 'de cualquier categoría' : (access?.armorCategories || []).join(', '))}. <strong>★ Recomendada</strong>: ataca con uno de tus mejores Traits.</p>
+        <div data-equip-lists>${equipLists()}</div>
+        <label class="dossier-field"><span>Kit personal (opcional): de tres a cinco objetos que son suyos</span><input class="hud-input" data-field="kit" maxlength="200" value="${e(state.kit)}"></label>`;
     },
     9: () => {
       const cls = classOf(state, data), text = (key, label, rows = 2) => `<label class="dossier-field"><span>${label}</span><textarea class="hud-input" data-field="${key}" rows="${rows}" maxlength="1000">${e(state[key])}</textarea></label>`;
@@ -188,6 +226,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
   // Text fields update the draft without redrawing, so typing is never interrupted.
   modal.addEventListener('input', event => {
     const el = event.target;
+    if ('equipSearch' in el.dataset) { equipSearch = el.value; const box = modal.querySelector('[data-equip-lists]'); if (box) box.innerHTML = equipLists(); return; }
     if (el.dataset.exp !== undefined) { const experiences = [...state.experiences]; experiences[Number(el.dataset.exp)] = el.value; state = { ...state, experiences }; save(); }
     else if (el.dataset.field) { state = { ...state, [el.dataset.field]: el.value }; save(); }
     else return;

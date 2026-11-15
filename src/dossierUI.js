@@ -31,6 +31,15 @@ const stat = (label, key, value, min = 0, max = 10000) => field(label, key, valu
 const narrative = (title, value) => `<article class="dossier-narrative"><h4>${e(title)}</h4><p>${e(value).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
 
 const SHEET_VIEW_KEY = 'veil_sheet_view';
+// A Power on the sheet: name, its tags (Domain, level, type, cost, roll) and the full text.
+// Sheets made by the VTT creator keep the tags on the first line of the description.
+function powerCard(power) {
+  const [first, ...rest] = String(power.description ?? '').split('\n');
+  const tagged = rest.length > 0 && first.includes(' · ');
+  const tags = tagged ? first.split(' · ').map(t => t.trim()).filter(Boolean) : [];
+  const text = tagged ? rest.join('\n').trim() : String(power.description ?? '').trim();
+  return `<article class="dossier-power"><header><h4>${e(power.name)}</h4><span>${tags.map(t => `<b>${e(t)}</b>`).join('')}${power.recall !== '' && power.recall != null ? `<b>Recall ${e(power.recall)}</b>` : ''}</span></header><p>${e(text).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
+}
 export function openDossier(token, openSettings, initialTab = 'stats') {
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
@@ -58,7 +67,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
         ${d.signatureTrait ? `<h4 class="dossier-label">SIGNATURE TRAIT · ${e(d.signatureTrait)}</h4>` : ''}
         ${d.domains ? `<h4 class="dossier-label">DOMINIOS · ${e(d.domains)}</h4>` : ''}
         ${d.powers.length ? `<h4 class="dossier-label">LOADOUT · ${d.powers.length}${d.loadoutCap ? ' / ' + e(d.loadoutCap) : ''} PODERES EQUIPADOS</h4>` : ''}
-        ${d.powers.map(p => narrative(`${p.name}${p.recall ? ' · Recall ' + p.recall : ''}`, p.description)).join('')}
+        ${d.powers.length ? `<div class="dossier-powers">${d.powers.map(powerCard).join('')}</div>` : ''}
         ${d.vault ? narrative('Vault · poderes conocidos sin equipar', d.vault) : ''}
         ${token.advancement?.log?.length ? `<h4 class="dossier-label">HISTORIAL DE AVANCE</h4>${token.advancement.log.map(row => narrative(`Nivel ${row.level} · Tier ${row.tier}`, row.summary.join('\n'))).join('')}` : ''}
         ${d.notes.map(([k, v]) => narrative(k, v)).join('')}

@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.7.0 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.7.1 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -26,6 +26,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 8. **Un ataque es un proceso completo**: tirada de ataque contra Evasion y, solo si impacta, daño. Aplicar el daño es un paso aparte (el defensor decide los Armor Slots).
 
 ## Pendiente para la revisión de reglas (erratas y desajustes)
+> **Los libros de `System/` no se editan en este proyecto.** El usuario lleva la corrección de los Corebook en otro chat, como proyecto aparte (15 nov 2026). Aquí solo se anota lo detectado y se ajusta el código de la VTT.
 - **Errata del Corebook** (cap. 9, *"Does the Keeper roll Duality Dice?"*, y referencias en cap. 10 y Keeper Critical Damage): corregir el texto en `System/` para que diga 1d20 + Ataque. En el código, la tirada genérica del panel de dados para un adversario (`performGameAction` tipo `CHECK` en `src/gameActions.js`) **todavía tira Dualidad**; solo el flujo de ataque nuevo usa d20. Unificar en la revisión.
 - El Corebook dice que muchas armas a distancia tienen penalización o no se pueden usar en Melee; no está implementado (el usuario solo ha pedido la Desventaja por exceso de alcance).
 - El Stress por ronda de Bleeding no se automatiza.
@@ -93,6 +94,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
   - `awaken(token, { data, powers, veilAlignment })` y `awakeningDomains()`: aplica el procedimiento del cap. 7 completo. Pasa `sleepingSlots` a `adv.refundSlots`; `applyLevelUp(..., { respend: true })` los gasta sin subir nivel.
   - UI: `openAwakening()` y `openLevelUp(id, done, { respend: true })` en `levelUpUI.js`; botones "Despertar" y "Gastar Slots devueltos (N)" en la ficha (Completa, solo Keeper).
   - No hay procedimiento inverso (Awakened → Sleeping): el Core no lo da.
+- **v2.7.1 — Equipo y poderes del creador**: `data/features.json` (142 propiedades de equipo → definición); `featureDefinition()`, `weaponSuits()`, `startingThresholds()` en `creatorModel.js`. En `creatorUI.js` el paso 8 pinta las listas con `equipLists()` (se redibujan solas al buscar, sin perder el foco) y el paso 7 usa tarjetas con chips. En la ficha, `powerCard()` de `dossierUI.js`.
 - **Intro abre el chat de mesa**: `entersTableChat()` en `src/chatPanel.js`, llamado desde el `keydown` global de `src/main.js`; lanza `veil:open_chat`. Sin sesión en vivo el chat sigue deshabilitado (comportamiento previo).
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).

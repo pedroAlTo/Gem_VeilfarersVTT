@@ -1,6 +1,25 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.7.1', date: '2026-11-15', title: 'V2 · Creador: selección de equipo y listado de poderes más claros',
+    sections: [
+      { title: 'Equipo inicial', items: [
+        'Resumen "Tu equipo" arriba, con el arma, la armadura y los objetos de clase elegidos.',
+        'Cada arma muestra por separado Daño, Alcance, Trait y Carga; cada armadura, sus umbrales ya con el nivel, Armor Slots y capacidad de mejoras.',
+        'Cada propiedad (Armor Piercing, Reliable, Life Support…) aparece con la explicación de lo que hace.',
+        'Las opciones se agrupan por categoría, con un buscador por nombre, categoría o propiedad.',
+        'Las armas que atacan con uno de los mejores Traits del personaje se marcan como recomendadas y salen primero.',
+        'Se indica qué categorías de armas y armaduras puede usar la clase.',
+      ] },
+      { title: 'Poderes', items: [
+        'Resumen del Starter Loadout con los Poderes ya elegidos.',
+        'Cada Poder muestra Tipo, Coste, Tirada y Recall por separado y su texto completo, sin recortar.',
+        'Una línea explica qué significa cada dato.',
+        'En la ficha, la pestaña Rasgos muestra los Poderes como tarjetas con sus etiquetas (Dominio, nivel, tipo, coste, tirada, Recall).',
+      ] },
+    ],
+  },
+  {
     version: '2.7.0', date: '2026-11-15', title: 'V2 · Resolve Moves de los Sleeping y Awakening en juego',
     sections: [
       { title: 'Resolve Moves (Corebook, cap. 7)', items: [

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CREATOR_DATA as data } from '../src/creator/creatorData.js';
-import { startingResolveMoves, resolveMovesFor, inheritanceOptions, inheritanceChoice, affiliationStatus, experienceCount, freshState, setChoice, isStepReady, firstIncompleteStep, characterDomains, levelOnePowers, powerId, equipmentChoices, equipmentEligibility, spend, buildSheetDocument, subclassList, classRules, CREATOR_STEPS, TRAIT_ARRAY, EQUIP_BUDGET } from '../src/creator/creatorModel.js';
+import { featureDefinition, weaponSuits, startingThresholds, startingResolveMoves, resolveMovesFor, inheritanceOptions, inheritanceChoice, affiliationStatus, experienceCount, freshState, setChoice, isStepReady, firstIncompleteStep, characterDomains, levelOnePowers, powerId, equipmentChoices, equipmentEligibility, spend, buildSheetDocument, subclassList, classRules, CREATOR_STEPS, TRAIT_ARRAY, EQUIP_BUDGET } from '../src/creator/creatorModel.js';
 import { parseCharacterJSON, characterDetails } from '../src/characterImport.js';
 import { tokenInventory } from '../src/equipment.js';
 import { weaponRangeBand } from '../src/attackFlow.js';
@@ -169,6 +169,17 @@ test('a Sleeping character starts with the two Class Moves and its Subclass Move
   const token = parseCharacterJSON(buildSheetDocument(s, data)).token;
   const learned = characterDetails(token).features.find(([k]) => k === 'Movimientos aprendidos')[1];
   for (const move of moves) assert.ok(learned.includes(move.name), move.name);
+});
+
+test('equipment cards explain themselves: every feature has a definition, thresholds include the level, and weapons that fit the Traits are flagged', () => {
+  for (const item of [...data.weapons, ...data.armor]) for (const name of item.features || []) assert.ok(featureDefinition(data, name), `${item.name}: ${name}`);
+  assert.equal(featureDefinition(data, 'Paired+2'), featureDefinition(data, 'Paired'), 'a rating reads the base feature');
+  assert.equal(featureDefinition(data, 'Not a feature'), '');
+  const armor = data.armor[0];
+  assert.deepEqual(startingThresholds(armor), { major: armor.thresholds.major + 1, severe: armor.thresholds.severe + 1 });
+  const s = { traits: { agility: 0, strength: -1, finesse: 1, instinct: 2, presence: 0, knowledge: 1 } };
+  assert.deepEqual(['Instinct', 'Finesse', 'Agility', 'Strength'].map(trait => weaponSuits(s, { trait })), [true, true, false, false]);
+  assert.equal(weaponSuits({ traits: {} }, { trait: 'Instinct' }), false);
 });
 
 test('the wizard walks the nine steps, keeps a draft and puts the finished character on the table as a token', async () => {

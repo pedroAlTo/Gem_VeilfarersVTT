@@ -1,10 +1,30 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.7.0**.
-Paquete: `VeilFarers_VTT_v2.7.0.zip`.
+Versión actual del VTT: **v2.7.1**.
+Paquete: `VeilFarers_VTT_v2.7.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.7.1] — 2026-11-15
+
+V2 · Creador: selección de equipo y listado de poderes más claros
+
+### Equipo inicial
+
+- Resumen "Tu equipo" arriba, con el arma, la armadura y los objetos de clase elegidos.
+- Cada arma muestra por separado Daño, Alcance, Trait y Carga; cada armadura, sus umbrales ya con el nivel, Armor Slots y capacidad de mejoras.
+- Cada propiedad (Armor Piercing, Reliable, Life Support…) aparece con la explicación de lo que hace.
+- Las opciones se agrupan por categoría, con un buscador por nombre, categoría o propiedad.
+- Las armas que atacan con uno de los mejores Traits del personaje se marcan como recomendadas y salen primero.
+- Se indica qué categorías de armas y armaduras puede usar la clase.
+
+### Poderes
+
+- Resumen del Starter Loadout con los Poderes ya elegidos.
+- Cada Poder muestra Tipo, Coste, Tirada y Recall por separado y su texto completo, sin recortar.
+- Una línea explica qué significa cada dato.
+- En la ficha, la pestaña Rasgos muestra los Poderes como tarjetas con sus etiquetas (Dominio, nivel, tipo, coste, tirada, Recall).
 
 ## [2.7.0] — 2026-11-15
 
