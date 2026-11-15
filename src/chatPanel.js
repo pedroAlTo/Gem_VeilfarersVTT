@@ -179,3 +179,17 @@ export class ChatPanel {
     document.removeEventListener('visibilitychange', this.visibility);
   }
 }
+
+// Enter on the map opens the table chat ready to type, unless something else owns the key:
+// a field or button with focus, an open dialog or the portal, or a shape being finished.
+export function entersTableChat(event, doc = document) {
+  if (event.key !== 'Enter' || event.defaultPrevented || event.repeat || event.isComposing) return false;
+  if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return false;
+  const focused = event.target?.closest ? event.target : doc.activeElement;
+  if (focused?.closest?.('input, textarea, select, button, a[href], summary, vf-select, .orbital-listbox, [contenteditable="true"], [role="button"], [role="dialog"], [role="alertdialog"]')) return false;
+  if (doc.querySelector('.veil-modal-backdrop, .vf-modal-backdrop:not(.hidden), [role="dialog"][aria-modal="true"], [role="alertdialog"]')) return false;
+  const portal = doc.getElementById('vf-lobby-gateway');
+  if (portal && !portal.classList.contains('hidden')) return false;
+  if (globalThis.window?.veilCanvas?.waterPolyPoints?.length) return false;
+  return true;
+}

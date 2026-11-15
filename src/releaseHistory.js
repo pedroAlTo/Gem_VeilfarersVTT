@@ -1,6 +1,30 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.4.0', date: '2026-11-15', title: 'V2 · Ataque completo: tirada, alcance y daño solo si impacta',
+    sections: [
+      { title: 'Ataques', items: [
+        'Nuevo botón ATACAR AL OBJETIVO en el panel de daño: hace el proceso entero. Primero la tirada de ataque contra la Evasion del objetivo y, solo si impacta, calcula el daño. Si falla no hay daño.',
+        'Los personajes jugadores atacan con Hope y Fear (2d12) más el Trait del arma y sus modificadores; la tirada paga Hope, Effort o Fear como cualquier tirada de Dualidad. Con dados iguales es crítico: impacta siempre y dobla los dados de daño.',
+        'Los adversarios del Keeper atacan con 1d20 más su modificador de Ataque. Un 20 natural es crítico: impacta siempre y hace el daño máximo.',
+        'Ventaja y Desventaja suman o restan 1d6 y se anulan entre sí.',
+        'Aplicar el daño sigue siendo un paso aparte, para que el defensor decida si gasta Armor Slots.',
+      ] },
+      { title: 'Alcance', items: [
+        'El ataque mide la distancia entre los dos tokens y la traduce a la banda del Corebook: Melee (casilla adyacente), Very Close (hasta 5 m), Close (hasta 20 m), Far (hasta 100 m) y Very Far.',
+        'Un arma cuerpo a cuerpo solo puede atacar a un objetivo en Melee; fuera de esa distancia el ataque no se tira.',
+        'Un arma a distancia usada más allá de la banda que cubre ataca con Desventaja.',
+        'El resultado indica la banda, el alcance del arma y el motivo de la Desventaja o del bloqueo.',
+      ] },
+      { title: 'Chat', items: [
+        'Pulsar Intro sobre el mapa abre el chat de la mesa listo para escribir. No actúa si hay una ventana abierta, un campo o botón con el foco, o una zona de agua a medio dibujar.',
+      ] },
+      { title: 'Otros', items: [
+        'El botón de daño directo se mantiene como "Solo daño (sin tirada de ataque)" para peligros, caídas y efectos que no son un ataque.',
+      ] },
+    ],
+  },
+  {
     version: '2.3.3', date: '2026-11-15', title: 'V2 · Daño: armas Crushing y Bleed',
     sections: [
       { title: 'Resolución de daño', items: [

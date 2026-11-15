@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.3.3 · rama `V2`.
+> Última actualización: 2026-11-14 · versión de la app 2.4.0 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -20,6 +20,15 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
    - **NO cambiar los colores que fija `HANDOVER.md`** (dados, Hope, Fear, tokens) sin preguntar antes al usuario.
 4. **El cian se mantiene como color de selección/activo en la mesa.** La paleta violeta se aplica a superficies, líneas y tipografía.
 5. **Se pueden gastar tantos Armor Slots como haya disponibles para mitigar un mismo impacto** (decisión del usuario, 15 nov 2026). Gastarlos es siempre elección del defensor, nunca automático.
+6. **Los adversarios del Keeper atacan con 1d20 + modificador de Ataque** contra la Evasion; 20 natural = crítico (daño máximo). El texto del Corebook 12.06 que dice que el Keeper tira dados de Dualidad **es una errata** (decisión del usuario, 15 nov 2026).
+7. **Alcance de las armas**: un arma cuerpo a cuerpo solo ataca en Melee; un arma a distancia usada más allá de la banda que cubre ataca con Desventaja.
+8. **Un ataque es un proceso completo**: tirada de ataque contra Evasion y, solo si impacta, daño. Aplicar el daño es un paso aparte (el defensor decide los Armor Slots).
+
+## Pendiente para la revisión de reglas (erratas y desajustes)
+- **Errata del Corebook** (cap. 9, *"Does the Keeper roll Duality Dice?"*, y referencias en cap. 10 y Keeper Critical Damage): corregir el texto en `System/` para que diga 1d20 + Ataque. En el código, la tirada genérica del panel de dados para un adversario (`performGameAction` tipo `CHECK` en `src/gameActions.js`) **todavía tira Dualidad**; solo el flujo de ataque nuevo usa d20. Unificar en la revisión.
+- **Regla de medir** (`renderRuler` en `src/canvasEngine.js`): usa bandas propias (Contact 1,5 m, Very Close 3 m, Close 10 m, Far 30 m, Extreme) que no coinciden con el Corebook ni con `rangeBandFor()` de `src/attackFlow.js`. Unificar con `rangeBandFor()`.
+- El Corebook dice que muchas armas a distancia tienen penalización o no se pueden usar en Melee; no está implementado (el usuario solo ha pedido la Desventaja por exceso de alcance).
+- El Stress por ronda de Bleeding no se automatiza.
 
 ## Plan por fases
 - **Fase 0 — Estabilización** (**cerrada en v2.0.2**, reglas publicadas): corregir fallos antes de añadir funciones.
@@ -58,6 +67,8 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 - **v2.3.1 — Daño**: el panel de daño (`src/diceRoller.js`) tenía marcada por defecto la casilla de mitigar y gastaba 1 Armor Slot sin que nadie lo eligiera (un 6 contra Major 10 salía "Deflected 0 HP"). Corebook cap. 10, paso 6: *"The defender **may** mark an Armor Slot"*. Ahora la casilla empieza desmarcada, `resolveDamage()` tiene `useArmorSlot = false` por defecto y, con objetivo, se usan los umbrales del token (antes los campos manuales podían quedar desfasados: mostraba Severe 20 con un token 10/16).
 - **v2.3.2 — Penetración**: `resolveDamage()` (`src/rulesEngine.js`) acepta `damageType` (`physical`/`energy`/`void`/`neural`), `targetReflective` y `targetWarded`; devuelve `penetration`, `effectiveMajor`, `effectiveSevere` y `stressMarked`. `damageTypeOf()` deduce el tipo del arma o de la expresión; `targetDefenses()` (`src/equipment.js`) detecta armadura Reflective en el inventario o en la ficha importada. El Ward solo se lee de `token.voidWard === true` (aún no hay control en la ficha para activarlo: se marca en Opciones avanzadas del panel de daño). El Stress de Neural viaja en `APPLY_DAMAGE` como `stressMark: 1`; el Keeper solo admite ese valor.
 - **v2.3.3 — Crushing y Bleed**: `weaponTags()`, `usableArmorSlots()` y `canBleed()` en `src/rulesEngine.js`. Crushing resta 1 a los Armor Slots **utilizables** en ese impacto (no lo consume), coherente con la decisión 5; Composite lo anula (`targetDefenses().composite`). Bleed añade la condición `Bleeding` al aplicar (también si el daño queda en 0 HP), salvo a objetivos Synthetic; por red viaja como `addCondition: 'Bleeding'` y el Keeper solo admite ese valor. El Stress por ronda de Bleeding **no** se automatiza: lo lleva la mesa.
+- **v2.4.0 — Ataque completo**: reglas puras en `src/attackFlow.js` (`rangeBandFor`, `tokenDistanceSquares`, `weaponRangeBand`, `rangeCheck`, `weaponTraitId`, `netEdge`, `rollAdversaryAttack`, `dualityAttackHit`). `DiceRollerSidebar.executeAttack()` (`src/diceRoller.js`) orquesta: comprueba alcance, tira (PJ: `executeActionCheck({ evasion, disadvantage, targetName })`, que ahora acepta ese parámetro y devuelve el resultado; adversario: `rollAdversaryAttack`), muestra `#attack_result_display` y, si impacta, marca crítico y llama a `executeDamageCalc()`. Melee = distancia entre centros ≤ 1,5 casillas; el resto por metros con `map.gridScaleMeters` (2 m por casilla si no hay). El ataque del adversario se registra en el log y en el chat de mesa (respetando la tirada secreta). Tests en `tests/attack-flow.test.js`; ojo: `store.addLog` consume `Math.random` para su id, por eso los tests usan daño fijo tras una tirada.
+- **Intro abre el chat de mesa**: `entersTableChat()` en `src/chatPanel.js`, llamado desde el `keydown` global de `src/main.js`; lanza `veil:open_chat`. Sin sesión en vivo el chat sigue deshabilitado (comportamiento previo).
 - Emulador de Firestore: `npm run test:account` (3/3) y `npm run test:rooms` (4/4) ejecutados y en verde el 14 nov 2026. La prueba de reconexión cubre corte de red del jugador, caída y vuelta del Keeper, reentrada sin invitación, segunda pestaña y conservación de varios tokens asignados.
 - Tests nuevos en `tests/regressions.test.js`, `tests/characters-sessions.test.js` y `tests/account.integration.js` (reglas, requiere emulador: `npm run test:account`).
 

@@ -7,7 +7,7 @@ import './theme-violet.css';
 import './colorPicker.css';
 import { openColorPickerPopover } from './colorPicker.js';
 import './chat.css';
-import { ChatPanel } from './chatPanel.js';
+import { ChatPanel, entersTableChat } from './chatPanel.js';
 import { initWaterControls } from './waterControls.js';
 import './waterControls.css';
 import { initVeilfarersApp } from './vtt-integration/vttIntegrationInit.js';
@@ -678,6 +678,12 @@ function setupKeyboardShortcuts() {
   window.addEventListener('keydown', (e) => {
     if(e.defaultPrevented || e.target.closest?.('vf-select,.orbital-listbox,.veil-modal-backdrop,[contenteditable="true"]'))return;
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT') {
+      return;
+    }
+
+    if (entersTableChat(e)) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('veil:open_chat', { detail: { recipientId: 'table' } }));
       return;
     }
 

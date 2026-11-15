@@ -11,6 +11,7 @@ import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
+import { rangeBandFor, tokenDistanceSquares, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from './attackFlow.js';
 import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses } from './equipment.js';
 
 export class DiceRollerSidebar {
@@ -546,9 +547,20 @@ export class DiceRollerSidebar {
               </label>
             </div>
 
-            <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn btn-damage-gradient" id="roll_damage_btn">
-              <span>💥 RESOLVER DAÑO Y UMBRALES</span>
+            <button class="hud-btn hud-btn-danger hud-btn-lg roll-trigger-btn btn-damage-gradient" id="roll_attack_btn" title="Tirada de ataque contra la Evasion del objetivo; el daño solo se calcula si impacta">
+              <span>⚔️ ATACAR AL OBJETIVO</span>
             </button>
+            <button class="hud-btn hud-btn-sm" id="roll_damage_btn" title="Para peligros, caídas o daño que no viene de una tirada de ataque" style="width: 100%; margin-top: 6px;">
+              <span>💥 Solo daño (sin tirada de ataque)</span>
+            </button>
+          </div>
+          <div class="dice-result-panel glass-panel" id="attack_result_display" role="status" style="display: none; margin-top: 14px;">
+            <div class="dmg-readout-row">
+              <div class="dmg-stat"><span class="dmg-tag">ATAQUE</span><span class="dmg-val" id="atk_total_val">0</span></div>
+              <div class="dmg-stat"><span class="dmg-tag">EVASION</span><span class="dmg-val" id="atk_evasion_val">0</span></div>
+              <div class="dmg-stat"><span class="dmg-tag">RESULTADO</span><span class="dmg-val" id="atk_outcome_val">—</span></div>
+            </div>
+            <div class="dmg-detail-text" id="atk_detail_text"></div>
           </div>
 
           <!-- Expandable Fine-Tuning Details: Collapsed by default -->
@@ -825,7 +837,8 @@ export class DiceRollerSidebar {
     this.container.querySelector('#roll_check_btn').onclick = () => this.executeActionCheck();
 
     // Roll Damage Button
-    this.container.querySelector('#roll_damage_btn').onclick = () => this.executeDamageCalc();
+    this.container.querySelector('#roll_damage_btn').onclick = () => { this.container.querySelector('#attack_result_display').style.display = 'none'; this.executeDamageCalc(); };
+    this.container.querySelector('#roll_attack_btn').onclick = () => this.executeAttack().catch(error => notify(error.message, 'error'));
     for (const event of ['input', 'change']) damageSec.addEventListener(event, () => { this.syncDamageMode(); this.container.querySelector('#damage_result_display').style.display = 'none'; });
   }
 
@@ -983,7 +996,7 @@ export class DiceRollerSidebar {
     }
   }
 
-  async executeActionCheck() {
+  async executeActionCheck(attack = null) {
     const actor = this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null) || {
       name: 'Voidwalker',
       path: 'Awakened',
@@ -994,9 +1007,11 @@ export class DiceRollerSidebar {
     const traitMod = actor.traits?.[this.selectedTraitId] ?? (actor.attackModifier ?? 0);
     const subtraitId = this.container.querySelector('#dice_subtrait_select').value;
     const subtraitMod = subtraitId ? (actor.subtraits?.[subtraitId] ?? 0) : 0;
-    const dc = parseInt(this.container.querySelector('#dice_dc_select').value, 10);
-    const hasAdvantage = this.container.querySelector('#dice_advantage').checked;
-    const hasDisadvantage = this.container.querySelector('#dice_disadvantage').checked;
+    // An attack is a Trait Roll against the target's Evasion; range may add Disadvantage.
+    const dc = attack ? attack.evasion : parseInt(this.container.querySelector('#dice_dc_select').value, 10);
+    const edge = netEdge(this.container.querySelector('#dice_advantage').checked, this.container.querySelector('#dice_disadvantage').checked || !!attack?.disadvantage);
+    const hasAdvantage = edge.advantage;
+    const hasDisadvantage = edge.disadvantage;
     const useResolve = this.container.querySelector('#dice_use_resolve').checked;
     const expMod = parseInt(this.container.querySelector('#dice_exp_mod').value, 10) || 0;
     const customMod = parseInt(this.container.querySelector('#dice_custom_mod').value, 10) || 0;
@@ -1016,7 +1031,7 @@ export class DiceRollerSidebar {
     if (useResolve) groups.push({ qty: 1, sides: 4, theme: 'vfNeutral', role: 'Resolve' });
 
     const themedGroups = this.applyDiceTextureSet(groups);
-    const label = `${actor.name || 'Operative'} · ${traitName} Check`;
+    const label = attack ? `${actor.name || 'Operative'} · Ataque (${traitName}) vs ${attack.targetName}` : `${actor.name || 'Operative'} · ${traitName} Check`;
 
     let forcedHope = null;
     let forcedFear = null;
@@ -1066,7 +1081,7 @@ export class DiceRollerSidebar {
       });
     } catch(e) {
       notify(e.message, 'error');
-      return;
+      return null;
     }
 
     // Overlay 3D results banner
@@ -1129,6 +1144,59 @@ export class DiceRollerSidebar {
 
     this.lastResult = result;
     this.showResult(result);
+    return result;
+  }
+
+  // The whole attack: declare (weapon, target, range), roll against Evasion and, only on a
+  // hit, work out the damage. Applying it stays a separate step so the defender can spend armor.
+  async executeAttack() {
+    const q = id => this.container.querySelector(id);
+    const attacker = this.currentActor || store.getSelectedToken();
+    const target = store.state.tokens.find(t => t.id === q('#dmg_target_select').value);
+    if (!attacker) throw new Error('Selecciona el token que ataca.');
+    if (!target) throw new Error('Elige un objetivo para atacar.');
+    if (target.id === attacker.id) throw new Error('Un token no puede atacarse a sí mismo.');
+    const bossPhase = attacker.boss?.states?.[attacker.boss.index];
+    if (bossPhase?.canAttack === false) throw new Error('Este estado usa su procedimiento especial; no tiene un ataque estándar.');
+    const weapon = (tokenInventory(attacker).weapons || []).find(w => w.id === q('#dmg_weapon_select').value) || null;
+    const map = store.getActiveMap() || {};
+    const band = rangeBandFor(tokenDistanceSquares(attacker, target, map.gridSize), map.gridScaleMeters || 2);
+    const range = rangeCheck(weapon, band);
+    const evasion = Number.isFinite(target.evasion) ? target.evasion : 10;
+    const show = (total, outcome, detail, tone) => {
+      q('#attack_result_display').style.display = 'block';
+      q('#atk_total_val').textContent = total; q('#atk_evasion_val').textContent = evasion;
+      const out = q('#atk_outcome_val'); out.textContent = outcome; out.dataset.tone = tone;
+      q('#atk_detail_text').textContent = detail;
+    };
+    q('#damage_result_display').style.display = 'none';
+    const where = `${weapon ? weapon.name : 'Ataque básico'} · objetivo a ${band}${range.reach ? ` · alcance del arma ${range.reach}` : ''}.`;
+    if (!range.allowed) { show('—', 'FUERA DE ALCANCE', `${where} ${range.reason} Acércate o cambia de arma.`, 'miss'); notify(range.reason, 'error'); return { hit: false, blocked: true, band }; }
+
+    let hit, critical, total, detail;
+    if (attacker.isPlayer !== false) {
+      const traitId = weaponTraitId(weapon);
+      if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
+      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage, targetName: target.name });
+      if (!result) return { hit: false, band };
+      hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
+      detail = `Hope ${result.hopeVal} + Fear ${result.fearVal}${result.totalMod ? ` ${result.totalMod > 0 ? '+' : '−'} ${Math.abs(result.totalMod)}` : ''} = ${result.total}.`;
+    } else {
+      audio.playDiceRoll();
+      const roll = rollAdversaryAttack({ attackModifier: attacker.attackModifier ?? 0, evasion, hasAdvantage: q('#dice_advantage').checked, hasDisadvantage: q('#dice_disadvantage').checked || range.disadvantage });
+      hit = roll.hit; critical = roll.isCritical; total = roll.total;
+      detail = `d20 [${roll.d20}] ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6 [${roll.d6}]` : ''} = ${roll.total}.`;
+      const secret = this.rollVisibility() === 'keeper';
+      const summary = `⚔️ ${attacker.name} ataca a ${target.name}: ${detail} vs Evasion ${evasion} → ${critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO'}`;
+      store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'ROLL', sender: 'Keeper', title: `Ataque · ${attacker.name}`, details: summary });
+      if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage({ senderName: attacker.name, text: summary, channel: 'table' }));
+    }
+    const rangeNote = range.disadvantage ? ` ${range.reason}` : '';
+    if (!hit) { show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.`, 'miss'); return { hit: false, critical: false, total, band }; }
+    show(total, critical ? 'CRÍTICO' : 'IMPACTO', `${where}${rangeNote} ${detail} ${critical ? 'Crítico: impacta siempre.' : `Alcanza la Evasion ${evasion}.`} Daño calculado abajo.`, critical ? 'crit' : 'hit');
+    q('#dmg_is_critical').checked = critical;
+    this.executeDamageCalc();
+    return { hit: true, critical, total, band };
   }
 
   showResult(result) {
