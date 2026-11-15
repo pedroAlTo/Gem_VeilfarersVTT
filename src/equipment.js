@@ -71,10 +71,10 @@ export function resolveDamageExpression(expression, options = {}) {
 }
 
 // What the target has against Penetration (Corebook ch. 10): Reflective armor cancels
-// Energy; a Ward cancels Void and Neural.
+// Energy; a Ward cancels Void and Neural; Composite armor blunts Crushing.
 export function targetDefenses(token) {
-  if (!token) return { reflective: false, warded: false };
+  if (!token) return { reflective: false, warded: false, composite: false };
   const f = token.sourceCharacter?.document?.fields || {};
   const armorText = [...(token.inventory?.items || []).map(i => `${i.name} ${i.use}`), f.armor_name, f.armor_feat, f.armor_mods].join(' ');
-  return { reflective: /\breflective\b/i.test(armorText), warded: token.voidWard === true };
+  return { reflective: /\breflective\b/i.test(armorText), warded: token.voidWard === true, composite: /\bcomposite\b/i.test(armorText) };
 }

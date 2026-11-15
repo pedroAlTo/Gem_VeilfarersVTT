@@ -184,6 +184,20 @@ export function damageTypeOf(source) {
   if (/\b(?:energy|ene)\b/.test(text)) return 'energy';
   return 'physical';
 }
+// Weapon tags (Corebook ch. 10). Crushing: the hit ignores one Armor Slot, unless the target's
+// armor is Composite. Bleed: any hit applies Bleeding, whatever its tier.
+export function weaponTags(source) {
+  const text = source && typeof source === 'object' ? [source.features, source.name].join(' ') : String(source ?? '');
+  return { crushing: /\bcrushing\b/i.test(text), bleed: /\bbleed(?:ing)?\b/i.test(text) };
+}
+export function usableArmorSlots(available, { crushing = false, composite = false } = {}) {
+  const slots = Math.max(0, Number(available) || 0);
+  return crushing && !composite ? Math.max(0, slots - 1) : slots;
+}
+// Targets that do not bleed, including most Synthetics, are immune to Bleeding.
+export function canBleed(token) {
+  return !/synthetic|sint[eé]tic/i.test([token?.species, token?.sourceCharacter?.document?.fields?.ancestry].join(' '));
+}
 export function penetrationFor(type, { reflective = false, warded = false } = {}) {
   if (type === 'energy' && reflective) return 0;
   if ((type === 'void' || type === 'neural') && warded) return 0;

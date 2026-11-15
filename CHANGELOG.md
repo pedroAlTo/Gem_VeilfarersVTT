@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.3.2**.
-Paquete: `VeilFarers_VTT_v2.3.2.zip`.
+Versión actual del VTT: **v2.3.3**.
+Paquete: `VeilFarers_VTT_v2.3.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.3.3] — 2026-11-15
+
+V2 · Daño: armas Crushing y Bleed
+
+### Resolución de daño
+
+- Crushing: el impacto ignora 1 Armor Slot del objetivo, que no puede gastarlo contra ese golpe (con un solo slot, no puede mitigar). El slot ignorado no se consume. La armadura Composite lo anula.
+- Bleed: cualquier impacto deja al objetivo con la condición Bleeding, sea cual sea su gravedad e incluso si la armadura lo absorbe. Los objetivos que no sangran (Synthetics) son inmunes.
+- Ambos tags se leen de las propiedades del arma elegida y la armadura Composite se detecta en el objetivo; los tres se pueden marcar a mano en Opciones avanzadas.
+- El resultado del daño indica cuándo se aplica cada tag o por qué se anula.
 
 ## [2.3.2] — 2026-11-15
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { loadEncounters } from '../scripts/encounter-library.mjs';
 import { createActor } from '../src/actors.js';
-import { resolveDamage, damageTypeOf } from '../src/rulesEngine.js';
+import { resolveDamage, damageTypeOf, weaponTags, usableArmorSlots, canBleed } from '../src/rulesEngine.js';
 const dom = new JSDOM('<body></body>', { url:'http://localhost/' });
 for (const key of ['window','document','HTMLElement','customElements','MutationObserver','localStorage','Event','CustomEvent','FormData']) globalThis[key] = dom.window[key];
 const { store } = await import('../src/state.js'); await store.ready;
@@ -128,6 +128,57 @@ test('the damage panel reads the weapon type and the target armor: an Energy rif
   second.dice.executeDamageCalc();second.node.querySelector('#apply_dmg_to_target_btn').click();
   const after=store.state.tokens.find(t=>t.id===second.target.id);
   assert.equal(after.stress.current,1);assert.equal(after.hp.current,5);
+});
+test('Crushing ignores one Armor Slot unless the armor is Composite; Bleed applies Bleeding to targets that bleed (Corebook ch. 10)', () => {
+  assert.deepEqual(weaponTags({ name: 'War Hammer', features: 'Heavy, Crushing' }), { crushing: true, bleed: false });
+  assert.deepEqual(weaponTags({ name: 'Slash Claw', features: 'Bleed' }), { crushing: false, bleed: true });
+  assert.deepEqual(weaponTags('Reliable'), { crushing: false, bleed: false });
+  assert.equal(usableArmorSlots(3, { crushing: true }), 2); assert.equal(usableArmorSlots(1, { crushing: true }), 0);
+  assert.equal(usableArmorSlots(3, { crushing: true, composite: true }), 3); assert.equal(usableArmorSlots(3), 3); assert.equal(usableArmorSlots(0, { crushing: true }), 0);
+  assert.equal(canBleed({ species: 'Human' }), true); assert.equal(canBleed({ species: 'Synthetic' }), false); assert.equal(canBleed({ species: 'Sintético' }), false);
+});
+test('a Crushing hit against a single Armor Slot cannot be soaked; with Composite armor it can', () => {
+  const {node,dice,target}=damagePanel();window.veilCanvas={triggerAttackFX:()=>{}};network.broadcast=()=>{};
+  store.updateToken(target.id,{hp:{current:6,max:6,majorThreshold:10,severeThreshold:16},armor:{current:1,max:1}});
+  node.querySelector('#dmg_formula').value='6';node.querySelector('#dmg_weapon_crushing').checked=true;node.querySelector('#dmg_use_armor').checked=true;
+  dice.executeDamageCalc();
+  assert.equal(node.querySelector('#dmg_hp_loss_val').textContent,'1 HP','the only slot is ignored');
+  assert.match(node.querySelector('#dmg_detail_text').textContent,/Crushing: ignora 1 Armor Slot/);
+  assert.equal(node.querySelector('#dmg_shield_mitigation_row').style.display,'none');
+  node.querySelector('#apply_dmg_to_target_btn').click();
+  let after=store.state.tokens.find(t=>t.id===target.id);
+  assert.equal(after.hp.current,5);assert.equal(after.armor.current,1,'an ignored slot is not spent');
+  // Composite armor: the same hit can be soaked.
+  node.remove();store.listeners.clear();
+  const second=damagePanel();
+  store.updateToken(second.target.id,{hp:{current:6,max:6,majorThreshold:10,severeThreshold:16},armor:{current:1,max:1},inventory:{weapons:[],items:[{id:'a1',name:'Composite Armor',quantity:'1',tier:'',use:'Composite, Resilient'}]}});
+  second.node.querySelector('#dmg_formula').value='6';second.node.querySelector('#dmg_weapon_crushing').checked=true;second.node.querySelector('#dmg_use_armor').checked=true;
+  second.dice.executeDamageCalc();
+  assert.equal(second.node.querySelector('#dmg_target_composite').checked,true);
+  assert.equal(second.node.querySelector('#dmg_hp_loss_val').textContent,'0 HP');
+  assert.match(second.node.querySelector('#dmg_detail_text').textContent,/Crushing anulado por armadura Composite/);
+  second.node.querySelector('#apply_dmg_to_target_btn').click();
+  after=store.state.tokens.find(t=>t.id===second.target.id);
+  assert.equal(after.hp.current,6);assert.equal(after.armor.current,0);
+});
+test('a Bleed weapon leaves the target Bleeding on any hit, once, and never a Synthetic', () => {
+  const {node,dice,target}=damagePanel();window.veilCanvas={triggerAttackFX:()=>{}};network.broadcast=()=>{};
+  store.updateToken(target.id,{hp:{current:6,max:6,majorThreshold:10,severeThreshold:16},armor:{current:2,max:2},species:'Human',conditions:['Bleeding']});
+  node.querySelector('#dmg_formula').value='3';node.querySelector('#dmg_weapon_bleed').checked=true;node.querySelector('#dmg_use_armor').checked=true;
+  dice.executeDamageCalc();
+  assert.match(node.querySelector('#dmg_detail_text').textContent,/Bleed: el objetivo queda Bleeding/);
+  node.querySelector('#apply_dmg_to_target_btn').click();
+  let after=store.state.tokens.find(t=>t.id===target.id);
+  assert.equal(after.hp.current,6,'soaked to 0 HP');assert.deepEqual(after.conditions,['Bleeding'],'still a hit: Bleeding, not duplicated');
+  node.remove();store.listeners.clear();
+  const second=damagePanel();
+  store.updateToken(second.target.id,{hp:{current:6,max:6,majorThreshold:10,severeThreshold:16},species:'Synthetic',conditions:[]});
+  second.node.querySelector('#dmg_formula').value='3';second.node.querySelector('#dmg_weapon_bleed').checked=true;
+  second.dice.executeDamageCalc();
+  assert.match(second.node.querySelector('#dmg_detail_text').textContent,/no sangra/);
+  second.node.querySelector('#apply_dmg_to_target_btn').click();
+  after=store.state.tokens.find(t=>t.id===second.target.id);
+  assert.equal(after.hp.current,5);assert.deepEqual(after.conditions||[],[]);
 });
 test('Armor exhausted between preview and apply does not produce a shield; secret impact is not broadcast', () => {
   const {node,dice,target}=damagePanel({secret:true});const effects=[],sent=[];window.veilCanvas={triggerAttackFX:p=>effects.push(p)};network.broadcast=msg=>sent.push(msg);

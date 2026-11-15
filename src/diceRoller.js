@@ -4,12 +4,13 @@ import { dossierDialog } from './dossierUI.js';
 // src/diceRoller.js
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
-import { rollVeilfarersCheck, resolveDamage, damageTypeOf, DAMAGE_TYPES, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { rollVeilfarersCheck, resolveDamage, damageTypeOf, weaponTags, usableArmorSlots, canBleed, DAMAGE_TYPES, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { notify, sanitizeHTML, escapeHTML } from './ui.js';
 import { characterDetails } from './characterImport.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
+import { normalizeConditions } from './conditions.js';
 import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses } from './equipment.js';
 
 export class DiceRollerSidebar {
@@ -184,6 +185,8 @@ export class DiceRollerSidebar {
     if (honedEl) honedEl.value = preset.honed;
     const impEl = this.container.querySelector('#dmg_impact_type');
     if (impEl) impEl.value = weaponImpactType(weapon);
+    const tags = weaponTags(weapon);
+    for (const [id, on] of [['#dmg_weapon_crushing', tags.crushing], ['#dmg_weapon_bleed', tags.bleed]]) { const box = this.container.querySelector(id); if (box) box.checked = on; }
     const note = weapon.damageMode === 'final' ? 'Daño final: Proficiency y Honed Edge no se vuelven a sumar.' : 'Daño base: se añade Proficiency al primer grupo de dados y Honed Edge una vez.';
     let warning = ''; try { parseDamageExpression(preset.formula); } catch (error) { warning = ' ' + error.message; }
     const prevEl = this.container.querySelector('[data-weapon-preview]');
@@ -557,6 +560,13 @@ export class DiceRollerSidebar {
               <div class="form-row">
                 <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_reflective" /><span>Objetivo con armadura Reflective (anula Energy)</span></label>
                 <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_warded" /><span>Objetivo con Ward (anula Void y Neural)</span></label>
+              </div>
+              <div class="form-row">
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_weapon_crushing" /><span>Arma Crushing (ignora 1 Armor Slot)</span></label>
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_composite" /><span>Objetivo con armadura Composite (anula Crushing)</span></label>
+              </div>
+              <div class="form-row">
+                <label class="hud-checkbox-label"><input type="checkbox" id="dmg_weapon_bleed" /><span>Arma Bleed (el impacto deja Bleeding)</span></label>
               </div>
               <label class="dossier-field"><span>Impacto del arma</span><vf-select class="hud-select" id="dmg_impact_type">${Object.entries(IMPACT_TYPES).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}</vf-select></label>
               <div class="form-row">
@@ -1210,8 +1220,13 @@ export class DiceRollerSidebar {
     if (targetToken && this.defencesReadFor !== targetToken.id) {
       const found = targetDefenses(targetToken);
       reflectiveInput.checked = found.reflective; wardedInput.checked = found.warded;
+      this.container.querySelector('#dmg_target_composite').checked = found.composite;
       this.defencesReadFor = targetToken.id;
     }
+    const crushing = this.container.querySelector('#dmg_weapon_crushing').checked, composite = this.container.querySelector('#dmg_target_composite').checked;
+    const bleed = this.container.querySelector('#dmg_weapon_bleed').checked;
+    // Crushing ignores one of the target's Armor Slots for this hit; Composite armor blunts it.
+    const usableSlots = token => usableArmorSlots(token?.armor?.current, { crushing, composite });
     const isCritical = this.container.querySelector('#dmg_is_critical').checked;
     const isDirect = this.container.querySelector('#dmg_is_direct').checked;
     const mr = 1;
@@ -1243,7 +1258,7 @@ export class DiceRollerSidebar {
       targetMajorThreshold: major,
       targetSevereThreshold: severe,
       useArmorSlot: useArmor,
-      currentArmorSlots: targetToken?.armor?.current ?? 2,
+      currentArmorSlots: targetToken ? usableSlots(targetToken) : 2,
       mountRating: mr,
       proficiency, honed,
       damageType,
@@ -1266,6 +1281,8 @@ export class DiceRollerSidebar {
         ? `${DAMAGE_TYPES[dmgResult.damageType]} · Penetración −${dmgResult.penetration}: umbrales ${major}/${severe} → ${dmgResult.effectiveMajor}/${dmgResult.effectiveSevere} para este impacto. `
         : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
       (dmgResult.stressMarked ? 'Neural: +1 Stress. ' : '') +
+      (crushing && !isDirect ? (composite ? 'Crushing anulado por armadura Composite. ' : 'Crushing: ignora 1 Armor Slot del objetivo en este impacto. ') : '') +
+      (bleed ? (targetToken && !canBleed(targetToken) ? 'Bleed: el objetivo no sangra (inmune). ' : 'Bleed: el objetivo queda Bleeding. ') : '') +
       `Compared to Major (${dmgResult.effectiveMajor}) & Severe (${dmgResult.effectiveSevere}). ` +
       (dmgResult.armorSlotSpent ? '1 Armor Slot spent to lower severity step.' : 'No armor slot used.');
     const secret = this.rollVisibility() === 'keeper';
@@ -1280,7 +1297,7 @@ export class DiceRollerSidebar {
     const damageMapId = targetToken?.mapId;
 
     let spentShieldsChoice = null;
-    const targetArmorAvailable = targetToken?.armor?.current || 0;
+    const targetArmorAvailable = usableSlots(targetToken);
     const shieldRow = this.container.querySelector('#dmg_shield_mitigation_row');
     const mitigateBtn = this.container.querySelector('#dmg_mitigate_btn');
     if (shieldRow && mitigateBtn) {
@@ -1289,7 +1306,7 @@ export class DiceRollerSidebar {
         mitigateBtn.textContent = `🛡️ Gastar escudos (${targetArmorAvailable} disponible${targetArmorAvailable > 1 ? 's' : ''})`;
         mitigateBtn.onclick = () => {
           const freshTarget = store.state.tokens.find(t => t.id === targetId) || targetToken;
-          promptShieldMitigation(freshTarget, dmgResult.rawDamage, (spent) => {
+          promptShieldMitigation(freshTarget, dmgResult.rawDamage, usableSlots(freshTarget), (spent) => {
             spentShieldsChoice = spent;
             mitigateBtn.textContent = `🛡️ Escudos seleccionados: ${spent}`;
             applyBtn.textContent = `APPLY DAMAGE (${spent} ESCUDO${spent !== 1 ? 'S' : ''} GASTADO${spent !== 1 ? 'S' : ''})`;
@@ -1327,7 +1344,7 @@ export class DiceRollerSidebar {
           targetSevereThreshold: targetToken.hp.severeThreshold ?? severe,
           isDirectDamage: isDirect,
           useArmorSlot: spentShields > 0,
-          currentArmorSlots: targetToken.armor?.current || 0,
+          currentArmorSlots: usableSlots(targetToken),
           damageType: dmgResult.damageType,
           targetReflective: damageOptions.targetReflective,
           targetWarded: damageOptions.targetWarded
@@ -1346,6 +1363,8 @@ export class DiceRollerSidebar {
         const armorLost = currentArmor - newArmor;
         // Neural: 1 Stress on top of the HP, capped by the target's Stress track.
         const stressMark = currentDamage.stressMarked && targetToken.stress ? 1 : 0;
+        const addCondition = bleed && canBleed(targetToken) ? 'Bleeding' : '';
+        const withCondition = t => addCondition ? { conditions: normalizeConditions([...(t.conditions || []), addCondition]) } : {};
         const withStress = t => stressMark ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? t.stress.current + 1, (t.stress.current || 0) + 1) } } : {};
 
         const damagePayload = {
@@ -1358,6 +1377,7 @@ export class DiceRollerSidebar {
           armorLoss: armorLost,
           spentShields,
           stressMark,
+          addCondition,
           isDirect,
           isCritical,
           rawDamage: dmgResult.rawDamage,
@@ -1377,7 +1397,7 @@ export class DiceRollerSidebar {
                 hp: { ...t.hp, current: newHp },
                 pendingBrace: isDirect ? t.pendingBrace : false,
                 armor: { ...t.armor, current: newArmor },
-                ...withStress(t)
+                ...withStress(t), ...withCondition(t)
               } : t)
             });
           } finally {
@@ -1388,7 +1408,7 @@ export class DiceRollerSidebar {
             hp: { ...targetToken.hp, current: newHp },
             pendingBrace: isDirect ? targetToken.pendingBrace : false,
             armor: { ...targetToken.armor, current: newArmor },
-            ...withStress(targetToken)
+            ...withStress(targetToken), ...withCondition(targetToken)
           });
         }
 
@@ -1422,7 +1442,7 @@ export class DiceRollerSidebar {
       };
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
-      const currentArmorNow = currentTarget.armor?.current || 0;
+      const currentArmorNow = usableSlots(currentTarget);
       let finalSpentShields = 0;
       if (!isDirect && currentArmorNow > 0) {
         if (spentShieldsChoice !== null && spentShieldsChoice !== undefined) {
@@ -1436,12 +1456,14 @@ export class DiceRollerSidebar {
   }
 }
 
-export function promptShieldMitigation(targetToken, incomingRawDamage, onConfirm) {
+export function promptShieldMitigation(targetToken, incomingRawDamage, usable, onConfirm) {
+  // Older callers pass the callback third; then every available slot is usable.
+  if (typeof usable === 'function') { onConfirm = usable; usable = undefined; }
   if (typeof document === 'undefined' || !document.body) {
     onConfirm(targetToken.armor?.current > 0 ? 1 : 0);
     return;
   }
-  const currentShields = targetToken.armor?.current || 0;
+  const currentShields = Math.max(0, Math.min(targetToken.armor?.current || 0, usable ?? Infinity));
   if (currentShields <= 0) {
     onConfirm(0);
     return;

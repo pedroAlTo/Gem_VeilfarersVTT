@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.3.3', date: '2026-11-15', title: 'V2 · Daño: armas Crushing y Bleed',
+    sections: [
+      { title: 'Resolución de daño', items: [
+        'Crushing: el impacto ignora 1 Armor Slot del objetivo, que no puede gastarlo contra ese golpe (con un solo slot, no puede mitigar). El slot ignorado no se consume. La armadura Composite lo anula.',
+        'Bleed: cualquier impacto deja al objetivo con la condición Bleeding, sea cual sea su gravedad e incluso si la armadura lo absorbe. Los objetivos que no sangran (Synthetics) son inmunes.',
+        'Ambos tags se leen de las propiedades del arma elegida y la armadura Composite se detecta en el objetivo; los tres se pueden marcar a mano en Opciones avanzadas.',
+        'El resultado del daño indica cuándo se aplica cada tag o por qué se anula.',
+      ] },
+    ],
+  },
+  {
     version: '2.3.2', date: '2026-11-15', title: 'V2 · Daño: Penetración por tipo de daño',
     sections: [
       { title: 'Resolución de daño', items: [
