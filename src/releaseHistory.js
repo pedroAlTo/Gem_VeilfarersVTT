@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.8', date: '2026-11-16', title: 'V2 · Luces y niebla de guerra con degradado',
+    sections: [
+      { title: 'Visión y luces', items: [
+        'La visión y las luces en zona abierta vuelven a ser redondas: antes salían como un cuadrado de lados rectos.',
+        'La visión se desvanece en el último tramo de su alcance en lugar de acabar en una línea.',
+        'Los bordes de la niebla de guerra y de las sombras de las luces se dibujan difuminados. Los muros siguen cortando la visión.',
+        'La zona explorada que se recupera al cargar la partida ya no muestra escalones marcados.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.7', date: '2026-11-16', title: 'V2 · 72 retratos canonicos por Ancestry, Genero y Tipologias con selector interactivo y correccion de anatomia alienigena',
     sections: [
       { title: 'Tokens y Retratos Canonicos', items: [

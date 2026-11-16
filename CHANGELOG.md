@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.8.7**.
-Paquete: `VeilFarers_VTT_v2.8.7.zip`.
+Versión actual del VTT: **v2.8.8**.
+Paquete: `VeilFarers_VTT_v2.8.8.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.8] — 2026-11-16
+
+V2 · Luces y niebla de guerra con degradado
+
+### Visión y luces
+
+- La visión y las luces en zona abierta vuelven a ser redondas: antes salían como un cuadrado de lados rectos.
+- La visión se desvanece en el último tramo de su alcance en lugar de acabar en una línea.
+- Los bordes de la niebla de guerra y de las sombras de las luces se dibujan difuminados. Los muros siguen cortando la visión.
+- La zona explorada que se recupera al cargar la partida ya no muestra escalones marcados.
 
 ## [2.8.7] — 2026-11-16
 

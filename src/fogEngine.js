@@ -1,6 +1,10 @@
+import { drawSoftened, visionFill } from './softMask.js';
 // src/fogEngine.js
 // Advanced Fog of War & Exploration Shroud Engine for Veilfarers VTT
 // Supports Unvisited Total Darkness (100%), Explored Shroud (80%-95%), and Real-time LOS FOV
+
+// Width, in map pixels, of the gradient that replaces every hard cut of the fog.
+export const FOG_SOFTNESS = 12;
 
 export class FogOfWarEngine {
   constructor() {
@@ -240,7 +244,7 @@ export class FogOfWarEngine {
     const expCtx = exploredCanvas.getContext('2d');
 
     // 1. Calculate active real-time vision polygons for all viewing tokens
-    const currentVisionPolygons = [];
+    const currentVisionPolygons = [], visionShapes = [];
     for (const viewer of viewers) {
       if (viewer.hidden) continue;
       const lx = viewer.x;
@@ -260,6 +264,7 @@ export class FogOfWarEngine {
 
       if (poly && poly.length >= 3) {
         currentVisionPolygons.push(poly);
+        visionShapes.push({ poly, x: lx, y: ly, radius });
         // Stamp this newly discovered field into the persistent exploration memory only when confirmed
         if (stamp) {
           this.stampExploration(expCtx, poly);
@@ -326,14 +331,15 @@ export class FogOfWarEngine {
 
     // 5. Cut out the CURRENT active vision polygons completely (0% fog in field of view)
     fCtx.globalCompositeOperation = 'destination-out';
-    for (const poly of currentVisionPolygons) {
+    for (const { poly, x, y, radius } of visionShapes) {
       fCtx.beginPath();
       fCtx.moveTo(poly[0].x, poly[0].y);
       for (let i = 1; i < poly.length; i++) {
         fCtx.lineTo(poly[i].x, poly[i].y);
       }
       fCtx.closePath();
-      fCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
+      // Sight fades towards the end of its range instead of stopping at a line.
+      fCtx.fillStyle = visionFill(fCtx, x, y, radius);
       fCtx.fill();
     }
 
@@ -357,10 +363,10 @@ export class FogOfWarEngine {
     if (isKeeperGM) {
       // Keeper GM Vision: show explored vs unexplored with subtle 30% overlay
       ctx.globalAlpha = 0.32;
-      ctx.drawImage(this.fogCanvas, 0, 0);
+      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS);
     } else {
-      // Player Perspective: Full strict Fog of War
-      ctx.drawImage(this.fogCanvas, 0, 0);
+      // Player Perspective: Full strict Fog of War, with feathered edges
+      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS);
     }
     ctx.restore();
 
