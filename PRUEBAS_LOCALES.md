@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.9.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.9.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.9.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.9.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.9.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.9.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.9.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.9.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -22,6 +22,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.9.1.zip**. Abre **AYUDA*
 11. **Drones.** **Roster → + DRONE**: carga *Security Stun Drone* y comprueba 3 HP, Evasion 11, Major 7 / Severe 14, 1 Armor Slot, 3/3 Slots y 18 Cr. En un dron Common añade un tercer módulo de 1 Slot: debe avisar de que faltan Slots. Marca un módulo Military en un Common: lo rechaza hasta activar "Modificación ilegal". Despliégalo, abre **Ficha → Dron · módulos y señal**, asigna un operador y ataca: tira el operador con Hope y Fear. Pon la señal en Unstable (Desventaja) y en Lost (no deja atacar; al ser atacado su Evasion baja 2). Tira la Drone Complication. En **Sesión → control del token**, un dron sin Neural Network Control solo deja elegir un jugador; instala el módulo y marca dos: en la consola del dron aparece **Pasar el control**, gratis con señal Stable y con 1 Stress para quien lo recibe en Unstable.
 
 12. **Mano de cartas.** Pasa a postura de jugador y selecciona tu personaje: la barra inferior muestra los stats a la izquierda y la mano a la derecha. Pasa el ratón por una carta (se levanta e inclina), haz clic (se abre en grande) y arrastra un Poder de 1 Hope al mapa: baja 1 Hope, aparece la tarjeta a la derecha, la línea en el chat y una señal en el punto, y el panel de dados queda con su Trait y DC. Sin Hope suficiente debe negarse. Abre **Vault**, elige un Poder y haz Recall en "Escena activa": cuesta su RC en Stress y 1 Hope. Con un Sleeping, juega un Resolve Move (gasta Resolve y tira sus dados) y la Effort Feature. Con un Mystic Sleeping, juega un Poder del Archivo: pide cuánto Resolve gastas y el Keeper gana ese Fear.
+
+13. **Equipo.** **Ficha → Armas y equipo**: escribe «pist» en el buscador y añade una pistola con un clic; elige la categoría Armadura y añade una (cambian umbrales y Armor Slots). Sube y baja la cantidad de un objeto con − y +. Edita un arma en su fila (Trait y Alcance son listas). Pulsa Quitar una vez (pregunta) y otra (borra). Crea un objeto con «+ Objeto propio»: sin nombre no se guarda. No hay botón de guardar inventario: cada cambio queda guardado.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

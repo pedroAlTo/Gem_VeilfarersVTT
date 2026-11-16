@@ -1,10 +1,27 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.9.1**.
-Paquete: `VeilFarers_VTT_v2.9.1.zip`.
+Versión actual del VTT: **v2.9.2**.
+Paquete: `VeilFarers_VTT_v2.9.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.9.2] — 2026-11-16
+
+V2 · Equipo más fácil de manejar
+
+### Pestaña Armas y equipo
+
+- Todo se hace en la propia pestaña, sin abrir ventanas encima: buscar, añadir, cambiar cantidades, editar y quitar.
+- Un buscador con categorías (Armas, Armadura, Equipo, Aumentos) muestra el catálogo según escribes; cada resultado se añade con un clic.
+- Añadir una armadura sigue actualizando sus umbrales y Armor Slots.
+- Las cantidades se cambian con − y +.
+- Cada arma y objeto se edita en su propia fila. El Trait y el Alcance se eligen de una lista en vez de escribirse.
+- Quitar pide confirmación en el mismo botón, para no borrar nada por un clic de más.
+- «+ Arma propia» y «+ Objeto propio» crean entradas a medida; no se guardan hasta ponerles nombre.
+- Cada cambio se guarda al momento: desaparece el botón «Guardar inventario».
+- El botón de cada arma se llama ahora «Atacar» y la lleva al panel de dados.
+- El editor completo anterior sigue disponible desde un enlace al pie.
 
 ## [2.9.1] — 2026-11-16
 

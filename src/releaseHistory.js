@@ -1,6 +1,23 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.9.2', date: '2026-11-16', title: 'V2 · Equipo más fácil de manejar',
+    sections: [
+      { title: 'Pestaña Armas y equipo', items: [
+        'Todo se hace en la propia pestaña, sin abrir ventanas encima: buscar, añadir, cambiar cantidades, editar y quitar.',
+        'Un buscador con categorías (Armas, Armadura, Equipo, Aumentos) muestra el catálogo según escribes; cada resultado se añade con un clic.',
+        'Añadir una armadura sigue actualizando sus umbrales y Armor Slots.',
+        'Las cantidades se cambian con − y +.',
+        'Cada arma y objeto se edita en su propia fila. El Trait y el Alcance se eligen de una lista en vez de escribirse.',
+        'Quitar pide confirmación en el mismo botón, para no borrar nada por un clic de más.',
+        '«+ Arma propia» y «+ Objeto propio» crean entradas a medida; no se guardan hasta ponerles nombre.',
+        'Cada cambio se guarda al momento: desaparece el botón «Guardar inventario».',
+        'El botón de cada arma se llama ahora «Atacar» y la lleva al panel de dados.',
+        'El editor completo anterior sigue disponible desde un enlace al pie.',
+      ] },
+    ],
+  },
+  {
     version: '2.9.1', date: '2026-11-16', title: 'V2 · Dron compartido con Neural Network Control',
     sections: [
       { title: 'Control compartido del dron', items: [

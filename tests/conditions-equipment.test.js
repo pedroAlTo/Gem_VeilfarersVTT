@@ -130,3 +130,42 @@ test('unassigned players cannot prepare another token weapon; assigned players c
   store.state.claimedTokenId=t.id;assert.equal(dice.prepareWeapon(t.id,'laser'),true);
   el.querySelector('#dmg_target_select').value=t.id;dice.executeDamageCalc();assert.equal(el.querySelector('#apply_dmg_to_target_btn').disabled,false);
 });
+
+test('the equipment tab works in place: search and add, quantities, edit, confirm before removing, new entries saved only with a name', async () => {
+  const { openDossier } = await import('../src/dossierUI.js');
+  const t = actor({ level: 2, inventory: { weapons: [weapon()], items: [{ id: 'kit', name: 'Medkit', tier: '', quantity: '2', use: 'Heals' }] } });
+  store.state.tokens = [t]; store.state.selectedTokenId = t.id;
+  const modal = openDossier(t, () => {}, 'equipment'), panel = modal.querySelector('[data-panel="equipment"]'), live = () => store.state.tokens[0];
+  const click = selector => panel.querySelector(selector).click();
+  // Nothing is listed until something is asked for; then at most eight entries with an Añadir button.
+  assert.equal(panel.querySelectorAll('[data-equip-add]').length, 0);
+  click('[data-equip-category="armor"]');
+  const armorRows = panel.querySelectorAll('[data-equip-add]'); assert.ok(armorRows.length > 0 && armorRows.length <= 8);
+  armorRows[0].click();
+  assert.equal(live().inventory.items.length, 2); assert.ok(live().armor.max >= 1, 'equipping armor sets its Armor Slots');
+  const search = panel.querySelector('[data-equip-search]'); search.value = 'zzzz-no-such-thing'; search.dispatchEvent(new Event('input'));
+  assert.match(panel.querySelector('[data-equip-results]').textContent, /Nada en el catálogo/);
+  // Quantities change with one click and never go below zero.
+  click('[data-equip-qty="kit"][data-delta="1"]'); assert.equal(live().inventory.items[0].quantity, '3');
+  for (let i = 0; i < 5; i++) click('[data-equip-qty="kit"][data-delta="-1"]'); assert.equal(live().inventory.items[0].quantity, '0');
+  // Editing a weapon in its own row.
+  const weaponId = live().inventory.weapons[0].id;
+  click(`[data-equip-edit="${weaponId}"]`);
+  const form = panel.querySelector('[data-equip-form]');
+  form.querySelector('[data-field="name"]').value = 'Rifle del capitán'; form.querySelector('[data-field="range"]').value = 'Far'; form.querySelector('[data-field="damageMode"]').checked = true;
+  form.querySelector('[data-equip-save]').click();
+  assert.deepEqual([live().inventory.weapons[0].name, live().inventory.weapons[0].range, live().inventory.weapons[0].damageMode], ['Rifle del capitán', 'Far', 'final']);
+  // A new entry is not saved until it has a name; cancelling leaves nothing behind.
+  click('[data-equip-custom="items"]'); assert.equal(live().inventory.items.length, 2);
+  click('[data-equip-save]');
+  assert.match(panel.querySelector('[data-equip-error]').textContent, /Ponle un nombre/); assert.equal(live().inventory.items.length, 2);
+  click('[data-equip-cancel]'); assert.equal(panel.querySelector('[data-equip-form]'), null);
+  click('[data-equip-custom="items"]');
+  panel.querySelector('[data-equip-form] [data-field="name"]').value = 'Cuerda'; click('[data-equip-save]');
+  assert.equal(live().inventory.items.at(-1).name, 'Cuerda');
+  // Removing asks once on the same button.
+  click('[data-equip-remove="kit"]'); assert.equal(live().inventory.items.length, 3); assert.equal(panel.querySelector('[data-equip-remove="kit"]').textContent, '¿Quitar?');
+  click('[data-equip-remove="kit"]'); assert.equal(live().inventory.items.some(i => i.id === 'kit'), false);
+  assert.ok(panel.querySelector('[data-prepare-weapon]'), 'the weapon keeps its attack button');
+  modal.remove();
+});

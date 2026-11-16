@@ -3,12 +3,29 @@ import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as esc, sanitizeHTML, notify } from './ui.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { newId } from './persistence.js';
+import { network } from './networkManager.js';
 import {
   filterEquipmentCatalog,
   EQUIPMENT_SOURCES,
   EQUIPMENT_CATEGORIES,
   equipCatalogItem
 } from './equipmentLibrary.js';
+
+// What equipping a catalog entry changes on the token: the inventory and, for armor and a few
+// augmentations, the numbers they set (thresholds are armor + level; Armor Slots follow the armor).
+export function catalogEquipUpdates(token, item) {
+  const inventory = equipCatalogItem(tokenInventory(token), item);
+  validateInventory(inventory);
+  const updates = { inventory }, level = Number(token.level || 1);
+  if (item.category === 'armor') {
+    if (item.majorThreshold && item.severeThreshold) updates.hp = { ...token.hp, majorThreshold: item.majorThreshold + level, severeThreshold: item.severeThreshold + level };
+    if (item.armorSlots) updates.armor = { current: item.armorSlots, max: item.armorSlots };
+  }
+  if (item.id === 'core_aug_subdermal_armor') updates.armor = { current: (token.armor?.current || 0) + 1, max: (token.armor?.max || 0) + 1 };
+  else if (item.id === 'core_aug_reinforced_bones') { const max = token.hp?.max || 6; updates.hp = { ...token.hp, max: max + 2, current: Math.min(max + 2, (token.hp?.current || 6) + 2) }; }
+  else if (item.id === 'core_aug_combat_reflexes') updates.evasion = (token.evasion || 10) + 1;
+  return updates;
+}
 
 const input = (label, key, value, attrs = '') => `<label class="dossier-field"><span>${label}</span><input class="hud-input" data-field="${key}" value="${esc(value)}" ${attrs}></label>`;
 
@@ -157,45 +174,9 @@ export function openEquipmentCatalog(tokenId, onEquipped = null) {
           return;
         }
 
-        const inv = tokenInventory(currentTok);
-        const updated = equipCatalogItem(inv, itemToEquip);
-        validateInventory(updated);
-
-        const updates = { inventory: updated };
-        const charLevel = Number(currentTok.level || currentTok.tier || 1);
-
-        // Armor equip: strictly update token Damage Thresholds and Armor Slots
-        if (itemToEquip.category === 'armor') {
-          if (itemToEquip.majorThreshold && itemToEquip.severeThreshold) {
-            updates.hp = {
-              ...currentTok.hp,
-              majorThreshold: itemToEquip.majorThreshold + charLevel,
-              severeThreshold: itemToEquip.severeThreshold + charLevel
-            };
-          }
-          if (itemToEquip.armorSlots) {
-            updates.armor = {
-              current: itemToEquip.armorSlots,
-              max: itemToEquip.armorSlots
-            };
-          }
-        }
-
-        // Augmentation specific stat bonuses
-        if (itemToEquip.id === 'core_aug_subdermal_armor') {
-          const curMax = currentTok.armor?.max || 0;
-          updates.armor = { current: (currentTok.armor?.current || 0) + 1, max: curMax + 1 };
-        } else if (itemToEquip.id === 'core_aug_reinforced_bones') {
-          const curHpMax = currentTok.hp?.max || 6;
-          updates.hp = { ...currentTok.hp, max: curHpMax + 2, current: Math.min(curHpMax + 2, (currentTok.hp?.current || 6) + 2) };
-        } else if (itemToEquip.id === 'core_aug_combat_reflexes') {
-          updates.evasion = (currentTok.evasion || 10) + 1;
-        }
-
+        const updates = catalogEquipUpdates(currentTok, itemToEquip), updated = updates.inventory;
         store.updateToken(tokenId, updates);
-        if (store.sessionRole !== 'player') {
-          network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: tokenId, partial: updates });
-        }
+        if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: tokenId, partial: updates });
         if (onEquipped) onEquipped(updated);
         notify(`"${itemToEquip.name}" equipado a ${currentTok.name}.`);
       };
@@ -282,30 +263,142 @@ export function openInventory(tokenId) {
   render(); return modal;
 }
 
+const CHIPS = [['all', 'Todo'], ['weapons', 'Armas'], ['armor', 'Armadura'], ['gear', 'Equipo'], ['augmentations', 'Aumentos']];
+const TRAIT_OPTIONS = ['Agility', 'Strength', 'Finesse', 'Instinct', 'Presence', 'Knowledge'];
+const RANGE_OPTIONS = ['Melee', 'Very Close', 'Close', 'Far', 'Very Far'];
+const catalogLine = item => item.category === 'weapons' ? [item.damage, item.trait, item.range].filter(Boolean).join(' · ')
+  : item.category === 'armor' ? [item.majorThreshold && `Umbrales ${item.majorThreshold}/${item.severeThreshold} + nivel`, item.armorSlots && `${item.armorSlots} Armor Slot${item.armorSlots > 1 ? 's' : ''}`].filter(Boolean).join(' · ')
+  : (item.benefit || item.use || item.features || item.effect || '');
+const options = (list, value) => [...new Set([...(value && !list.includes(value) ? [value] : []), ...list])].map(o => `<option value="${esc(o)}" ${o === value ? 'selected' : ''}>${esc(o)}</option>`).join('');
+
+// The equipment tab: everything is done in place. Search and add from the catalog, change a
+// quantity with − and +, edit or remove an entry on its own row. Each change is saved at once.
 export function mountEquipmentPanel(container, tokenId) {
-  function render() {
-    const token = store.state.tokens.find(t => t.id === tokenId);
-    if (!token) { container.textContent = 'Este actor ya no existe.'; return; }
+  const ui = { query: '', category: 'all', editing: null, confirming: null, draft: null }; // draft: a new entry being written, not saved yet
+  container.innerHTML = sanitizeHTML(`
+    <section class="equip-add">
+      <label class="dossier-field"><span>Añadir equipo</span><input class="hud-input" type="search" data-equip-search placeholder="Busca un arma, armadura, objeto o aumento…" autocomplete="off" /></label>
+      <div class="equip-chips" role="group" aria-label="Categoría">${CHIPS.map(([id, label]) => `<button type="button" class="equip-chip ${id === 'all' ? 'active' : ''}" data-equip-category="${id}">${label}</button>`).join('')}<span class="equip-chips-gap"></span><button type="button" class="equip-chip" data-equip-custom="weapons">+ Arma propia</button><button type="button" class="equip-chip" data-equip-custom="items">+ Objeto propio</button></div>
+      <div class="equip-results" data-equip-results></div>
+    </section>
+    <div data-equip-lists></div>
+    <p class="dossier-error" role="alert" data-equip-error></p>
+    <p class="dossier-muted equip-foot">Los cambios se guardan al momento, en la sesión y en Exportar actor VTT. <button type="button" class="equip-link" data-edit-inventory>Abrir el editor completo</button></p>`);
+  const q = selector => container.querySelector(selector);
+  const current = () => store.state.tokens.find(t => t.id === tokenId);
+  const fail = message => { q('[data-equip-error]').textContent = message || ''; };
+
+  // One change, validated and saved; the lists redraw from the store.
+  const save = (change, done = '') => {
+    const token = current();
+    if (!token || !store.canEditToken(tokenId)) { fail('Ya no tienes control de este token.'); return false; }
+    try {
+      const inventory = tokenInventory(token); change(inventory); validateInventory(inventory);
+      store.updateToken(tokenId, { inventory });
+      if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId, partial: { inventory } });
+      fail(''); if (done) notify(done);
+      return true;
+    } catch (error) { fail(error.message); return false; }
+  };
+
+  function renderResults() {
+    const editable = !!current() && store.canEditToken(tokenId), box = q('[data-equip-results]');
+    q('[data-equip-search]').disabled = !editable;
+    if (!editable || (!ui.query.trim() && ui.category === 'all')) { box.innerHTML = sanitizeHTML(editable ? '<p class="dossier-muted">Escribe un nombre o elige una categoría para ver el catálogo.</p>' : ''); return; }
+    const found = filterEquipmentCatalog({ source: 'all', category: ui.category, query: ui.query }).filter(item => item.category !== 'drone_modules'), shown = found.slice(0, 8);
+    box.innerHTML = sanitizeHTML(shown.map(item => `<div class="equip-result"><div><strong>${esc(item.name)}</strong> <em>${esc(item.tier || '')}${item.source === 'rust_and_steel' ? ' · Rust & Steel' : ''}</em><small>${esc(catalogLine(item))}</small></div><button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-equip-add="${esc(item.id)}">Añadir</button></div>`).join('')
+      + (found.length > shown.length ? `<p class="dossier-muted">${found.length - shown.length} más: escribe algo más para afinar.</p>` : '') || '<p class="dossier-muted">Nada en el catálogo con ese nombre. Puedes crearlo con «+ Arma propia» o «+ Objeto propio».</p>');
+    box.querySelectorAll('[data-equip-add]').forEach(button => button.onclick = () => {
+      const token = current(), item = found.find(x => x.id === button.dataset.equipAdd);
+      if (!token || !item || !store.canEditToken(tokenId)) { fail('Ya no tienes control de este token.'); return; }
+      try {
+        const updates = catalogEquipUpdates(token, item);
+        store.updateToken(tokenId, updates);
+        if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId, partial: updates });
+        fail(''); notify(`${item.name} añadido${item.category === 'armor' ? ': umbrales y Armor Slots actualizados' : ''}.`);
+      } catch (error) { fail(error.message); }
+    });
+  }
+
+  const editor = (kind, row) => kind === 'weapons' ? `
+    <div class="equip-edit" data-equip-form="${esc(row.id)}">
+      <div class="inventory-fields">${input('Nombre', 'name', row.name, 'required maxlength="200"')}${input('Daño', 'damage', row.damage, 'maxlength="1000" placeholder="d8+1 phys"')}
+        <label class="dossier-field"><span>Trait</span><select class="hud-select" data-field="trait">${options(TRAIT_OPTIONS, row.trait)}</select></label>
+        <label class="dossier-field"><span>Alcance</span><select class="hud-select" data-field="range">${options(RANGE_OPTIONS, row.range)}</select></label></div>
+      <label class="equip-check"><input type="checkbox" data-field="damageMode" ${row.damageMode === 'final' ? 'checked' : ''} /> El daño escrito ya incluye Proficiency y Honed Edge (no sumarlos otra vez)</label>
+      <label class="dossier-field"><span>Propiedades</span><textarea class="hud-input" data-field="features" rows="2" maxlength="10000">${esc(row.features)}</textarea></label>
+      <div class="equip-actions"><button class="hud-btn hud-btn-primary" type="button" data-equip-save>Guardar</button><button class="hud-btn" type="button" data-equip-cancel>Cancelar</button></div>
+    </div>` : `
+    <div class="equip-edit" data-equip-form="${esc(row.id)}">
+      <div class="inventory-fields">${input('Nombre', 'name', row.name, 'required maxlength="200"')}${input('Cantidad', 'quantity', row.quantity, 'type="number" min="0" max="999999" step="1" required')}</div>
+      <label class="dossier-field"><span>Para qué sirve</span><textarea class="hud-input" data-field="use" rows="2" maxlength="10000">${esc(row.use)}</textarea></label>
+      <div class="equip-actions"><button class="hud-btn hud-btn-primary" type="button" data-equip-save>Guardar</button><button class="hud-btn" type="button" data-equip-cancel>Cancelar</button></div>
+    </div>`;
+  const rowButtons = (row, editable) => `<button type="button" class="hud-btn hud-btn-xs" data-equip-edit="${esc(row.id)}" ${editable ? '' : 'disabled'}>Editar</button><button type="button" class="hud-btn hud-btn-xs ${ui.confirming === row.id ? 'hud-btn-danger' : ''}" data-equip-remove="${esc(row.id)}" ${editable ? '' : 'disabled'}>${ui.confirming === row.id ? '¿Quitar?' : 'Quitar'}</button>`;
+
+  function renderLists() {
+    const token = current(), box = q('[data-equip-lists]');
+    if (!token) { box.textContent = 'Este actor ya no existe.'; return; }
     const inventory = tokenInventory(token), editable = store.canEditToken(tokenId);
-    container.innerHTML = sanitizeHTML(`<div class="inventory-toolbar"><h4 class="dossier-label">ARMAS Y EQUIPO</h4>
-      <div style="display: flex; gap: 6px;">
-        <button type="button" class="hud-btn hud-btn-primary" data-open-catalog ${editable ? '' : 'disabled'}>Catálogo de Equipo</button>
-        <button type="button" class="hud-btn" data-edit-inventory ${editable ? '' : 'disabled'}>Editar inventario</button>
-      </div>
-    </div>
-      <p class="dossier-muted">Preparar daño rellena el panel de dados. Revisa sus propiedades y el objetivo antes de tirar; no consume munición ni aplica efectos automáticamente.</p>
-      <div class="dossier-weapons">${inventory.weapons.map(w => `<article><span class="dossier-eyebrow">${esc(w.tier)} · ${w.damageMode === 'final' ? 'DAÑO FINAL' : 'DAÑO BASE'}</span><h4>${esc(w.name)}</h4><div class="weapon-damage">${esc(w.damage || 'Sin daño indicado')}</div><p>${esc([w.trait,w.range].filter(Boolean).join(' · '))}</p><p>${esc(w.features)}</p><button type="button" class="hud-btn hud-btn-primary" data-prepare-weapon="${esc(w.id)}" ${editable && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(w.damage.trim()) ? '' : 'disabled'}>Preparar daño</button></article>`).join('') || '<p class="dossier-muted">Añade un arma o importa tu ficha.</p>'}</div>
-      <div class="inventory-items">${inventory.items.map(item => `<article><div><strong>${esc(item.name)}</strong><span>${esc(item.quantity)} × · ${esc(item.tier)}</span></div><p>${esc(item.use)}</p></article>`).join('') || '<p class="dossier-muted">Sin objetos registrados.</p>'}</div>
-      <p class="dossier-muted">Los cambios de inventario del VTT se incluyen en Exportar actor VTT y en las sesiones guardadas. Exportar al creador conserva su equipo original.</p>`);
-    container.querySelector('[data-open-catalog]')?.addEventListener('click', () => openEquipmentCatalog(tokenId));
-    container.querySelector('[data-edit-inventory]')?.addEventListener('click', () => openInventory(tokenId));
-    container.querySelectorAll('[data-prepare-weapon]').forEach(button => button.onclick = () => {
+    q('[data-edit-inventory]').disabled = !editable;
+    for (const button of container.querySelectorAll('[data-equip-custom]')) button.disabled = !editable;
+    const usable = w => editable && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(w.damage.trim());
+    box.innerHTML = sanitizeHTML(`
+      <h4 class="dossier-label">ARMAS · ${inventory.weapons.length}</h4>
+      <div class="equip-list">${inventory.weapons.map(w => ui.editing === w.id ? editor('weapons', w) : `<article class="equip-row"><div class="equip-main"><strong>${esc(w.name || 'Arma sin nombre')}</strong><span class="equip-damage">${esc(w.damage || 'Sin daño')}</span><em>${esc([w.trait, w.range, w.damageMode === 'final' ? 'daño final' : ''].filter(Boolean).join(' · '))}</em>${w.features ? `<small>${esc(w.features)}</small>` : ''}</div><div class="equip-actions"><button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-prepare-weapon="${esc(w.id)}" ${usable(w) ? '' : 'disabled'} title="Lleva esta arma al panel de dados para atacar">Atacar</button>${rowButtons(w, editable)}</div></article>`).join('') + (ui.draft?.kind === 'weapons' ? editor('weapons', ui.draft.row) : '') || '<p class="dossier-muted">Sin armas. Búscalas arriba o crea una con «+ Arma propia».</p>'}</div>
+      <h4 class="dossier-label">EQUIPO · ${inventory.items.length}</h4>
+      <div class="equip-list">${inventory.items.map(item => ui.editing === item.id ? editor('items', item) : `<article class="equip-row"><div class="equip-main"><strong>${esc(item.name || 'Objeto sin nombre')}</strong>${item.tier ? `<em>${esc(item.tier)}</em>` : ''}${item.use ? `<small>${esc(item.use)}</small>` : ''}</div><div class="equip-actions"><span class="equip-qty"><button type="button" class="hud-btn hud-btn-xs" data-equip-qty="${esc(item.id)}" data-delta="-1" ${editable ? '' : 'disabled'} aria-label="Una unidad menos de ${esc(item.name)}">−</button><b>${esc(item.quantity)}</b><button type="button" class="hud-btn hud-btn-xs" data-equip-qty="${esc(item.id)}" data-delta="1" ${editable ? '' : 'disabled'} aria-label="Una unidad más de ${esc(item.name)}">+</button></span>${rowButtons(item, editable)}</div></article>`).join('') + (ui.draft?.kind === 'items' ? editor('items', ui.draft.row) : '') || '<p class="dossier-muted">Sin objetos. Búscalos arriba o crea uno con «+ Objeto propio».</p>'}</div>`);
+    box.querySelectorAll('[data-prepare-weapon]').forEach(button => button.onclick = () => {
       if (!store.canEditToken(tokenId)) { notify('Ya no tienes control de este token.'); return; }
       if (!window.veilDiceRoller) { notify('El panel de dados todavía no está disponible.'); return; }
       if (window.veilDiceRoller.prepareWeapon(tokenId, button.dataset.prepareWeapon)) container.closest('.dossier-backdrop')?.remove();
     });
+    box.querySelectorAll('[data-equip-qty]').forEach(button => button.onclick = () => save(inv => { const item = inv.items.find(i => i.id === button.dataset.equipQty); if (item) item.quantity = String(Math.max(0, Math.min(999999, (Number(item.quantity) || 0) + Number(button.dataset.delta)))); }));
+    box.querySelectorAll('[data-equip-edit]').forEach(button => button.onclick = () => { ui.editing = button.dataset.equipEdit; ui.confirming = null; renderLists(); box.querySelector('[data-equip-form] input')?.focus(); });
+    // Removing asks once, on the same button, so a slip of the finger deletes nothing.
+    box.querySelectorAll('[data-equip-remove]').forEach(button => button.onclick = () => {
+      const id = button.dataset.equipRemove;
+      if (ui.confirming !== id) { ui.confirming = id; renderLists(); return; }
+      ui.confirming = null;
+      save(inv => { inv.weapons = inv.weapons.filter(w => w.id !== id); inv.items = inv.items.filter(i => i.id !== id); }, 'Quitado del inventario.');
+    });
+    const form = box.querySelector('[data-equip-form]');
+    if (form) {
+      form.querySelector('[data-equip-cancel]').onclick = () => { ui.editing = null; ui.draft = null; fail(''); renderLists(); };
+      // The sheet is itself a form, so this editor cannot be one: Enter in a field saves it.
+      form.onkeydown = event => { if (event.key === 'Enter' && event.target.tagName === 'INPUT') { event.preventDefault(); event.stopPropagation(); form.querySelector('[data-equip-save]').click(); } };
+      form.querySelector('[data-equip-save]').onclick = () => {
+        const id = ui.editing, values = {};
+        for (const field of form.querySelectorAll('[data-field]')) values[field.dataset.field] = field.type === 'checkbox' ? (field.checked ? 'final' : 'base') : field.value.trim();
+        if (!values.name) { fail('Ponle un nombre.'); return; }
+        const draft = ui.draft;
+        ui.editing = null; ui.draft = null;
+        const saved = draft
+          ? save(inv => { inv[draft.kind].push({ ...draft.row, ...values }); }, `${values.name} añadido.`)
+          : save(inv => { const row = [...inv.weapons, ...inv.items].find(r => r.id === id); if (row) Object.assign(row, values); });
+        if (!saved) { ui.editing = id; ui.draft = draft && { kind: draft.kind, row: { ...draft.row, ...values } }; renderLists(); }
+      };
+    }
   }
-  const unsubscribe = store.subscribe((_, keys) => { if (!container.isConnected) { unsubscribe(); return; } if (keys.some(k => ['tokens', 'userRole', 'isConnected'].includes(k))) render(); });
+
+  const search = q('[data-equip-search]');
+  search.oninput = () => { ui.query = search.value; renderResults(); };
+  container.querySelectorAll('[data-equip-category]').forEach(button => button.onclick = () => {
+    ui.category = button.dataset.equipCategory;
+    container.querySelectorAll('[data-equip-category]').forEach(b => b.classList.toggle('active', b === button));
+    renderResults();
+  });
+  container.querySelectorAll('[data-equip-custom]').forEach(button => button.onclick = () => {
+    const kind = button.dataset.equipCustom, id = newId();
+    const row = kind === 'weapons' ? { id, name: '', tier: '', damage: '', damageMode: 'base', trait: 'Agility', range: 'Close', features: '' } : { id, name: '', tier: '', quantity: '1', use: '' };
+    // The new entry is written first and only saved with a name: cancelling leaves no trace.
+    if (!current() || !store.canEditToken(tokenId)) return;
+    ui.draft = { kind, row }; ui.editing = id; ui.confirming = null; renderLists();
+    q('[data-equip-form] input')?.focus();
+  });
+  q('[data-edit-inventory]').onclick = () => openInventory(tokenId);
+
+  const unsubscribe = store.subscribe((_, keys) => { if (!container.isConnected) { unsubscribe(); return; } if (keys.some(k => ['tokens', 'userRole', 'isConnected'].includes(k))) { if (!ui.editing || !container.contains(document.activeElement)) renderLists(); renderResults(); } });
   const observer = new MutationObserver(() => { if (!container.isConnected) { unsubscribe(); observer.disconnect(); } }); observer.observe(document.body, { childList:true });
-  render();
+  renderResults(); renderLists();
 }
