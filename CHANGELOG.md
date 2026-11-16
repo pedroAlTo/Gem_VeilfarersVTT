@@ -1,10 +1,50 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.6.2**.
-Paquete: `VeilFarers_VTT_v2.6.2.zip`.
+Versión actual del VTT: **v2.7.1**.
+Paquete: `VeilFarers_VTT_v2.7.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.7.1] — 2026-11-15
+
+V2 · Creador: selección de equipo y listado de poderes más claros
+
+### Equipo inicial
+
+- Resumen "Tu equipo" arriba, con el arma, la armadura y los objetos de clase elegidos.
+- Cada arma muestra por separado Daño, Alcance, Trait y Carga; cada armadura, sus umbrales ya con el nivel, Armor Slots y capacidad de mejoras.
+- Cada propiedad (Armor Piercing, Reliable, Life Support…) aparece con la explicación de lo que hace.
+- Las opciones se agrupan por categoría, con un buscador por nombre, categoría o propiedad.
+- Las armas que atacan con uno de los mejores Traits del personaje se marcan como recomendadas y salen primero.
+- Se indica qué categorías de armas y armaduras puede usar la clase.
+
+### Poderes
+
+- Resumen del Starter Loadout con los Poderes ya elegidos.
+- Cada Poder muestra Tipo, Coste, Tirada y Recall por separado y su texto completo, sin recortar.
+- Una línea explica qué significa cada dato.
+- En la ficha, la pestaña Rasgos muestra los Poderes como tarjetas con sus etiquetas (Dominio, nivel, tipo, coste, tirada, Recall).
+
+## [2.7.0] — 2026-11-15
+
+V2 · Resolve Moves de los Sleeping y Awakening en juego
+
+### Resolve Moves (Corebook, cap. 7)
+
+- Catálogo de los 42 Resolve Moves: dos por clase y uno por subclase.
+- Al crear un personaje Sleeping, la ficha recibe sola los dos Class Moves de su clase y el Move de su subclase. El creador los muestra en el paso de Poderes.
+- Al subir de nivel, un multiclass Sleeping aprende exactamente un Class Resolve Move de la segunda clase, elegido de la lista.
+- La opción de Move nuevo solo se ofrece si a la ficha le falta alguno de los de su clase y subclase; si ya los tiene todos, la opción es +1 Resolve máximo.
+
+### Awakening en juego (Corebook, cap. 7)
+
+- Nuevo botón Despertar en la ficha de un personaje Sleeping (vista Completa, solo el Keeper), para cuando la historia lo establece.
+- El Effort actual pasa a ser Hope. Se retiran el Resolve, los Resolve Moves, Honed Edge y el Recovery Anchor. Las Experiencias se conservan.
+- El Effort Feature y el Class Feature se sustituyen por el Hope Feature y el Class Feature de Awakened. La subclase conserva su rango; The Steward pasa a ser The Icon.
+- Se abre el Vault y el Loadout con dos Poderes de nivel 1 de los Dominios de la clase. Un Mystic elige su Veil Alignment.
+- Si había hecho multiclass, su Dominio latente pasa a estar activo, sin Poderes iniciales.
+- Se devuelven los Advancement Slots gastados en +1 Resolve, Moves o Tempered Resolve. El botón Gastar Slots devueltos permite volver a gastarlos sin cambiar de nivel.
 
 ## [2.6.2] — 2026-11-15
 

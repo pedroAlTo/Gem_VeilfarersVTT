@@ -57,6 +57,21 @@ export function inheritanceChoice(state, data) {
   return (all || []).find(item => item.id === state.humanInheritanceItem) || null;
 }
 
+// Corebook ch. 7: every Sleeping character has the two Class Moves of its primary Class plus
+// the Move of its Subclass (Sleeping Mystic and Vanguard subclasses have none of their own).
+// Sleeping subclass names may carry a suffix, e.g. "Ghost Blade (+Void)".
+export const baseSubclassName = name => String(name ?? '').replace(/\s*\(.*\)\s*$/, '').trim();
+const same = (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
+export function resolveMovesFor(data, className, subclass = '') {
+  return (data.resolveMoves || []).filter(m => same(m.class, className) && (!m.subclass || same(m.subclass, subclass) || same(m.subclass, baseSubclassName(subclass))));
+}
+export const classResolveMoves = (data, className) => (data.resolveMoves || []).filter(m => same(m.class, className) && !m.subclass);
+export const moveText = move => `${move.name} (${move.cost}) — ${move.text}`;
+export function startingResolveMoves(state, data) {
+  const cls = find(data.classes, state.cls);
+  return state.path === 'Sleeping' && cls ? resolveMovesFor(data, cls.name, state.subclass) : [];
+}
+
 export const classOf = (state, data) => find(data.classes, state.cls);
 // Sleeping characters use the class's Sleeping rules (Effort Feature, its own HP and Evasion).
 export function classRules(state, data) {
@@ -95,6 +110,20 @@ export function equipmentEligibility(item, type, cls) {
   if (!all && !categories.includes(item.category)) return { eligible: false, reason: `Fuera del entrenamiento de ${cls.name}.` };
   return { eligible: true, reason: '' };
 }
+// What an equipment feature does. "Paired+2" reads the definition of "Paired".
+export function featureDefinition(data, name) {
+  const defs = data.features || {}, key = String(name ?? '').trim();
+  return defs[key] || defs[key.replace(/[+\s]*\d+$/, '').trim()] || '';
+}
+// A weapon suits a character when it attacks with one of their best Traits.
+export function weaponSuits(state, weapon) {
+  const values = Object.values(state.traits || {}).map(Number).filter(Number.isFinite);
+  if (!values.length) return false;
+  const best = Math.max(...values);
+  return Number(state.traits?.[String(weapon.trait || '').toLowerCase()]) >= Math.max(1, best - 1);
+}
+// Final thresholds of a starting character in an armor: the armor's numbers plus level 1.
+export const startingThresholds = armor => ({ major: Number(armor.thresholds.major) + 1, severe: Number(armor.thresholds.severe) + 1 });
 export const spend = (names, list) => names.reduce((sum, name) => sum + (list.find(x => x.name === name)?.cost || 0), 0);
 export function equipmentChoices(state, data, type) {
   const cls = classOf(state, data), list = type === 'weapon' ? data.weapons : data.armor;
@@ -185,6 +214,7 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
     a_featname: sleeping ? '' : clean(pathFeature?.name), a_feattext: sleeping ? '' : clean(pathFeature?.text),
     s_featname: sleeping ? clean(pathFeature?.name) : '', s_feattext: sleeping ? clean(pathFeature?.text) : '',
     s_honed: sleeping ? 'HONED EDGE +0 DAMAGE' : '', s_resolve_die: 'd4', s_anchor: sleeping ? clean(state.anchor) : '',
+    s_learned_moves: startingResolveMoves(state, data).map(moveText).join('\n\n'),
     class_proficiencies: clean(access?.summary), tech_access: '1',
     evasion: String(evasion), thr_major: String(major), thr_severe: String(severe),
     wealth: '1', kit_class: (rules.items || []).join(' · '), kit_personal: clean(state.kit),

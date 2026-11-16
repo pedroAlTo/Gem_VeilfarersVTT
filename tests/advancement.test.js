@@ -2,7 +2,7 @@ import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { CREATOR_DATA as data } from '../src/creator/creatorData.js';
-import { availablePowers, multiclassChoices, nextSubclassFeature, powerDomains, applyLevelUp, experienceSlots, levelGrants, optionBlocked, tierOf, isTierAchievement, ADVANCEMENT_OPTIONS } from '../src/advancement.js';
+import { awaken, awakeningDomains, availableResolveMoves, multiclassMoves, availablePowers, multiclassChoices, nextSubclassFeature, powerDomains, applyLevelUp, experienceSlots, levelGrants, optionBlocked, tierOf, isTierAchievement, ADVANCEMENT_OPTIONS } from '../src/advancement.js';
 
 const pc = (extra = {}) => ({
   name: 'Maren', isPlayer: true, actorType: 'player', path: 'Awakened', level: 1, proficiency: 1, evasion: 10, x: 0, y: 0,
@@ -157,4 +157,76 @@ test('Multiclass adds a second Class with a genuinely new Domain at half level; 
   const feature = data.classes.find(c => c.id === 'pilot').awakenedSubclasses.find(s => s.name === 'Void Runner').specialization;
   assert.ok(upgraded.sheetFields.features.includes(feature.name)); assert.equal(upgraded.sheetFields.subclass_rank, 'Specialization');
   assert.equal(nextSubclassFeature(upgraded, data).rank, 'Mastery');
+});
+
+const sleeperSoldier = (extra = {}) => pc({
+  path: 'Sleeping', characterClass: 'Soldier', subclass: 'Guardian', effort: 3, hope: 0, honedEdgeBonus: 1, recoveryAnchor: 'My rifle', resolve: { current: 2, max: 2, dieType: 'd4' },
+  sheetFields: { s_exp_0: 'Held the line', s_exp_0_bonus: '+3', s_exp_1: 'Dock rat', s_exp_1_bonus: '+2', s_exp_2: 'Quartermaster', s_exp_2_bonus: '+2',
+    features: `${data.classes.find(c => c.id === 'soldier').sleepingRules.classFeature.name} — sleeping text\n\nGuardian · Foundation — old text\n\nWhat did the war take? My brother.`, s_featname: 'Effort thing', s_feattext: 'x', s_anchor: 'My rifle', s_honed: 'HONED EDGE +1 DAMAGE',
+    s_learned_moves: data.resolveMoves.filter(m => m.class === 'Soldier' && (!m.subclass || m.subclass === 'Guardian')).map(m => `${m.name} (${m.cost}) — ${m.text}`).join('\n\n') },
+  ...extra,
+});
+
+test('Sleeping growth: no new Class Move when all are known; a multiclass learns exactly one Class Move of the second Class', () => {
+  const soldier = sleeperSoldier({ level: 2 });
+  assert.deepEqual(availableResolveMoves(soldier, data), [], 'two Class Moves and the Subclass Move are already on the sheet');
+  assert.throws(() => applyLevelUp(soldier, { data, picks: [{ id: 'power', resolve: 'move' }, { id: 'hp' }] }), /ya tiene todos los Resolve Moves/);
+  const missing = sleeperSoldier({ level: 2, sheetFields: { ...sleeperSoldier().sheetFields, s_learned_moves: '' } });
+  const move = availableResolveMoves(missing, data)[0];
+  assert.ok(applyLevelUp(missing, { data, picks: [{ id: 'power', resolve: 'move', moveId: move.id }, { id: 'hp' }] }).token.sheetFields.s_learned_moves.includes(move.name));
+  const options = multiclassMoves(data, 'scholar');
+  assert.equal(options.length, 2); assert.ok(options.every(m => m.class === 'Scholar' && !m.subclass));
+  const pick = { id: 'multiclass', classId: 'scholar', domain: 'Tech', answer: 'The relay taught me.' };
+  assert.throws(() => applyLevelUp(sleeperSoldier({ level: 4 }), { data, picks: [pick], achievementExperiences: ['s_exp_0', 's_exp_1'] }), /aprende un Class Resolve Move de Scholar/);
+  const { token } = applyLevelUp(sleeperSoldier({ level: 4 }), { data, picks: [{ ...pick, moveId: options[0].id }], achievementExperiences: ['s_exp_0', 's_exp_1'] });
+  assert.equal(token.advancement.multiclass.dormant, true); assert.ok(token.sheetFields.s_learned_moves.includes(options[0].name));
+  assert.equal(token.resolve.max, 3, 'level 5 raises Resolve');
+});
+
+test('Awakening in play: Effort becomes Hope, the Resolve engine retires, the Hope Feature and a starter Loadout arrive (Corebook ch. 7)', () => {
+  const soldier = sleeperSoldier({ level: 3 });
+  assert.deepEqual(awakeningDomains(soldier, data), ['Kinetic', 'Synthesis']);
+  const kinetic = data.powers.find(p => p.l === 1 && p.d === 'Kinetic'), synthesis = data.powers.find(p => p.l === 1 && p.d === 'Synthesis');
+  const powers = [`${kinetic.d}::${kinetic.n}`, `${synthesis.d}::${synthesis.n}`];
+  assert.throws(() => awaken(soldier, { data, powers: powers.slice(0, 1) }), /dos Poderes de nivel 1/);
+  assert.throws(() => awaken(soldier, { data, powers: [powers[0], 'Lux::Nope'] }), /dos Poderes/);
+  assert.throws(() => awaken(pc({ characterClass: 'Soldier' }), { data, powers }), /Solo un personaje Sleeping/);
+  const { token, summary } = awaken(soldier, { data, powers });
+  const f = token.sheetFields, cls = data.classes.find(c => c.id === 'soldier');
+  assert.deepEqual([token.path, token.hope, token.effort, token.resolve.max, token.honedEdgeBonus, token.recoveryAnchor], ['Awakened', 3, 0, 0, 0, '']);
+  assert.deepEqual([f.chosen_path, f.s_learned_moves, f.s_anchor, f.s_featname], ['Awakened', '', '', '']);
+  assert.equal(f.a_featname, cls.hopeFeature.name);
+  assert.ok(f.features.includes(cls.classFeature.name) && !f.features.includes('sleeping text') && !f.features.includes('old text'));
+  assert.ok(f.features.includes('My brother.'), 'background answers are preserved');
+  assert.ok(f.features.includes(cls.awakenedSubclasses.find(x => x.name === 'Guardian').foundation.name));
+  assert.deepEqual([f.a_pwr_0_n, f.a_pwr_1_n, f.a_loadout_cap, f.a_domain_ref], [kinetic.n, synthesis.n, '5', 'Kinetic & Synthesis']);
+  assert.deepEqual(experienceSlots(token).map(x => [x.name, x.bonus]), [['Held the line', 3], ['Dock rat', 2], ['Quartermaster', 2]], 'Experiences are kept');
+  assert.equal(token.level, 3, 'Awakening is not a level'); assert.match(summary.join(' '), /Awakening/);
+  assert.equal(soldier.path, 'Sleeping', 'the original is untouched');
+});
+
+test('Awakening special cases: Steward becomes Icon, a Mystic chooses its Veil Alignment, a Dormant Domain wakes, and Sleeping Slots are refunded', () => {
+  const steward = sleeperSoldier({ characterClass: 'Diplomat', subclass: 'The Steward' });
+  const social = data.powers.filter(p => p.l === 1 && p.d === 'Social').map(p => `${p.d}::${p.n}`);
+  assert.equal(awaken(steward, { data, powers: social.slice(0, 2) }).token.subclass, 'The Icon');
+  const mystic = sleeperSoldier({ characterClass: 'Mystic', subclass: 'Veil Walker (School of Path)' });
+  const neural = data.powers.filter(p => p.l === 1 && p.d === 'Neural').map(p => `${p.d}::${p.n}`), lux = data.powers.filter(p => p.l === 1 && p.d === 'Lux').map(p => `${p.d}::${p.n}`);
+  assert.throws(() => awaken(mystic, { data, powers: [neural[0], lux[0]] }), /Veil Alignment/);
+  const awakenedMystic = awaken(mystic, { data, powers: [neural[0], lux[0]], veilAlignment: 'Lux' }).token;
+  assert.equal(awakenedMystic.subclass, 'Veil Walker'); assert.match(awakenedMystic.sheetFields.a_domain_ref, /Neural & Lux · Veil Alignment — Lux/);
+  // A Sleeping character who bought Resolve and multiclassed: Slots come back, the Domain wakes.
+  let veteran = applyLevelUp(sleeperSoldier({ level: 3 }), { data, picks: [{ id: 'power', resolve: 'max' }, { id: 'hp' }] }).token;
+  veteran = applyLevelUp(veteran, { data, picks: [{ id: 'multiclass', classId: 'scholar', domain: 'Tech', answer: 'x', moveId: multiclassMoves(data, 'scholar')[0].id }], achievementExperiences: ['s_exp_0', 's_exp_1'] }).token;
+  assert.equal(veteran.advancement.sleepingSlots, 1);
+  const kinetic = data.powers.filter(p => p.l === 1 && p.d === 'Kinetic').map(p => `${p.d}::${p.n}`), synthesis = data.powers.filter(p => p.l === 1 && p.d === 'Synthesis').map(p => `${p.d}::${p.n}`);
+  const woken = awaken(veteran, { data, powers: [kinetic[0], synthesis[0]] }).token;
+  assert.deepEqual([woken.advancement.refundSlots, woken.advancement.sleepingSlots, woken.advancement.multiclass.dormant], [1, 0, false]);
+  assert.ok(woken.sheetFields.a_domain_ref.includes('Multiclass Domain — Tech')); assert.equal(woken.sheetFields.a_loadout_cap, '6');
+  assert.ok(woken.sheetFields.features.includes(data.classes.find(c => c.id === 'scholar').hopeFeature.name), 'the secondary Effort Feature becomes the Hope Feature');
+  assert.ok(!availablePowers(woken, data).some(p => woken.sheetFields.a_pwr_0_n === p.n));
+  // Re-spending: one Slot, no level gained, then nothing left.
+  assert.throws(() => applyLevelUp(woken, { data, respend: true, picks: [{ id: 'proficiency' }] }), /Solo hay 1 Advancement Slot devuelto/);
+  const respent = applyLevelUp(woken, { data, respend: true, picks: [{ id: 'evasion' }] }).token;
+  assert.deepEqual([respent.level, respent.evasion, respent.advancement.refundSlots, respent.hp.majorThreshold], [woken.level, woken.evasion + 1, 0, woken.hp.majorThreshold]);
+  assert.throws(() => applyLevelUp(respent, { data, respend: true, picks: [{ id: 'hp' }] }), /no tiene Advancement Slots devueltos/);
 });

@@ -31,6 +31,15 @@ const stat = (label, key, value, min = 0, max = 10000) => field(label, key, valu
 const narrative = (title, value) => `<article class="dossier-narrative"><h4>${e(title)}</h4><p>${e(value).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
 
 const SHEET_VIEW_KEY = 'veil_sheet_view';
+// A Power on the sheet: name, its tags (Domain, level, type, cost, roll) and the full text.
+// Sheets made by the VTT creator keep the tags on the first line of the description.
+function powerCard(power) {
+  const [first, ...rest] = String(power.description ?? '').split('\n');
+  const tagged = rest.length > 0 && first.includes(' · ');
+  const tags = tagged ? first.split(' · ').map(t => t.trim()).filter(Boolean) : [];
+  const text = tagged ? rest.join('\n').trim() : String(power.description ?? '').trim();
+  return `<article class="dossier-power"><header><h4>${e(power.name)}</h4><span>${tags.map(t => `<b>${e(t)}</b>`).join('')}${power.recall !== '' && power.recall != null ? `<b>Recall ${e(power.recall)}</b>` : ''}</span></header><p>${e(text).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
+}
 export function openDossier(token, openSettings, initialTab = 'stats') {
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
@@ -58,7 +67,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
         ${d.signatureTrait ? `<h4 class="dossier-label">SIGNATURE TRAIT · ${e(d.signatureTrait)}</h4>` : ''}
         ${d.domains ? `<h4 class="dossier-label">DOMINIOS · ${e(d.domains)}</h4>` : ''}
         ${d.powers.length ? `<h4 class="dossier-label">LOADOUT · ${d.powers.length}${d.loadoutCap ? ' / ' + e(d.loadoutCap) : ''} PODERES EQUIPADOS</h4>` : ''}
-        ${d.powers.map(p => narrative(`${p.name}${p.recall ? ' · Recall ' + p.recall : ''}`, p.description)).join('')}
+        ${d.powers.length ? `<div class="dossier-powers">${d.powers.map(powerCard).join('')}</div>` : ''}
         ${d.vault ? narrative('Vault · poderes conocidos sin equipar', d.vault) : ''}
         ${token.advancement?.log?.length ? `<h4 class="dossier-label">HISTORIAL DE AVANCE</h4>${token.advancement.log.map(row => narrative(`Nivel ${row.level} · Tier ${row.tier}`, row.summary.join('\n'))).join('')}` : ''}
         ${d.notes.map(([k, v]) => narrative(k, v)).join('')}
@@ -76,7 +85,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
       <div data-panel="equipment" hidden></div>
       ${imported ? `<div data-panel="source" hidden><p class="dossier-muted">Original íntegro para consulta, incluidos campos de otras sendas. Exportar al creador conserva esos campos y actualiza los valores editables de esta ficha.</p><pre class="dossier-json">${e(JSON.stringify(token.sourceCharacter.document, null, 2))}</pre></div>` : ''}
       <p class="dossier-error" role="alert"></p>
-      <footer class="dossier-footer">${!pc ? '<button type="button" class="hud-btn" id="dossier_boss">Boss · estados</button>' : ''}${pc ? '<button type="button" class="hud-btn" id="dossier_level_up" title="Subida de nivel según el Corebook, cap. 12">Subir de nivel</button>' : ''}<button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
+      <footer class="dossier-footer">${!pc ? '<button type="button" class="hud-btn" id="dossier_boss">Boss · estados</button>' : ''}${pc ? '<button type="button" class="hud-btn" id="dossier_level_up" title="Subida de nivel según el Corebook, cap. 12">Subir de nivel</button>' : ''}${pc && token.advancement?.refundSlots ? `<button type="button" class="hud-btn" id="dossier_respend" title="Slots devueltos por el Awakening">Gastar Slots devueltos (${token.advancement.refundSlots})</button>` : ''}${pc && token.path === 'Sleeping' ? '<button type="button" class="hud-btn" id="dossier_awaken" title="Awakening en juego: de Sleeping a Awakened (Corebook, cap. 7)">Despertar</button>' : ''}<button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
     </form>
   `);
   modal.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => {
@@ -88,7 +97,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
   // Básica keeps what is used at the table; Completa adds identity, maximums, exports and tools.
   for (const name of ['actorName', 'characterClass', 'roleTag', 'subclass', 'species', 'community', 'level', 'hp_max', 'armor_max', 'stress_max', 'resolve_max', 'resolve_die', 'honedEdgeBonus'])
     modal.querySelector(`[name="${name}"]`)?.closest('label')?.classList.add('sheet-full');
-  for (const id of ['dossier_boss', 'dossier_level_up', 'dossier_controls', 'dossier_token', 'dossier_export', 'dossier_system']) modal.querySelector('#' + id)?.classList.add('sheet-full');
+  for (const id of ['dossier_boss', 'dossier_respend', 'dossier_awaken', 'dossier_level_up', 'dossier_controls', 'dossier_token', 'dossier_export', 'dossier_system']) modal.querySelector('#' + id)?.classList.add('sheet-full');
   const setView = view => {
     view = view === 'full' ? 'full' : 'basic';
     modal.dataset.sheetView = view;
@@ -117,6 +126,15 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
       await openLevelUp(token.id, () => { const fresh = store.state.tokens.find(t => t.id === token.id); if (fresh) openDossier(fresh, openSettings, 'reference'); });
     };
   }
+  // Awakening and re-spending refunded Slots are the Keeper's call, like levelling up.
+  const reopen = () => { const fresh = store.state.tokens.find(t => t.id === token.id); if (fresh) openDossier(fresh, openSettings, 'reference'); };
+  const keeperOnly = (id, open) => {
+    const button = modal.querySelector('#' + id); if (!button) return;
+    button.disabled = !(store.sessionRole !== 'player' && store.state.userRole === 'keeper');
+    button.onclick = async () => { const ui = await import('./levelUpUI.js'); modal.remove(); await open(ui); };
+  };
+  keeperOnly('dossier_awaken', ui => ui.openAwakening(token.id, reopen));
+  keeperOnly('dossier_respend', ui => ui.openLevelUp(token.id, reopen, { respend: true }));
   modal.querySelector('#dossier_controls').onclick = async () => { const { openTokenControl } = await import('./sessionLobby.js'); openTokenControl(token.id); };
   modal.querySelector('#dossier_token').onclick = () => { modal.remove(); openSettings(store.state.tokens.find(t => t.id === token.id) || token); };
   if (!pc) { const bossButton = modal.querySelector('#dossier_boss'); bossButton.disabled = store.sessionRole === 'player' || store.state.userRole !== 'keeper'; bossButton.onclick = async () => { modal.remove(); const { openBossEditor } = await import('./bossUI.js'); openBossEditor(token.id); }; }
