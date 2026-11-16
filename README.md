@@ -1,8 +1,8 @@
-# VeilFarers VTT · v1.4.0 · Orbital
+# VeilFarers VTT · v2.8.9
 
-A local-first virtual tabletop with scene travel, a player roster, shared drones, character JSON import, optional Firebase accounts, and a Three.js Hope & Fear dice tray.
+A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v1.4.0**. Download package: **VeilFarers_VTT_v1.4.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.8.9**. Download package: **VeilFarers_VTT_v2.8.9.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -12,7 +12,23 @@ On Windows, extract the ZIP and run **INICIAR_VTT_RED_LOCAL.bat** on the Keeper�
 
 On macOS/Linux, run `npm ci`, then `VITE_SESSION_TRANSPORT=lan VITE_LOCAL_ONLY=0 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort` for LAN play. Run `node scripts/lan-info.mjs` to display client URLs. For local checks use `npm test` and `npm run build`.
 
-## Persistent rooms and map editing in v1.4.0
+## What is new in V2 (v2.0–v2.8)
+
+Development happens on the `V2` branch. [HANDOVER_V2.md](HANDOVER_V2.md) records every decision and the technical notes per version; [CHANGELOG.md](CHANGELOG.md) lists each release.
+
+- **Lobby.** Violet command centre with a **Básico / Avanzado** switch. **Mis personajes** is the private character library of your account (create, import a sheet JSON, download, delete). A guest plays locally and has no library. Room lookup errors are shown with a retry instead of an empty list.
+- **Account.** Sign in with email and password or with Google, or enter as a local guest. Netlify Identity sign-in was removed in v2.8.1. Per account: joined rooms, characters, scenes, preferences and personal notes per room. Per Keeper room: arcs, maps and configuration.
+- **Character creator.** **Roster → + PERSONAJE** (also in the lobby) builds a character step by step from the Corebook 12.06 rules: ancestry, community, path, class and subclass, traits, experiences, affiliation, powers or Resolve Moves, and starting equipment. The result becomes a token, replaces an existing token, goes to your account or is downloaded. It is independent of the external Character Creator project; the only contact is importing a sheet JSON.
+- **Sheet.** Tabs **Ficha / Rasgos / Vínculos / Armas y equipo / JSON**, with **Básica** and **Completa** views. **Subir de nivel** spends the two Advancement Slots and applies Tier Achievements; a Sleeping character can **Despertar** (Awakening) and re-spend refunded slots.
+- **Attack.** **Dice → Damage → ATACAR AL OBJETIVO** runs the whole procedure: range check, attack roll against Evasion, and damage only on a hit. Players roll Hope and Fear with the weapon Trait; Keeper adversaries roll 1d20 + Attack and a natural 20 is a critical. Applying the damage is a separate step and the defender chooses how many Armor Slots to spend.
+- **Range.** Melee is an adjacent square or 1 m, Very Close up to 5 m, Close up to 10 m, Far up to 25 m, Extreme beyond. A melee weapon, or no weapon at all, only attacks at Melee. A ranged weapon beyond its band attacks with Disadvantage. A wall or closed door in the line of fire is warned about but does not stop the attack. The lock line and the ruler show both metres and the band.
+- **Advantage and Disadvantage.** The d6 is thrown on the table and added or subtracted in full; the sum is written out, for example `Hope [2] + Fear [4] + 2 − d6 [6] (Desventaja) = 2`.
+- **Damage.** Damage dice are thrown in 3D and their faces are the damage. Proficiency multiplies one listed die (`2d8+2` at Proficiency 3 is `4d8+2`); a player Critical doubles the dice, a Keeper Critical maximises them. Honed Edge is level − 1 for Sleeping characters. Damage types apply Penetration (Energy 2, Void and Neural 4) unless the target has Reflective armor or a Ward; Crushing and Bleed are supported.
+- **Roll results.** One golden card per roll on the right, stacked in arrival order so every player's roll is visible, plus the chat line. Secret Keeper rolls stay with the Keeper.
+- **Chat.** Press **Enter** on the map to write to the table chat.
+- **Light and fog of war.** Vision and lights are round, fade towards the end of their range and have feathered edges; walls still block them.
+
+## Persistent rooms and map editing (since v1.4.0)
 
 - Sign in with a Firebase Google/email account and open **SESIONES**. Create a room from a copy of the current local campaign, or accept a `VF-…` invitation once. Your rooms remain in the account list; reopening restores the campaign.
 - The Keeper assigns tokens, removes access or readmits members. Rotating the invitation only changes future entries. The current room name and connection state stay in the top menu.
@@ -41,15 +57,15 @@ On macOS/Linux, run `npm ci`, then `VITE_SESSION_TRANSPORT=lan VITE_LOCAL_ONLY=0
 - **Anomaly color** opens a palette for lightning and laser effects. Drag in the color field, adjust hue, choose a swatch or enter a hex value. The effect previews the selected color immediately.
 - **Roster** → + Actor → Drone: create a drone. In its **Ficha → Player controls**, select multiple controllers. Drone controls are also available in Session. Non-drone tokens allow one controller; a player may control one non-drone plus several drones.
 - **Scenes**: switching or creating a scene moves player characters, assigned NPCs and controlled drones. Encounter enemies stay behind. Returning restores per-scene positions, clamped to map bounds. Keeper-owned legacy enemies are not party members.
-- **Dice → Open tray**: opens a compact overlay at the map’s top right. Minimize it to keep just the results, or close it; the map remains interactive. Open **Dice settings (⚙)** for Crystal caves, Tech panels, Circuits & processors, Galaxy & stars, test throws, automatic display, reduced motion and camera controls. Hope stays cyan and Fear stays magenta, with clear labels. The finishes use detailed color/relief/illumination maps, beveled edges, reflected light and clearcoat. Three.js WebGL 2 renders real d12 meshes; cannon-es runs collisions at 120 Hz. Throws use lower launch/spin speeds and mat friction to settle naturally, without kicks or teleports. Cocked or overlong trajectories are rejected before animation. Game checks preserve the authoritative result; test throws are cosmetic. Drag to orbit or scroll/pinch to zoom. WebGL-disabled devices retain the numeric game result and show a support message.
+- **Dice**: with **3D** on, the dice are thrown over the map (`@3d-dice/dice-box`) and the faces they show are the result; choose the Plain, Tech or Crystal finish in the dice panel. With 3D off, or on a device without WebGL, the same roll is resolved as numbers. Each result appears once as a golden card on the right and as a line in the chat.
 - **Sign in**: save character versions and preferences. **New scene** can upload an image to your server library. See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for the required Firebase project, rules and environment values. This repository does not contain a connected Firebase project.
 
 With Firebase configured, online rooms use authenticated Firestore channels and durable campaign checkpoints. Membership is stored by UID and survives refreshes, new devices, invitation rotation and Keeper disconnects. The Keeper remains the authority for game actions; players wait inside the room while the owner is offline. There is no automatic transfer of ownership. Sudden disconnects expire after a 20-second server lease. Uploaded image URLs are reused; unchanged state sections and stored image fragments are not retransmitted on each token move. A room campaign has a 60 MiB serialized-text limit; use hosted image URLs for large maps. Firestore operations consume your project's reads/writes/storage. See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for deployment and isolation from the public portal.
 
 LAN and the unconfigured legacy PeerJS mode remain available, with their previous temporary-session behavior. Legacy invitation codes cannot be converted into account memberships: open the saved local campaign, create a persistent room and invite each player once. Imported character stats still require Keeper review.
 
-The v1.4.0 changes are on `feat/persistent-rooms`. See [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) for history and [PRUEBAS_LOCALES.md](PRUEBAS_LOCALES.md) for the Windows launchers and LAN setup.
+Current work is on the `V2` branch. See [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) and [RELEASE_v1.4.0.md](RELEASE_v1.4.0.md) for earlier history and [PRUEBAS_LOCALES.md](PRUEBAS_LOCALES.md) for the Windows launchers and LAN setup.
 
 ## Preparing a new release
 
-Update the application version in `package.json` and both root version fields in `package-lock.json`. Prepend an entry in `src/releaseHistory.js`, preserving previous entries, and run `npm run release:notes`. `npm run release:check` verifies that package versions, the current release entry and the generated `CHANGELOG.md` agree; `npm run build` runs this check automatically. Use `VeilFarers_VTT_v<VERSION>.zip` for the release archive and `VeilFarers_VTT_Changelog_v<VERSION>.md` for downloaded notes. Keep launcher filenames stable inside the versioned package. Update this README's release line and heading for each release.
+Update the application version in `package.json` and both root version fields in `package-lock.json`. Prepend an entry in `src/releaseHistory.js`, preserving previous entries, and run `npm run release:notes`. `npm run release:check` verifies that package versions, the current release entry and the generated `CHANGELOG.md` agree; `npm run build` runs this check automatically. Use `VeilFarers_VTT_v<VERSION>.zip` for the release archive and `VeilFarers_VTT_Changelog_v<VERSION>.md` for downloaded notes. Keep launcher filenames stable inside the versioned package. `npm run release:notes` also writes the current version into this README's heading and release line and into the version paragraph of `PRUEBAS_LOCALES.md`, and `release:check` fails if they are behind. When a release changes how something works, update the matching section of `README.md`, `PRUEBAS_LOCALES.md` and `FIREBASE_SETUP.md` in the same commit.

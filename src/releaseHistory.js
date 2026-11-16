@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.9', date: '2026-11-16', title: 'V2 · Documentación al día',
+    sections: [
+      { title: 'Documentación', items: [
+        'README.md, PRUEBAS_LOCALES.md y FIREBASE_SETUP.md describen la V2: lobby y biblioteca de la cuenta, creador, subida de nivel, ataque completo, alcances, daño en 3D, panel único de resultados y niebla con degradado. Seguían indicando v1.4.0.',
+        'Se retiran de la documentación las instrucciones de Netlify Identity.',
+        'La versión que muestran README.md y PRUEBAS_LOCALES.md se escribe sola al generar el changelog, y la comprobación de versión falla si se quedan atrás.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.8', date: '2026-11-16', title: 'V2 · Luces y niebla de guerra con degradado',
     sections: [
       { title: 'Visión y luces', items: [
