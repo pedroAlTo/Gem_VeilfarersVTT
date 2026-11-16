@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.8.4**.
-Paquete: `VeilFarers_VTT_v2.8.4.zip`.
+Versión actual del VTT: **v2.8.5**.
+Paquete: `VeilFarers_VTT_v2.8.5.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.5] — 2026-11-16
+
+V2 · Compatibilidad con fichas exportadas desde Veilfarers Character Creator
+
+### Importación de Personajes
+
+- Admite fichas creadas con el creador original Veilfarers Character Creator (versiones 2.41, 2.74 y gama 2.x) además del formato de Character Sheet y VTT Actor.
+- Detección automática e inferencia de senda (Sleeping vs Awakened) cuando el campo chosen_path viene vacío o sin indicar en fichas del creador.
+- Extracción robusta de atributos firmados (+1, -1, +0), umbrales, bonificador de Honed Edge, dados de Resolve y armadura.
+- Carga completa de armamento, equipo, notas de trasfondo, aumentos y experiencias activas para los nuevos personajes importados.
+- Validación de actores en mesa y sincronización de red habilitadas para fuentes de Character Creator sin rechazos de esquema.
 
 ## [2.8.4] — 2026-11-16
 

@@ -7,7 +7,7 @@ import { store } from './state.js';
 export function openCharacterImport({ onImport, single = false } = {}) {
   const modal = dossierDialog('IMPORTAR PERSONAJES', `
     <span class="dossier-eyebrow">INGESTA DE FICHAS / VEILFARERS</span><h2 class="dossier-heading">Tu tripulación, con sus datos reales.</h2>
-    <p class="dossier-muted">Admite varios JSON de Veilfarers Character Sheet y actores exportados por este VTT, incluidos PNJ y adversarios. Se añadirán a la escena activa.</p>
+    <p class="dossier-muted">Admite varios JSON de Veilfarers Character Sheet, Veilfarers Character Creator y actores exportados por este VTT, incluidos PNJ y adversarios. Se añadirán a la escena activa.</p>
     <label class="dossier-drop"><strong>Seleccionar fichas JSON</strong><span>Hasta 30 archivos · 2 MB por ficha</span><input type="file" accept=".json,application/json" ${single ? "" : "multiple"} id="actor_files"></label>
     <div id="actor_preview" aria-live="polite"></div><p class="dossier-error" role="alert"></p>
     <footer class="dossier-footer"><span id="actor_count">Sin archivos seleccionados</span><button class="hud-btn hud-btn-primary" id="actor_import" disabled>Importar selección</button></footer>
@@ -41,7 +41,7 @@ export function openCharacterImport({ onImport, single = false } = {}) {
           <div class="import-statline"><span>HP <b>${t.hp.max}</b></span><span>STRESS <b>${t.stress?.max ?? 0}</b></span><span>ARMOR <b>${t.armor?.max ?? 0}</b></span><span>EVASION <b>${t.evasion ?? '—'}</b></span><span>UMBRALES <b>${t.hp.majorThreshold ?? '—'} / ${t.hp.severeThreshold ?? '—'}</b></span></div>
           ${row.earlier ? `<p class="import-warning">Posible duplicado de ${e(row.earlier)}. Se omitirá salvo que elijas crear otra copia.</p>` : row.matches.length ? '<p class="import-warning">Este personaje ya está en la sesión. Actualizar sustituye sus datos y recursos; conserva posición, retrato e iluminación.</p>' : ''}
           ${row.warnings.map(w => `<p class="import-warning">${e(w)}</p>`).join('')}
-          ${row.missing.length ? `<div class="import-missing"><span class="dossier-eyebrow">RECURSOS AUSENTES · VALORES INICIALES A REVISAR</span><div>${row.missing.map(m => `<label class="dossier-field"><span>${e(m.label)} · 0–${m.max}</span><input type="number" class="hud-input" data-resource="${m.key}" min="0" max="${m.max}" step="1" value="${['hp', 'armor_slots'].includes(m.key) ? m.max : 0}"></label>`).join('')}</div><label class="hud-checkbox-label"><input type="checkbox" class="import-reviewed"> He revisado estos valores; no proceden del JSON.</label></div>` : '<p class="dossier-muted">Recursos actuales conservados del archivo.</p>'}
+          ${row.missing.length ? `<div class="import-missing"><span class="dossier-eyebrow">RECURSOS AUSENTES · VALORES INICIALES A REVISAR</span><div>${row.missing.map(m => `<label class="dossier-field"><span>${e(m.label)} · 0–${m.max}</span><input type="number" class="hud-input" data-resource="${m.key}" min="0" max="${m.max}" step="1" value="${['hp', 'armor_slots', 's_resolve'].includes(m.key) ? m.max : 0}"></label>`).join('')}</div><label class="hud-checkbox-label"><input type="checkbox" class="import-reviewed"> He revisado estos valores; no proceden del JSON.</label></div>` : '<p class="dossier-muted">Recursos actuales conservados del archivo.</p>'}
           <small class="dossier-filename">${e(row.file)}</small></article>`;
       }).join(''));
       button.disabled = false;

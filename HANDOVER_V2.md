@@ -2,7 +2,7 @@
 
 > Léelo junto a `HANDOVER.md` (decisiones de diseño consolidadas, NO revertir) y `AGENTS.md`.
 > Este archivo recoge el estado del trabajo de la versión 2 para poder continuar en un chat nuevo.
-> Última actualización: 2026-11-14 · versión de la app 2.7.1 · rama `V2`.
+> Última actualización: 2026-11-16 · versión de la app 2.8.3 · rama `V2`.
 
 ## Objetivo de V2
 Llevar una partida de Veilfarers al 100 % en la VTT, para dos públicos: jugadores con conocimientos básicos (herramientas simples a la vista) y usuarios avanzados (opciones desplegables).
@@ -46,7 +46,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 - Personajes: guardado con upsert por `characterKey` (`src/cloudAccount.js`).
 - `firestore.rules`: personajes con `create, update` y claves `id, key`; escenas con contenido táctico y `storagePath` opcional (Cloudinary).
 - Aviso visible cuando un guardado queda solo en local (evento `veil:cloud-fallback`, escuchado en `src/main.js`).
-- Importador: acepta versiones 2.8x del creador (`src/characterImport.js`).
+- Importador: acepta tanto "Veilfarers Character Sheet" como el creador anterior "Veilfarers Character Creator" (versiones 2.41, 2.74 y 2.x), con inferencia de senda (Sleeping/Awakened), atributos firmados, umbrales y tracks de recursos (`src/characterImport.js`, `src/validation.js`).
 - Hope/Effort usan `hopeMax` / `effortMax` en `src/tokenSheet.js`.
 - Daño a token ajeno limitado a `hp` y `armor` (`src/networkManager.js`).
 - **v2.0.1 — Arcos y notas** (`src/accountModel.js` define las formas; `firestore.rules` aplica los mismos límites):

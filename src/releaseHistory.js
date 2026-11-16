@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.5', date: '2026-11-16', title: 'V2 · Compatibilidad con fichas exportadas desde Veilfarers Character Creator',
+    sections: [
+      { title: 'Importación de Personajes', items: [
+        'Admite fichas creadas con el creador original Veilfarers Character Creator (versiones 2.41, 2.74 y gama 2.x) además del formato de Character Sheet y VTT Actor.',
+        'Detección automática e inferencia de senda (Sleeping vs Awakened) cuando el campo chosen_path viene vacío o sin indicar en fichas del creador.',
+        'Extracción robusta de atributos firmados (+1, -1, +0), umbrales, bonificador de Honed Edge, dados de Resolve y armadura.',
+        'Carga completa de armamento, equipo, notas de trasfondo, aumentos y experiencias activas para los nuevos personajes importados.',
+        'Validación de actores en mesa y sincronización de red habilitadas para fuentes de Character Creator sin rechazos de esquema.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.4', date: '2026-11-16', title: 'V2 · Un solo panel de resultados, con las tiradas de toda la mesa',
     sections: [
       { title: 'Resultados de tiradas', items: [
