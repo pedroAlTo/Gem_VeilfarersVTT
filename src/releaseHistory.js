@@ -1,6 +1,27 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.10', date: '2026-11-16', title: 'V2 · Drones según el Corebook: Grado, Módulos y señal',
+    sections: [
+      { title: 'Montar un dron', items: [
+        'ROSTER → + DRONE abre la consola del dron: se elige el Grado (Common, Military o Experimental) y sus Módulos, como en el capítulo 14 del Corebook. Las plantillas anteriores, con valores que no eran del libro, desaparecen.',
+        'El Grado fija HP, Evasion, umbrales, Armor Slots y Module Slots: Common 2 HP / 10 / 5-11 / 0 / 2; Military 3 HP / 11 / 7-14 / 1 / 3; Experimental 5 HP / 12 / 9-16 / 2 / 4.',
+        'Catálogo de 102 módulos con su coste, Slots y texto: los 31 del Corebook y 71 de Rust & Steel. Se puede buscar y filtrar por los que admite el Grado.',
+        'Las ocho configuraciones de ejemplo del libro (Cheap Scout Mote, Security Stun Drone, Ghost-Signal Infiltrator…) se cargan con un clic.',
+        'Se avisa si faltan Slots, si un módulo es de un Grado superior (modificación ilegal, con su tirada de Knowledge (Tech)) o si se monta un arma letal en un dron Common.',
+        'Agile Servos, Armor Plating, Reinforced Plating y otros módulos ajustan Evasion, Armor Slots y umbrales, sin pasar del máximo de Evasion del Grado.',
+      ] },
+      { title: 'En la mesa', items: [
+        'Cada dron tiene operador, estado de señal (Stable, Unstable, Lost), tipo de enlace y protocolo si pierde la señal. Se cambian en Ficha → Dron · módulos y señal.',
+        'Atacar con un dron es la Acción y la tirada de su operador: tira Hope y Fear con los Traits del operador. Con señal Unstable el ataque tiene Desventaja; con señal Lost no se puede ordenar.',
+        'Un dron con la señal Lost tiene Evasion −2 cuando lo atacan.',
+        'El daño de las armas de dron no escala con Proficiency.',
+        'Botón para tirar la Drone Complication (d12); los resultados de señal y de HP se aplican solos.',
+        'Los módulos se pueden marcar offline. Un dron creado con las plantillas antiguas pide elegir Grado y módulos al abrir su consola.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.9', date: '2026-11-16', title: 'V2 · Documentación al día',
     sections: [
       { title: 'Documentación', items: [

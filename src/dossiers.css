@@ -134,3 +134,22 @@
 .dossier-power header span { display:flex; flex-wrap:wrap; gap:4px; }
 .dossier-power header b { padding:1px 6px; border:1px solid var(--border-glass); font:10px ui-monospace,monospace; letter-spacing:.06em; color:var(--text-main); font-weight:400; }
 .dossier-power p { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--text-dim); font-size:12.5px; line-height:1.6; margin:0; }
+
+/* Drone console (Corebook ch. 14) */
+.drone-console { display:flex; flex-direction:column; gap:10px; }
+.drone-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.drone-stats > div { border:1px solid rgba(192,132,252,.35); background:rgba(42,11,92,.35); padding:8px 10px; display:flex; flex-direction:column; gap:2px; min-width:0; }
+.drone-stats span { font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:#c084fc; }
+.drone-stats strong { color:#fff; font-size:14px; overflow-wrap:anywhere; }
+.drone-modules { display:flex; flex-direction:column; gap:10px; max-height:340px; overflow:auto; padding-right:4px; }
+.drone-group { border:1px solid rgba(109,40,217,.5); padding:8px 10px; margin:0; display:flex; flex-direction:column; gap:6px; }
+.drone-group legend { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#fde68a; padding:0 6px; }
+.drone-module { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:6px 8px; border:1px solid transparent; }
+.drone-module.selected { border-color:#00f3ff; background:rgba(0,243,255,.07); }
+.drone-module > label:first-child { display:flex; gap:8px; align-items:flex-start; cursor:pointer; flex:1; min-width:0; }
+.drone-module strong { color:#fff; font-size:12.5px; } .drone-module em { font-style:normal; color:#c084fc; font-size:10.5px; }
+.drone-module small { display:block; color:#9baec4; font-size:11px; line-height:1.45; margin-top:2px; }
+.drone-offline, .drone-check { display:flex; align-items:center; gap:6px; font-size:11px; color:#cbd5e1; cursor:pointer; white-space:nowrap; }
+.drone-check { white-space:normal; }
+.drone-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+@media(max-width:760px) { .drone-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }

@@ -1,3 +1,4 @@
+import { validateDroneState } from './drones.js';
 import { validateDrawing } from './freehand.js';
 import { validateEnvironment, validateBoss } from './encounterRules.js';
 import { validateInventory } from './equipment.js';
@@ -227,6 +228,8 @@ export function validateActor(t) {
     assert(t.name.length <= 100000, 'Invalid name.');
   }
   if (t.actorType !== undefined && t.actorType !== null) assert(['player', 'npc', 'adversary', 'drone'].includes(t.actorType), 'Invalid actor type.');
+  if (t.drone === null) delete t.drone;
+  if (t.drone !== undefined) validateDroneState(t.drone);
   if (t.ownerId !== undefined) {
     if (t.ownerId === null) delete t.ownerId;
     else if (typeof t.ownerId !== 'string') t.ownerId = String(t.ownerId);

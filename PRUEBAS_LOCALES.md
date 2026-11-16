@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.8.9.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.8.9**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.8.9** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.8.9.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.8.10.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.8.10**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.8.10** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.8.10.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -18,6 +18,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.8.9.zip**. Abre **AYUDA*
 8. **Resultados.** Cada tirada deja una sola tarjeta dorada a la derecha y una línea en el chat; no debe aparecer un segundo marcador abajo. Con dos navegadores en la misma sala, tira desde ambos casi a la vez: las dos tarjetas se apilan en orden y una tirada secreta del Keeper no llega al jugador.
 9. **Chat.** Con el mapa enfocado y sin ventanas abiertas, pulsa Intro: se abre el chat de mesa listo para escribir.
 10. **Luces y niebla.** Como jugador, en una zona abierta la visión es un círculo que se desvanece al final de su alcance, con bordes difuminados; detrás de un muro no se ve. Las luces del mapa hacen lo mismo.
+
+11. **Drones.** **Roster → + DRONE**: carga *Security Stun Drone* y comprueba 3 HP, Evasion 11, Major 7 / Severe 14, 1 Armor Slot, 3/3 Slots y 18 Cr. En un dron Common añade un tercer módulo de 1 Slot: debe avisar de que faltan Slots. Marca un módulo Military en un Common: lo rechaza hasta activar "Modificación ilegal". Despliégalo, abre **Ficha → Dron · módulos y señal**, asigna un operador y ataca: tira el operador con Hope y Fear. Pon la señal en Unstable (Desventaja) y en Lost (no deja atacar; al ser atacado su Evasion baja 2). Tira la Drone Complication.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

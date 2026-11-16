@@ -1,0 +1,1022 @@
+[
+ {
+  "id": "extended-link",
+  "name": "Extended Link",
+  "cost": 2,
+  "slots": 1,
+  "effect": "When distance or ordinary structure would worsen signal, treat it as one step better. Does not bypass hard Lost zones.",
+  "group": "Signal and Control",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "relay-node",
+  "name": "Relay Node",
+  "cost": 2,
+  "slots": 1,
+  "effect": "Acts as a local repeater. One allied drone or short comm signal routed through it treats signal as one step better while the relay survives.",
+  "group": "Signal and Control",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "basic-autonomy-chip",
+  "name": "Basic Autonomy Chip",
+  "cost": 4,
+  "slots": 1,
+  "effect": "When signal is Lost, execute one loaded protocol: Freeze, Return, Follow Beacon, Record, Deliver, or Trigger Module. Cannot improvise.",
+  "group": "Signal and Control",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "shielded-receiver",
+  "name": "Shielded Receiver",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Gain Advantage on checks to resist spoofing, light jamming, or ordinary interference. Does not resist hard Lost zones.",
+  "group": "Signal and Control",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "neural-network-control",
+  "name": "Neural Network Control",
+  "cost": 1,
+  "slots": 0,
+  "effect": "Allows registered crew members to take control of the drone by turns while signal is Stable. It moves spotlight, not action economy.",
+  "group": "Signal and Control",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "flight-module",
+  "name": "Flight Module",
+  "cost": 2,
+  "slots": 1,
+  "effect": "The drone can hover, cross gaps, move vertically, and fly at low speed in normal atmosphere. Strong wind, storms, damage, or tight terrain may require a roll. While flying, the drone takes -2 to Agility Rolls to avoid detection.",
+  "group": "Movement",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "wall-crawler",
+  "name": "Wall-Crawler",
+  "cost": 1,
+  "slots": 1,
+  "effect": "Climb walls, ceilings, ducts, and uneven surfaces unless slick, electrified, shielded, or hostile.",
+  "group": "Movement",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "cargo-grip",
+  "name": "Cargo Grip",
+  "cost": 1,
+  "slots": 1,
+  "effect": "Carry small objects, drag light loads, or retrieve items. Cannot carry a conscious adult unless the frame is built for hauling.",
+  "group": "Movement",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "low-light-camera",
+  "name": "Low-Light Camera",
+  "cost": 1,
+  "slots": 1,
+  "effect": "Ignore penalties from darkness short of total blackout, smoke, or sensor-obscuring interference.",
+  "group": "Sensors",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "thermal-camera",
+  "name": "Thermal Camera",
+  "cost": 2,
+  "slots": 1,
+  "effect": "Detect heat signatures through darkness, smoke, or light cover. Insulation, decoys, cold-blooded species, and thermal masking can defeat it.",
+  "group": "Sensors",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "radiation-chem-sensor",
+  "name": "Radiation/Chem Sensor",
+  "cost": 2,
+  "slots": 1,
+  "effect": "Detect radiation, toxins, corrosives, atmospheric hazards, or chemical traces. Grants Advantage on checks to identify environmental danger.",
+  "group": "Sensors",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "audio-suite",
+  "name": "Audio Suite",
+  "cost": 1,
+  "slots": 1,
+  "effect": "Directional listening and clean recording. Grants Advantage when eavesdropping through ordinary barriers.",
+  "group": "Sensors",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "medical-scanner",
+  "name": "Medical Scanner",
+  "cost": 2,
+  "slots": 1,
+  "effect": "Reads vitals and triage data. Grants Advantage to assess injury or stabilize remotely, but does not replace a Medic.",
+  "group": "Sensors",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "manipulator-arm",
+  "name": "Manipulator Arm",
+  "cost": 1,
+  "slots": 1,
+  "effect": "Move small objects, plug cables, press controls, retrieve samples, or perform simple manual tasks.",
+  "group": "Tools",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "tool-mount",
+  "name": "Tool Mount",
+  "cost": 2,
+  "slots": 1,
+  "effect": "Mount one small legal tool: welder, injector, scanner, lock probe, solder kit, sample drill.",
+  "group": "Tools",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "cutter",
+  "name": "Cutter",
+  "cost": 2,
+  "slots": 1,
+  "effect": "Cut light doors, panels, cables, locks, and thin plating. Hardened targets require time or a successful roll.",
+  "group": "Tools",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "repair-kit",
+  "name": "Repair Kit",
+  "cost": 2,
+  "slots": 1,
+  "effect": "With operator Action, grants Advantage on a repair roll or lets the drone perform minor repairs at range.",
+  "group": "Tools",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "medgel-injector",
+  "name": "Medgel Injector",
+  "cost": 2,
+  "slots": 1,
+  "effect": "Stabilize a wounded target at range with operator Action. Does not heal HP unless another rule allows it.",
+  "group": "Tools",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "noise-dampener",
+  "name": "Noise Dampener",
+  "cost": 1,
+  "slots": 1,
+  "effect": "The drone’s movement is silent to ordinary hearing. Does not hide heat, signal, light, airflow, or physical traces.",
+  "group": "Stealth and Evasion",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "stealth-shell",
+  "name": "Stealth Shell",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Gain +1 on Agility Rolls to avoid detection while grounded or moving no more than one band and using no loud module. Attacking, cutting, boosting, a strong transmission, or moving more than one band ends the bonus until the drone spends a Spotlight meeting those requirements again. The flight penalty still applies.",
+  "group": "Stealth and Evasion",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "agile-servos",
+  "name": "Agile Servos",
+  "cost": 4,
+  "slots": 1,
+  "effect": "+1 Evasion.",
+  "group": "Stealth and Evasion",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "low-profile-frame",
+  "name": "Low-Profile Frame",
+  "cost": 4,
+  "slots": 1,
+  "effect": "+1 Evasion against ranged attacks while the drone is not carrying a heavy tool, weapon mount, cargo load, or armor plating.",
+  "group": "Stealth and Evasion",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "decoy-flare-pod",
+  "name": "Decoy Flare Pod",
+  "cost": 4,
+  "slots": 1,
+  "effect": "One use per reload. Against ranged, missile, sensor-guided, or drone attacks, impose Disadvantage or gain +2 Evasion against that attack.",
+  "group": "Stealth and Evasion",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "smoke-flash-pod",
+  "name": "Smoke/Flash Pod",
+  "cost": 2,
+  "slots": 1,
+  "effect": "One use per reload. Create a brief escape, distraction, breach window, or Advantage on one repositioning or infiltration action.",
+  "group": "Non-Lethal Systems",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "compliance-taser",
+  "name": "Compliance Taser",
+  "cost": 4,
+  "slots": 2,
+  "effect": "Operator Action. Close attack. On hit, mark 1 Stress and force the target to drop an object, lose footing, or suffer momentary stun if fiction allows. Non-lethal and obvious.",
+  "group": "Non-Lethal Systems",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "stun-dart",
+  "name": "Stun Dart",
+  "cost": 4,
+  "slots": 2,
+  "effect": "Operator Action. Close/Far attack. On hit, deal 1d6 non-lethal physical damage or mark 1 Stress. Limited ammo. Legal status varies by port.",
+  "group": "Non-Lethal Systems",
+  "grade": "common",
+  "source": "Corebook"
+ },
+ {
+  "id": "military-flight-module",
+  "name": "Military Flight Module",
+  "cost": 6,
+  "slots": 1,
+  "effect": "The drone gains controlled tactical flight. While airborne, the operator gains +1 on rolls to maneuver, evade, chase, reposition, or pilot the drone. This bonus does not apply to attacks, hacking, repairs, scanning, or other non-movement tasks. While flying, the drone takes -2 to Agility Rolls to avoid detection.",
+  "group": "Military Modules",
+  "grade": "military",
+  "source": "Corebook"
+ },
+ {
+  "id": "military-stealth-shell",
+  "name": "Military Stealth Shell",
+  "cost": 8,
+  "slots": 1,
+  "effect": "Gain +2 on Agility Rolls to avoid detection while grounded or moving no more than one band and using no loud module. Attacking, cutting, boosting, a strong transmission, or moving more than one band ends the bonus until the drone spends a Spotlight meeting those requirements again. The flight penalty still applies.",
+  "group": "Military Modules",
+  "grade": "military",
+  "source": "Corebook"
+ },
+ {
+  "id": "armor-plating",
+  "name": "Armor Plating",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Gain +1 Armor Slot. The drone loses 1 Evasion while flying, sneaking, evading, or moving through tight terrain.",
+  "group": "Military Modules",
+  "grade": "military",
+  "source": "Corebook"
+ },
+ {
+  "id": "target-painter",
+  "name": "Target Painter",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Operator Action. Mark one visible personal-scale target until the start of the operator's next Spotlight. The next allied attack against it gains Advantage, then the mark ends. This is not a starship Sensor Lock.",
+  "group": "Military Modules",
+  "grade": "military",
+  "source": "Corebook"
+ },
+ {
+  "id": "micro-laser",
+  "name": "Micro-Laser",
+  "cost": 4,
+  "slots": 2,
+  "effect": "Operator Action. Far attack. Deal 1d6 energy. Precise, but easy to trace by heat or beam origin. Does not scale with Proficiency unless explicitly upgraded.",
+  "group": "Military Modules",
+  "grade": "military",
+  "source": "Corebook"
+ },
+ {
+  "id": "hardened-link",
+  "name": "Hardened Link",
+  "cost": 6,
+  "slots": 1,
+  "effect": "Treat Unstable as Stable for complex commands. Does not bypass Lost zones.",
+  "group": "Signal / Control",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "fiber-spool",
+  "name": "Fiber Spool",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Physical cable link. Ignores jamming while cable remains intact, but limits movement and can be cut.",
+  "group": "Signal / Control",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "burst-transmitter",
+  "name": "Burst Transmitter",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Once per scene, resolve one command through Unstable signal without Disadvantage. If that Roll is Fear-dominant and noncritical, every established hostile sensor in the scene detects the drone's current zone until it moves.",
+  "group": "Signal / Control",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "encrypted-control-suite",
+  "name": "Encrypted Control Suite",
+  "cost": 6,
+  "slots": 1,
+  "effect": "Advantage against hijack and command injection.",
+  "group": "Signal / Control",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "spoof-filter",
+  "name": "Spoof Filter",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Once per scene, ask the Keeper if the drone’s feed is false, stale, looped, or manipulated.",
+  "group": "Signal / Control",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "dedicated-relay-mast",
+  "name": "Dedicated Relay Mast",
+  "cost": 6,
+  "slots": 2,
+  "effect": "While stationary, improves signal for all allied drones in the scene by one step. Obvious to sensors.",
+  "group": "Signal / Control",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "swarm-controller",
+  "name": "Swarm Controller",
+  "cost": 8,
+  "slots": 2,
+  "effect": "Allows one operator to command a swarm as one unit. Requires the operator’s whole Action.",
+  "group": "Signal / Control",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "tactical-neural-mesh",
+  "name": "Tactical Neural Mesh",
+  "cost": 6,
+  "slots": 1,
+  "effect": "Hardened shared-control suite. The first control handoff each round while signal is Unstable does not require Stress or Disadvantage.",
+  "group": "Signal / Control",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "tuned-servos",
+  "name": "Tuned Servos",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Once per scene, Advantage on drone movement through tight, hostile, or collapsing terrain.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "silent-treads",
+  "name": "Silent Treads",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Movement makes no ordinary sound and stacks with Stealth Shell; while active, movement and chase Rolls have Disadvantage.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "grapple-line",
+  "name": "Grapple Line",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Cross vertical gaps, anchor to surfaces, pull light objects, or create a temporary line for small gear.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "mag-clamps",
+  "name": "Mag-Clamps",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Attach to hulls, vehicles, metal walls, or moving machinery. Hard to remove without tools.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "micro-thrusters",
+  "name": "Micro-Thrusters",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Maneuver in EVA or low gravity. Once per scene, gain Advantage on a movement roll in zero-g or low gravity. Does not grant normal atmospheric flight unless paired with a Flight Module or Military Flight Module.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "eva-kit",
+  "name": "EVA Kit",
+  "cost": 6,
+  "slots": 1,
+  "effect": "Full vacuum operation, radiation hardening, and micro-debris protection for short missions.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "submersible-kit",
+  "name": "Submersible Kit",
+  "cost": 6,
+  "slots": 1,
+  "effect": "Underwater or liquid operation. Signal usually starts Unstable unless tethered.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "crash-frame",
+  "name": "Crash Frame",
+  "cost": 4,
+  "slots": 1,
+  "effect": "First environmental collision or fall in a scene does not damage the drone.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "high-speed-rotor-array",
+  "name": "High-Speed Rotor Array",
+  "cost": 6,
+  "slots": 2,
+  "effect": "+1 Evasion during chases or open movement and Advantage on Agility or Finesse Rolls made to move or chase. Agility Rolls to avoid detection have Disadvantage while active.",
+  "group": "Mobility and Flight",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "signal-ghost",
+  "name": "Signal Ghost",
+  "cost": 8,
+  "slots": 1,
+  "effect": "Scans to detect drone take Disadvantage while passive. Loud action breaks concealment.",
+  "group": "Stealth",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "thermal-ghost",
+  "name": "Thermal Ghost",
+  "cost": 8,
+  "slots": 1,
+  "effect": "Thermal detection against the drone has Disadvantage. After a Fear-dominant noncritical Roll using the module, it goes offline until the end of the operator's next Spotlight.",
+  "group": "Stealth",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "false-transponder",
+  "name": "False Transponder",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Identifies as maintenance/security unit from chosen faction or site. Requires plausible context.",
+  "group": "Stealth",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "chameleon-skin",
+  "name": "Chameleon Skin",
+  "cost": 8,
+  "slots": 1,
+  "effect": "Gain Advantage on Agility Rolls to avoid visual detection while stationary. Moving, losing HP, or exposure to rain or dust ends the benefit until the drone spends a Spotlight stationary and cleaning or recalibrating the skin.",
+  "group": "Stealth",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "mimic-profile",
+  "name": "Mimic Profile",
+  "cost": 6,
+  "slots": 1,
+  "effect": "Copies sound/motion profile of local drones. Works until authorization is checked.",
+  "group": "Stealth",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "dead-drop-cache",
+  "name": "Dead Drop Cache",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Hidden compartment for 1 Burden or small contraband. Standard scans take Disadvantage unless searching.",
+  "group": "Stealth",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "micromote-dispenser",
+  "name": "Micromote Dispenser",
+  "cost": 8,
+  "slots": 2,
+  "effect": "Releases tiny passive bugs/sensors. They only record or transmit short-range.",
+  "group": "Stealth",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "multi-spectrum-suite",
+  "name": "Multi-Spectrum Suite",
+  "cost": 6,
+  "slots": 2,
+  "effect": "Low-light, thermal, radiation, and EM sensing. Advantage to detect hidden tech, heat, or hazards.",
+  "group": "Sensor",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "forensic-sampler",
+  "name": "Forensic Sampler",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Collects biological, chemical, and particulate samples without contamination.",
+  "group": "Sensor",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "motion-mapper",
+  "name": "Motion Mapper",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Maps movement through walls or cover if material is not shielded. With Fear, may show ghost movement or false positives.",
+  "group": "Sensor",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "signal-sniffer",
+  "name": "Signal Sniffer",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Detects active comms, relays, drones, trackers, and signal leaks. Does not decrypt.",
+  "group": "Sensor",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "micro-lidar",
+  "name": "Micro-LIDAR",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Creates precise 3D maps. Dust, fog, reflective surfaces, or countermeasures can distort it.",
+  "group": "Sensor",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "veil-static-reader",
+  "name": "Veil Static Reader",
+  "cost": 8,
+  "slots": 1,
+  "effect": "Detects established Veil interference or Power use from the current scene. On a Fear-dominant noncritical Roll using it, return no reading and the operator marks 1 Stress.",
+  "group": "Sensor",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "emotional-pattern-scanner",
+  "name": "Emotional Pattern Scanner",
+  "cost": 8,
+  "slots": 1,
+  "effect": "Experimental biometrics for stress, panic, aggression, or shock. Does not read thoughts.",
+  "group": "Sensor",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "blackbox-recorder",
+  "name": "Blackbox Recorder",
+  "cost": 4,
+  "slots": 1,
+  "effect": "If destroyed, last few seconds of feed survive unless wiped or destroyed by appropriate damage.",
+  "group": "Sensor",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "heavy-manipulator",
+  "name": "Heavy Manipulator",
+  "cost": 4,
+  "slots": 2,
+  "effect": "Lift, drag, or hold heavy objects. Can extract a wounded ally slowly if unopposed.",
+  "group": "Utility",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "precision-tool-arm",
+  "name": "Precision Tool Arm",
+  "cost": 6,
+  "slots": 2,
+  "effect": "Advantage on delicate repair, lock, surgery-assist, or disarmament tasks remotely.",
+  "group": "Utility",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "breach-kit",
+  "name": "Breach Kit",
+  "cost": 6,
+  "slots": 2,
+  "effect": "Open standard doors, panels, locks, hatches. Military security requires roll and time.",
+  "group": "Utility",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "hull-patch-kit",
+  "name": "Hull Patch Kit",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Seal minor breaches, leaks, pressure failures. Not enough for catastrophic hull damage.",
+  "group": "Utility",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "sample-vault",
+  "name": "Sample Vault",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Stores one hazardous sample. When a hit causes the drone HP loss, its operator may choose this module as the damaged component: the sample is destroyed and every creature within Very Close range makes a Strength Reaction Roll, DC 15; on failure become Poisoned, on success no Condition.",
+  "group": "Utility",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "field-printer-micro-rig",
+  "name": "Field Printer Micro-Rig",
+  "cost": 8,
+  "slots": 2,
+  "effect": "Fabricates one small simple part during downtime. Requires feedstock.",
+  "group": "Utility",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "med-evac-harness",
+  "name": "Med Evac Harness",
+  "cost": 6,
+  "slots": 2,
+  "effect": "Drag or carry an unconscious ally slowly. Obvious target if attacked.",
+  "group": "Utility",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "surgical-assist-suite",
+  "name": "Surgical Assist Suite",
+  "cost": 8,
+  "slots": 2,
+  "effect": "Advantage to Medic for remote stabilization or emergency surgery. Never replaces Medic.",
+  "group": "Utility",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "reinforced-plating",
+  "name": "Reinforced Plating",
+  "cost": 6,
+  "slots": 1,
+  "effect": "+2 Major / +2 Severe thresholds; -1 Evasion. Cannot stack with Low-Profile Frame unless Experimental.",
+  "group": "Defense / Survivability",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "redundant-core",
+  "name": "Redundant Core",
+  "cost": 8,
+  "slots": 1,
+  "effect": "First time destroyed in a scene, drops to Dead Weight instead and can be recovered.",
+  "group": "Defense / Survivability",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "emergency-return-logic",
+  "name": "Emergency Return Logic",
+  "cost": 4,
+  "slots": 1,
+  "effect": "When reduced to 1 HP or signal becomes Lost, attempts Return automatically unless commanded otherwise.",
+  "group": "Defense / Survivability",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "armor-booster",
+  "name": "Armor Booster",
+  "cost": 8,
+  "slots": 1,
+  "effect": "+1 Armor Slot. Military or Experimental only.",
+  "group": "Defense / Survivability",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "emp-hardening",
+  "name": "EMP Hardening",
+  "cost": 6,
+  "slots": 1,
+  "effect": "EMP does not automatically disable the drone; roll normally or treat result as one severity lower.",
+  "group": "Defense / Survivability",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "thermal-sink",
+  "name": "Thermal Sink",
+  "cost": 4,
+  "slots": 1,
+  "effect": "Thermal detection against the drone has Disadvantage. After the drone takes a second Action in one round, its signal becomes Unstable until the end of the next round.",
+  "group": "Defense / Survivability",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "self-sealing-casing",
+  "name": "Self-Sealing Casing",
+  "cost": 8,
+  "slots": 1,
+  "effect": "Once per Short Rest, Long Rest, or Downtime, restore 1 lost drone HP without a Roll. It cannot revive a destroyed drone or repair an offline module.",
+  "group": "Defense / Survivability",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "disposable-shell",
+  "name": "Disposable Shell",
+  "cost": 2,
+  "slots": 0,
+  "effect": "One-use casing. When destroyed, internal data core survives unless hit by EMP, fire, acid, or similar damage.",
+  "group": "Defense / Survivability",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "predictive-motion-suite",
+  "name": "Predictive Motion Suite",
+  "cost": 8,
+  "slots": 1,
+  "effect": "Military/Experimental only. Once per scene, gain +2 Evasion against one attack the drone can perceive. If the next drone Roll is Fear-dominant and noncritical, its signal worsens one step until the end of the operator's next Spotlight.",
+  "group": "Evasion",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "chameleon-profile",
+  "name": "Chameleon Profile",
+  "cost": 8,
+  "slots": 1,
+  "effect": "+1 Evasion against Far or longer ranged attacks while moving slowly or near cover. Attacking, cutting, boosting, or transmitting strongly cancels until reposition.",
+  "group": "Evasion",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "reflex-kernel",
+  "name": "Reflex Kernel",
+  "cost": 12,
+  "slots": 1,
+  "effect": "Experimental. Gain +1 Evasion, including while signal is Unstable. After a Fear-dominant noncritical drone Roll, lose this bonus until the start of the drone's next Spotlight.",
+  "group": "Evasion",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "threat-prediction-ghostware",
+  "name": "Threat-Prediction Ghostware",
+  "cost": 12,
+  "slots": 2,
+  "effect": "Experimental/illegal. Once per scene, after an attacker resolves a hit or miss, impose Disadvantage on its next attack. After a Fear-dominant noncritical drone Roll, this module goes offline until an Action and Knowledge (Tech) Roll, DC 10, restores it; it never retargets a player Action.",
+  "group": "Evasion",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "vector-bleed-jets",
+  "name": "Vector Bleed Jets",
+  "cost": 10,
+  "slots": 2,
+  "effect": "Experimental. +2 Evasion in zero-g/EVA; -1 Evasion in cramped interiors or gravity-heavy spaces.",
+  "group": "Evasion",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "decentralized-motion-nodes",
+  "name": "Decentralized Motion Nodes",
+  "cost": 10,
+  "slots": 1,
+  "effect": "Ignore the first Evasion penalty from damaged mobility. Does not prevent Lost-signal penalty.",
+  "group": "Evasion",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "suppressive-emitter",
+  "name": "Suppressive Emitter",
+  "cost": 6,
+  "slots": 2,
+  "effect": "Operator Action. Enemies in small area choose: move safely, attack with Disadvantage, or expose themselves.",
+  "group": "Combat / Tactical",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "point-defense-spark",
+  "name": "Point-Defense Spark",
+  "cost": 8,
+  "slots": 2,
+  "effect": "Reaction. Once per scene, attempt to intercept grenade, micromissile, or hostile drone.",
+  "group": "Combat / Tactical",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "emp-pulse-pod",
+  "name": "EMP Pulse Pod",
+  "cost": 8,
+  "slots": 2,
+  "effect": "One use. Worsens nearby drone/electronic signal by one state or disables Cheap drones. Friendly drones included.",
+  "group": "Combat / Tactical",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "net-launcher",
+  "name": "Net Launcher",
+  "cost": 4,
+  "slots": 2,
+  "effect": "Attack. On hit, pin small drone or slow humanoid until Action clears it.",
+  "group": "Combat / Tactical",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "hardpoint-mount",
+  "name": "Hardpoint Mount",
+  "cost": 8,
+  "slots": 2,
+  "effect": "Allows real light weapon. Uses operator Action. No Proficiency scaling unless explicitly permitted.",
+  "group": "Combat / Tactical",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "shock-halo",
+  "name": "Shock Halo",
+  "cost": 6,
+  "slots": 1,
+  "effect": "First creature that grabs or physically attacks drone marks 1 Stress or lets go.",
+  "group": "Combat / Tactical",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "breach-charge-mount",
+  "name": "Breach Charge Mount",
+  "cost": 8,
+  "slots": 2,
+  "effect": "One shaped charge. Opens doors/hulls or destroys drone as part of detonation. Illegal.",
+  "group": "Combat / Tactical",
+  "grade": "military",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "overclock-core",
+  "name": "Overclock Core",
+  "cost": 12,
+  "slots": 1,
+  "effect": "Once per scene, the drone takes one Action without spending the operator's Action. The operator then chooses exactly one: drone loses 1 direct HP; one operator-chosen module goes offline until an Action and Knowledge (Tech), DC 10, restores it; or signal worsens one state. If the drone's Action resolves Failure with Fear, also roll once on the Core Drone Complication table.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "field-reconfiguration",
+  "name": "Field Reconfiguration",
+  "cost": 12,
+  "slots": 1,
+  "effect": "Once per session, swap one installed module with reserve during downtime. Requires tools and a safe scene.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "ghost-signal-lattice",
+  "name": "Ghost-Signal Lattice",
+  "cost": 16,
+  "slots": 2,
+  "effect": "In Unstable signal, perform complex tasks normally. With Lost signal, send one final simple command. If that command resolves Failure with Fear, one established hostile receiver in the scene detects the operator's zone; if none exists, no receiver appears retroactively.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "prototype-autonomy-core",
+  "name": "Prototype Autonomy Core",
+  "cost": 16,
+  "slots": 2,
+  "effect": "Load one routine of up to three named simple commands during a Long Rest. With Lost signal, execute them in order without improvisation. On a Fear-dominant noncritical Roll, the routine stops after that command and cannot resume until signal is restored.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "veil-hardened-casing",
+  "name": "Veil-Hardened Casing",
+  "cost": 12,
+  "slots": 1,
+  "effect": "Treat Veil interference as one signal state less severe. Also makes drone visible to things that notice Veil disturbance.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "probability-stabilizer",
+  "name": "Probability Stabilizer",
+  "cost": 16,
+  "slots": 2,
+  "effect": "Once per scene after a nonmatching drone movement or signal Roll, reroll the Hope die and use the new face. It may create a Critical Success. If the new result is Failure with Fear, the drone loses Hidden and its signal worsens one state.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "memory-imprint-slot",
+  "name": "Memory Imprint Slot",
+  "cost": 16,
+  "slots": 1,
+  "effect": "Once per session, gain Advantage on one Roll directly tied to the stored echo. Afterward mark 1 Stress; the echo is a narrative prompt and never controls an Action or adds another consequence.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "black-site-kill-switch",
+  "name": "Black-Site Kill Switch",
+  "cost": 8,
+  "slots": 0,
+  "effect": "If captured/hijacked, drone can self-delete or self-destruct. Someone else may know trigger.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "phase-blink-array",
+  "name": "Phase Blink Array",
+  "cost": 18,
+  "slots": 2,
+  "effect": "Once per scene, the drone may phase-jump up to Close range. It can pass through ordinary solid matter, but not through active energy protection, phase locks, military shields, Veil wards, or similar countermeasures. After use, it needs several uninterrupted minutes to recharge. Blind phase-jumps are possible but dangerous.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ },
+ {
+  "id": "phase-capacitor",
+  "name": "Phase Capacitor",
+  "cost": 10,
+  "slots": 1,
+  "effect": "Requires Phase Blink Array. Stores one additional phase-jump charge per scene. Each installed Phase Capacitor adds +1 phase jump per scene. All spent charges require several uninterrupted minutes to recharge. Repeated jumps make heat, signal instability, and phase residue increasingly obvious.",
+  "group": "Experimental / Dangerous",
+  "grade": "experimental",
+  "source": "Rust & Steel"
+ }
+]

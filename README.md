@@ -1,8 +1,8 @@
-# VeilFarers VTT · v2.8.9
+# VeilFarers VTT · v2.8.10
 
 A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v2.8.9**. Download package: **VeilFarers_VTT_v2.8.9.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.8.10**. Download package: **VeilFarers_VTT_v2.8.10.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -24,6 +24,7 @@ Development happens on the `V2` branch. [HANDOVER_V2.md](HANDOVER_V2.md) records
 - **Range.** Melee is an adjacent square or 1 m, Very Close up to 5 m, Close up to 10 m, Far up to 25 m, Extreme beyond. A melee weapon, or no weapon at all, only attacks at Melee. A ranged weapon beyond its band attacks with Disadvantage. A wall or closed door in the line of fire is warned about but does not stop the attack. The lock line and the ruler show both metres and the band.
 - **Advantage and Disadvantage.** The d6 is thrown on the table and added or subtracted in full; the sum is written out, for example `Hope [2] + Fear [4] + 2 − d6 [6] (Desventaja) = 2`.
 - **Damage.** Damage dice are thrown in 3D and their faces are the damage. Proficiency multiplies one listed die (`2d8+2` at Proficiency 3 is `4d8+2`); a player Critical doubles the dice, a Keeper Critical maximises them. Honed Edge is level − 1 for Sleeping characters. Damage types apply Penetration (Energy 2, Void and Neural 4) unless the target has Reflective armor or a Ward; Crushing and Bleed are supported.
+- **Drones.** **Roster → + DRONE** builds a drone the way Corebook chapter 14 does: a Grade (Common, Military, Experimental) plus Modules from a searchable catalog of 102 (Corebook and Rust & Steel), or one of the eight sample builds. Slots, illegal modifications and the lethal-weapon lock of Common drones are checked. Each drone has an operator, a signal state, a link mode and a Lost protocol; it attacks with its operator's roll (Disadvantage on Unstable signal, no command on Lost), loses 2 Evasion while Lost, and its weapons never scale with Proficiency. **Ficha → Dron · módulos y señal** reopens the console and rolls the Drone Complication.
 - **Roll results.** One golden card per roll on the right, stacked in arrival order so every player's roll is visible, plus the chat line. Secret Keeper rolls stay with the Keeper.
 - **Chat.** Press **Enter** on the map to write to the table chat.
 - **Light and fog of war.** Vision and lights are round, fade towards the end of their range and have feathered edges; walls still block them.
