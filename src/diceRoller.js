@@ -997,6 +997,14 @@ export class DiceRollerSidebar {
     }
   }
 
+  // A result reaches the table once: the golden card on the right for whoever rolled, and
+  // the same card for everyone else unless the roll is secret. The chat line is separate.
+  announceRoll(card, { rolled3D = false, secret = false } = {}) {
+    if (rolled3D && window.VFDice3D?.showResults) window.VFDice3D.showResults(card);
+    else window.veilDiceEngine?.showCallout?.({ ...card, visibility: secret ? 'keeper' : 'table' });
+    if (!secret) network.broadcast?.({ type: 'DICE_ROLL', result: { ...card, id: String(Date.now()), breakdown: card.modifiers, details: card.modifiers } });
+  }
+
   can3D() {
     return this.is3D && store.state.dice3d !== false && typeof window !== 'undefined' && typeof window.VFDice3D?.roll === 'function';
   }
@@ -1236,12 +1244,13 @@ export class DiceRollerSidebar {
       rolled3D = !!faces;
       const roll = rollAdversaryAttack({ attackModifier: attacker.attackModifier ?? 0, evasion, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces?.[0] ?? null, forcedD6: faces?.[1] ?? null });
       hit = roll.hit; critical = roll.isCritical; total = roll.total;
-      if (faces) window.VFDice3D.showResults?.({
-        label: attackLabel, playerName: 'Keeper', tokenName: attacker.name, skill: 'Ataque',
-        modifiers: `d20 ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6` : ''} vs Evasion ${evasion}`,
+      const card = {
+        label: attackLabel, playerName: 'Keeper', tokenName: attacker.name, actorName: attacker.name, skill: 'Ataque',
+        modifiers: `d20 [${roll.d20}] ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6 [${roll.d6}]` : ''} = ${roll.total} vs Evasion ${evasion}`,
         value: roll.total, total: roll.total, outcome: critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO',
         rolls: [{ value: roll.d20, sides: 20, role: 'Attack' }, ...(roll.edge ? [{ value: roll.d6, sides: 6, role: roll.edge }] : [])], style: 'overlay'
-      });
+      };
+      this.announceRoll(card, { rolled3D: !!faces, secret: this.rollVisibility() === 'keeper' });
       detail = `d20 [${roll.d20}] ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6 [${roll.d6}]` : ''} = ${roll.total}.`;
       const secret = this.rollVisibility() === 'keeper';
       const summary = `⚔️ ${attacker.name} ataca a ${target.name}: ${detail} vs Evasion ${evasion} → ${critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO'}`;
@@ -1411,16 +1420,16 @@ export class DiceRollerSidebar {
     try { dmgResult = formula ? resolveDamageExpression(formula, damageOptions) : resolveDamage(damageOptions); }
     catch (error) { notify(error.message, 'error'); return; }
 
-    if (rolled?.length && window.VFDice3D?.showResults) {
+    if (rolled?.length) {
       const sidesOf = (dmgResult.pools || [{ count: dmgResult.rolls.length, sides: diceSides }]).flatMap(p => Array(p.count * (damageOptions.isCritical ? 2 : 1)).fill(p.sides));
-      window.VFDice3D.showResults({
-        label: `Daño · ${damageOptions.attackerName}${targetToken ? ` → ${targetToken.name}` : ''}`,
+      this.announceRoll({
+        label: `Daño · ${damageOptions.attackerName}${targetToken ? ` → ${targetToken.name}` : ''}`, actorName: damageOptions.attackerName,
         playerName: store.state.userName || store.state.playerName || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador'),
         tokenName: damageOptions.attackerName, skill: 'Daño',
         modifiers: `${formula || `${damageOptions.diceCount}d${diceSides}`}${proficiency > 1 ? ` · Proficiency ${proficiency}` : ''}${honed ? ` · Honed Edge +${honed}` : ''}${damageOptions.isCritical ? ' · Crítico: dados dobles' : ''}`,
         value: dmgResult.rawDamage, total: dmgResult.rawDamage, outcome: `${dmgResult.rawDamage} · ${dmgResult.finalSeverity}`,
         rolls: dmgResult.rolls.map((value, i) => ({ value, sides: sidesOf[i] || diceSides, role: 'Damage' })), style: 'overlay'
-      });
+      }, { rolled3D: true, secret: this.rollVisibility() === 'keeper' });
     }
     const display = this.container.querySelector('#damage_result_display');
     display.style.display = 'block';

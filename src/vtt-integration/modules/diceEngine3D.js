@@ -216,6 +216,12 @@ export class VeilfarersDiceEngine {
     }
     if (isSecret && !isKeeper) return;
 
+    // One results panel for the table: the golden stack of the 3D dice shows every roll.
+    if (typeof window !== 'undefined' && typeof window.VFDice3D?.pushResultCard === 'function') {
+      window.VFDice3D.pushResultCard(rollData);
+      return;
+    }
+
     let stack = document.getElementById('vf-callouts-stack');
     if (!stack) {
       stack = document.createElement('div');

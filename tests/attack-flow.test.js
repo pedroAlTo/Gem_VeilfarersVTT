@@ -273,3 +273,21 @@ test('with no weapon the attack is unarmed: it cannot be made beyond Melee', asy
   assert.match(far.q('#atk_detail_text').textContent, /Sin arma el ataque es cuerpo a cuerpo/);
   assert.equal(far.q('#damage_result_display').style.display, 'none');
 });
+
+test('a roll is announced once: the golden card of the results stack, never a second overlay', async () => {
+  const { readFileSync } = await import('node:fs');
+  const dice3d = readFileSync(new URL('../public/assets/3d-dice/vf-dice3d.js', import.meta.url), 'utf8');
+  assert.ok(!/display\.showResults\(/.test(dice3d), 'the bottom results overlay is no longer drawn');
+  assert.match(dice3d, /function pushResultCard\(/); assert.match(dice3d, /stack\.append\(card\)/, 'cards are added in arrival order');
+  // The table callout and the 3D result feed the same stack, so two rolls show two cards.
+  const pushed = [], sent = [];
+  window.VFDice3D = { pushResultCard: data => pushed.push(data), showResults: data => pushed.push(data) };
+  const { VeilfarersDiceEngine3D } = await import('../src/vtt-integration/modules/diceEngine3D.js').catch(() => ({}));
+  const { dice } = scene();
+  network.broadcast = message => sent.push(message);
+  dice.announceRoll({ tokenName: 'Maren', total: 12, modifiers: 'd20 [10] + 2 = 12' }, { rolled3D: true });
+  dice.announceRoll({ tokenName: 'Pirata', total: 7, modifiers: 'd20 [5] + 2 = 7' }, { rolled3D: true, secret: true });
+  assert.deepEqual(pushed.map(c => c.tokenName), ['Maren', 'Pirata']);
+  assert.deepEqual(sent.filter(m => m.type === 'DICE_ROLL').map(m => m.result.tokenName), ['Maren'], 'a secret roll is not sent to the table');
+  delete window.VFDice3D; void VeilfarersDiceEngine3D;
+});

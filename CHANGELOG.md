@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.8.3**.
-Paquete: `VeilFarers_VTT_v2.8.3.zip`.
+Versión actual del VTT: **v2.8.4**.
+Paquete: `VeilFarers_VTT_v2.8.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.4] — 2026-11-16
+
+V2 · Un solo panel de resultados, con las tiradas de toda la mesa
+
+### Resultados de tiradas
+
+- Cada tirada se anuncia una sola vez: la tarjeta dorada de la derecha y la línea del chat. Desaparece el marcador inferior que repetía el resultado.
+- El panel de la derecha apila las tiradas de todos, en el orden en que llegan: si varias personas lanzan a la vez se ven todos los resultados (hasta 6, 20 segundos cada uno; un clic cierra la tarjeta).
+- El ataque de un adversario y el daño también llegan como tarjeta al resto de la mesa, salvo que la tirada sea secreta del Keeper.
 
 ## [2.8.3] — 2026-11-16
 
