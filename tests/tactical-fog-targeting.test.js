@@ -449,7 +449,7 @@ test('dead token detection: HP <= 0 triggers dead state and skull bones overlay'
   assert.ok(deadTok.hp.current <= 0, 'Token is marked dead');
 });
 
-test('cloud account & preferences: null-safe parameters and Netlify identity support', async () => {
+test('cloud account & preferences: null-safe parameters', async () => {
   const { cleanPreferences, preferenceKeys } = await import('../src/cloudAccount.js');
 
   // Must not throw on null, undefined, or missing values

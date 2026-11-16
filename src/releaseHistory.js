@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.1', date: '2026-11-16', title: 'V2 · Un solo acceso: la cuenta de la VTT',
+    sections: [
+      { title: 'Cuenta', items: [
+        'Se retira el acceso con Netlify Identity. Se entra con correo y contraseña, con Google o como invitado en local.',
+        'La pantalla de cuenta y los avisos de error ya no ofrecen Netlify Identity como alternativa.',
+        'La página deja de cargar el widget externo de Netlify Identity.',
+        'Las salas, los personajes, las escenas y las notas se guardan siempre en la cuenta de la VTT.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.0', date: '2026-11-16', title: 'V2 · Dados 3D en ataque y daño, Proficiency al día y biblioteca privada en el lobby',
     sections: [
       { title: 'Ataque', items: [

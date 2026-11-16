@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.8.0**.
-Paquete: `VeilFarers_VTT_v2.8.0.zip`.
+Versión actual del VTT: **v2.8.1**.
+Paquete: `VeilFarers_VTT_v2.8.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.1] — 2026-11-16
+
+V2 · Un solo acceso: la cuenta de la VTT
+
+### Cuenta
+
+- Se retira el acceso con Netlify Identity. Se entra con correo y contraseña, con Google o como invitado en local.
+- La pantalla de cuenta y los avisos de error ya no ofrecen Netlify Identity como alternativa.
+- La página deja de cargar el widget externo de Netlify Identity.
+- Las salas, los personajes, las escenas y las notas se guardan siempre en la cuenta de la VTT.
 
 ## [2.8.0] — 2026-11-16
 

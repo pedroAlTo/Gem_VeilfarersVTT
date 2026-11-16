@@ -167,7 +167,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
         <div class="creator-finish">
           ${canPlace ? `<button type="button" class="hud-btn hud-btn-primary" data-finish="token">Crear y poner en la mesa</button>
           ${targets.length ? `<label class="dossier-field"><span>…o llevar la ficha a un token que ya existe</span><select class="hud-input" data-target><option value="">Elegir token</option>${targets.map(t => `<option value="${e(t.id)}">${e(t.name)}</option>`).join('')}</select></label><button type="button" class="hud-btn" data-finish="replace">Asignar a ese token</button>` : ''}` : '<p class="dossier-muted">El Keeper pone los personajes en la mesa. Descarga la ficha y envíasela, o impórtala cuando te asigne un token.</p>'}
-          ${account.user && !account.user.isNetlify ? '<button type="button" class="hud-btn" data-finish="account" title="Guarda el personaje en tu biblioteca de la cuenta">Guardar en mi cuenta</button>' : ''}
+          ${account.user ? '<button type="button" class="hud-btn" data-finish="account" title="Guarda el personaje en tu biblioteca de la cuenta">Guardar en mi cuenta</button>' : ''}
           <button type="button" class="hud-btn" data-finish="download">Descargar ficha JSON</button>
         </div>`}`;
     },

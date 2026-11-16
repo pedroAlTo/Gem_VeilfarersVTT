@@ -25,7 +25,7 @@ export function openRoomLobby(prefill = '') {
   };
   const refresh = async () => {
     await initAccount();
-    if (account.user && !account.user.isNetlify) {
+    if (account.user) {
       cached = await rooms.service.list();
       rooms.lastError = '';
     }
@@ -33,7 +33,7 @@ export function openRoomLobby(prefill = '') {
   };
   const paint = () => {
     if (!modal.isConnected) return;
-    const signed = account.user && !account.user.isNetlify, current = rooms.room;
+    const signed = !!account.user, current = rooms.room;
     const card = room => `<article class="room-card"><div><h3>${e(room.name)}</h3><p>${roomOnline(room, rooms.service.now()) ? '<span class="room-live">● Keeper online</span>' : '<span class="room-paused">○ Keeper offline · sala en pausa</span>'}</p></div><div class="session-actions" style="margin-top:0;"><button class="hud-btn hud-btn-primary" data-enter-room="${e(room.id)}">${room.id === current?.id ? 'Dentro de la sala' : room.ownerUid === rooms.service.uid ? 'Abrir como Keeper' : 'Entrar'}</button>${room.ownerUid === rooms.service.uid ? `<button class="hud-btn hud-btn-danger" data-delete-room="${e(room.id)}" title="Eliminar sala permanentemente">Eliminar</button>` : ''}</div></article>`;
     body.innerHTML = sanitizeHTML(`
       <span class="dossier-eyebrow">SALAS / CAMPAÑAS PERSISTENTES</span><h2>Tus mesas de juego</h2>

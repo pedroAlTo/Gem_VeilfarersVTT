@@ -257,17 +257,10 @@ test('campaign backup: rolling snapshot in localStorage and export reminder for 
   assert.ok(parsed.data);
 });
 
-test('cloud account & login: Google popup, redirect fallback and Netlify Identity integration', async () => {
+test('cloud account & login: Google popup and redirect fallback', async () => {
   const { CloudAccount } = await import('../src/cloudAccount.js');
 
   const c = new CloudAccount();
-
-  // 1. Netlify User setting & session restoration
-  c.setNetlifyUser({ id: 'netlify_pilot_1', email: 'pilot@veil.org', user_metadata: { full_name: 'Captain Harker' } });
-  assert.equal(c.user.uid, 'netlify_pilot_1');
-  assert.equal(c.user.email, 'pilot@veil.org');
-  assert.equal(c.user.displayName, 'Captain Harker');
-  assert.equal(c.user.isNetlify, true);
 
   // 2. Google sign-in with redirect option
   let redirectCalled = false;
@@ -432,7 +425,13 @@ test('cloudinary image compression and account scene library: compressImageForUp
   assert.equal(result.name, 'small_map.png');
 
   // 2. Account saveScene and removeScene
-  account.user = { uid: 'user_scene_test', isNetlify: true, displayName: 'Keeper Test' };
+  account.user = { uid: 'user_scene_test', displayName: 'Keeper Test' };
+  const docs = new Map(), oldDb = account.dbAPI;
+  account.dbAPI = {
+    doc: (_db, ...path) => path.join('/'), collection: (_db, ...path) => path.join('/'),
+    setDoc: async (ref, value) => { docs.set(ref, value); }, deleteDoc: async ref => { docs.delete(ref); },
+    getDocsFromServer: async ref => ({ docs: [...docs].filter(([key]) => key.startsWith(ref + '/')).map(([key, value]) => ({ id: key.split('/').pop(), data: () => value })) }),
+  };
   const sceneId = await account.saveScene({
     name: 'Derelict Station Hangar',
     gridSize: 70,
@@ -452,6 +451,7 @@ test('cloudinary image compression and account scene library: compressImageForUp
   await account.removeScene(sceneId);
   const updatedScenes = await account.list('scenes');
   assert.equal(updatedScenes.some(s => s.id === sceneId), false, 'Scene removed from account library');
+  account.dbAPI = oldDb; account.user = null;
 });
 
 test('spotlight exclusivity and adversary fear cost: only one token spotlighted, adversary costs 1 fear', async () => {
