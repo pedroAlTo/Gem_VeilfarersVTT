@@ -1,6 +1,32 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.9.0', date: '2026-11-16', title: 'V2 · Mano de cartas: el Loadout en 3D junto a la ficha',
+    sections: [
+      { title: 'La mano', items: [
+        'En postura de jugador, al seleccionar tu personaje la barra inferior se divide en dos: a la izquierda sus stats, a la derecha su mano de cartas en abanico.',
+        'Las cartas son 3D: se levantan y se inclinan hacia el puntero al pasar por encima, con el coste, la tirada y el Recall Cost a la vista.',
+        'Un Awakened tiene en la mano los Poderes de su Loadout, su Hope Feature, la carta de su Ancestry y la de su Background.',
+        'Un Sleeping tiene sus Resolve Moves, su Effort Feature, su Ancestry y su Background.',
+        'El Mystic Sleeping tiene además los Poderes de su Uncanny Archive, que se juegan con Uncanny Power.',
+      ] },
+      { title: 'Jugar una carta', items: [
+        'Un clic abre la carta en grande con su texto completo. Arrastrarla y soltarla sobre el mapa la juega en ese punto.',
+        'Al jugarla se paga su coste impreso (Hope, Stress, Effort, Resolve o HP). Si no hay recursos, o estás Overwhelmed y cuesta Stress, no se juega y se explica por qué.',
+        'La jugada se anuncia con una tarjeta a la derecha, una línea en el chat y una señal en el punto del mapa.',
+        'Si el Poder pide tirada, el panel de dados queda preparado con su Trait y su DC: solo falta pulsar ROLL.',
+        'Un Resolve Move tira sus dados de Resolve. Los Moves de coste abierto preguntan cuánto Resolve gastas.',
+        'Uncanny Power: gastas Resolve, se tiran los dados más Knowledge para ver el nivel que alcanzas, el Keeper gana 1 Fear por Resolve y la tirada es Knowledge contra DC 10 + nivel. El coste de Hope se ignora.',
+        'Las cartas pasivas, las reacciones del Archivo y los proyectos a largo plazo se consultan pero no se juegan.',
+      ] },
+      { title: 'Vault y Recall', items: [
+        'El botón Vault muestra los Poderes que conoces y no tienes preparados.',
+        'Recall los trae al Loadout pagando lo que marca el Corebook: gratis en un Long Rest, su Recall Cost en Stress en un Short Rest, y en una escena activa además 1 Hope y tu Acción.',
+        'Si el Loadout está lleno, eliges qué Poder pasa al Vault.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.10', date: '2026-11-16', title: 'V2 · Drones según el Corebook: Grado, Módulos y señal',
     sections: [
       { title: 'Montar un dron', items: [

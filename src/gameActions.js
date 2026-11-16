@@ -3,6 +3,8 @@ import { newId } from './persistence.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
+import { cardData } from './cardData.js';
+import { characterCards, playCard, recallPower, costLabel, CARD_KINDS } from './loadoutCards.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
 export function performGameAction(action, store = defaultStore) {
@@ -19,6 +21,31 @@ export function performGameAction(action, store = defaultStore) {
     if (conditions.length > 30) throw new Error('Máximo 30 condiciones por token.');
     store.updateToken(actor.id, { conditions });
     return { actorId: actor.id, conditions };
+  }
+  // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
+  // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
+  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL') {
+    const data = cardData();
+    if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
+    if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
+    const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
+    const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
+    if (action.type === 'CARD_RECALL') {
+      const result = recallPower(actor, data, String(action.name ?? ''), { mode: action.mode, replace: String(action.replace ?? '') });
+      store.updateToken(actor.id, { ...resources(result.token), ...sheet(result.token) });
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Recall`, details: result.summary };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, outcomeTitle: 'RECALL', summary: result.summary, entered: result.entered, left: result.left };
+    }
+    const card = characterCards(actor, data).find(c => c.id === action.cardId);
+    if (!card) throw new Error('Esa carta ya no está en la mano de este personaje.');
+    const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
+    store.updateToken(actor.id, resources(result.token));
+    if (result.fear) store.addFear(result.fear);
+    const details = [result.summary, ...result.notes].join(' ');
+    const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };
+    store.addLog(log);
+    return { id: newId(), actorId: actor.id, log, outcomeTitle: `${CARD_KINDS[card.kind]} · ${costLabel(result.paid)}`.toUpperCase(), card: { id: card.id, name: card.name, kind: card.kind, color: card.color }, roll: result.roll, failed: !!result.failed, notes: result.notes, summary: result.summary, fear: result.fear };
   }
   if (action.type === 'CHECK') {
     const o = action.options || {};

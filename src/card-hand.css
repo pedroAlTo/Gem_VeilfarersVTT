@@ -1,0 +1,59 @@
+/* The card hand: the selected character's stats on the left, its Loadout as 3D cards on the
+   right. Hope, Stress, Effort and Resolve keep the colours the table already uses. */
+.token-quickbar-container.with-hand { left: 16px; transform: none; max-width: calc(100% - 32px); }
+.card-hand { position: absolute; right: 16px; bottom: 0; z-index: 121; width: min(40%, 560px); height: 200px; pointer-events: none; display: flex; flex-direction: column; align-items: flex-end; }
+.card-hand.hidden { display: none; }
+.card-hand-label { pointer-events: auto; display: flex; align-items: center; gap: 10px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #c084fc; padding: 0 6px 6px; }
+.card-hand-vault { font: inherit; letter-spacing: .16em; color: #fde68a; background: rgba(13,4,32,.92); border: 1px solid rgba(253,230,138,.5); padding: 5px 9px; cursor: pointer; }
+.card-hand-vault:hover { border-color: #fde68a; background: rgba(42,11,92,.95); }
+.card-hand-fan { position: relative; flex: 1; width: 100%; perspective: 900px; }
+
+.vf-card { --w: 124px; --h: 174px; --rx: 0deg; --ry: 0deg; --sx: 50%; --sy: 0%; all: unset; box-sizing: border-box; display: block; width: var(--w); height: var(--h); cursor: grab; pointer-events: auto; transform-style: preserve-3d; }
+.card-hand-fan .vf-card { position: absolute; bottom: -58px; left: 50%;
+  transform-origin: 50% 120%;
+  transform: translateX(calc(-50% + var(--offset) * var(--spread))) rotate(calc(var(--offset) * var(--tilt, 4deg))) translateY(calc(var(--offset) * var(--offset) * var(--drop, 3px)));
+  transition: transform .22s cubic-bezier(.2,.9,.3,1.2), filter .2s ease; z-index: calc(10 + var(--i)); }
+.card-hand-fan .vf-card:hover, .card-hand-fan .vf-card:focus-visible { z-index: 60;
+  transform: translateX(calc(-50% + var(--offset) * var(--spread))) translateY(-86px) scale(1.34) rotateX(var(--rx)) rotateY(var(--ry)); }
+.card-hand-fan .vf-card.dragging { opacity: .25; }
+.vf-card-frame { --card-color: #c084fc; position: relative; display: flex; flex-direction: column; gap: 4px; width: 100%; height: 100%; padding: 7px; box-sizing: border-box; overflow: hidden; border-radius: 9px;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--card-color) 26%, #0d0420) 0%, #0d0420 46%, #170638 100%);
+  border: 1px solid color-mix(in srgb, var(--card-color) 70%, #ffffff 0%);
+  box-shadow: 0 10px 26px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.6) inset, 0 0 18px color-mix(in srgb, var(--card-color) 30%, transparent); color: #e2e8f0; text-align: left; }
+.vf-card:hover .vf-card-frame, .vf-card:focus-visible .vf-card-frame { box-shadow: 0 22px 44px rgba(0,0,0,.7), 0 0 0 1px #00f3ff, 0 0 26px rgba(0,243,255,.45); }
+.vf-card-head { display: flex; flex-direction: column; gap: 2px; }
+.vf-card-head em { font: 700 7px/1 system-ui, sans-serif; font-style: normal; letter-spacing: .2em; text-transform: uppercase; color: var(--card-color); }
+.vf-card-head strong { font: 700 11px/1.15 'Chakra Petch', system-ui, sans-serif; letter-spacing: .03em; color: #fff; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.vf-card-art { position: relative; flex: 0 0 46px; border-radius: 5px; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--card-color) 75%, #fff 0%), transparent 62%), radial-gradient(circle at 80% 90%, color-mix(in srgb, var(--card-color) 40%, #6d28d9), #0d0420 72%); border: 1px solid rgba(255,255,255,.12); }
+.vf-card-art i { font-style: normal; font-size: 24px; color: rgba(255,255,255,.92); text-shadow: 0 0 14px var(--card-color); }
+.vf-card-art b { position: absolute; right: 4px; bottom: 3px; font: 700 8px/1 ui-monospace, monospace; color: #fff; background: rgba(13,4,32,.75); padding: 2px 4px; border-radius: 3px; }
+.vf-card-sub { font: 600 7.5px/1.2 system-ui, sans-serif; letter-spacing: .06em; color: #c4b5fd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-card-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.vf-card-chip { font: 700 7.5px/1 ui-monospace, monospace; padding: 3px 4px; border-radius: 3px; background: rgba(255,255,255,.08); color: #e2e8f0; white-space: nowrap; }
+.vf-card-chip.hope { background: rgba(253,230,138,.16); color: #fde68a; } .vf-card-chip.stress { background: rgba(216,180,254,.16); color: #d8b4fe; }
+.vf-card-chip.effort { background: rgba(251,191,36,.16); color: #fbbf24; } .vf-card-chip.resolve { background: rgba(52,211,153,.16); color: #6ee7b7; }
+.vf-card-chip.roll { background: rgba(0,243,255,.12); color: #67e8f9; } .vf-card-chip.rc, .vf-card-chip.free { color: #94a3b8; }
+.vf-card-text { font: 400 7.5px/1.35 system-ui, sans-serif; color: #cbd5e1; overflow: hidden; flex: 1; white-space: pre-line; }
+.vf-card-shine { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s ease; background: radial-gradient(circle at var(--sx) var(--sy), rgba(255,255,255,.34), transparent 46%); mix-blend-mode: screen; }
+.vf-card:hover .vf-card-shine { opacity: 1; }
+.vf-card.unaffordable .vf-card-frame { filter: saturate(.35) brightness(.72); }
+.vf-card.passive .vf-card-frame { border-style: dashed; }
+
+.vf-card-ghost { position: fixed; z-index: 2147483600; pointer-events: none; transform: translate(-50%, -62%) rotate(-5deg) scale(1.08); transition: transform .12s ease; }
+.vf-card-ghost.over-board { transform: translate(-50%, -62%) rotate(0deg) scale(.92); }
+.vf-card-ghost.over-board .vf-card-frame { box-shadow: 0 0 0 2px #00f3ff, 0 0 34px rgba(0,243,255,.7); }
+.card-drop-target { outline: 2px dashed rgba(0,243,255,.55); outline-offset: -6px; }
+
+.card-inspect { display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start; }
+.vf-card-large { --w: 250px; --h: 350px; cursor: default; }
+.vf-card-large .vf-card-frame { padding: 14px; gap: 8px; }
+.vf-card-large .vf-card-head em { font-size: 9px; } .vf-card-large .vf-card-head strong { font-size: 17px; }
+.vf-card-large .vf-card-art { flex-basis: 96px; } .vf-card-large .vf-card-art i { font-size: 46px; } .vf-card-large .vf-card-art b { font-size: 11px; }
+.vf-card-large .vf-card-sub { font-size: 10px; } .vf-card-large .vf-card-chip { font-size: 10px; padding: 4px 6px; }
+.vf-card-large .vf-card-text { font-size: 10.5px; overflow: auto; }
+.card-inspect-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card-inspect-text { color: #e2e8f0; font-size: 13px; line-height: 1.55; margin: 0; max-height: 300px; overflow: auto; }
+.card-vault { display: flex; flex-direction: column; gap: 10px; } .card-vault-preview { display: flex; justify-content: center; }
+@media (max-width: 1024px) { .token-quickbar-container.with-hand { max-width: calc(100% - 24px); bottom: 150px; } .card-hand { width: calc(100% - 32px); height: 150px; } .vf-card { --w: 104px; --h: 146px; } .card-inspect { grid-template-columns: 1fr; justify-items: center; } }
+@media (prefers-reduced-motion: reduce) { .card-hand-fan .vf-card, .vf-card-ghost { transition: none; } }

@@ -248,6 +248,23 @@ export class DiceRollerSidebar {
     this.selectTrait(this.selectedTraitId, { rollNow });
   }
 
+  // Sets up the roll a card asks for (Trait and DC) and leaves it one click away.
+  prepareCheck({ tokenId, traitId, dc }) {
+    const actor = store.state.tokens.find(t => t.id === tokenId);
+    if (!actor) return false;
+    if (store.state.selectedTokenId !== tokenId) store.update({ selectedTokenId: tokenId });
+    this.syncWithSelectedToken();
+    window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
+    this.container.querySelector('#tab_check_btn')?.click();
+    this.selectTrait(traitId, { rollNow: false });
+    const select = this.container.querySelector('#dice_dc_select');
+    if (select && Number.isFinite(dc)) {
+      if (![...select.options].some(o => Number(o.value) === dc)) { const option = document.createElement('option'); option.value = String(dc); option.textContent = `DC ${dc}`; select.append(option); }
+      select.value = String(dc);
+    }
+    return true;
+  }
+
   prepareWeapon(tokenId, weaponId) {
     const actor = store.state.tokens.find(t => t.id === tokenId);
     if (!actor || !store.canEditToken(tokenId)) { notify('Selecciona uno de tus tokens asignados.'); return false; }
