@@ -739,12 +739,12 @@ async function setupSessionPersistence() {
     const { account } = await import('./cloudAccount.js');
     const invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
     account.subscribe(user => {
-      if (!user || user.isNetlify || rooms.room) return;
+      if (!user || rooms.room) return;
       if (invitation) openSessionLobby(invitation);
       else rooms.restore().catch(error => notify(error.message, 'error'));
     });
     if (invitation) { openSessionLobby(invitation); return; }
-    if (account.user && !account.user.isNetlify) rooms.restore().catch(error => { notify(error.message, 'error'); openSessionLobby(); });
+    if (account.user) rooms.restore().catch(error => { notify(error.message, 'error'); openSessionLobby(); });
     return;
   }
   const searchParams = new URLSearchParams(location.search);

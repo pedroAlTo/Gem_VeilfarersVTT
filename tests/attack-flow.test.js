@@ -71,7 +71,11 @@ test('a melee weapon only attacks at Melee; a ranged weapon beyond its band atta
   assert.equal(tooFar.allowed, false); assert.match(tooFar.reason, /fuera de Melee/);
   assert.deepEqual([rangeCheck({ range: 'Close' }, 'Close').disadvantage, rangeCheck({ range: 'Close' }, 'Melee').disadvantage, rangeCheck({ range: 'Close' }, 'Far').disadvantage, rangeCheck({ range: 'Close' }, 'Extreme').disadvantage], [false, false, true, true]);
   assert.equal(rangeCheck({ range: 'Close' }, 'Far').allowed, true);
-  assert.deepEqual(rangeCheck(null, 'Far'), { allowed: true, disadvantage: false, reach: '', band: 'Far', reason: '' });
+  // Without a weapon the attack is an unarmed strike: Melee only.
+  assert.equal(rangeCheck(null, 'Melee').allowed, true);
+  const unarmed = rangeCheck(null, 'Far');
+  assert.deepEqual([unarmed.allowed, unarmed.reach], [false, 'Melee']); assert.match(unarmed.reason, /Sin arma el ataque es cuerpo a cuerpo/);
+  assert.equal(rangeCheck({ name: 'Arma inventada', range: '' }, 'Far').allowed, true, 'a weapon with no known range is not limited');
   assert.equal(weaponTraitId({ trait: 'Finesse' }), 'finesse'); assert.equal(weaponTraitId({ trait: 'Attack +2' }), '');
   assert.deepEqual(netEdge(true, true), { advantage: false, disadvantage: false });
 });
@@ -181,4 +185,109 @@ test('the reported case: a Close pistol with no Range on the sheet, 23 squares a
   assert.match(detail, /objetivo a Extreme \(46\.0 m, 23\.0 casillas\) · alcance del arma Close/);
   assert.match(detail, /línea de tiro bloqueada/);
   assert.match(detail, /más allá del alcance del arma \(Close\): Desventaja/);
+});
+
+// A stand-in for the 3D dice: it records what is thrown and answers with the queued faces.
+function table3D(queue) {
+  const thrown = [], shown = [];
+  window.VFDice3D = { roll: async groups => { thrown.push(groups.map(g => `${g.qty}d${g.sides}:${g.role}`)); return { values: groups.flatMap(g => Array.from({ length: g.qty }, () => queue.shift())) }; }, showResults: data => shown.push(data) };
+  store.state.dice3d = true;
+  return { thrown, shown };
+}
+const with3D = (dice, run) => { dice.is3D = true; dice.attackToDamagePause = 0; return run().finally(() => { delete window.VFDice3D; }); };
+
+test('Disadvantage throws its d6 on the table, subtracts the face shown and reports it; the damage dice are thrown in 3D too', async () => {
+  const { dice, q } = scene({ weapon: { trait: 'Finesse', range: 'Close', damage: '1d8+1', damageMode: 'base' }, attacker: { proficiency: 2 }, squares: 6 });
+  const { thrown, shown } = table3D([9, 7, 4, /* damage */ 6, 3]);
+  const result = await with3D(dice, () => dice.executeAttack());
+  assert.deepEqual(thrown[0], ['1d12:Hope', '1d12:Fear', '1d6:Disadvantage']);
+  assert.equal(result.total, 15, '9 + 7 + Finesse 3 − d6 [4]');
+  assert.match(q('#atk_detail_text').textContent, /Hope \[9\] \+ Fear \[7\] \+ 3 − d6 \[4\] \(Desventaja\) = 15/);
+  assert.deepEqual(shown[0].rolls.map(r => [r.value, r.role]), [[9, 'Hope'], [7, 'Fear'], [4, 'Disadvantage']]);
+  assert.equal(shown[0].modifiers, 'Hope [9] + Fear [7] + 3 − d6 [4] (Desventaja) = 15', 'the whole d6 is written out, never folded into one Mod figure');
+  assert.equal(q('#cube_extra_num').textContent, '4'); assert.equal(q('#label_extra_die').textContent, 'DIS (-d6)');
+  assert.match(store.state.logs.find(l => l.type === 'CHECK').details, /\+ 3 − d6 \[4\] \(Desventaja\) = 15 vs DC/);
+  // Proficiency 2 on a 1d8+1 weapon: two d8 on the table, and their faces are the damage.
+  assert.deepEqual(thrown[1], ['2d8:Damage']);
+  assert.equal(q('#dmg_raw_val').textContent, '10', '6 + 3 + 1');
+  assert.deepEqual(shown[1].rolls.map(r => [r.value, r.sides]), [[6, 8], [3, 8]]); assert.equal(shown[1].total, 10);
+});
+
+test('an adversary throws its d20 and the Disadvantage d6 in 3D; a critical maximises damage without rolling', async () => {
+  const { dice, q } = scene({ attacker: { isPlayer: false, attackModifier: 2 } });
+  q('#dmg_formula').value = '2d6+1'; q('#dice_disadvantage').checked = true;
+  const { thrown, shown } = table3D([15, 3, /* damage */ 2, 5]);
+  const hit = await with3D(dice, () => dice.executeAttack());
+  assert.deepEqual(thrown, [['1d20:Attack', '1d6:Disadvantage'], ['2d6:Damage']]);
+  assert.equal(hit.total, 14, '15 + 2 − 3'); assert.match(q('#atk_detail_text').textContent, /d20 \[15\] \+ 2 − d6 \[3\] = 14/);
+  assert.equal(shown[0].outcome, 'IMPACTO'); assert.equal(q('#dmg_raw_val').textContent, '8');
+  q('#dice_disadvantage').checked = false;
+  const second = table3D([20]);
+  const crit = await with3D(dice, () => dice.executeAttack());
+  assert.equal(crit.critical, true); assert.deepEqual(second.thrown, [['1d20:Attack']]); assert.equal(q('#dmg_raw_val').textContent, '13');
+});
+
+test('a player Critical throws twice the damage pool, Proficiency included; the Resolve die on the table is the one that counts', async () => {
+  const { dice, q, a } = scene({ weapon: { trait: 'Finesse', range: 'Close', damage: '2d8+2', damageMode: 'base' }, attacker: { proficiency: 3, path: 'Sleeping', level: 1, resolve: { current: 2, max: 2, dieType: 'd4' } } });
+  q('#dice_use_resolve').checked = true;
+  const { thrown } = table3D([5, 5, 3, /* 8d8 */ 1, 2, 3, 4, 5, 6, 7, 8]);
+  const result = await with3D(dice, () => dice.executeAttack());
+  assert.deepEqual(thrown, [['1d12:Hope', '1d12:Fear', '1d4:Resolve'], ['8d8:Damage']]);
+  assert.equal(result.critical, true); assert.equal(result.total, 16, '5 + 5 + Finesse 3 + Resolve [3]');
+  assert.equal(q('#dmg_raw_val').textContent, '38', '36 on the dice + 2');
+  assert.equal(a.path, 'Sleeping');
+});
+
+test('damage follows the sheet: levelling up refreshes Proficiency and Honed Edge, a typed value is kept', async () => {
+  const { applyLevelUp } = await import('../src/advancement.js');
+  const { weaponPreset, damageDicePools, tokenInventory } = await import('../src/equipment.js');
+  const { dice, q, a, live } = scene({ weapon: { damage: '1d8', damageMode: 'base' }, attacker: { path: 'Sleeping', level: 1, proficiency: 1, honedEdgeBonus: 0, resolve: { current: 2, max: 2, dieType: 'd4' } } });
+  assert.deepEqual([q('#dmg_proficiency').value, q('#dmg_honed').value], ['1', '0']);
+  // Level 2 is a Tier Achievement: Proficiency 2; Honed Edge is level − 1.
+  store.updateToken(a.id, applyLevelUp(live(a.id), { picks: [{ id: 'hp' }, { id: 'stress' }] }).token);
+  assert.deepEqual([live(a.id).proficiency, live(a.id).honedEdgeBonus], [2, 1]);
+  q('#dmg_is_direct').checked = true; faces([[4, 8], [6, 8]]);
+  dice.executeDamageCalc();
+  assert.deepEqual([q('#dmg_proficiency').value, q('#dmg_honed').value], ['2', '1']);
+  assert.equal(q('#dmg_raw_val').textContent, '11', '2d8 [4, 6] + Honed Edge 1');
+  q('#dmg_proficiency').value = 4; store.updateToken(a.id, { proficiency: 3 });
+  dice.executeDamageCalc(); assert.equal(q('#dmg_proficiency').value, '4', 'a value typed by hand is not overwritten');
+  // Proficiency goes to one listed die only (ch. 10): 2d8+2 at Proficiency 3 is 4d8+2.
+  assert.deepEqual(damageDicePools('2d8+2', { proficiency: 3 }), [{ sides: 8, count: 4 }]);
+  assert.deepEqual(damageDicePools('1d8+1d4', { proficiency: 2, isCritical: true }), [{ sides: 8, count: 4 }, { sides: 4, count: 2 }]);
+  assert.deepEqual(damageDicePools('', { proficiency: 2, diceCount: 1, diceSides: 4 }), [{ sides: 4, count: 2 }]);
+  assert.deepEqual(damageDicePools('2d8', { isKeeperCritical: true }), []);
+  assert.deepEqual(weaponPreset({ isPlayer: true, path: 'Sleeping', level: 4, proficiency: 2 }, { damage: 'd8', damageMode: 'base' }), { formula: 'd8', proficiency: 2, honed: 3 });
+  // A sheet from another tool with a frozen "final" damage returns to its base dice on level-up.
+  const sheet = { isPlayer: true, path: 'Awakened', level: 1, proficiency: 1, hp: { current: 6, max: 6, majorThreshold: 3, severeThreshold: 6 }, stress: { current: 0, max: 6 }, sourceCharacter: { document: { fields: { wpri_name: 'Rifle', wpri_dmg: 'd10+1', wpri_dmg_final: '1d10+1' } } } };
+  assert.equal(tokenInventory(sheet).weapons[0].damageMode, 'final');
+  const levelled = applyLevelUp(sheet, { picks: [{ id: 'hp' }, { id: 'stress' }] }).token, rifle = tokenInventory(levelled).weapons[0];
+  assert.deepEqual([rifle.damage, rifle.damageMode, weaponPreset(levelled, rifle).proficiency], ['d10+1', 'base', 2]);
+});
+
+test('with no weapon the attack is unarmed: it cannot be made beyond Melee', async () => {
+  const far = scene({ squares: 6 });
+  const blocked = await far.dice.executeAttack();
+  assert.deepEqual([blocked.hit, blocked.blocked], [false, true]);
+  assert.equal(far.q('#atk_outcome_val').textContent, 'FUERA DE ALCANCE');
+  assert.match(far.q('#atk_detail_text').textContent, /Sin arma el ataque es cuerpo a cuerpo/);
+  assert.equal(far.q('#damage_result_display').style.display, 'none');
+});
+
+test('a roll is announced once: the golden card of the results stack, never a second overlay', async () => {
+  const { readFileSync } = await import('node:fs');
+  const dice3d = readFileSync(new URL('../public/assets/3d-dice/vf-dice3d.js', import.meta.url), 'utf8');
+  assert.ok(!/display\.showResults\(/.test(dice3d), 'the bottom results overlay is no longer drawn');
+  assert.match(dice3d, /function pushResultCard\(/); assert.match(dice3d, /stack\.append\(card\)/, 'cards are added in arrival order');
+  // The table callout and the 3D result feed the same stack, so two rolls show two cards.
+  const pushed = [], sent = [];
+  window.VFDice3D = { pushResultCard: data => pushed.push(data), showResults: data => pushed.push(data) };
+  const { VeilfarersDiceEngine3D } = await import('../src/vtt-integration/modules/diceEngine3D.js').catch(() => ({}));
+  const { dice } = scene();
+  network.broadcast = message => sent.push(message);
+  dice.announceRoll({ tokenName: 'Maren', total: 12, modifiers: 'd20 [10] + 2 = 12' }, { rolled3D: true });
+  dice.announceRoll({ tokenName: 'Pirata', total: 7, modifiers: 'd20 [5] + 2 = 7' }, { rolled3D: true, secret: true });
+  assert.deepEqual(pushed.map(c => c.tokenName), ['Maren', 'Pirata']);
+  assert.deepEqual(sent.filter(m => m.type === 'DICE_ROLL').map(m => m.result.tokenName), ['Maren'], 'a secret roll is not sent to the table');
+  delete window.VFDice3D; void VeilfarersDiceEngine3D;
 });

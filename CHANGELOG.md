@@ -1,10 +1,143 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.7.1**.
-Paquete: `VeilFarers_VTT_v2.7.1.zip`.
+Versión actual del VTT: **v2.8.9**.
+Paquete: `VeilFarers_VTT_v2.8.9.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.9] — 2026-11-16
+
+V2 · Documentación al día
+
+### Documentación
+
+- README.md, PRUEBAS_LOCALES.md y FIREBASE_SETUP.md describen la V2: lobby y biblioteca de la cuenta, creador, subida de nivel, ataque completo, alcances, daño en 3D, panel único de resultados y niebla con degradado. Seguían indicando v1.4.0.
+- Se retiran de la documentación las instrucciones de Netlify Identity.
+- La versión que muestran README.md y PRUEBAS_LOCALES.md se escribe sola al generar el changelog, y la comprobación de versión falla si se quedan atrás.
+
+## [2.8.8] — 2026-11-16
+
+V2 · Luces y niebla de guerra con degradado
+
+### Visión y luces
+
+- La visión y las luces en zona abierta vuelven a ser redondas: antes salían como un cuadrado de lados rectos.
+- La visión se desvanece en el último tramo de su alcance en lugar de acabar en una línea.
+- Los bordes de la niebla de guerra y de las sombras de las luces se dibujan difuminados. Los muros siguen cortando la visión.
+- La zona explorada que se recupera al cargar la partida ya no muestra escalones marcados.
+
+## [2.8.7] — 2026-11-16
+
+V2 · 72 retratos canonicos por Ancestry, Genero y Tipologias con selector interactivo y correccion de anatomia alienigena
+
+### Tokens y Retratos Canonicos
+
+- Correccion rigurosa de anatomia segun el lore de Alien Species y Corebook: Kryx es ahora un feroz licantropo lupino humanoide (hombre lobo) con pelaje shadowsteel y crestas cian bioluminiscentes; Kryllian es un insectoide esbelto de cuatro brazos tipo mantis religiosa; Rift Spinner es estrictamente no humanoide, un aracnido cristalino prismatico de 8 extremidades.
+- 72 retratos dedicados cubriendo las 9 ancestries x 2 generos x 4 tipologias canonicas: Guerrero / Vanguard, Erudito / Mago, Picaro / Explorador y Tecnico / Cientifico.
+- Selector interactivo de tipologia en el Creador de Personajes (Paso 9: Detalles) para alternar en vivo entre las 4 variantes de rol con previsualizacion inmediata.
+- Asignacion automatica por clase o rol al importar personajes JSON (Jarana como Vanguard Rift Spinner femenina, Brok como Soldier Kryx masculino, Lucy Fer como Mystic femenina, Miles como Diplomat/Tech masculino).
+
+### Importacion de Personajes
+
+- Compatibilidad universal e insensible a mayusculas para cualquier JSON generado por Veilfarers Character Creator o herramientas legacy.
+- Deteccion automatica e inferencia de formato basada en campos estructurales, garantizando que ninguna ficha valida sea rechazada con formato no reconocido.
+
+## [2.8.6] — 2026-11-16
+
+V2 · Retratos canónicos para cada Ancestry por género y asignación automática
+
+### Tokens y Retratos
+
+- Galería de 18 retratos de tokens canónicos cubriendo las 9 ancestries oficiales de Veilfarers (Ailuran, Bloomstrider, Celestiari, Ethereal, Human, Kryllian, Kryx, Rift Spinner y Synthetic) con variantes femenina y masculina en alta resolución.
+- Asignación automática e inteligente de avatar al importar personajes o crear nuevos actores según su ancestry, pronombres y morfología de nombre.
+- Vista previa en tiempo real del retrato asignado en el asistente de creación de personajes (Paso 9: Detalles) y en las tarjetas de ingesta de fichas JSON.
+- Mantiene los retratos personalizados existentes sin sobreescribir imágenes configuradas manualmente.
+
+## [2.8.5] — 2026-11-16
+
+V2 · Compatibilidad con fichas exportadas desde Veilfarers Character Creator
+
+### Importación de Personajes
+
+- Admite fichas creadas con el creador original Veilfarers Character Creator (versiones 2.41, 2.74 y gama 2.x) además del formato de Character Sheet y VTT Actor.
+- Detección automática e inferencia de senda (Sleeping vs Awakened) cuando el campo chosen_path viene vacío o sin indicar en fichas del creador.
+- Extracción robusta de atributos firmados (+1, -1, +0), umbrales, bonificador de Honed Edge, dados de Resolve y armadura.
+- Carga completa de armamento, equipo, notas de trasfondo, aumentos y experiencias activas para los nuevos personajes importados.
+- Validación de actores en mesa y sincronización de red habilitadas para fuentes de Character Creator sin rechazos de esquema.
+
+## [2.8.4] — 2026-11-16
+
+V2 · Un solo panel de resultados, con las tiradas de toda la mesa
+
+### Resultados de tiradas
+
+- Cada tirada se anuncia una sola vez: la tarjeta dorada de la derecha y la línea del chat. Desaparece el marcador inferior que repetía el resultado.
+- El panel de la derecha apila las tiradas de todos, en el orden en que llegan: si varias personas lanzan a la vez se ven todos los resultados (hasta 6, 20 segundos cada uno; un clic cierra la tarjeta).
+- El ataque de un adversario y el daño también llegan como tarjeta al resto de la mesa, salvo que la tirada sea secreta del Keeper.
+
+## [2.8.3] — 2026-11-16
+
+V2 · El d6 de Desventaja se ve entero y sin arma solo se ataca en Melee
+
+### Tiradas
+
+- El aviso de la tirada ya no resume todo en un único "Mod": escribe la suma completa, por ejemplo "Hope [2] + Fear [4] + 2 − d6 [6] (Desventaja) = 2". Antes el d6 quedaba mezclado con el Trait y parecía que solo se restaba una parte.
+- El mismo desglose aparece en el panel, el chat y el registro, también con Ventaja y con el dado de Resolve.
+
+### Ataque
+
+- Sin arma el ataque es cuerpo a cuerpo: no se puede atacar a un objetivo fuera de Melee.
+
+## [2.8.2] — 2026-11-16
+
+V2 · Indicador de Desventaja en botón de acción, Proficiency en HUD y robustez de audio Web Audio
+
+### Tiradas y Dados
+
+- Los botones de selección de tirada (DIS / NORM / ADV) actualizan de inmediato la etiqueta del botón principal de acción con [DIS -1d6] y [ADV +1d6].
+- El dado d6 de Desventaja en 3D utiliza el tema canónico de dados de miedo (vfFear).
+- El HUD quickbar de tokens de personajes jugadores (PCs) ahora muestra explícitamente Evasion y Proficiency junto a los puntos de Esperanza/Esfuerzo.
+- La inicialización del sintetizador Web Audio API es segura ante navegadores o entornos sin AudioContext.
+
+## [2.8.1] — 2026-11-16
+
+V2 · Un solo acceso: la cuenta de la VTT
+
+### Cuenta
+
+- Se retira el acceso con Netlify Identity. Se entra con correo y contraseña, con Google o como invitado en local.
+- La pantalla de cuenta y los avisos de error ya no ofrecen Netlify Identity como alternativa.
+- La página deja de cargar el widget externo de Netlify Identity.
+- Las salas, los personajes, las escenas y las notas se guardan siempre en la cuenta de la VTT.
+
+## [2.8.0] — 2026-11-16
+
+V2 · Dados 3D en ataque y daño, Proficiency al día y biblioteca privada en el lobby
+
+### Ataque
+
+- La Desventaja (y la Ventaja) tira su d6 en la mesa y el resultado se resta (o suma) a la vista: aparece en el panel, en el aviso de la tirada, en el chat y en el registro, separado del resto de modificadores.
+- El ataque de un adversario tira su d20 en 3D, con el d6 de Ventaja o Desventaja cuando toca.
+- El dado de Resolve que cae en la mesa es el que cuenta: antes se tiraba en 3D pero se usaba otro valor.
+
+### Daño
+
+- Los dados de daño se tiran en 3D y sus caras son el daño: tantos dados como diga el arma con su Proficiency, y el doble en un Crítico de jugador.
+- Un Crítico del Keeper sigue siendo daño máximo, sin tirar.
+- Con más de 40 dados o con los dados 3D desactivados, el daño se calcula como antes.
+
+### Proficiency y Honed Edge
+
+- Al subir de nivel, el panel de daño usa la Proficiency nueva sin tener que volver a preparar el arma. Un valor escrito a mano se respeta.
+- Honed Edge de un Sleeping es su nivel − 1 y se actualiza al subir de nivel.
+- Una ficha importada con el daño "final" ya calculado vuelve al daño base del arma al subir de nivel, para que Proficiency y Honed Edge se apliquen con su valor actual.
+
+### Lobby
+
+- El panel de personajes del lobby es ahora "Mis personajes": la biblioteca privada de tu cuenta. Se pueden crear, importar desde JSON, descargar y borrar.
+- El almacén compartido anterior deja de usarse; sus datos no se han borrado.
+- En modo invitado no hay biblioteca: se puede crear un personaje y descargar su ficha.
 
 ## [2.7.1] — 2026-11-15
 

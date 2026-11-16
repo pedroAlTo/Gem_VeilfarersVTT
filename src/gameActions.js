@@ -1,6 +1,6 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
-import { rollVeilfarersCheck, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
 const lastRoll = new Map();
@@ -56,6 +56,7 @@ export function performGameAction(action, store = defaultStore) {
       forcedHope: o.forcedHope,
       forcedFear: o.forcedFear,
       forcedAdv: o.forcedAdv,
+      forcedResolve: o.forcedResolve,
     });
     const patch = { pendingCheckBonus: 0, pendingAdvantage: false };
     if (!player) {
@@ -103,7 +104,7 @@ export function performGameAction(action, store = defaultStore) {
       ...(secret ? { visibility: 'keeper' } : {}),
       type: 'CHECK',
       title: `${actor.name}: ${result.outcomeTitle}`,
-      details: `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}. ${result.pathPayout}`,
+      details: `${checkMath(result)} vs DC ${result.dc}. ${result.pathPayout}`,
       resultType: result.resultType,
     };
     store.addLog(log);

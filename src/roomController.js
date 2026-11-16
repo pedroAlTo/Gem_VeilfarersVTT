@@ -301,7 +301,7 @@ export class RoomController {
 }
 export const rooms = new RoomController();
 account.subscribe(user => {
-  if (rooms.room && (!user || user.isNetlify || user.uid !== rooms.service.uid)) rooms.leave({ save: false, preserveRemembered: true }).catch(error => rooms.fail(error));
+  if (rooms.room && (!user || user.uid !== rooms.service.uid)) rooms.leave({ save: false, preserveRemembered: true }).catch(error => rooms.fail(error));
 });
 if (typeof window !== 'undefined') window.addEventListener('pagehide', () => {
   if (rooms.isKeeper) rooms.service.release(rooms.room.id, rooms.epoch).catch(() => {});

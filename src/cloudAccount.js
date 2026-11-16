@@ -38,34 +38,24 @@ export function cleanPreferences(values = {}) {
 export class CloudAccount {
   constructor() {
     this.user = null; this.listeners = new Set(); this.epoch = 0;
-    this.firebaseUser = null; this.netlifyUser = null;
-    try { this.preferredProvider = localStorage.getItem('veil_auth_provider'); } catch {}
+    this.firebaseUser = null;
   }
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { for (const fn of this.listeners) fn(this.user); }
-  selectProvider(provider) {
-    this.preferredProvider = provider;
-    try { localStorage.setItem('veil_auth_provider', provider); } catch {}
-  }
   publishUser() {
     if (this.signingOut) return;
-    const user = this.preferredProvider === 'netlify'
-      ? this.netlifyUser || this.firebaseUser : this.firebaseUser || this.netlifyUser;
-    const changed = this.user?.uid !== user?.uid || !!this.user?.isNetlify !== !!user?.isNetlify || this.user?.displayName !== user?.displayName || this.user?.email !== user?.email;
+    const user = this.firebaseUser;
+    const changed = this.user?.uid !== user?.uid || this.user?.displayName !== user?.displayName || this.user?.email !== user?.email;
     this.user = user;
     if (changed) { this.epoch++; this.emit(); }
   }
-  setFirebaseUser(user, preferred = false) {
+  setFirebaseUser(user) {
     this.firebaseUser = user;
-    if (preferred && user) this.selectProvider('firebase');
     this.publishUser();
   }
   async restoreSession() {
-    if (LOCAL_ONLY) return;
-    // Neither provider's initial signed-out event may erase the other's session.
-    const results = await Promise.allSettled([this.initNetlifyIdentity(), ...(cloudConfigured ? [this.init()] : [])]);
-    const failed = results.find(r => r.status === 'rejected');
-    if (failed && !this.user) throw failed.reason;
+    if (LOCAL_ONLY || !cloudConfigured) return;
+    await this.init();
   }
   async init() {
     if (!cloudConfigured) throw new Error(LOCAL_ONLY ? 'Cloud features are disabled in local test mode.' : 'Firebase setup is required. Follow FIREBASE_SETUP.md, then restart the app.');
@@ -99,17 +89,6 @@ export class CloudAccount {
     })().catch(error => { this.loading = null; throw error; });
     return this.loading;
   }
-  setNetlifyUser(user, preferred = true) {
-    this.netlifyUser = user ? {
-      uid: user.id || user.email,
-      email: user.email || '',
-      displayName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Operative',
-      isNetlify: true,
-      netlifyUser: user
-    } : null;
-    if (preferred && user) this.selectProvider('netlify');
-    this.publishUser();
-  }
   async signIn(email, password, { create = false, name = '', remember = true } = {}) {
     await this.init();
     const a = this.authAPI;
@@ -128,7 +107,6 @@ export class CloudAccount {
         provider.setCustomParameters({ prompt: 'select_account' });
       }
       if (useRedirect) {
-        this.selectProvider('firebase');
         await a.signInWithRedirect(this.auth, provider);
         return null;
       }
@@ -136,81 +114,7 @@ export class CloudAccount {
       this.setFirebaseUser(credential.user, true);
       return credential.user;
     }
-    return this.signInWithNetlify('google');
-  }
-  bindNetlifyIdentity(ni) {
-    if (this.netlifyIdentity !== ni) {
-      for (const [name, fn] of this.netlifyBindings || []) this.netlifyIdentity?.off(name, fn);
-      this.netlifyIdentity = ni;
-      this.netlifyBindings = [
-        ['init', user => this.setNetlifyUser(user, false)],
-        ['login', user => this.setNetlifyUser(user, true)],
-        ['logout', () => this.setNetlifyUser(null, false)],
-      ];
-      for (const [name, fn] of this.netlifyBindings) ni.on(name, fn);
-      // The script may have completed its automatic init before the app subscribed.
-      try { this.setNetlifyUser(ni.currentUser(), false); } catch {}
-      try { ni.init(); } catch {}
-    }
-    try { this.setNetlifyUser(ni.currentUser(), false); } catch {}
-    return ni;
-  }
-  async initNetlifyIdentity() {
-    if (typeof window === 'undefined') return null;
-    if (window.netlifyIdentity) return this.bindNetlifyIdentity(window.netlifyIdentity);
-    if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent)) return null;
-    if (this.netlifyLoading) return this.netlifyLoading;
-    this.netlifyLoading = new Promise((resolve) => {
-      const ready = () => { clearTimeout(timer); resolve(window.netlifyIdentity ? this.bindNetlifyIdentity(window.netlifyIdentity) : null); };
-      const timer = setTimeout(ready, 2000);
-      const existing = document.querySelector('script[src*="netlify-identity-widget"]');
-      if (existing) {
-        existing.addEventListener('load', ready, { once: true });
-        existing.addEventListener('error', ready, { once: true });
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://identity.netlify.com/v1/netlify-identity-widget.js';
-      script.async = true;
-      script.onload = ready;
-      script.onerror = ready;
-      document.head.appendChild(script);
-    }).finally(() => { this.netlifyLoading = null; });
-    return this.netlifyLoading;
-  }
-  async signInWithNetlify(provider = '') {
-    const ni = await this.initNetlifyIdentity();
-    if (!ni) throw new Error('Netlify Identity no está disponible en este entorno.');
-    const existing = ni.currentUser();
-    if (existing) { this.setNetlifyUser(existing, true); return this.user; }
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const cleanup = () => { ni.off('login', onLogin); ni.off('close', onClose); ni.off('error', onError); };
-      const onLogin = user => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        this.setNetlifyUser(user);
-        try { ni.close(); } catch {}
-        resolve(this.user);
-      };
-      const onClose = () => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(new Error('Acceso con Netlify Identity cerrado o cancelado.'));
-      };
-      const onError = err => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(err);
-      };
-      ni.on('login', onLogin);
-      ni.on('close', onClose);
-      ni.on('error', onError);
-      try { ni.open('login'); } catch (error) { onError(error); }
-    });
+    throw new Error('El acceso con Google necesita la configuración de Firebase.');
   }
   async resetPassword(email) { await this.init(); await this.authAPI.sendPasswordResetEmail(this.auth, email.trim()); }
   async signOut() {
@@ -218,9 +122,7 @@ export class CloudAccount {
     this.signingOut = true;
     try {
       if (this.authAPI && this.auth) await this.authAPI.signOut(this.auth);
-      const ni = this.netlifyIdentity || (typeof window !== 'undefined' && window.netlifyIdentity);
-      if (ni) await ni.logout();
-      this.firebaseUser = null; this.netlifyUser = null;
+      this.firebaseUser = null;
     } finally {
       this.signingOut = false;
       this.publishUser();
@@ -231,7 +133,6 @@ export class CloudAccount {
   }
   async identity() {
     if (this.user?.uid) return this.user.uid;
-    if (this.user?.isNetlify) return this.user.uid;
     await this.init();
     if (!this.user) {
       if (this.authAPI?.signInAnonymously && this.auth) {
@@ -248,12 +149,6 @@ export class CloudAccount {
     return this.user.uid;
   }
   async list(kind) {
-    if (this.user?.isNetlify) {
-      try {
-        const stored = localStorage.getItem(`veil_${kind}_${this.user.uid}`);
-        return stored ? JSON.parse(stored) : [];
-      } catch { return []; }
-    }
     const uid = await this.identity(), epoch = this.epoch, d = this.dbAPI;
     try {
       const result = await d.getDocsFromServer(d.collection(this.db, 'users', uid, kind));
@@ -289,15 +184,6 @@ export class CloudAccount {
     const id = existing?.id || newId();
     const entry = { id, key, name: token.name.slice(0, 200), payload, updatedAt: Date.now() };
 
-    if (this.user?.isNetlify) {
-      try {
-        const list = (await this.list('characters')).filter(c => c.id !== id);
-        list.unshift(entry);
-        localStorage.setItem(`veil_characters_${uid}`, JSON.stringify(list));
-      } catch {}
-      return id;
-    }
-
     try {
       const d = this.dbAPI;
       await d.setDoc(d.doc(this.db, 'users', uid, 'characters', id), entry);
@@ -319,13 +205,6 @@ export class CloudAccount {
   }
   async removeCharacter(id) {
     const uid = await this.identity();
-    if (this.user?.isNetlify) {
-      try {
-        const list = (await this.list('characters')).filter(c => c.id !== id);
-        localStorage.setItem(`veil_characters_${uid}`, JSON.stringify(list));
-      } catch {}
-      return;
-    }
     try {
       await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'characters', id));
     } catch (err) {
@@ -363,15 +242,6 @@ export class CloudAccount {
       updatedAt: Date.now()
     };
 
-    if (this.user?.isNetlify) {
-      try {
-        const list = (await this.list('scenes')).filter(s => s.id !== id);
-        list.unshift(entry);
-        localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
-      } catch {}
-      return id;
-    }
-
     try {
       const d = this.dbAPI;
       await d.setDoc(d.doc(this.db, 'users', uid, 'scenes', id), entry);
@@ -394,13 +264,6 @@ export class CloudAccount {
   }
   async removeScene(id) {
     const uid = await this.identity();
-    if (this.user?.isNetlify) {
-      try {
-        const list = (await this.list('scenes')).filter(s => s.id !== id);
-        localStorage.setItem(`veil_scenes_${uid}`, JSON.stringify(list));
-      } catch {}
-      return;
-    }
     try {
       await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'scenes', id));
     } catch (err) {
@@ -419,7 +282,6 @@ export class CloudAccount {
   async saveNote(roomId, note) {
     const uid = await this.identity(), entry = noteEntry(roomId, note);
     const local = () => this.cacheNotes(uid, list => [entry, ...list.filter(n => n.id !== entry.id)]);
-    if (this.user?.isNetlify) { await local(); return entry; }
     try {
       await this.dbAPI.setDoc(this.dbAPI.doc(this.db, 'users', uid, 'notes', entry.id), entry);
     } catch (err) {
@@ -431,22 +293,18 @@ export class CloudAccount {
   async removeNote(id) {
     const uid = await this.identity();
     const local = () => this.cacheNotes(uid, list => list.filter(n => n.id !== id));
-    if (this.user?.isNetlify) return local();
     try { await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'notes', id)); }
     catch (err) { if (err?.code !== 'permission-denied') throw err; await local(); }
   }
   decodeCharacter(row) { return portableCharacter(parseCharacterJSON(row.payload).token); }
   async savePreferences(values) {
     const cleaned = cleanPreferences(values), uid = await this.identity(), epoch = this.epoch;
-    const cacheKey = `veil_user_preferences_${this.user?.isNetlify ? 'netlify' : 'firebase'}_${uid}`;
+    const cacheKey = `veil_user_preferences_firebase_${uid}`;
     try {
       localStorage.setItem(cacheKey, JSON.stringify(cleaned));
       localStorage.setItem('veil_user_preferences_' + uid, JSON.stringify(cleaned));
     } catch {}
 
-    if (this.user?.isNetlify) {
-      return;
-    }
     const d = this.dbAPI;
     try {
       await d.setDoc(d.doc(this.db, 'users', uid, 'settings', 'preferences'), cleaned);
@@ -469,13 +327,7 @@ export class CloudAccount {
   }
   async loadPreferences() {
     const uid = await this.identity(), epoch = this.epoch;
-    const cacheKey = `veil_user_preferences_${this.user?.isNetlify ? 'netlify' : 'firebase'}_${uid}`;
-    if (this.user?.isNetlify) {
-      try {
-        const saved = localStorage.getItem(cacheKey) || localStorage.getItem('veil_user_preferences_' + uid);
-        return saved ? cleanPreferences(JSON.parse(saved)) : {};
-      } catch { return {}; }
-    }
+    const cacheKey = `veil_user_preferences_firebase_${uid}`;
     try {
       const d = this.dbAPI;
       const doc = await d.getDocFromServer(d.doc(this.db, 'users', uid, 'settings', 'preferences'));

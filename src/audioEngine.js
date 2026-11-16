@@ -9,12 +9,17 @@ class AudioEngine {
 
   init() {
     if (!this.ctx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioContext();
+      const AudioCtx = typeof window !== 'undefined' ? (window.AudioContext || window.webkitAudioContext) : null;
+      if (typeof AudioCtx === 'function') {
+        try {
+          this.ctx = new AudioCtx();
+        } catch (_) {}
+      }
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      try { this.ctx.resume(); } catch (_) {}
     }
+    return !!this.ctx;
   }
 
   toggleMute() {
@@ -23,8 +28,7 @@ class AudioEngine {
   }
 
   playDiceRoll() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
     
     // Series of clattering pulses
@@ -48,8 +52,7 @@ class AudioEngine {
   }
 
   playCritical() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
     const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 triumphant chime
 
@@ -73,8 +76,7 @@ class AudioEngine {
   }
 
   playFearAlert() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
 
     // Low ominous sub-bass drone
@@ -109,8 +111,7 @@ class AudioEngine {
   }
 
   playClockTick() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
 
     const osc = this.ctx.createOscillator();
@@ -129,8 +130,7 @@ class AudioEngine {
   }
 
   playLaserShot() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
 
     const osc = this.ctx.createOscillator();
@@ -149,8 +149,7 @@ class AudioEngine {
   }
 
   playExplosion() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
 
     // White noise generator
@@ -183,8 +182,7 @@ class AudioEngine {
   }
 
   playPing() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
 
     const osc = this.ctx.createOscillator();
@@ -202,8 +200,7 @@ class AudioEngine {
   }
 
   playError() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -219,8 +216,7 @@ class AudioEngine {
   }
 
   playShieldDrain() {
-    if (this.muted) return;
-    this.init();
+    if (this.muted || !this.init()) return;
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();

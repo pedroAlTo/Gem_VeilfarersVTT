@@ -1,4 +1,5 @@
 import { tokenInventory } from './equipment.js';
+import { defaultTokenAvatar } from './tokenAvatars.js';
 // Character Sheet 2.80 exports use final Traits/thresholds and separate resource tracks.
 // Keep the original document intact, including fields that this VTT cannot automate.
 export const TRAIT_IDS = ['agility', 'strength', 'finesse', 'knowledge', 'instinct', 'presence'];
@@ -22,14 +23,58 @@ export function parseCharacterJSON(input) {
     if (!text(token.name).trim() || !object(token.hp) || !object(token.stress) || !object(token.armor)) throw new Error('El actor VTT debe incluir nombre, HP, Armor y Stress.');
     // Native exports are portable actors, never a tactical ID or a campaign snapshot.
     for (const k of ['id', 'mapId', 'x', 'y', 'ownerId', 'controllerIds', 'scenePositions']) delete token[k];
+    if (!token.avatarUrl || token.avatarUrl === '/assets/tokens/captain_harker.jpg') {
+      token.avatarUrl = defaultTokenAvatar(token.species, token.pronouns, token.name, token.characterClass || token.roleTag);
+    }
     return { token, missing: [], warnings: [], format: 'VTT Actor 1' };
   }
-  if (doc.app !== 'Veilfarers Character Sheet' || !object(doc.fields) || !object(doc.tracks?.max) || !object(doc.tracks?.current))
-    throw new Error('Formato no reconocido. Usa Veilfarers Character Sheet o Veilfarers VTT Actor; las sesiones se importan en Sesiones.');
+  const app = text(doc.app).trim();
+  const isSheet = /^veilfarers character sheet/i.test(app);
+  const isCreator = /^veilfarers character creator/i.test(app) || (!isSheet && object(doc.fields) && (doc.fields.ancestry != null || doc.fields.class != null || doc.fields.tr_agility != null || doc.fields.base_hp_max != null));
+  if ((!isSheet && !isCreator) || !object(doc.fields))
+    throw new Error('Formato no reconocido. Usa Veilfarers Character Sheet, Veilfarers Character Creator o Veilfarers VTT Actor; las sesiones se importan en Sesiones.');
+  doc.tracks ||= {};
+  doc.tracks.max ||= {};
+  doc.tracks.current ||= {};
+  if (!object(doc.tracks.max) || !object(doc.tracks.current))
+    throw new Error('Formato no reconocido. Usa Veilfarers Character Sheet, Veilfarers Character Creator o Veilfarers VTT Actor; las sesiones se importan en Sesiones.');
   const f = doc.fields, max = doc.tracks.max, current = doc.tracks.current;
   if (!text(f.name).trim()) throw new Error('La ficha no tiene nombre.');
-  if (!['Awakened', 'Sleeping'].includes(f.chosen_path)) throw new Error('chosen_path debe ser Awakened o Sleeping.');
-  const path = f.chosen_path, missing = [], warnings = [];
+  if (max.hp == null && (f.base_hp_max || f.hp_max)) max.hp = Number(f.base_hp_max || f.hp_max);
+  if (max.armor_slots == null && (f.base_armor_slots || f.armor_score)) max.armor_slots = Number(f.base_armor_slots || f.armor_score);
+  if (max.stress == null && f.base_stress_max) max.stress = Number(f.base_stress_max);
+  if (max.s_resolve == null && f.auto_resolve_floor) max.s_resolve = Number(f.auto_resolve_floor);
+  let path = f.chosen_path;
+  if (path && typeof path === 'string') {
+    const trimmed = path.trim();
+    if (/^sleeping/i.test(trimmed)) path = 'Sleeping';
+    else if (/^awakened/i.test(trimmed)) path = 'Awakened';
+    else throw new Error('chosen_path debe ser Awakened o Sleeping.');
+  } else {
+    if (
+      max.s_resolve != null ||
+      max.s_effort != null ||
+      f.s_active_move ||
+      f.s_featname ||
+      f.s_learned_moves ||
+      f.s_move_0_n ||
+      f.s_anchor ||
+      f.s_resolve_die ||
+      (f.a_domain_ref && /sleeping/i.test(f.a_domain_ref))
+    ) {
+      path = 'Sleeping';
+    } else if (
+      max.a_hope != null ||
+      f.a_pwr_0_n ||
+      (f.a_domain_ref && !/sleeping/i.test(f.a_domain_ref))
+    ) {
+      path = 'Awakened';
+    } else {
+      path = 'Sleeping';
+    }
+  }
+  f.chosen_path = path;
+  const missing = [], warnings = [];
   const resource = (key, label, requiredMax = true) => {
     const cap = number(max[key] ?? (requiredMax ? undefined : key === 's_resolve' ? 2 : 6), `${label} máximo`, key === 'hp' ? 1 : 0, ['a_hope', 's_effort'].includes(key) ? 6 : 10000);
     let value = current[key];
@@ -52,18 +97,26 @@ export function parseCharacterJSON(input) {
     characterClass: text(f.class), subclass: text(f.subclass), subclassRank: text(f.subclass_rank),
     species: text(f.ancestry), community: text(f.community), pronouns: text(f.pron),
     roleTag: [f.class, f.subclass].filter(Boolean).join(' · '),
+    avatarUrl: defaultTokenAvatar(f.ancestry, f.pron, f.name, f.class || f.subclass),
     level: number(f.level, 'Nivel', 1, 100), proficiency: number(f.prof, 'Proficiency', 1, 100),
     evasion: number(f.evasion, 'Evasion', 0, 100),
     traits: Object.fromEntries(TRAIT_IDS.map(k => [k, number(f[`tr_${k}`], k, -100, 100)])),
     hp, armor, stress, hope: hope.current, effort: effort.current, resolve,
     hopeMax: hope.max, effortMax: effort.max,
-    honedEdgeBonus: f.s_honed ? number(text(f.s_honed).replace(/^HONED EDGE\s*([+-]?\d+)\s*DAMAGE$/i, '$1'), 'Honed Edge', 0, 100) : 0,
+    honedEdgeBonus: (() => {
+      const m = text(f.s_honed).match(/^HONED EDGE\s*([+-]?\d+)\s*DAMAGE$/i) || text(f.s_honed).match(/([+-]?\d+)/);
+      return (f.s_honed && m) ? number(m[1], 'Honed Edge', 0, 100) : 0;
+    })(),
     recoveryAnchor: text(f.s_anchor),
     sourceCharacter: { format: 'character-sheet', document: doc, initializedResources: [] },
   };
   if (missing.length) warnings.push('El archivo no incluye todos los recursos actuales. Revisa los valores iniciales antes de importar.');
-  if (!/^2\.8\d(?:\b|-)/.test(text(doc.version))) warnings.push(`Versión ${text(doc.version) || 'sin indicar'}: se han leído los campos reconocidos; revisa la ficha.`);
-  return { token, missing, warnings, format: `Character Sheet ${doc.version || ''}` };
+  if (isSheet && !/^2\.8\d(?:\b|-)/.test(text(doc.version))) {
+    warnings.push(`Versión ${text(doc.version) || 'sin indicar'}: se han leído los campos reconocidos; revisa la ficha.`);
+  } else if (isCreator && !/^2\./.test(text(doc.version))) {
+    warnings.push(`Versión ${text(doc.version) || 'sin indicar'}: se han leído los campos reconocidos; revisa la ficha.`);
+  }
+  return { token, missing, warnings, format: isCreator ? `Character Creator ${doc.version || ''}`.trim() : `Character Sheet ${doc.version || ''}`.trim() };
 }
 export function initializeImportedResources(parsed, values) {
   const token = structuredClone(parsed.token);
@@ -141,6 +194,7 @@ export function setConnection(token, key, value) {
 export function exportSystemCharacter(token) {
   if (!token.sourceCharacter?.document) throw new Error('Este actor no procede del creador de fichas. Exporta el formato VTT.');
   const doc = structuredClone(token.sourceCharacter.document), f = doc.fields;
+  doc.tracks ||= {}; doc.tracks.max ||= {}; doc.tracks.current ||= {};
   Object.assign(f, { name: token.name, level: String(token.level), prof: String(token.proficiency), chosen_path: token.path, ancestry: token.species || '', community: token.community || '', class: token.characterClass || '', subclass: token.subclass || '', evasion: String(token.evasion), thr_major: String(token.hp.majorThreshold), thr_severe: String(token.hp.severeThreshold) });
   for (const key of TRAIT_IDS) f[`tr_${key}`] = String(token.traits[key]);
   for (const [key, source] of [['hp', 'hp'], ['stress', 'stress'], ['armor_slots', 'armor'], ['s_resolve', 'resolve']]) {

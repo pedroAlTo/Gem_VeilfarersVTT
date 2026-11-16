@@ -5,6 +5,7 @@ import { store } from '../state.js';
 import { newId } from '../persistence.js';
 import { dossierDialog } from '../dossierUI.js';
 import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
+import { defaultTokenAvatar, detectArchetype, detectGender, getArchetypeTokenAvatar, listAncestryArchetypeTokens } from '../tokenAvatars.js';
 import { account } from '../cloudAccount.js';
 import {
   CREATOR_STEPS, TRAIT_IDS, TRAIT_ARRAY, EQUIP_BUDGET, STARTING_POWERS, experienceCount, affiliationStatus, freshState, setChoice, isStepReady, firstIncompleteStep,
@@ -156,7 +157,25 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const pending = CREATOR_STEPS.filter(s => s.id < 9 && !isStepReady(state, s.id, data));
       const canPlace = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
       const targets = canPlace ? store.state.tokens.filter(t => t.isPlayer !== false && t.actorType !== 'adversary') : [];
+      const gender = detectGender(state.pronouns, state.name);
+            const defaultArch = detectArchetype(cls?.name || cls?.id);
+            const selectedArch = state.tokenArchetype || defaultArch;
+            const avatarUrl = getArchetypeTokenAvatar(state.ancestry, selectedArch, gender);
+            const archetypes = listAncestryArchetypeTokens(state.ancestry, state.pronouns, state.name);
       return `<h3>Detalles</h3>
+        <div class="creator-avatar-preview" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 10px 14px; background: rgba(0, 243, 255, 0.06); border: 1px solid rgba(0, 243, 255, 0.25); border-radius: 8px;">
+          <img src="${avatarUrl}" alt="Retrato del Token" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #00f3ff; flex-shrink: 0; box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);" />
+          <div>
+            <div style="font-weight: 700; color: #00f3ff; font-size: 0.9rem;">Retrato de Token automático</div>
+            <div class="dossier-muted" style="font-size: 0.8rem;">Asignado por Ancestry (${e(state.ancestry || 'Human')}) y pronombres/género.</div>
+          </div>
+        </div>
+        <div class="creator-archetype-picker" style="margin-bottom: 14px;">
+          <span class="dossier-eyebrow" style="margin-bottom: 6px; display: block;">VARIANTE DE RETRATO / TIPOLOGÍA</span>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+            ${archetypes.map(a => `<button type="button" class="hud-btn ${a.id === selectedArch ? "hud-btn-primary" : ""}" data-token-arch="${a.id}" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 0.8rem; text-align: left; cursor: pointer;"><img src="${a.avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid ${a.id === selectedArch ? "#00f3ff" : "rgba(255,255,255,0.2)"}; flex-shrink: 0;" alt="" /><span><strong>${e(a.label.split("/")[0].trim())}</strong></span></button>`).join("")}
+          </div>
+        </div>
         <div class="dossier-identity"><label class="dossier-field"><span>Nombre</span><input class="hud-input" data-field="name" maxlength="120" value="${e(state.name)}"></label><label class="dossier-field"><span>Pronombres</span><input class="hud-input" data-field="pronouns" maxlength="60" value="${e(state.pronouns)}"></label></div>
         ${text('bgAnswer', cls ? cls.bgQuestion : 'Pregunta de trasfondo')}
         <div class="dossier-identity">${text('appearance', 'Apariencia')}${text('voice', 'Voz y maneras')}</div>
@@ -167,7 +186,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
         <div class="creator-finish">
           ${canPlace ? `<button type="button" class="hud-btn hud-btn-primary" data-finish="token">Crear y poner en la mesa</button>
           ${targets.length ? `<label class="dossier-field"><span>…o llevar la ficha a un token que ya existe</span><select class="hud-input" data-target><option value="">Elegir token</option>${targets.map(t => `<option value="${e(t.id)}">${e(t.name)}</option>`).join('')}</select></label><button type="button" class="hud-btn" data-finish="replace">Asignar a ese token</button>` : ''}` : '<p class="dossier-muted">El Keeper pone los personajes en la mesa. Descarga la ficha y envíasela, o impórtala cuando te asigne un token.</p>'}
-          ${account.user && !account.user.isNetlify ? '<button type="button" class="hud-btn" data-finish="account" title="Guarda el personaje en tu biblioteca de la cuenta">Guardar en mi cuenta</button>' : ''}
+          ${account.user ? '<button type="button" class="hud-btn" data-finish="account" title="Guarda el personaje en tu biblioteca de la cuenta">Guardar en mi cuenta</button>' : ''}
           <button type="button" class="hud-btn" data-finish="download">Descargar ficha JSON</button>
         </div>`}`;
     },
@@ -190,6 +209,9 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const doc = buildSheetDocument(state, data, { characterId });
       if (kind === 'download') { downloadJSON(doc, `${state.name.trim() || 'personaje'}.json`); notify('Ficha descargada.'); return; }
       const token = parseCharacterJSON(doc).token;
+            const g = detectGender(state.pronouns, state.name);
+            const chosenArch = state.tokenArchetype || detectArchetype(classOf(state, data)?.name);
+            token.avatarUrl = getArchetypeTokenAvatar(state.ancestry, chosenArch, g);
       if (kind === 'account') {
         account.lastSaveTarget = 'cloud';
         await account.saveCharacter({ ...token, x: 0, y: 0 });
@@ -212,6 +234,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
     else if (el.dataset.domain) { const d = el.dataset.domain, list = state.sleepingMysticDomains.filter(x => x !== d); if (list.length === state.sleepingMysticDomains.length) { list.push(d); if (list.length > 2) list.shift(); } state = { ...state, sleepingMysticDomains: list }; save(); render(); }
     else if (el.dataset.power) { const id = el.dataset.power, has = state.powers.includes(id); if (!has && state.powers.length >= STARTING_POWERS) { error.textContent = `Solo ${STARTING_POWERS} Poderes iniciales: quita uno para cambiarlo.`; return; } state = { ...state, powers: has ? state.powers.filter(p => p !== id) : [...state.powers, id] }; save(); render(); }
     else if (el.dataset.weapon || el.dataset.armor) { const key = el.dataset.weapon ? 'weapons' : 'armors', name = el.dataset.weapon || el.dataset.armor, has = state[key].includes(name); state = { ...state, [key]: has ? [] : [name] }; save(); render(); }
+    else if (el.dataset.tokenArch) { state = { ...state, tokenArchetype: el.dataset.tokenArch }; save(); render(); }
     else if (el.dataset.finish) finish(el.dataset.finish);
     else if (el.dataset.act === 'prev') { step = Math.max(1, step - 1); render(); }
     else if (el.dataset.act === 'next') { if (!isStepReady(state, step, data)) { error.textContent = `Completa «${CREATOR_STEPS[step - 1].label}» para seguir, o salta a otro paso desde la lista.`; return; } step = Math.min(9, step + 1); render(); }
@@ -228,7 +251,14 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
     const el = event.target;
     if ('equipSearch' in el.dataset) { equipSearch = el.value; const box = modal.querySelector('[data-equip-lists]'); if (box) box.innerHTML = equipLists(); return; }
     if (el.dataset.exp !== undefined) { const experiences = [...state.experiences]; experiences[Number(el.dataset.exp)] = el.value; state = { ...state, experiences }; save(); }
-    else if (el.dataset.field) { state = { ...state, [el.dataset.field]: el.value }; save(); }
+    else if (el.dataset.field) {
+      state = { ...state, [el.dataset.field]: el.value };
+      save();
+      if (['name', 'pronouns'].includes(el.dataset.field)) {
+        const img = modal.querySelector('.creator-avatar-preview img');
+        if (img) img.src = defaultTokenAvatar(state.ancestry, state.pronouns, state.name);
+      }
+    }
     else return;
     nav.querySelectorAll('.creator-step').forEach(b => { const ready = isStepReady(state, Number(b.dataset.step), data); b.classList.toggle('ready', ready); b.querySelector('.creator-step-check').textContent = ready ? '✓' : ''; });
     modal.querySelector('.creator-progress').textContent = `Paso ${step} de 9 · ${CREATOR_STEPS.filter(s => isStepReady(state, s.id, data)).length} completos`;

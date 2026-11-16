@@ -1,6 +1,7 @@
 import { newId } from './persistence.js';
 import { TRAIT_IDS } from './characterImport.js';
 import { validateActor } from './validation.js';
+import { defaultTokenAvatar } from './tokenAvatars.js';
 
 export const TOKEN_COLOR_PALETTE = [
   '#00f3ff', // Cyan Neon (Default Veilfarer)
@@ -16,8 +17,15 @@ export const TOKEN_COLOR_PALETTE = [
 export function createActor(data = {}, mapId) {
   const isPlayer = data.actorType ? data.actorType === 'player' : data.isPlayer !== false;
   const defaultColor = data.color || TOKEN_COLOR_PALETTE[Math.floor(Math.random() * TOKEN_COLOR_PALETTE.length)];
+  const fallbackAvatar = isPlayer
+    ? defaultTokenAvatar(data.species, data.pronouns, data.name, data.characterClass || data.roleTag)
+    : '/assets/tokens/adversary-marker.svg';
+  const resolvedAvatar = (data.avatarUrl && (data.avatarUrl !== '/assets/tokens/captain_harker.jpg' || !data.species))
+    ? data.avatarUrl
+    : fallbackAvatar;
+
   const actor = {
-    name: 'Nuevo actor', roleTag: '', avatarUrl: '/assets/tokens/captain_harker.jpg',
+    name: 'Nuevo actor', roleTag: '', avatarUrl: resolvedAvatar,
     x: 600, y: 400, size: 1, hidden: false, isPlayer, actorType: isPlayer ? 'player' : 'adversary',
     color: defaultColor,
     path: isPlayer ? 'Awakened' : '', level: 1, proficiency: 1, evasion: 10,
@@ -29,6 +37,7 @@ export function createActor(data = {}, mapId) {
     visionRadius: 10, visionAngle: 90, hasLight: true, lightRadius: 250, lightColor: '#00f3ff', lightEffect: 'steady',
     ...structuredClone(data), id: `tok_${newId()}`, mapId,
   };
+  actor.avatarUrl = resolvedAvatar;
   validateActor(actor);
   return actor;
 }

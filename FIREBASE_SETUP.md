@@ -2,7 +2,7 @@
 
 Desde v1.4.0 las salas online usan **Firebase Authentication + Firestore** para miembros, presencia, transporte privado y campaña persistente. El proyecto debe ser **exclusivo del VTT**, separado del portal público. Esta entrega no cambia ni despliega ningún proyecto de producción. Los modos local y LAN siguen funcionando sin Firebase; sin configuración Firebase, el modo online conserva la conexión temporal PeerJS anterior.
 
-**Actualizar el JavaScript no basta:** publica las reglas y los índices de esta versión en el proyecto del VTT antes de probar las salas. Una cuenta Netlify Identity, por sí sola, no autentica en Firestore: las salas requieren Google o correo de Firebase. No hay migración automática de códigos temporales ni de antiguas identidades por nombre.
+**Actualizar el JavaScript no basta:** publica las reglas y los índices de esta versión en el proyecto del VTT antes de probar las salas. Las salas y la biblioteca requieren una cuenta de Firebase (Google o correo); el acceso con Netlify Identity se retiró en v2.8.1 y el modo invitado solo juega en local. No hay migración automática de códigos temporales ni de antiguas identidades por nombre.
 
 1. Create or select your Firebase project and register a Web app in Project settings.
 2. Enable Authentication → Email/Password and/or Google. Add your deployment hostname and `localhost` to Authentication → Authorized domains. Set your password policy and password-reset email template.
@@ -10,6 +10,13 @@ Desde v1.4.0 las salas online usan **Firebase Authentication + Firestore** para 
 4. Copy `.env.example` to `.env.local`. Copy the five public web configuration values from Firebase into it. Use the exact bucket from the console (new buckets commonly end in `.firebasestorage.app`). Do not put service-account credentials in Vite variables; Vite variables are public browser configuration.
 5. Publish `firestore.rules` and `storage.rules` using the Rules tabs in the Firebase console, or run `npx firebase deploy --only firestore:rules,firestore:indexes,storage --project YOUR_VTT_PROJECT_ID` from this directory after signing into the CLI. Default-deny rules keep each account's library isolated. Do not use test-mode public rules.
 6. Run `INICIAR_VTT_ONLINE.bat` on Windows, or `npm ci` then `npm run dev`. Restart after changing environment values. For a deployed build, supply these variables at build time and rebuild.
+
+## Qué guarda cada cuenta y cada sala (V2)
+
+- `users/{uid}/characters`, `scenes`, `settings` y `notes`: biblioteca privada de la cuenta. **Mis personajes** del lobby y el creador guardan aquí. Las notas personales se agrupan por sala y solo las lee su autor.
+- `rooms/{roomId}`: miembros, presencia, campaña y, desde V2, `arcs/{arcId}` (solo el propietario). 
+- Las reglas de `firestore.rules` cambiaron por última vez en v2.0.2 (arcos y notas). **Si vuelven a cambiar hay que publicarlas de nuevo**; una regla sin publicar hace que el guardado se quede solo en el navegador y la app lo avisa.
+- El almacén compartido `character_vault` de Realtime Database dejó de usarse en v2.8.0. Sus datos no se han borrado.
 
 ## Using the features
 
@@ -35,7 +42,7 @@ Use two different accounts and two browser profiles. Create an account, sign out
    npx firebase deploy --only firestore:rules,firestore:indexes --project YOUR_VTT_PROJECT_ID
    ```
 
-3. Configura las variables `VITE_FIREBASE_*` de `.env.example` en el despliegue del VTT y reconstruye con `npm run build`. Usa HTTPS fuera de localhost. Todos los participantes deben cargar v1.4.0.
+3. Configura las variables `VITE_FIREBASE_*` de `.env.example` en el despliegue del VTT y reconstruye con `npm run build`. Usa HTTPS fuera de localhost. Todos los participantes deben cargar la misma versión del VTT.
 4. Abre la campaña local que quieres conservar y pulsa **SESIONES → Crear sala**. Se hace una copia con ID independiente, incluidos arcos y escenas. Comparte su nueva invitación VF-… una vez. Las asignaciones antiguas por nombre no se trasladan a otras cuentas: reasígnalas desde la sala.
 5. Los miembros usan **Salas en las que juego → Entrar**; el propietario usa **Salas que dirijo → Abrir como Keeper**. El último acceso se recuerda por cuenta para restaurarlo al recargar.
 

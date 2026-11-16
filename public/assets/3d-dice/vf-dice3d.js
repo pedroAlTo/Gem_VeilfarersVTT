@@ -530,11 +530,6 @@ async function roll(groups, options={}){
     rollHasResult=flat.length>0;
     if (!flat.length) throw new Error('The 3D engine completed without readable die results.');
     markTrackingSettled(flat.map((_,index)=>index));
-    if (!options.deferResults) display.showResults({
-      rolls:flat.map((item,index)=>({value:item.value,sides:item.sides,role:trackingSpecs[index] && trackingSpecs[index].role})),
-      value:flat.reduce((n,item)=>n+item.value,0), label:options.label || '',
-      color: options.color || options.tokenColor
-    });
     closeTimer=setTimeout(hide,12000);
     return {raw:result, flat, values:flat.map(item=>item.value)};
   } finally { endCancellableRoll(token); }
@@ -563,10 +558,6 @@ async function add(groups, options={}){
     lastFlat=lastFlat.concat(flat);
     const indices=flat.map((_,index)=>offset+index);
     markTrackingSettled(indices);
-    if (!options.deferResults) display.showResults({
-      rolls:flat.map((item,index)=>({value:item.value,sides:item.sides,role:newSpecs[index] && newSpecs[index].role})),
-      value:flat.reduce((n,item)=>n+item.value,0), label:options.label || ''
-    });
     closeTimer=setTimeout(hide,12000);
     return {raw:result, flat, values:flat.map(item=>item.value), offset};
   } finally { endCancellableRoll(token); }
@@ -689,19 +680,28 @@ function scheduleSettledCues(data){
     discardSpecs.forEach(activateCue);
   },760);
 }
-function renderAnalysisPanel(data){
-  if (!analysisNode) return;
+// One results panel for the whole table: every roll, local or from another player, adds a
+// golden card to this stack, in the order the results arrive. Nothing else announces a result.
+const RESULT_CARD_LIFE=20000, RESULT_CARD_LIMIT=6;
+let lastCardKey='', lastCardAt=0;
+function resultStack(){
+  let stack=document.getElementById('vf-results-stack');
+  if (!stack) {
+    stack=document.createElement('div');
+    stack.id='vf-results-stack'; stack.className='vf-results-stack'; stack.setAttribute('aria-live','polite');
+    document.body.append(stack);
+  }
+  return stack;
+}
+function pushResultCard(data){
+  if (typeof document === 'undefined') return null;
   let outcome=String((data && (data.outcome || data.outcomeTitle || data.outcomeLabel))||'').trim();
   const hope=Number(data && (data.hope ?? data.hopeVal));
   const fear=Number(data && (data.fear ?? data.fearVal));
   const damageDice=Array.isArray(data && data.damageDiceResults)?data.damageDiceResults:[];
   const damage=Number(data && data.damage);
   const totalVal=data && (data.value ?? data.total);
-  if (!outcome && !damageDice.length && totalVal == null && !Number.isFinite(hope)) {
-    analysisNode.className='vf-dice3d-analysis is-hidden';
-    analysisNode.replaceChildren();
-    return;
-  }
+  if (!outcome && !damageDice.length && totalVal == null && !Number.isFinite(hope)) return null;
 
   let playerName = String((data && (data.playerName || data.rollerName)) || '').trim();
   let tokenName = String((data && (data.tokenName || data.actorName)) || '').trim();
@@ -785,8 +785,14 @@ function renderAnalysisPanel(data){
 
   const actorDisplay = skill ? `${tokenName} · ${skill}` : tokenName;
 
-  analysisNode.className=`vf-dice3d-analysis is-${outcomeClass}`;
-  analysisNode.innerHTML=`
+  // The same roll is often announced twice by its caller (3D result and table callout).
+  const key=[tokenName,totalVal,hope,fear].join('|'), now=Date.now();
+  if (key===lastCardKey && now-lastCardAt<2500) return null;
+  lastCardKey=key; lastCardAt=now;
+  const stack=resultStack(), card=document.createElement('aside');
+  card.className=`vf-dice3d-analysis vf-result-card is-${outcomeClass}`;
+  if (data && data.visibility==='keeper') card.dataset.secret='true';
+  card.innerHTML=`
     <span class="vf-analysis-kicker">${escapeHtml(playerName || 'Jugador')}</span>
     <div class="vf-analysis-actor">${escapeHtml(actorDisplay || 'Operativo')}</div>
     ${outcome ? `<div class="vf-analysis-outcome">${escapeHtml(outcome)}</div>` : ''}
@@ -797,6 +803,12 @@ function renderAnalysisPanel(data){
     ${damageRows}
     <small class="vf-analysis-status">${escapeHtml(footerText)}</small>
   `;
+  const dismiss=()=>{ card.classList.add('is-leaving'); setTimeout(()=>card.remove(),320); };
+  card.addEventListener('click',dismiss);
+  setTimeout(dismiss,RESULT_CARD_LIFE);
+  stack.append(card);
+  while (stack.children.length>RESULT_CARD_LIMIT) stack.firstElementChild.remove();
+  return card;
 }
 function showResults(data){
   ensureStage();
@@ -810,8 +822,7 @@ function showResults(data){
     outcomeNode.className=`vf-dice3d-outcome ${winner?`is-${winner}`:'is-hidden'}`;
   }
   applyCritical(!!(data && data.crit));
-  renderAnalysisPanel(data || {});
-  display.showResults(data || {});
+  pushResultCard(data || {});
   scheduleSettledCues({...(data||{}),rolls:Array.isArray(data && data.cueRolls)?data.cueRolls:(data && data.rolls)});
   scheduleResize();
   clearTimeout(closeTimer);
@@ -849,7 +860,7 @@ async function preload(){
 }
 
 window.VFDice3D={
-  init,preload,roll,add,showResults,hide,setStyle:applyStyle,setCritical:applyCritical,
+  init,preload,roll,add,showResults,pushResultCard,hide,setStyle:applyStyle,setCritical:applyCritical,
   status:()=>({
     ready:!!box,assetPath:ASSET_PATH,style:currentStyle,critical:currentCritical,
     rendererVisuals:lastRendererVisuals.slice(),tracking:trackingSpecs.length,rollPending,rollHasResult,userDismissed,activeRoll:activeRollController?activeRollController.token:null,error:lastError?String(lastError.message||lastError):null

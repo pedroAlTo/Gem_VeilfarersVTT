@@ -241,6 +241,6 @@ export function validateActor(t) {
     if (typeof t.color !== 'string') t.color = String(t.color);
     assert(t.color.length <= 50, 'Invalid token color.');
   }
-  if (t.sourceCharacter !== undefined && t.sourceCharacter !== null) assert(t.sourceCharacter && typeof t.sourceCharacter === 'object' && t.sourceCharacter.document?.app === 'Veilfarers Character Sheet' && t.sourceCharacter.document?.fields && typeof t.sourceCharacter.document.fields === 'object', 'Invalid source character.');
+  if (t.sourceCharacter !== undefined && t.sourceCharacter !== null) assert(t.sourceCharacter && typeof t.sourceCharacter === 'object' && ['Veilfarers Character Sheet', 'Veilfarers Character Creator'].includes(t.sourceCharacter.document?.app) && t.sourceCharacter.document?.fields && typeof t.sourceCharacter.document.fields === 'object', 'Invalid source character.');
   return t;
 }

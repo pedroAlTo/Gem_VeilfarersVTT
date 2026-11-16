@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="stylesheet" href="/assets/3d-dice/vf-dice3d.css">
     <link rel="preload" href="/assets/dados_1.mp3" as="audio">
-    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
     <script type="module" src="/assets/3d-dice/vf-dice3d.js"></script>
   </head>
   <body>
@@ -171,15 +170,12 @@
               <span class="fx-num">04</span>
               <div class="panel-header">
                 <div class="panel-title-group">
-                  <h3><span class="panel-icon">📂</span> CHARACTER VAULT</h3>
-                  <span class="panel-badge">OPERATIVO TÁCTICO</span>
+                  <h3><span class="panel-icon">📂</span> MIS PERSONAJES</h3>
+                  <span class="panel-badge">BIBLIOTECA PRIVADA DE TU CUENTA</span>
                 </div>
                 <div class="vault-actions">
                   <button type="button" id="vf-btn-character-creator" class="vf-btn vf-btn-primary vf-btn-xs" title="Crear un personaje paso a paso y descargar su ficha">
                     Crear personaje
-                  </button>
-                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-secondary vf-btn-xs fx-advanced">
-                    Creador rápido
                   </button>
                   <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
                     Importar ficha JSON
@@ -187,7 +183,7 @@
                   </label>
                 </div>
               </div>
-              <p class="panel-hint">Operativo activo seleccionado para la mesa:</p>
+              <p class="panel-hint">Solo tú ves estos personajes. Ya en la mesa, tráelos desde Cuenta → Use in game, o pide al Keeper que te asigne un token.</p>
               <div id="vf-vault-list" class="vf-vault-list"></div>
             </section>
           </div>
@@ -237,78 +233,6 @@
               </div>
             </section>
           </div>
-        </div>
-      </div>
-
-      <!-- MODAL: CREADOR / EDITOR DE PERSONAJE INTEGRADO -->
-      <div id="vf-creator-modal" class="vf-modal-backdrop hidden">
-        <div class="vf-creator-dialog">
-          <header class="creator-header">
-            <div class="creator-header-title">
-              <span class="creator-badge">✦ VEILFARERS // EXPEDIENTE TÁCTICO</span>
-              <h3>CREADOR DE PERSONAJES</h3>
-            </div>
-            <button type="button" id="vf-btn-close-creator" class="vf-btn vf-btn-close-dialog" title="Cerrar">✕</button>
-          </header>
-          <form id="vf-creator-form" class="creator-form">
-            <div class="creator-section">
-              <div class="creator-section-header">
-                <span class="sec-number">01</span>
-                <span class="sec-title">IDENTIDAD DEL OPERATIVO</span>
-              </div>
-              <div class="creator-row">
-                <label>Nombre del Viajero
-                  <input type="text" id="cr-name" required placeholder="Ej: Kaelen Vance" />
-                </label>
-                <label>Especie / Subespecie
-                  <input type="text" id="cr-species" required placeholder="Ej: Humano / Voidborn" />
-                </label>
-                <label>Trasfondo / Especialización
-                  <input type="text" id="cr-background" required placeholder="Ej: Vanguardia / Explorador" />
-                </label>
-              </div>
-            </div>
-
-            <div class="creator-section">
-              <div class="creator-section-header">
-                <span class="sec-number">02</span>
-                <span class="sec-title">MATRIZ DE ATRIBUTOS (DUALITY 2d12)</span>
-              </div>
-              <div class="creator-attrs-grid">
-                <div class="attr-box"><span class="attr-code">AGI</span><label>Agility <input type="number" id="cr-attr-agility" value="1" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">STR</span><label>Strength <input type="number" id="cr-attr-strength" value="0" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">FIN</span><label>Finesse <input type="number" id="cr-attr-finesse" value="2" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">INS</span><label>Instinct <input type="number" id="cr-attr-instinct" value="1" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">PRE</span><label>Presence <input type="number" id="cr-attr-presence" value="0" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">KNO</span><label>Knowledge <input type="number" id="cr-attr-knowledge" value="-1" min="-2" max="5" /></label></div>
-              </div>
-            </div>
-
-            <div class="creator-section">
-              <div class="creator-section-header">
-                <span class="sec-number">03</span>
-                <span class="sec-title">BLINDAJE EXOTÁCTICO & MEJORAS</span>
-              </div>
-              <div class="creator-row">
-                <label>Nombre de Armadura
-                  <input type="text" id="cr-armour-name" value="Traje Exo-Táctico" />
-                </label>
-                <label title="Cantidad de escudos de armadura que puedes marcar para evitar daño">
-                  🛡️ Armour Shields (A.S.)
-                  <input type="number" id="cr-armour-as" value="3" min="0" max="10" />
-                </label>
-                <label title="Capacidad de mejoras instalables en la armadura">
-                  🔧 Slots de Mejora
-                  <input type="number" id="cr-armour-slots" value="2" min="0" max="6" />
-                </label>
-              </div>
-            </div>
-
-            <div class="creator-footer">
-              <button type="button" id="vf-btn-cancel-creator" class="vf-btn vf-btn-secondary">Cancelar</button>
-              <button type="submit" class="vf-btn vf-btn-primary">Guardar en el Vault</button>
-            </div>
-          </form>
         </div>
       </div>
     </div>

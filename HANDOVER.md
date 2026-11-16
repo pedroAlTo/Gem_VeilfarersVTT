@@ -153,7 +153,7 @@
   - Dos botones grandes principales: `[ ◈ ENTRAR COMO JUGADOR ]` y `[ ⚡ ENTRAR COMO KEEPER ]`.
   - **Modo Jugador:** Muestra el listado de salas a las que está conectado el usuario con botón de acceso directo con 1 clic, opción para introducir código de invitación y unirse a una nueva sala, y Character Vault.
   - **Modo Keeper:** Muestra el listado de salas creadas por el Keeper con botón para abrirlas y gestionarlas, y formulario para crear una nueva sala/campaña con nombre.
-  - **Proceso de Login Seguro:** No transiciona a la mesa ni al hub hasta que Firebase Auth / Netlify confirme el fin del proceso de inicio de sesión, mostrando un spinner indicador y deshabilitando inputs.
+  - **Proceso de Login Seguro:** No transiciona a la mesa ni al hub hasta que Firebase Auth confirme el fin del proceso de inicio de sesión, mostrando un spinner indicador y deshabilitando inputs.
   - **Identidad en Pantalla de Entrada:** El encabezado del hub indica explícitamente el nombre de usuario (`user.displayName`) y el correo de autenticación (`user.email`).
 - **Subtítulos de Mensajes en Overlay:**
   - Al enviarse un mensaje o tirada, se proyecta un subtítulo cinematográfico flotante en `#vf-subtitle-overlay` en la parte inferior del mapa (anclado a `bottom: 74px`), evitando solapar la barra inferior ni el HUD.

@@ -38,23 +38,6 @@ beforeEach(async () => {
 afterEach(() => { for (const n of managers.splice(0)) n.disconnect(); assert.deepEqual(errors.splice(0), []); });
 after(async () => { engine.waterUnsubscribe(); engine.tokenUnsubscribe?.(); await store.saveQueue.catch(() => {}); dom.window.close(); });
 
-function identityWidget(user) {
-  const listeners = new Map();
-  return { currentUser: () => user, init() {}, open() {}, close() { this.emit('close'); }, logout() { user = null; this.emit('logout'); },
-    on(name, fn) { const set = listeners.get(name) || new Set(); set.add(fn); listeners.set(name, set); },
-    off(name, fn) { listeners.get(name)?.delete(fn); },
-    emit(name, value) { for (const fn of listeners.get(name) || []) fn(value); },
-    count(name) { return listeners.get(name)?.size || 0; } };
-}
-
-test('startup restores an already initialized Netlify session even without Firebase', async () => {
-  window.netlifyIdentity = identityWidget({ id: 'cached-pilot', email: 'pilot@example.test', user_metadata: { full_name: 'Pilot' } });
-  const oldLoad = account.loadPreferences;
-  account.loadPreferences = async () => ({});
-  try { await initAccount(); await tick(); assert.equal(account.user?.uid, 'cached-pilot'); }
-  finally { account.loadPreferences = oldLoad; await account.signOut(); delete window.netlifyIdentity; }
-});
-
 test('header account identity updates safely and stays independent from the game connection', async () => {
   const button = document.getElementById('session_account'), oldLoad = account.loadPreferences;
   account.loadPreferences = async () => ({});
@@ -64,10 +47,10 @@ test('header account identity updates safely and stays independent from the game
     assert.equal(button.closest('header')?.tagName, 'HEADER');
     assert.equal(document.getElementById('data_menu_btn'), null);
     store.state.isConnected = true;
-    account.setNetlifyUser(null);
+    account.setFirebaseUser(null);
     assert.equal(button.dataset.signedIn, 'false');
     assert.equal(button.querySelector('[data-account-status]').textContent, 'Offline');
-    account.setNetlifyUser({ id: 'header-pilot', email: 'pilot@example.test', user_metadata: { full_name: '<Pilot & Crew>' } });
+    account.setFirebaseUser({ uid: 'header-pilot', email: 'pilot@example.test', displayName: '<Pilot & Crew>' });
     await tick();
     assert.equal(button.dataset.signedIn, 'true');
     assert.equal(button.querySelector('[data-account-name]').textContent, '<Pilot & Crew>');
@@ -161,42 +144,18 @@ test('canvas drag remains visible across a Keeper snapshot and commits its final
   assert.equal(f.hostStore.state.tokens[0].x, 300); assert.equal(store.state.tokens[0].hope, 1);
 });
 
-test('late Netlify SDK initialization restores the session and binds lifecycle events once', async () => {
-  const c = new CloudAccount(); delete window.netlifyIdentity;
-  const loading = c.initNetlifyIdentity();
-  const user = { id: 'late-pilot', email: 'late@example.test' }, ni = identityWidget(user);
-  window.netlifyIdentity = ni;
-  document.querySelector('script[src*="netlify-identity-widget"]').dispatchEvent(new Event('load'));
-  await loading; await c.initNetlifyIdentity();
-  assert.equal(c.user.uid, user.id); assert.equal(ni.count('login'), 1);
-  ni.emit('logout'); assert.equal(c.user, null);
-  delete window.netlifyIdentity;
+test('the account is the VTT\'s own: only Firebase sign-in exists and a signed-out event clears the user', async () => {
+  const c = new CloudAccount();
+  for (const name of ['setNetlifyUser', 'signInWithNetlify', 'initNetlifyIdentity', 'selectProvider']) assert.equal(typeof c[name], 'undefined', name);
+  c.setFirebaseUser({ uid: 'firebase-pilot', email: 'p@example.test' }); assert.equal(c.user.uid, 'firebase-pilot');
+  const epoch = c.epoch; c.setFirebaseUser(null); assert.equal(c.user, null); assert.equal(c.epoch, epoch + 1);
+  await c.restoreSession(); assert.equal(c.user, null, 'without Firebase configured nothing is restored and nothing fails');
+  for (const file of ['../src/cloudAccount.js', '../src/accountUI.js', '../index.html']) assert.ok(!/netlify-identity|netlifyIdentity/i.test(readFileSync(new URL(file, import.meta.url), 'utf8')), file);
 });
 
-test('Firebase initial null never erases Netlify and the selected provider survives reload', () => {
-  const c = new CloudAccount(), user = { id: 'netlify-pilot', email: 'n@example.test' };
-  c.setNetlifyUser(user); c.setFirebaseUser(null); assert.equal(c.user.uid, user.id);
-  c.setFirebaseUser({ uid: 'firebase-pilot' }); assert.equal(c.user.uid, user.id);
-  const reload = new CloudAccount(); reload.setFirebaseUser({ uid: 'firebase-pilot' }); reload.setNetlifyUser(user, false);
-  assert.equal(reload.user.uid, user.id);
-  c.setFirebaseUser({ uid: 'firebase-pilot' }, true); c.setNetlifyUser(null, false);
-  assert.equal(c.user.uid, 'firebase-pilot');
-});
-
-test('Netlify cancelled and completed sign-ins remove temporary listeners and logout is not recursive', async () => {
-  const ni = identityWidget(null), c = new CloudAccount(); window.netlifyIdentity = ni;
-  let pending = c.signInWithNetlify(); await tick(); ni.emit('close');
-  await assert.rejects(pending, /cancelado/);
-  assert.equal(ni.count('close'), 0); assert.equal(ni.count('error'), 0); assert.equal(ni.count('login'), 1);
-  pending = c.signInWithNetlify(); await tick(); ni.emit('login', { id: 'logged-pilot' });
-  assert.equal((await pending).uid, 'logged-pilot'); assert.equal(ni.count('login'), 1);
-  await c.signOut(); assert.equal(c.user, null); delete window.netlifyIdentity;
-});
-
-test('cancelled Google access does not silently switch authentication providers', async () => {
-  const c = new CloudAccount(); c.setNetlifyUser({ id: 'existing-pilot' });
+test('cancelled Google access keeps the account that was signed in', async () => {
+  const c = new CloudAccount(); c.setFirebaseUser({ uid: 'existing-pilot' });
   c.auth = {}; c.authAPI = { setPersistence: async () => {}, browserLocalPersistence: 'local', GoogleAuthProvider: class {}, signInWithPopup: async () => { throw Object.assign(new Error('Cancelled'), { code: 'auth/popup-closed-by-user' }); } };
-  c.signInWithNetlify = () => assert.fail('No implicit provider switch');
   await assert.rejects(c.signInWithGoogle(), /Cancelled/); assert.equal(c.user.uid, 'existing-pilot');
 });
 

@@ -257,6 +257,13 @@ export function applyLevelUp(source, { picks = [], achievementExperiences = [], 
     if (sleeping && (p.id === 'power' || p.id === 'tempered')) adv.sleepingSlots = (adv.sleepingSlots || 0) + p.option.slots;
     if (p.id === 'tempered') { adv.temperedResolve = true; token.resolve = { ...token.resolve, dieType: 'd6' }; summary.push('Tempered Resolve: dado d6'); }
   }
+  // Damage follows the sheet: Honed Edge is level - 1 for the Sleeping, and a "final" damage
+  // copied from another tool froze the old Proficiency, so the weapon returns to its base dice.
+  if (sleeping && !respend) token.honedEdgeBonus = Math.max(Number(token.honedEdgeBonus) || 0, next - 1);
+  if (token.proficiency !== source.proficiency || token.honedEdgeBonus !== source.honedEdgeBonus) {
+    const f = fields(token);
+    for (const slot of ['wpri', 'wsec']) if (String(f[slot + '_dmg'] ?? '').trim()) { delete f[slot + '_dmg_final']; delete f[slot + '_dmg_final_aw']; }
+  }
   if (!respend && spent < 2) summary.push(`${2 - spent} Advancement Slot sin gastar (perdido)`);
   if (respend) { adv.refundSlots = budget - spent; summary.unshift(`Slots devueltos gastados: ${spent}${adv.refundSlots ? ` (quedan ${adv.refundSlots})` : ''}`); }
   adv.log = [...adv.log, { level: next, tier, summary }].slice(-20);

@@ -82,9 +82,6 @@ export function openAccount() {
       <button class="hud-btn hud-btn-secondary" type="button" id="btn_google_redirect" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 8px; font-size: 12px;">
         <span>🔄</span> Iniciar sesión con Google (Redirección directa · Si falla el popup)
       </button>
-      <button class="hud-btn hud-btn-secondary" type="button" id="btn_netlify_signin" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 8px; font-size: 12px;">
-        <span>⚡</span> Iniciar sesión con Netlify Identity (Google / Email)
-      </button>
     </div>
 
     <div style="text-align: center; margin: 12px 0; color: #64748b; font-size: 11px;">— O ACCEDE CON CORREO Y CONTRASEÑA —</div>
@@ -108,7 +105,7 @@ export function openAccount() {
     const isPopupClosed = err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup-closed-by-user');
     const isOpNotAllowed = err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed');
     const isPermissionDenied = err.code === 'permission-denied' || String(err.message || '').toLowerCase().includes('permissions') || String(err.message || '').toLowerCase().includes('permission');
-    const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'tu-dominio.netlify.app';
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'tu-dominio';
 
     if (isUnauthorizedDomain) {
       error.innerHTML = sanitizeHTML(`
@@ -135,9 +132,6 @@ export function openAccount() {
             <a href="https://console.firebase.google.com/project/veilfarers-vtt/authentication/settings" target="_blank" rel="noopener noreferrer" class="hud-btn hud-btn-primary hud-btn-xs" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
               🔗 Ir a Firebase Console
             </a>
-            <button type="button" class="hud-btn hud-btn-secondary hud-btn-xs" id="fallback_netlify_btn">
-              ⚡ Probar con Netlify Identity
-            </button>
           </div>
         </div>
       `);
@@ -147,11 +141,6 @@ export function openAccount() {
           notify(`Dominio '${currentHost}' copiado al portapapeles.`);
         }
       });
-      modal.querySelector('#fallback_netlify_btn')?.addEventListener('click', () => run(async () => {
-        await account.signInWithNetlify();
-        modal.remove();
-        openAccount();
-      }));
       return;
     }
 
@@ -194,18 +183,12 @@ export function openAccount() {
           <p style="margin: 0 0 8px; font-size: 12px; color: #cbd5e1;">Esto ocurre si el navegador bloquea popups o si el dominio no está autorizado en Firebase.</p>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button type="button" class="hud-btn hud-btn-primary hud-btn-xs" id="quick_google_redirect">🔄 Probar con Redirección Directa</button>
-            <button type="button" class="hud-btn hud-btn-secondary hud-btn-xs" id="quick_netlify_login">⚡ Usar Netlify Identity</button>
           </div>
         </div>
       `);
       modal.querySelector('#quick_google_redirect')?.addEventListener('click', () => {
         run(() => account.signInWithGoogle({ useRedirect: true, remember: modal.querySelector('[name=remember]')?.checked !== false }));
       });
-      modal.querySelector('#quick_netlify_login')?.addEventListener('click', () => run(async () => {
-        await account.signInWithNetlify();
-        modal.remove();
-        openAccount();
-      }));
       return;
     }
 
@@ -235,11 +218,6 @@ export function openAccount() {
       await account.signInWithGoogle({ useRedirect: true, remember: modal.querySelector('[name=remember]').checked });
     }));
 
-    modal.querySelector('#btn_netlify_signin')?.addEventListener('click', () => run(async () => {
-      await account.signInWithNetlify();
-      modal.remove();
-      openAccount();
-    }));
 
     modal.querySelector('form').onsubmit = event => {
       event.preventDefault();

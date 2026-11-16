@@ -1,5 +1,9 @@
+import { drawSoftened } from './softMask.js';
 // src/lightingEngine.js
 // 2D Raycasting Dynamic Lighting & Shadow Engine for VeilVTT
+
+export const LIGHT_SOFTNESS = 8;
+const ARC_STEPS = 60;
 
 export class LightingEngine {
   constructor() {
@@ -36,8 +40,13 @@ export class LightingEngine {
       return null;
     }
 
-    const T2 = (r_dx * (s_py - r_py) + r_dy * (r_px - s_px)) / (s_dx * r_dy - s_dy * r_dx);
-    const T1 = (s_px + s_dx * T2 - r_px) / r_dx;
+    // Parallel in either direction: no crossing. An exactly horizontal or vertical ray used
+    // to divide by zero here and return a point without coordinates.
+    const cross = s_dx * r_dy - s_dy * r_dx;
+    if (Math.abs(cross) < 1e-9 * r_mag * s_mag) return null;
+    const T2 = (r_dx * (s_py - r_py) + r_dy * (r_px - s_px)) / cross;
+    const T1 = Math.abs(r_dx) >= Math.abs(r_dy) ? (s_px + s_dx * T2 - r_px) / r_dx : (s_py + s_dy * T2 - r_py) / r_dy;
+    if (!Number.isFinite(T1) || !Number.isFinite(T2)) return null;
 
     if (T1 < 0) return null;
     if (T2 < 0 || T2 > 1) return null;
@@ -129,10 +138,14 @@ export class LightingEngine {
     if (isDirectional) {
       angles.push(facingAngle - halfFov, facingAngle + halfFov);
       // Sample intermediate arc steps for smooth circular perimeter
-      const steps = 14;
+      const steps = Math.max(14, Math.ceil(visionAngle / 6));
       for (let s = 1; s < steps; s++) {
         angles.push(facingAngle - halfFov + (s / steps) * (halfFov * 2));
       }
+    } else {
+      // A full circle needs its own samples: with rays only towards wall ends and the corners
+      // of the bounding box, an open area came out as a square with straight sides.
+      for (let s = 0; s < ARC_STEPS; s++) angles.push(-Math.PI + (s / ARC_STEPS) * Math.PI * 2);
     }
 
     for (const p of points) {
@@ -393,7 +406,8 @@ export class LightingEngine {
     
     // Draw back the ambient light map onto the main game canvas with multiply / blend
     ctx.save();
-    ctx.drawImage(this.lightCanvas, 0, 0);
+    // Feathered: the shadow a wall cuts into a light ends in a gradient, not in a line.
+    drawSoftened(ctx, this.lightCanvas, LIGHT_SOFTNESS);
 
     // Subtle colored glows around light centers
     ctx.globalCompositeOperation = 'screen';

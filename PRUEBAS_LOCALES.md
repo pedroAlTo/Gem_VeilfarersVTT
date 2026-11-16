@@ -2,9 +2,24 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v1.4.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v1.4.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v1.4.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v1.4.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.8.9.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.8.9**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.8.9** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.8.9.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
+
+## V2 · qué comprobar (v2.0–v2.8)
+
+1. **Lobby.** Entra como invitado: en **Mis personajes** debe avisar de que no hay biblioteca. Inicia sesión con correo o Google: aparecen tus personajes; crea uno, importa un JSON de ficha, descárgalo y bórralo. Cambia entre **Básico** y **Avanzado** y recarga: se recuerda la vista. No debe ofrecerse Netlify Identity en ningún sitio.
+2. **Creador.** **Roster → + PERSONAJE**: completa los pasos (un Sleeping tiene 3 Experiencias y Resolve Moves; un Awakened, 2 y Poderes). Termina con **Crear token**, abre su ficha y revisa Traits, umbrales (armadura + nivel) y arma.
+3. **Subida de nivel.** En la ficha (vista Completa, como Keeper) pulsa **Subir de nivel** hasta el 2: Proficiency pasa a 2 y, si es Sleeping, Honed Edge a +1. Sin volver a preparar el arma, el panel de daño debe usar esos valores.
+4. **Ataque completo.** Selecciona un PJ con un arma de alcance Close y un objetivo a más de 10 m. **Dice → Damage → ATACAR AL OBJETIVO**: debe tirar Hope, Fear y el d6 de Desventaja en 3D, y el detalle debe mostrar la suma completa (`… − d6 [n] (Desventaja) = total`). Si impacta, se tiran los dados de daño en 3D (2 dados con Proficiency 2 en un arma de 1 dado). Si falla, no hay daño.
+5. **Alcance.** Con un arma cuerpo a cuerpo, o sin arma, ataca a un objetivo que no esté adyacente: debe responder **FUERA DE ALCANCE** sin tirar. Pon un muro entre ambos con un arma a distancia: avisa de la línea de tiro bloqueada y deja atacar. La línea de fijado muestra metros y banda (Melee, Very Close, Close, Far, Extreme).
+6. **Adversario.** Selecciona un adversario y ataca a un PJ: tira 1d20 + Ataque; un 20 natural es crítico y el daño sale al máximo sin tirar dados.
+7. **Aplicar daño.** Tras calcularlo, **Gastar escudos** deja elegir cuántos Armor Slots usa el defensor; no se gasta ninguno automáticamente. Prueba un arma Energy contra un objetivo con y sin armadura Reflective: los umbrales bajan 2 solo sin ella.
+8. **Resultados.** Cada tirada deja una sola tarjeta dorada a la derecha y una línea en el chat; no debe aparecer un segundo marcador abajo. Con dos navegadores en la misma sala, tira desde ambos casi a la vez: las dos tarjetas se apilan en orden y una tirada secreta del Keeper no llega al jugador.
+9. **Chat.** Con el mapa enfocado y sin ventanas abiertas, pulsa Intro: se abre el chat de mesa listo para escribir.
+10. **Luces y niebla.** Como jugador, en una zona abierta la visión es un círculo que se desvanece al final de su alcance, con bordes difuminados; detrás de un muro no se ve. Las luces del mapa hacen lo mismo.
+
+Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 
 ## Acceso y sincronización (v1.3.1)
 
@@ -13,8 +28,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v1.4.0.zip**. Abre **AYUDA*
 3. Pulsa varias veces los controles de HP, Armor, Stress y Hope/Effort. Todos los clics deben llegar una sola vez. Alterna FOCO y gira la dirección del token.
 4. Mientras un jugador arrastra, mueve su token desde el Keeper, retírale la asignación o cambia de escena. El arrastre anterior debe cancelarse. La visión no debe descubrir zonas desde posiciones pendientes de confirmación.
 5. Interrumpe la conexión del jugador: no debe seguir editando; los cambios sin confirmar se descartan con aviso. Reconecta mediante la misma invitación y pestaña para recuperar su asignación y el estado del Keeper.
-6. En un dominio con autenticación configurada, inicia sesión con Google o correo marcando **Keep me signed in on this device**, recarga y cierra/reabre el navegador. Repite con Netlify Identity. Comprueba también **Sign out** y que cancelar un acceso no abre otro proveedor.
-7. Las sesiones de acceso del navegador pertenecen a su origen: `localhost`, la IP LAN y el dominio de Netlify son direcciones diferentes. Para comprobar persistencia vuelve exactamente a la misma dirección y puerto. La cuenta no reconecta por sí sola a una partida cerrada.
+6. En un dominio con autenticación configurada, inicia sesión con Google o correo marcando **Keep me signed in on this device**, recarga y cierra/reabre el navegador. Comprueba también **Sign out** y que cancelar el acceso con Google conserva la cuenta que ya estaba abierta. (El acceso con Netlify Identity se retiró en v2.8.1.)
+7. Las sesiones de acceso del navegador pertenecen a su origen: `localhost`, la IP LAN y el dominio público del despliegue son direcciones diferentes. Para comprobar persistencia vuelve exactamente a la misma dirección y puerto. La cuenta no reconecta por sí sola a una partida cerrada.
 
 ## Entornos, bosses e impactos (v1.2.0)
 

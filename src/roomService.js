@@ -40,13 +40,13 @@ export function generateInviteCode(roomName = '') {
   return `${prefix}-${randomSuffix}`;
 }
 
-// Only Firebase identities are credentials for Firestore. Netlify tokens are never
-// treated as Firebase credentials, and membership never depends on a display name.
+// Only a signed-in Firebase identity is a credential for Firestore; membership never
+// depends on a display name.
 export class RoomService {
   constructor({ cloudAccount = account } = {}) { this.account = cloudAccount; }
   async ready() {
     await this.account.restoreSession();
-    if (!this.account.user || this.account.user.isNetlify) throw new Error('Inicia sesión con Google o correo de Firebase para usar tus salas persistentes.');
+    if (!this.account.user) throw new Error('Inicia sesión con Google o correo para usar tus salas persistentes.');
     await this.account.init();
     const changed = this.uid !== this.account.user.uid;
     this.uid = this.account.user.uid; this.api = this.account.dbAPI; this.db = this.account.db;
