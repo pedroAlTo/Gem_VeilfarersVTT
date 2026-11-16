@@ -18,7 +18,7 @@ export function createActor(data = {}, mapId) {
   const isPlayer = data.actorType ? data.actorType === 'player' : data.isPlayer !== false;
   const defaultColor = data.color || TOKEN_COLOR_PALETTE[Math.floor(Math.random() * TOKEN_COLOR_PALETTE.length)];
   const fallbackAvatar = isPlayer
-    ? defaultTokenAvatar(data.species, data.pronouns, data.name)
+    ? defaultTokenAvatar(data.species, data.pronouns, data.name, data.characterClass || data.roleTag)
     : '/assets/tokens/adversary-marker.svg';
   const resolvedAvatar = (data.avatarUrl && (data.avatarUrl !== '/assets/tokens/captain_harker.jpg' || !data.species))
     ? data.avatarUrl

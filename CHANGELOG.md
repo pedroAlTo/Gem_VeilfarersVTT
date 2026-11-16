@@ -1,10 +1,26 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.8.6**.
-Paquete: `VeilFarers_VTT_v2.8.6.zip`.
+Versión actual del VTT: **v2.8.7**.
+Paquete: `VeilFarers_VTT_v2.8.7.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.7] — 2026-11-16
+
+V2 · 72 retratos canonicos por Ancestry, Genero y Tipologias con selector interactivo y correccion de anatomia alienigena
+
+### Tokens y Retratos Canonicos
+
+- Correccion rigurosa de anatomia segun el lore de Alien Species y Corebook: Kryx es ahora un feroz licantropo lupino humanoide (hombre lobo) con pelaje shadowsteel y crestas cian bioluminiscentes; Kryllian es un insectoide esbelto de cuatro brazos tipo mantis religiosa; Rift Spinner es estrictamente no humanoide, un aracnido cristalino prismatico de 8 extremidades.
+- 72 retratos dedicados cubriendo las 9 ancestries x 2 generos x 4 tipologias canonicas: Guerrero / Vanguard, Erudito / Mago, Picaro / Explorador y Tecnico / Cientifico.
+- Selector interactivo de tipologia en el Creador de Personajes (Paso 9: Detalles) para alternar en vivo entre las 4 variantes de rol con previsualizacion inmediata.
+- Asignacion automatica por clase o rol al importar personajes JSON (Jarana como Vanguard Rift Spinner femenina, Brok como Soldier Kryx masculino, Lucy Fer como Mystic femenina, Miles como Diplomat/Tech masculino).
+
+### Importacion de Personajes
+
+- Compatibilidad universal e insensible a mayusculas para cualquier JSON generado por Veilfarers Character Creator o herramientas legacy.
+- Deteccion automatica e inferencia de formato basada en campos estructurales, garantizando que ninguna ficha valida sea rechazada con formato no reconocido.
 
 ## [2.8.6] — 2026-11-16
 

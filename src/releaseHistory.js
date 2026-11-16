@@ -1,6 +1,21 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.7', date: '2026-11-16', title: 'V2 · 72 retratos canonicos por Ancestry, Genero y Tipologias con selector interactivo y correccion de anatomia alienigena',
+    sections: [
+      { title: 'Tokens y Retratos Canonicos', items: [
+        'Correccion rigurosa de anatomia segun el lore de Alien Species y Corebook: Kryx es ahora un feroz licantropo lupino humanoide (hombre lobo) con pelaje shadowsteel y crestas cian bioluminiscentes; Kryllian es un insectoide esbelto de cuatro brazos tipo mantis religiosa; Rift Spinner es estrictamente no humanoide, un aracnido cristalino prismatico de 8 extremidades.',
+        '72 retratos dedicados cubriendo las 9 ancestries x 2 generos x 4 tipologias canonicas: Guerrero / Vanguard, Erudito / Mago, Picaro / Explorador y Tecnico / Cientifico.',
+        'Selector interactivo de tipologia en el Creador de Personajes (Paso 9: Detalles) para alternar en vivo entre las 4 variantes de rol con previsualizacion inmediata.',
+        'Asignacion automatica por clase o rol al importar personajes JSON (Jarana como Vanguard Rift Spinner femenina, Brok como Soldier Kryx masculino, Lucy Fer como Mystic femenina, Miles como Diplomat/Tech masculino).',
+      ] },
+      { title: 'Importacion de Personajes', items: [
+        'Compatibilidad universal e insensible a mayusculas para cualquier JSON generado por Veilfarers Character Creator o herramientas legacy.',
+        'Deteccion automatica e inferencia de formato basada en campos estructurales, garantizando que ninguna ficha valida sea rechazada con formato no reconocido.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.6', date: '2026-11-16', title: 'V2 · Retratos canónicos para cada Ancestry por género y asignación automática',
     sections: [
       { title: 'Tokens y Retratos', items: [

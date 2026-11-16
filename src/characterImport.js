@@ -24,12 +24,13 @@ export function parseCharacterJSON(input) {
     // Native exports are portable actors, never a tactical ID or a campaign snapshot.
     for (const k of ['id', 'mapId', 'x', 'y', 'ownerId', 'controllerIds', 'scenePositions']) delete token[k];
     if (!token.avatarUrl || token.avatarUrl === '/assets/tokens/captain_harker.jpg') {
-      token.avatarUrl = defaultTokenAvatar(token.species, token.pronouns, token.name);
+      token.avatarUrl = defaultTokenAvatar(token.species, token.pronouns, token.name, token.characterClass || token.roleTag);
     }
     return { token, missing: [], warnings: [], format: 'VTT Actor 1' };
   }
-  const isSheet = doc.app === 'Veilfarers Character Sheet';
-  const isCreator = doc.app === 'Veilfarers Character Creator';
+  const app = text(doc.app).trim();
+  const isSheet = /^veilfarers character sheet/i.test(app);
+  const isCreator = /^veilfarers character creator/i.test(app) || (!isSheet && object(doc.fields) && (doc.fields.ancestry != null || doc.fields.class != null || doc.fields.tr_agility != null || doc.fields.base_hp_max != null));
   if ((!isSheet && !isCreator) || !object(doc.fields))
     throw new Error('Formato no reconocido. Usa Veilfarers Character Sheet, Veilfarers Character Creator o Veilfarers VTT Actor; las sesiones se importan en Sesiones.');
   doc.tracks ||= {};
@@ -96,7 +97,7 @@ export function parseCharacterJSON(input) {
     characterClass: text(f.class), subclass: text(f.subclass), subclassRank: text(f.subclass_rank),
     species: text(f.ancestry), community: text(f.community), pronouns: text(f.pron),
     roleTag: [f.class, f.subclass].filter(Boolean).join(' · '),
-    avatarUrl: defaultTokenAvatar(f.ancestry, f.pron, f.name),
+    avatarUrl: defaultTokenAvatar(f.ancestry, f.pron, f.name, f.class || f.subclass),
     level: number(f.level, 'Nivel', 1, 100), proficiency: number(f.prof, 'Proficiency', 1, 100),
     evasion: number(f.evasion, 'Evasion', 0, 100),
     traits: Object.fromEntries(TRAIT_IDS.map(k => [k, number(f[`tr_${k}`], k, -100, 100)])),

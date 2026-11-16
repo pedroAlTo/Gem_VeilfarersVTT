@@ -1,6 +1,7 @@
 /**
  * Token Avatar Resolver for Veilfarers VTT.
- * Maps character ancestries and genders to canonical token portraits.
+ * Maps character ancestries, archetypes (warrior, mystic, scoundrel, engineer)
+ * and genders to canonical high-resolution token portraits.
  */
 
 export const ANCESTRY_IDS = [
@@ -14,6 +15,31 @@ export const ANCESTRY_IDS = [
   'rift_spinner',
   'synthetic',
 ];
+
+export const ARCHETYPES = ['warrior', 'mystic', 'scoundrel', 'engineer'];
+
+export const ARCHETYPE_META = Object.freeze({
+  warrior: {
+    id: 'warrior',
+    label: 'Guerrero / Vanguard',
+    description: 'Soldado, combatiente acorazado y especialista en primera línea',
+  },
+  mystic: {
+    id: 'mystic',
+    label: 'Erudito / Mago',
+    description: 'Místico del Velo, erudito psiónico y canalizador',
+  },
+  scoundrel: {
+    id: 'scoundrel',
+    label: 'Pícaro / Explorador',
+    description: 'Explorador sigiloso, infiltrador y acechador del vacío',
+  },
+  engineer: {
+    id: 'engineer',
+    label: 'Técnico / Científico',
+    description: 'Ingeniero de sistemas, artífice, forjador y diplomático',
+  },
+});
 
 export const ANCESTRY_TOKEN_AVATARS = Object.freeze({
   ailuran: {
@@ -106,9 +132,52 @@ export function detectGender(pronouns = '', name = '') {
   return 'm';
 }
 
-export function defaultTokenAvatar(species, pronouns, name) {
+export function detectArchetype(roleOrClass = '') {
+  const s = String(roleOrClass || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (/mistic|mystic|mago|psion|scholar|erudit|sage|seer|conduit|void|healer|curand/i.test(s)) {
+    return 'mystic';
+  }
+  if (/picar|scoundrel|explor|rogue|scout|infiltr|shadow|stealth|stalk|acechad|ladron|thief|sniper|ranger/i.test(s)) {
+    return 'scoundrel';
+  }
+  if (/ingen|engineer|tecn|tech|cientif|mechan|artisan|diplomat|forg|maker|hack|pilot/i.test(s)) {
+    return 'engineer';
+  }
+  if (/sold|vanguard|guerr|combat|peacekeep|blade|guard|juggernaut|pesad|tank|bruis/i.test(s)) {
+    return 'warrior';
+  }
+  return 'warrior';
+}
+
+export function getArchetypeTokenAvatar(species, archetype, gender = 'm') {
+  const ancestry = normalizeAncestryId(species);
+  const arch = ARCHETYPES.includes(archetype) ? archetype : 'warrior';
+  const g = ['m', 'f'].includes(gender) ? gender : 'm';
+  return `/assets/tokens/${ancestry}_${arch}_${g}.jpg`;
+}
+
+export function listAncestryArchetypeTokens(species, pronouns, name) {
   const ancestry = normalizeAncestryId(species);
   const gender = detectGender(pronouns, name);
+  return ARCHETYPES.map(arch => ({
+    id: arch,
+    ...ARCHETYPE_META[arch],
+    avatarUrl: getArchetypeTokenAvatar(ancestry, arch, gender),
+  }));
+}
+
+export function defaultTokenAvatar(species, pronouns, name, roleOrClass = '') {
+  const ancestry = normalizeAncestryId(species);
+  const gender = detectGender(pronouns, name);
+  if (roleOrClass) {
+    const arch = detectArchetype(roleOrClass);
+    return getArchetypeTokenAvatar(ancestry, arch, gender);
+  }
   const pair = ANCESTRY_TOKEN_AVATARS[ancestry] || ANCESTRY_TOKEN_AVATARS.human;
   return pair[gender] || pair.m;
 }
