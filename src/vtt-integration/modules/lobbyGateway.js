@@ -6,7 +6,6 @@ import {
   onAuthStateChanged,
   signOut
 } from "firebase/auth";
-import { ref, onValue, push, set, remove } from "firebase/database";
 import { getFirebaseAuthInstance, getFirebaseDatabaseInstance } from './firebaseClient.js';
 
 function escapeHtml(str) {
@@ -30,7 +29,7 @@ export class VeilfarersLobbyGateway {
     this.wasLoggedIn = false;
     this.selectedRole = 'player';
     this.selectedCharId = null;
-    this.vaultCharacters = {};
+    this.characters = [];
     this.lobbyMode = 'basic';
     try { this.lobbyMode = localStorage.getItem('veil_lobby_mode') || 'basic'; } catch {}
 
@@ -282,15 +281,12 @@ export class VeilfarersLobbyGateway {
               <span class="fx-num">04</span>
               <div class="panel-header">
                 <div class="panel-title-group">
-                  <h3><span class="panel-icon">📂</span> CHARACTER VAULT</h3>
-                  <span class="panel-badge">OPERATIVO TÁCTICO</span>
+                  <h3><span class="panel-icon">📂</span> MIS PERSONAJES</h3>
+                  <span class="panel-badge">BIBLIOTECA PRIVADA DE TU CUENTA</span>
                 </div>
                 <div class="vault-actions">
                   <button type="button" id="vf-btn-character-creator" class="vf-btn vf-btn-primary vf-btn-xs" title="Crear un personaje paso a paso y descargar su ficha">
                     Crear personaje
-                  </button>
-                  <button type="button" id="vf-btn-open-creator" class="vf-btn vf-btn-secondary vf-btn-xs fx-advanced">
-                    Creador rápido
                   </button>
                   <label class="vf-btn vf-btn-secondary vf-btn-xs file-upload-btn" title="Importar expediente desde archivo JSON">
                     Importar ficha JSON
@@ -298,7 +294,7 @@ export class VeilfarersLobbyGateway {
                   </label>
                 </div>
               </div>
-              <p class="panel-hint">Operativo activo seleccionado para la mesa:</p>
+              <p class="panel-hint">Solo tú ves estos personajes. Ya en la mesa, tráelos desde Cuenta → Use in game, o pide al Keeper que te asigne un token.</p>
               <div id="vf-vault-list" class="vf-vault-list"></div>
             </section>
           </div>
@@ -350,78 +346,6 @@ export class VeilfarersLobbyGateway {
           </div>
         </div>
       </div>
-
-      <!-- MODAL: CREADOR / EDITOR DE PERSONAJE INTEGRADO -->
-      <div id="vf-creator-modal" class="vf-modal-backdrop hidden">
-        <div class="vf-creator-dialog">
-          <header class="creator-header">
-            <div class="creator-header-title">
-              <span class="creator-badge">✦ VEILFARERS // EXPEDIENTE TÁCTICO</span>
-              <h3>CREADOR DE PERSONAJES</h3>
-            </div>
-            <button type="button" id="vf-btn-close-creator" class="vf-btn vf-btn-close-dialog" title="Cerrar">✕</button>
-          </header>
-          <form id="vf-creator-form" class="creator-form">
-            <div class="creator-section">
-              <div class="creator-section-header">
-                <span class="sec-number">01</span>
-                <span class="sec-title">IDENTIDAD DEL OPERATIVO</span>
-              </div>
-              <div class="creator-row">
-                <label>Nombre del Viajero
-                  <input type="text" id="cr-name" required placeholder="Ej: Kaelen Vance" />
-                </label>
-                <label>Especie / Subespecie
-                  <input type="text" id="cr-species" required placeholder="Ej: Humano / Voidborn" />
-                </label>
-                <label>Trasfondo / Especialización
-                  <input type="text" id="cr-background" required placeholder="Ej: Vanguardia / Explorador" />
-                </label>
-              </div>
-            </div>
-
-            <div class="creator-section">
-              <div class="creator-section-header">
-                <span class="sec-number">02</span>
-                <span class="sec-title">MATRIZ DE ATRIBUTOS (DUALITY 2d12)</span>
-              </div>
-              <div class="creator-attrs-grid">
-                <div class="attr-box"><span class="attr-code">AGI</span><label>Agility <input type="number" id="cr-attr-agility" value="1" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">STR</span><label>Strength <input type="number" id="cr-attr-strength" value="0" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">FIN</span><label>Finesse <input type="number" id="cr-attr-finesse" value="2" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">INS</span><label>Instinct <input type="number" id="cr-attr-instinct" value="1" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">PRE</span><label>Presence <input type="number" id="cr-attr-presence" value="0" min="-2" max="5" /></label></div>
-                <div class="attr-box"><span class="attr-code">KNO</span><label>Knowledge <input type="number" id="cr-attr-knowledge" value="-1" min="-2" max="5" /></label></div>
-              </div>
-            </div>
-
-            <div class="creator-section">
-              <div class="creator-section-header">
-                <span class="sec-number">03</span>
-                <span class="sec-title">BLINDAJE EXOTÁCTICO & MEJORAS</span>
-              </div>
-              <div class="creator-row">
-                <label>Nombre de Armadura
-                  <input type="text" id="cr-armour-name" value="Traje Exo-Táctico" />
-                </label>
-                <label title="Cantidad de escudos de armadura que puedes marcar para evitar daño">
-                  🛡️ Armour Shields (A.S.)
-                  <input type="number" id="cr-armour-as" value="3" min="0" max="10" />
-                </label>
-                <label title="Capacidad de mejoras instalables en la armadura">
-                  🔧 Slots de Mejora
-                  <input type="number" id="cr-armour-slots" value="2" min="0" max="6" />
-                </label>
-              </div>
-            </div>
-
-            <div class="creator-footer">
-              <button type="button" id="vf-btn-cancel-creator" class="vf-btn vf-btn-secondary">Cancelar</button>
-              <button type="submit" class="vf-btn vf-btn-primary">Guardar en el Vault</button>
-            </div>
-          </form>
-        </div>
-      </div>
     `;
     document.body.appendChild(root);
   }
@@ -466,6 +390,7 @@ export class VeilfarersLobbyGateway {
       const emailEl = document.getElementById('vf-user-email');
       if (emailEl) emailEl.textContent = 'Modo Local / Sin correo';
       this.loadRoomsList();
+      this.loadCharacters();
     });
 
     // Email / Password Form Submission - STRICT WAITING FOR AUTH TO COMPLETE
@@ -592,17 +517,12 @@ export class VeilfarersLobbyGateway {
     // Modal Creador
     const modal = document.getElementById('vf-creator-modal');
     document.getElementById('vf-btn-character-creator')?.addEventListener('click', async () => {
-      try { const { openCharacterCreator } = await import('../../creator/creatorUI.js'); await openCharacterCreator(); }
-      catch (err) { this.showHubError(`No se pudo abrir el creador: ${err?.message || err}`); }
-    });
-    document.getElementById('vf-btn-open-creator')?.addEventListener('click', () => modal?.classList.remove('hidden'));
-    document.getElementById('vf-btn-close-creator')?.addEventListener('click', () => modal?.classList.add('hidden'));
-    document.getElementById('vf-btn-cancel-creator')?.addEventListener('click', () => modal?.classList.add('hidden'));
-
-    document.getElementById('vf-creator-form')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      await this.saveNewCharacterFromModal();
-      modal?.classList.add('hidden');
+      try {
+        const { openCharacterCreator } = await import('../../creator/creatorUI.js');
+        const dialog = await openCharacterCreator();
+        // Whatever was saved to the account while the creator was open shows up on closing it.
+        new MutationObserver((_m, observer) => { if (!dialog.isConnected) { observer.disconnect(); this.loadCharacters(); } }).observe(document.body, { childList: true });
+      } catch (err) { this.showHubError(`No se pudo abrir el creador: ${err?.message || err}`); }
     });
 
     document.getElementById('vf-import-json')?.addEventListener('change', (e) => this.handleImportJSON(e));
@@ -640,7 +560,7 @@ export class VeilfarersLobbyGateway {
         const emailEl = document.getElementById('vf-user-email');
         if (emailEl) emailEl.textContent = user.email || 'Modo Local / Sin correo';
 
-        this.subscribeToUserVault(user.uid);
+        this.loadCharacters();
         this.loadRoomsList();
       } else {
         this.setAuthBusy(false);
@@ -864,7 +784,7 @@ export class VeilfarersLobbyGateway {
           displayName: this.currentUser?.displayName || (role === 'keeper' ? 'Keeper' : 'Viajero'),
           role
         },
-        activeCharId: role === 'keeper' ? null : (this.selectedCharId || null)
+        activeCharId: null
       });
     }
     // The local table and guests never touch the cloud.
@@ -888,7 +808,7 @@ export class VeilfarersLobbyGateway {
           displayName: this.currentUser?.displayName || 'Viajero',
           role: 'player'
         },
-        activeCharId: this.selectedCharId || null
+        activeCharId: null
       });
     }
     this.runRoomAction(rooms => rooms.join(trimmed, this.currentUser?.displayName || 'Viajero'), 'No se pudo entrar con ese código');
@@ -912,241 +832,100 @@ export class VeilfarersLobbyGateway {
     this.runRoomAction(rooms => rooms.create(trimmed), 'No se pudo crear la sala');
   }
 
-  subscribeToUserVault(uid) {
-    if (!this.db || !uid) return;
-    const vaultRef = ref(this.db, 'character_vault');
-    onValue(vaultRef, (snapshot) => {
-      const allChars = snapshot.val() || {};
-      this.vaultCharacters = {};
-
-      Object.entries(allChars).forEach(([charId, charData]) => {
-        if (charData && charData.ownerId === uid) {
-          this.vaultCharacters[charId] = charData;
-        }
-      });
-
+  // The library is the signed-in user's own (Firestore users/{uid}/characters); nobody else
+  // can list or change it. It replaced the shared Realtime Database vault.
+  async loadCharacters() {
+    const container = document.getElementById('vf-vault-list');
+    if (!container) return;
+    if (!this.hasCloudAccount()) {
+      this.characters = [];
+      container.innerHTML = `<div class="vault-empty"><div class="vault-empty-title">SIN CUENTA</div><p>En modo invitado no hay biblioteca. Puedes crear un personaje y descargar su ficha, o iniciar sesión para guardarlo.</p></div>`;
+      return;
+    }
+    container.innerHTML = '<div class="vf-room-loading">Cargando tus personajes...</div>';
+    try {
+      const { account } = await import('../../cloudAccount.js');
+      this.characters = await account.list('characters');
       this.renderVaultList();
-    });
+    } catch (err) {
+      console.warn('[Lobby] No se pudo cargar la biblioteca de personajes:', err);
+      container.innerHTML = `<div class="vf-room-empty vf-room-error" role="alert"><p>No se han podido cargar tus personajes.</p><small>${escapeHtml(this.roomErrorText(err))}</small><button type="button" class="vf-btn vf-btn-secondary vf-btn-sm btn-retry-characters">Reintentar</button></div>`;
+      container.querySelector('.btn-retry-characters').onclick = () => this.loadCharacters();
+    }
   }
 
   renderVaultList() {
     const container = document.getElementById('vf-vault-list');
     if (!container) return;
-    container.innerHTML = '';
-
-    const entries = Object.entries(this.vaultCharacters);
-    if (entries.length === 0) {
-      container.innerHTML = `
-        <div class="vault-empty">
-          <div class="vault-empty-icon">📂</div>
-          <div class="vault-empty-title">REGISTRO DE OPERATIVOS VACÍO</div>
-          <p>No tienes personajes guardados en este terminal. Importa una ficha <strong>JSON</strong> para comenzar.</p>
-        </div>
-      `;
-      this.updateSummaryText();
+    if (!this.characters.length) {
+      container.innerHTML = `<div class="vault-empty"><div class="vault-empty-title">AÚN NO TIENES PERSONAJES</div><p>Pulsa <strong>Crear personaje</strong> y guárdalo en tu cuenta al terminar, o importa una ficha <strong>JSON</strong>.</p></div>`;
       return;
     }
-
-    if (!this.selectedCharId && entries.length > 0) {
-      this.selectedCharId = entries[0][0];
-    }
-
-    entries.forEach(([charId, data]) => {
-      const st = data.staticData || {};
-      const dyn = data.dynamicState || {};
-      const armour = st.armour || {};
-      const isSelected = charId === this.selectedCharId;
-
+    container.innerHTML = '';
+    for (const row of this.characters) {
+      let sheet = null;
+      try { sheet = JSON.parse(row.payload)?.token || null; } catch {}
+      const meta = sheet ? [sheet.species, sheet.characterClass, sheet.subclass, sheet.path, sheet.level ? `Nivel ${sheet.level}` : ''].filter(Boolean) : [];
       const card = document.createElement('div');
-      card.className = `vault-char-card ${isSelected ? 'selected' : ''}`;
+      card.className = 'vault-char-card';
       card.innerHTML = `
         <div class="vault-card-body">
-          <div class="vault-card-avatar">◈</div>
           <div class="vault-card-main">
             <div class="vault-card-header-row">
-              <h4>${escapeHtml(st.name || 'Operativo')}</h4>
-              <span class="vault-card-status">${isSelected ? '✦ ACTIVO' : 'SELECCIONAR'}</span>
+              <h4>${escapeHtml(row.name || 'Personaje')}</h4>
+              <span class="vault-card-status">${escapeHtml(new Date(row.updatedAt || Date.now()).toLocaleDateString())}</span>
             </div>
-            <div class="vault-card-meta">
-              <span class="meta-tag">${escapeHtml(st.species || 'Especie')}</span>
-              <span class="meta-divider">•</span>
-              <span class="meta-tag">${escapeHtml(st.background || 'Explorador')}</span>
-            </div>
-            <div class="vault-card-stats fx-advanced">
-              <span class="stat-pill hp" title="Health Points">❤️ <strong>HP:</strong> ${dyn.hp || 0}/${st.maxHp || 6}</span>
-              <span class="stat-pill stress" title="Stress Táctico">⚡ <strong>STR:</strong> ${dyn.stress || 0}/${st.maxStress || 6}</span>
-              <span class="stat-pill hope" title="Hope / Determinación">✨ <strong>HOP:</strong> ${dyn.hope ?? 2}/${st.maxHope || 6}</span>
-              <span class="stat-pill as" title="Armour Shields Disponibles">🛡️ <strong>A.S.:</strong> ${(armour.shieldsAS || 3) - (dyn.armourShieldsUsed || 0)}/${armour.shieldsAS || 3}</span>
-              <span class="stat-pill slots" title="Slots de Mejora">🔧 <strong>SLT:</strong> ${armour.slots || 2}</span>
-            </div>
+            <div class="vault-card-meta">${meta.map(m => `<span class="meta-tag">${escapeHtml(m)}</span>`).join('<span class="meta-divider">•</span>') || '<span class="meta-tag">Ficha guardada</span>'}</div>
+            ${sheet ? `<div class="vault-card-stats fx-advanced">
+              <span class="stat-pill hp" title="Hit Points">HP ${escapeHtml(sheet.hp?.current ?? '—')}/${escapeHtml(sheet.hp?.max ?? '—')}</span>
+              <span class="stat-pill stress" title="Stress">Stress ${escapeHtml(sheet.stress?.current ?? 0)}/${escapeHtml(sheet.stress?.max ?? 6)}</span>
+              <span class="stat-pill as" title="Armor Slots">Armor ${escapeHtml(sheet.armor?.current ?? 0)}/${escapeHtml(sheet.armor?.max ?? 0)}</span>
+              <span class="stat-pill slots" title="Evasion">Evasion ${escapeHtml(sheet.evasion ?? '—')}</span>
+            </div>` : ''}
           </div>
         </div>
         <div class="vault-card-actions fx-advanced">
-          <button type="button" class="vf-btn-sm btn-export-json" title="Exportar Ficha JSON">⬇ JSON</button>
-          <button type="button" class="vf-btn-sm btn-delete-char" title="Eliminar Operativo">🗑️</button>
+          <button type="button" class="vf-btn-sm btn-export-json" title="Descargar la ficha en JSON">Descargar JSON</button>
+          <button type="button" class="vf-btn-sm btn-delete-char" title="Eliminar de tu biblioteca">Eliminar</button>
         </div>
       `;
-
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        this.selectedCharId = charId;
-        this.renderVaultList();
-        this.updateSummaryText();
+      card.querySelector('.btn-export-json').addEventListener('click', () => {
+        const blob = new Blob([row.payload], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${String(row.name || 'personaje').toLowerCase().replace(/\s+/g, '_')}.json`;
+        link.click();
       });
-
-      card.querySelector('.btn-export-json')?.addEventListener('click', () => {
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${(st.name || 'veilfarer').toLowerCase().replace(/\s+/g, '_')}.json`;
-        a.click();
+      card.querySelector('.btn-delete-char').addEventListener('click', async () => {
+        if (!confirm(`¿Eliminar a ${row.name || 'este personaje'} de tu biblioteca?`)) return;
+        try { const { account } = await import('../../cloudAccount.js'); await account.removeCharacter(row.id); }
+        catch (err) { this.showHubError(`No se pudo eliminar: ${this.roomErrorText(err)}`); }
+        this.loadCharacters();
       });
-
-      card.querySelector('.btn-delete-char')?.addEventListener('click', async () => {
-        if (confirm(`¿Eliminar a ${st.name || 'este personaje'} del Vault?`)) {
-          if (this.selectedCharId === charId) this.selectedCharId = null;
-          if (this.db) await remove(ref(this.db, `character_vault/${charId}`));
-        }
-      });
-
       container.appendChild(card);
-    });
-
-    this.updateSummaryText();
-  }
-
-  async saveNewCharacterFromModal() {
-    if (!this.currentUser || !this.db) return;
-
-    const name = document.getElementById('cr-name')?.value.trim() || 'Viajero';
-    const species = document.getElementById('cr-species')?.value.trim() || 'Humano';
-    const background = document.getElementById('cr-background')?.value.trim() || 'Explorador';
-
-    const newCharPayload = {
-      ownerId: this.currentUser.uid,
-      staticData: {
-        name,
-        species,
-        background,
-        maxHp: 6,
-        maxStress: 6,
-        maxHope: 6,
-        attributes: {
-          Agility: Number(document.getElementById('cr-attr-agility')?.value) || 0,
-          Strength: Number(document.getElementById('cr-attr-strength')?.value) || 0,
-          Finesse: Number(document.getElementById('cr-attr-finesse')?.value) || 0,
-          Instinct: Number(document.getElementById('cr-attr-instinct')?.value) || 0,
-          Presence: Number(document.getElementById('cr-attr-presence')?.value) || 0,
-          Knowledge: Number(document.getElementById('cr-attr-knowledge')?.value) || 0
-        },
-        armour: {
-          name: document.getElementById('cr-armour-name')?.value.trim() || 'Traje Exo-Táctico',
-          shieldsAS: Number(document.getElementById('cr-armour-as')?.value) || 3,
-          slots: Number(document.getElementById('cr-armour-slots')?.value) || 2,
-          installedUpgrades: []
-        }
-      },
-      dynamicState: {
-        hp: 0,
-        stress: 0,
-        hope: 2,
-        armourShieldsUsed: 0
-      }
-    };
-
-    const newRef = push(ref(this.db, 'character_vault'));
-    await set(newRef, newCharPayload);
-    this.selectedCharId = newRef.key;
-  }
-
-  handleImportJSON(event) {
-    const file = event.target.files?.[0];
-    if (!file || !this.currentUser || !this.db) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const imported = JSON.parse(e.target.result);
-        const payload = {
-          ownerId: this.currentUser.uid,
-          staticData: imported.staticData || {
-            name: imported.name || 'Importado',
-            species: imported.species || 'Viajero',
-            background: imported.background || 'Explorador',
-            maxHp: imported.maxHp || 6,
-            maxStress: imported.maxStress || 6,
-            maxHope: imported.maxHope || 6,
-            attributes: imported.attributes || { Agility: 1, Strength: 0, Finesse: 1, Instinct: 0, Presence: 0, Knowledge: 0 },
-            armour: imported.armour || { name: 'Armadura', shieldsAS: 3, slots: 2, installedUpgrades: [] }
-          },
-          dynamicState: imported.dynamicState || { hp: 0, stress: 0, hope: 2, armourShieldsUsed: 0 }
-        };
-        const newRef = push(ref(this.db, 'character_vault'));
-        await set(newRef, payload);
-        this.selectedCharId = newRef.key;
-      } catch (err) {
-        alert('Archivo JSON inválido: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  updateSummaryText() {
-    const summaryEl = document.getElementById('vf-selected-summary');
-    if (!summaryEl) return;
-
-    if (this.selectedRole === 'keeper') {
-      summaryEl.innerHTML = `
-        <div class="summary-line">
-          <span class="summary-label">MODO ACTIVO:</span>
-          <span class="summary-value keeper-badge">⚡ KEEPER (DIRECTOR DE JUEGO)</span>
-        </div>
-        <div class="summary-line">
-          <span class="summary-label">ACCESO:</span>
-          <span class="summary-value text-dim">Consola de Fear, Party Tracker, Niebla & Visión Global</span>
-        </div>
-        <div class="summary-status status-ready">
-          <span class="status-pulse-dot">●</span> ENLACE AUTORIZADO // LISTO PARA DESPLIEGUE
-        </div>
-      `;
-    } else {
-      const char = this.vaultCharacters[this.selectedCharId];
-      const charName = char?.staticData?.name;
-      const species = char?.staticData?.species || 'Especie';
-      const background = char?.staticData?.background || 'Clase';
-
-      if (charName) {
-        summaryEl.innerHTML = `
-          <div class="summary-line">
-            <span class="summary-label">MODO ACTIVO:</span>
-            <span class="summary-value player-badge">◈ JUGADOR // OPERATIVO</span>
-          </div>
-          <div class="summary-line">
-            <span class="summary-label">PERSONAJE:</span>
-            <span class="summary-value char-name-highlight"><strong>${escapeHtml(charName)}</strong> <small class="text-dim">(${escapeHtml(species)} • ${escapeHtml(background)})</small></span>
-          </div>
-          <div class="summary-status status-ready">
-            <span class="status-pulse-dot">●</span> OPERATIVO VINCULADO // LISTO PARA DESPLEGAR
-          </div>
-        `;
-      } else {
-        summaryEl.innerHTML = `
-          <div class="summary-line">
-            <span class="summary-label">MODO ACTIVO:</span>
-            <span class="summary-value player-badge">◈ JUGADOR // OPERATIVO</span>
-          </div>
-          <div class="summary-line">
-            <span class="summary-label">PERSONAJE:</span>
-            <span class="summary-value text-dim">Sin personaje vinculado (el Keeper te asignará un token en la mesa)</span>
-          </div>
-          <div class="summary-status status-ready">
-            <span class="status-pulse-dot">●</span> ENLACE LISTO // DESPLIEGUE DIRECTO A LA MESA
-          </div>
-        `;
-      }
     }
   }
+
+  // Importing a sheet JSON is the one bridge from the character creator project.
+  async handleImportJSON(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    this.showHubError('');
+    try {
+      if (!this.hasCloudAccount()) throw new Error('Inicia sesión para guardar fichas en tu biblioteca.');
+      const { parseCharacterJSON } = await import('../../characterImport.js');
+      const { account } = await import('../../cloudAccount.js');
+      const parsed = parseCharacterJSON(await file.text());
+      await account.saveCharacter({ ...parsed.token, x: 0, y: 0 });
+      await this.loadCharacters();
+    } catch (err) {
+      this.showHubError(`No se pudo importar la ficha: ${err?.message || err}`);
+    }
+  }
+
+  // Kept for callers: the lobby no longer links a character before entering (HANDOVER.md §1).
+  updateSummaryText() {}
 
   friendlyAuthError(err) {
     if (!err) return 'Error de autenticación desconocido.';

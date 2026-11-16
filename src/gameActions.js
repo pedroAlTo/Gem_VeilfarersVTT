@@ -56,6 +56,7 @@ export function performGameAction(action, store = defaultStore) {
       forcedHope: o.forcedHope,
       forcedFear: o.forcedFear,
       forcedAdv: o.forcedAdv,
+      forcedResolve: o.forcedResolve,
     });
     const patch = { pendingCheckBonus: 0, pendingAdvantage: false };
     if (!player) {
@@ -103,7 +104,7 @@ export function performGameAction(action, store = defaultStore) {
       ...(secret ? { visibility: 'keeper' } : {}),
       type: 'CHECK',
       title: `${actor.name}: ${result.outcomeTitle}`,
-      details: `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}. ${result.pathPayout}`,
+      details: `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}.${result.disadvVal ? ` Desventaja: −d6 [${result.disadvVal}].` : result.advVal ? ` Ventaja: +d6 [${result.advVal}].` : ''} ${result.pathPayout}`,
       resultType: result.resultType,
     };
     store.addLog(log);

@@ -1,6 +1,31 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.0', date: '2026-11-16', title: 'V2 · Dados 3D en ataque y daño, Proficiency al día y biblioteca privada en el lobby',
+    sections: [
+      { title: 'Ataque', items: [
+        'La Desventaja (y la Ventaja) tira su d6 en la mesa y el resultado se resta (o suma) a la vista: aparece en el panel, en el aviso de la tirada, en el chat y en el registro, separado del resto de modificadores.',
+        'El ataque de un adversario tira su d20 en 3D, con el d6 de Ventaja o Desventaja cuando toca.',
+        'El dado de Resolve que cae en la mesa es el que cuenta: antes se tiraba en 3D pero se usaba otro valor.',
+      ] },
+      { title: 'Daño', items: [
+        'Los dados de daño se tiran en 3D y sus caras son el daño: tantos dados como diga el arma con su Proficiency, y el doble en un Crítico de jugador.',
+        'Un Crítico del Keeper sigue siendo daño máximo, sin tirar.',
+        'Con más de 40 dados o con los dados 3D desactivados, el daño se calcula como antes.',
+      ] },
+      { title: 'Proficiency y Honed Edge', items: [
+        'Al subir de nivel, el panel de daño usa la Proficiency nueva sin tener que volver a preparar el arma. Un valor escrito a mano se respeta.',
+        'Honed Edge de un Sleeping es su nivel − 1 y se actualiza al subir de nivel.',
+        'Una ficha importada con el daño "final" ya calculado vuelve al daño base del arma al subir de nivel, para que Proficiency y Honed Edge se apliquen con su valor actual.',
+      ] },
+      { title: 'Lobby', items: [
+        'El panel de personajes del lobby es ahora "Mis personajes": la biblioteca privada de tu cuenta. Se pueden crear, importar desde JSON, descargar y borrar.',
+        'El almacén compartido anterior deja de usarse; sus datos no se han borrado.',
+        'En modo invitado no hay biblioteca: se puede crear un personaje y descargar su ficha.',
+      ] },
+    ],
+  },
+  {
     version: '2.7.1', date: '2026-11-15', title: 'V2 · Creador: selección de equipo y listado de poderes más claros',
     sections: [
       { title: 'Equipo inicial', items: [

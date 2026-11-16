@@ -114,3 +114,42 @@ test('a room that cannot be opened brings the user back to the lobby with the re
     assert.equal(error.hidden, false); assert.match(error.textContent, /No se pudo abrir la sala: La sala ya no existe/);
   } finally { rooms.enter = enter; rooms.service.list = list; console.warn = warn; }
 });
+
+test('the lobby library is the signed-in user\'s own: it lists, imports and deletes account characters, and a guest has none', async () => {
+  const { account } = await import('../src/cloudAccount.js');
+  const gateway = new VeilfarersLobbyGateway(), list = document.getElementById('vf-vault-list');
+  const original = { list: account.list, save: account.saveCharacter, remove: account.removeCharacter }, confirmBefore = globalThis.confirm;
+  const sheet = name => JSON.stringify({ app: 'Veilfarers VTT Actor', version: 1, token: { name, species: 'Human', characterClass: 'Pilot', path: 'Awakened', level: 2, evasion: 11, hp: { current: 5, max: 6 }, stress: { current: 0, max: 6 }, armor: { current: 3, max: 3 } } });
+  let rows = [{ id: 'c1', name: 'Maren <b>Solas</b>', payload: sheet('Maren'), updatedAt: 1 }];
+  const saved = [], removed = [];
+  try {
+    await new Promise(r => setTimeout(r, 60));
+    account.list = async kind => { assert.equal(kind, 'characters'); return rows; };
+    account.saveCharacter = async token => { saved.push(token); rows = [...rows, { id: 'c2', name: token.name, payload: sheet(token.name), updatedAt: 2 }]; };
+    account.removeCharacter = async id => { removed.push(id); rows = rows.filter(r => r.id !== id); };
+    gateway.currentUser = { uid: 'guest_1' };
+    await gateway.loadCharacters();
+    assert.match(list.textContent, /modo invitado/i);
+    gateway.currentUser = { uid: 'user-1' };
+    await gateway.loadCharacters();
+    assert.equal(list.querySelectorAll('.vault-char-card').length, 1);
+    assert.equal(list.querySelector('h4').textContent, 'Maren <b>Solas</b>'); assert.equal(list.querySelectorAll('h4 b').length, 0);
+    assert.match(list.textContent, /Pilot/); assert.match(list.textContent, /Nivel 2/);
+    assert.ok(list.querySelector('.vault-card-actions').classList.contains('fx-advanced'));
+    // Import: a sheet file goes to the account, never to a shared store.
+    const file = { text: async () => sheet('Vell') };
+    await gateway.handleImportJSON({ target: { files: [file], value: 'x' } });
+    assert.equal(saved[0].name, 'Vell'); assert.equal(list.querySelectorAll('.vault-char-card').length, 2);
+    await gateway.handleImportJSON({ target: { files: [{ text: async () => 'not json' }], value: 'x' } });
+    assert.match(document.getElementById('vf-hub-error').textContent, /No se pudo importar la ficha/);
+    globalThis.confirm = () => true;
+    list.querySelector('.btn-delete-char').click(); await new Promise(r => setTimeout(r, 20));
+    assert.deepEqual(removed, ['c1']); assert.equal(list.querySelectorAll('.vault-char-card').length, 1);
+    account.list = async () => { throw Object.assign(new Error('x'), { code: 'permission-denied' }); };
+    await gateway.loadCharacters();
+    assert.match(list.textContent, /No se han podido cargar tus personajes/);
+    // Nothing in the lobby reads or writes the old shared vault any more.
+    const source = read('../src/vtt-integration/modules/lobbyGateway.js');
+    assert.ok(!source.includes('character_vault') && !source.includes('firebase/database'));
+  } finally { Object.assign(account, { list: original.list, saveCharacter: original.save, removeCharacter: original.remove }); globalThis.confirm = confirmBefore; }
+});

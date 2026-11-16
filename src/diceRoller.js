@@ -12,7 +12,7 @@ import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
 import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from './attackFlow.js';
-import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses } from './equipment.js';
+import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses, damageDicePools, honedEdgeOf } from './equipment.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -136,7 +136,7 @@ export class DiceRollerSidebar {
     this.updateTraitButtons();
     const resolve=this.container.querySelector('#dice_use_resolve');resolve.disabled=token?.path!=='Sleeping';if(resolve.disabled)resolve.checked=false;
     this.container.querySelector('.critical-choice-row').style.display=token?.path==='Sleeping'?'grid':'none';
-    if(actorChanged){this.container.querySelector('#dmg_honed').value=token?.path==='Sleeping'?(token.honedEdgeBonus??Math.max(0,(token.level||1)-1)):0;this.container.querySelector('#dmg_proficiency').value=token?.proficiency||1;}
+    if(actorChanged){this.presetApplied={proficiency:token?.proficiency||1,honed:honedEdgeOf(token)};this.container.querySelector('#dmg_honed').value=this.presetApplied.honed;this.container.querySelector('#dmg_proficiency').value=this.presetApplied.proficiency;}
     if (token) {
       this.currentActor = token;
       const actorLabel = this.container.querySelector('#dice_actor_name');
@@ -184,6 +184,7 @@ export class DiceRollerSidebar {
     if (profEl) profEl.value = preset.proficiency;
     const honedEl = this.container.querySelector('#dmg_honed');
     if (honedEl) honedEl.value = preset.honed;
+    this.presetApplied = { proficiency: preset.proficiency, honed: preset.honed };
     const impEl = this.container.querySelector('#dmg_impact_type');
     if (impEl) impEl.value = weaponImpactType(weapon);
     const tags = weaponTags(weapon);
@@ -996,6 +997,43 @@ export class DiceRollerSidebar {
     }
   }
 
+  can3D() {
+    return this.is3D && store.state.dice3d !== false && typeof window !== 'undefined' && typeof window.VFDice3D?.roll === 'function';
+  }
+
+  // Throws the dice on the table and returns the faces read, or null when 3D is off or fails
+  // (the caller then rolls the numbers itself).
+  async roll3D(groups, label) {
+    if (!this.can3D()) return null;
+    try {
+      const rolled = await window.VFDice3D.roll(this.applyDiceTextureSet(groups), { label, style: 'overlay', deferResults: true });
+      const wanted = groups.reduce((n, g) => n + g.qty, 0);
+      return Array.isArray(rolled?.values) && rolled.values.length === wanted ? rolled.values : null;
+    } catch (error) {
+      console.warn('[DiceRoller] 3D roll fallback to random:', error);
+      return null;
+    }
+  }
+
+  // Proficiency and Honed Edge follow the sheet: if the character levelled up since the weapon
+  // was prepared, the values the panel filled in are brought up to date. Numbers typed by hand
+  // are left alone.
+  refreshDamagePreset() {
+    const q = id => this.container.querySelector(id);
+    const actor = this.currentActor && (store.state.tokens.find(t => t.id === this.currentActor.id) || this.currentActor);
+    if (!actor) return;
+    const weapon = (tokenInventory(actor).weapons || []).find(w => w.id === q('#dmg_weapon_select')?.value) || null;
+    const formula = q('#dmg_formula').value.trim();
+    if (weapon?.damage && !formula) { this.applyWeaponPreset(actor, weapon); return; }
+    if (!this.presetApplied || (weapon && formula !== String(weapon.damage ?? '').trim())) return;
+    const fresh = weapon ? weaponPreset(actor, weapon) : { proficiency: actor.isPlayer !== false ? actor.proficiency || 1 : 1, honed: honedEdgeOf(actor) };
+    for (const [id, key] of [['#dmg_proficiency', 'proficiency'], ['#dmg_honed', 'honed']]) {
+      const input = q(id);
+      if (Number(input.value) === this.presetApplied[key] && fresh[key] !== this.presetApplied[key]) input.value = fresh[key];
+    }
+    this.presetApplied = { proficiency: fresh.proficiency, honed: fresh.honed };
+  }
+
   async executeActionCheck(attack = null) {
     const actor = this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null) || {
       name: 'Voidwalker',
@@ -1036,6 +1074,7 @@ export class DiceRollerSidebar {
     let forcedHope = null;
     let forcedFear = null;
     let forcedAdv = null;
+    let forcedResolve = null;
 
     if (this.is3D && store.state.dice3d !== false && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.roll === 'function') {
       try {
@@ -1043,9 +1082,10 @@ export class DiceRollerSidebar {
         if (roll3d && Array.isArray(roll3d.values) && roll3d.values.length >= 2) {
           forcedHope = roll3d.values[0];
           forcedFear = roll3d.values[1];
-          if ((hasAdvantage || hasDisadvantage) && roll3d.values.length >= 3) {
-            forcedAdv = roll3d.values[2];
-          }
+          // Every die on the table counts: the d6 and the Resolve die are read, not re-rolled.
+          const edged = hasAdvantage || hasDisadvantage;
+          if (edged && roll3d.values.length >= 3) forcedAdv = roll3d.values[2];
+          if (useResolve && roll3d.values.length >= (edged ? 4 : 3)) forcedResolve = roll3d.values[edged ? 3 : 2];
         }
       } catch (err) {
         console.warn('[DiceRoller] 3D roll fallback to random:', err);
@@ -1076,7 +1116,8 @@ export class DiceRollerSidebar {
           meaningful: this.container.querySelector('#meaningful_roll').checked,
           forcedHope,
           forcedFear,
-          forcedAdv
+          forcedAdv,
+          forcedResolve
         }
       });
     } catch(e) {
@@ -1091,11 +1132,11 @@ export class DiceRollerSidebar {
           { value: result.hopeVal, sides: 12, role: 'Hope' },
           { value: result.fearVal, sides: 12, role: 'Fear' }
         ];
-        if (result.extraVal) {
-          rolls.push({ value: result.extraVal, sides: 6, role: hasAdvantage ? 'Advantage' : 'Disadvantage' });
+        if (result.advVal || result.disadvVal) {
+          rolls.push({ value: result.advVal || result.disadvVal, sides: 6, role: result.advVal ? 'Advantage' : 'Disadvantage' });
         }
-        if (result.resolveDie) {
-          rolls.push({ value: result.resolveDie, sides: 4, role: 'Resolve' });
+        if (result.resolveVal) {
+          rolls.push({ value: result.resolveVal, sides: result.resolveDieType === 'd6' ? 6 : 4, role: 'Resolve' });
         }
         window.VFDice3D.showResults({
           label,
@@ -1136,7 +1177,8 @@ export class DiceRollerSidebar {
 
     // Broadcast to table chat so every player sees the roll in chat:
     if (this.rollVisibility() !== 'keeper') {
-      const summary = `🎲 ${actor.name} · ${traitName} Check ➔ ${result.total} (Hope ${result.hopeVal} + Fear ${result.fearVal}${result.totalMod ? (result.totalMod >= 0 ? ` + ${result.totalMod}` : ` - ${Math.abs(result.totalMod)}`) : ''}) vs DC ${result.dc} [${result.outcomeTitle}]`;
+      const edgeText = result.disadvVal ? ` · Desventaja −d6 [${result.disadvVal}]` : result.advVal ? ` · Ventaja +d6 [${result.advVal}]` : '';
+      const summary = `🎲 ${actor.name} · ${traitName} Check ➔ ${result.total} (Hope ${result.hopeVal} + Fear ${result.fearVal}${result.totalMod ? (result.totalMod >= 0 ? ` + ${result.totalMod}` : ` - ${Math.abs(result.totalMod)}`) : ''}${edgeText}) vs DC ${result.dc} [${result.outcomeTitle}]`;
       network.sendChat({ text: summary, recipientId: 'table' }).catch(() => {
         store.addChatMessage({ senderName: actor.name, text: summary, channel: 'table' });
       });
@@ -1174,18 +1216,32 @@ export class DiceRollerSidebar {
       + (gap.blocked ? ' ⚠️ Hay un muro o una puerta cerrada entre atacante y objetivo: línea de tiro bloqueada.' : '');
     if (!range.allowed) { show('—', 'FUERA DE ALCANCE', `${where} ${range.reason} Acércate o cambia de arma.`, 'miss'); notify(range.reason, 'error'); return { hit: false, blocked: true, band }; }
 
-    let hit, critical, total, detail;
+    let hit, critical, total, detail, rolled3D = false;
     if (attacker.isPlayer !== false) {
       const traitId = weaponTraitId(weapon);
       if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
       const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage, targetName: target.name });
       if (!result) return { hit: false, band };
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
-      detail = `Hope ${result.hopeVal} + Fear ${result.fearVal}${result.totalMod ? ` ${result.totalMod > 0 ? '+' : '−'} ${Math.abs(result.totalMod)}` : ''} = ${result.total}.`;
+      const flat = result.totalMod - (result.advVal || 0) + (result.disadvVal || 0);
+      detail = `Hope ${result.hopeVal} + Fear ${result.fearVal}${flat ? ` ${flat > 0 ? '+' : '−'} ${Math.abs(flat)}` : ''}${result.advVal ? ` + d6 [${result.advVal}] (Ventaja)` : ''}${result.disadvVal ? ` − d6 [${result.disadvVal}] (Desventaja)` : ''} = ${result.total}.`;
+      rolled3D = this.can3D();
     } else {
       audio.playDiceRoll();
-      const roll = rollAdversaryAttack({ attackModifier: attacker.attackModifier ?? 0, evasion, hasAdvantage: q('#dice_advantage').checked, hasDisadvantage: q('#dice_disadvantage').checked || range.disadvantage });
+      const edge = netEdge(q('#dice_advantage').checked, q('#dice_disadvantage').checked || range.disadvantage);
+      const groups = [{ qty: 1, sides: 20, theme: 'vfNeutral', role: 'Attack' }];
+      if (edge.advantage || edge.disadvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: edge.advantage ? 'Advantage' : 'Disadvantage' });
+      const attackLabel = `${attacker.name} · Ataque vs ${target.name}`;
+      const faces = await this.roll3D(groups, attackLabel);
+      rolled3D = !!faces;
+      const roll = rollAdversaryAttack({ attackModifier: attacker.attackModifier ?? 0, evasion, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces?.[0] ?? null, forcedD6: faces?.[1] ?? null });
       hit = roll.hit; critical = roll.isCritical; total = roll.total;
+      if (faces) window.VFDice3D.showResults?.({
+        label: attackLabel, playerName: 'Keeper', tokenName: attacker.name, skill: 'Ataque',
+        modifiers: `d20 ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6` : ''} vs Evasion ${evasion}`,
+        value: roll.total, total: roll.total, outcome: critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO',
+        rolls: [{ value: roll.d20, sides: 20, role: 'Attack' }, ...(roll.edge ? [{ value: roll.d6, sides: 6, role: roll.edge }] : [])], style: 'overlay'
+      });
       detail = `d20 [${roll.d20}] ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6 [${roll.d6}]` : ''} = ${roll.total}.`;
       const secret = this.rollVisibility() === 'keeper';
       const summary = `⚔️ ${attacker.name} ataca a ${target.name}: ${detail} vs Evasion ${evasion} → ${critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO'}`;
@@ -1196,7 +1252,9 @@ export class DiceRollerSidebar {
     if (!hit) { show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.`, 'miss'); return { hit: false, critical: false, total, band }; }
     show(total, critical ? 'CRÍTICO' : 'IMPACTO', `${where}${rangeNote} ${detail} ${critical ? 'Crítico: impacta siempre.' : `Alcanza la Evasion ${evasion}.`} Daño calculado abajo.`, critical ? 'crit' : 'hit');
     q('#dmg_is_critical').checked = critical;
-    this.executeDamageCalc();
+    // Let the table read the attack before the damage dice replace it.
+    if (rolled3D) await new Promise(resolve => setTimeout(resolve, this.attackToDamagePause ?? 1600));
+    await this.executeDamageCalc();
     return { hit: true, critical, total, band };
   }
 
@@ -1225,9 +1283,13 @@ export class DiceRollerSidebar {
       cubeFearBox?.classList.remove('crit-pulse');
     }
 
-    if (result.extraVal && cardExtra && cubeExtra) {
+    const edgeDie = result.advVal || result.disadvVal;
+    if (edgeDie && cardExtra && cubeExtra) {
       cardExtra.style.display = 'flex';
-      cubeExtra.textContent = result.extraVal;
+      cubeExtra.textContent = edgeDie;
+      const labelExtra = this.container.querySelector('#label_extra_die'), box = this.container.querySelector('#cube_extra');
+      if (labelExtra) labelExtra.textContent = result.advVal ? 'ADV (+d6)' : 'DIS (-d6)';
+      if (box) { box.style.borderColor = result.advVal ? '#22c55e' : '#ef4444'; box.style.color = result.advVal ? '#86efac' : '#fca5a5'; }
     } else if (cardExtra && this.playerRollType === 'normal') {
       cardExtra.style.display = 'none';
     }
@@ -1265,7 +1327,9 @@ export class DiceRollerSidebar {
 
   }
 
-  executeDamageCalc() {
+  // rolled: the faces read from the 3D dice. Without them (3D off, or a first call) the dice
+  // are thrown on the table first and this runs again with what they show.
+  executeDamageCalc(rolled = null) {
     const bossPhase = this.currentActor?.boss?.states[this.currentActor.boss.index];
     if (bossPhase?.canAttack === false) { notify('Este estado usa su procedimiento especial; no tiene un ataque de daño estándar.', 'error'); return; }
     const targetSelect = this.container.querySelector('#dmg_target_select');
@@ -1299,28 +1363,36 @@ export class DiceRollerSidebar {
     const isCritical = this.container.querySelector('#dmg_is_critical').checked;
     const isDirect = this.container.querySelector('#dmg_is_direct').checked;
     const mr = 1;
+    this.refreshDamagePreset();
     const proficiency=parseInt(this.container.querySelector('#dmg_proficiency').value,10),honed=parseInt(this.container.querySelector('#dmg_honed').value,10);
     if(!Number.isInteger(proficiency)||proficiency<1||proficiency>10||!Number.isInteger(honed)||honed<0||honed>9){notify('Check Proficiency (1–10) and Honed Edge (0–9).','error');return;}
 
-    let formula = this.container.querySelector('#dmg_formula').value.trim();
+    const formula = this.container.querySelector('#dmg_formula').value.trim();
     const wSelect = this.container.querySelector('#dmg_weapon_select');
-    if (!formula && wSelect && wSelect.value && this.currentActor) {
-      const activeW = (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value);
-      if (activeW && activeW.damage) {
-        this.applyWeaponPreset(this.currentActor, activeW);
-        formula = this.container.querySelector('#dmg_formula').value.trim();
-      }
-    }
     const chosenType = this.container.querySelector('#dmg_damage_type').value;
     const activeWeapon = this.currentActor && wSelect?.value ? (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value) : null;
     const damageType = chosenType && chosenType !== 'auto' ? chosenType : damageTypeOf(formula || activeWeapon || '');
     if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
+    const keeperAttack = this.currentActor?.isPlayer === false;
+    if (!rolled && this.can3D()) {
+      let pools = [];
+      try { pools = damageDicePools(formula, { proficiency, diceCount, diceSides, isCritical: isCritical && !keeperAttack, isKeeperCritical: isCritical && keeperAttack }); } catch { pools = []; }
+      const dice = pools.reduce((n, p) => n + p.count, 0);
+      // Past 40 dice the table is unreadable: those are rolled as numbers.
+      if (dice > 0 && dice <= 40) {
+        audio.playDiceRoll();
+        const label = `${this.currentActor?.name || 'Daño'} · Daño${targetToken ? ` a ${targetToken.name}` : ''}`;
+        return this.roll3D(pools.map(p => ({ qty: p.count, sides: p.sides, theme: 'vfDamage', role: 'Damage' })), label).then(faces => this.executeDamageCalc(faces || []));
+      }
+    }
+    const faces = [...(rolled || [])];
     const damageOptions = {
       attackerName: this.currentActor?.name || 'Attacker',
       targetName: targetToken?.name || 'Target',
-      diceCount: diceCount + Math.max(0, (parseInt(this.container.querySelector('#dmg_proficiency').value,10)||1)-1),
+      diceCount: diceCount + proficiency - 1,
       diceSides,
-      flatModifier: flatMod + (parseInt(this.container.querySelector('#dmg_honed').value,10)||0),
+      flatModifier: flatMod + honed,
+      ...(faces.length ? { rollDie: sides => { const face = faces.shift(); return Number.isInteger(face) && face >= 1 && face <= sides ? face : Math.floor(Math.random() * sides) + 1; } } : {}),
       isCritical: isCritical && this.currentActor?.isPlayer !== false,
       isKeeperCritical: isCritical && this.currentActor?.isPlayer === false,
       isDirectDamage: isDirect,
@@ -1338,6 +1410,17 @@ export class DiceRollerSidebar {
     try { dmgResult = formula ? resolveDamageExpression(formula, damageOptions) : resolveDamage(damageOptions); }
     catch (error) { notify(error.message, 'error'); return; }
 
+    if (rolled?.length && window.VFDice3D?.showResults) {
+      const sidesOf = (dmgResult.pools || [{ count: dmgResult.rolls.length, sides: diceSides }]).flatMap(p => Array(p.count * (damageOptions.isCritical ? 2 : 1)).fill(p.sides));
+      window.VFDice3D.showResults({
+        label: `Daño · ${damageOptions.attackerName}${targetToken ? ` → ${targetToken.name}` : ''}`,
+        playerName: store.state.userName || store.state.playerName || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador'),
+        tokenName: damageOptions.attackerName, skill: 'Daño',
+        modifiers: `${formula || `${damageOptions.diceCount}d${diceSides}`}${proficiency > 1 ? ` · Proficiency ${proficiency}` : ''}${honed ? ` · Honed Edge +${honed}` : ''}${damageOptions.isCritical ? ' · Crítico: dados dobles' : ''}`,
+        value: dmgResult.rawDamage, total: dmgResult.rawDamage, outcome: `${dmgResult.rawDamage} · ${dmgResult.finalSeverity}`,
+        rolls: dmgResult.rolls.map((value, i) => ({ value, sides: sidesOf[i] || diceSides, role: 'Damage' })), style: 'overlay'
+      });
+    }
     const display = this.container.querySelector('#damage_result_display');
     display.style.display = 'block';
 

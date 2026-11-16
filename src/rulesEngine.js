@@ -52,7 +52,8 @@ export function rollVeilfarersCheck({
   customMod = 0,
   forcedHope = null,
   forcedFear = null,
-  forcedAdv = null
+  forcedAdv = null,
+  forcedResolve = null
 }) {
   // 1 Hope d12 + 1 Fear d12 (lee la cara física si fue lanzada en 3D, o genera aleatoria)
   const hopeVal = (forcedHope != null && Number.isFinite(Number(forcedHope)))
@@ -79,7 +80,9 @@ export function rollVeilfarersCheck({
   let resolveVal = 0;
   if (useResolve) {
     const sides = resolveDieType === 'd6' ? 6 : 4;
-    resolveVal = Math.floor(Math.random() * sides) + 1;
+    resolveVal = (forcedResolve != null && Number.isFinite(Number(forcedResolve)))
+      ? Math.max(1, Math.min(sides, Math.round(Number(forcedResolve))))
+      : Math.floor(Math.random() * sides) + 1;
   }
 
   // Total Modifier
@@ -221,7 +224,9 @@ export function resolveDamage({
   targetReflective = false,
   targetWarded = false,
   currentArmorSlots = 2,
-  mountRating = 1 // 1 for person, 2 for Tier 2/3 ship, 3 for Tier 4/5 ship
+  mountRating = 1, // 1 for person, 2 for Tier 2/3 ship, 3 for Tier 4/5 ship
+  // One die at a time. The dice panel passes the faces read from the 3D dice here.
+  rollDie = sides => Math.floor(Math.random() * sides) + 1
 }) {
   // Roll dice
   let rolls = [];
@@ -236,13 +241,13 @@ export function resolveDamage({
   } else if (isCritical) {
     // Player Critical: Double dice count
     for (let i = 0; i < diceCount * 2; i++) {
-      const val = Math.floor(Math.random() * diceSides) + 1;
+      const val = rollDie(diceSides);
       rolls.push(val);
       baseDiceTotal += val;
     }
   } else {
     for (let i = 0; i < diceCount; i++) {
-      const val = Math.floor(Math.random() * diceSides) + 1;
+      const val = rollDie(diceSides);
       rolls.push(val);
       baseDiceTotal += val;
     }

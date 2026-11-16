@@ -50,8 +50,22 @@ export function parseDamageExpression(expression) {
   return { pools, flat };
 }
 
+// Honed Edge (Corebook ch. 7): a Sleeping character adds level - 1 to damage, once.
+export const honedEdgeOf = token => token?.path === 'Sleeping' ? Math.max(Number(token.honedEdgeBonus) || 0, Math.max(0, (token.level || 1) - 1)) : 0;
 export function weaponPreset(token, weapon) {
-  return { formula: weapon.damage, proficiency: weapon.damageMode === 'base' && token.isPlayer !== false ? token.proficiency || 1 : 1, honed: weapon.damageMode === 'base' && token.path === 'Sleeping' ? token.honedEdgeBonus || 0 : 0 };
+  const base = weapon.damageMode === 'base';
+  return { formula: weapon.damage, proficiency: base && token.isPlayer !== false ? token.proficiency || 1 : 1, honed: base ? honedEdgeOf(token) : 0 };
+}
+
+// The dice a damage roll puts on the table, in the order they are rolled: Proficiency on the
+// first listed die (ch. 10), twice the pool on a player Critical, none on a Keeper Critical
+// (the pool is maximised, not rolled).
+export function damageDicePools(formula, { proficiency = 1, diceCount = 1, diceSides = 8, isCritical = false, isKeeperCritical = false } = {}) {
+  if (isKeeperCritical) return [];
+  const pools = formula
+    ? parseDamageExpression(formula).pools.map((p, i) => ({ sides: p.sides, count: p.count + (i === 0 ? proficiency - 1 : 0) }))
+    : [{ sides: diceSides, count: diceCount + proficiency - 1 }];
+  return pools.map(p => ({ sides: p.sides, count: p.count * (isCritical ? 2 : 1) })).filter(p => p.count > 0);
 }
 
 export function resolveDamageExpression(expression, options = {}) {
