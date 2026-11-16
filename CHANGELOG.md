@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.9.0**.
-Paquete: `VeilFarers_VTT_v2.9.0.zip`.
+Versión actual del VTT: **v2.9.1**.
+Paquete: `VeilFarers_VTT_v2.9.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.9.1] — 2026-11-16
+
+V2 · Dron compartido con Neural Network Control
+
+### Control compartido del dron
+
+- Un dron está emparejado con un solo operador. Si se le instala Neural Network Control (1 Cr, 0 Slots), el Keeper puede registrar a varios jugadores y todos lo controlan por turnos.
+- Sin ese módulo, el control del token solo admite un jugador y avisa de qué módulo hace falta.
+- Pasar el control: gratis con señal Stable; con señal Unstable quien lo recibe marca 1 Stress, y si no puede marcarlo el operador anterior conserva el control; con señal Lost la interfaz no funciona.
+- El cambio de operador se hace en Ficha → Dron · módulos y señal y se anuncia en el chat. Mueve el Spotlight: no da Acciones extra.
+- Si se retira el módulo, el dron se queda con un solo jugador. Los drones creados antes de estas reglas conservan sus controladores.
 
 ## [2.9.0] — 2026-11-16
 

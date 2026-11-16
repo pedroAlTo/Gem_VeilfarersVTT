@@ -85,3 +85,30 @@ test('signal rules: Unstable gives Disadvantage on a complex command, Lost stops
   assert.deepEqual([worsenSignal('stable'), worsenSignal('unstable'), worsenSignal('lost')], ['unstable', 'lost', 'lost']);
   assert.deepEqual(rollDroneComplication(() => 0.55), { roll: 7, text: 'El dron pierde 1 HP directo.' });
 });
+
+test('a drone is paired to one operator; Neural Network Control lets the registered crew control it by turns', async () => {
+  const { hasSharedControl, droneControllerLimit, droneCrew, handoffControl } = await import('../src/drones.js');
+  const { assignControls } = await import('../src/tokenPermissions.js');
+  const pc = (id, ownerId, stress = 0) => ({ id, name: id, isPlayer: true, actorType: 'player', ownerId, stress: { current: stress, max: 6 } });
+  const drone = (modules, extra = {}) => ({ id: 'drone', name: 'Scout', actorType: 'drone', isPlayer: false, controllerIds: ['p1', 'p2'], drone: { grade: 'common', modules, signal: 'stable', operatorId: 'maren', ...extra } });
+  const paired = drone(['low-light-camera']), shared = drone(['low-light-camera', 'neural-network-control']);
+  assert.deepEqual([hasSharedControl(paired), hasSharedControl(shared), droneControllerLimit(paired), droneControllerLimit(shared)], [false, true, 1, Infinity]);
+  assert.equal(droneControllerLimit({ actorType: 'drone' }), Infinity, 'a drone from before the rules keeps its controllers');
+  // Assigning players: one without the module, several with it.
+  assert.throws(() => assignControls([paired], 'drone', ['p1', 'p2'], ['p1', 'p2']), /un solo operador.*Neural Network Control/);
+  assert.deepEqual(assignControls([paired], 'drone', ['p2'], ['p1', 'p2'])[0].controllerIds, ['p2']);
+  assert.deepEqual(assignControls([shared], 'drone', ['p1', 'p2'], ['p1', 'p2'])[0].controllerIds, ['p1', 'p2']);
+  const table = d => [d, pc('maren', 'p1'), pc('vell', 'p2'), pc('saber', 'p3')];
+  assert.deepEqual(droneCrew(table(shared), shared).map(t => t.id), ['maren', 'vell'], 'the characters of the players registered on the drone');
+  assert.throws(() => handoffControl(table(paired), 'drone', 'vell'), /emparejado con un solo operador/);
+  // Stable: free. Unstable: 1 Stress for whoever receives it, or it fails. Lost: no interface.
+  const free = handoffControl(table(shared), 'drone', 'vell');
+  assert.deepEqual([free.tokens[0].drone.operatorId, free.stress, free.tokens[2].stress.current], ['vell', 0, 0]);
+  const noisy = drone(['neural-network-control'], { signal: 'unstable' }), costly = handoffControl(table(noisy), 'drone', 'vell');
+  assert.deepEqual([costly.stress, costly.tokens[2].stress.current, costly.tokens[0].drone.operatorId], [1, 1, 'vell']);
+  assert.throws(() => handoffControl([noisy, pc('maren', 'p1'), pc('vell', 'p2', 6)], 'drone', 'vell'), /no puede marcarlo. El operador anterior conserva el control/);
+  assert.throws(() => handoffControl(table(drone(['neural-network-control'], { signal: 'lost' })), 'drone', 'vell'), /Señal Lost/);
+  assert.throws(() => handoffControl(table(shared), 'drone', 'saber'), /no está registrado/);
+  assert.throws(() => handoffControl(table(shared), 'drone', 'maren'), /ya controla el dron/);
+  assert.equal(hasSharedControl(drone(['neural-network-control'], { offline: ['neural-network-control'] })), false, 'an offline module shares nothing');
+});

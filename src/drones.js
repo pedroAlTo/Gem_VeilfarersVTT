@@ -162,6 +162,39 @@ export function droneTokenData(build, { previous = null, signal = 'stable', link
   };
 }
 
+// Shared control (ch. 14): a drone is paired to one operator unless it carries Neural Network
+// Control, which lets every registered crew member take it in hand, one at a time.
+export const SHARED_CONTROL_MODULE = 'neural-network-control';
+export const hasSharedControl = token => isDroneToken(token) && (token.drone?.modules || []).includes(SHARED_CONTROL_MODULE) && !(token.drone?.offline || []).includes(SHARED_CONTROL_MODULE);
+// A drone built by the book without the module takes a single controlling player.
+export const droneControllerLimit = token => isDroneToken(token) && token.drone && !hasSharedControl(token) ? 1 : Infinity;
+// The registered crew: the characters of the players who control the drone. At a local table
+// with nobody assigned, every player character counts.
+export function droneCrew(tokens, drone) {
+  const characters = tokens.filter(t => t.isPlayer !== false && t.actorType !== 'drone'), controllers = drone?.controllerIds || [];
+  const registered = characters.filter(t => t.ownerId && controllers.includes(t.ownerId));
+  return registered.length ? registered : (controllers.length ? [] : characters);
+}
+// Passing control: free while the signal is Stable; on Unstable the receiving operator marks
+// 1 Stress or the handoff fails; on Lost the interface does not work at all.
+export function handoffControl(tokens, droneId, operatorId) {
+  const drone = tokens.find(t => t.id === droneId), receiver = tokens.find(t => t.id === operatorId);
+  if (!isDroneToken(drone) || !drone.drone) throw new Error('Ese token no es un dron configurado.');
+  if (!hasSharedControl(drone)) throw new Error('Este dron está emparejado con un solo operador. Instala Neural Network Control (1 Cr, 0 Slots) para que la tripulación lo controle por turnos.');
+  if (!receiver || !droneCrew(tokens, drone).some(t => t.id === operatorId)) throw new Error('Ese personaje no está registrado en el dron: el Keeper debe dar el control del dron a su jugador.');
+  if (drone.drone.operatorId === operatorId) throw new Error(`${receiver.name} ya controla el dron.`);
+  const signal = signalOf(drone);
+  if (signal === 'lost') throw new Error('Señal Lost: Neural Network Control no funciona. El dron sigue su protocolo.');
+  let stress = 0, updated = tokens;
+  if (signal === 'unstable') {
+    const current = receiver.stress?.current || 0, max = receiver.stress?.max ?? 6;
+    if (current >= max) throw new Error(`Señal Unstable: tomar el control cuesta 1 Stress y ${receiver.name} no puede marcarlo. El operador anterior conserva el control.`);
+    stress = 1; updated = updated.map(t => t.id === receiver.id ? { ...t, stress: { ...t.stress, current: current + 1 } } : t);
+  }
+  updated = updated.map(t => t.id === drone.id ? { ...t, drone: { ...t.drone, operatorId } } : t);
+  return { tokens: updated, stress, summary: `${receiver.name} toma el control de ${drone.name}${stress ? ' (señal Unstable: 1 Stress)' : ''}. Mueve el Spotlight, no da Acciones extra.` };
+}
+
 export function validateDroneState(value) {
   const fail = () => { throw new Error('Configuración de dron inválida.'); };
   if (!value || typeof value !== 'object' || !DRONE_GRADES[value.grade] || !Array.isArray(value.modules) || value.modules.length > 20 || value.modules.some(id => !droneModule(id))) fail();

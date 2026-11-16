@@ -5,7 +5,7 @@ import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { validateActor } from './validation.js';
-import { DRONE_GRADES, DRONE_MODULES, DRONE_SAMPLE_BUILDS, SIGNAL_STATES, LINK_MODES, LOST_PROTOCOLS, droneBuild, droneTokenData, rollDroneComplication, worsenSignal } from './drones.js';
+import { DRONE_GRADES, DRONE_MODULES, DRONE_SAMPLE_BUILDS, SIGNAL_STATES, LINK_MODES, LOST_PROTOCOLS, SHARED_CONTROL_MODULE, droneBuild, droneTokenData, droneCrew, hasSharedControl, rollDroneComplication, worsenSignal } from './drones.js';
 
 const GRADE_LABEL = { common: 'Common', military: 'Military', experimental: 'Experimental' };
 const options = (map, selected) => Object.entries(map).map(([id, item]) => `<option value="${id}" ${id === selected ? 'selected' : ''}>${e(item.name)}</option>`).join('');
@@ -39,6 +39,8 @@ export function openDroneConsole(tokenId = null) {
         <label class="dossier-field"><span>Protocolo si la señal se pierde</span><select class="hud-select" name="drone_protocol">${options(LOST_PROTOCOLS, token?.drone?.protocol || 'freeze')}</select></label>
       </div>
       <p class="dossier-muted" data-drone-signal></p>
+      <p class="dossier-muted" data-drone-shared></p>
+      ${token && hasSharedControl(token) ? `<div class="drone-actions"><label class="dossier-field"><span>Pasar el control a</span><select class="hud-select" name="drone_handoff">${droneCrew(store.state.tokens, token).filter(c => c.id !== token.drone.operatorId).map(c => `<option value="${e(c.id)}">${e(c.name)}</option>`).join('')}</select></label><button type="button" class="hud-btn" data-drone-handoff>Tomar / pasar el control</button><span class="dossier-muted" data-drone-handoff-result></span></div>` : ''}
       ${token ? '<div class="drone-actions"><button type="button" class="hud-btn" data-drone-complication title="Como mucho una vez por dron y escena, tras un Failure with Fear del operador en una tirada que implique al dron">Tirar Drone Complication (d12)</button><span class="dossier-muted" data-drone-complication-result></span></div>' : ''}
       <h4 class="dossier-label">MÓDULOS <span data-drone-slots></span></h4>
       <div class="dossier-identity">
@@ -78,6 +80,9 @@ export function openDroneConsole(tokenId = null) {
       ${b.weapons.length ? `<p class="dossier-muted">Armas: ${b.weapons.map(w => `${e(w.name)}${w.damage ? ` (${e(w.damage)})` : ''} · ${e(w.range)}`).join('; ')}. El daño de un dron no escala con Proficiency; atacar gasta la Acción del operador.</p>` : ''}
       ${b.errors.map(x => `<p class="dossier-error">${e(x)}</p>`).join('')}${b.notes.map(x => `<p class="dossier-muted">▸ ${e(x)}</p>`).join('')}`);
     q('[data-drone-slots]').textContent = `· ${b.slotsUsed} / ${b.slots} Slots`;
+    q('[data-drone-shared]').textContent = state.modules.includes(SHARED_CONTROL_MODULE)
+      ? 'Neural Network Control instalado: los jugadores registrados (Sesión → control del token) lo controlan por turnos. Pasar el control es gratis con señal Stable, cuesta 1 Stress a quien lo recibe con Unstable y no funciona con Lost.'
+      : 'Sin Neural Network Control el dron está emparejado con un solo operador. Añade ese módulo (1 Cr, 0 Slots) para que lo controlen varios jugadores.';
     q('[data-drone-signal]').textContent = `${SIGNAL_STATES[form.elements.drone_signal.value].effect} ${LINK_MODES[form.elements.drone_linkMode.value].effect} Protocolo: ${LOST_PROTOCOLS[form.elements.drone_protocol.value].effect}`;
     return b;
   };
@@ -118,6 +123,17 @@ export function openDroneConsole(tokenId = null) {
     renderSummary();
   };
 
+  const handoff = q('[data-drone-handoff]');
+  if (handoff) handoff.onclick = async () => {
+    const out = q('[data-drone-handoff-result]');
+    try {
+      const result = await network.requestAction({ type: 'DRONE_HANDOFF', actorId: token.id, operatorId: form.elements.drone_handoff.value });
+      form.elements.drone_operatorId.value = form.elements.drone_handoff.value;
+      out.textContent = result.summary;
+      network.sendChat({ text: `🛸 ${result.summary}`, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: result.summary, channel: 'table' }));
+    } catch (problem) { out.textContent = problem.message; }
+  };
+
   form.onsubmit = event => {
     event.preventDefault();
     const error = q('form > .dossier-error[role="alert"]');
@@ -134,7 +150,9 @@ export function openDroneConsole(tokenId = null) {
         const keptWeapons = (previousInventory.weapons || []).filter(w => !DRONE_MODULES.some(m => m.id === w.id) && live.drone);
         const keptItems = (previousInventory.items || []).filter(i => !String(i.id).startsWith('mod_') && live.drone);
         data.inventory = { weapons: [...data.inventory.weapons, ...keptWeapons], items: [...data.inventory.items, ...keptItems] };
-        store.updateToken(live.id, validateActor({ ...live, ...data, name }));
+        // Losing Neural Network Control leaves the drone with a single controlling player.
+        const controllerIds = data.drone.modules.includes(SHARED_CONTROL_MODULE) ? live.controllerIds || [] : (live.controllerIds || []).slice(0, 1);
+        store.updateToken(live.id, validateActor({ ...live, ...data, name, controllerIds }));
         notify(`Dron "${name}" actualizado.`);
       } else {
         const canvas = window.veilCanvas, center = canvas?.screenToWorld?.(canvas.displayWidth / 2, canvas.displayHeight / 2) || { x: 500, y: 500 };

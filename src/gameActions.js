@@ -4,6 +4,7 @@ import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
 import { cardData } from './cardData.js';
+import { handoffControl } from './drones.js';
 import { characterCards, playCard, recallPower, costLabel, CARD_KINDS } from './loadoutCards.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
@@ -21,6 +22,14 @@ export function performGameAction(action, store = defaultStore) {
     if (conditions.length > 30) throw new Error('Máximo 30 condiciones por token.');
     store.updateToken(actor.id, { conditions });
     return { actorId: actor.id, conditions };
+  }
+  // Neural Network Control: a registered crew member takes the drone in hand.
+  if (action.type === 'DRONE_HANDOFF') {
+    const result = handoffControl(store.state.tokens, actor.id, String(action.operatorId ?? ''));
+    for (const token of result.tokens) { const before = store.state.tokens.find(t => t.id === token.id); if (before !== token) store.updateToken(token.id, token.id === actor.id ? { drone: token.drone } : { stress: token.stress }); }
+    const log = { sender: actor.name, type: 'DRONE', title: `${actor.name}: cambio de operador`, details: result.summary };
+    store.addLog(log);
+    return { id: newId(), actorId: actor.id, log, outcomeTitle: 'CONTROL DEL DRON', summary: result.summary };
   }
   // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
   // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
