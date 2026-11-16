@@ -1,7 +1,7 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
-    version: '2.8.2', date: '2026-11-16', title: 'V2 · El d6 de Desventaja se ve entero y sin arma solo se ataca en Melee',
+    version: '2.8.3', date: '2026-11-16', title: 'V2 · El d6 de Desventaja se ve entero y sin arma solo se ataca en Melee',
     sections: [
       { title: 'Tiradas', items: [
         'El aviso de la tirada ya no resume todo en un único "Mod": escribe la suma completa, por ejemplo "Hope [2] + Fear [4] + 2 − d6 [6] (Desventaja) = 2". Antes el d6 quedaba mezclado con el Trait y parecía que solo se restaba una parte.',
@@ -9,6 +9,17 @@ export const RELEASES = [
       ] },
       { title: 'Ataque', items: [
         'Sin arma el ataque es cuerpo a cuerpo: no se puede atacar a un objetivo fuera de Melee.',
+      ] },
+    ],
+  },
+  {
+    version: '2.8.2', date: '2026-11-16', title: 'V2 · Indicador de Desventaja en botón de acción, Proficiency en HUD y robustez de audio Web Audio',
+    sections: [
+      { title: 'Tiradas y Dados', items: [
+        'Los botones de selección de tirada (DIS / NORM / ADV) actualizan de inmediato la etiqueta del botón principal de acción con [DIS -1d6] y [ADV +1d6].',
+        'El dado d6 de Desventaja en 3D utiliza el tema canónico de dados de miedo (vfFear).',
+        'El HUD quickbar de tokens de personajes jugadores (PCs) ahora muestra explícitamente Evasion y Proficiency junto a los puntos de Esperanza/Esfuerzo.',
+        'La inicialización del sintetizador Web Audio API es segura ante navegadores o entornos sin AudioContext.',
       ] },
     ],
   },

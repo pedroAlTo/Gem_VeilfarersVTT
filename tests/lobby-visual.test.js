@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
-const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
+const read = path => readFileSync(new URL(path, import.meta.url), 'utf8').replaceAll('\r\n', '\n');
 const indexHtml = read('../index.html');
 const dom = new JSDOM(indexHtml, { url: 'http://localhost/' });
 for (const key of ['window', 'document', 'localStorage', 'CustomEvent', 'HTMLElement']) globalThis[key] = dom.window[key];
