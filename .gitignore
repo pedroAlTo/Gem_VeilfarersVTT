@@ -29,3 +29,5 @@ System/*.pdf
 # Local Firebase emulator state/logs
 .firebase/
 *-debug.log
+
+Claude outputs/

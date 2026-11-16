@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.8.1**.
-Paquete: `VeilFarers_VTT_v2.8.1.zip`.
+Versión actual del VTT: **v2.8.2**.
+Paquete: `VeilFarers_VTT_v2.8.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.2] — 2026-11-16
+
+V2 · Indicador de Desventaja en botón de acción, Proficiency en HUD y robustez de audio Web Audio
+
+### Tiradas y Dados
+
+- Los botones de selección de tirada (DIS / NORM / ADV) actualizan de inmediato la etiqueta del botón principal de acción con [DIS -1d6] y [ADV +1d6].
+- El dado d6 de Desventaja en 3D utiliza el tema canónico de dados de miedo (vfFear).
+- El HUD quickbar de tokens de personajes jugadores (PCs) ahora muestra explícitamente Evasion y Proficiency junto a los puntos de Esperanza/Esfuerzo.
+- La inicialización del sintetizador Web Audio API es segura ante navegadores o entornos sin AudioContext.
 
 ## [2.8.1] — 2026-11-16
 

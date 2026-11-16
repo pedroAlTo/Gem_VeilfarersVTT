@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.2', date: '2026-11-16', title: 'V2 · Indicador de Desventaja en botón de acción, Proficiency en HUD y robustez de audio Web Audio',
+    sections: [
+      { title: 'Tiradas y Dados', items: [
+        'Los botones de selección de tirada (DIS / NORM / ADV) actualizan de inmediato la etiqueta del botón principal de acción con [DIS -1d6] y [ADV +1d6].',
+        'El dado d6 de Desventaja en 3D utiliza el tema canónico de dados de miedo (vfFear).',
+        'El HUD quickbar de tokens de personajes jugadores (PCs) ahora muestra explícitamente Evasion y Proficiency junto a los puntos de Esperanza/Esfuerzo.',
+        'La inicialización del sintetizador Web Audio API es segura ante navegadores o entornos sin AudioContext.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.1', date: '2026-11-16', title: 'V2 · Un solo acceso: la cuenta de la VTT',
     sections: [
       { title: 'Cuenta', items: [

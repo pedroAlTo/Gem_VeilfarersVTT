@@ -189,7 +189,15 @@ export class TokenHUD {
 
         <!-- Hope (Awakened) or Effort/Resolve (Sleeping) -->
         <div class="tok-qb-stat-group">
-          ${!isPC ? `<div class="tok-qb-stat-label">EVASION ${token.evasion ?? '—'} · ATTACK ${token.attackModifier ?? '—'}</div><div>${escapeHTML(token.damageExpression || '')}</div>` : token.path === 'Awakened' ? `
+          ${!isPC ? `
+            <div class="tok-qb-stat-label">EVASION ${token.evasion ?? '—'} · ATTACK ${token.attackModifier ?? '—'}</div>
+            <div>${escapeHTML(token.damageExpression || '')}</div>
+          ` : `
+            <div class="tok-qb-stat-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+              <span>EVASION ${token.evasion ?? 10}</span>
+              <span style="color: var(--cyan-neon); font-weight: bold;">PROFICIENCY ${token.proficiency ?? 1}</span>
+            </div>
+            ${token.path === 'Awakened' ? `
             <div class="tok-qb-stat-label" style="display: flex; justify-content: space-between; align-items: center;">
               <span>HOPE</span>
               <div style="display: flex; align-items: center; gap: 4px;">
@@ -238,6 +246,7 @@ export class TokenHUD {
               <button class="hud-btn hud-btn-xs hud-btn-amber" id="bear_down_btn" title="Universal Sleeping Move: Spend 1 Resolve die and add to roll total">BEAR DOWN (1${token.resolve?.dieType || 'd4'})</button>
               <button class="hud-btn hud-btn-xs ${token.effort === 0 ? 'hud-btn-danger' : 'hud-btn-secondary'}" id="burnout_btn" title="At 0 Effort: Pay 1 HP to invoke any Effort feature">BURNOUT</button>
             </div>
+          `}
           `}
         </div>
 

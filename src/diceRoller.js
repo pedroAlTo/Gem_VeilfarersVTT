@@ -977,7 +977,7 @@ export class DiceRollerSidebar {
     if (broadcast) {
       const chatText = `🎲 ${playerName} (${tokenName}): ${label} ➔ ${total} (${rolls.join(' + ')}${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''})`;
       network.sendChat({ text: chatText, recipientId: 'table' }).catch(() => {
-        store.addChatMessage({ senderName: tokenName, text: chatText, channel: 'table' });
+        store.addChatMessage?.({ senderName: tokenName, text: chatText, channel: 'table' });
       });
       network.broadcast({
         type: 'DICE_ROLL',
@@ -1180,7 +1180,7 @@ export class DiceRollerSidebar {
       const edgeText = result.disadvVal ? ` · Desventaja −d6 [${result.disadvVal}]` : result.advVal ? ` · Ventaja +d6 [${result.advVal}]` : '';
       const summary = `🎲 ${actor.name} · ${traitName} Check ➔ ${result.total} (Hope ${result.hopeVal} + Fear ${result.fearVal}${result.totalMod ? (result.totalMod >= 0 ? ` + ${result.totalMod}` : ` - ${Math.abs(result.totalMod)}`) : ''}${edgeText}) vs DC ${result.dc} [${result.outcomeTitle}]`;
       network.sendChat({ text: summary, recipientId: 'table' }).catch(() => {
-        store.addChatMessage({ senderName: actor.name, text: summary, channel: 'table' });
+        store.addChatMessage?.({ senderName: actor.name, text: summary, channel: 'table' });
       });
     }
 
@@ -1246,7 +1246,7 @@ export class DiceRollerSidebar {
       const secret = this.rollVisibility() === 'keeper';
       const summary = `⚔️ ${attacker.name} ataca a ${target.name}: ${detail} vs Evasion ${evasion} → ${critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO'}`;
       store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'ROLL', sender: 'Keeper', title: `Ataque · ${attacker.name}`, details: summary });
-      if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage({ senderName: attacker.name, text: summary, channel: 'table' }));
+      if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: attacker.name, text: summary, channel: 'table' }));
     }
     const rangeNote = range.disadvantage ? ` ${range.reason}` : '';
     if (!hit) { show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.`, 'miss'); return { hit: false, critical: false, total, band }; }
