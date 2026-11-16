@@ -133,3 +133,17 @@ test('the table resolves a played card and a Recall: costs are paid on the Keepe
   assert.deepEqual([second.state.fear, second.state.tokens[0].resolve.current], [2, 0]);
   assert.throws(() => performGameAction({ type: 'CARD_PLAY', actorId: 'tok_adv', cardId: 'x' }, fakeStore({ id: 'tok_adv', name: 'Pirata', isPlayer: false })), /Solo los personajes jugadores/);
 });
+
+test('every card has its art: a Domain or Class flag and band, or the Ancestry and Background corner band', async () => {
+  const { existsSync } = await import('node:fs');
+  const { domainArt, classArt, cornerArt, DOMAIN_COLORS } = await import('../src/loadoutCards.js');
+  const onDisk = path => existsSync(new URL('../public' + path, import.meta.url));
+  for (const domain of Object.keys(DOMAIN_COLORS)) { const art = domainArt(domain); assert.ok(onDisk(art.flag) && onDisk(art.band), domain); }
+  for (const cls of data.classes) { const art = classArt(cls); assert.ok(art.flag && onDisk(art.flag) && onDisk(art.band), cls.id); }
+  for (const kind of ['ancestry', 'community']) { const art = cornerArt(kind); assert.equal(art.layout, 'corner'); assert.ok(onDisk(art.band), kind); }
+  assert.equal(domainArt('Unknown').flag, ''); assert.ok(onDisk(domainArt('Unknown').band));
+  const hero = character(), cards = characterCards(hero, data);
+  assert.ok(cards.every(c => c.art && onDisk(c.art.band)), 'no card is left without art');
+  assert.match(cards.find(c => c.kind === 'power').art.flag, /domain-[a-z]+-flag\.png$/);
+  assert.match(cards.find(c => c.kind === 'feature').art.flag, /class-scholar-flag\.png$/);
+});

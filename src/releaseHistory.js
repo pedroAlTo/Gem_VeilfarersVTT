@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.9.3', date: '2026-11-16', title: 'V2 · Cartas con el arte de Dominios y clases',
+    sections: [
+      { title: 'Mano de cartas', items: [
+        'Las cartas siguen el diseño de referencia: marco dorado, bandera colgando en la esquina, banda con el nombre y el texto sobre fondo claro.',
+        'Cada Poder lleva la bandera y la banda de su Dominio (Social, Void, Kinetic, Mind, Synthesys, Tech, Light), con su nivel sobre la bandera.',
+        'Los Resolve Moves y la carta de clase llevan la bandera y la banda de su clase.',
+        'Las cartas de Ancestry y de Background llevan su banda de esquina.',
+        'El coste principal se ve en un hexágono en la esquina; tipo, Tier, costes y tirada van en etiquetas bajo el título, y Dominio, nivel y Recall Cost al pie.',
+        'Los colores de cada Dominio pasan a ser los de su bandera.',
+      ] },
+    ],
+  },
+  {
     version: '2.9.2', date: '2026-11-16', title: 'V2 · Equipo más fácil de manejar',
     sections: [
       { title: 'Pestaña Armas y equipo', items: [

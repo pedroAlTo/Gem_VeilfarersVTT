@@ -7,7 +7,15 @@ const writable = token => token.sourceCharacter?.document?.fields || (token.shee
 const slug = value => lower(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const TRAITS = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'];
 
-export const DOMAIN_COLORS = { Tech: '#38bdf8', Synthesis: '#34d399', Social: '#f472b6', Neural: '#a78bfa', Kinetic: '#fb923c', Void: '#818cf8', Lux: '#fde68a' };
+// The colours of the Domain flags and bands of the card art.
+export const DOMAIN_COLORS = { Tech: '#00697f', Synthesis: '#1f5c2b', Social: '#ee6a82', Neural: '#7b3a78', Kinetic: '#9b150c', Void: '#15121a', Lux: '#d8b40a' };
+// Card art (public/assets/cards): a flag and a name band per Domain and per Class, and a
+// corner band for Ancestry and Background cards.
+const CARD_ART = '/assets/cards/';
+const CLASS_ART = ['diplomat', 'engineer', 'explorer', 'mystic', 'pilot', 'scholar', 'scoundrel', 'soldier', 'vanguard'];
+export const domainArt = domain => DOMAIN_COLORS[domain] ? { flag: `${CARD_ART}domain-${lower(domain)}-flag.png`, band: `${CARD_ART}domain-${lower(domain)}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' };
+export const classArt = cls => { const id = lower(cls?.id || cls?.name); return CLASS_ART.includes(id) ? { flag: `${CARD_ART}class-${id}-flag.png`, band: `${CARD_ART}class-${id}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' }; };
+export const cornerArt = kind => ({ flag: '', band: `${CARD_ART}${kind}-band.png`, layout: 'corner' });
 export const CARD_KINDS = { power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background' };
 
 // "2 Hope + 1 Stress", "spend 1", "THE READING (2 EFFORT)"… as numbers. `open` marks a cost
@@ -54,7 +62,7 @@ const powerCard = (power, zone, sheet = {}) => {
   const type = power.t || sheet.type || 'Power', passive = /passive/i.test(type) || /long-term project/i.test(type);
   return {
     id: `${zone}:${slug(power.n)}`, kind: zone === 'loadout' ? 'power' : zone, zone, name: power.n,
-    domain: power.d || '', level: power.l || 0, type, color: DOMAIN_COLORS[power.d] || '#c084fc',
+    domain: power.d || '', level: power.l || 0, type, tier: power.tier || '', color: DOMAIN_COLORS[power.d] || '#6d28d9', art: domainArt(power.d),
     subtitle: [power.d, power.l && `L${power.l}`, type].filter(Boolean).join(' · '),
     costText: power.cost || sheet.cost || '—', cost: parseCost(power.cost), roll: parseRoll(power.dc), rollText: power.dc && power.dc !== '—' ? power.dc : '',
     rc: Number(power.rc ?? sheet.rc ?? 0) || 0, text: text(power.txt || sheet.text), reaction: /reaction/i.test(type), playable: zone !== 'vault' && !passive,
@@ -88,15 +96,15 @@ export function characterCards(token, data) {
     if (!moves.length) moves = ofClass.filter(m => !m.subclass || lower(m.subclass) === lower(token.subclass));
     for (const move of moves) {
       const cost = parseCost(move.cost, 'move');
-      cards.push({ id: `move:${slug(move.name)}`, kind: 'move', zone: 'loadout', name: move.name, subtitle: ['Resolve Move', move.subclass || move.class].filter(Boolean).join(' · '), color: cls?.color || '#fb923c', costText: move.cost, cost, roll: null, rollText: cost.rolls ? `Tira ${token.resolve?.dieType || 'd4'} por Resolve` : '', rc: 0, text: text(move.text), playable: true });
+      cards.push({ id: `move:${slug(move.name)}`, kind: 'move', zone: 'loadout', name: move.name, subtitle: ['Resolve Move', move.subclass || move.class].filter(Boolean).join(' · '), color: cls?.color || '#fb923c', art: classArt(cls), costText: move.cost, cost, roll: null, rollText: cost.rolls ? `Tira ${token.resolve?.dieType || 'd4'} por Resolve` : '', rc: 0, text: text(move.text), playable: true });
     }
   }
   const pathFeature = sleeping ? rules?.effortFeature : rules?.hopeFeature;
-  if (pathFeature) cards.push({ id: `feature:${slug(pathFeature.name)}`, kind: 'feature', zone: 'innate', name: pathFeature.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${sleeping ? 'Effort Feature' : 'Hope Feature'}`, color: cls.color || '#c084fc', costText: (pathFeature.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(pathFeature.name), roll: null, rollText: '', rc: 0, text: text(pathFeature.text), playable: true });
+  if (pathFeature) cards.push({ id: `feature:${slug(pathFeature.name)}`, kind: 'feature', zone: 'innate', name: pathFeature.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${sleeping ? 'Effort Feature' : 'Hope Feature'}`, color: cls.color || '#c084fc', art: classArt(cls), costText: (pathFeature.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(pathFeature.name), roll: null, rollText: '', rc: 0, text: text(pathFeature.text), playable: true });
   const ancestry = byName(data.ancestries, token.species);
-  if (ancestry) cards.push({ id: `ancestry:${ancestry.id}`, kind: 'ancestry', zone: 'innate', name: ancestry.name, subtitle: `Ancestry · ${ancestry.tag || ''}`.replace(/ · $/, ''), color: ancestry.color || '#94a3b8', costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: (ancestry.gifts || []).map(g => `${g.name}. ${g.text}`).join('\n\n'), playable: true });
+  if (ancestry) cards.push({ id: `ancestry:${ancestry.id}`, kind: 'ancestry', zone: 'innate', name: ancestry.name, subtitle: `Ancestry · ${ancestry.tag || ''}`.replace(/ · $/, ''), color: ancestry.color || '#94a3b8', art: cornerArt('ancestry'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: (ancestry.gifts || []).map(g => `${g.name}. ${g.text}`).join('\n\n'), playable: true });
   const community = byName(data.communities, token.community);
-  if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
+  if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
   if (!sleeping) for (const name of vaultNames(token)) { const known = byName(data.powers, name); cards.push(powerCard(known || { n: name }, 'vault')); }
   return cards;
 }

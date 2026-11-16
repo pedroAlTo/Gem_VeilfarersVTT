@@ -13,25 +13,48 @@ const affordable = (token, card) => {
   if (card.kind === 'archive') return (token.resolve?.current || 0) >= 1 && c.stress <= stressRoom;
   return (token.hope || 0) >= c.hope && (token.effort || 0) >= c.effort && (token.resolve?.current || 0) >= c.resolve && c.stress <= stressRoom;
 };
-const chips = card => {
+const pills = card => {
   const c = card.cost, list = [];
-  if (c.hope && card.kind !== 'archive') list.push(['hope', `${c.hope} Hope`]); if (c.stress) list.push(['stress', `${c.stress} Stress`]);
-  if (c.effort) list.push(['effort', `${c.effort} Effort`]); if (c.resolve) list.push(['resolve', `${c.resolve}${c.open ? '+' : ''} Resolve`]);
-  if (card.kind === 'archive') list.unshift(['resolve', '1+ Resolve']);
+  if (card.type && (card.kind === 'power' || card.kind === 'vault' || card.kind === 'archive')) list.push(['type', card.type.replace(/\s*\(.*$/, '')]);
+  if (card.tier) list.push(['plain', card.tier]);
+  if (card.kind === 'archive') list.push(['resolve', '1+ Resolve']);
+  if (c.hope && card.kind !== 'archive') list.push(['hope', `${c.hope} Hope`]);
+  if (c.stress) list.push(['stress', `${c.stress} Stress`]);
+  if (c.effort) list.push(['effort', `${c.effort} Effort`]);
+  if (c.resolve) list.push(['resolve', `${c.resolve}${c.open ? '+' : ''} Resolve`]);
   if (c.hp) list.push(['stress', `${c.hp} HP`]);
-  if (!list.length) list.push(['free', c.open ? 'Variable' : 'Sin coste']);
-  return list.map(([tone, label]) => `<span class="vf-card-chip ${tone}">${e(label)}</span>`).join('');
+  if (c.open && !c.resolve) list.push(['plain', 'Variable']);
+  if (card.reaction) list.push(['plain', 'Reaction']);
+  if (card.rollText) list.push(['roll', card.rollText]);
+  return list.map(([tone, label]) => `<span class="vf-card-pill ${tone}">${e(label)}</span>`).join('');
 };
-const glyph = card => ({ power: '✦', archive: '✧', vault: '◈', move: '⬢', feature: '❖', ancestry: '☉', community: '⌂' })[card.kind] || '✦';
+// The corner badge: the main price of the card at a glance.
+const badge = card => {
+  const c = card.cost;
+  if (card.kind === 'archive') return ['resolve', '1+'];
+  if (c.hope) return ['hope', c.hope]; if (c.effort) return ['effort', c.effort];
+  if (c.resolve) return ['resolve', `${c.resolve}${c.open ? '+' : ''}`]; if (c.stress) return ['stress', c.stress];
+  return null;
+};
 
+// The card follows the supplied art: gold frame, the flag of its Domain or Class hanging in
+// the corner (with the level for Powers), the name band, and the rules on a light panel.
 export function cardFace(card, { large = false } = {}) {
+  const art = card.art || { flag: '', band: '', layout: 'band' }, price = badge(card);
+  const footLeft = card.domain ? `${card.domain} · LV ${card.level}` : CARD_KINDS[card.kind], footRight = card.kind === 'power' || card.kind === 'vault' ? `RC ${card.rc}` : '';
   return `
-    <span class="vf-card-frame" style="--card-color:${e(card.color)}">
-      <span class="vf-card-head"><em>${e(CARD_KINDS[card.kind])}</em><strong>${e(card.name)}</strong></span>
-      <span class="vf-card-art"><i>${glyph(card)}</i>${card.level ? `<b>L${card.level}</b>` : ''}</span>
-      <span class="vf-card-sub">${e(card.subtitle)}</span>
-      <span class="vf-card-chips">${chips(card)}${card.rollText ? `<span class="vf-card-chip roll">${e(card.rollText)}</span>` : ''}${card.kind === 'power' || card.kind === 'vault' ? `<span class="vf-card-chip rc">RC ${card.rc}</span>` : ''}</span>
-      <span class="vf-card-text">${e(large ? card.text : card.text.slice(0, 150) + (card.text.length > 150 ? '…' : ''))}</span>
+    <span class="vf-card-frame layout-${e(art.layout)}" style="--card-color:${e(card.color)}">
+      <span class="vf-card-art">
+        ${art.flag ? `<span class="vf-card-flag"><img src="${e(art.flag)}" alt="" draggable="false" />${card.level ? `<b>${card.level}</b>` : ''}</span>` : ''}
+        ${price ? `<span class="vf-card-badge ${price[0]}">${e(String(price[1]))}</span>` : ''}
+        ${art.band ? `<img class="vf-card-band" src="${e(art.band)}" alt="" draggable="false" />` : ''}
+      </span>
+      <span class="vf-card-body">
+        <strong class="vf-card-title">${e(card.name)}</strong>
+        <span class="vf-card-pills">${pills(card)}</span>
+        <span class="vf-card-text">${e(large ? card.text : card.text.slice(0, 170) + (card.text.length > 170 ? '…' : ''))}</span>
+        <span class="vf-card-foot"><em>${e(footLeft)}</em><em>${e(footRight)}</em></span>
+      </span>
       <span class="vf-card-shine"></span>
     </span>`;
 }

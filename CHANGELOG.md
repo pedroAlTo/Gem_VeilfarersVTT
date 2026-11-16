@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.9.2**.
-Paquete: `VeilFarers_VTT_v2.9.2.zip`.
+Versión actual del VTT: **v2.9.3**.
+Paquete: `VeilFarers_VTT_v2.9.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.9.3] — 2026-11-16
+
+V2 · Cartas con el arte de Dominios y clases
+
+### Mano de cartas
+
+- Las cartas siguen el diseño de referencia: marco dorado, bandera colgando en la esquina, banda con el nombre y el texto sobre fondo claro.
+- Cada Poder lleva la bandera y la banda de su Dominio (Social, Void, Kinetic, Mind, Synthesys, Tech, Light), con su nivel sobre la bandera.
+- Los Resolve Moves y la carta de clase llevan la bandera y la banda de su clase.
+- Las cartas de Ancestry y de Background llevan su banda de esquina.
+- El coste principal se ve en un hexágono en la esquina; tipo, Tier, costes y tirada van en etiquetas bajo el título, y Dominio, nivel y Recall Cost al pie.
+- Los colores de cada Dominio pasan a ser los de su bandera.
 
 ## [2.9.2] — 2026-11-16
 
