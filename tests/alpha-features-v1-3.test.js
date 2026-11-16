@@ -102,31 +102,30 @@ test('equipment & augmentations catalog: filters by core and rust&steel alien sp
   assert.equal(inv.items[0].name, lithianNode.name);
 });
 
-test('drone token creation: presets, 90º standard FOV, shared control, and spotlight', () => {
+test('drone creation follows the Corebook: a Grade plus Modules, with the frame numbers of chapter 14', () => {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const roster = new RosterManager(container);
+  store.update({ userRole: 'keeper' });
 
-  // Deploy drone
   roster.openDeployDroneModal();
-  const modal = document.querySelector('.veil-modal-backdrop');
-  assert.ok(modal, 'Deploy drone modal opened');
-
-  const nameInp = modal.querySelector('#drone_name_input');
-  nameInp.value = 'Drone Test Alpha';
-
-  // Submit form
-  modal.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  const modal = document.querySelector('.drone-dialog');
+  assert.ok(modal, 'Drone console opened');
+  const form = modal.querySelector('form');
+  form.elements.drone_sample.value = 'tactical-support-frame'; form.elements.drone_sample.onchange();
+  form.elements.drone_name.value = 'Drone Test Alpha';
+  assert.match(modal.querySelector('[data-drone-summary]').textContent, /Module Slots3 \/ 3/);
+  form.dispatchEvent(new Event('submit', { cancelable: true }));
 
   const created = store.getState().tokens.find(t => t.name === 'Drone Test Alpha');
   assert.ok(created, 'Drone token created in store');
-  assert.equal(created.actorType, 'drone');
-  assert.equal(created.isPlayer, false);
+  assert.equal(created.actorType, 'drone'); assert.equal(created.isPlayer, false);
   assert.equal(created.visionAngle, 90, 'Standard 90º FOV');
-  assert.equal(created.hasSpotlight, true, 'Spotlight enabled on drone');
-  assert.equal(created.spotlight.enabled, true);
-
-  modal.remove();
+  // Military Drone: 3 HP, Evasion 11, Major 7 / Severe 14, 1 Armor Slot; Armor Plating adds one.
+  assert.deepEqual([created.hp.max, created.evasion, created.hp.majorThreshold, created.hp.severeThreshold, created.armor.max, created.stress.max], [3, 11, 7, 14, 2, 0]);
+  assert.deepEqual(created.drone.modules, ['armor-plating', 'target-painter', 'smoke-flash-pod']);
+  assert.equal(created.hasSpotlight, undefined, 'a drone grants no extra Spotlight');
+  assert.equal(document.querySelector('.drone-dialog'), null, 'the console closes after deploying');
   container.remove();
 });
 

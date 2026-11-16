@@ -1,6 +1,95 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.9.3', date: '2026-11-16', title: 'V2 · Cartas con el arte de Dominios y clases',
+    sections: [
+      { title: 'Mano de cartas', items: [
+        'Las cartas siguen el diseño de referencia: marco dorado, bandera colgando en la esquina, banda con el nombre y el texto sobre fondo claro.',
+        'Cada Poder lleva la bandera y la banda de su Dominio (Social, Void, Kinetic, Mind, Synthesys, Tech, Light), con su nivel sobre la bandera.',
+        'Los Resolve Moves y la carta de clase llevan la bandera y la banda de su clase.',
+        'Las cartas de Ancestry y de Background llevan su banda de esquina.',
+        'El coste principal se ve en un hexágono en la esquina; tipo, Tier, costes y tirada van en etiquetas bajo el título, y Dominio, nivel y Recall Cost al pie.',
+        'Los colores de cada Dominio pasan a ser los de su bandera.',
+      ] },
+    ],
+  },
+  {
+    version: '2.9.2', date: '2026-11-16', title: 'V2 · Equipo más fácil de manejar',
+    sections: [
+      { title: 'Pestaña Armas y equipo', items: [
+        'Todo se hace en la propia pestaña, sin abrir ventanas encima: buscar, añadir, cambiar cantidades, editar y quitar.',
+        'Un buscador con categorías (Armas, Armadura, Equipo, Aumentos) muestra el catálogo según escribes; cada resultado se añade con un clic.',
+        'Añadir una armadura sigue actualizando sus umbrales y Armor Slots.',
+        'Las cantidades se cambian con − y +.',
+        'Cada arma y objeto se edita en su propia fila. El Trait y el Alcance se eligen de una lista en vez de escribirse.',
+        'Quitar pide confirmación en el mismo botón, para no borrar nada por un clic de más.',
+        '«+ Arma propia» y «+ Objeto propio» crean entradas a medida; no se guardan hasta ponerles nombre.',
+        'Cada cambio se guarda al momento: desaparece el botón «Guardar inventario».',
+        'El botón de cada arma se llama ahora «Atacar» y la lleva al panel de dados.',
+        'El editor completo anterior sigue disponible desde un enlace al pie.',
+      ] },
+    ],
+  },
+  {
+    version: '2.9.1', date: '2026-11-16', title: 'V2 · Dron compartido con Neural Network Control',
+    sections: [
+      { title: 'Control compartido del dron', items: [
+        'Un dron está emparejado con un solo operador. Si se le instala Neural Network Control (1 Cr, 0 Slots), el Keeper puede registrar a varios jugadores y todos lo controlan por turnos.',
+        'Sin ese módulo, el control del token solo admite un jugador y avisa de qué módulo hace falta.',
+        'Pasar el control: gratis con señal Stable; con señal Unstable quien lo recibe marca 1 Stress, y si no puede marcarlo el operador anterior conserva el control; con señal Lost la interfaz no funciona.',
+        'El cambio de operador se hace en Ficha → Dron · módulos y señal y se anuncia en el chat. Mueve el Spotlight: no da Acciones extra.',
+        'Si se retira el módulo, el dron se queda con un solo jugador. Los drones creados antes de estas reglas conservan sus controladores.',
+      ] },
+    ],
+  },
+  {
+    version: '2.9.0', date: '2026-11-16', title: 'V2 · Mano de cartas: el Loadout en 3D junto a la ficha',
+    sections: [
+      { title: 'La mano', items: [
+        'En postura de jugador, al seleccionar tu personaje la barra inferior se divide en dos: a la izquierda sus stats, a la derecha su mano de cartas en abanico.',
+        'Las cartas son 3D: se levantan y se inclinan hacia el puntero al pasar por encima, con el coste, la tirada y el Recall Cost a la vista.',
+        'Un Awakened tiene en la mano los Poderes de su Loadout, su Hope Feature, la carta de su Ancestry y la de su Background.',
+        'Un Sleeping tiene sus Resolve Moves, su Effort Feature, su Ancestry y su Background.',
+        'El Mystic Sleeping tiene además los Poderes de su Uncanny Archive, que se juegan con Uncanny Power.',
+      ] },
+      { title: 'Jugar una carta', items: [
+        'Un clic abre la carta en grande con su texto completo. Arrastrarla y soltarla sobre el mapa la juega en ese punto.',
+        'Al jugarla se paga su coste impreso (Hope, Stress, Effort, Resolve o HP). Si no hay recursos, o estás Overwhelmed y cuesta Stress, no se juega y se explica por qué.',
+        'La jugada se anuncia con una tarjeta a la derecha, una línea en el chat y una señal en el punto del mapa.',
+        'Si el Poder pide tirada, el panel de dados queda preparado con su Trait y su DC: solo falta pulsar ROLL.',
+        'Un Resolve Move tira sus dados de Resolve. Los Moves de coste abierto preguntan cuánto Resolve gastas.',
+        'Uncanny Power: gastas Resolve, se tiran los dados más Knowledge para ver el nivel que alcanzas, el Keeper gana 1 Fear por Resolve y la tirada es Knowledge contra DC 10 + nivel. El coste de Hope se ignora.',
+        'Las cartas pasivas, las reacciones del Archivo y los proyectos a largo plazo se consultan pero no se juegan.',
+      ] },
+      { title: 'Vault y Recall', items: [
+        'El botón Vault muestra los Poderes que conoces y no tienes preparados.',
+        'Recall los trae al Loadout pagando lo que marca el Corebook: gratis en un Long Rest, su Recall Cost en Stress en un Short Rest, y en una escena activa además 1 Hope y tu Acción.',
+        'Si el Loadout está lleno, eliges qué Poder pasa al Vault.',
+      ] },
+    ],
+  },
+  {
+    version: '2.8.10', date: '2026-11-16', title: 'V2 · Drones según el Corebook: Grado, Módulos y señal',
+    sections: [
+      { title: 'Montar un dron', items: [
+        'ROSTER → + DRONE abre la consola del dron: se elige el Grado (Common, Military o Experimental) y sus Módulos, como en el capítulo 14 del Corebook. Las plantillas anteriores, con valores que no eran del libro, desaparecen.',
+        'El Grado fija HP, Evasion, umbrales, Armor Slots y Module Slots: Common 2 HP / 10 / 5-11 / 0 / 2; Military 3 HP / 11 / 7-14 / 1 / 3; Experimental 5 HP / 12 / 9-16 / 2 / 4.',
+        'Catálogo de 102 módulos con su coste, Slots y texto: los 31 del Corebook y 71 de Rust & Steel. Se puede buscar y filtrar por los que admite el Grado.',
+        'Las ocho configuraciones de ejemplo del libro (Cheap Scout Mote, Security Stun Drone, Ghost-Signal Infiltrator…) se cargan con un clic.',
+        'Se avisa si faltan Slots, si un módulo es de un Grado superior (modificación ilegal, con su tirada de Knowledge (Tech)) o si se monta un arma letal en un dron Common.',
+        'Agile Servos, Armor Plating, Reinforced Plating y otros módulos ajustan Evasion, Armor Slots y umbrales, sin pasar del máximo de Evasion del Grado.',
+      ] },
+      { title: 'En la mesa', items: [
+        'Cada dron tiene operador, estado de señal (Stable, Unstable, Lost), tipo de enlace y protocolo si pierde la señal. Se cambian en Ficha → Dron · módulos y señal.',
+        'Atacar con un dron es la Acción y la tirada de su operador: tira Hope y Fear con los Traits del operador. Con señal Unstable el ataque tiene Desventaja; con señal Lost no se puede ordenar.',
+        'Un dron con la señal Lost tiene Evasion −2 cuando lo atacan.',
+        'El daño de las armas de dron no escala con Proficiency.',
+        'Botón para tirar la Drone Complication (d12); los resultados de señal y de HP se aplican solos.',
+        'Los módulos se pueden marcar offline. Un dron creado con las plantillas antiguas pide elegir Grado y módulos al abrir su consola.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.9', date: '2026-11-16', title: 'V2 · Documentación al día',
     sections: [
       { title: 'Documentación', items: [

@@ -4,6 +4,8 @@ import './diceTray.css';
 import './vtt-integration/styles/lobby.css';
 import './vtt-integration/styles/lobby-fates.css';
 import './theme-violet.css';
+import './card-hand.css';
+import { CardHand } from './cardHandUI.js';
 import './colorPicker.css';
 import { openColorPickerPopover } from './colorPicker.js';
 import './chat.css';
@@ -80,6 +82,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 4. Initialize Token Floating Quickbar
   const quickbarContainer = document.getElementById('token_quickbar_root');
   window.veilTokenHUD = new TokenHUD(quickbarContainer);
+  // 4b. The card hand: the selected character's Loadout, beside its stats
+  window.veilCardHand = new CardHand(quickbarContainer);
 
   // 5. Initialize Tactical Layers HUD
   const layerContainer = document.getElementById('layer_hud_container');

@@ -1,3 +1,4 @@
+import { droneControllerLimit } from './drones.js';
 import { store } from './state.js';
 import { cloudConfigured } from './cloudAccount.js';
 import { network, getInvitedSessions, removeInvitedSession, getActiveSession } from './networkManager.js';
@@ -271,9 +272,9 @@ export function openTokenControl(tokenId) {
   if (!token) return;
   const keeper = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
   const players = store.state.players || [];
-  const drone = isDrone(token);
-  const modal = dossierDialog('CONTROL DE TOKEN', `<h2>${e(token.name)}</h2><p class="dossier-muted">${drone ? 'Dron compartido: selecciona todos los jugadores que pueden controlarlo simultáneamente.' : 'Asignar jugador al token (un jugador puede controlar varios tokens a la vez).'}</p>
-    <form><div class="controller-list">${players.length ? players.map(p => `<label><input type="${drone ? 'checkbox' : 'radio'}" name="controller" value="${e(p.id)}" ${(drone ? token.controllerIds?.includes(p.id) : token.ownerId === p.id) ? 'checked' : ''} ${keeper ? '' : 'disabled'}> ${e(p.name)}</label>`).join('') : '<p>Los jugadores aparecerán aquí al unirse a la sesión.</p>'}${!drone ? `<label><input type="radio" name="controller" value="" ${!token.ownerId ? 'checked' : ''} ${keeper ? '' : 'disabled'}> Solo Keeper</label>` : ''}</div><p class="dossier-error" role="alert"></p>${keeper ? '<button class="hud-btn hud-btn-primary">Guardar control</button>' : ''}</form>`);
+  const drone = isDrone(token), shared = drone && droneControllerLimit(token) > 1;
+  const modal = dossierDialog('CONTROL DE TOKEN', `<h2>${e(token.name)}</h2><p class="dossier-muted">${drone ? (shared ? 'Dron con Neural Network Control: marca a todos los jugadores registrados. Lo controlan por turnos, uno cada vez.' : 'Este dron está emparejado con un solo operador. Con el módulo Neural Network Control (1 Cr, 0 Slots) podrían controlarlo varios jugadores.') : 'Asignar jugador al token (un jugador puede controlar varios tokens a la vez).'}</p>
+    <form><div class="controller-list">${players.length ? players.map(p => `<label><input type="${shared ? 'checkbox' : 'radio'}" name="controller" value="${e(p.id)}" ${(shared ? token.controllerIds?.includes(p.id) : drone ? token.controllerIds?.[0] === p.id : token.ownerId === p.id) ? 'checked' : ''} ${keeper ? '' : 'disabled'}> ${e(p.name)}</label>`).join('') : '<p>Los jugadores aparecerán aquí al unirse a la sesión.</p>'}${!drone ? `<label><input type="radio" name="controller" value="" ${!token.ownerId ? 'checked' : ''} ${keeper ? '' : 'disabled'}> Solo Keeper</label>` : ''}</div><p class="dossier-error" role="alert"></p>${keeper ? '<button class="hud-btn hud-btn-primary">Guardar control</button>' : ''}</form>`);
   modal.querySelector('form').onsubmit = event => { event.preventDefault(); try { store.assignTokenControllers(tokenId, [...modal.querySelectorAll('input:checked')].map(x => x.value)); modal.remove(); } catch (error) { modal.querySelector('.dossier-error').textContent = error.message; } };
 }
 

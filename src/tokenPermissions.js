@@ -1,3 +1,4 @@
+import { droneControllerLimit } from './drones.js';
 export const isDrone = token => token?.actorType === 'drone';
 export const controlsToken = (token, playerId) => !!playerId && playerId !== 'keeper' && !token?.hidden &&
   ((token?.ownerId !== 'keeper' && token?.ownerId === playerId) || (Array.isArray(token?.controllerIds) && token.controllerIds.includes(playerId)));
@@ -11,6 +12,7 @@ export function assignControls(tokens, tokenId, playerIds, knownPlayers) {
   const ids = [...new Set(playerIds.filter(Boolean))];
   if (ids.some(id => !knownPlayers.includes(id))) throw new Error('Unknown player.');
   if (!isDrone(target) && ids.length > 1) throw new Error('Only drones can have multiple controllers.');
+  if (ids.length > droneControllerLimit(target)) throw new Error('Este dron está emparejado con un solo operador. Para que lo controlen varios jugadores necesita el módulo Neural Network Control (1 Cr, 0 Slots).');
   return tokens.map(token => {
     if (token.id === tokenId) {
       return {

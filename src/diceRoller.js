@@ -12,6 +12,7 @@ import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
 import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from './attackFlow.js';
+import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses, damageDicePools, honedEdgeOf } from './equipment.js';
 
 export class DiceRollerSidebar {
@@ -245,6 +246,23 @@ export class DiceRollerSidebar {
     this.syncWithSelectedToken();
     this.updateTraitButtons();
     this.selectTrait(this.selectedTraitId, { rollNow });
+  }
+
+  // Sets up the roll a card asks for (Trait and DC) and leaves it one click away.
+  prepareCheck({ tokenId, traitId, dc }) {
+    const actor = store.state.tokens.find(t => t.id === tokenId);
+    if (!actor) return false;
+    if (store.state.selectedTokenId !== tokenId) store.update({ selectedTokenId: tokenId });
+    this.syncWithSelectedToken();
+    window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
+    this.container.querySelector('#tab_check_btn')?.click();
+    this.selectTrait(traitId, { rollNow: false });
+    const select = this.container.querySelector('#dice_dc_select');
+    if (select && Number.isFinite(dc)) {
+      if (![...select.options].some(o => Number(o.value) === dc)) { const option = document.createElement('option'); option.value = String(dc); option.textContent = `DC ${dc}`; select.append(option); }
+      select.value = String(dc);
+    }
+    return true;
   }
 
   prepareWeapon(tokenId, weaponId) {
@@ -1043,7 +1061,7 @@ export class DiceRollerSidebar {
   }
 
   async executeActionCheck(attack = null) {
-    const actor = this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null) || {
+    const actor = attack?.actor || this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null) || {
       name: 'Voidwalker',
       path: 'Awakened',
       traits: { [this.selectedTraitId]: 1 },
@@ -1077,7 +1095,7 @@ export class DiceRollerSidebar {
     if (useResolve) groups.push({ qty: 1, sides: 4, theme: 'vfNeutral', role: 'Resolve' });
 
     const themedGroups = this.applyDiceTextureSet(groups);
-    const label = attack ? `${actor.name || 'Operative'} · Ataque (${traitName}) vs ${attack.targetName}` : `${actor.name || 'Operative'} · ${traitName} Check`;
+    const label = attack ? `${actor.name || 'Operative'}${attack.via ? ` (${attack.via})` : ''} · Ataque (${traitName}) vs ${attack.targetName}` : `${actor.name || 'Operative'} · ${traitName} Check`;
 
     let forcedHope = null;
     let forcedFear = null;
@@ -1213,7 +1231,13 @@ export class DiceRollerSidebar {
     const map = store.getActiveMap() || {};
     const gap = distanceInfo(attacker, target, map), band = gap.band;
     const range = rangeCheck(weapon, band);
-    const evasion = Number.isFinite(target.evasion) ? target.evasion : 10;
+    // A drone whose signal is Lost cannot evade: Evasion −2 (Corebook ch. 14).
+    const evasion = droneEvasion(target);
+    // A drone attacks with its operator's Action and its operator's roll.
+    const drone = isDroneToken(attacker), command = drone ? droneCommand(attacker) : null;
+    const operator = drone ? store.state.tokens.find(t => t.id === attacker.drone?.operatorId && t.isPlayer !== false) : null;
+    if (drone && !command.allowed) throw new Error(command.reason);
+    if (drone && !operator) throw new Error('Asigna un operador al dron (Ficha → Dron · módulos y señal): atacar con un dron es la Acción y la tirada de su operador.');
     const show = (total, outcome, detail, tone) => {
       q('#attack_result_display').style.display = 'block';
       q('#atk_total_val').textContent = total; q('#atk_evasion_val').textContent = evasion;
@@ -1226,10 +1250,10 @@ export class DiceRollerSidebar {
     if (!range.allowed) { show('—', 'FUERA DE ALCANCE', `${where} ${range.reason} Acércate o cambia de arma.`, 'miss'); notify(range.reason, 'error'); return { hit: false, blocked: true, band }; }
 
     let hit, critical, total, detail, rolled3D = false;
-    if (attacker.isPlayer !== false) {
+    if (attacker.isPlayer !== false || drone) {
       const traitId = weaponTraitId(weapon);
       if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
-      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage, targetName: target.name });
+      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage || !!command?.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '' });
       if (!result) return { hit: false, band };
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
       detail = `${checkMath(result)}.`;
@@ -1257,7 +1281,7 @@ export class DiceRollerSidebar {
       store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'ROLL', sender: 'Keeper', title: `Ataque · ${attacker.name}`, details: summary });
       if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: attacker.name, text: summary, channel: 'table' }));
     }
-    const rangeNote = range.disadvantage ? ` ${range.reason}` : '';
+    const rangeNote = (range.disadvantage ? ` ${range.reason}` : '') + (drone ? ` Tira ${operator.name}, operador del dron.${command.disadvantage ? ' ' + command.reason : ''}` : '');
     if (!hit) { show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.`, 'miss'); return { hit: false, critical: false, total, band }; }
     show(total, critical ? 'CRÍTICO' : 'IMPACTO', `${where}${rangeNote} ${detail} ${critical ? 'Crítico: impacta siempre.' : `Alcanza la Evasion ${evasion}.`} Daño calculado abajo.`, critical ? 'crit' : 'hit');
     q('#dmg_is_critical').checked = critical;
@@ -1383,7 +1407,8 @@ export class DiceRollerSidebar {
     const activeWeapon = this.currentActor && wSelect?.value ? (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value) : null;
     const damageType = chosenType && chosenType !== 'auto' ? chosenType : damageTypeOf(formula || activeWeapon || '');
     if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
-    const keeperAttack = this.currentActor?.isPlayer === false;
+    // A drone is fired by a player character: its Critical doubles the dice like any player's.
+    const keeperAttack = this.currentActor?.isPlayer === false && !isDroneToken(this.currentActor);
     if (!rolled && this.can3D()) {
       let pools = [];
       try { pools = damageDicePools(formula, { proficiency, diceCount, diceSides, isCritical: isCritical && !keeperAttack, isKeeperCritical: isCritical && keeperAttack }); } catch { pools = []; }
@@ -1403,8 +1428,8 @@ export class DiceRollerSidebar {
       diceSides,
       flatModifier: flatMod + honed,
       ...(faces.length ? { rollDie: sides => { const face = faces.shift(); return Number.isInteger(face) && face >= 1 && face <= sides ? face : Math.floor(Math.random() * sides) + 1; } } : {}),
-      isCritical: isCritical && this.currentActor?.isPlayer !== false,
-      isKeeperCritical: isCritical && this.currentActor?.isPlayer === false,
+      isCritical: isCritical && !keeperAttack,
+      isKeeperCritical: isCritical && keeperAttack,
       isDirectDamage: isDirect,
       targetMajorThreshold: major,
       targetSevereThreshold: severe,

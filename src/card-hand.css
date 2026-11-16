@@ -1,0 +1,66 @@
+/* The card hand: the selected character's stats on the left, its Loadout as 3D cards on the
+   right. Hope, Stress, Effort and Resolve keep the colours the table already uses. */
+.token-quickbar-container.with-hand { left: 16px; transform: none; max-width: calc(100% - 32px); }
+.card-hand { position: absolute; right: 16px; bottom: 0; z-index: 121; width: min(40%, 560px); height: 200px; pointer-events: none; display: flex; flex-direction: column; align-items: flex-end; }
+.card-hand.hidden { display: none; }
+.card-hand-label { pointer-events: auto; display: flex; align-items: center; gap: 10px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #c084fc; padding: 0 6px 6px; }
+.card-hand-vault { font: inherit; letter-spacing: .16em; color: #fde68a; background: rgba(13,4,32,.92); border: 1px solid rgba(253,230,138,.5); padding: 5px 9px; cursor: pointer; }
+.card-hand-vault:hover { border-color: #fde68a; background: rgba(42,11,92,.95); }
+.card-hand-fan { position: relative; flex: 1; width: 100%; perspective: 900px; }
+
+.vf-card { --w: 124px; --h: 174px; --rx: 0deg; --ry: 0deg; --sx: 50%; --sy: 0%; all: unset; box-sizing: border-box; display: block; width: var(--w); height: var(--h); cursor: grab; pointer-events: auto; transform-style: preserve-3d; }
+.card-hand-fan .vf-card { position: absolute; bottom: -58px; left: 50%;
+  transform-origin: 50% 120%;
+  transform: translateX(calc(-50% + var(--offset) * var(--spread))) rotate(calc(var(--offset) * var(--tilt, 4deg))) translateY(calc(var(--offset) * var(--offset) * var(--drop, 3px)));
+  transition: transform .22s cubic-bezier(.2,.9,.3,1.2), filter .2s ease; z-index: calc(10 + var(--i)); }
+.card-hand-fan .vf-card:hover, .card-hand-fan .vf-card:focus-visible { z-index: 60;
+  transform: translateX(calc(-50% + var(--offset) * var(--spread))) translateY(-86px) scale(1.34) rotateX(var(--rx)) rotateY(var(--ry)); }
+.card-hand-fan .vf-card.dragging { opacity: .25; }
+.vf-card-frame { --card-color: #6d28d9; position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; border-radius: 9px; padding: 3px;
+  background: linear-gradient(135deg, #f6d98a 0%, #e9a93a 28%, #fbe6ae 52%, #d08a12 76%, #f3cf7a 100%);
+  box-shadow: 0 10px 26px rgba(0,0,0,.6), 0 0 14px color-mix(in srgb, var(--card-color) 45%, transparent); color: #1b1420; text-align: left; }
+.vf-card:hover .vf-card-frame, .vf-card:focus-visible .vf-card-frame { box-shadow: 0 22px 44px rgba(0,0,0,.7), 0 0 0 2px #00f3ff, 0 0 26px rgba(0,243,255,.5); }
+.vf-card-art { position: relative; flex: 0 0 46%; border-radius: 6px 6px 0 0; overflow: hidden;
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 2px, transparent 2px 9px), linear-gradient(180deg, color-mix(in srgb, var(--card-color) 62%, #1a0f1f) 0%, #12090f 78%); }
+.vf-card-flag { position: absolute; left: 9%; top: -2px; width: 19%; display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+.vf-card-flag img { display: block; width: 100%; height: auto; }
+.vf-card-flag b { position: absolute; left: 0; right: 0; top: 7%; text-align: center; font: 800 9px/1 'Chakra Petch', system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.vf-card-badge { position: absolute; right: 6%; top: 5%; min-width: 15%; aspect-ratio: 1 / 1.1; display: grid; place-items: center; padding: 0 2px; box-sizing: border-box; font: 800 9px/1 ui-monospace, monospace; color: #1b1420; background: #fff;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.vf-card-badge.hope { background: #fde68a; } .vf-card-badge.stress { background: #d8b4fe; } .vf-card-badge.effort { background: #fbbf24; } .vf-card-badge.resolve { background: #6ee7b7; }
+.vf-card-band { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: auto; display: block; }
+.vf-card-frame.layout-corner .vf-card-art { flex-basis: 40%; background: repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 9px), linear-gradient(180deg, color-mix(in srgb, var(--card-color) 80%, #2a1b12) 0%, color-mix(in srgb, var(--card-color) 40%, #12090f) 100%); }
+.vf-card-frame.layout-corner .vf-card-band { bottom: -1px; }
+.vf-card-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; padding: 5px 6px 4px; background: #fff; border-radius: 0 0 6px 6px; }
+.vf-card-title { font: 800 10px/1.1 'Chakra Petch', 'Oswald', system-ui, sans-serif; letter-spacing: .02em; text-transform: uppercase; text-align: center; color: #14101a; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.vf-card-pills { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
+.vf-card-pill { font: 600 6.5px/1 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; padding: 2.5px 4px; border-radius: 99px; white-space: nowrap; background: #f4ead2; color: #6b5320; border: 1px solid #ead6a4; }
+.vf-card-pill.type { background: color-mix(in srgb, var(--card-color) 16%, #fff); color: color-mix(in srgb, var(--card-color) 80%, #000); border-color: color-mix(in srgb, var(--card-color) 45%, #fff); }
+.vf-card-pill.hope { background: #fdf3c4; color: #7a5a00; border-color: #f1d674; } .vf-card-pill.stress { background: #f1e3ff; color: #5b2a86; border-color: #d8b4fe; }
+.vf-card-pill.effort { background: #ffedc2; color: #7a4a00; border-color: #fbbf24; } .vf-card-pill.resolve { background: #d9f8ea; color: #0f5a3c; border-color: #6ee7b7; }
+.vf-card-pill.roll { background: #dff6fb; color: #0a5568; border-color: #9ddfee; }
+.vf-card-text { font: 400 7px/1.35 system-ui, sans-serif; color: #2a2430; overflow: hidden; flex: 1; white-space: pre-line; }
+.vf-card-foot { display: flex; justify-content: space-between; gap: 6px; border-top: 1px solid #ead6a4; padding-top: 2px; }
+.vf-card-foot em { font: 700 6px/1 ui-monospace, monospace; font-style: normal; letter-spacing: .14em; text-transform: uppercase; color: color-mix(in srgb, var(--card-color) 75%, #000); } .vf-card-foot em:last-child { color: #8a8590; }
+.vf-card-shine { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s ease; background: radial-gradient(circle at var(--sx) var(--sy), rgba(255,255,255,.4), transparent 46%); mix-blend-mode: soft-light; }
+.vf-card:hover .vf-card-shine { opacity: 1; }
+.vf-card.unaffordable .vf-card-frame { filter: saturate(.35) brightness(.72); }
+.vf-card.passive .vf-card-frame { border-style: dashed; }
+
+.vf-card-ghost { position: fixed; z-index: 2147483600; pointer-events: none; transform: translate(-50%, -62%) rotate(-5deg) scale(1.08); transition: transform .12s ease; }
+.vf-card-ghost.over-board { transform: translate(-50%, -62%) rotate(0deg) scale(.92); }
+.vf-card-ghost.over-board .vf-card-frame { box-shadow: 0 0 0 2px #00f3ff, 0 0 34px rgba(0,243,255,.7); }
+.card-drop-target { outline: 2px dashed rgba(0,243,255,.55); outline-offset: -6px; }
+
+.card-inspect { display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start; }
+.vf-card-large { --w: 250px; --h: 350px; cursor: default; }
+.vf-card-large .vf-card-frame { padding: 6px; border-radius: 16px; }
+.vf-card-large .vf-card-art { border-radius: 11px 11px 0 0; } .vf-card-large .vf-card-body { border-radius: 0 0 11px 11px; padding: 10px 12px 8px; gap: 6px; }
+.vf-card-large .vf-card-flag b { font-size: 17px; } .vf-card-large .vf-card-badge { font-size: 15px; }
+.vf-card-large .vf-card-title { font-size: 19px; } .vf-card-large .vf-card-pill { font-size: 9px; padding: 4px 8px; }
+.vf-card-large .vf-card-text { font-size: 11px; overflow: auto; } .vf-card-large .vf-card-foot em { font-size: 8.5px; }
+.card-inspect-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card-inspect-text { color: #e2e8f0; font-size: 13px; line-height: 1.55; margin: 0; max-height: 300px; overflow: auto; }
+.card-vault { display: flex; flex-direction: column; gap: 10px; } .card-vault-preview { display: flex; justify-content: center; }
+@media (max-width: 1024px) { .token-quickbar-container.with-hand { max-width: calc(100% - 24px); bottom: 150px; } .card-hand { width: calc(100% - 32px); height: 150px; } .vf-card { --w: 104px; --h: 146px; } .card-inspect { grid-template-columns: 1fr; justify-items: center; } }
+@media (prefers-reduced-motion: reduce) { .card-hand-fan .vf-card, .vf-card-ghost { transition: none; } }

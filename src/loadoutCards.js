@@ -1,0 +1,196 @@
+// The hand of a player character: what it can play, what playing it costs and how Powers move
+// between Vault and Loadout. Pure rules (Corebook 12.06, ch. 7 and 18); the hand UI draws it.
+const text = value => value == null ? '' : String(value);
+const lower = value => text(value).trim().toLowerCase();
+const fieldsOf = token => token?.sourceCharacter?.document?.fields || token?.sheetFields || {};
+const writable = token => token.sourceCharacter?.document?.fields || (token.sheetFields ||= {});
+const slug = value => lower(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const TRAITS = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'];
+
+// The colours of the Domain flags and bands of the card art.
+export const DOMAIN_COLORS = { Tech: '#00697f', Synthesis: '#1f5c2b', Social: '#ee6a82', Neural: '#7b3a78', Kinetic: '#9b150c', Void: '#15121a', Lux: '#d8b40a' };
+// Card art (public/assets/cards): a flag and a name band per Domain and per Class, and a
+// corner band for Ancestry and Background cards.
+const CARD_ART = '/assets/cards/';
+const CLASS_ART = ['diplomat', 'engineer', 'explorer', 'mystic', 'pilot', 'scholar', 'scoundrel', 'soldier', 'vanguard'];
+export const domainArt = domain => DOMAIN_COLORS[domain] ? { flag: `${CARD_ART}domain-${lower(domain)}-flag.png`, band: `${CARD_ART}domain-${lower(domain)}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' };
+export const classArt = cls => { const id = lower(cls?.id || cls?.name); return CLASS_ART.includes(id) ? { flag: `${CARD_ART}class-${id}-flag.png`, band: `${CARD_ART}class-${id}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' }; };
+export const cornerArt = kind => ({ flag: '', band: `${CARD_ART}${kind}-band.png`, layout: 'corner' });
+export const CARD_KINDS = { power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background' };
+
+// "2 Hope + 1 Stress", "spend 1", "THE READING (2 EFFORT)"… as numbers. `open` marks a cost
+// the card leaves to the player (Variable, "spend and roll 1+", upkeep): it is paid by hand.
+export function parseCost(value, kind = 'power') {
+  const source = text(value), cost = { hope: 0, stress: 0, effort: 0, resolve: 0, hp: 0, open: false };
+  for (const [key, word] of [['hope', 'Hope'], ['stress', 'Stress'], ['effort', 'Effort'], ['resolve', 'Resolve'], ['hp', 'HP']]) {
+    const match = source.match(new RegExp(`(\\d+)\\s*${word}\\b`, 'i')); if (match) cost[key] = Number(match[1]);
+  }
+  if (kind === 'move') { const spend = source.match(/spend(?: and roll)?\s*(\d+)(\+)?/i); if (spend) { cost.resolve = Number(spend[1]); cost.open = !!spend[2]; cost.rolls = /and roll/i.test(source); } }
+  if (/variable|all remaining|per (day|week|participant)|to begin|wealth/i.test(source)) cost.open = true;
+  return cost;
+}
+export function parseRoll(value) {
+  const match = text(value).match(/DC\s*(\d+)\s*\(([A-Za-z]+)\)/);
+  const traitId = match && lower(match[2]);
+  return match && TRAITS.includes(traitId) ? { dc: Number(match[1]), traitId } : null;
+}
+export const costLabel = cost => [cost.hope && `${cost.hope} Hope`, cost.stress && `${cost.stress} Stress`, cost.effort && `${cost.effort} Effort`, cost.resolve && `${cost.resolve}${cost.open ? '+' : ''} Resolve`, cost.hp && `${cost.hp} HP`].filter(Boolean).join(' + ') || (cost.open ? 'Variable' : 'Sin coste');
+
+const byName = (list, name) => list.find(item => lower(item.name ?? item.n) === lower(name)) || list.find(item => lower(item.id) === slug(name)) || null;
+export const isSleepingMystic = token => token?.path === 'Sleeping' && /mystic/i.test(text(token.characterClass));
+
+// Loadout and Vault as the sheet stores them.
+export function loadoutNames(token) {
+  const f = fieldsOf(token);
+  return Object.keys(f).filter(k => /^a_pwr_\d+_n$/.test(k)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(k => text(f[k]).trim()).filter(Boolean);
+}
+export function vaultNames(token) {
+  return text(fieldsOf(token).a_vault).split('\n').map(line => line.split(' · ').pop().trim()).filter(Boolean);
+}
+export const loadoutCap = token => Number(fieldsOf(token).a_loadout_cap) || 5;
+
+// The Domain packages a Sleeping Mystic has unlocked in the Uncanny Archive: [Domain, level].
+export function archivePackages(token) {
+  const f = fieldsOf(token), source = Object.values(f).filter(v => typeof v === 'string').join('\n'), found = new Map();
+  const studied = source.match(/Studied Domains\s*[—-]\s*([^\n]+)/i);
+  if (studied) for (const name of studied[1].split('+')) { const domain = Object.keys(DOMAIN_COLORS).find(d => lower(d) === lower(name)); if (domain) found.set(`${domain}:1`, [domain, 1]); }
+  for (const match of text(f.s_archive).matchAll(/([A-Za-z]+)\s+(\d+)/g)) { const domain = Object.keys(DOMAIN_COLORS).find(d => lower(d) === lower(match[1])); if (domain) found.set(`${domain}:${match[2]}`, [domain, Number(match[2])]); }
+  return [...found.values()];
+}
+
+const powerCard = (power, zone, sheet = {}) => {
+  const type = power.t || sheet.type || 'Power', passive = /passive/i.test(type) || /long-term project/i.test(type);
+  return {
+    id: `${zone}:${slug(power.n)}`, kind: zone === 'loadout' ? 'power' : zone, zone, name: power.n,
+    domain: power.d || '', level: power.l || 0, type, tier: power.tier || '', color: DOMAIN_COLORS[power.d] || '#6d28d9', art: domainArt(power.d),
+    subtitle: [power.d, power.l && `L${power.l}`, type].filter(Boolean).join(' · '),
+    costText: power.cost || sheet.cost || '—', cost: parseCost(power.cost), roll: parseRoll(power.dc), rollText: power.dc && power.dc !== '—' ? power.dc : '',
+    rc: Number(power.rc ?? sheet.rc ?? 0) || 0, text: text(power.txt || sheet.text), reaction: /reaction/i.test(type), playable: zone !== 'vault' && !passive,
+  };
+};
+
+// Every card of the character, in hand order: what it can play first, the Vault last.
+export function characterCards(token, data) {
+  if (!token || token.isPlayer === false || !data) return [];
+  const f = fieldsOf(token), cards = [], sleeping = token.path === 'Sleeping';
+  const cls = byName(data.classes, token.characterClass), rules = sleeping && cls?.sleepingRules ? cls.sleepingRules : cls;
+  if (!sleeping) {
+    const sheetPower = (name, i) => ({ text: text(f[`a_pwr_${i}_d`]), rc: f[`a_pwr_${i}_rc`] });
+    const keys = Object.keys(f).filter(k => /^a_pwr_\d+_n$/.test(k)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    for (const key of keys) {
+      const name = text(f[key]).trim(); if (!name) continue;
+      const index = key.match(/\d+/)[0], known = byName(data.powers, name);
+      cards.push(powerCard(known || { n: name, txt: text(f[`a_pwr_${index}_d`]), rc: f[`a_pwr_${index}_rc`] }, 'loadout', sheetPower(name, index)));
+    }
+  } else if (isSleepingMystic(token)) {
+    for (const [domain, level] of archivePackages(token)) for (const power of data.powers.filter(p => p.d === domain && p.l === level)) {
+      const card = powerCard(power, 'archive');
+      // Uncanny Power cannot reproduce a Reaction or a Passive Power.
+      cards.push({ ...card, playable: card.playable && !card.reaction });
+    }
+  }
+  if (sleeping) {
+    const learned = lower([f.s_learned_moves, f.s_active_move].join('\n'));
+    const ofClass = data.resolveMoves.filter(m => lower(m.class) === lower(cls?.name));
+    let moves = ofClass.filter(m => learned.includes(lower(m.name)));
+    if (!moves.length) moves = ofClass.filter(m => !m.subclass || lower(m.subclass) === lower(token.subclass));
+    for (const move of moves) {
+      const cost = parseCost(move.cost, 'move');
+      cards.push({ id: `move:${slug(move.name)}`, kind: 'move', zone: 'loadout', name: move.name, subtitle: ['Resolve Move', move.subclass || move.class].filter(Boolean).join(' · '), color: cls?.color || '#fb923c', art: classArt(cls), costText: move.cost, cost, roll: null, rollText: cost.rolls ? `Tira ${token.resolve?.dieType || 'd4'} por Resolve` : '', rc: 0, text: text(move.text), playable: true });
+    }
+  }
+  const pathFeature = sleeping ? rules?.effortFeature : rules?.hopeFeature;
+  if (pathFeature) cards.push({ id: `feature:${slug(pathFeature.name)}`, kind: 'feature', zone: 'innate', name: pathFeature.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${sleeping ? 'Effort Feature' : 'Hope Feature'}`, color: cls.color || '#c084fc', art: classArt(cls), costText: (pathFeature.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(pathFeature.name), roll: null, rollText: '', rc: 0, text: text(pathFeature.text), playable: true });
+  const ancestry = byName(data.ancestries, token.species);
+  if (ancestry) cards.push({ id: `ancestry:${ancestry.id}`, kind: 'ancestry', zone: 'innate', name: ancestry.name, subtitle: `Ancestry · ${ancestry.tag || ''}`.replace(/ · $/, ''), color: ancestry.color || '#94a3b8', art: cornerArt('ancestry'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: (ancestry.gifts || []).map(g => `${g.name}. ${g.text}`).join('\n\n'), playable: true });
+  const community = byName(data.communities, token.community);
+  if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
+  if (!sleeping) for (const name of vaultNames(token)) { const known = byName(data.powers, name); cards.push(powerCard(known || { n: name }, 'vault')); }
+  return cards;
+}
+
+const need = (have, cost, label) => { if (cost > have) throw new Error(`No hay ${label} suficiente: hacen falta ${cost} y quedan ${have}.`); };
+const overwhelmed = token => (token.stress?.current || 0) >= (token.stress?.max ?? 6);
+
+// Playing a card pays its printed cost and says what happens next. Nothing is rolled for the
+// Spellcast here: the result names the roll (Trait and DC) for the dice panel.
+// resolveSpent: how many Resolve an open Move or Uncanny Power spends (1 or more).
+export function playCard(source, card, { resolveSpent = null, random = Math.random } = {}) {
+  if (!card?.playable) throw new Error(card?.zone === 'vault' ? 'Esta carta está en el Vault: hay que traerla al Loadout con un Recall.' : 'Esta carta es pasiva o un proyecto: no se activa desde la mano.');
+  const token = structuredClone(source), cost = { ...card.cost }, notes = [];
+  let fear = 0, roll = card.roll ? { ...card.roll } : null;
+  const dieSides = token.resolve?.dieType === 'd6' ? 6 : 4, die = () => Math.floor(random() * dieSides) + 1;
+  if (card.kind === 'archive') {
+    // Uncanny Power: spend Resolve, roll that many Resolve Dice + Spellcast Trait for the
+    // level that can be reached; the Keeper gains 1 Fear per Resolve spent.
+    const spent = Math.max(1, Number(resolveSpent) || 1);
+    need(token.resolve?.current || 0, spent, 'Resolve');
+    const rolls = Array.from({ length: spent }, die), knowledge = token.traits?.knowledge ?? 0;
+    const access = Math.min(rolls.reduce((n, v) => n + v, 0) + knowledge, token.level || 1);
+    token.resolve = { ...token.resolve, current: token.resolve.current - spent }; fear = spent;
+    notes.push(`Uncanny Power: ${spent} Resolve → ${token.resolve.dieType || 'd4'} [${rolls.join(', ')}] + Knowledge ${knowledge} = nivel accesible ${access} (máx. tu nivel). El Keeper gana ${spent} Fear.`);
+    if (access < card.level) return { token, paid: { resolve: spent }, fear, roll: null, failed: true, summary: `${card.name} es de nivel ${card.level} y el acceso solo llega a ${access}. El Resolve queda gastado: puedes elegir otro Poder de nivel ${access} o menor.`, notes };
+    if (cost.stress) { if (overwhelmed(token)) throw new Error('Overwhelmed: no puedes pagar costes de Stress.'); token.stress = { ...token.stress, current: Math.min(token.stress.max ?? 6, (token.stress.current || 0) + cost.stress) }; }
+    if (cost.hp) token.hp = { ...token.hp, current: Math.max(0, token.hp.current - cost.hp) };
+    roll = { dc: 10 + card.level, traitId: 'knowledge' };
+    notes.push(`Ignora el coste de Hope. Acción completa. Spellcast de Knowledge contra DC ${roll.dc}. Con Critical Success recuperas el Resolve gastado.`);
+    return { token, paid: { resolve: spent, stress: cost.stress, hp: cost.hp }, fear, roll, summary: `${card.name} · Uncanny Power`, notes };
+  }
+  if (cost.open && cost.resolve) cost.resolve = Math.max(cost.resolve, Number(resolveSpent) || cost.resolve);
+  need(token.hope || 0, cost.hope, 'Hope'); need(token.effort || 0, cost.effort, 'Effort'); need(token.resolve?.current || 0, cost.resolve, 'Resolve');
+  if (cost.stress && overwhelmed(token)) throw new Error('Overwhelmed: no puedes pagar costes de Stress.');
+  if (cost.stress) need((token.stress?.max ?? 6) - (token.stress?.current || 0), cost.stress, 'margen de Stress');
+  if (cost.hope) token.hope -= cost.hope;
+  if (cost.effort) token.effort -= cost.effort;
+  if (cost.stress) token.stress = { ...token.stress, current: (token.stress.current || 0) + cost.stress };
+  if (cost.hp) token.hp = { ...token.hp, current: Math.max(0, token.hp.current - cost.hp) };
+  if (cost.resolve) {
+    token.resolve = { ...token.resolve, current: token.resolve.current - cost.resolve };
+    if (card.cost.rolls) { const rolls = Array.from({ length: cost.resolve }, die); notes.push(`Resolve: ${token.resolve.dieType || 'd4'} [${rolls.join(', ')}] = ${rolls.reduce((n, v) => n + v, 0)}.`); }
+  }
+  if (card.cost.open && !cost.resolve) notes.push('Esta carta tiene un coste variable o de mantenimiento: ajústalo a mano en la ficha.');
+  if (roll) notes.push(`Tirada: ${card.rollText}.`);
+  return { token, paid: cost, fear, roll, summary: `${card.name} · ${costLabel(cost)}`, notes };
+}
+
+export const RECALL_MODES = {
+  long: { name: 'Long Rest', text: 'Gratis: reorganiza el Loadout libremente.' },
+  short: { name: 'Short Rest', text: 'Pagas el Recall Cost impreso del Poder en Stress.' },
+  scene: { name: 'Escena activa', text: 'Usa tu Acción, pagas el Recall Cost en Stress y gastas 1 Hope.' },
+};
+export function recallCost(card, mode) {
+  if (!RECALL_MODES[mode]) throw new Error('Momento de Recall desconocido.');
+  return { stress: mode === 'long' ? 0 : card.rc, hope: mode === 'scene' ? 1 : 0, action: mode === 'scene' };
+}
+
+// Recall: a Vault Power enters the Loadout; if the Loadout is full, one Power leaves for the
+// Vault. data gives the printed text of the Powers so the sheet stays complete.
+export function recallPower(source, data, vaultName, { mode = 'long', replace = '' } = {}) {
+  const token = structuredClone(source), f = writable(token);
+  if (token.path === 'Sleeping') throw new Error('Los personajes Sleeping no tienen Vault ni Loadout.');
+  const loadout = loadoutNames(token), vault = vaultNames(token);
+  if (!vault.some(n => lower(n) === lower(vaultName))) throw new Error('Ese Poder no está en el Vault.');
+  const incoming = byName(data.powers, vaultName) || { n: vaultName, rc: 0 };
+  const cost = recallCost({ rc: Number(incoming.rc) || 0 }, mode);
+  let leaving = '';
+  if (loadout.length >= loadoutCap(token)) {
+    leaving = loadout.find(n => lower(n) === lower(replace));
+    if (!leaving) throw new Error(`El Loadout está lleno (${loadoutCap(token)} Poderes): elige cuál pasa al Vault.`);
+  }
+  need(token.hope || 0, cost.hope, 'Hope');
+  if (cost.stress) { if (overwhelmed(token)) throw new Error('Overwhelmed: no puedes pagar el Recall Cost en Stress.'); need((token.stress?.max ?? 6) - (token.stress?.current || 0), cost.stress, 'margen de Stress'); }
+  if (cost.hope) token.hope -= cost.hope;
+  if (cost.stress) token.stress = { ...token.stress, current: (token.stress.current || 0) + cost.stress };
+  const nextLoadout = [...loadout.filter(n => n !== leaving), incoming.n];
+  const nextVault = [...vault.filter(n => lower(n) !== lower(vaultName)), ...(leaving ? [leaving] : [])];
+  const previous = Object.fromEntries(Object.keys(f).filter(k => /^a_pwr_\d+_n$/.test(k)).map(k => [lower(f[k]), { d: f[k.replace(/_n$/, '_d')], rc: f[k.replace(/_n$/, '_rc')] }]));
+  for (const key of Object.keys(f).filter(k => /^a_pwr_\d+_/.test(k))) delete f[key];
+  nextLoadout.forEach((name, i) => {
+    const p = byName(data.powers, name), kept = previous[lower(name)];
+    f[`a_pwr_${i}_n`] = name;
+    f[`a_pwr_${i}_d`] = p ? [p.d, `L${p.l}`, p.t, p.cost, p.dc].filter(Boolean).join(' · ') + `\n${text(p.txt)}` : text(kept?.d);
+    f[`a_pwr_${i}_rc`] = text(p ? p.rc ?? 0 : kept?.rc ?? 0);
+  });
+  f.a_vault = nextVault.map(name => { const p = byName(data.powers, name); return p ? `${p.d} · L${p.l} · ${p.n}` : name; }).join('\n');
+  return { token, cost, entered: incoming.n, left: leaving, summary: `Recall (${RECALL_MODES[mode].name}): ${incoming.n} entra en el Loadout${leaving ? `; ${leaving} pasa al Vault` : ''}. ${[cost.stress && `${cost.stress} Stress`, cost.hope && `${cost.hope} Hope`, cost.action && 'Acción'].filter(Boolean).join(' + ') || 'Sin coste'}.` };
+}
