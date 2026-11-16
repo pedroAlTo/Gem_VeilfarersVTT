@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.8.5**.
-Paquete: `VeilFarers_VTT_v2.8.5.zip`.
+Versión actual del VTT: **v2.8.6**.
+Paquete: `VeilFarers_VTT_v2.8.6.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.6] — 2026-11-16
+
+V2 · Retratos canónicos para cada Ancestry por género y asignación automática
+
+### Tokens y Retratos
+
+- Galería de 18 retratos de tokens canónicos cubriendo las 9 ancestries oficiales de Veilfarers (Ailuran, Bloomstrider, Celestiari, Ethereal, Human, Kryllian, Kryx, Rift Spinner y Synthetic) con variantes femenina y masculina en alta resolución.
+- Asignación automática e inteligente de avatar al importar personajes o crear nuevos actores según su ancestry, pronombres y morfología de nombre.
+- Vista previa en tiempo real del retrato asignado en el asistente de creación de personajes (Paso 9: Detalles) y en las tarjetas de ingesta de fichas JSON.
+- Mantiene los retratos personalizados existentes sin sobreescribir imágenes configuradas manualmente.
 
 ## [2.8.5] — 2026-11-16
 

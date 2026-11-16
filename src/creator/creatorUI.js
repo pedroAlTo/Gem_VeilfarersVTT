@@ -5,6 +5,7 @@ import { store } from '../state.js';
 import { newId } from '../persistence.js';
 import { dossierDialog } from '../dossierUI.js';
 import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
+import { defaultTokenAvatar } from '../tokenAvatars.js';
 import { account } from '../cloudAccount.js';
 import {
   CREATOR_STEPS, TRAIT_IDS, TRAIT_ARRAY, EQUIP_BUDGET, STARTING_POWERS, experienceCount, affiliationStatus, freshState, setChoice, isStepReady, firstIncompleteStep,
@@ -156,7 +157,15 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const pending = CREATOR_STEPS.filter(s => s.id < 9 && !isStepReady(state, s.id, data));
       const canPlace = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
       const targets = canPlace ? store.state.tokens.filter(t => t.isPlayer !== false && t.actorType !== 'adversary') : [];
+      const avatarUrl = defaultTokenAvatar(state.ancestry, state.pronouns, state.name);
       return `<h3>Detalles</h3>
+        <div class="creator-avatar-preview" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 10px 14px; background: rgba(0, 243, 255, 0.06); border: 1px solid rgba(0, 243, 255, 0.25); border-radius: 8px;">
+          <img src="${avatarUrl}" alt="Retrato del Token" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #00f3ff; flex-shrink: 0; box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);" />
+          <div>
+            <div style="font-weight: 700; color: #00f3ff; font-size: 0.9rem;">Retrato de Token automático</div>
+            <div class="dossier-muted" style="font-size: 0.8rem;">Asignado por Ancestry (${e(state.ancestry || 'Human')}) y pronombres/género.</div>
+          </div>
+        </div>
         <div class="dossier-identity"><label class="dossier-field"><span>Nombre</span><input class="hud-input" data-field="name" maxlength="120" value="${e(state.name)}"></label><label class="dossier-field"><span>Pronombres</span><input class="hud-input" data-field="pronouns" maxlength="60" value="${e(state.pronouns)}"></label></div>
         ${text('bgAnswer', cls ? cls.bgQuestion : 'Pregunta de trasfondo')}
         <div class="dossier-identity">${text('appearance', 'Apariencia')}${text('voice', 'Voz y maneras')}</div>
@@ -228,7 +237,14 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
     const el = event.target;
     if ('equipSearch' in el.dataset) { equipSearch = el.value; const box = modal.querySelector('[data-equip-lists]'); if (box) box.innerHTML = equipLists(); return; }
     if (el.dataset.exp !== undefined) { const experiences = [...state.experiences]; experiences[Number(el.dataset.exp)] = el.value; state = { ...state, experiences }; save(); }
-    else if (el.dataset.field) { state = { ...state, [el.dataset.field]: el.value }; save(); }
+    else if (el.dataset.field) {
+      state = { ...state, [el.dataset.field]: el.value };
+      save();
+      if (['name', 'pronouns'].includes(el.dataset.field)) {
+        const img = modal.querySelector('.creator-avatar-preview img');
+        if (img) img.src = defaultTokenAvatar(state.ancestry, state.pronouns, state.name);
+      }
+    }
     else return;
     nav.querySelectorAll('.creator-step').forEach(b => { const ready = isStepReady(state, Number(b.dataset.step), data); b.classList.toggle('ready', ready); b.querySelector('.creator-step-check').textContent = ready ? '✓' : ''; });
     modal.querySelector('.creator-progress').textContent = `Paso ${step} de 9 · ${CREATOR_STEPS.filter(s => isStepReady(state, s.id, data)).length} completos`;

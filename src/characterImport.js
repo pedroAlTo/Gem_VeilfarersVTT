@@ -1,4 +1,5 @@
 import { tokenInventory } from './equipment.js';
+import { defaultTokenAvatar } from './tokenAvatars.js';
 // Character Sheet 2.80 exports use final Traits/thresholds and separate resource tracks.
 // Keep the original document intact, including fields that this VTT cannot automate.
 export const TRAIT_IDS = ['agility', 'strength', 'finesse', 'knowledge', 'instinct', 'presence'];
@@ -22,6 +23,9 @@ export function parseCharacterJSON(input) {
     if (!text(token.name).trim() || !object(token.hp) || !object(token.stress) || !object(token.armor)) throw new Error('El actor VTT debe incluir nombre, HP, Armor y Stress.');
     // Native exports are portable actors, never a tactical ID or a campaign snapshot.
     for (const k of ['id', 'mapId', 'x', 'y', 'ownerId', 'controllerIds', 'scenePositions']) delete token[k];
+    if (!token.avatarUrl || token.avatarUrl === '/assets/tokens/captain_harker.jpg') {
+      token.avatarUrl = defaultTokenAvatar(token.species, token.pronouns, token.name);
+    }
     return { token, missing: [], warnings: [], format: 'VTT Actor 1' };
   }
   const isSheet = doc.app === 'Veilfarers Character Sheet';
@@ -92,6 +96,7 @@ export function parseCharacterJSON(input) {
     characterClass: text(f.class), subclass: text(f.subclass), subclassRank: text(f.subclass_rank),
     species: text(f.ancestry), community: text(f.community), pronouns: text(f.pron),
     roleTag: [f.class, f.subclass].filter(Boolean).join(' · '),
+    avatarUrl: defaultTokenAvatar(f.ancestry, f.pron, f.name),
     level: number(f.level, 'Nivel', 1, 100), proficiency: number(f.prof, 'Proficiency', 1, 100),
     evasion: number(f.evasion, 'Evasion', 0, 100),
     traits: Object.fromEntries(TRAIT_IDS.map(k => [k, number(f[`tr_${k}`], k, -100, 100)])),

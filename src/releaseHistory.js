@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.6', date: '2026-11-16', title: 'V2 · Retratos canónicos para cada Ancestry por género y asignación automática',
+    sections: [
+      { title: 'Tokens y Retratos', items: [
+        'Galería de 18 retratos de tokens canónicos cubriendo las 9 ancestries oficiales de Veilfarers (Ailuran, Bloomstrider, Celestiari, Ethereal, Human, Kryllian, Kryx, Rift Spinner y Synthetic) con variantes femenina y masculina en alta resolución.',
+        'Asignación automática e inteligente de avatar al importar personajes o crear nuevos actores según su ancestry, pronombres y morfología de nombre.',
+        'Vista previa en tiempo real del retrato asignado en el asistente de creación de personajes (Paso 9: Detalles) y en las tarjetas de ingesta de fichas JSON.',
+        'Mantiene los retratos personalizados existentes sin sobreescribir imágenes configuradas manualmente.',
+      ] },
+    ],
+  },
+
+  {
     version: '2.8.5', date: '2026-11-16', title: 'V2 · Compatibilidad con fichas exportadas desde Veilfarers Character Creator',
     sections: [
       { title: 'Importación de Personajes', items: [
