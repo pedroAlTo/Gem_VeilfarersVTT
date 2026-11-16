@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.8.2', date: '2026-11-16', title: 'V2 · El d6 de Desventaja se ve entero y sin arma solo se ataca en Melee',
+    sections: [
+      { title: 'Tiradas', items: [
+        'El aviso de la tirada ya no resume todo en un único "Mod": escribe la suma completa, por ejemplo "Hope [2] + Fear [4] + 2 − d6 [6] (Desventaja) = 2". Antes el d6 quedaba mezclado con el Trait y parecía que solo se restaba una parte.',
+        'El mismo desglose aparece en el panel, el chat y el registro, también con Ventaja y con el dado de Resolve.',
+      ] },
+      { title: 'Ataque', items: [
+        'Sin arma el ataque es cuerpo a cuerpo: no se puede atacar a un objetivo fuera de Melee.',
+      ] },
+    ],
+  },
+  {
     version: '2.8.1', date: '2026-11-16', title: 'V2 · Un solo acceso: la cuenta de la VTT',
     sections: [
       { title: 'Cuenta', items: [

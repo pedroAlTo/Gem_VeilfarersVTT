@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.8.1**.
-Paquete: `VeilFarers_VTT_v2.8.1.zip`.
+Versión actual del VTT: **v2.8.2**.
+Paquete: `VeilFarers_VTT_v2.8.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.8.2] — 2026-11-16
+
+V2 · El d6 de Desventaja se ve entero y sin arma solo se ataca en Melee
+
+### Tiradas
+
+- El aviso de la tirada ya no resume todo en un único "Mod": escribe la suma completa, por ejemplo "Hope [2] + Fear [4] + 2 − d6 [6] (Desventaja) = 2". Antes el d6 quedaba mezclado con el Trait y parecía que solo se restaba una parte.
+- El mismo desglose aparece en el panel, el chat y el registro, también con Ventaja y con el dado de Resolve.
+
+### Ataque
+
+- Sin arma el ataque es cuerpo a cuerpo: no se puede atacar a un objetivo fuera de Melee.
 
 ## [2.8.1] — 2026-11-16
 

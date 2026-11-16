@@ -66,6 +66,10 @@ export function weaponRangeBand(weapon) {
 // Table rule: a melee weapon only works at Melee; a ranged weapon fired beyond the band
 // it covers attacks with Disadvantage.
 export function rangeCheck(weapon, band) {
+  // No weapon in hand is an unarmed strike: a Melee attack (Corebook ch. 10).
+  if (!weapon) return band && band !== 'Melee'
+    ? { allowed: false, disadvantage: false, reach: 'Melee', band, reason: `Sin arma el ataque es cuerpo a cuerpo: el objetivo está a ${band}, fuera de Melee.` }
+    : { allowed: true, disadvantage: false, reach: 'Melee', band, reason: '' };
   const reach = weaponRangeBand(weapon);
   if (!reach || !band) return { allowed: true, disadvantage: false, reach, band, reason: '' };
   if (reach === 'Melee') {

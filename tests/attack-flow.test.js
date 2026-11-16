@@ -71,7 +71,11 @@ test('a melee weapon only attacks at Melee; a ranged weapon beyond its band atta
   assert.equal(tooFar.allowed, false); assert.match(tooFar.reason, /fuera de Melee/);
   assert.deepEqual([rangeCheck({ range: 'Close' }, 'Close').disadvantage, rangeCheck({ range: 'Close' }, 'Melee').disadvantage, rangeCheck({ range: 'Close' }, 'Far').disadvantage, rangeCheck({ range: 'Close' }, 'Extreme').disadvantage], [false, false, true, true]);
   assert.equal(rangeCheck({ range: 'Close' }, 'Far').allowed, true);
-  assert.deepEqual(rangeCheck(null, 'Far'), { allowed: true, disadvantage: false, reach: '', band: 'Far', reason: '' });
+  // Without a weapon the attack is an unarmed strike: Melee only.
+  assert.equal(rangeCheck(null, 'Melee').allowed, true);
+  const unarmed = rangeCheck(null, 'Far');
+  assert.deepEqual([unarmed.allowed, unarmed.reach], [false, 'Melee']); assert.match(unarmed.reason, /Sin arma el ataque es cuerpo a cuerpo/);
+  assert.equal(rangeCheck({ name: 'Arma inventada', range: '' }, 'Far').allowed, true, 'a weapon with no known range is not limited');
   assert.equal(weaponTraitId({ trait: 'Finesse' }), 'finesse'); assert.equal(weaponTraitId({ trait: 'Attack +2' }), '');
   assert.deepEqual(netEdge(true, true), { advantage: false, disadvantage: false });
 });
@@ -198,10 +202,11 @@ test('Disadvantage throws its d6 on the table, subtracts the face shown and repo
   const result = await with3D(dice, () => dice.executeAttack());
   assert.deepEqual(thrown[0], ['1d12:Hope', '1d12:Fear', '1d6:Disadvantage']);
   assert.equal(result.total, 15, '9 + 7 + Finesse 3 − d6 [4]');
-  assert.match(q('#atk_detail_text').textContent, /Hope 9 \+ Fear 7 \+ 3 − d6 \[4\] \(Desventaja\) = 15/);
+  assert.match(q('#atk_detail_text').textContent, /Hope \[9\] \+ Fear \[7\] \+ 3 − d6 \[4\] \(Desventaja\) = 15/);
   assert.deepEqual(shown[0].rolls.map(r => [r.value, r.role]), [[9, 'Hope'], [7, 'Fear'], [4, 'Disadvantage']]);
+  assert.equal(shown[0].modifiers, 'Hope [9] + Fear [7] + 3 − d6 [4] (Desventaja) = 15', 'the whole d6 is written out, never folded into one Mod figure');
   assert.equal(q('#cube_extra_num').textContent, '4'); assert.equal(q('#label_extra_die').textContent, 'DIS (-d6)');
-  assert.match(store.state.logs.find(l => l.type === 'CHECK').details, /Desventaja: −d6 \[4\]/);
+  assert.match(store.state.logs.find(l => l.type === 'CHECK').details, /\+ 3 − d6 \[4\] \(Desventaja\) = 15 vs DC/);
   // Proficiency 2 on a 1d8+1 weapon: two d8 on the table, and their faces are the damage.
   assert.deepEqual(thrown[1], ['2d8:Damage']);
   assert.equal(q('#dmg_raw_val').textContent, '10', '6 + 3 + 1');
@@ -258,4 +263,13 @@ test('damage follows the sheet: levelling up refreshes Proficiency and Honed Edg
   assert.equal(tokenInventory(sheet).weapons[0].damageMode, 'final');
   const levelled = applyLevelUp(sheet, { picks: [{ id: 'hp' }, { id: 'stress' }] }).token, rifle = tokenInventory(levelled).weapons[0];
   assert.deepEqual([rifle.damage, rifle.damageMode, weaponPreset(levelled, rifle).proficiency], ['d10+1', 'base', 2]);
+});
+
+test('with no weapon the attack is unarmed: it cannot be made beyond Melee', async () => {
+  const far = scene({ squares: 6 });
+  const blocked = await far.dice.executeAttack();
+  assert.deepEqual([blocked.hit, blocked.blocked], [false, true]);
+  assert.equal(far.q('#atk_outcome_val').textContent, 'FUERA DE ALCANCE');
+  assert.match(far.q('#atk_detail_text').textContent, /Sin arma el ataque es cuerpo a cuerpo/);
+  assert.equal(far.q('#damage_result_display').style.display, 'none');
 });

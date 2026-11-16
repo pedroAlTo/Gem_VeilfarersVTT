@@ -4,7 +4,7 @@ import { dossierDialog } from './dossierUI.js';
 // src/diceRoller.js
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
-import { rollVeilfarersCheck, resolveDamage, damageTypeOf, weaponTags, usableArmorSlots, canBleed, DAMAGE_TYPES, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { rollVeilfarersCheck, checkMath, resolveDamage, damageTypeOf, weaponTags, usableArmorSlots, canBleed, DAMAGE_TYPES, DC_LADDER, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { notify, sanitizeHTML, escapeHTML } from './ui.js';
 import { characterDetails } from './characterImport.js';
 import { store } from './state.js';
@@ -1125,6 +1125,8 @@ export class DiceRollerSidebar {
       return null;
     }
 
+    // Every die is written out: a single "Mod" figure hid the d6 inside the Trait bonus.
+    const math = checkMath(result);
     // Overlay 3D results banner
     if (this.is3D && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
       if (result.visibility !== 'keeper' || (store.sessionRole !== 'player' && store.state.userRole === 'keeper')) {
@@ -1143,7 +1145,7 @@ export class DiceRollerSidebar {
           playerName,
           tokenName,
           skill: traitName,
-          modifiers: result.breakdown || result.details || (result.totalMod >= 0 ? `+${result.totalMod}` : `${result.totalMod}`),
+          modifiers: math,
           outcome: result.outcomeTitle,
           hope: result.hopeVal,
           fear: result.fearVal,
@@ -1169,16 +1171,15 @@ export class DiceRollerSidebar {
         hopeVal: result.hopeVal,
         fearVal: result.fearVal,
         dc: result.dc,
-        details: result.log?.details || `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}`,
-        breakdown: result.log?.details || `Hope [${result.hopeVal}] + Fear [${result.fearVal}] ${result.totalMod >= 0 ? '+' : ''}${result.totalMod} = ${result.total} vs DC ${result.dc}`,
+        details: `${math} vs DC ${result.dc}`,
+        breakdown: `${math} vs DC ${result.dc}`,
         visibility: this.rollVisibility()
       });
     }
 
     // Broadcast to table chat so every player sees the roll in chat:
     if (this.rollVisibility() !== 'keeper') {
-      const edgeText = result.disadvVal ? ` · Desventaja −d6 [${result.disadvVal}]` : result.advVal ? ` · Ventaja +d6 [${result.advVal}]` : '';
-      const summary = `🎲 ${actor.name} · ${traitName} Check ➔ ${result.total} (Hope ${result.hopeVal} + Fear ${result.fearVal}${result.totalMod ? (result.totalMod >= 0 ? ` + ${result.totalMod}` : ` - ${Math.abs(result.totalMod)}`) : ''}${edgeText}) vs DC ${result.dc} [${result.outcomeTitle}]`;
+      const summary = `🎲 ${actor.name} · ${traitName} Check ➔ ${result.total} (${math}) vs DC ${result.dc} [${result.outcomeTitle}]`;
       network.sendChat({ text: summary, recipientId: 'table' }).catch(() => {
         store.addChatMessage({ senderName: actor.name, text: summary, channel: 'table' });
       });
@@ -1223,8 +1224,7 @@ export class DiceRollerSidebar {
       const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage, targetName: target.name });
       if (!result) return { hit: false, band };
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
-      const flat = result.totalMod - (result.advVal || 0) + (result.disadvVal || 0);
-      detail = `Hope ${result.hopeVal} + Fear ${result.fearVal}${flat ? ` ${flat > 0 ? '+' : '−'} ${Math.abs(flat)}` : ''}${result.advVal ? ` + d6 [${result.advVal}] (Ventaja)` : ''}${result.disadvVal ? ` − d6 [${result.disadvVal}] (Desventaja)` : ''} = ${result.total}.`;
+      detail = `${checkMath(result)}.`;
       rolled3D = this.can3D();
     } else {
       audio.playDiceRoll();
@@ -1317,7 +1317,8 @@ export class DiceRollerSidebar {
     if (result.advVal) extraStr += `<span class="extra-die adv">+${result.advVal} (Adv)</span> `;
     if (result.disadvVal) extraStr += `<span class="extra-die disadv">-${result.disadvVal} (Disadv)</span> `;
     if (result.resolveVal) extraStr += `<span class="extra-die resolve">+${result.resolveVal} (Res)</span> `;
-    if (result.totalMod) extraStr += `<span class="extra-die mod">${result.totalMod >= 0 ? '+' : ''}${result.totalMod} Mod</span>`;
+    const flatMod = result.totalMod - (result.advVal || 0) + (result.disadvVal || 0) - (result.resolveVal || 0);
+    if (flatMod) extraStr += `<span class="extra-die mod">${flatMod >= 0 ? '+' : ''}${flatMod} Mod</span>`;
     extraDiceEl.innerHTML = sanitizeHTML(extraStr);
 
     // Sound FX on Critical
