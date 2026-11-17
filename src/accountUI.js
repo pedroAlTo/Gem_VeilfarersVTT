@@ -6,6 +6,7 @@ import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
 import { openCharacterImport } from './characterManager.js';
 import { network } from './networkManager.js';
 import { CAMPAIGN_KEYS } from './validation.js';
+import { mountAccountGames } from './accountGamesUI.js';
 
 let accountReady, accountSubscribed = false;
 export function sessionPreferences(values) {
@@ -50,28 +51,46 @@ export async function useCharacter(token) {
     await network.importCharacter(token);
   } else store.importActors([{ token }]);
 }
-export function openAccount() {
+// options.tab opens the signed-in screen on 'games', 'characters' or 'preferences'.
+export function openAccount(options = {}) {
+  if (!options || typeof options !== 'object' || (typeof Event !== 'undefined' && options instanceof Event)) options = {};
   const signed = !!account.user;
-  const modal = dossierDialog('PERSONAL ARCHIVE', signed ? `
-    <span class="dossier-eyebrow">ACCOUNT / PRIVATE LIBRARY</span><h2>${e(account.user.displayName || 'Your archive')}</h2><p class="dossier-muted">${e(account.user.email || 'Conectado')} · Characters and preferences follow this account.</p>
-    <div class="session-actions"><button class="hud-btn" id="account_import">Import JSON to library</button><button class="hud-btn" id="account_save_actor">Save selected character</button><button class="hud-btn hud-btn-danger" id="account_signout">Sign out</button></div>
-    <h3>User Parameters & Preferences</h3>
-    <label class="dossier-field">Call sign / Indicativo<input class="hud-input" id="account_name" maxlength="80" value="${e(store.state.userName)}"></label>
+  const tab = ['games', 'characters', 'preferences'].includes(options.tab) ? options.tab : 'games';
+  const modal = dossierDialog(signed ? 'ARCHIVO PERSONAL' : 'PERSONAL ARCHIVE', signed ? `
+    <span class="dossier-eyebrow">CUENTA / ARCHIVO PRIVADO</span><h2>${e(account.user.displayName || 'Tu archivo')}</h2><p class="dossier-muted"><span>${e(account.user.email || 'Conectado')}</span> · <span>Tus partidas, notas, personajes y preferencias van con esta cuenta.</span></p>
+    <nav class="dossier-tabs account-tabs" aria-label="Secciones de la cuenta">
+      <button type="button" class="hud-btn" data-account-tab="games">Partidas y notas</button>
+      <button type="button" class="hud-btn" data-account-tab="characters">Personajes</button>
+      <button type="button" class="hud-btn" data-account-tab="preferences">Preferencias</button>
+    </nav>
+    <section data-account-panel="games" aria-label="Partidas y notas">
+      <p class="dossier-muted">Las salas que diriges y en las que juegas. Cada partida guarda tus notas personales.</p>
+      <div id="account_games" aria-live="polite"></div>
+    </section>
+    <section data-account-panel="characters" aria-label="Personajes">
+    <div class="session-actions"><button class="hud-btn" id="account_import">Importar JSON a la biblioteca</button><button class="hud-btn" id="account_save_actor">Guardar el personaje seleccionado</button></div>
+    <h3>Personajes guardados</h3><div id="account_characters" aria-live="polite">Cargando…</div>
+    </section>
+    <section data-account-panel="preferences" aria-label="Preferencias">
+    <h3>Parámetros y preferencias</h3>
+    <label class="dossier-field">Indicativo<input class="hud-input" id="account_name" maxlength="80" value="${e(store.state.userName)}"></label>
     <div class="session-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-      <label><input type="checkbox" id="pref_audio" ${store.state.audioMuted ? 'checked' : ''}> Mute audio</label>
-      <label><input type="checkbox" id="pref_grid" ${store.state.showGrid ? 'checked' : ''}> Show grid</label>
-      <label><input type="checkbox" id="pref_snap" ${store.state.gridSnap ? 'checked' : ''}> Snap to grid</label>
-      <label><input type="checkbox" id="pref_motion" ${store.state.reducedMotion ? 'checked' : ''}> Reduce motion</label>
-      <label><input type="checkbox" id="pref_dice3d" ${store.state.dice3d !== false ? 'checked' : ''}> 3D Dice Tray</label>
-      <label><input type="checkbox" id="pref_fog" ${store.state.fogOfWar !== false ? 'checked' : ''}> Fog of War</label>
+      <label><input type="checkbox" id="pref_audio" ${store.state.audioMuted ? 'checked' : ''}> Silenciar audio</label>
+      <label><input type="checkbox" id="pref_grid" ${store.state.showGrid ? 'checked' : ''}> Mostrar cuadrícula</label>
+      <label><input type="checkbox" id="pref_snap" ${store.state.gridSnap ? 'checked' : ''}> Ajustar a la cuadrícula</label>
+      <label><input type="checkbox" id="pref_motion" ${store.state.reducedMotion ? 'checked' : ''}> Reducir animaciones</label>
+      <label><input type="checkbox" id="pref_dice3d" ${store.state.dice3d !== false ? 'checked' : ''}> Bandeja de dados 3D</label>
+      <label><input type="checkbox" id="pref_fog" ${store.state.fogOfWar !== false ? 'checked' : ''}> Niebla de guerra</label>
     </div>
     <div style="margin-top: 10px;">
-      <label class="dossier-field">Explored Fog Opacity (${Math.round((store.state.fogExploredOpacity ?? 0.5) * 100)}%)
+      <label class="dossier-field">Opacidad de la niebla explorada (${Math.round((store.state.fogExploredOpacity ?? 0.5) * 100)}%)
         <input type="range" id="pref_fog_opacity" min="0.05" max="0.95" step="0.05" value="${store.state.fogExploredOpacity ?? 0.5}" class="hud-slider">
       </label>
     </div>
-    <button class="hud-btn hud-btn-primary" id="account_preferences" style="margin-top: 12px; width: 100%;">Save all parameters</button>
-    <h3>Saved characters</h3><div id="account_characters" aria-live="polite">Loading…</div><p class="dossier-error" role="alert"></p>
+    <button class="hud-btn hud-btn-primary" id="account_preferences" style="margin-top: 12px; width: 100%;">Guardar todos los parámetros</button>
+    </section>
+    <div class="session-actions account-footer"><button class="hud-btn hud-btn-danger" id="account_signout">Cerrar sesión</button></div>
+    <p class="dossier-error" role="alert"></p>
   ` : `
     <span class="dossier-eyebrow">YOUR CHARACTERS / YOUR SETTINGS</span><h2>Bring your crew with you.</h2><p class="dossier-muted">Sign in to save characters, preferences and scene images. Local play is always available.</p>
 
@@ -240,17 +259,27 @@ export function openAccount() {
       notify('If this address has an account, password reset instructions are on their way.');
     });
   } else {
+    const select = name => {
+      modal.querySelectorAll('[data-account-tab]').forEach(button => { const active = button.dataset.accountTab === name; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
+      modal.querySelectorAll('[data-account-panel]').forEach(panel => { panel.hidden = panel.dataset.accountPanel !== name; });
+    };
+    modal.querySelectorAll('[data-account-tab]').forEach(button => { button.onclick = () => select(button.dataset.accountTab); });
+    select(tab);
+    mountAccountGames(modal.querySelector('#account_games'), {
+      openRoomId: options.roomId || '',
+      onEnter: game => { modal.remove(); window.veilLobby?.enterRoomTarget?.(game.id, game.role === 'keeper' ? 'keeper' : 'player'); },
+    });
     const refresh = async () => {
       const rows = await account.list('characters');
       if (!modal.isConnected) return;
       const list = modal.querySelector('#account_characters');
-      list.innerHTML = sanitizeHTML(rows.length ? rows.map((r, i) => `<article class="crew-row"><div><strong>${e(r.name)}</strong><small>${e(new Date(r.updatedAt).toLocaleString())}</small></div><button class="hud-btn" data-use="${i}">Use in game</button><button class="hud-btn hud-btn-danger" data-delete="${i}" aria-label="Delete ${e(r.name)}">Delete</button></article>`).join('') : '<p class="dossier-muted">Your library is empty. Import a JSON or save a selected character.</p>');
-      list.querySelectorAll('[data-use]').forEach(b => b.onclick = () => run(async () => { await useCharacter(account.decodeCharacter(rows[Number(b.dataset.use)])); notify('Character ready in this game.'); }));
-      list.querySelectorAll('[data-delete]').forEach(b => b.onclick = () => run(async () => { if (await confirmAction('Delete this saved character version?')) { await account.removeCharacter(rows[Number(b.dataset.delete)].id); await refresh(); } }));
+      list.innerHTML = sanitizeHTML(rows.length ? rows.map((r, i) => `<article class="crew-row"><div><strong>${e(r.name)}</strong><small>${e(new Date(r.updatedAt).toLocaleString())}</small></div><button class="hud-btn" data-use="${i}">Usar en la partida</button><button class="hud-btn hud-btn-danger" data-delete="${i}" aria-label="Eliminar ${e(r.name)}">Eliminar</button></article>`).join('') : '<p class="dossier-muted">Tu biblioteca está vacía. Importa un JSON o guarda un personaje seleccionado.</p>');
+      list.querySelectorAll('[data-use]').forEach(b => b.onclick = () => run(async () => { await useCharacter(account.decodeCharacter(rows[Number(b.dataset.use)])); notify('Personaje listo en esta partida.'); }));
+      list.querySelectorAll('[data-delete]').forEach(b => b.onclick = () => run(async () => { if (await confirmAction('¿Eliminar esta versión guardada del personaje?')) { await account.removeCharacter(rows[Number(b.dataset.delete)].id); await refresh(); } }));
     };
     run(refresh);
     modal.querySelector('#account_import').onclick = () => openCharacterImport({ onImport: async entries => { for (const x of entries) await account.saveCharacter(x.token); await refresh(); return entries.length; } });
-    modal.querySelector('#account_save_actor').onclick = () => run(async () => { const token = store.getSelectedToken(); if (!token || (store.sessionRole === 'player' && !store.canEditToken(token.id))) throw new Error('Select a character you control first.'); await account.saveCharacter(token); await refresh(); notify('Character saved to your account.'); });
+    modal.querySelector('#account_save_actor').onclick = () => run(async () => { const token = store.getSelectedToken(); if (!token || (store.sessionRole === 'player' && !store.canEditToken(token.id))) throw new Error('Select a character you control first.'); await account.saveCharacter(token); await refresh(); notify('Personaje guardado en tu cuenta.'); });
     modal.querySelector('#account_signout').onclick = () => run(async () => {
       if (network.roomController?.room) await network.roomController.leave();
       await account.signOut();
@@ -279,7 +308,7 @@ export function openAccount() {
       audio.muted = values.audioMuted;
       try {
         await account.savePreferences(values);
-        notify('All user parameters and preferences saved.');
+        notify('Se han guardado todos tus parámetros y preferencias.');
       } catch (err) {
         console.warn('Preferences cloud sync error:', err);
         notify('Parámetros guardados correctamente en este dispositivo.');

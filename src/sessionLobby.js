@@ -432,7 +432,7 @@ export function openSessionLobby(prefill = '', { joinOnly = false, previewPlayer
   const bind = (id, fn) => { const b = modal.querySelector(id); if (b) b.onclick = fn; };
   bind('#lobby_copy', event => copyText(invitationCode(), event.currentTarget));
   bind('#lobby_link', event => copyText(magicInvitationLink(), event.currentTarget));
-  bind('#lobby_library', openAccount);
+  bind('#lobby_library', () => openAccount({ tab: 'characters' }));
   bind('#lobby_import', () => openCharacterImport({ single: joined, onImport: async entries => { for (const entry of entries) await useCharacter(entry.token); return entries.length; } }));
   bind('#lobby_leave', () => run(async () => {
     if (await confirmAction(joined ? '¿Abandonar la partida online y regresar a tu campaña local?' : '¿Cerrar esta partida online para todos los jugadores? Tu campaña queda guardada localmente.')) {

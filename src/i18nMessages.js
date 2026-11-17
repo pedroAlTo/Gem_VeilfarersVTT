@@ -297,6 +297,11 @@ export const MESSAGE_PAIRS = [
   ['Modo de prueba local: el multijugador está desactivado.', 'Local test mode: multiplayer is disabled.'],
   ['Pega el código o enlace de invitación del Keeper.', 'Paste the Keeper’s invitation code or link.'],
   ['¡Copiado al portapapeles!', 'Copied to the clipboard!'],
+  // Notes
+  ['Nota guardada.', 'Note saved.'],
+  ['Nota eliminada.', 'Note deleted.'],
+  ['¿Eliminar esta nota?', 'Delete this note?'],
+  ['¿Eliminar esta versión guardada del personaje?', 'Delete this saved character version?'],
   // Saved sessions
   ['Sesión guardada.', 'Session saved.'],
   ['El archivo supera 100 MB.', 'The file exceeds 100 MB.'],

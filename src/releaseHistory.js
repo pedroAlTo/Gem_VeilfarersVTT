@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.12.0', date: '2026-11-17', title: 'V2 · Cuenta: partidas y notas personales por partida',
+    sections: [
+      { title: 'Cuenta', items: [
+        'La ventana de cuenta (esquina superior derecha, con sesión iniciada) se ordena en tres pestañas: Partidas y notas, Personajes y Preferencias.',
+        'Partidas y notas lista las salas que diriges y en las que juegas, con tu papel (Keeper o Jugador) y su invitación. La partida en curso aparece primero y marcada. «Abrir sala» entra en otra sin pasar por el lobby.',
+        'Cada partida guarda tus notas personales: crear, editar y eliminar, con título y texto. Son privadas: ni el Keeper ni los demás jugadores pueden leerlas.',
+        'Las notas de una sala que ya no existe no se pierden: aparecen como «Sala no disponible».',
+        'En SESIONES, dentro de una sala, el botón «Mis notas» abre directamente las notas de esa partida.',
+        'La ventana de cuenta con sesión iniciada, que estaba solo en inglés, sigue ahora el selector de idioma.',
+      ] },
+    ],
+  },
+  {
     version: '2.11.1', date: '2026-11-17', title: 'V2 · Ayuda y avisos también en inglés',
     sections: [
       { title: 'Ayuda', items: [

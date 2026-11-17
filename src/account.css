@@ -1,0 +1,19 @@
+/* Account screen: Games and notes, Characters, Preferences */
+.account-tabs { margin: 14px 0 12px; }
+.account-tabs .hud-btn.active { color: #0d0420; background: #c084fc; border-color: #c084fc; }
+.account-game { border: 1px solid rgba(192,132,252,.28); background: rgba(42,11,92,.35); padding: 10px 12px; margin-bottom: 8px; }
+.account-game.current { border-color: #fde68a; }
+.account-game > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.account-game > header strong { display: block; color: #fff; letter-spacing: .04em; }
+.account-game > header small { color: #c4b5fd; font-size: 11px; }
+.account-game-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.account-notes { margin-top: 10px; border-top: 1px solid rgba(192,132,252,.2); padding-top: 10px; }
+.account-note-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.account-note-item { all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; width: 100%; padding: 6px 8px; border: 1px solid rgba(192,132,252,.18); color: #e9d5ff; }
+.account-note-item small { color: #a78bfa; font-size: 10px; white-space: nowrap; }
+.account-note-item:hover, .account-note-item:focus-visible { border-color: #c084fc; background: rgba(109,40,217,.25); }
+.account-note-item.active { border-color: #00f3ff; }
+.account-note-form { margin-top: 10px; }
+.account-note-form textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 120px; }
+.account-note-private { font-size: 11px; margin: 8px 0 0; }
+.account-footer { margin-top: 16px; justify-content: flex-end; }

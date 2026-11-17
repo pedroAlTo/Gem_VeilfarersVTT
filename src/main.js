@@ -7,6 +7,7 @@ import './theme-violet.css';
 import './card-hand.css';
 import { CardHand, CardFeed } from './cardHandUI.js';
 import './language.css';
+import './account.css';
 import { startTranslation } from './i18n.js';
 import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';

@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.11.1**.
-Paquete: `VeilFarers_VTT_v2.11.1.zip`.
+Versión actual del VTT: **v2.12.0**.
+Paquete: `VeilFarers_VTT_v2.12.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.12.0] — 2026-11-17
+
+V2 · Cuenta: partidas y notas personales por partida
+
+### Cuenta
+
+- La ventana de cuenta (esquina superior derecha, con sesión iniciada) se ordena en tres pestañas: Partidas y notas, Personajes y Preferencias.
+- Partidas y notas lista las salas que diriges y en las que juegas, con tu papel (Keeper o Jugador) y su invitación. La partida en curso aparece primero y marcada. «Abrir sala» entra en otra sin pasar por el lobby.
+- Cada partida guarda tus notas personales: crear, editar y eliminar, con título y texto. Son privadas: ni el Keeper ni los demás jugadores pueden leerlas.
+- Las notas de una sala que ya no existe no se pierden: aparecen como «Sala no disponible».
+- En SESIONES, dentro de una sala, el botón «Mis notas» abre directamente las notas de esa partida.
+- La ventana de cuenta con sesión iniciada, que estaba solo en inglés, sigue ahora el selector de idioma.
 
 ## [2.11.1] — 2026-11-17
 
