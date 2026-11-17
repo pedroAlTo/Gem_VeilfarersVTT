@@ -1,6 +1,6 @@
 # Propuesta · Simplificar la interfaz de la mesa (rama V3)
 
-> Estado: **propuesta, sin código**. Las imágenes «después» son maquetas aproximadas: la interfaz real con elementos ocultos o agrupados, no la versión final.
+> Estado: **propuesta, sin código**, reescrita con la regla del usuario: **3 a la vista + un desplegable con 5 + un último nivel con el resto**. Las imágenes «después» son maquetas aproximadas hechas antes de esa regla; se rehacen al cerrar el reparto.
 > Base: `main` estable en v2.15.2. Nada de esto toca las reglas ni las 21 decisiones consolidadas de `HANDOVER_V2.md`.
 
 ## 1. Diagnóstico
@@ -28,49 +28,119 @@ Problemas concretos:
 | --- | --- |
 | ![Keeper hoy](antes-keeper.jpg) | ![Jugador hoy](antes-jugador.jpg) |
 
-## 2. Principios
+## 2. La regla: 3 + 5 + resto
 
-1. **Cada papel ve lo suyo.** El jugador no ve herramientas de Keeper ni pestañas que no puede usar.
-2. **Jugar y preparar son modos distintos.** Editar la escena es un modo que se abre y se cierra, no una barra fija.
-3. **Lo frecuente, a un clic; lo raro, a dos.** Nada desaparece: se agrupa detrás de un menú o de «Más opciones».
-4. **El mapa manda.** Lo que flota sobre el mapa debe ser pequeño y plegable.
-5. **No se tocan las reglas ni las decisiones consolidadas.** Las cartas, el mazo siempre visible, la tarjeta de resultado única, el idioma y el botón de inicio se mantienen.
+Cada grupo de controles de la interfaz se ordena igual:
 
-## 3. Propuestas
+1. **Nivel 1 · a la vista: como máximo 3 elementos**, los más usados del grupo.
+2. **Nivel 2 · un desplegable («⋯»): hasta 5 elementos más**, los siguientes en uso.
+3. **Nivel 3 · el último despliegue («Más…», dentro del desplegable): todo lo demás.**
 
-| # | Cambio | De → a | Impacto | Esfuerzo |
-| --- | --- | --- | --- | --- |
-| 1 | **Cabecera**: un botón **Sala** (estado online, nombre, invitación, copiar, enlace y tripulación en un desplegable) y un botón **☰ Menú** (Inicio, Sesiones, Códice, Ayuda, audio, idioma). Se quedan fuera: escena, Keeper/Jugador y cuenta. | 17 → 6 | Alto | Medio |
-| 2 | **Herramientas**: para jugar, Mover, Medir, Ping y Dibujo, más Deshacer. El Keeper tiene además **✎ Editar escena**, que abre un modo con Área, Efectos, Muros, Luces, Anomalía, Agua, Escala, Visión, Niebla, Rejilla, Ajuste y el panel de capas (que deja de flotar sobre el mapa). | 16 → 5 (jugador 4) | Alto | Medio |
-| 3 | **Pestañas**: **Dados** · **Mesa** (Reparto + Relojes + Dossiers) · **Escena** (Escenas + Nave) · **Chat** (Chat + Registro). El jugador ve Dados, Mesa y Chat. | 8 → 4 (jugador 3) | Alto | Medio-alto |
-| 4 | **Relojes**: una tira de fichas pequeñas bajo el título («Reactor 2/6»); un clic abre el reloj. | Columna → tira | Medio | Bajo |
-| 5 | **Panel de dados**: a la vista, Trait, DC, Desventaja/Normal/Ventaja y TIRAR. Subtrait, modificador, Experiencia, Resolve y estilo 3D pasan a «Más opciones». El estilo de los dados se mueve a Preferencias. | 44 → ≈ 20 | Medio | Bajo |
-| 6 | **Modo Básico/Avanzado en la mesa** (ya existe en el lobby): Básico aplica todo lo anterior; Avanzado muestra lo de hoy, para quien lo prefiera. Se recuerda por cuenta. | — | Alto | Medio |
-| 7 | **Pestaña Nave**: solo aparece cuando la escena es de combate naval o el Keeper la activa. | 46 controles fuera del día a día | Medio | Bajo |
-| 8 | **Un solo estilo visual**: terminar de pasar al violeta las piezas que siguen en el estilo Orbital antiguo y retirar los `!important` que se pisan (≈ 300). | Coherencia y menos errores como el del Fear en tablet | Medio | Alto |
+Es un solo componente para toda la app (`GroupMenu`). Así todos los grupos se comportan igual: se abre con clic o teclado, se cierra con Esc o al tocar fuera, y funciona en los dos idiomas y en tablet. Un grupo con 3 elementos o menos no tiene desplegable. Si tiene entre 4 y 8, solo tiene el desplegable, sin «Más…».
 
-| Después (maqueta) · Keeper | Después (maqueta) · Jugador |
+Criterio para repartir: la **frecuencia de uso durante la partida**. Preparar la escena, configurar o consultar baja de nivel; nada desaparece. Los atajos de teclado (B, D, U, Ctrl+Z…) siguen funcionando aunque el botón esté en un desplegable.
+
+## 3. Reparto propuesto por grupo
+
+Las listas de abajo son mi propuesta; cámbialas libremente.
+
+### 3.1 Cabecera (hoy 17)
+
+| | Keeper | Jugador |
+| --- | --- | --- |
+| **A la vista (3)** | Escena ▾ · Sala (estado online + nombre) · Keeper/Jugador | Escena ▾ · Sala · Mis tokens |
+| **Desplegable (5)** | Copiar invitación · Enlace · Tripulación · Sesiones · Ayuda | Sesiones · Cuenta · Ayuda · Idioma · Audio |
+| **Más…** | Cuenta · Idioma · Audio · Códice · Inicio | Códice · Inicio · Unirse |
+
+El logo VEILFARERS sigue llevando a Inicio con un clic. Así se mantiene la decisión 15 aunque el botón ⌂ baje al último nivel.
+
+### 3.2 Herramientas (hoy 16)
+
+| | Keeper | Jugador |
+| --- | --- | --- |
+| **A la vista (3)** | Mover · Medir · Dibujo | Mover · Medir · Dibujo |
+| **Desplegable (5)** | Ping · Área · Efectos · Visión · Deshacer | Ping · Área · Efectos |
+| **Más…** (preparar la escena) | Muros · Luces · Agua · Anomalía · Niebla · Escala · Rejilla · Ajuste · Capas | — |
+
+El panel flotante de capas deja de estar sobre el mapa y pasa a «Más… → Capas».
+
+### 3.3 Pestañas de la derecha (hoy 8)
+
+| | Keeper | Jugador |
+| --- | --- | --- |
+| **A la vista (3)** | Dados · Reparto · Chat | Dados · Chat · Reparto |
+| **Desplegable (5)** | Escenas · Relojes · Dossiers · Registro · Nave | Relojes · Registro · Dossiers |
+| **Más…** | — | — |
+
+### 3.4 Panel de dados, modo Dualidad (hoy 44)
+
+| | |
 | --- | --- |
-| ![Keeper propuesto](despues-keeper.jpg) | ![Jugador propuesto](despues-jugador.jpg) |
+| **A la vista (3)** | Trait (selector de 6) · DC · TIRAR |
+| **Desplegable (5)** | Ventaja / Normal / Desventaja · Experiencia · Resolve · Tirada secreta (Keeper) · Subtrait |
+| **Más…** | Modificador manual · Elección de crítico · «Tirada significativa» · Estilo 3D de los dados · Dados estándar (d4–d100) |
+
+Los modos Dualidad · Dados estándar · Daño siguen siendo tres pestañas: ya cumplen la regla.
+
+### 3.5 Barra del personaje (hoy 10 botones)
+
+| | |
+| --- | --- |
+| **A la vista (3)** | Ficha · Estados · Equipo |
+| **Desplegable (5)** | Foco (Spotlight) · Subir de nivel · Expandir · Reserva · Dron (si tiene) |
+| **Más…** | Ajustes del token · Eliminar |
+
+Las cifras de HP, Armor, Stress y Hope/Effort no son botones y siguen a la vista.
+
+### 3.6 Ficha del personaje (hoy 4 pestañas + Básica/Completa + Condiciones + Guardar)
+
+| | |
+| --- | --- |
+| **A la vista (3)** | Ficha · Armas y equipo · Rasgos |
+| **Desplegable (5)** | Vínculos · Condiciones · Subir de nivel · Vista Básica/Completa · Exportar |
+| **Más…** | JSON de origen · Boss (si es adversario) · Ajustes del token |
+
+«Guardar ficha» sigue siendo un botón propio, porque es la acción final del formulario.
+
+### 3.7 Pestaña Reparto (hoy 5 acciones arriba)
+
+| | |
+| --- | --- |
+| **A la vista (3)** | + Personaje · Biblioteca de adversarios · Importar JSON |
+| **Desplegable (5)** | + Dron · + Actor |
+
+### 3.8 Sobre el mapa
+
+No son botones, pero aplican la misma idea:
+- A la vista quedan la barra de Fear, la mano de cartas con el mazo (decisión 21) y la barra del personaje.
+- Los relojes pasan a una **tira** bajo el título («Reactor 2/6»). Con más de 3 relojes, los demás van en «⋯».
+- La guía de primeros pasos sigue como está (minimizable).
 
 ## 4. Plan por fases (en V3)
 
-1. **Fase A, lo que más se nota con menos riesgo**: 4 (relojes en tira), 5 (dados) y 7 (Nave a demanda). Unos pocos días; no cambia dónde están las cosas.
-2. **Fase B, la estructura**: 1 (cabecera), 2 (Editar escena) y 3 (cuatro pestañas). Es lo que más simplifica; mueve botones de sitio, así que conviene probarlo jugando.
-3. **Fase C, la red de seguridad**: 6 (Básico/Avanzado en la mesa), para que nadie pierda lo que usa hoy.
-4. **Fase D, la deuda**: 8 (estilo único y limpieza de CSS), poco a poco, junto a lo demás.
+1. **Fase A**: el componente `GroupMenu` y su aplicación a **herramientas (3.2) y pestañas (3.3)**. Es lo que más espacio libera, y sirve para validar la regla jugando.
+2. **Fase B**: **cabecera (3.1)** y **panel de dados (3.4)**.
+3. **Fase C**: **barra del personaje (3.5)**, **ficha (3.6)**, **Reparto (3.7)** y **relojes en tira (3.8)**.
+4. **Fase D, la deuda**: un solo estilo visual y limpieza de los ≈ 300 `!important`, poco a poco.
 
-Cada fase sale como versión en V3, con su changelog, sus pruebas y su entrada en `PRUEBAS_LOCALES.md`. `main` no cambia hasta que la valides.
+Cada fase sale como versión en V3, con su changelog, sus pruebas, su entrada en `PRUEBAS_LOCALES.md` y la guía de primeros pasos actualizada si algo cambia de sitio. `main` no cambia hasta que lo valides.
 
-## 5. Lo que necesito que decidas
+| Maqueta previa (antes de la regla) · Keeper | Maqueta previa · Jugador |
+| --- | --- |
+| ![Keeper propuesto](despues-keeper.jpg) | ![Jugador propuesto](despues-jugador.jpg) |
 
-1. **¿Te encaja agrupar en cuatro pestañas** (Dados · Mesa · Escena · Chat), o prefieres otra agrupación?
-2. **¿«Editar escena» como modo aparte** te sirve, o el Keeper necesita los muros y las luces a mano durante la partida?
-3. **¿Básico por defecto** para todos, con Avanzado como opción, o al revés?
-4. **¿Por qué fase empiezo?** Mi recomendación es la A: es rápida, no rompe hábitos y deja ver el efecto antes de mover la estructura.
+## 5. Lo que necesito que confirmes
+
+1. **¿El reparto de cada grupo (3.1 a 3.7) te encaja?** Lo más dudoso:
+   - Cuenta, Idioma y Audio en el último nivel de la cabecera del Keeper.
+   - Ping y Deshacer fuera de la vista. Deshacer sigue con Ctrl+Z.
+   - Subtrait en el desplegable del panel de dados.
+2. **¿Empiezo por la Fase A** (componente + herramientas + pestañas)?
+3. **¿Quieres que cada persona pueda reordenar** qué 3 tiene a la vista (por ejemplo, arrastrando dentro del desplegable)? No está en la propuesta; se puede añadir después.
 
 ## 6. Riesgos
 
-- **Mover botones cambia hábitos.** Por eso la fase C (Avanzado) y la guía de primeros pasos tendrán que actualizarse con la nueva ubicación.
-- **Hay pruebas que buscan elementos por su sitio actual.** Se actualizarán en cada fase.
-- **La traducción por texto exacto**: los textos nuevos irán al diccionario en el mismo cambio.
+- **Mover botones cambia hábitos.** La guía de primeros pasos y la ayuda se actualizan en cada fase.
+- **«Muéstramelo» de la guía** tendrá que abrir el desplegable cuando lo que señala esté dentro.
+- **Las pruebas que buscan elementos por su sitio** se actualizan en cada fase.
+- **Traducción por texto exacto**: los textos nuevos van al diccionario en el mismo cambio.
