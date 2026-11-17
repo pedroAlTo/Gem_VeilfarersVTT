@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.6.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.6**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.6** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.6.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.7.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.7**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.7** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.7.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -52,6 +52,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.6.zip**. Abre **AYUDA
 37. **(V3) Alcance de armas importadas.** Importa una ficha con un arma sin alcance o con el alcance en español (por ejemplo, «Slug Pistol» o «Lejano»). Ataca a un objetivo a Far: la Ficha dice «CON DESVENTAJA · más allá del alcance del arma». Con un arma inventada sin alcance, dice que no se aplica límite.
 38. **(V3) Propiedades de arma.** Con una daga («Agility · Melee», «d6+1 ene.») marca un objetivo a distancia: «Arma cuerpo a cuerpo… fuera de Melee» y el segundo toque no ataca. Pégate al objetivo y ataca: el daño dice «Energy · Penetración −2: umbrales X/Y → X−2/Y−2». Con una pistola Reliable, el detalle del ataque dice «Propiedades del arma: Reliable +1».
 39. **(V3) Armas de fuego de alcance Close.** Una pistola (o escopeta, subfusil…) de alcance Close ataca a Close y en Melee sin Desventaja. Un rifle de alcance Far contra un objetivo en Melee: «Arma de alcance Far contra un objetivo en Melee: Desventaja». Cualquier arma más allá de su alcance: Desventaja.
+40. **(V3) Propiedades de arma y modificadores.** Da a un arma «Massive; Devastating; Cutting; Ignite; Poison; Stunning» (TT2) y ataca en Melee: el resultado lista Massive con su dado extra, Devastating si llega a Severe, Cutting (sin escudos), Stunning con CD 15. «Aplicar daño» resta HP, marca 1 Stress (Poison) y pone On Fire. Toda tarjeta de resultado (abajo en el centro) muestra la línea de modificadores.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

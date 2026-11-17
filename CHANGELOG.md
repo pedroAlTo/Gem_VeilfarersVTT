@@ -1,10 +1,25 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.6**.
-Paquete: `VeilFarers_VTT_v2.17.6.zip`.
+Versión actual del VTT: **v2.17.7**.
+Paquete: `VeilFarers_VTT_v2.17.7.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.7] — 2026-11-17
+
+V3 · Todas las propiedades de arma del Corebook, y modificadores en cada resultado
+
+### Propiedades de arma (glosario del Corebook)
+
+- Se aplican solas: Reliable, Accurate, Smart Scope (tirada de ataque); Reach (alcance); Crushing, Phasing, Cutting, Vibration, Shield Piercing (Armor Slots que puede gastar el objetivo); Burst Fire, Massive, Energy Surge (daño extra); Devastating (+1 HP al llegar al umbral Severe); Energy, Phasing (penetración); Poison y Energy Surge (Stress); Ignite (On Fire) y Bleed (Bleeding); Overheating (d6 tras cada ataque).
+- El resto sale como aviso tras el impacto, con lo que lo dispara, la tirada y la CD de característica del objeto (TT1 10, TT2 15, TT3 20, TT4 25): Stunning, Taser Charge, Entangling, Entrapping, Disorienting, Stagger, Continuous, Brittle, Armor Piercing, Shredding, Mind-Lock, Disintegrating, Unraveling, System Shock, Explosive, Automatic, Salvo Fire, Cleave, Quick, Reload, Suppressive, Probability Shift, Paired, Psionic y armas de área.
+- La Ficha del jugador lista los efectos bajo el resultado del ataque.
+
+### Resultados y daño
+
+- Las tarjetas de resultado muestran siempre los modificadores de la tirada (dados, Trait, Ventaja/Desventaja, propiedades…), en todas las tiradas.
+- Corregido: en la vista de jugador de la mesa del Keeper, «Aplicar daño» no cambiaba el HP del objetivo.
 
 ## [2.17.6] — 2026-11-17
 

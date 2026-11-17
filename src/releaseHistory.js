@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.7', date: '2026-11-17', title: 'V3 · Todas las propiedades de arma del Corebook, y modificadores en cada resultado',
+    sections: [
+      { title: 'Propiedades de arma (glosario del Corebook)', items: [
+        'Se aplican solas: Reliable, Accurate, Smart Scope (tirada de ataque); Reach (alcance); Crushing, Phasing, Cutting, Vibration, Shield Piercing (Armor Slots que puede gastar el objetivo); Burst Fire, Massive, Energy Surge (daño extra); Devastating (+1 HP al llegar al umbral Severe); Energy, Phasing (penetración); Poison y Energy Surge (Stress); Ignite (On Fire) y Bleed (Bleeding); Overheating (d6 tras cada ataque).',
+        'El resto sale como aviso tras el impacto, con lo que lo dispara, la tirada y la CD de característica del objeto (TT1 10, TT2 15, TT3 20, TT4 25): Stunning, Taser Charge, Entangling, Entrapping, Disorienting, Stagger, Continuous, Brittle, Armor Piercing, Shredding, Mind-Lock, Disintegrating, Unraveling, System Shock, Explosive, Automatic, Salvo Fire, Cleave, Quick, Reload, Suppressive, Probability Shift, Paired, Psionic y armas de área.',
+        'La Ficha del jugador lista los efectos bajo el resultado del ataque.',
+      ] },
+      { title: 'Resultados y daño', items: [
+        'Las tarjetas de resultado muestran siempre los modificadores de la tirada (dados, Trait, Ventaja/Desventaja, propiedades…), en todas las tiradas.',
+        'Corregido: en la vista de jugador de la mesa del Keeper, «Aplicar daño» no cambiaba el HP del objetivo.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.6', date: '2026-11-17', title: 'V3 · Armas de fuego de alcance Close sin Desventaja a Close ni en Melee',
     sections: [
       { title: 'Reglas de alcance', items: [

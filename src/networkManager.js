@@ -4,6 +4,11 @@ import { requireNetworkMode, LAN_SESSIONS } from './runtimeMode.js';
 import { store } from './state.js';
 import { canBleed } from './rulesEngine.js';
 import { normalizeConditions } from './conditions.js';
+const HIT_CONDITIONS = ['Bleeding', 'On Fire'];
+function hitConditionsPatch(t, data) {
+  const asked = [data.addCondition, ...(Array.isArray(data.addConditions) ? data.addConditions : [])].filter(c => HIT_CONDITIONS.includes(c) && (c !== 'Bleeding' || canBleed(t)));
+  return asked.length ? { conditions: normalizeConditions([...(t.conditions || []), ...asked]) } : {};
+}
 import { validateDrawing, canAnnotate } from './freehand.js';
 import { controlsToken, isDrone } from './tokenPermissions.js';
 import { createActor, replaceActorSheet } from './actors.js';
@@ -991,10 +996,10 @@ export class NetworkManager {
                 ...t,
                 hp: { ...t.hp, current: newHp },
                 armor: { ...t.armor, current: newArmor },
-                // A Neural hit may mark exactly 1 Stress; nothing else of the target can change.
-                ...(data.stressMark === 1 && t.stress ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? (t.stress.current || 0) + 1, (t.stress.current || 0) + 1) } } : {}),
-                // A Bleed weapon may add Bleeding, and only Bleeding, to a target that can bleed.
-                ...(data.addCondition === 'Bleeding' && canBleed(t) ? { conditions: normalizeConditions([...(t.conditions || []), 'Bleeding']) } : {}),
+                // A hit may mark 1–3 Stress (Neural, Energy Surge, Poison); nothing else of the target can change.
+                ...(Number.isInteger(data.stressMark) && data.stressMark >= 1 && data.stressMark <= 3 && t.stress ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? (t.stress.current || 0) + data.stressMark, (t.stress.current || 0) + data.stressMark) } } : {}),
+                // A weapon may add Bleeding (to a target that can bleed) and On Fire (Ignite), and nothing else.
+                ...hitConditionsPatch(t, data),
                 pendingBrace: data.isDirect ? t.pendingBrace : false
               };
             }

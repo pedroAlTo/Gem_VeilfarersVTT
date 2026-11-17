@@ -301,8 +301,10 @@ export class PlayerActionBar {
     const outcome = q('atk_outcome_val')?.textContent?.trim() || '';
     const damage = shown('damage_result_display') && q('damage_result_display').style.display === 'block';
     const apply = q('apply_dmg_to_target_btn'), mitigate = q('dmg_shield_mitigation_row');
+    const notes = damage ? (window.veilDiceRoller?.lastFeatureNotes || []) : [];
+    const heat = (q('atk_detail_text')?.textContent || '').match(/Overheating: d6 \[\d\]: (?:sin problema\.|el arma se sobrecalienta[^.]*\.)/)?.[0] || '';
     return {
-      targetName, outcome,
+      targetName, outcome, notes: heat ? [...notes, heat] : notes,
       raw: damage ? q('dmg_raw_val')?.textContent?.trim() : '', severity: damage ? q('dmg_severity_val')?.textContent?.trim() : '', loss: damage ? q('dmg_hp_loss_val')?.textContent?.trim() : '',
       canApply: !!(damage && apply && !apply.disabled), shields: !!(damage && mitigate && mitigate.style.display !== 'none'), applied: !!(apply && /APPLIED|APLICADO/i.test(apply.textContent || '')),
     };
@@ -313,6 +315,7 @@ export class PlayerActionBar {
     return `<div class="pab-row pab-result ${hit ? 'hit' : 'miss'}" role="status">
       <span class="pab-label">Resultado</span>
       <div class="pab-result-text"><b>${e(r.outcome || '—')}</b> <span>${e(r.targetName)}</span>${hit ? ` · <span>${e(r.raw)} de daño · ${e(r.severity)} · ${e(r.loss)}</span>` : ''}</div>
+      ${(r.notes || []).length ? `<ul class="pab-notes">${r.notes.map(n => `<li>${e(n)}</li>`).join('')}</ul>` : ''}
       ${this.resultRange ? `<div class="pab-range ${this.resultRange.penalty ? 'penalty' : ''}">Distancia: <span data-no-i18n>${e(this.resultRange.band)} · ${e(this.resultRange.meters.toFixed(1))} m</span>${this.resultRange.penalty ? ` · ${e(this.resultRange.penalty)}` : ''}</div>` : ''}
       <div class="pab-result-actions">${hit && r.shields && !r.applied ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-shields>Escudos</button>' : ''}${hit && !r.applied ? `<button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-pab-apply ${r.canApply ? '' : 'disabled'}>Aplicar daño</button>` : ''}${r.applied ? '<span class="pab-applied">Daño aplicado</span>' : ''}<button type="button" class="pab-more" data-pab-clear aria-label="Quitar el resultado">×</button></div>
     </div>`;

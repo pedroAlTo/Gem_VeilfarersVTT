@@ -86,3 +86,5 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-edge-tag.adv { border-color: rgba(114,229,207,.7); background: rgba(20,83,45,.3); } .pab-edge-tag.adv b { color: #86efac; }
 .pab-reason { font-size: 11px; line-height: 1.35; color: var(--text-dim); }
 .pab-confirm { font-size: 11px; color: #00f3ff; }
+.pab-notes { margin: 2px 0 0; padding-left: 14px; font-size: 11px; line-height: 1.4; color: #e9d5ff; }
+.pab-notes li { margin: 1px 0; }
