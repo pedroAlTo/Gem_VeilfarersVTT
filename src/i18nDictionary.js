@@ -1144,6 +1144,8 @@ export const PAIRS = [
   ["Tirada del Keeper (1d20): sin pago de senda ni Fear.", "Keeper roll (1d20): no Path payout or Fear."],
   // Bear Down on damage (v2.14.3)
   ["Bear Down · daño", "Bear Down · damage"],
+  // Ranged weapons at Melee (v2.14.4)
+  ["Arma a distancia larga contra un objetivo en Melee: Desventaja (las armas cortas, como las pistolas, no la tienen).", "Long ranged weapon against a target in Melee: Disadvantage (short weapons such as pistols do not have it)."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

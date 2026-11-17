@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.14.4', date: '2026-11-17', title: 'V2 · Armas a distancia largas en Melee con Desventaja',
+    sections: [
+      { title: 'Reglas', items: [
+        'Un arma a distancia larga (rifle, carabina, ametralladora, lanzacohetes…) usada contra un objetivo en Melee ataca con Desventaja. El aviso del ataque lo explica.',
+        'Las armas cortas no tienen esa penalización: pistolas, blásters de mano, revólveres y similares (Corebook: «point-blank pistol range»). Se reconocen por el nombre; un arma de la ficha puede marcarse a mano como corta o no.',
+        'El Stress por ronda de Bleeding y el límite de una Fear Ability por criatura y ciclo de Spotlight se siguen aplicando a mano en la mesa, por decisión de diseño.',
+      ] },
+    ],
+  },
+  {
     version: '2.14.3', date: '2026-11-17', title: 'V2 · Tiradas de adversario con d20 y Bear Down sobre el daño',
     sections: [
       { title: 'Reglas', items: [

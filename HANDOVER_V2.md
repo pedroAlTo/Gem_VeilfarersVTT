@@ -35,13 +35,15 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 
 14. **Idioma** (17 nov 2026): la interfaz se unifica en un idioma con selector español / inglés; español por defecto. Los términos de reglas del Corebook se dejan en inglés en ambos idiomas.
 15. **Inicio** (17 nov 2026): botón para volver a la pantalla de inicio desde la mesa.
+17. **Armas a distancia en Melee** (17 nov 2026): un arma a distancia larga usada contra un objetivo en Melee ataca con **Desventaja**; las armas cortas (pistolas, blásters de mano, revólveres y similares) no. `isShortWeapon()` en `attackFlow.js` las reconoce por el nombre; un arma puede llevar `short: true/false` para forzarlo.
+18. **Bleeding y límite de Fear Ability, manuales** (17 nov 2026): el Stress por ronda de Bleeding y el límite de una Fear Ability por criatura y ciclo de Spotlight se aplican a mano en la mesa; no automatizarlos.
 16. **Guía de primer uso** (17 nov 2026, aprobada por el usuario): lista de pasos por papel (jugador / Keeper) cuyos pasos se marcan **solo al hacer la acción real** en la mesa, nunca con un botón «Siguiente». Se puede minimizar, saltar pasos, cerrar y reabrir desde la ayuda.
 
 ## Pendiente para la revisión de reglas (erratas y desajustes)
 > **Los libros de `System/` no se editan en este proyecto.** El usuario lleva la corrección de los Corebook en otro chat, como proyecto aparte (15 nov 2026). Aquí solo se anota lo detectado y se ajusta el código de la VTT.
 - **Errata del Corebook** (cap. 9, *"Does the Keeper roll Duality Dice?"*, y referencias en cap. 10 y Keeper Critical Damage): corregir el texto en `System/` para que diga 1d20 + Ataque. En el código ya está unificado (v2.14.3): la tirada genérica de un adversario (`CHECK` con `isPlayer === false`) usa `rollAdversaryCheck()` de `attackFlow.js`, 1d20 + modificador.
-- El Corebook dice que muchas armas a distancia tienen penalización o no se pueden usar en Melee; no está implementado (el usuario solo ha pedido la Desventaja por exceso de alcance).
-- El Stress por ronda de Bleeding no se automatiza.
+- **Corregir en el Corebook** (cap. 10, banda Melee: *"Many ranged weapons take penalties or are unusable at Melee"*): concretar la regla tal como la aplica la VTT desde v2.14.4: las armas a distancia largas atacan con Desventaja en Melee; las armas cortas (pistolas y similares) no tienen penalización.
+- El Stress por ronda de Bleeding no se automatiza (decisión 18: se aplica a mano).
 
 ## Plan por fases
 - **Fase 0 — Estabilización** (**cerrada en v2.0.2**, reglas publicadas): corregir fallos antes de añadir funciones.

@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.14.3**.
-Paquete: `VeilFarers_VTT_v2.14.3.zip`.
+Versión actual del VTT: **v2.14.4**.
+Paquete: `VeilFarers_VTT_v2.14.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.14.4] — 2026-11-17
+
+V2 · Armas a distancia largas en Melee con Desventaja
+
+### Reglas
+
+- Un arma a distancia larga (rifle, carabina, ametralladora, lanzacohetes…) usada contra un objetivo en Melee ataca con Desventaja. El aviso del ataque lo explica.
+- Las armas cortas no tienen esa penalización: pistolas, blásters de mano, revólveres y similares (Corebook: «point-blank pistol range»). Se reconocen por el nombre; un arma de la ficha puede marcarse a mano como corta o no.
+- El Stress por ronda de Bleeding y el límite de una Fear Ability por criatura y ciclo de Spotlight se siguen aplicando a mano en la mesa, por decisión de diseño.
 
 ## [2.14.3] — 2026-11-17
 

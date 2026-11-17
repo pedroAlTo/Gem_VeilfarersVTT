@@ -65,11 +65,17 @@ test('walls and closed doors block the line of fire; windows and open doors do n
   assert.deepEqual(distanceInfo(a, { x: 1472, y: 0 }, { gridSize: 64, walls: [across] }), { squares: 23, meters: 46, band: 'Extreme', blocked: true });
 });
 
-test('a melee weapon only attacks at Melee; a ranged weapon beyond its band attacks with Disadvantage', () => {
+test('a melee weapon only attacks at Melee; a ranged weapon beyond its band, or a long one at Melee, attacks with Disadvantage', () => {
   assert.equal(rangeCheck({ range: 'Melee' }, 'Melee').allowed, true);
   const tooFar = rangeCheck({ range: 'Melee' }, 'Very Close');
   assert.equal(tooFar.allowed, false); assert.match(tooFar.reason, /fuera de Melee/);
-  assert.deepEqual([rangeCheck({ range: 'Close' }, 'Close').disadvantage, rangeCheck({ range: 'Close' }, 'Melee').disadvantage, rangeCheck({ range: 'Close' }, 'Far').disadvantage, rangeCheck({ range: 'Close' }, 'Extreme').disadvantage], [false, false, true, true]);
+  assert.deepEqual([rangeCheck({ range: 'Close' }, 'Close').disadvantage, rangeCheck({ range: 'Close' }, 'Melee').disadvantage, rangeCheck({ range: 'Close' }, 'Far').disadvantage, rangeCheck({ range: 'Close' }, 'Extreme').disadvantage], [false, true, true, true]);
+  // A long ranged weapon at Melee has Disadvantage; a short one (a pistol) does not.
+  assert.match(rangeCheck({ name: 'Rifle de Asalto Automático', range: 'Far' }, 'Melee').reason, /objetivo en Melee: Desventaja/);
+  assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Melee').disadvantage, false);
+  assert.equal(rangeCheck({ name: 'Bláster Oculto de Brazo Sintético', range: 'Close' }, 'Melee').disadvantage, false);
+  assert.equal(rangeCheck({ name: 'Arma rara', range: 'Close', short: true }, 'Melee').disadvantage, false, 'a weapon can be marked short');
+  assert.equal(rangeCheck({ name: 'Pistola pesada', range: 'Close', short: false }, 'Melee').disadvantage, true, 'or explicitly not');
   assert.equal(rangeCheck({ range: 'Close' }, 'Far').allowed, true);
   // Without a weapon the attack is an unarmed strike: Melee only.
   assert.equal(rangeCheck(null, 'Melee').allowed, true);
@@ -228,7 +234,7 @@ test('an adversary throws its d20 and the Disadvantage d6 in 3D; a critical maxi
 });
 
 test('a player Critical throws twice the damage pool, Proficiency included; the Resolve die on the table is the one that counts', async () => {
-  const { dice, q, a } = scene({ weapon: { trait: 'Finesse', range: 'Close', damage: '2d8+2', damageMode: 'base' }, attacker: { proficiency: 3, path: 'Sleeping', level: 1, resolve: { current: 2, max: 2, dieType: 'd4' } } });
+  const { dice, q, a } = scene({ weapon: { name: 'Pistola de pruebas', trait: 'Finesse', range: 'Close', damage: '2d8+2', damageMode: 'base' }, attacker: { proficiency: 3, path: 'Sleeping', level: 1, resolve: { current: 2, max: 2, dieType: 'd4' } } });
   q('#dice_use_resolve').checked = true;
   const { thrown } = table3D([5, 5, 3, /* 8d8 */ 1, 2, 3, 4, 5, 6, 7, 8]);
   const result = await with3D(dice, () => dice.executeAttack());

@@ -63,8 +63,18 @@ export function weaponRangeBand(weapon) {
   return match ? bandFromText(match.range) : '';
 }
 
+// A short firearm (pistol, hand blaster, revolver...) can be fired point-blank without penalty
+// (Corebook ch. 10: "point-blank pistol range"). A weapon can also say so with `short: true`.
+const SHORT_WEAPON = /pistol|pistola|revolver|revólver|derringer|bl[aá]ster|holdout|sidearm|hand ?cannon/i;
+export function isShortWeapon(weapon) {
+  if (!weapon) return false;
+  if (typeof weapon.short === 'boolean') return weapon.short;
+  return SHORT_WEAPON.test([weapon.name, weapon.features, weapon.type].filter(Boolean).join(' '));
+}
+
 // Table rule: a melee weapon only works at Melee; a ranged weapon fired beyond the band
-// it covers attacks with Disadvantage.
+// it covers attacks with Disadvantage, and so does a long ranged weapon fired at a target in
+// Melee (user decision, 17 Nov 2026; short weapons such as pistols are exempt).
 export function rangeCheck(weapon, band) {
   // No weapon in hand is an unarmed strike: a Melee attack (Corebook ch. 10).
   if (!weapon) return band && band !== 'Melee'
@@ -78,7 +88,9 @@ export function rangeCheck(weapon, band) {
       : { allowed: false, disadvantage: false, reach, band, reason: `Arma cuerpo a cuerpo: el objetivo está a ${band}, fuera de Melee.` };
   }
   const beyond = RANGE_BANDS.indexOf(band) > RANGE_BANDS.indexOf(reach);
-  return { allowed: true, disadvantage: beyond, reach, band, reason: beyond ? `Objetivo a ${band}, más allá del alcance del arma (${reach}): Desventaja.` : '' };
+  if (beyond) return { allowed: true, disadvantage: true, reach, band, reason: `Objetivo a ${band}, más allá del alcance del arma (${reach}): Desventaja.` };
+  if (band === 'Melee' && !isShortWeapon(weapon)) return { allowed: true, disadvantage: true, reach, band, reason: 'Arma a distancia larga contra un objetivo en Melee: Desventaja (las armas cortas, como las pistolas, no la tienen).' };
+  return { allowed: true, disadvantage: false, reach, band, reason: '' };
 }
 
 // The Trait a weapon attacks with, as a Trait id; '' when its text names none.
