@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.12.0**.
-Paquete: `VeilFarers_VTT_v2.12.0.zip`.
+Versión actual del VTT: **v2.13.0**.
+Paquete: `VeilFarers_VTT_v2.13.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.13.0] — 2026-11-17
+
+V2 · Cuenta: tu personaje y tu última partida en cada sala
+
+### Cuenta
+
+- En Partidas y notas, cada sala muestra el personaje que usas en ella (nombre, nivel, clase y senda) y la fecha de tu última partida. Si diriges la sala, solo la fecha.
+- Las salas jugadas más recientemente aparecen antes (después de la partida en curso y de las que diriges).
+- La mesa lo anota sola mientras juegas: al entrar en la sala, cuando cambia tu personaje (por ejemplo, al subir de nivel o cuando el Keeper te asigna otro) y cada 15 minutos de juego.
+
+### Firebase
+
+- Nueva colección privada users/{uid}/games/{roomId} con sus reglas en firestore.rules: hay que publicar las reglas de nuevo. Sin publicarlas, el registro se guarda solo en este navegador, sin avisos.
 
 ## [2.12.0] — 2026-11-17
 

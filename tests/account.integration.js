@@ -49,3 +49,19 @@ test('personal notes are private to their author, tied to a room and bounded in 
   await assertFails(deleteDoc(doc(other, 'users/u1/notes/n1')));
   await assertSucceeds(deleteDoc(doc(mine, 'users/u1/notes/n1')));
 });
+
+const game = (roomId, extra = {}) => ({ roomId, role: 'player', characterName: 'Kira', characterSummary: 'Nivel 3 · Guardian', characterKey: 'system:abc', lastPlayedAt: Date.now(), ...extra });
+
+test('the per-game record is private to its owner and keeps its shape', async () => {
+  const mine = env.authenticatedContext('u1').firestore(), other = env.authenticatedContext('u2').firestore();
+  await assertSucceeds(setDoc(doc(mine, 'users/u1/games/room_1'), game('room_1')));
+  await assertSucceeds(setDoc(doc(mine, 'users/u1/games/room_1'), game('room_1', { role: 'keeper', characterName: '' })));
+  await assertSucceeds(getDocs(collection(mine, 'users/u1/games')));
+  await assertFails(getDocs(collection(other, 'users/u1/games')));
+  await assertFails(setDoc(doc(other, 'users/u1/games/room_1'), game('room_1')));
+  await assertFails(setDoc(doc(mine, 'users/u1/games/room_2'), game('room_1')));
+  await assertFails(setDoc(doc(mine, 'users/u1/games/room_3'), game('room_3', { role: 'admin' })));
+  await assertFails(setDoc(doc(mine, 'users/u1/games/room_4'), game('room_4', { notes: 'x' })));
+  await assertFails(setDoc(doc(mine, 'users/u1/games/room_5'), game('room_5', { characterName: 'x'.repeat(201) })));
+  await assertSucceeds(deleteDoc(doc(mine, 'users/u1/games/room_1')));
+});

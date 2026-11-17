@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.12.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.12.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.12.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.12.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.13.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.13.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.13.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.13.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -30,6 +30,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.12.0.zip**. Abre **AYUDA
 15. **Idioma e inicio.** La mesa arranca en español. Pulsa **EN** en la barra inferior: pestañas, botones, panel de dados y cabecera pasan a inglés; los nombres de tokens y relojes no cambian, ni el chat. Pulsa **ES** para volver. Recarga: se mantiene el idioma. En el lobby, el selector está arriba a la derecha. Pulsa **⌂** (o el logo): se abre la pantalla de inicio con tus salas; «Entrar directo a la mesa» vuelve a ella. A 1440 px la cabecera muestra el logo, el selector de escena y todos los botones.
 16. **Ayuda y avisos en inglés.** Con **EN** activo, abre la ayuda (**?**): título «HELP», «Tool help» y la guía rápida en inglés; vuelve a **ES** y se lee en español. Como jugador, intenta mover un token que no es tuyo o juega una carta sin Fear suficiente: el aviso aparece en el idioma elegido (por ejemplo, «Not enough Fear: 2 needed and 0 left.»).
 17. **Cuenta y notas.** Con sesión iniciada, pulsa tu nombre (arriba a la derecha): pestañas **Partidas y notas**, **Personajes** y **Preferencias**. En Partidas aparecen tus salas con su papel e invitación; la sala en curso, primero. Abre **Notas** en una partida, crea una nota, guárdala y recarga: sigue ahí. Edítala y elimínala. Entra con otra cuenta en la misma sala: no ve tus notas. Dentro de una sala, **SESIONES → Mis notas** abre las notas de esa partida.
+18. **Personaje y última partida.** Publica las reglas de v2.13.0. Entra como jugador en una sala con tu personaje asignado, espera unos segundos y abre la cuenta: en esa sala aparece «Tu personaje» con nombre, nivel, clase y senda, y «Última partida». Sube de nivel al personaje: al reabrir la cuenta, el nivel está al día. En una sala que diriges solo aparece la fecha.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

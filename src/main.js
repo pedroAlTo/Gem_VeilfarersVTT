@@ -750,6 +750,8 @@ async function setupSessionPersistence() {
     await initAccount();
     const { rooms } = await import('./roomController.js');
     const { account } = await import('./cloudAccount.js');
+    const { startGameRecording } = await import('./gameRecord.js');
+    startGameRecording({ rooms, store, account });
     const invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
     account.subscribe(user => {
       if (!user || rooms.room) return;

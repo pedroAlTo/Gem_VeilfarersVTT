@@ -14,8 +14,9 @@ Desde v1.4.0 las salas online usan **Firebase Authentication + Firestore** para 
 ## Qué guarda cada cuenta y cada sala (V2)
 
 - `users/{uid}/characters`, `scenes`, `settings` y `notes`: biblioteca privada de la cuenta. **Mis personajes** del lobby y el creador guardan aquí. Las notas personales se agrupan por sala y solo las lee su autor.
+- `users/{uid}/games/{roomId}` (desde v2.13.0): registro privado por partida que la mesa escribe mientras juegas: papel (Keeper o jugador), personaje que usas y última partida. La cuenta lo muestra en **Partidas y notas**.
 - `rooms/{roomId}`: miembros, presencia, campaña y, desde V2, `arcs/{arcId}` (solo el propietario). 
-- Las reglas de `firestore.rules` cambiaron por última vez en v2.0.2 (arcos y notas). **Si vuelven a cambiar hay que publicarlas de nuevo**; una regla sin publicar hace que el guardado se quede solo en el navegador y la app lo avisa.
+- Las reglas de `firestore.rules` cambiaron por última vez en **v2.13.0** (registro por partida, `users/{uid}/games`). **Hay que publicarlas de nuevo** (`firebase deploy --only firestore:rules` o pegarlas en la consola). Una regla sin publicar hace que el guardado se quede solo en el navegador; para este registro no se muestra aviso, porque se escribe solo mientras juegas.
 - El almacén compartido `character_vault` de Realtime Database dejó de usarse en v2.8.0. Sus datos no se han borrado.
 
 ## Using the features

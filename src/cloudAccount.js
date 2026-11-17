@@ -1,7 +1,7 @@
 import { LOCAL_ONLY } from './runtimeMode.js';
 import { newId } from './persistence.js';
 import { exportNativeCharacter, parseCharacterJSON, characterKey } from './characterImport.js';
-import { noteEntry } from './accountModel.js';
+import { noteEntry, gameEntry } from './accountModel.js';
 import { getFirebaseConfig } from './firebaseConfig.js';
 // The portal signs in with getFirebaseConfig(); the account and the rooms must use the very
 // same project, or a signed-in user would see no rooms. Outside the Vite build (tests, scripts)
@@ -295,6 +295,20 @@ export class CloudAccount {
     const local = () => this.cacheNotes(uid, list => list.filter(n => n.id !== id));
     try { await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'notes', id)); }
     catch (err) { if (err?.code !== 'permission-denied') throw err; await local(); }
+  }
+  // Per-game record, written by the table while playing. Without the published rule it stays
+  // in this browser, quietly: it is a convenience, not something to warn about on every change.
+  async saveGame(roomId, data) {
+    const uid = await this.identity(), entry = gameEntry(roomId, data);
+    try { await this.dbAPI.setDoc(this.dbAPI.doc(this.db, 'users', uid, 'games', entry.roomId), entry); }
+    catch (err) {
+      if (err?.code !== 'permission-denied') throw err;
+      try {
+        const key = `veil_games_${uid}`, list = JSON.parse(localStorage.getItem(key) || '[]');
+        localStorage.setItem(key, JSON.stringify([entry, ...list.filter(g => g.roomId !== entry.roomId)]));
+      } catch {}
+    }
+    return entry;
   }
   decodeCharacter(row) { return portableCharacter(parseCharacterJSON(row.payload).token); }
   async savePreferences(values) {

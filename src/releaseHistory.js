@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.13.0', date: '2026-11-17', title: 'V2 · Cuenta: tu personaje y tu última partida en cada sala',
+    sections: [
+      { title: 'Cuenta', items: [
+        'En Partidas y notas, cada sala muestra el personaje que usas en ella (nombre, nivel, clase y senda) y la fecha de tu última partida. Si diriges la sala, solo la fecha.',
+        'Las salas jugadas más recientemente aparecen antes (después de la partida en curso y de las que diriges).',
+        'La mesa lo anota sola mientras juegas: al entrar en la sala, cuando cambia tu personaje (por ejemplo, al subir de nivel o cuando el Keeper te asigna otro) y cada 15 minutos de juego.',
+      ] },
+      { title: 'Firebase', items: [
+        'Nueva colección privada users/{uid}/games/{roomId} con sus reglas en firestore.rules: hay que publicar las reglas de nuevo. Sin publicarlas, el registro se guarda solo en este navegador, sin avisos.',
+      ] },
+    ],
+  },
+  {
     version: '2.12.0', date: '2026-11-17', title: 'V2 · Cuenta: partidas y notas personales por partida',
     sections: [
       { title: 'Cuenta', items: [

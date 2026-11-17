@@ -7,6 +7,7 @@
 export const MESSAGE_PAIRS = [
   // Account and preferences
   ['La nota necesita una partida.', 'The note needs a game.'],
+  ['El registro necesita una partida.', 'The game record needs a game.'],
   ['Sustitución de personaje cancelada.', 'Character replacement cancelled.'],
   ['Si existe una cuenta con esta dirección, recibirás las instrucciones para restablecer la contraseña.', 'If this address has an account, password reset instructions are on their way.'],
   ['Personaje listo en esta partida.', 'Character ready in this game.'],

@@ -17,3 +17,6 @@
 .account-note-form textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 120px; }
 .account-note-private { font-size: 11px; margin: 8px 0 0; }
 .account-footer { margin-top: 16px; justify-content: flex-end; }
+.account-game-record { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 0; font-size: 11px; color: #c4b5fd; }
+.account-game-record strong { color: #fde68a; font-weight: 600; }
+.account-game-record small { color: #a78bfa; }

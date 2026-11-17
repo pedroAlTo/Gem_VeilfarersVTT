@@ -19,3 +19,15 @@ export function arcEntries(campaign, now = Date.now()) {
     sceneIds: (arc.sceneIds || []).filter(id => scenes.has(id)).slice(0, 100), order, updatedAt: now,
   })).filter(arc => arc.id && !arc.id.includes('/'));
 }
+
+// What this account did in one room: users/{uid}/games/{roomId}. Written by the table while
+// you play (role, the character you use, when you last played); shown in the account screen.
+export function gameEntry(roomId, data = {}, now = Date.now()) {
+  const room = text(roomId, 200);
+  if (!room || room.includes('/')) throw new Error('El registro necesita una partida.');
+  return {
+    roomId: room, role: data.role === 'keeper' ? 'keeper' : 'player',
+    characterName: text(data.characterName, 200).trim(), characterSummary: text(data.characterSummary, 200).trim(),
+    characterKey: text(data.characterKey, 400), lastPlayedAt: Number.isFinite(data.lastPlayedAt) ? data.lastPlayedAt : now,
+  };
+}

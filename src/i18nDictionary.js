@@ -712,6 +712,8 @@ export const PAIRS = [
   ['Aún no participas en ninguna sala. Crea una o entra con una invitación desde SESIONES.', 'You are not in any room yet. Create one or join with an invitation from SESSIONS.'],
   ['Mis notas', 'My notes'],
   ['Abrir sala', 'Open room'],
+  ['Tu personaje:', 'Your character:'],
+  ['Última partida:', 'Last played:'],
   ['Importar JSON a la biblioteca', 'Import JSON to library'],
   ['Guardar el personaje seleccionado', 'Save selected character'],
   ['Personajes guardados', 'Saved characters'],
@@ -776,4 +778,6 @@ export const PATTERNS = [
   ['Recall · {cost}', 'Recall · {cost}'],
   ['Opacidad de la niebla explorada ({a}%)', 'Explored fog opacity ({a}%)'],
   ['Notas ({a})', 'Notes ({a})'],
+  ['Nivel {a} · {b} · {c}', 'Level {a} · {b} · {c}'],
+  ['Nivel {a} · {b}', 'Level {a} · {b}'],
 ];

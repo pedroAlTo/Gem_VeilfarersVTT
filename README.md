@@ -1,8 +1,8 @@
-# VeilFarers VTT · v2.12.0
+# VeilFarers VTT · v2.13.0
 
 A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v2.12.0**. Download package: **VeilFarers_VTT_v2.12.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.13.0**. Download package: **VeilFarers_VTT_v2.13.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -17,7 +17,7 @@ On macOS/Linux, run `npm ci`, then `VITE_SESSION_TRANSPORT=lan VITE_LOCAL_ONLY=0
 Development happens on the `V2` branch. [HANDOVER_V2.md](HANDOVER_V2.md) records every decision and the technical notes per version; [CHANGELOG.md](CHANGELOG.md) lists each release.
 
 - **Lobby.** Violet command centre with a **Básico / Avanzado** switch. **Mis personajes** is the private character library of your account (create, import a sheet JSON, download, delete). A guest plays locally and has no library. Room lookup errors are shown with a retry instead of an empty list.
-- **Account.** Sign in with email and password or with Google, or enter as a local guest. Netlify Identity sign-in was removed in v2.8.1. Per account: joined rooms, characters, scenes, preferences and personal notes per room. Per Keeper room: arcs, maps and configuration. The account window (signed in) has three tabs: **Partidas y notas** (your rooms, with your private notes for each; open another room from there), **Personajes** and **Preferencias**; **Mis notas** in SESSIONS opens the notes of the room you are in.
+- **Account.** Sign in with email and password or with Google, or enter as a local guest. Netlify Identity sign-in was removed in v2.8.1. Per account: joined rooms, characters, scenes, preferences and personal notes per room. Per Keeper room: arcs, maps and configuration. The account window (signed in) has three tabs: **Partidas y notas** (your rooms, with your private notes for each; open another room from there), **Personajes** and **Preferencias**; **Mis notas** in SESSIONS opens the notes of the room you are in. Each room also shows the character you play there and when you last played (recorded by the table in `users/{uid}/games`; publish the v2.13.0 rules).
 - **Character creator.** **Roster → + PERSONAJE** (also in the lobby) builds a character step by step from the Corebook 12.06 rules: ancestry, community, path, class and subclass, traits, experiences, affiliation, powers or Resolve Moves, and starting equipment. The result becomes a token, replaces an existing token, goes to your account or is downloaded. It is independent of the external Character Creator project; the only contact is importing a sheet JSON.
 - **Sheet.** Tabs **Ficha / Rasgos / Vínculos / Armas y equipo / JSON**, with **Básica** and **Completa** views. **Subir de nivel** spends the two Advancement Slots and applies Tier Achievements; a Sleeping character can **Despertar** (Awakening) and re-spend refunded slots.
 - **Attack.** **Dice → Damage → ATACAR AL OBJETIVO** runs the whole procedure: range check, attack roll against Evasion, and damage only on a hit. Players roll Hope and Fear with the weapon Trait; Keeper adversaries roll 1d20 + Attack and a natural 20 is a critical. Applying the damage is a separate step and the defender chooses how many Armor Slots to spend.
