@@ -64,3 +64,33 @@
 .card-vault { display: flex; flex-direction: column; gap: 10px; } .card-vault-preview { display: flex; justify-content: center; }
 @media (max-width: 1024px) { .token-quickbar-container.with-hand { max-width: calc(100% - 24px); bottom: 150px; } .card-hand { width: calc(100% - 32px); height: 150px; } .vf-card { --w: 104px; --h: 146px; } .card-inspect { grid-template-columns: 1fr; justify-items: center; } }
 @media (prefers-reduced-motion: reduce) { .card-hand-fan .vf-card, .vf-card-ghost { transition: none; } }
+
+/* The deck: a small stack after the fan; it opens the drawer where Loadout and Vault swap. */
+.card-deck { all: unset; box-sizing: border-box; position: absolute; right: 6px; bottom: 10px; z-index: 70; pointer-events: auto; cursor: pointer; width: 46px; height: 62px; display: grid; place-items: center; }
+.card-deck-stack { position: absolute; inset: 0; }
+.card-deck-stack i { position: absolute; inset: 0; border-radius: 6px; border: 2px solid #e9a93a; background: repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 2px, transparent 2px 7px), linear-gradient(160deg, #2a0b5c, #0d0420); box-shadow: 0 3px 8px rgba(0,0,0,.55); }
+.card-deck-stack i:nth-child(1) { transform: translate(-6px, 5px) rotate(-7deg); } .card-deck-stack i:nth-child(2) { transform: translate(-3px, 2px) rotate(-3deg); }
+.card-deck b { position: relative; font: 800 15px/1 'Chakra Petch', system-ui, sans-serif; color: #fde68a; text-shadow: 0 1px 3px #000; }
+.card-deck:hover .card-deck-stack i:nth-child(3), .card-deck:focus-visible .card-deck-stack i:nth-child(3) { border-color: #00f3ff; box-shadow: 0 0 14px rgba(0,243,255,.6); transform: translateY(-4px); }
+.card-hand:has(.card-deck) .card-hand-fan { margin-right: 58px; width: calc(100% - 58px); }
+.card-drawer { position: absolute; right: 16px; bottom: 206px; z-index: 125; width: min(640px, calc(100% - 32px)); max-height: calc(100% - 240px); overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: rgba(13,4,32,.97); border: 1px solid #6d28d9; border-top: 2px solid #fde68a; box-shadow: 0 -12px 40px rgba(0,0,0,.65); animation: card-drawer-in .22s cubic-bezier(.2,.9,.3,1) both; }
+@keyframes card-drawer-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.card-drawer-head { display: flex; align-items: center; gap: 12px; } .card-drawer-head strong { font: 700 12px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .28em; color: #fff; }
+.card-drawer-modes { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+.card-drawer-close { all: unset; cursor: pointer; color: #c084fc; font-size: 20px; line-height: 1; padding: 2px 6px; } .card-drawer-close:hover { color: #fff; }
+.card-drawer h4 { margin: 4px 0 0; font: 700 10px/1 system-ui, sans-serif; letter-spacing: .2em; color: #c084fc; }
+.card-drawer-step { margin: 0; color: #fde68a; font-size: 12.5px; }
+.card-drawer-row { display: flex; gap: 10px; flex-wrap: wrap; min-height: 40px; align-items: flex-start; }
+.card-drawer-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.vf-card-mini { --w: 96px; --h: 134px; cursor: pointer; transition: transform .15s ease; }
+.vf-card-mini:hover, .vf-card-mini:focus-visible { transform: translateY(-4px); }
+.vf-card-mini.chosen .vf-card-frame { box-shadow: 0 0 0 3px #00f3ff, 0 0 22px rgba(0,243,255,.6); }
+.vf-card-mini .vf-card-text { display: none; } .vf-card-mini .vf-card-title { font-size: 8.5px; } .vf-card-mini .vf-card-pill { font-size: 5.5px; }
+/* The Keeper's feed of cards used by the players */
+.card-feed { position: absolute; right: 14px; bottom: 44px; z-index: 119; display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
+.card-feed.hidden { display: none; }
+.card-feed-item { all: unset; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; animation: card-drawer-in .25s ease both; }
+.card-feed-item .vf-card-mini { --w: 78px; --h: 109px; pointer-events: none; }
+.card-feed-item:hover .vf-card-frame, .card-feed-item:focus-visible .vf-card-frame { box-shadow: 0 0 0 2px #00f3ff, 0 0 18px rgba(0,243,255,.55); }
+.card-feed-who { max-width: 90px; font: 700 9px/1.2 system-ui, sans-serif; color: #fde68a; text-align: center; background: rgba(13,4,32,.9); padding: 3px 6px; border: 1px solid rgba(253,230,138,.4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .card-drawer, .card-feed-item { animation: none; } }

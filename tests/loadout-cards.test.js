@@ -33,7 +33,7 @@ test('an Awakened hand holds its Loadout Powers, the Hope Feature, the Ancestry 
   assert.deepEqual(cards.map(c => c.kind), ['power', 'power', 'feature', 'ancestry', 'community', 'vault']);
   const [first] = cards, printed = data.powers.find(p => p.n === first.name);
   assert.deepEqual([first.costText, first.rc, first.domain, first.level], [printed.cost, Number(printed.rc), printed.d, 1]);
-  assert.equal(cards[2].cost.hope, 3, 'Eureka Moment (3 Hope)'); assert.equal(cards[3].name, 'Synthetic'); assert.match(cards[4].subtitle, /^Background · /);
+  assert.equal(cards[2].cost.hope, 3, 'Eureka Moment (3 Hope)'); assert.equal(cards[3].name, 'Modular Consciousness', 'the Gift that is used, not the passive one'); assert.match(cards[4].subtitle, /^Background · /);
   assert.equal(cards.at(-1).playable, false, 'a Vault card must be Recalled first');
   assert.deepEqual(characterCards({ isPlayer: false }, data), []);
 });
@@ -146,4 +146,45 @@ test('every card has its art: a Domain or Class flag and band, or the Ancestry a
   assert.ok(cards.every(c => c.art && onDisk(c.art.band)), 'no card is left without art');
   assert.match(cards.find(c => c.kind === 'power').art.flag, /domain-[a-z]+-flag\.png$/);
   assert.match(cards.find(c => c.kind === 'feature').art.flag, /class-scholar-flag\.png$/);
+});
+
+test('ancestry cards are the Gifts that are used; passive Gifts stay on the sheet', async () => {
+  const { usableGift, giftCost, giftLimit } = await import('../src/loadoutCards.js');
+  const gifts = name => data.ancestries.find(a => a.name === name).gifts;
+  const used = name => gifts(name).filter(usableGift).map(g => g.name);
+  assert.deepEqual(used('Ailuran'), [], 'Aura-Sight and Perfect Equilibrium are always on');
+  assert.deepEqual(used('Synthetic'), ['Modular Consciousness']);
+  assert.deepEqual(used('Human'), ['Adaptive Spirit', 'Cultural Bridge']);
+  assert.deepEqual(used('Rift Spinner'), ['Chrono-Gift']);
+  assert.deepEqual(used('Ethereal'), ['Phase Shift', 'Temporal Perception']);
+  assert.deepEqual(used('Bloomstrider'), ['Nurturing Touch']);
+  const gift = (ancestry, name) => gifts(ancestry).find(g => g.name === name);
+  assert.deepEqual([giftCost(gift('Ethereal', 'Phase Shift')).stress, giftCost(gift('Human', 'Adaptive Spirit')).hope], [1, 2]);
+  // "2 path resources" is Hope for the Awakened and Effort for the Sleeping.
+  assert.deepEqual([giftCost(gift('Rift Spinner', 'Chrono-Gift')).hope, giftCost(gift('Rift Spinner', 'Chrono-Gift'), true).effort, giftCost(gift('Rift Spinner', 'Chrono-Gift'), true).hope], [2, 2, 0]);
+  // What a Gift gives back is not a price: Stellar Meditation clears Stress and grants Hope.
+  const meditation = giftCost(gift('Celestiari', 'Stellar Meditation'));
+  assert.deepEqual([meditation.stress, meditation.hope, meditation.effort], [0, 0, 0]);
+  assert.equal(giftLimit(gift('Celestiari', 'Stellar Meditation')), '1 / long rest'); assert.equal(giftLimit(gift('Human', 'Adaptive Spirit')), '1 / session');
+  const kryx = characterCards(character({ ancestry: 'kryx' }), data).filter(c => c.kind === 'ancestry');
+  assert.deepEqual(kryx.map(c => [c.name, c.cost.stress, c.playable]), [['Pack Intuition', 1, true], ['Biolume Howl', 1, true]]);
+  assert.equal(characterCards({ ...character(), species: 'Ailuran' }, data).some(c => c.kind === 'ancestry'), false, 'an ancestry with only passive Gifts adds no card');
+});
+
+test('the table announces a used card so the Keeper can see it', async () => {
+  const { performGameAction } = await import('../src/gameActions.js');
+  const { setCardData } = await import('../src/cardData.js');
+  const heard = [];
+  globalThis.window = { dispatchEvent: event => heard.push(event.detail) };
+  globalThis.CustomEvent ||= class { constructor(type, init) { this.type = type; this.detail = init?.detail; } };
+  try {
+    setCardData(data);
+    const hero = { ...character(), id: 'tok_hero', name: 'Maren Solas', hope: 2, stress: { current: 0, max: 6 } };
+    const store = { sessionRole: 'local', state: { userRole: 'keeper', campaignId: 'c', tokens: [hero], fear: 0 }, updateToken(id, patch) { Object.assign(hero, patch); }, addFear() {}, addLog() {} };
+    const card = characterCards(hero, data).find(c => c.kind === 'power' && c.cost.hope === 1);
+    performGameAction({ type: 'CARD_PLAY', actorId: 'tok_hero', cardId: card.id, playerName: 'Lucía' }, store);
+    assert.equal(heard.length, 1);
+    assert.deepEqual([heard[0].actorName, heard[0].playerName, heard[0].card.name, heard[0].failed], ['Maren Solas', 'Lucía', card.name, false]);
+    assert.ok(heard[0].card.text.length > 20 && heard[0].card.art.band, 'the whole card travels: text and art');
+  } finally { delete globalThis.window; }
 });

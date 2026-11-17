@@ -54,6 +54,8 @@ export function performGameAction(action, store = defaultStore) {
     const details = [result.summary, ...result.notes].join(' ');
     const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };
     store.addLog(log);
+    // The Keeper's table shows the card that was just used.
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('veil:card-played', { detail: { card, actorId: actor.id, actorName: actor.name, playerName: String(action.playerName ?? '').slice(0, 80), summary: result.summary, notes: result.notes, failed: !!result.failed, at: Date.now() } }));
     return { id: newId(), actorId: actor.id, log, outcomeTitle: `${CARD_KINDS[card.kind]} · ${costLabel(result.paid)}`.toUpperCase(), card: { id: card.id, name: card.name, kind: card.kind, color: card.color }, roll: result.roll, failed: !!result.failed, notes: result.notes, summary: result.summary, fear: result.fear };
   }
   if (action.type === 'CHECK') {
