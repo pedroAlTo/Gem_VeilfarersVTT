@@ -2692,7 +2692,9 @@ export class CanvasEngine {
       });
 
       // Authoritative Keeper exploration persistence debounced sync
-      if (state.userRole === 'keeper' && !this.draggedToken && !this._fogSyncTimer) {
+      // Only when the exploration memory has changed since it was last saved.
+      if (state.userRole === 'keeper' && !this.draggedToken && !this._fogSyncTimer && this._fogSavedVersion !== `${fullMapId}:${this.fog.exploredVersion}`) {
+        this._fogSavedVersion = `${fullMapId}:${this.fog.exploredVersion}`;
         this._fogSyncTimer = setTimeout(() => {
           this._fogSyncTimer = null;
           if (this.fog && this.mapImage && map) {

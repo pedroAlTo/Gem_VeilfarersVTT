@@ -1,4 +1,4 @@
-import { drawSoftened } from './softMask.js';
+import { drawSoftened, fingerprint, wallValues } from './softMask.js';
 // src/lightingEngine.js
 // 2D Raycasting Dynamic Lighting & Shadow Engine for VeilVTT
 
@@ -227,12 +227,7 @@ export class LightingEngine {
     const lCtx = this.lightCtx;
 
     // 1. Fill with darkness based on ambientLight (ambient 1.0 = clear, ambient 0.25 = 0.75 darkness)
-    lCtx.clearRect(0, 0, mapWidth, mapHeight);
     const darknessAlpha = Math.max(0, Math.min(1, 1 - ambientLight));
-    if (darknessAlpha > 0.01) {
-      lCtx.fillStyle = `rgba(5, 8, 15, ${darknessAlpha})`;
-      lCtx.fillRect(0, 0, mapWidth, mapHeight);
-    }
 
     // Collect all active light sources (station lights + token vision lights)
     const allLights = [...lights];
@@ -284,10 +279,32 @@ export class LightingEngine {
       }
     }
 
+    // Steady lights that have not moved draw the same mask as last frame: reuse it. Lights
+    // that pulse, flicker or strobe change with time and are always redrawn.
+    const animated = allLights.some(light => { const effect = light.effect || (light.flicker ? 'flicker' : 'steady'); return effect !== 'steady'; });
+    const key = animated ? null : fingerprint([mapWidth, mapHeight, darknessAlpha,
+      ...allLights.flatMap(l => [l.x, l.y, l.radius || 200, l.intensity ?? 0.8, l.facingAngle ?? -9, l.visionAngle ?? 360]), -1, ...wallValues(walls)]);
+    // Animated lights are redrawn 30 times a second, not on every frame: the eye cannot tell
+    // and the mask (one visibility polygon per light) is the costly part.
+    const due = time - (this.lightDrawnAt ?? -1) >= 0.03 || time < (this.lightDrawnAt ?? 0);
+    const sameSize = this.lightSize === `${mapWidth}x${mapHeight}`;
+    const reuse = sameSize && (key !== null ? key === this.lightKey : (this.lightKey === null && !due));
+    this.lightKey = key; this.lightSize = `${mapWidth}x${mapHeight}`;
+    if (!reuse) this.lightDrawnAt = time;
+    if (!reuse) {
+      this.lightVersion = (this.lightVersion || 0) + 1;
+      lCtx.globalCompositeOperation = 'source-over';
+      lCtx.clearRect(0, 0, mapWidth, mapHeight);
+      if (darknessAlpha > 0.01) {
+        lCtx.fillStyle = `rgba(5, 8, 15, ${darknessAlpha})`;
+        lCtx.fillRect(0, 0, mapWidth, mapHeight);
+      }
+    }
+
     // 2. Cut out light shapes from darkness using destination-out
     lCtx.globalCompositeOperation = 'destination-out';
 
-    for (const light of allLights) {
+    for (const light of reuse ? [] : allLights) {
       let currentRadius = light.radius || 200;
       let currentIntensity = light.intensity ?? 0.8;
       const speed = light.pulseSpeed || 1.5;
@@ -353,7 +370,7 @@ export class LightingEngine {
     // 2b. Window Opacity Shadow Attenuation Pass
     // Semi-transparent windows cast a dimming shadow behind them proportional to (100 - visionPercent)%
     const windowWalls = walls.filter(w => (w.isWindow || w.wallType === 'window') && (w.visionPercent ?? 80) < 100);
-    if (windowWalls.length > 0) {
+    if (windowWalls.length > 0 && !reuse) {
       lCtx.globalCompositeOperation = 'source-over';
       for (const win of windowWalls) {
         const visPct = Math.max(0, Math.min(100, win.visionPercent ?? 80));
@@ -407,7 +424,7 @@ export class LightingEngine {
     // Draw back the ambient light map onto the main game canvas with multiply / blend
     ctx.save();
     // Feathered: the shadow a wall cuts into a light ends in a gradient, not in a line.
-    drawSoftened(ctx, this.lightCanvas, LIGHT_SOFTNESS);
+    drawSoftened(ctx, this.lightCanvas, LIGHT_SOFTNESS, this.lightVersion);
 
     // Subtle colored glows around light centers
     ctx.globalCompositeOperation = 'screen';

@@ -1,6 +1,21 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.9.4', date: '2026-11-17', title: 'V2 · Rendimiento: mapa más ligero y carga más rápida',
+    sections: [
+      { title: 'Mapa', items: [
+        'La niebla de guerra ya no se recalcula en cada fotograma: solo cuando se mueve un personaje, cambia un muro o una puerta, cambia una luz o cambia lo explorado.',
+        'Las luces fijas se dibujan una vez y se reutilizan; las que parpadean o pulsan se redibujan 30 veces por segundo en lugar de 60.',
+        'Saber si un punto o un muro está explorado ya no pide una lectura a la tarjeta gráfica por cada consulta: se usa una copia reducida que se actualiza solo al cambiar lo explorado.',
+        'El guardado de la exploración del Keeper solo se ejecuta cuando ha cambiado algo.',
+      ] },
+      { title: 'Carga', items: [
+        'Las texturas de los dados 3D pesan 3,7 MB en lugar de 19,5 MB: la pantalla de acceso descarga unos 16 MB menos.',
+        'Los 94 retratos de token pesan 25 MB en lugar de 79 MB, con la misma resolución (1024 px).',
+      ] },
+    ],
+  },
+  {
     version: '2.9.3', date: '2026-11-16', title: 'V2 · Cartas con el arte de Dominios y clases',
     sections: [
       { title: 'Mano de cartas', items: [

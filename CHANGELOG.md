@@ -1,10 +1,26 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.9.3**.
-Paquete: `VeilFarers_VTT_v2.9.3.zip`.
+Versión actual del VTT: **v2.9.4**.
+Paquete: `VeilFarers_VTT_v2.9.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.9.4] — 2026-11-17
+
+V2 · Rendimiento: mapa más ligero y carga más rápida
+
+### Mapa
+
+- La niebla de guerra ya no se recalcula en cada fotograma: solo cuando se mueve un personaje, cambia un muro o una puerta, cambia una luz o cambia lo explorado.
+- Las luces fijas se dibujan una vez y se reutilizan; las que parpadean o pulsan se redibujan 30 veces por segundo en lugar de 60.
+- Saber si un punto o un muro está explorado ya no pide una lectura a la tarjeta gráfica por cada consulta: se usa una copia reducida que se actualiza solo al cambiar lo explorado.
+- El guardado de la exploración del Keeper solo se ejecuta cuando ha cambiado algo.
+
+### Carga
+
+- Las texturas de los dados 3D pesan 3,7 MB en lugar de 19,5 MB: la pantalla de acceso descarga unos 16 MB menos.
+- Los 94 retratos de token pesan 25 MB en lugar de 79 MB, con la misma resolución (1024 px).
 
 ## [2.9.3] — 2026-11-16
 
