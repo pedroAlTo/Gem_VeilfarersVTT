@@ -61,3 +61,30 @@ test('the page is translated as it changes, player content and book text are lef
   assert.equal(text('nav button'), 'DADOS'); assert.equal(text('.chat-messages p'), 'ROSTER');
   assert.equal(setLanguage('fr'), 'es', 'an unknown language changes nothing');
 });
+
+test('notices and error messages are translated both ways, with names and nested messages inside', async () => {
+  const { MESSAGE_PAIRS, MESSAGE_PATTERNS } = await import('../src/i18nMessages.js');
+  assert.ok(MESSAGE_PAIRS.length > 250 && MESSAGE_PATTERNS.length > 60);
+  assert.equal(translate('Selecciona uno de tus tokens asignados.', 'en'), 'Select one of your assigned tokens.');
+  assert.equal(translate('Not connected to the Keeper.', 'es'), 'Sin conexión con el Keeper.');
+  assert.equal(translate('No hay Fear suficiente: hacen falta 2 y quedan 0.', 'en'), 'Not enough Fear: 2 needed and 0 left.');
+  assert.equal(translate('3 personajes importados.', 'en'), '3 characters imported.');
+  assert.equal(translate('1 personaje importado.', 'en'), '1 character imported.');
+  // A mixed-language message from older code reads in one language.
+  assert.equal(translate('Save failed: disco lleno. Exporta una copia desde SESIONES.', 'en'), 'Save failed: disco lleno. Export a copy from SESSIONS.');
+  assert.equal(translate('Connection: Sala en pausa: espera al Keeper.', 'en'), 'Connection: Room paused: wait for the Keeper.');
+  const seen = new Map();
+  for (const [es, en] of MESSAGE_PAIRS) { if (seen.has(es)) assert.equal(seen.get(es), en, es); seen.set(es, en); }
+});
+
+test('a toast is shown in the interface language', async () => {
+  const { notify } = await import('../src/ui.js');
+  setLanguage('en');
+  notify('Sesión guardada.');
+  assert.equal(document.querySelector('#toast_stack .orbital-toast:last-child').textContent, 'Session saved.');
+  notify('Mensaje que no está en el diccionario');
+  assert.equal(document.querySelector('#toast_stack .orbital-toast:last-child').textContent, 'Mensaje que no está en el diccionario');
+  setLanguage('es');
+  notify('Session saved.');
+  assert.equal(document.querySelector('#toast_stack .orbital-toast:last-child').textContent, 'Sesión guardada.');
+});

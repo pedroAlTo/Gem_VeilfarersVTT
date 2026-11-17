@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.11.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.11.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.11.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.11.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.11.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.11.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.11.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.11.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -28,6 +28,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.11.0.zip**. Abre **AYUDA
 14. **Mano del Keeper.** En vista de Keeper, sin nada seleccionado, la mano muestra las cuatro jugadas de Fear. Coloca un adversario de la biblioteca (p. ej. Silent Gloomfang) y selecciónalo: aparecen sus habilidades; las pasivas no se juegan. Juega Blackout Hunt (baja 2 Fear y sale en el chat) y Spotlight Enemies (el adversario recibe el foco y baja 1 Fear, no 2). Con un Sleeping, falla un ataque a propósito y juega Bear Down con varios dados: si alcanza la Evasion pasa a IMPACTO y calcula el daño. Con 0 Effort, un Effort común ofrece Burnout.
 
 15. **Idioma e inicio.** La mesa arranca en español. Pulsa **EN** en la barra inferior: pestañas, botones, panel de dados y cabecera pasan a inglés; los nombres de tokens y relojes no cambian, ni el chat. Pulsa **ES** para volver. Recarga: se mantiene el idioma. En el lobby, el selector está arriba a la derecha. Pulsa **⌂** (o el logo): se abre la pantalla de inicio con tus salas; «Entrar directo a la mesa» vuelve a ella. A 1440 px la cabecera muestra el logo, el selector de escena y todos los botones.
+16. **Ayuda y avisos en inglés.** Con **EN** activo, abre la ayuda (**?**): título «HELP», «Tool help» y la guía rápida en inglés; vuelve a **ES** y se lee en español. Como jugador, intenta mover un token que no es tuyo o juega una carta sin Fear suficiente: el aviso aparece en el idioma elegido (por ejemplo, «Not enough Fear: 2 needed and 0 left.»).
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

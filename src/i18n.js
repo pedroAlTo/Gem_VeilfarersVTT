@@ -3,7 +3,11 @@
 // from either side, so switching back and forth needs no record of the original text.
 // Player content (chat, log, names typed in fields) and book text (cards, abilities, modules)
 // are never touched: they are excluded zones, and only whole interface strings are matched.
-import { PAIRS, PATTERNS } from './i18nDictionary.js';
+import { PAIRS as UI_PAIRS, PATTERNS as UI_PATTERNS } from './i18nDictionary.js';
+import { MESSAGE_PAIRS, MESSAGE_PATTERNS } from './i18nMessages.js';
+
+const PAIRS = [...UI_PAIRS, ...MESSAGE_PAIRS];
+const PATTERNS = [...UI_PATTERNS, ...MESSAGE_PATTERNS];
 
 export const LANGUAGES = { es: 'Español', en: 'English' };
 const STORAGE_KEY = 'veil_lang';
@@ -29,7 +33,8 @@ const compile = template => {
   const source = escape(template).replace(/\\\{(\w+)\\\}/g, (_, name) => { names.push(name); return '(.+?)'; });
   return { regex: new RegExp(`^${source}$`), names, template };
 };
-const patterns = PATTERNS.map(([es, en]) => ({ es: compile(es), en: compile(en) }));
+// Like pairs, a pattern may list other spellings after its two forms.
+const patterns = PATTERNS.map(([es, en, ...variants]) => ({ es: compile(es), en: compile(en), variants: variants.map(compile) }));
 
 let language = 'es';
 try { language = LANGUAGES[localStorage.getItem(STORAGE_KEY)] ? localStorage.getItem(STORAGE_KEY) : 'es'; } catch {}
@@ -46,7 +51,7 @@ export function translate(text, lang = language) {
   let result = toTarget[lang].get(trimmed) ?? null;
   if (result === null) {
     for (const pair of patterns) {
-      for (const side of [pair.es, pair.en]) {
+      for (const side of [pair.es, pair.en, ...pair.variants]) {
         const match = side.regex.exec(trimmed);
         if (!match) continue;
         const target = lang === 'es' ? pair.es : pair.en;

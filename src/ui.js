@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { translate } from './i18n.js';
 export const sanitizeHTML = (html) =>
   DOMPurify.sanitize(String(html ?? ''), {
     ADD_TAGS: ['vf-select'],
@@ -22,7 +23,8 @@ export function notify(message, kind = 'info') {
   }
   const el = document.createElement('div');
   el.className = `orbital-toast ${kind}`;
-  el.textContent = message;
+  // Shown in the interface language; messages the dictionary does not know stay as written.
+  el.textContent = translate(String(message ?? '')) ?? message;
   root.append(el);
   setTimeout(() => el.remove(), 6000);
 }

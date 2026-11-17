@@ -1,6 +1,21 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.11.1', date: '2026-11-17', title: 'V2 · Ayuda y avisos también en inglés',
+    sections: [
+      { title: 'Ayuda', items: [
+        'La ayuda (botón ?) está escrita en español y en inglés y se muestra en el idioma elegido; si se cambia el idioma con la ayuda abierta, se redibuja sin perder la pestaña.',
+        'Nueva sección «Idioma e inicio» y «Cartas y Loadout» en la guía rápida.',
+        'Las notas de cada versión del Changelog se conservan en el idioma en que se escribieron (español); en inglés se indica.',
+      ] },
+      { title: 'Avisos y errores', items: [
+        'Los avisos emergentes y los mensajes de error (unos 330) se muestran en el idioma elegido, también los que llevan nombres o cifras («No hay Fear suficiente: hacen falta 2 y quedan 0»).',
+        'Los avisos antiguos que mezclaban los dos idiomas se leen ahora en uno solo.',
+        'Un mensaje que llega de fuera (por ejemplo, un error de Firebase o del navegador) se muestra tal cual.',
+      ] },
+    ],
+  },
+  {
     version: '2.11.0', date: '2026-11-17', title: 'V2 · Interfaz en un solo idioma (español / inglés) y botón de inicio',
     sections: [
       { title: 'Idioma', items: [

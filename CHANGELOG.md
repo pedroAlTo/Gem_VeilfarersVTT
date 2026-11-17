@@ -1,10 +1,26 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.11.0**.
-Paquete: `VeilFarers_VTT_v2.11.0.zip`.
+Versión actual del VTT: **v2.11.1**.
+Paquete: `VeilFarers_VTT_v2.11.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.11.1] — 2026-11-17
+
+V2 · Ayuda y avisos también en inglés
+
+### Ayuda
+
+- La ayuda (botón ?) está escrita en español y en inglés y se muestra en el idioma elegido; si se cambia el idioma con la ayuda abierta, se redibuja sin perder la pestaña.
+- Nueva sección «Idioma e inicio» y «Cartas y Loadout» en la guía rápida.
+- Las notas de cada versión del Changelog se conservan en el idioma en que se escribieron (español); en inglés se indica.
+
+### Avisos y errores
+
+- Los avisos emergentes y los mensajes de error (unos 330) se muestran en el idioma elegido, también los que llevan nombres o cifras («No hay Fear suficiente: hacen falta 2 y quedan 0»).
+- Los avisos antiguos que mezclaban los dos idiomas se leen ahora en uno solo.
+- Un mensaje que llega de fuera (por ejemplo, un error de Firebase o del navegador) se muestra tal cual.
 
 ## [2.11.0] — 2026-11-17
 
