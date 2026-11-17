@@ -1257,6 +1257,10 @@ export const PAIRS = [
   ["Paired: con dos armas Paired, suma el bono Paired de una de ellas al daño.", "Paired: with two Paired weapons, add one Paired bonus to the damage."],
   ["Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.", "Area: the effect reaches every creature in its area (allies too); compare the roll with each one’s Evasion."],
   ["Massive: quien lo empuña tiene −1 Evasion.", "Massive: the wielder has −1 Evasion."],
+  // Keeper attack and rules whispers (v2.17.11)
+  ["Este adversario no tiene ataque en su ficha: indica su daño para atacar.", "This adversary has no attack on its sheet: set its damage to attack."],
+  ["Avisos de reglas de las armas: solo lectura.", "Weapon rule notices: read only."],
+  ["Reglas · avisos de armas", "Rules · weapon notices"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1361,4 +1365,5 @@ export const PATTERNS = [
   ["Burst Fire: {b} dados extra [{_c}].", "Burst Fire: {b} extra dice [{_c}]."],
   ["Overheating: d6 [{b}]: sin problema.", "Overheating: d6 [{b}]: no problem."],
   ["Overheating: d6 [{b}]: el arma se sobrecalienta; marca 1 Stress para enfriarla o gasta una Acción antes de volver a atacar.", "Overheating: d6 [{b}]: the weapon overheats; mark 1 Stress to cool it or spend an Action before attacking again."],
+  ["{_a}: toca el objetivo en el mapa y vuelve a tocarlo para atacar (Esc cancela).", "{_a}: tap the target on the map and tap it again to attack (Esc cancels)."],
 ];

@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.10**.
-Paquete: `VeilFarers_VTT_v2.17.10.zip`.
+Versión actual del VTT: **v2.17.11**.
+Paquete: `VeilFarers_VTT_v2.17.11.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.11] — 2026-11-17
+
+V3 · El Keeper ataca con sus adversarios y recibe por susurro lo que tiene que resolver
+
+### Keeper
+
+- Botón «⚔ ATACAR» en la barra inferior de los adversarios: toca el objetivo en el mapa (un aviso dice distancia, Ventaja/Desventaja y motivos) y vuelve a tocarlo para atacar. El panel de dados se abre con el resultado y «Aplicar daño».
+
+### Propiedades de arma en el chat
+
+- Cuando un arma tiene una propiedad que hay que resolver a mano (por ejemplo, la porra de choque con Stunning: Strength Reaction Roll contra CD 10), se envía al Keeper como susurro en el chat: desde la máquina de un jugador, como un susurro normal; en la del Keeper, en el hilo «Reglas · avisos de armas», que solo ve él.
+- Overheating avisa también al Keeper cuando el arma se sobrecalienta.
 
 ## [2.17.10] — 2026-11-17
 

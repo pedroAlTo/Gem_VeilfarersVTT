@@ -108,6 +108,7 @@ export class PlayerActionBar {
     // Player stance: the map-editing panels are hidden (see playerActionBar.css).
     document.body.classList.toggle('player-stance', !!token);
     if (!token) {
+      if (this.keeperAttack) return; // the Keeper is aiming with an adversary (startKeeperAttack)
       this.edgeKey = '';
       this.stopTargeting(false); document.body.classList.remove('pab-hope-pending');
       if (this.signature !== 'empty') { this.signature = 'empty'; this.tokenId = null; this.root.innerHTML = sanitizeHTML('<p class="pab-empty">Aún no tienes personaje. Pide al Keeper que te asigne uno o importa tu ficha desde SESIONES.</p>'); }
@@ -250,6 +251,20 @@ export class PlayerActionBar {
     dice.selectTrait(trait, { rollNow: true });
   }
 
+  // The Keeper's normal attack with an adversary, from the character bar (⚔ ATACAR): the same two
+  // touches as a player's (mark the target, touch it again), said in notices because the Keeper's
+  // panel has no Ficha tab; the result and «Aplicar daño» stay in the dice panel.
+  startKeeperAttack(tokenId) {
+    const token = store.state.tokens.find(t => t.id === tokenId);
+    if (!token) return;
+    const weapons = (tokenInventory(token).weapons || []).filter(usableWeapon);
+    if (!weapons.length) { notify('Este adversario no tiene ataque en su ficha: indica su daño para atacar.', 'error'); return; }
+    this.keeperAttack = true; this.tokenId = tokenId; this.weapons = weapons;
+    window.veilDiceDock?.close(); // the map must be free to pick the target; the result reopens it
+    this.startTargeting(weapons[0].id);
+    notify(`${token.name}: toca el objetivo en el mapa y vuelve a tocarlo para atacar (Esc cancela).`);
+  }
+
   startTargeting(weaponId) {
     this.stopTargeting(false);
     const canvas = window.veilCanvas?.canvas || document.getElementById('tactical_canvas');
@@ -297,6 +312,10 @@ export class PlayerActionBar {
       props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',
       pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
     targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed, edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
+    if (this.keeperAttack) {
+      const p = targeting.preview, edgeText = { adv: 'con Ventaja', dis: 'con Desventaja', normal: 'tirada normal' }[p.edge];
+      notify(`Objetivo: ${p.name} · ${p.band} · ${p.meters.toFixed(1)} m · ${p.allowed ? edgeText : 'fuera de alcance'}${p.reasons.length ? ` · ${p.reasons.join(' ')}` : ''} · ${p.allowed ? 'Toca otra vez para atacar.' : 'Elige otro objetivo.'}`);
+    }
     this.signature = ''; this.render();
   }
 
@@ -306,6 +325,7 @@ export class PlayerActionBar {
     this.onPick = null;
     if (!this.targeting) return;
     if (this.targeting.targetId && !keepMark) window.veilCanvas?.setAttackTarget?.(null, null);
+    if (!keepMark) this.keeperAttack = false;
     this.targeting = null; document.body.classList.remove('pab-targeting');
     if (redraw) this.render();
   }
@@ -348,7 +368,8 @@ export class PlayerActionBar {
     this.result = null;
     try {
       // Preparing the weapon asks for the dice panel; the player's attack stays in the bar.
-      if (weaponId) { if (!dice.prepareWeapon(token.id, weaponId)) return; if (!dockWasOpen) window.veilDiceDock?.close(); }
+      // The Keeper keeps the dice panel open: the result and «Aplicar daño» are there.
+      if (weaponId) { if (!dice.prepareWeapon(token.id, weaponId)) return; if (!dockWasOpen && !this.keeperAttack) window.veilDiceDock?.close(); }
       else { store.update({ selectedTokenId: token.id }); dice.syncWithSelectedToken(); }
       dice.populateDamageTargets?.();
       const targetSelect = dice.container.querySelector('#dmg_target_select'), weaponSelect = dice.container.querySelector('#dmg_weapon_select');
@@ -364,7 +385,7 @@ export class PlayerActionBar {
       if (this.reopenDrawer) { this.reopenDrawer = false; window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'sheet' } })); }
       // Bear Down can still raise the damage before it is applied: follow the panel.
       this.watchDamage();
-    } catch (error) { notify(error.message, 'error'); }
+    } catch (error) { notify(error.message, 'error'); } finally { if (this.keeperAttack) { this.keeperAttack = false; this.signature = ''; this.render(); } }
   }
   watchDamage() {
     const box = document.getElementById('damage_result_display');

@@ -49,3 +49,9 @@ test('reminders name the trigger, the roll and the Feature DC', () => {
   assert.equal(overheatCheck({ overheating: true }, () => 2).overheated, true);
   assert.equal(overheatCheck({}), null);
 });
+
+test('the whisper to the Keeper lists what is left to resolve', async () => {
+  const { rulesWhisperText } = await import('../src/rulesWhisper.js');
+  assert.equal(rulesWhisperText({ attacker: 'Pirata', target: 'Kira', weapon: 'Shock Baton', notes: ['Stunning: …'] }), '⚔ Pirata → Kira · Shock Baton: por resolver\n• Stunning: …');
+  assert.equal(rulesWhisperText({ notes: [] }), '', 'nothing to resolve, nothing sent');
+});

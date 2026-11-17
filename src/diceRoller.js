@@ -13,6 +13,7 @@ import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
 import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
+import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
 import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck } from './weaponFeatures.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
@@ -1330,6 +1331,7 @@ export class DiceRollerSidebar {
       if (!result) return { hit: false, band };
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
       const heat = drone ? null : overheatCheck(weaponFeatures(weapon));
+      if (heat?.overheated) void whisperToKeeper(rulesWhisperText({ attacker: attacker.name, target: target.name, weapon: weapon.name, notes: [heat.text] }));
       detail = `${checkMath(result)}.${props.notes.length ? ` Propiedades del arma: ${props.notes.join(', ')}.` : ''}${heat ? ` ${heat.text}` : ''}`;
       // Failure with Fear on an attack: the consequence is best taken from the weapon (or drone).
       if (result.resultType === 'FAILURE_WITH_FEAR') fearAdvice = drone ? failureWithFearAdvice('drone', attacker.name) : weapon ? failureWithFearAdvice('weapon', weapon.name, weapon.features) : '';
@@ -1369,6 +1371,7 @@ export class DiceRollerSidebar {
     q('#dmg_is_critical').checked = critical;
     // Let the table read the attack before the damage dice replace it.
     if (rolled3D) await new Promise(resolve => setTimeout(resolve, this.attackToDamagePause ?? 1600));
+    this.featureWhisper = weapon ? { attacker: attacker.name, target: target.name, weapon: weapon.name } : null;
     await this.executeDamageCalc();
     return { hit: true, critical, total, band };
   }
@@ -1551,6 +1554,13 @@ export class DiceRollerSidebar {
       ...(feats.poison ? ['Poison: si pierde HP, el objetivo marca 1 Stress.'] : []), ...(feats.ignite ? ['Ignite: si pierde HP, el objetivo queda On Fire.'] : []),
       ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true })];
     this.lastFeatureNotes = featureNotes; // the player's Ficha shows them under the result
+    // What the Keeper has to resolve by hand goes to the Keeper as a whisper, once per attack.
+    if (this.featureWhisper) {
+      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true });
+      const text = rulesWhisperText({ ...this.featureWhisper, notes: toResolve });
+      this.featureWhisper = null;
+      if (text) void whisperToKeeper(text);
+    }
 
     if (rolled?.length) {
       const sidesOf = (dmgResult.pools || [{ count: dmgResult.rolls.length, sides: diceSides }]).flatMap(p => Array(p.count * (damageOptions.isCritical ? 2 : 1)).fill(p.sides));

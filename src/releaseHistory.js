@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.11', date: '2026-11-17', title: 'V3 · El Keeper ataca con sus adversarios y recibe por susurro lo que tiene que resolver',
+    sections: [
+      { title: 'Keeper', items: [
+        'Botón «⚔ ATACAR» en la barra inferior de los adversarios: toca el objetivo en el mapa (un aviso dice distancia, Ventaja/Desventaja y motivos) y vuelve a tocarlo para atacar. El panel de dados se abre con el resultado y «Aplicar daño».',
+      ] },
+      { title: 'Propiedades de arma en el chat', items: [
+        'Cuando un arma tiene una propiedad que hay que resolver a mano (por ejemplo, la porra de choque con Stunning: Strength Reaction Roll contra CD 10), se envía al Keeper como susurro en el chat: desde la máquina de un jugador, como un susurro normal; en la del Keeper, en el hilo «Reglas · avisos de armas», que solo ve él.',
+        'Overheating avisa también al Keeper cuando el arma se sobrecalienta.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.10', date: '2026-11-17', title: 'V3 · Resolve en marcas amarillas',
     sections: [
       { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [

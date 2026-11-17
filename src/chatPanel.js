@@ -3,6 +3,7 @@ import { guideEvent } from './onboarding.js';
 import { network } from './networkManager.js';
 import { newId } from './persistence.js';
 import { TABLE, KEEPER, CHAT_TEXT_LIMIT, chatHistoryFor, chatThread } from './chat.js';
+const RULES_SENDER = 'veil-rules'; // see rulesWhisper.js
 import './ui.js';
 
 export class ChatPanel {
@@ -92,7 +93,7 @@ export class ChatPanel {
       const people = new Map((state.players || []).map(p => [p.id, p.name]));
       for (const m of messages) if (m.recipientId !== TABLE && !people.has(chatThread(m))) people.set(chatThread(m), m.senderId === KEEPER ? m.recipientName : m.senderName);
       if (this.channel !== TABLE && !people.has(this.channel)) people.set(this.channel, 'Jugador');
-      for (const [id, name] of people) choices.push({ id, thread: id, name: `${name} · ${state.connectedPeers?.some(p => p.id === id) && state.isConnected ? 'susurro' : 'desconectado'}` });
+      for (const [id, name] of people) choices.push({ id, thread: id, name: id === RULES_SENDER ? 'Reglas · avisos de armas' : `${name} · ${state.connectedPeers?.some(p => p.id === id) && state.isConnected ? 'susurro' : 'desconectado'}` });
     } else choices.push({ id: KEEPER, name: 'Keeper · susurro', thread: this.viewer });
     const options = choices.map(p => ({ id: p.id, name: p.name + (unreadFor(p.thread) ? ` (${unreadFor(p.thread)} nuevos)` : '') }));
     const signature = JSON.stringify(options);
@@ -138,6 +139,7 @@ export class ChatPanel {
   unavailable() {
     const s = this.store.state;
     if (!this.viewer) return 'Únete a una sesión para escribir como jugador.';
+    if (this.channel === RULES_SENDER) return 'Avisos de reglas de las armas: solo lectura.';
     if (s.joiningSession || (this.store.sessionRole !== 'local' && !s.isConnected)) return 'Sin conexión · el borrador se conserva. Reconecta para enviar.';
     if (this.viewer === KEEPER && this.channel !== TABLE && (!s.isConnected || !s.connectedPeers?.some(p => p.id === this.channel))) return 'Destinatario desconectado · el susurro no se enviará hasta que vuelva.';
     return '';

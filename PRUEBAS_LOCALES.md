@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.10.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.10**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.10** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.10.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.11.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.11**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.11** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.11.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -56,6 +56,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.10.zip**. Abre **AYUD
 41. **(V3) Movimiento animado y distancia viva.** Con dos navegadores en una sala, mueve un token en uno: en el otro se desliza hasta su sitio (no aparece de golpe). Marca un objetivo para atacar y mueve el objetivo o tu token: la Ficha actualiza banda, metros y Ventaja/Desventaja.
 42. **(V3) Peana a peana.** Pon tu token pegado a un adversario grande (tamaño 2): la línea de objetivo y la Ficha dicen MELEE · 0.0 m. Con una casilla vacía entre las peanas: VERY CLOSE · 2.0 m.
 43. **(V3) Resolve.** Con un PJ Sleeping (Resolve 2/4, d4): la Ficha muestra 4 triángulos amarillos, 2 encendidos. Con dados d6: cuadrados.
+44. **(V3) Ataque del Keeper y avisos de reglas.** Como Keeper, selecciona un adversario con un arma Stunning (p. ej. Shock Baton, TT1) junto a un PJ: en su barra inferior pulsa ⚔ ATACAR, toca el PJ (aviso con distancia y tirada) y vuelve a tocarlo. El panel de dados muestra el resultado; si impacta, el chat muestra un aviso «Reglas»: Stunning, Strength Reaction Roll contra CD 10. Con un jugador conectado que ataque con esa arma, el Keeper lo recibe como susurro de ese jugador.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 
