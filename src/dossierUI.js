@@ -1,4 +1,5 @@
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
+import { guideEvent } from './onboarding.js';
 import { store } from './state.js';
 import { validateActor } from './validation.js';
 import { characterDetails, setAffiliation, setConnection, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
@@ -41,6 +42,7 @@ function powerCard(power) {
   return `<article class="dossier-power"><header><h4>${e(power.name)}</h4><span>${tags.map(t => `<b>${e(t)}</b>`).join('')}${power.recall !== '' && power.recall != null ? `<b>Recall ${e(power.recall)}</b>` : ''}</span></header><p>${e(text).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
 }
 export function openDossier(token, openSettings, initialTab = 'stats') {
+  guideEvent('sheet');
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
   const hasBackground = pc;

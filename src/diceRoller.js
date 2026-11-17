@@ -1,4 +1,5 @@
 import { attackPresentation, weaponImpactType } from './combatFX.js';
+import { guideEvent } from './onboarding.js';
 import { IMPACT_TYPES } from './encounterRules.js';
 import { dossierDialog } from './dossierUI.js';
 // src/diceRoller.js
@@ -978,6 +979,7 @@ export class DiceRollerSidebar {
 
     const breakdownText = `Dados: [${rolls.join(', ')}] (d${sides})${mod !== 0 ? (mod > 0 ? ` + Mod (${mod})` : ` - Mod (${Math.abs(mod)})`) : ''} = ${total}`;
 
+    guideEvent('roll');
     if (window.veilDiceEngine && typeof window.veilDiceEngine.showCallout === 'function') {
       window.veilDiceEngine.showCallout({
         playerName,
@@ -1018,6 +1020,7 @@ export class DiceRollerSidebar {
   // A result reaches the table once: the golden card on the right for whoever rolled, and
   // the same card for everyone else unless the roll is secret. The chat line is separate.
   announceRoll(card, { rolled3D = false, secret = false } = {}) {
+    guideEvent('roll');
     if (rolled3D && window.VFDice3D?.showResults) window.VFDice3D.showResults(card);
     else window.veilDiceEngine?.showCallout?.({ ...card, visibility: secret ? 'keeper' : 'table' });
     if (!secret) network.broadcast?.({ type: 'DICE_ROLL', result: { ...card, id: String(Date.now()), breakdown: card.modifiers, details: card.modifiers } });
@@ -1312,6 +1315,7 @@ export class DiceRollerSidebar {
 
   showResult(result) {
     if (result.visibility === 'keeper' && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) return;
+    guideEvent('roll');
     this.lastResult = result;
     // Display Results
     const display = this.container.querySelector('#dice_result_display');

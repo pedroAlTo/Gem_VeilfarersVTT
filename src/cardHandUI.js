@@ -1,6 +1,7 @@
 // The card hand: next to the stats of the selected player character, its Loadout as a fan of
 // 3D cards. A card is inspected with a click and played by dragging it onto the board.
 import { store } from './state.js';
+import { guideEvent } from './onboarding.js';
 import { network } from './networkManager.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
@@ -211,6 +212,7 @@ export class CardHand {
       const line = `🂠 ${playerName} (${token.name}) usa ${card.name} [${CARD_KINDS[card.kind]}] — ${detail} Efecto: ${effect}`;
       network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
       if (result.roll && !result.failed) { window.veilDiceRoller?.prepareCheck?.({ tokenId: token.id, ...result.roll }); notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`); }
+      guideEvent('card');
       return true;
     } catch (error) { notify(error.message, 'error'); return false; }
   }
@@ -233,6 +235,7 @@ export class CardHand {
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
       const line = `🂠 ${playerName} (${token.name}) usa ${card.name} — ${summary} Efecto: ${card.text}`;
       network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
+      guideEvent('card');
       return true;
     } catch (error) { notify(error.message, 'error'); return false; }
   }

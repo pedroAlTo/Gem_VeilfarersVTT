@@ -16,6 +16,7 @@ const TEXT = {
     legacy: 'Entregas anteriores · Orbital', legacyText: 'Conservan sus nombres originales, sin asignarles versiones retroactivas.',
     legacyFull: 'El historial técnico completo se conserva en <strong>RELEASE_ORBITAL.md</strong>, dentro del ZIP.',
     shortcuts: 'Atajos útiles',
+    guideTitle: 'Guía de primer uso', guideText: 'Una lista corta de pasos para tu papel (jugador o Keeper). Cada paso se marca solo cuando lo haces en la mesa.', guideOpen: 'Abrir la guía', guideRestart: 'Empezar de nuevo',
     keys: '<kbd>B</kbd> Dibujar · <kbd>D</kbd> Borrar dibujos · <kbd>Ctrl</kbd> + <kbd>C</kbd>/<kbd>V</kbd> Copiar/pegar · <kbd>U</kbd> Agua · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Deshacer · <kbd>Ctrl</kbd> + <kbd>Y</kbd> Rehacer · <kbd>Esc</kbd> Cancelar trazado',
     guideItems: version => [
       ['Idioma e inicio', 'El selector <strong>ES / EN</strong> de la barra inferior (y del vestíbulo) cambia toda la interfaz, esta ayuda y los avisos. Los términos de reglas del Corebook se mantienen en inglés. El botón <strong>⌂</strong> de la cabecera vuelve a la pantalla de inicio.'],
@@ -42,6 +43,7 @@ const TEXT = {
     legacy: 'Earlier deliveries · Orbital', legacyText: 'They keep their original names, with no retroactive version numbers.',
     legacyFull: 'The full technical history is kept in <strong>RELEASE_ORBITAL.md</strong>, inside the ZIP.',
     shortcuts: 'Useful shortcuts',
+    guideTitle: 'First-use guide', guideText: 'A short list of steps for your role (player or Keeper). Each step ticks itself when you do it at the table.', guideOpen: 'Open the guide', guideRestart: 'Start over',
     keys: '<kbd>B</kbd> Draw · <kbd>D</kbd> Erase drawings · <kbd>Ctrl</kbd> + <kbd>C</kbd>/<kbd>V</kbd> Copy/paste · <kbd>U</kbd> Water · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Undo · <kbd>Ctrl</kbd> + <kbd>Y</kbd> Redo · <kbd>Esc</kbd> Cancel stroke',
     guideItems: version => [
       ['Language and home', 'The <strong>ES / EN</strong> switch in the bottom bar (and in the lobby) changes the whole interface, this help and the notices. Corebook rule terms stay in English. The <strong>⌂</strong> button in the header goes back to the home screen.'],
@@ -68,6 +70,7 @@ function helpBody(t, version) {
     <div class="help-hero"><span class="dossier-eyebrow">VEILFARERS / ORBITAL</span><h2>${t.heading}</h2><div class="help-version"><strong>VTT v${version}</strong><span>Corebook 12.06</span></div><p>${t.versions}</p></div>
     <nav class="dossier-tabs" aria-label="${t.sections}"><button type="button" class="hud-btn active" data-help-tab="guide" aria-pressed="true">${t.guide}</button><button type="button" class="hud-btn" data-help-tab="changes" aria-pressed="false">Changelog · v${version}</button></nav>
     <section data-help-panel="guide" aria-label="${t.guide}">
+      <div class="help-guide-cta"><div><h3>${t.guideTitle}</h3><p>${t.guideText}</p></div><div class="session-actions"><button type="button" class="hud-btn hud-btn-primary" data-guide-open>${t.guideOpen}</button><button type="button" class="hud-btn" data-guide-restart>${t.guideRestart}</button></div></div>
       <div class="help-guide-grid">${t.guideItems(version).map(([title, text]) => `<article><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
       <div class="help-shortcuts"><h3>${t.shortcuts}</h3><p>${t.keys}</p></div>
     </section>
@@ -101,6 +104,9 @@ function paint(modal) {
   modal.querySelectorAll('[data-help-tab]').forEach(button => { button.onclick = () => select(button.dataset.helpTab); });
   select(tab);
   body.scrollTop = scroll;
+  const guide = restart => import('./onboardingUI.js').then(({ reopenGuide }) => { modal.remove(); reopenGuide({ restart }); });
+  modal.querySelector('[data-guide-open]').onclick = () => guide(false);
+  modal.querySelector('[data-guide-restart]').onclick = () => guide(true);
   modal.querySelector('[data-download-changelog]').onclick = () => {
     const url = URL.createObjectURL(new Blob([changelogMarkdown()], { type:'text/markdown;charset=utf-8' }));
     const link = document.createElement('a'); link.href=url; link.download=CHANGELOG_FILENAME; link.click();

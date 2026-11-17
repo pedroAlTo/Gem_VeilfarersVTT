@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.14.0', date: '2026-11-17', title: 'V2 · Guía de primer uso para jugadores y Keeper',
+    sections: [
+      { title: 'Guía de primer uso', items: [
+        'Al llegar a la mesa aparece, en la esquina superior derecha del mapa, una lista corta de primeros pasos según tu papel.',
+        'Jugador: ten tu personaje, abre tu ficha, mueve tu token, haz una tirada, usa una carta y escribe a la mesa.',
+        'Keeper: crea tu sala (solo con salas online), prepara una escena, coloca un adversario, asigna un personaje, gasta Fear y haz una tirada.',
+        'Cada paso se marca solo cuando lo haces de verdad en la mesa; no hay botón «Siguiente». Lo que ya existía al empezar (la campaña de ejemplo) no cuenta.',
+        '«Muéstramelo» resalta el botón o la zona de la que habla el paso. Un paso se puede saltar; si después lo haces, cuenta como hecho.',
+        'La guía se minimiza o se cierra, y el progreso se recuerda en este navegador para cada papel. Se vuelve a abrir, o se empieza de nuevo, desde AYUDA → Guía de primer uso.',
+        'Funciona en español y en inglés, y en pantallas estrechas se coloca arriba a lo ancho.',
+      ] },
+    ],
+  },
+  {
     version: '2.13.0', date: '2026-11-17', title: 'V2 · Cuenta: tu personaje y tu última partida en cada sala',
     sections: [
       { title: 'Cuenta', items: [

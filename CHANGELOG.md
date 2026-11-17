@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.13.0**.
-Paquete: `VeilFarers_VTT_v2.13.0.zip`.
+Versión actual del VTT: **v2.14.0**.
+Paquete: `VeilFarers_VTT_v2.14.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.14.0] — 2026-11-17
+
+V2 · Guía de primer uso para jugadores y Keeper
+
+### Guía de primer uso
+
+- Al llegar a la mesa aparece, en la esquina superior derecha del mapa, una lista corta de primeros pasos según tu papel.
+- Jugador: ten tu personaje, abre tu ficha, mueve tu token, haz una tirada, usa una carta y escribe a la mesa.
+- Keeper: crea tu sala (solo con salas online), prepara una escena, coloca un adversario, asigna un personaje, gasta Fear y haz una tirada.
+- Cada paso se marca solo cuando lo haces de verdad en la mesa; no hay botón «Siguiente». Lo que ya existía al empezar (la campaña de ejemplo) no cuenta.
+- «Muéstramelo» resalta el botón o la zona de la que habla el paso. Un paso se puede saltar; si después lo haces, cuenta como hecho.
+- La guía se minimiza o se cierra, y el progreso se recuerda en este navegador para cada papel. Se vuelve a abrir, o se empieza de nuevo, desde AYUDA → Guía de primer uso.
+- Funciona en español y en inglés, y en pantallas estrechas se coloca arriba a lo ancho.
 
 ## [2.13.0] — 2026-11-17
 

@@ -1,4 +1,5 @@
 import { store } from './state.js';
+import { guideEvent } from './onboarding.js';
 import { network } from './networkManager.js';
 import { newId } from './persistence.js';
 import { TABLE, KEEPER, CHAT_TEXT_LIMIT, chatHistoryFor, chatThread } from './chat.js';
@@ -164,6 +165,7 @@ export class ChatPanel {
       const activeToken = this.store.getSelectedToken?.() || this.store.state.tokens?.find(t => t.id === this.store.state.claimedTokenId);
       const color = activeToken?.color;
       await this.network.sendChat({ text, recipientId: channel, clientId, color, senderTokenId: activeToken?.id });
+      guideEvent('chat');
       if (this.identity !== identity) return;
       if (this.drafts.get(channel)?.text === text) this.drafts.delete(channel);
       if (this.channel === channel && this.input.value === text) { this.input.value = ''; this.retry = null; }
