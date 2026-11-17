@@ -1,5 +1,6 @@
 // The hand of a player character: what it can play, what playing it costs and how Powers move
 // between Vault and Loadout. Pure rules (Corebook 12.06, ch. 7 and 18); the hand UI draws it.
+import { availablePowers } from './advancement.js';
 const text = value => value == null ? '' : String(value);
 const lower = value => text(value).trim().toLowerCase();
 const fieldsOf = token => token?.sourceCharacter?.document?.fields || token?.sheetFields || {};
@@ -82,7 +83,7 @@ export function archivePackages(token) {
   return [...found.values()];
 }
 
-const powerCard = (power, zone, sheet = {}) => {
+export const powerCard = (power, zone, sheet = {}) => {
   const type = power.t || sheet.type || 'Power', passive = /passive/i.test(type) || /long-term project/i.test(type);
   return {
     id: `${zone}:${slug(power.n)}`, kind: zone === 'loadout' ? 'power' : zone, zone, name: power.n,
@@ -221,6 +222,20 @@ export function recallPower(source, data, vaultName, { mode = 'long', replace = 
   });
   f.a_vault = nextVault.map(name => { const p = byName(data.powers, name); return p ? `${p.d} · L${p.l} · ${p.n}` : name; }).join('\n');
   return { token, cost, entered: incoming.n, left: leaving, summary: `Recall (${RECALL_MODES[mode].name}): ${incoming.n} entra en el Loadout${leaving ? `; ${leaving} pasa al Vault` : ''}. ${[cost.stress && `${cost.stress} Stress`, cost.hope && `${cost.hope} Hope`, cost.action && 'Acción'].filter(Boolean).join(' + ') || 'Sin coste'}.` };
+}
+
+// Learning a Power: it enters the Vault. Only Powers within reach can be taken: the character's
+// Domains (and a multiclass Domain at half level), up to its level, not already known.
+export const powersInReach = (token, data) => availablePowers(token, data, Number(token?.level) || 1);
+export function learnPower(source, data, name) {
+  const token = structuredClone(source), f = writable(token);
+  if (token.path === 'Sleeping') throw new Error('Los personajes Sleeping no tienen Vault ni Loadout.');
+  const power = byName(data.powers, name);
+  if (!power) throw new Error('Poder desconocido.');
+  if (!powersInReach(token, data).some(p => lower(p.n) === lower(power.n))) throw new Error(`${power.n} no está a tu alcance: fuera de tus Dominios, por encima de tu nivel o ya lo conoces.`);
+  const lines = text(f.a_vault).split('\n').filter(line => line.trim());
+  f.a_vault = [...lines, `${power.d} · L${power.l} · ${power.n}`].join('\n');
+  return { token, learned: power.n, summary: `${power.n} (${power.d}, nivel ${power.l}) entra en el Vault.` };
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -14,6 +14,8 @@ import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
 import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from './attackFlow.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
+import { cardData, loadCardData } from './cardData.js';
+import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
 import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses, damageDicePools, honedEdgeOf } from './equipment.js';
 
 export class DiceRollerSidebar {
@@ -1105,7 +1107,10 @@ export class DiceRollerSidebar {
     const subtraitMod = subtraitId ? (actor.subtraits?.[subtraitId] ?? 0) : 0;
     // An attack is a Trait Roll against the target's Evasion; range may add Disadvantage.
     const dc = attack ? attack.evasion : parseInt(this.container.querySelector('#dice_dc_select').value, 10);
-    const edge = netEdge(this.container.querySelector('#dice_advantage').checked, this.container.querySelector('#dice_disadvantage').checked || !!attack?.disadvantage);
+    // Worn armor or augmentations outside the character's training: Disadvantage (an attack
+    // already counted them, with its weapon).
+    const gear = !attack && actor.isPlayer !== false && actor.id ? await this.gearCheck(actor) : { disadvantage: false, text: '', worn: [] };
+    const edge = netEdge(this.container.querySelector('#dice_advantage').checked, this.container.querySelector('#dice_disadvantage').checked || !!attack?.disadvantage || gear.disadvantage);
     const hasAdvantage = edge.advantage;
     const hasDisadvantage = edge.disadvantage;
     const useResolve = this.container.querySelector('#dice_use_resolve').checked;
@@ -1254,11 +1259,34 @@ export class DiceRollerSidebar {
 
     this.lastResult = result;
     this.showResult(result);
+    const payout = this.container.querySelector('#outcome_payout');
+    if (payout && gear.text) payout.textContent = `${payout.textContent}${gear.text}`;
+    // Failure with Fear: if the character's gear took part, the consequence can be the gear's.
+    if (!attack && result.resultType === 'FAILURE_WITH_FEAR' && gear.worn?.length) {
+      const named = gear.worn.slice(0, 3).map(row => row.name).filter(Boolean).join(', ');
+      const advice = `Si intervino tu equipo (${named}), se recomienda que la consecuencia del Failure with Fear sea suya: el arma se encasquilla, la armadura pierde el sellado, el aumento falla o el objeto se pierde.`;
+      if (payout) payout.textContent = `${payout.textContent} ${advice}`;
+    }
     return result;
   }
 
   // The whole attack: declare (weapon, target, range), roll against Evasion and, only on a
   // hit, work out the damage. Applying it stays a separate step so the defender can spend armor.
+  // Gear outside the character's Technology Access (class, level): the weapon in hand, the drone
+  // it operates, and worn armor or installed augmentations, which are always in use. Any of them
+  // means Disadvantage (table rule, 17 Nov 2026).
+  async gearCheck(token, { weapon = null, drone = null } = {}) {
+    if (!token || token.isPlayer === false) return { disadvantage: false, text: '', worn: [] };
+    const data = cardData() || await loadCardData().catch(() => null);
+    if (!data) return { disadvantage: false, text: '', worn: [] };
+    const notes = [];
+    if (weapon) { const check = competence(weapon, token, data); if (!check.ok) notes.push(`${weapon.name}: ${check.reason}`); }
+    if (drone) { const check = droneCompetence(drone, token, data); if (!check.ok) notes.push(`${drone.name}: ${check.reason}`); }
+    const inventory = tokenInventory(token);
+    for (const gear of gearOutsideCompetence(token, { weapons: [], items: inventory.items }, data).filter(g => g.kind === 'armor' || g.kind === 'augment')) notes.push(`${gear.name}: ${gear.reason}`);
+    return { disadvantage: notes.length > 0, text: notes.length ? ` Fuera de competencia (Desventaja): ${notes.join(' · ')}` : '', worn: inventory.items };
+  }
+
   async executeAttack() {
     const q = id => this.container.querySelector(id);
     const attacker = this.currentActor || store.getSelectedToken();
@@ -1290,14 +1318,17 @@ export class DiceRollerSidebar {
       + (gap.blocked ? ' ⚠️ Hay un muro o una puerta cerrada entre atacante y objetivo: línea de tiro bloqueada.' : '');
     if (!range.allowed) { show('—', 'FUERA DE ALCANCE', `${where} ${range.reason} Acércate o cambia de arma.`, 'miss'); notify(range.reason, 'error'); return { hit: false, blocked: true, band }; }
 
-    let hit, critical, total, detail, rolled3D = false;
+    let hit, critical, total, detail, rolled3D = false, fearAdvice = '';
+    const gear = (attacker.isPlayer !== false || drone) ? await this.gearCheck(drone ? operator : attacker, { weapon: drone ? null : weapon, drone: drone ? attacker : null }) : { disadvantage: false, text: '' };
     if (attacker.isPlayer !== false || drone) {
       const traitId = weaponTraitId(weapon);
       if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
-      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage || !!command?.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '' });
+      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '' });
       if (!result) return { hit: false, band };
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
       detail = `${checkMath(result)}.`;
+      // Failure with Fear on an attack: the consequence is best taken from the weapon (or drone).
+      if (result.resultType === 'FAILURE_WITH_FEAR') fearAdvice = drone ? failureWithFearAdvice('drone', attacker.name) : weapon ? failureWithFearAdvice('weapon', weapon.name, weapon.features) : '';
       rolled3D = this.can3D();
     } else {
       audio.playDiceRoll();
@@ -1322,10 +1353,14 @@ export class DiceRollerSidebar {
       store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'ROLL', sender: 'Keeper', title: `Ataque · ${attacker.name}`, details: summary });
       if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: attacker.name, text: summary, channel: 'table' }));
     }
-    const rangeNote = (range.disadvantage ? ` ${range.reason}` : '') + (drone ? ` Tira ${operator.name}, operador del dron.${command.disadvantage ? ' ' + command.reason : ''}` : '');
+    const rangeNote = (range.disadvantage ? ` ${range.reason}` : '') + (drone ? ` Tira ${operator.name}, operador del dron.${command.disadvantage ? ' ' + command.reason : ''}` : '') + (gear.text || '');
     // Bear Down after a missed attack may still carry it over the Evasion (applyBearDown).
     this.lastAttack = { actorId: attacker.id, rollerId: (attacker.isPlayer !== false || drone) ? (operator?.id || attacker.id) : null, evasion, hit, where, rangeNote, detail };
-    if (!hit) { show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.`, 'miss'); return { hit: false, critical: false, total, band }; }
+    if (!hit) {
+      show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.${fearAdvice ? ` ${fearAdvice}` : ''}`, 'miss');
+      if (fearAdvice) notify(fearAdvice);
+      return { hit: false, critical: false, total, band };
+    }
     show(total, critical ? 'CRÍTICO' : 'IMPACTO', `${where}${rangeNote} ${detail} ${critical ? 'Crítico: impacta siempre.' : `Alcanza la Evasion ${evasion}.`} Daño calculado abajo.`, critical ? 'crit' : 'hit');
     q('#dmg_is_critical').checked = critical;
     // Let the table read the attack before the damage dice replace it.

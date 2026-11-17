@@ -4,6 +4,8 @@ import { escapeHTML as esc, sanitizeHTML, notify } from './ui.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { newId } from './persistence.js';
 import { network } from './networkManager.js';
+import { cardData, loadCardData } from './cardData.js';
+import { characterAccess, competence } from './techAccess.js';
 import {
   filterEquipmentCatalog,
   EQUIPMENT_SOURCES,
@@ -64,6 +66,8 @@ export function openEquipmentCatalog(tokenId, onEquipped = null) {
       </label>
     </div>
 
+    <label class="equip-check equip-mine"><input type="checkbox" data-catalog-mine checked /> Solo lo que puedo usar (clase, nivel y Technology Access)</label>
+    <p class="dossier-muted equip-access" data-catalog-access></p>
     <div class="equipment-catalog-results" style="max-height: 440px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;"></div>
     
     <footer class="dossier-footer" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
@@ -75,12 +79,16 @@ export function openEquipmentCatalog(tokenId, onEquipped = null) {
   const resultsContainer = modal.querySelector('.equipment-catalog-results');
   const countText = modal.querySelector('.catalog-count-text');
 
+  let onlyMine = true;
   function renderList() {
+    const data = cardData(), access = characterAccess(token, data);
+    modal.querySelector('[data-catalog-access]').textContent = accessLine(access);
+    const check = item => competence(item, token, data, access);
     const items = filterEquipmentCatalog({
       source: currentSource,
       category: currentCategory,
       query: searchQuery
-    });
+    }).filter(item => !onlyMine || check(item).ok);
 
     countText.textContent = `${items.length} elementos encontrados`;
 
@@ -115,7 +123,7 @@ export function openEquipmentCatalog(tokenId, onEquipped = null) {
                 </span>
                 ${item.species ? `<span style="font-size: 10px; color: #fbbf24; font-weight: 600;">[${esc(item.species)}]</span>` : ''}
               </div>
-              <h4 style="margin: 0; color: #fff; font-size: 13px;">${esc(item.name)}</h4>
+              <h4 style="margin: 0; color: #fff; font-size: 13px;">${esc(item.name)} ${outsideBadge(check(item))}</h4>
             </div>
             <button class="hud-btn hud-btn-xs hud-btn-primary" type="button" data-equip-id="${esc(item.id)}" style="white-space: nowrap;">
               ➕ Equipar
@@ -200,6 +208,8 @@ export function openEquipmentCatalog(tokenId, onEquipped = null) {
   };
 
   modal.querySelector('[data-close-catalog]').onclick = () => modal.remove();
+  modal.querySelector('[data-catalog-mine]').onchange = event => { onlyMine = event.target.checked; renderList(); };
+  if (!cardData()) loadCardData().then(() => { if (modal.isConnected) renderList(); }).catch(() => {});
 
   renderList();
   return modal;
@@ -273,12 +283,19 @@ const options = (list, value) => [...new Set([...(value && !list.includes(value)
 
 // The equipment tab: everything is done in place. Search and add from the catalog, change a
 // quantity with − and +, edit or remove an entry on its own row. Each change is saved at once.
+// The character's training, in one line; and the badge for gear outside it.
+export const accessLine = access => access ? `${access.className} · nivel ${access.level} · ${access.tierName}: ${access.summary}` : '';
+export const outsideBadge = check => check && !check.ok ? `<span class="equip-outside" title="${esc(check.reason)}">Fuera de tu competencia · Desventaja</span>` : '';
+
 export function mountEquipmentPanel(container, tokenId) {
-  const ui = { query: '', category: 'all', editing: null, confirming: null, draft: null }; // draft: a new entry being written, not saved yet
+  // onlyMine: the catalog lists only what the character is trained to use (Technology Access).
+  const ui = { query: '', category: 'all', editing: null, confirming: null, draft: null, onlyMine: true }; // draft: a new entry being written, not saved yet
   container.innerHTML = sanitizeHTML(`
     <section class="equip-add">
       <label class="dossier-field"><span>Añadir equipo</span><input class="hud-input" type="search" data-equip-search placeholder="Busca un arma, armadura, objeto o aumento…" autocomplete="off" /></label>
       <div class="equip-chips" role="group" aria-label="Categoría">${CHIPS.map(([id, label]) => `<button type="button" class="equip-chip ${id === 'all' ? 'active' : ''}" data-equip-category="${id}">${label}</button>`).join('')}<span class="equip-chips-gap"></span><button type="button" class="equip-chip" data-equip-custom="weapons">+ Arma propia</button><button type="button" class="equip-chip" data-equip-custom="items">+ Objeto propio</button></div>
+      <label class="equip-check equip-mine"><input type="checkbox" data-equip-mine checked /> Solo lo que puedo usar (clase, nivel y Technology Access)</label>
+      <p class="dossier-muted equip-access" data-equip-access></p>
       <div class="equip-results" data-equip-results></div>
     </section>
     <div data-equip-lists></div>
@@ -305,9 +322,12 @@ export function mountEquipmentPanel(container, tokenId) {
     const editable = !!current() && store.canEditToken(tokenId), box = q('[data-equip-results]');
     q('[data-equip-search]').disabled = !editable;
     if (!editable || (!ui.query.trim() && ui.category === 'all')) { box.innerHTML = sanitizeHTML(editable ? '<p class="dossier-muted">Escribe un nombre o elige una categoría para ver el catálogo.</p>' : ''); return; }
-    const found = filterEquipmentCatalog({ source: 'all', category: ui.category, query: ui.query }).filter(item => item.category !== 'drone_modules'), shown = found.slice(0, 8);
-    box.innerHTML = sanitizeHTML(shown.map(item => `<div class="equip-result"><div><strong>${esc(item.name)}</strong> <em>${esc(item.tier || '')}${item.source === 'rust_and_steel' ? ' · Rust & Steel' : ''}</em><small>${esc(catalogLine(item))}</small></div><button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-equip-add="${esc(item.id)}">Añadir</button></div>`).join('')
-      + (found.length > shown.length ? `<p class="dossier-muted">${found.length - shown.length} más: escribe algo más para afinar.</p>` : '') || '<p class="dossier-muted">Nada en el catálogo con ese nombre. Puedes crearlo con «+ Arma propia» o «+ Objeto propio».</p>');
+    const token = current(), data = cardData(), access = characterAccess(token, data);
+    q('[data-equip-access]').textContent = accessLine(access);
+    const check = item => competence(item, token, data, access);
+    const found = filterEquipmentCatalog({ source: 'all', category: ui.category, query: ui.query }).filter(item => item.category !== 'drone_modules' && (!ui.onlyMine || check(item).ok)), shown = found.slice(0, 8);
+    box.innerHTML = sanitizeHTML(shown.map(item => `<div class="equip-result"><div><strong>${esc(item.name)}</strong> ${outsideBadge(check(item))} <em>${esc(item.tier || '')}${item.source === 'rust_and_steel' ? ' · Rust & Steel' : ''}</em><small>${esc(catalogLine(item))}</small></div><button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-equip-add="${esc(item.id)}">Añadir</button></div>`).join('')
+      + (found.length > shown.length ? `<p class="dossier-muted">${found.length - shown.length} más: escribe algo más para afinar.</p>` : '') || (ui.onlyMine && access ? '<p class="dossier-muted">Nada de eso entra en tu competencia. Desmarca «Solo lo que puedo usar» para verlo todo (fuera de tu competencia tiras con Desventaja).</p>' : '<p class="dossier-muted">Nada en el catálogo con ese nombre. Puedes crearlo con «+ Arma propia» o «+ Objeto propio».</p>'));
     box.querySelectorAll('[data-equip-add]').forEach(button => button.onclick = () => {
       const token = current(), item = found.find(x => x.id === button.dataset.equipAdd);
       if (!token || !item || !store.canEditToken(tokenId)) { fail('Ya no tienes control de este token.'); return; }
@@ -345,9 +365,9 @@ export function mountEquipmentPanel(container, tokenId) {
     const usable = w => editable && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(w.damage.trim());
     box.innerHTML = sanitizeHTML(`
       <h4 class="dossier-label">ARMAS · ${inventory.weapons.length}</h4>
-      <div class="equip-list">${inventory.weapons.map(w => ui.editing === w.id ? editor('weapons', w) : `<article class="equip-row"><div class="equip-main"><strong>${esc(w.name || 'Arma sin nombre')}</strong><span class="equip-damage">${esc(w.damage || 'Sin daño')}</span><em>${esc([w.trait, w.range, w.damageMode === 'final' ? 'daño final' : ''].filter(Boolean).join(' · '))}</em>${w.features ? `<small>${esc(w.features)}</small>` : ''}</div><div class="equip-actions"><button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-prepare-weapon="${esc(w.id)}" ${usable(w) ? '' : 'disabled'} title="Lleva esta arma al panel de dados para atacar">Atacar</button>${rowButtons(w, editable)}</div></article>`).join('') + (ui.draft?.kind === 'weapons' ? editor('weapons', ui.draft.row) : '') || '<p class="dossier-muted">Sin armas. Búscalas arriba o crea una con «+ Arma propia».</p>'}</div>
+      <div class="equip-list">${inventory.weapons.map(w => ui.editing === w.id ? editor('weapons', w) : `<article class="equip-row"><div class="equip-main"><strong>${esc(w.name || 'Arma sin nombre')}</strong>${outsideBadge(competence(w, token, cardData()))}<span class="equip-damage">${esc(w.damage || 'Sin daño')}</span><em>${esc([w.trait, w.range, w.damageMode === 'final' ? 'daño final' : ''].filter(Boolean).join(' · '))}</em>${w.features ? `<small>${esc(w.features)}</small>` : ''}</div><div class="equip-actions"><button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-prepare-weapon="${esc(w.id)}" ${usable(w) ? '' : 'disabled'} title="Lleva esta arma al panel de dados para atacar">Atacar</button>${rowButtons(w, editable)}</div></article>`).join('') + (ui.draft?.kind === 'weapons' ? editor('weapons', ui.draft.row) : '') || '<p class="dossier-muted">Sin armas. Búscalas arriba o crea una con «+ Arma propia».</p>'}</div>
       <h4 class="dossier-label">EQUIPO · ${inventory.items.length}</h4>
-      <div class="equip-list">${inventory.items.map(item => ui.editing === item.id ? editor('items', item) : `<article class="equip-row"><div class="equip-main"><strong>${esc(item.name || 'Objeto sin nombre')}</strong>${item.tier ? `<em>${esc(item.tier)}</em>` : ''}${item.use ? `<small>${esc(item.use)}</small>` : ''}</div><div class="equip-actions"><span class="equip-qty"><button type="button" class="hud-btn hud-btn-xs" data-equip-qty="${esc(item.id)}" data-delta="-1" ${editable ? '' : 'disabled'} aria-label="Una unidad menos de ${esc(item.name)}">−</button><b>${esc(item.quantity)}</b><button type="button" class="hud-btn hud-btn-xs" data-equip-qty="${esc(item.id)}" data-delta="1" ${editable ? '' : 'disabled'} aria-label="Una unidad más de ${esc(item.name)}">+</button></span>${rowButtons(item, editable)}</div></article>`).join('') + (ui.draft?.kind === 'items' ? editor('items', ui.draft.row) : '') || '<p class="dossier-muted">Sin objetos. Búscalos arriba o crea uno con «+ Objeto propio».</p>'}</div>`);
+      <div class="equip-list">${inventory.items.map(item => ui.editing === item.id ? editor('items', item) : `<article class="equip-row"><div class="equip-main"><strong>${esc(item.name || 'Objeto sin nombre')}</strong>${outsideBadge(competence(item, token, cardData()))}${item.tier ? `<em>${esc(item.tier)}</em>` : ''}${item.use ? `<small>${esc(item.use)}</small>` : ''}</div><div class="equip-actions"><span class="equip-qty"><button type="button" class="hud-btn hud-btn-xs" data-equip-qty="${esc(item.id)}" data-delta="-1" ${editable ? '' : 'disabled'} aria-label="Una unidad menos de ${esc(item.name)}">−</button><b>${esc(item.quantity)}</b><button type="button" class="hud-btn hud-btn-xs" data-equip-qty="${esc(item.id)}" data-delta="1" ${editable ? '' : 'disabled'} aria-label="Una unidad más de ${esc(item.name)}">+</button></span>${rowButtons(item, editable)}</div></article>`).join('') + (ui.draft?.kind === 'items' ? editor('items', ui.draft.row) : '') || '<p class="dossier-muted">Sin objetos. Búscalos arriba o crea uno con «+ Objeto propio».</p>'}</div>`);
     box.querySelectorAll('[data-prepare-weapon]').forEach(button => button.onclick = () => {
       if (!store.canEditToken(tokenId)) { notify('Ya no tienes control de este token.'); return; }
       if (!window.veilDiceRoller) { notify('El panel de dados todavía no está disponible.'); return; }
@@ -383,6 +403,7 @@ export function mountEquipmentPanel(container, tokenId) {
 
   const search = q('[data-equip-search]');
   search.oninput = () => { ui.query = search.value; renderResults(); };
+  q('[data-equip-mine]').onchange = event => { ui.onlyMine = event.target.checked; renderResults(); };
   container.querySelectorAll('[data-equip-category]').forEach(button => button.onclick = () => {
     ui.category = button.dataset.equipCategory;
     container.querySelectorAll('[data-equip-category]').forEach(b => b.classList.toggle('active', b === button));
@@ -401,4 +422,6 @@ export function mountEquipmentPanel(container, tokenId) {
   const unsubscribe = store.subscribe((_, keys) => { if (!container.isConnected) { unsubscribe(); return; } if (keys.some(k => ['tokens', 'userRole', 'isConnected'].includes(k))) { if (!ui.editing || !container.contains(document.activeElement)) renderLists(); renderResults(); } });
   const observer = new MutationObserver(() => { if (!container.isConnected) { unsubscribe(); observer.disconnect(); } }); observer.observe(document.body, { childList:true });
   renderResults(); renderLists();
+  // The class tables come with the rules data, fetched on demand.
+  if (!cardData()) loadCardData().then(() => { if (container.isConnected) { renderResults(); renderLists(); } }).catch(() => {});
 }

@@ -6,7 +6,7 @@ import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
 import { cardData } from './cardData.js';
 import { handoffControl } from './drones.js';
-import { characterCards, playCard, recallPower, costLabel, CARD_KINDS } from './loadoutCards.js';
+import { characterCards, playCard, recallPower, learnPower, costLabel, CARD_KINDS } from './loadoutCards.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
 // The table that resolves an action (the Keeper's, local or hosting) applies it even while its
@@ -42,7 +42,7 @@ function resolveGameAction(action, store) {
   }
   // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
   // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
-  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL') {
+  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN') {
     const data = cardData();
     if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
@@ -51,6 +51,13 @@ function resolveGameAction(action, store) {
     const apply = patch => store.updateToken(actor.id, patch);
     const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
     const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
+    if (action.type === 'CARD_LEARN') {
+      const result = learnPower(actor, data, String(action.name ?? ''));
+      apply(sheet(result.token));
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: nuevo Poder`, details: result.summary };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, outcomeTitle: 'PODER AÑADIDO', summary: result.summary, learned: result.learned };
+    }
     if (action.type === 'CARD_RECALL') {
       const result = recallPower(actor, data, String(action.name ?? ''), { mode: action.mode, replace: String(action.replace ?? '') });
       apply({ ...resources(result.token), ...sheet(result.token) });

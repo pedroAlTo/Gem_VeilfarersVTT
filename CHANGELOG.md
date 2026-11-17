@@ -1,10 +1,35 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.14.4**.
-Paquete: `VeilFarers_VTT_v2.14.4.zip`.
+Versión actual del VTT: **v2.15.0**.
+Paquete: `VeilFarers_VTT_v2.15.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.15.0] — 2026-11-17
+
+V2 · Competencia tecnológica y catálogo de Poderes
+
+### Equipo según la competencia
+
+- El buscador de equipo de la ficha y el catálogo completo muestran primero solo lo que el personaje puede usar según su clase, su nivel y su Technology Access (tablas de cada clase del Corebook): familias de armas, peso de armadura, tipo de aumento y Tech Tier. La casilla «Solo lo que puedo usar» viene marcada; al desmarcarla se ve todo.
+- Encima del buscador aparece el entrenamiento del personaje, por ejemplo «Mystic · nivel 1 · Common (TT1): Light Armor, Melee/Pistols, Neural/Physical Augments». Military (TT2) llega a nivel 2 y Experimental (TT3) a nivel 5; el avance «+1 Technology Access Level» lo sube.
+- Lo que queda fuera de la competencia lleva la etiqueta «Fuera de tu competencia · Desventaja», también en el inventario.
+
+### Desventaja fuera de la competencia
+
+- Usar algo fuera de la competencia tira siempre con Desventaja: el arma del ataque, el dron que se opera (su Grado por encima del acceso del operador) y la armadura o los aumentos que lleva puestos, que cuentan en cualquier tirada. El detalle del ataque o el resultado de la tirada dicen por qué.
+- Failure with Fear al atacar: se recomienda que la consecuencia sea del arma (se encasquilla, se queda sin munición o se cae) o, con un dron, tirar la Drone Complication. En otras tiradas se sugiere que la consecuencia sea del equipo que intervino.
+- Los PNJ y adversarios no tienen estas restricciones.
+
+### Catálogo de Poderes
+
+- El cajón del mazo muestra, además del Loadout y el Vault, todos los Poderes del juego, con filtro por Dominio. «Solo los de mi acceso» viene marcado: los Poderes de los Dominios del personaje hasta su nivel que aún no conoce. Desmarcado, se ven los 147; los que no están a su alcance aparecen atenuados.
+- Un Poder a su alcance se puede leer y añadir al Vault; la mesa del Keeper lo valida.
+
+### Corrección
+
+- Un jugador conectado a una sala online no podía jugar cartas ni hacer Recall: la mesa del Keeper rechazaba esas acciones («This character is not assigned to you»). Ya se resuelven.
 
 ## [2.14.4] — 2026-11-17
 

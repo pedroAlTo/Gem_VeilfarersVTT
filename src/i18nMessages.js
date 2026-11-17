@@ -325,6 +325,8 @@ export const MESSAGE_PAIRS = [
   ['Faltan los datos de la nave.', 'Missing starship data.'],
   // Guide
   ["Puedes volver a ver los primeros pasos desde AYUDA.", "You can see the first steps again from HELP."],
+  // Technology Access (v2.15.0)
+  ["Poder desconocido.", "Unknown Power."],
 ];
 
 export const MESSAGE_PATTERNS = [
@@ -407,4 +409,8 @@ export const MESSAGE_PATTERNS = [
   ['Campaña guardada no disponible: {a} Los datos originales no se han sobrescrito.', 'Saved campaign unavailable: {a} Original data has not been overwritten.'],
   ['Error al importar: {a}', 'Import failed: {a}'],
   ['{a} · coste aplicado. Consulta el registro de la sesión para ver su efecto.', '{a} · cost applied. See the session log for its effect.'],
+  ["{a} no está a tu alcance: fuera de tus Dominios, por encima de tu nivel o ya lo conoces.", "{a} is not within your reach: outside your Domains, above your level or already known."],
+  ["{a} ({b}, nivel {c}) entra en el Vault.", "{a} ({b}, level {c}) enters the Vault."],
+  ["Failure with Fear con «{_a}»: se recomienda que la consecuencia sea del arma: se encasquilla, se queda sin munición (una Acción y munición para recargar) o se cae.", "Failure with Fear with “{_a}”: the consequence is best taken from the weapon: it jams, runs dry (an Action and ammunition to reload) or is dropped."],
+  ["Failure with Fear del operador con «{_a}»: se recomienda tirar la Drone Complication (d12) o dejar un módulo offline hasta una Acción y Knowledge (Tech) DC 10.", "Operator’s Failure with Fear with “{_a}”: roll the Drone Complication (d12) or take a module offline until an Action and Knowledge (Tech) DC 10."],
 ];

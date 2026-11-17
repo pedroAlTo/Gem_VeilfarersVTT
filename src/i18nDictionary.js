@@ -1146,6 +1146,14 @@ export const PAIRS = [
   ["Bear Down · daño", "Bear Down · damage"],
   // Ranged weapons at Melee (v2.14.4)
   ["Arma a distancia larga contra un objetivo en Melee: Desventaja (las armas cortas, como las pistolas, no la tienen).", "Long ranged weapon against a target in Melee: Disadvantage (short weapons such as pistols do not have it)."],
+  // Technology Access and the Powers catalog (v2.15.0)
+  ["Solo lo que puedo usar (clase, nivel y Technology Access)", "Only what I can use (class, level and Technology Access)"],
+  ["Fuera de tu competencia · Desventaja", "Outside your training · Disadvantage"],
+  ["Nada de eso entra en tu competencia. Desmarca «Solo lo que puedo usar» para verlo todo (fuera de tu competencia tiras con Desventaja).", "None of that is within your training. Untick “Only what I can use” to see everything (outside your training you roll with Disadvantage)."],
+  ["Solo los de mi acceso (tus Dominios, hasta tu nivel)", "Only those I can access (your Domains, up to your level)"],
+  ["No hay Poderes nuevos a tu alcance ahora mismo. Desmarca la casilla para verlos todos.", "No new Powers within your reach right now. Untick the box to see them all."],
+  ["Leer", "Read"],
+  ["Añadir al Vault", "Add to Vault"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1215,4 +1223,9 @@ export const PATTERNS = [
   ["{a} — ya subió en este Tier", "{a} — already raised this Tier"],
   ["{a} = +{b} al daño: {c} ({d}).", "{a} = +{b} to damage: {c} ({d})."],
   ["{a} = +{b} al daño.", "{a} = +{b} to damage."],
+  ["TODOS LOS PODERES · {a}", "ALL POWERS · {a}"],
+  ["{a}: puedes añadirlo a tu Vault.", "{a}: you can add it to your Vault."],
+  ["{a}: ya lo conoces.", "{a}: you already know it."],
+  ["{a}: fuera de tu acceso (otro Dominio o nivel superior).", "{a}: outside your access (another Domain or a higher level)."],
+  ["{_a} · nivel {b} · {_c}: {_d}", "{_a} · level {b} · {_c}: {_d}"],
 ];

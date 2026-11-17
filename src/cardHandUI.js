@@ -6,7 +6,7 @@ import { network } from './networkManager.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
 import { cardData, loadCardData } from './cardData.js';
-import { characterCards, keeperCards, costLabel, CARD_KINDS, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic } from './loadoutCards.js';
+import { characterCards, keeperCards, costLabel, CARD_KINDS, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach } from './loadoutCards.js';
 
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
 const keeperView = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
@@ -324,7 +324,9 @@ export class CardHand {
     const drawer = document.createElement('section');
     drawer.id = 'card_deck_drawer'; drawer.className = 'card-drawer'; drawer.setAttribute('aria-label', 'Mazo de cartas');
     this.root.parentElement.append(drawer);
-    const choice = { vault: selected, replace: '', mode: 'scene' };
+    // learn: a Power of the catalog picked to add to the Vault. onlyMine: the catalog shows only
+    // what this character can take (its Domains, up to its level); unticked, every Power.
+    const choice = { vault: selected, replace: '', mode: 'scene', learn: '', onlyMine: true, domain: 'all' };
     const draw = () => {
       const live = store.state.tokens.find(t => t.id === this.tokenId), data = cardData();
       if (!live || !data) { drawer.remove(); return; }
@@ -337,17 +339,42 @@ export class CardHand {
         : !picked ? '1 · Elige la carta del Vault que quieres preparar.'
         : full && !choice.replace ? `2 · El Loadout está lleno (${cap}): elige la carta que pasa al Vault.`
         : `Listo: ${picked.name} entra${choice.replace ? ` y ${choice.replace} sale` : ''}. Coste: ${price}.`;
+      // The whole catalog of Powers, so every Power can be read; only those in reach can be taken.
+      const known = new Set(cards.filter(c => c.zone === 'vault' || c.kind === 'power').map(c => c.name.toLowerCase()));
+      const reach = new Set(powersInReach(live, data).map(p => p.n.toLowerCase()));
+      const domains = [...new Set(data.powers.map(p => p.d))];
+      const catalog = data.powers.filter(p => (choice.domain === 'all' || p.d === choice.domain) && (!choice.onlyMine || reach.has(p.n.toLowerCase())))
+        .sort((a, b) => a.d.localeCompare(b.d) || a.l - b.l || a.n.localeCompare(b.n));
+      if (!catalog.some(p => p.n === choice.learn)) choice.learn = '';
+      const learnable = choice.learn && reach.has(choice.learn.toLowerCase()) && !known.has(choice.learn.toLowerCase());
+      const catalogCard = p => { const card = powerCard(p, 'vault'), state = known.has(p.n.toLowerCase()) ? 'known' : reach.has(p.n.toLowerCase()) ? '' : 'locked';
+        return `<button type="button" class="vf-card vf-card-mini ${state} ${choice.learn === p.n ? 'chosen' : ''}" data-drawer-catalog="${e(p.n)}" title="${e(p.n)} · ${e(p.d)} L${p.l}${state === 'known' ? ' · ya lo conoces' : state === 'locked' ? ' · fuera de tu acceso' : ''}">${cardFace(card)}</button>`; };
       const mini = (card, zone) => `<button type="button" class="vf-card vf-card-mini ${(zone === 'vault' ? choice.vault : choice.replace) === card.name ? 'chosen' : ''}" data-drawer-${zone}="${e(card.name)}" title="${e(card.name)} · RC ${card.rc}">${cardFace(card)}</button>`;
       drawer.innerHTML = sanitizeHTML(`
         <header class="card-drawer-head"><strong>MAZO</strong><div class="card-drawer-modes" role="group" aria-label="Momento del Recall">${Object.entries(RECALL_MODES).map(([id, m]) => `<button type="button" class="equip-chip ${id === choice.mode ? 'active' : ''}" data-drawer-mode="${id}" title="${e(m.text)}">${e(m.name)}</button>`).join('')}</div><button type="button" class="card-drawer-close" data-drawer-close aria-label="Cerrar el mazo">×</button></header>
         <p class="card-drawer-step">${e(step)}</p>
         <h4>LOADOUT · ${loadout.length}/${cap}</h4><div class="card-drawer-row">${loadout.map(c => mini(c, 'loadout')).join('') || '<p class="dossier-muted">Sin Poderes preparados.</p>'}</div>
         <h4>VAULT · ${vault.length}</h4><div class="card-drawer-row">${vault.map(c => mini(c, 'vault')).join('') || '<p class="dossier-muted">Vacío.</p>'}</div>
+        <h4>TODOS LOS PODERES · ${catalog.length}</h4>
+        <div class="card-drawer-catalog-filters"><label class="equip-check"><input type="checkbox" data-drawer-mine ${choice.onlyMine ? 'checked' : ''} /> Solo los de mi acceso (tus Dominios, hasta tu nivel)</label>
+          <div class="equip-chips" role="group" aria-label="Dominio">${['all', ...domains].map(d => `<button type="button" class="equip-chip ${choice.domain === d ? 'active' : ''}" data-drawer-domain="${e(d)}">${d === 'all' ? 'Todos' : e(d)}</button>`).join('')}</div></div>
+        <div class="card-drawer-row card-drawer-catalog">${catalog.map(catalogCard).join('') || '<p class="dossier-muted">No hay Poderes nuevos a tu alcance ahora mismo. Desmarca la casilla para verlos todos.</p>'}</div>
+        ${choice.learn ? `<div class="card-drawer-learn"><span>${e(choice.learn)}: ${learnable ? 'puedes añadirlo a tu Vault.' : known.has(choice.learn.toLowerCase()) ? 'ya lo conoces.' : 'fuera de tu acceso (otro Dominio o nivel superior).'}</span><button type="button" class="hud-btn hud-btn-xs" data-drawer-read>Leer</button><button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-drawer-learn ${learnable ? '' : 'disabled'}>Añadir al Vault</button></div>` : ''}
         <p class="dossier-error" role="alert" data-drawer-error></p>
         <footer class="card-drawer-foot"><span class="dossier-muted">${e(RECALL_MODES[choice.mode].text)}</span><button type="button" class="hud-btn hud-btn-primary" data-drawer-recall ${picked && (!full || choice.replace) ? '' : 'disabled'}>Recall${price ? ` · ${e(price)}` : ''}</button></footer>`);
       drawer.querySelector('[data-drawer-close]').onclick = () => drawer.remove();
       drawer.querySelectorAll('[data-drawer-mode]').forEach(b => b.onclick = () => { choice.mode = b.dataset.drawerMode; draw(); });
       drawer.querySelectorAll('[data-drawer-vault]').forEach(b => b.onclick = () => { choice.vault = choice.vault === b.dataset.drawerVault ? '' : b.dataset.drawerVault; draw(); });
+      drawer.querySelector('[data-drawer-mine]').onchange = event => { choice.onlyMine = event.target.checked; draw(); };
+      drawer.querySelectorAll('[data-drawer-domain]').forEach(b => b.onclick = () => { choice.domain = b.dataset.drawerDomain; draw(); });
+      drawer.querySelectorAll('[data-drawer-catalog]').forEach(b => b.onclick = () => { choice.learn = choice.learn === b.dataset.drawerCatalog ? '' : b.dataset.drawerCatalog; draw(); });
+      drawer.querySelector('[data-drawer-read]')?.addEventListener('click', () => { const p = data.powers.find(x => x.n === choice.learn); if (p) this.inspect(powerCard(p, 'vault')); });
+      drawer.querySelector('[data-drawer-learn]')?.addEventListener('click', async () => {
+        try {
+          const result = await network.requestAction({ type: 'CARD_LEARN', actorId: live.id, name: choice.learn });
+          notify(result.summary); choice.learn = ''; draw();
+        } catch (error) { drawer.querySelector('[data-drawer-error]').textContent = error.message; }
+      });
       // A Loadout card is only picked to make room; with room to spare it is just read.
       drawer.querySelectorAll('[data-drawer-loadout]').forEach(b => b.onclick = () => { if (full && picked) { choice.replace = choice.replace === b.dataset.drawerLoadout ? '' : b.dataset.drawerLoadout; draw(); } else this.inspect(loadout.find(c => c.name === b.dataset.drawerLoadout)); });
       drawer.querySelector('[data-drawer-recall]').onclick = async () => {

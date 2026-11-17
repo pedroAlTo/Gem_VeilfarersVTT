@@ -788,7 +788,7 @@ export class NetworkManager {
   async performAction(action) {
     const { performGameAction } = await import('./gameActions.js');
     // Card rules data is fetched on demand; the table resolving a card makes sure it is there.
-    if (action?.type === 'CARD_PLAY' || action?.type === 'CARD_RECALL') await (await import('./cardData.js')).loadCardData();
+    if (['CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN'].includes(action?.type)) await (await import('./cardData.js')).loadCardData();
     const result = performGameAction(action, this.store);
     if (result.log && result.log.visibility !== 'keeper') {
       const rollPayload = {
@@ -1082,7 +1082,9 @@ export class NetworkManager {
       try {
         if (
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
-          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION'].includes(data.action?.type)
+          // Card actions resolve here too: the table pays their costs (they were missing, so a
+          // connected player's card was refused as "not assigned").
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
         const result = await this.performAction(data.action);
