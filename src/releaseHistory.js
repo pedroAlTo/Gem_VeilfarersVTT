@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.14.1', date: '2026-11-17', title: 'V2 · Carga inicial más ligera',
+    sections: [
+      { title: 'Rendimiento', items: [
+        'La pantalla de inicio aparece antes: con una conexión de 10 Mbit/s, en 1,7 s en lugar de 3,3 s; antes de verla se descargan 0,9 MB en lugar de 2,6 MB.',
+        'El motor de dados 3D (física, WASM y texturas, varios MB) se precarga cuando la página ya ha cargado y el navegador está libre, en vez de competir con la primera pantalla. Una tirada antes de eso inicia el motor en el momento.',
+        'Los datos de reglas de las cartas (unos 375 KB) se descargan solo cuando hay una mano de jugador que mostrar; la mesa del Keeper los carga al resolver la carta de un jugador conectado.',
+        'Retratos de token a 512 px (se ven como mucho a unos 300 px): de 24,7 MB a 6,2 MB en total, unos 60 KB cada uno. Mapas de ejemplo de 1,9 MB a 0,5 MB. Mismas rutas y sin diferencia visible.',
+      ] },
+    ],
+  },
+  {
     version: '2.14.0', date: '2026-11-17', title: 'V2 · Guía de primer uso para jugadores y Keeper',
     sections: [
       { title: 'Guía de primer uso', items: [

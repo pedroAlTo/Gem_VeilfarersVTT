@@ -829,34 +829,29 @@ function showResults(data){
   closeTimer=setTimeout(hide,9800);
 }
 
-async function preload(){
-  if (typeof window === 'undefined' || typeof document === 'undefined') return null;
-  try {
-    const audio = new Audio('/assets/dados_1.mp3');
-    audio.preload = 'auto';
-    audio.load();
-  } catch (_) {}
-
-  if (document.readyState === 'loading') {
-    return new Promise(resolve => {
-      document.addEventListener('DOMContentLoaded', async () => {
-        try {
-          const res = await init();
-          resolve(res);
-        } catch (e) {
-          console.warn('[VeilFarers 3D Dice] Preload deferred warning:', e);
-          resolve(null);
-        }
-      }, { once: true });
-    });
-  }
-
-  try {
-    return await init();
-  } catch (err) {
-    console.warn('[VeilFarers 3D Dice] Preload immediate warning:', err);
-    return null;
-  }
+// The engine, physics, WASM and dice textures weigh several MB. They are warmed up once the
+// page has loaded and the browser is idle, so they never compete with the first screen; a roll
+// before that simply initialises the engine on demand (init() is shared).
+let preloading=null;
+function whenIdle(){
+  return new Promise(resolve=>{
+    const idle=()=>{ if (typeof window.requestIdleCallback==='function') window.requestIdleCallback(()=>resolve(),{timeout:4000}); else setTimeout(resolve,1500); };
+    if (document.readyState==='complete') idle(); else window.addEventListener('load',idle,{once:true});
+  });
+}
+function preload(){
+  if (typeof window === 'undefined' || typeof document === 'undefined') return Promise.resolve(null);
+  if (preloading) return preloading;
+  preloading=whenIdle().then(async()=>{
+    try {
+      const audio = new Audio('/assets/dados_1.mp3');
+      audio.preload = 'auto';
+      audio.load();
+    } catch (_) {}
+    try { return await init(); }
+    catch (err) { console.warn('[VeilFarers 3D Dice] Preload warning:', err); return null; }
+  });
+  return preloading;
 }
 
 window.VFDice3D={

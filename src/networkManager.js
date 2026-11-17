@@ -787,6 +787,8 @@ export class NetworkManager {
   }
   async performAction(action) {
     const { performGameAction } = await import('./gameActions.js');
+    // Card rules data is fetched on demand; the table resolving a card makes sure it is there.
+    if (action?.type === 'CARD_PLAY' || action?.type === 'CARD_RECALL') await (await import('./cardData.js')).loadCardData();
     const result = performGameAction(action, this.store);
     if (result.log && result.log.visibility !== 'keeper') {
       const rollPayload = {

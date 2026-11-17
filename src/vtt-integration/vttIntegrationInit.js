@@ -16,19 +16,14 @@ export function initVeilfarersApp(options = {}) {
   // 1. Inyectar de inmediato el contenedor DOM para Dados 3D y HUDs
   injectOverlayAndHudDOM();
 
-  // 2. Precalentar inmediatamente el motor 3D de dados en segundo plano durante la pantalla de login
+  // 2. Precalentar el motor 3D de dados cuando la página ya ha cargado y el navegador está libre
+  // (VFDice3D.preload espera a ese momento), para no competir con la primera pantalla.
   if (typeof window !== 'undefined') {
-    if (window.VFDice3D && typeof window.VFDice3D.preload === 'function') {
-      window.VFDice3D.preload().catch(() => {});
-    }
-    try {
-      const audioPreload = new Audio('/assets/dados_1.mp3');
-      audioPreload.preload = 'auto';
-      audioPreload.load();
-    } catch {}
-
     const diceEngine = new VeilfarersDiceEngine('#vf-dice-canvas-container');
-    diceEngine.init().then(() => {
+    // The dice script may not have run yet: wait for the page load, then let it decide when.
+    const loaded = new Promise(resolve => (document.readyState === 'complete' ? resolve() : window.addEventListener('load', resolve, { once: true })));
+    const warm = loaded.then(() => (typeof window.VFDice3D?.preload === 'function' ? window.VFDice3D.preload() : null));
+    warm.then(() => diceEngine.init()).then(() => {
       console.log('[Veilfarers 3D Dice] Motor 3D precalentado con éxito durante la pantalla de login.');
     }).catch((err) => {
       console.warn('[Veilfarers 3D Dice] Precalentamiento de dados diferido:', err);

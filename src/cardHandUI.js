@@ -75,7 +75,6 @@ export class CardHand {
     this.root.id = 'card_hand_root'; this.root.className = 'card-hand hidden';
     quickbar.parentElement.append(this.root);
     this.unsubscribe = store.subscribe(() => this.render());
-    loadCardData().then(() => this.render()).catch(error => console.warn('[CardHand] rules data', error));
     this.render();
   }
 
@@ -91,6 +90,8 @@ export class CardHand {
   render() {
     if (keeperView()) return this.renderKeeper();
     const token = this.owner(), data = cardData();
+    // The rules data (~375 KB) is only fetched once a player character's hand has to be shown.
+    if (token && !data) loadCardData().then(() => this.render()).catch(error => console.warn('[CardHand] rules data', error));
     if (!token || !data) { this.signature = ''; this.tokenId = null; this.root.classList.add('hidden'); this.quickbar.classList.remove('with-hand'); return; }
     const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts });
     const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, cards.map(c => c.id)]);
