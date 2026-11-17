@@ -120,6 +120,9 @@ No son botones, pero aplican la misma idea:
 
 ## 4. Plan por fases (en V3)
 
+> **Actualizado (17 nov 2026):** el usuario prioriza al jugador. La **Fase A pasa a ser la vista del jugador** (Tirar y Atacar en un clic, chat con aviso, el resto en «⋯» y «Más…»; ver `PERSONAS_Y_PRIORIDADES.md`, sección 2b). Las fases de abajo pasan a ser B–E y se aplican después, sobre todo a la vista del Keeper.
+
+
 1. **Fase A**: el componente `GroupMenu` y su aplicación a **herramientas (3.2) y pestañas (3.3)**. Es lo que más espacio libera, y sirve para validar la regla jugando.
 2. **Fase B**: **cabecera (3.1)** y **panel de dados (3.4)**.
 3. **Fase C**: **barra del personaje (3.5)**, **ficha (3.6)**, **Reparto (3.7)** y **relojes en tira (3.8)**.

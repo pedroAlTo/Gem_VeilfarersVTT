@@ -3,6 +3,17 @@
 > Complementa `PROPUESTA.md`. Aplica la regla **3 a la vista + un desplegable con 5 + «Más…» con el resto** a cada función, ordenada por quién la usa y con qué frecuencia.
 > Idioma y audio pasan a estar **dentro de Cuenta**, como pediste.
 
+## 0. Prioridad fijada por el usuario (17 nov 2026)
+
+> «La cosa cambia de director a jugador. Es más importante el jugador, porque es el que debería controlar menos y centrarse en jugar; el Keeper suele aceptar complejidad, la bajaremos, pero primero el jugador. Como jugador espero encontrar una forma sencilla de tirar mis habilidades y usar las armas. El resto es accesorio en un 80 % de las veces. El chat es importante en algunos casos.»
+
+Consecuencias para todo lo que sigue:
+
+1. **Se simplifica primero la vista del jugador**; la del Keeper, después.
+2. Para el jugador, **P1 son solo dos cosas: tirar un Trait (sus habilidades, con sus cartas) y atacar con sus armas.** Todo lo demás baja al menos a P2.
+3. **El chat es P2 con aviso**: no ocupa sitio, pero se abre o marca un contador cuando llega un susurro o un mensaje a la mesa.
+4. Las cifras del personaje (HP, Armor, Stress, Hope/Effort) siguen a la vista porque se leen, no se pulsan; la mano de cartas y el mazo, también (decisiones 12 y 21).
+
 ## 1. Qué dicen los datos de otros VTT
 
 No hay estadísticas públicas de qué funciones se usan en Roll20, Foundry u Owlbear Rodeo. Las plataformas no las publican, y el informe de uso de Roll20 (Orr Report) dejó de salir en 2022. Lo que sí hay, y cómo lo uso:
@@ -28,7 +39,26 @@ No hay estadísticas públicas de qué funciones se usan en Roll20, Foundry u Ow
 | **J2** | **Marcos, jugador experto (Awakened)** | Lleva tiempo, optimiza su personaje. | Mazo y Recall, equipo y competencia, Bear Down, Experiencias, subir de nivel, notas por partida. | Lo encuentra, pero tras muchos clics; el mazo y el equipo están lejos. |
 | **J3** | **Iker, jugador en el móvil** | Mesa híbrida o desde el sofá; **solo móvil**. | Consultar su ficha, tirar, chat. | Pantalla pequeña; no puede arrastrar cartas con comodidad. |
 
-Peso de cada persona para priorizar (inferencia: una mesa típica tiene 1 Keeper y 3–5 jugadores): **J1 30 % · J2 25 % · K1 25 % · K2 10 % · J3 10 %.**
+Peso de cada persona para priorizar: **los jugadores primero** (sección 0). Orden de trabajo: **J1 → J3 → J2 → K1 → K2.** Lucía (J1) marca el mínimo: si ella no encuentra cómo tirar o atacar en un clic, la vista no está bien.
+
+## 2b. La vista del jugador (fase 1)
+
+Lo que el jugador tiene **a la vista**, sin abrir nada:
+
+| Elemento | Qué hace | Por qué |
+| --- | --- | --- |
+| **Tirar** | Los seis Traits como botones con su valor («FIN +1»). Un toque tira contra la DC que haya fijado el Keeper (15 si no hay). Ventaja y Desventaja, Experiencia y Resolve aparecen solo si los abre. | Tirar sus habilidades en un clic (sección 0). |
+| **Atacar** | Un botón por arma («Pistola · Close»). Un toque y luego el objetivo en el mapa; la mesa hace el resto (alcance, competencia, daño, armadura del defensor). | Usar las armas en un clic (sección 0). |
+| **Cartas** | La mano y el mazo, como ahora. | Decisiones 12 y 21. |
+| **Su personaje** | HP, Armor, Stress, Hope/Effort con ±, y su ficha a un toque. | Se leen continuamente. |
+
+Todo lo demás para el jugador va a **«⋯»** (P2) o a **«Más…»** (P3):
+
+| P2 · desplegable (5) | P3 · Más… |
+| --- | --- |
+| **Chat** (con contador y aviso de susurro) · Ficha completa · Equipo · Estados · Medir | Ping · Dibujo · Área · Relojes · Registro · Dossiers · Cuenta · Ayuda · Sesiones · Mis tokens · Subir de nivel · Dados estándar |
+
+Herramientas del mapa para el jugador: **Mover** (siempre activo: arrastrar su token) y, en «⋯», Medir. Cambian estas filas de la sección 4: *Dibujo* y *Medir* dejan de ser P1 para el jugador; *Chat* y *Reparto* bajan a P2 en su vista. Para el Keeper, la sección 4 sigue igual, y se revisará en la fase 2.
 
 ## 3. Escala de prioridad
 
