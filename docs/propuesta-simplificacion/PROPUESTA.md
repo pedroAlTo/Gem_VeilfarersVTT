@@ -49,8 +49,10 @@ Las listas de abajo son mi propuesta; cámbialas libremente.
 | | Keeper | Jugador |
 | --- | --- | --- |
 | **A la vista (3)** | Escena ▾ · Sala (estado online + nombre) · Keeper/Jugador | Escena ▾ · Sala · Mis tokens |
-| **Desplegable (5)** | Copiar invitación · Enlace · Tripulación · Sesiones · Ayuda | Sesiones · Cuenta · Ayuda · Idioma · Audio |
-| **Más…** | Cuenta · Idioma · Audio · Códice · Inicio | Códice · Inicio · Unirse |
+| **Desplegable (5)** | Invitar (código y enlace) · Tripulación · Cuenta · Sesiones · Ayuda | Cuenta · Sesiones · Ayuda · Tripulación · Invitar |
+| **Más…** | Códice · Inicio · Unirse | Códice · Inicio · Unirse |
+
+**Cuenta** incluye idioma, audio, preferencias (también el estilo 3D de los dados), partidas y notas, personajes y cerrar sesión. El reparto detallado de todas las funciones, con personas y prioridades, está en [`PERSONAS_Y_PRIORIDADES.md`](PERSONAS_Y_PRIORIDADES.md).
 
 El logo VEILFARERS sigue llevando a Inicio con un clic. Así se mantiene la decisión 15 aunque el botón ⌂ baje al último nivel.
 
@@ -132,7 +134,6 @@ Cada fase sale como versión en V3, con su changelog, sus pruebas, su entrada en
 ## 5. Lo que necesito que confirmes
 
 1. **¿El reparto de cada grupo (3.1 a 3.7) te encaja?** Lo más dudoso:
-   - Cuenta, Idioma y Audio en el último nivel de la cabecera del Keeper.
    - Ping y Deshacer fuera de la vista. Deshacer sigue con Ctrl+Z.
    - Subtrait en el desplegable del panel de dados.
 2. **¿Empiezo por la Fase A** (componente + herramientas + pestañas)?
