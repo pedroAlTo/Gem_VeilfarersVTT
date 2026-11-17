@@ -78,3 +78,6 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 @keyframes pab-hope { from { outline-color: rgba(253,230,138,.35); } to { outline-color: #fde68a; } }
 .pab-range { font: 10px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--text-dim); }
 .pab-range.penalty { color: #fda4af; }
+.pab-hint.pab-target { color: #00f3ff; }
+.pab-hint.pab-target b { color: #f3e8ff; }
+.pab-hint.pab-target.penalty { color: #fda4af; }

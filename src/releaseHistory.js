@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.2', date: '2026-11-17', title: 'V3 · Experiencias siempre a la vista y ataque en dos toques',
+    sections: [
+      { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [
+        'Las experiencias se ven siempre en la ficha, bajo TIRAR. Se pueden elegir antes o después del Trait; si la ficha no tiene, lo dice.',
+        'Atacar: toca el arma y luego el objetivo en el mapa; el primer toque lo marca (línea y distancia en el mapa) y la ficha muestra la distancia y la penalización que tendría. Un segundo toque en el mismo objetivo ataca; tocar otro cambia la marca; Esc cancela.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.1', date: '2026-11-17', title: 'V3 · Ficha con defensa y recursos, resultados compactos y pistolas a Close',
     sections: [
       { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [

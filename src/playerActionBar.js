@@ -48,13 +48,14 @@ export function tapPick(pick, tap) {
   const cur = pick || EMPTY_PICK;
   if (tap.kind === 'trait') {
     if (cur.trait === tap.id) return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: 'normal' } };
-    return { pick: { trait: tap.id, exp: null } };
+    return { pick: { trait: tap.id, exp: cur.exp } };
   }
-  if (!cur.trait) return { pick: cur };
+  // The Experiences are always on the sheet: one can be chosen before or after the Trait.
   if (tap.kind === 'exp') {
-    if (cur.exp === tap.id) return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: 'normal' } };
+    if (cur.exp === tap.id) return cur.trait ? { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: 'normal' } } : { pick: { trait: null, exp: null } };
     return { pick: { trait: cur.trait, exp: tap.id } };
   }
+  if (!cur.trait) return { pick: cur };
   if (tap.kind === 'edge') return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: tap.id === 'adv' ? 'adv' : 'dis' } };
   return { pick: cur };
 }
@@ -91,7 +92,7 @@ export class PlayerActionBar {
     parent.append(this.root);
     this.signature = ''; this.targeting = null; this.pick = EMPTY_PICK; this.optionsOpen = false; this.view = null;
     store.subscribe(() => this.render());
-    window.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (this.targeting) this.stopTargeting(); else if (this.pick.trait) { this.pick = EMPTY_PICK; this.render(); } });
+    window.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (this.targeting) this.stopTargeting(); else if (this.pick.trait || this.pick.exp !== null) { this.pick = EMPTY_PICK; this.render(); } });
     this.render();
   }
 
@@ -111,23 +112,23 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
     const { trait, exp } = this.pick, canExp = experienceAvailable(token), cost = experienceCost(token);
     const traitName = TRAITS.find(t => t.id === trait)?.name || '';
     const edgeKey = !trait ? '' : exp === null ? 'trait' : 'exp', enterEdge = edgeKey && edgeKey !== this.edgeKey ? ' pab-enter' : '';
-    const enterExp = trait && !this.edgeKey ? ' pab-enter' : '';
     this.edgeKey = edgeKey;
     const edges = `<div class="pab-row pab-edge-row${enterEdge}"><span class="pab-label"></span><div class="pab-buttons">
         <button type="button" class="pab-edge-btn dis" data-pab-edge="dis">Desventaja</button>
         <button type="button" class="pab-edge-btn adv" data-pab-edge="adv">Ventaja</button></div></div>`;
     const hope = Number(token.hope) || 0;
-    const expRow = trait && experiences.length ? `<div class="pab-row pab-exp-row${enterExp}"><span class="pab-label">Exp.</span><div class="pab-buttons">
-        ${experiences.map((x, i) => `<button type="button" class="pab-exp ${exp === i ? 'selected' : ''}" data-pab-exp="${i}" ${canExp ? '' : 'disabled'} aria-pressed="${exp === i}" title="${canExp ? (cost ? 'Cuesta 1 Hope' : 'Sin coste (Sleeping)') : 'Necesitas 1 Hope'}"><b>${e(x.name)}</b><span data-no-i18n>${e(sign(experienceBonus(x)))}</span></button>`).join('')}
-        ${!canExp ? '<span class="pab-tip">Sin Hope para experiencias</span>' : exp !== null && cost ? `<span class="pab-hope-cost" role="status">−1 Hope · ${hope} → ${hope - 1}</span>` : ''}
-      </div></div>` : '';
+    const expButtons = experiences.map((x, i) => `<button type="button" class="pab-exp ${exp === i ? 'selected' : ''}" data-pab-exp="${i}" ${canExp ? '' : 'disabled'} aria-pressed="${exp === i}" title="${canExp ? (cost ? 'Cuesta 1 Hope' : 'Sin coste (Sleeping)') : 'Necesitas 1 Hope'}"><b>${e(x.name)}</b><span data-no-i18n>${e(sign(experienceBonus(x)))}</span></button>`).join('');
+    const expNote = !experiences.length ? '<span class="pab-tip">La ficha no tiene experiencias.</span>'
+      : !canExp ? '<span class="pab-tip">Sin Hope para experiencias</span>'
+      : exp !== null && cost ? `<span class="pab-hope-cost" role="status">−1 Hope · ${hope} → ${hope - 1}</span>` : '';
+    const expRow = `<div class="pab-row pab-exp-row"><span class="pab-label">Experiencias</span><div class="pab-buttons">${expButtons}${expNote}</div></div>`;
     document.body.classList.toggle('pab-hope-pending', exp !== null && cost > 0);
     const subtitle = [token.characterClass, token.path].filter(Boolean).join(' · ');
     this.root.innerHTML = sanitizeHTML(`
@@ -142,7 +143,8 @@ export class PlayerActionBar {
       ${trait && exp === null ? edges : ''}
       ${expRow}
       ${trait && exp !== null ? edges : ''}
-      ${trait ? `<p class="pab-hint pab-pick-hint" role="status">${e(traitName)}${exp !== null ? ` + ${e(experiences[exp]?.name || '')}` : ''}: toca otra vez para tirar · Esc para cancelar</p>` : ''}
+      ${trait ? `<p class="pab-hint pab-pick-hint" role="status">${e(traitName)}${exp !== null ? ` + ${e(experiences[exp]?.name || '')}` : ''}: toca otra vez para tirar · Esc para cancelar</p>`
+        : exp !== null ? `<p class="pab-hint pab-pick-hint" role="status">${e(experiences[exp]?.name || '')}: elige el Trait · Esc para cancelar</p>` : ''}
       ${this.optionsOpen ? `<div class="pab-options">
         <label class="pab-dc">DC <select data-pab-dc>${[5, 10, 12, 15, 18, 20, 25, 30].map(v => `<option value="${v}" ${String(v) === String(dc) ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <button type="button" class="hud-btn hud-btn-xs" data-pab-panel>Más opciones de tirada</button>
@@ -152,7 +154,7 @@ export class PlayerActionBar {
         <div class="pab-buttons">${weapons.length ? weapons.map(w => `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}"><b>${e(w.name)}</b><span data-no-i18n>${e(w.range || '—')}</span></button>`).join('')
           : `<button type="button" class="pab-weapon ${this.targeting?.weaponId === '' ? 'active' : ''}" data-pab-weapon="" title="Sin armas: ataque desarmado (Melee)"><b>Desarmado</b><span>Melee</span></button>`}</div>
       </div>
-      ${this.targeting ? '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>' : ''}
+      ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
       ${this.result ? this.resultRow() : ''}`);
     this.root.querySelector('[data-pab-sheet]')?.addEventListener('click', () => document.getElementById('open_sheet_btn')?.click());
     this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.tap({ kind: 'trait', id: b.dataset.pabTrait }); });
@@ -165,6 +167,10 @@ export class PlayerActionBar {
     this.root.querySelector('[data-pab-shields]')?.addEventListener('click', () => document.querySelector('#dmg_mitigate_btn')?.click());
     this.root.querySelector('[data-pab-clear]')?.addEventListener('click', () => { this.result = null; this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-panel]')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } })));
+  }
+
+  targetHint(t) {
+    return `<p class="pab-hint pab-target ${t.reason ? 'penalty' : ''}" role="status"><span>Objetivo:</span> <b data-no-i18n>${e(t.name)}</b> · <span data-no-i18n>${e(t.band)} · ${e(t.meters.toFixed(1))} m</span>${t.reason ? ` · <span>${e(t.reason)}</span>` : ''}${t.blocked ? ' · <span>Línea de tiro bloqueada</span>' : ''}<br><span>${t.allowed ? 'Toca otra vez el objetivo para atacar' : 'Fuera de alcance: elige otro objetivo'}</span> · <span>Esc para cancelar</span></p>`;
   }
 
   statsHTML(st) {
@@ -232,8 +238,11 @@ export class PlayerActionBar {
       const target = tokenAtPoint(store.getTokensForActiveMap(), world, map.gridSize || 64, { exclude: this.tokenId });
       if (!target) return;
       event.preventDefault(); event.stopImmediatePropagation();
+      // First touch marks the target (the map draws the line and the distance); a second
+      // touch on the same token attacks it.
+      if (this.targeting.targetId !== target.id) { this.markTarget(target); return; }
       const chosen = this.targeting.weaponId;
-      this.stopTargeting();
+      this.stopTargeting(true, { keepMark: true });
       this.attack(chosen, target);
     };
     canvas.addEventListener('pointerdown', this.onPick, true);
@@ -241,11 +250,21 @@ export class PlayerActionBar {
     this.render();
   }
 
-  stopTargeting(redraw = true) {
+  markTarget(target) {
+    const token = store.state.tokens.find(t => t.id === this.tokenId);
+    const weapon = (this.weapons || []).find(w => w.id === this.targeting.weaponId) || null;
+    const gap = distanceInfo(token, target, store.getActiveMap?.() || {}), check = rangeCheck(weapon, gap.band);
+    this.targeting = { ...this.targeting, targetId: target.id, preview: { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed, reason: check.disadvantage || !check.allowed ? check.reason : '' } };
+    window.veilCanvas?.setAttackTarget?.(this.tokenId, target.id);
+    this.render();
+  }
+
+  stopTargeting(redraw = true, { keepMark = false } = {}) {
     const canvas = window.veilCanvas?.canvas || document.getElementById('tactical_canvas');
     if (this.onPick && canvas) canvas.removeEventListener('pointerdown', this.onPick, true);
     this.onPick = null;
     if (!this.targeting) return;
+    if (this.targeting.targetId && !keepMark) window.veilCanvas?.setAttackTarget?.(null, null);
     this.targeting = null; document.body.classList.remove('pab-targeting');
     if (redraw) this.render();
   }

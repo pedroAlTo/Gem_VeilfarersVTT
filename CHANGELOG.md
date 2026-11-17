@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.1**.
-Paquete: `VeilFarers_VTT_v2.17.1.zip`.
+Versión actual del VTT: **v2.17.2**.
+Paquete: `VeilFarers_VTT_v2.17.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.2] — 2026-11-17
+
+V3 · Experiencias siempre a la vista y ataque en dos toques
+
+### Pestaña Ficha (rama V3, en pruebas)
+
+- Las experiencias se ven siempre en la ficha, bajo TIRAR. Se pueden elegir antes o después del Trait; si la ficha no tiene, lo dice.
+- Atacar: toca el arma y luego el objetivo en el mapa; el primer toque lo marca (línea y distancia en el mapa) y la ficha muestra la distancia y la penalización que tendría. Un segundo toque en el mismo objetivo ataca; tocar otro cambia la marca; Esc cancela.
 
 ## [2.17.1] — 2026-11-17
 

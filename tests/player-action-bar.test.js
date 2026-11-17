@@ -29,8 +29,12 @@ test('an Experience is selected, then rolled with a second touch or with an edge
   assert.deepEqual(run([{ kind: 'trait', id: 'wit' }, { kind: 'exp', id: 0 }, { kind: 'exp', id: 1 }]).pick, { trait: 'wit', exp: 1 });
 });
 
-test('without a Trait, Experiences and edges do nothing', () => {
-  assert.deepEqual(run([{ kind: 'exp', id: 0 }, { kind: 'edge', id: 'adv' }]), { pick: EMPTY_PICK, roll: null });
+test('an Experience can be chosen before the Trait; edges need a Trait', () => {
+  assert.deepEqual(run([{ kind: 'edge', id: 'adv' }]), { pick: EMPTY_PICK, roll: null });
+  assert.deepEqual(run([{ kind: 'exp', id: 0 }, { kind: 'edge', id: 'adv' }]), { pick: { trait: null, exp: 0 }, roll: null });
+  assert.deepEqual(run([{ kind: 'exp', id: 0 }, { kind: 'trait', id: 'agility' }]), { pick: { trait: 'agility', exp: 0 }, roll: null });
+  assert.deepEqual(run([{ kind: 'exp', id: 0 }, { kind: 'trait', id: 'agility' }, { kind: 'edge', id: 'adv' }]).roll, { trait: 'agility', exp: 0, edge: 'adv' });
+  assert.deepEqual(run([{ kind: 'exp', id: 0 }, { kind: 'exp', id: 0 }]), { pick: { trait: null, exp: null }, roll: null }, 'a second touch without a Trait unselects it');
 });
 
 test('Awakened Experiences cost 1 Hope and need it; Sleeping ones are free', () => {

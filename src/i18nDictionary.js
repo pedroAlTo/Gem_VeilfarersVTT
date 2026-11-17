@@ -1212,6 +1212,15 @@ export const PAIRS = [
   ["Ventaja preparada", "Advantage ready"],
   // Pistols at Close (v2.17.1)
   ["Distancia:", "Distance:"],
+  // Experiences always on the sheet (v2.17.2)
+  ["La ficha no tiene experiencias.", "The sheet has no Experiences."],
+  // Attack: mark, then confirm (v2.17.2)
+  ["Objetivo:", "Target:"],
+  ["Línea de tiro bloqueada", "Line of fire blocked"],
+  ["Toca otra vez el objetivo para atacar", "Tap the target again to attack"],
+  ["Fuera de alcance: elige otro objetivo", "Out of range: choose another target"],
+  // Attack: mark, then confirm (v2.17.2)
+  ["Esc para cancelar", "Esc to cancel"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1297,4 +1306,5 @@ export const PATTERNS = [
   ["{_a} · DC {b}", "{_a} · DC {b}"],
   ["{a} a la próxima tirada", "{a} to the next roll"],
   ["Arma corta (pistola) con el objetivo a {_a}: Desventaja (las pistolas tienen penalización a Close).", "Short weapon (pistol) with the target at {_a}: Disadvantage (pistols take a penalty at Close)."],
+  ["{_a}: elige el Trait · Esc para cancelar", "{_a}: choose the Trait · Esc to cancel"],
 ];
