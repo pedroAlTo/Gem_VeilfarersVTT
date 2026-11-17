@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.3.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.3**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.3** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.3.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -48,6 +48,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.2.zip**. Abre **AYUDA
 33. **(V3) Pestañas del jugador.** Pulsa JUGADOR: el panel derecho muestra solo FICHA, NAVE, DOSSIERS, REGISTRO y CHAT, se abre FICHA («Mi personaje», «01 / 05») y no hay barra TIRAR/ATACAR sobre el mapa. Sin personaje seleccionado, FICHA explica cómo conseguir uno. Vuelve a KEEPER: reaparecen Relojes, Reparto y Escenas y se abre Reparto. En tablet (≤ 1024 px), abre el panel, toca un arma: el panel se cierra; toca el objetivo: el panel vuelve con el resultado.
 34. **(V3) Ficha completa de un vistazo y resultados abajo.** En FICHA se ven Evasión, Umbrales, Escudos, la armadura, HP, Stress, Hope (o Effort y Resolve si es Sleeping) y «Otros» si hay Ventaja preparada, bonificador o condiciones. Al tocar un Trait, Desventaja/Ventaja entran con una animación suave. Tira: la tarjeta de resultado sale pequeña abajo en el centro. Ataca con una pistola a un objetivo a Close (6–10 m): Desventaja, y la barra dice «Distancia: Close · … · Arma corta (pistola)…».
 35. **(V3) Experiencias y ataque en dos toques.** En FICHA las experiencias se ven siempre; elige una y después un Trait: se marcan los dos y otro toque en el Trait tira. Toca un arma y un objetivo: el mapa marca la línea y la ficha dice «Objetivo: … · Close · 10.4 m» con la penalización si la hay; no se tira nada. Vuelve a tocar el mismo objetivo: ataca. Esc cancela y quita la marca.
+36. **(V3) Ventaja/Desventaja antes de atacar.** Sin sala, pulsa JUGADOR y selecciona un PJ en el mapa (sin asignarlo). Toca un arma y un objetivo lejano: la Ficha dice «CON DESVENTAJA» y el motivo (por ejemplo, más allá del alcance). Vuelve a tocar el objetivo: el ataque se hace, sin el aviso «Selecciona uno de tus tokens asignados».
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

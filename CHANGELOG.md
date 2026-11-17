@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.2**.
-Paquete: `VeilFarers_VTT_v2.17.2.zip`.
+Versión actual del VTT: **v2.17.3**.
+Paquete: `VeilFarers_VTT_v2.17.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.3] — 2026-11-17
+
+V3 · El ataque dice si va con Ventaja o Desventaja y ya se ejecuta en la vista de jugador local
+
+### Atacar desde la Ficha (rama V3, en pruebas)
+
+- Al marcar el objetivo, la Ficha dice cómo será la tirada: «Con Desventaja», «Con Ventaja» o «Tirada normal», con cada motivo (alcance, arma fuera de competencia, Ventaja preparada).
+- Corregido: en la vista de jugador de la mesa del Keeper (sin sala), el segundo toque en el objetivo mostraba «Selecciona uno de tus tokens asignados» y no atacaba. Ahora el personaje seleccionado en esa vista es el que se juega.
 
 ## [2.17.2] — 2026-11-17
 

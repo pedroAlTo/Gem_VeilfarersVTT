@@ -78,6 +78,11 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 @keyframes pab-hope { from { outline-color: rgba(253,230,138,.35); } to { outline-color: #fde68a; } }
 .pab-range { font: 10px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--text-dim); }
 .pab-range.penalty { color: #fda4af; }
-.pab-hint.pab-target { color: #00f3ff; }
+.pab-hint.pab-target { display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid rgba(0,243,255,.35); background: rgba(0,243,255,.05); color: #c8f4ff; }
 .pab-hint.pab-target b { color: #f3e8ff; }
-.pab-hint.pab-target.penalty { color: #fda4af; }
+.pab-edge-tag { align-self: flex-start; padding: 4px 8px; font: 700 10px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--vx-line-strong); }
+.pab-edge-tag b { font: inherit; }
+.pab-edge-tag.dis { border-color: rgba(251,119,157,.7); background: rgba(127,29,29,.3); } .pab-edge-tag.dis b { color: #fda4af; }
+.pab-edge-tag.adv { border-color: rgba(114,229,207,.7); background: rgba(20,83,45,.3); } .pab-edge-tag.adv b { color: #86efac; }
+.pab-reason { font-size: 11px; line-height: 1.35; color: var(--text-dim); }
+.pab-confirm { font-size: 11px; color: #00f3ff; }

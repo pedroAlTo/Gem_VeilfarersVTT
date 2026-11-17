@@ -15,7 +15,7 @@ import { tokenInventory } from './equipment.js';
 import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { normalizeConditions, conditionDefinition } from './conditions.js';
-import { distanceInfo, rangeCheck } from './attackFlow.js';
+import { distanceInfo, rangeCheck, netEdge } from './attackFlow.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -99,6 +99,11 @@ export class PlayerActionBar {
   render() {
     this.syncTabs();
     const token = barOwner();
+    if (token && store.sessionRole !== 'player' && store.state.claimedTokenId !== token.id) {
+      // At the Keeper's own table (Player view) the selected character is the one being played:
+      // claim it, so attacks and gear accept it (store.canEditToken).
+      queueMicrotask(() => { if (barOwner()?.id === token.id && store.state.claimedTokenId !== token.id) store.update({ claimedTokenId: token.id }); });
+    }
     // Player stance: the map-editing panels are hidden (see playerActionBar.css).
     document.body.classList.toggle('player-stance', !!token);
     if (!token) {
@@ -170,7 +175,13 @@ export class PlayerActionBar {
   }
 
   targetHint(t) {
-    return `<p class="pab-hint pab-target ${t.reason ? 'penalty' : ''}" role="status"><span>Objetivo:</span> <b data-no-i18n>${e(t.name)}</b> · <span data-no-i18n>${e(t.band)} · ${e(t.meters.toFixed(1))} m</span>${t.reason ? ` · <span>${e(t.reason)}</span>` : ''}${t.blocked ? ' · <span>Línea de tiro bloqueada</span>' : ''}<br><span>${t.allowed ? 'Toca otra vez el objetivo para atacar' : 'Fuera de alcance: elige otro objetivo'}</span> · <span>Esc para cancelar</span></p>`;
+    const edge = { adv: ['adv', 'Con Ventaja'], dis: ['dis', 'Con Desventaja'], normal: ['normal', 'Tirada normal'] }[t.edge || 'normal'];
+    return `<div class="pab-hint pab-target" role="status">
+      <div><span>Objetivo:</span> <b data-no-i18n>${e(t.name)}</b> · <span data-no-i18n>${e(t.band)} · ${e(t.meters.toFixed(1))} m</span>${t.blocked ? ' · <span>Línea de tiro bloqueada</span>' : ''}</div>
+      ${t.allowed ? `<div class="pab-edge-tag ${edge[0]}"><b>${edge[1]}</b></div>` : ''}
+      ${t.reasons.map(r => `<div class="pab-reason"><span>${e(r)}</span></div>`).join('')}
+      <div class="pab-confirm"><span>${t.allowed ? 'Toca otra vez el objetivo para atacar' : 'Fuera de alcance: elige otro objetivo'}</span> · <span>Esc para cancelar</span></div>
+    </div>`;
   }
 
   statsHTML(st) {
@@ -250,13 +261,21 @@ export class PlayerActionBar {
     this.render();
   }
 
-  markTarget(target) {
+  // The roll the attack will make, said before it is made: range, training (weapon outside the
+  // character's competence) and a prepared Advantage, as the dice panel will count them.
+  async markTarget(target) {
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     const weapon = (this.weapons || []).find(w => w.id === this.targeting.weaponId) || null;
     const gap = distanceInfo(token, target, store.getActiveMap?.() || {}), check = rangeCheck(weapon, gap.band);
-    this.targeting = { ...this.targeting, targetId: target.id, preview: { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed, reason: check.disadvantage || !check.allowed ? check.reason : '' } };
+    const targeting = this.targeting;
+    targeting.targetId = target.id;
     window.veilCanvas?.setAttackTarget?.(this.tokenId, target.id);
-    this.render();
+    const gear = await window.veilDiceRoller?.gearCheck?.(token, { weapon }).catch(() => null) || { disadvantage: false, text: '' };
+    if (this.targeting !== targeting || targeting.targetId !== target.id) return;
+    const edge = netEdge(!!token.pendingAdvantage, check.disadvantage || gear.disadvantage);
+    const reasons = [check.disadvantage || !check.allowed ? check.reason : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
+    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed, edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
+    this.signature = ''; this.render();
   }
 
   stopTargeting(redraw = true, { keepMark = false } = {}) {

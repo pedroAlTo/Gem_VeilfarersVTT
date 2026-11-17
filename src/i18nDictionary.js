@@ -1221,6 +1221,10 @@ export const PAIRS = [
   ["Fuera de alcance: elige otro objetivo", "Out of range: choose another target"],
   // Attack: mark, then confirm (v2.17.2)
   ["Esc para cancelar", "Esc to cancel"],
+  // Attack preview edge (v2.17.3)
+  ["Con Ventaja", "With Advantage"],
+  ["Con Desventaja", "With Disadvantage"],
+  ["Tirada normal", "Normal roll"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1307,4 +1311,5 @@ export const PATTERNS = [
   ["{a} a la próxima tirada", "{a} to the next roll"],
   ["Arma corta (pistola) con el objetivo a {_a}: Desventaja (las pistolas tienen penalización a Close).", "Short weapon (pistol) with the target at {_a}: Disadvantage (pistols take a penalty at Close)."],
   ["{_a}: elige el Trait · Esc para cancelar", "{_a}: choose the Trait · Esc to cancel"],
+  ["Fuera de competencia (Desventaja): {_a}", "Outside competence (Disadvantage): {_a}"],
 ];

@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.3', date: '2026-11-17', title: 'V3 · El ataque dice si va con Ventaja o Desventaja y ya se ejecuta en la vista de jugador local',
+    sections: [
+      { title: 'Atacar desde la Ficha (rama V3, en pruebas)', items: [
+        'Al marcar el objetivo, la Ficha dice cómo será la tirada: «Con Desventaja», «Con Ventaja» o «Tirada normal», con cada motivo (alcance, arma fuera de competencia, Ventaja preparada).',
+        'Corregido: en la vista de jugador de la mesa del Keeper (sin sala), el segundo toque en el objetivo mostraba «Selecciona uno de tus tokens asignados» y no atacaba. Ahora el personaje seleccionado en esa vista es el que se juega.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.2', date: '2026-11-17', title: 'V3 · Experiencias siempre a la vista y ataque en dos toques',
     sections: [
       { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [
