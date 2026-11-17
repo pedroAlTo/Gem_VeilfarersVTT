@@ -1,10 +1,30 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.10.0**.
-Paquete: `VeilFarers_VTT_v2.10.0.zip`.
+Versión actual del VTT: **v2.11.0**.
+Paquete: `VeilFarers_VTT_v2.11.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.11.0] — 2026-11-17
+
+V2 · Interfaz en un solo idioma (español / inglés) y botón de inicio
+
+### Idioma
+
+- La interfaz, que mezclaba español e inglés, se muestra entera en un idioma. Por defecto, español.
+- Selector ES / EN en la barra inferior de la mesa y en la esquina del lobby. El idioma elegido se recuerda en este navegador.
+- Se traducen botones, pestañas, etiquetas, avisos, títulos de ayuda emergente y textos con números (contadores, pasos, «TIRAR FINESSE (+1)»), también los que aparecen después de cargar.
+- Los términos de reglas del Corebook (Hope, Fear, Stress, HP, Evasion, Armor Slots, Proficiency, Effort, Resolve y los Traits) se mantienen en inglés en los dos idiomas, como en los libros.
+- No se traducen el chat, el registro, los nombres ni el texto de los libros (cartas, Poderes, habilidades de adversarios, módulos de dron).
+
+### Inicio
+
+- Botón ⌂ en la cabecera, y también el logo VEILFARERS, para volver a la pantalla de inicio (salas y personajes) sin cerrar la mesa.
+
+### Cabecera
+
+- La cabecera ya no se sale de la pantalla a 1440 px: el nombre de la campaña y la invitación se acortan para dejar visibles el logo, el selector de escena y todos los botones.
 
 ## [2.10.0] — 2026-11-17
 

@@ -1,0 +1,22 @@
+/* Language switch (ES / EN) and Home */
+.lang-switch { display: inline-flex; border: 1px solid rgba(192,132,252,.45); }
+.lang-btn { all: unset; cursor: pointer; padding: 4px 8px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .14em; color: #c4b5fd; }
+.lang-btn:hover, .lang-btn:focus-visible { color: #fff; background: rgba(109,40,217,.35); }
+.lang-btn.active { color: #0d0420; background: #fde68a; }
+.lang-switch-lobby { position: absolute; top: 14px; right: 16px; z-index: 5; background: rgba(13,4,32,.85); }
+.lang-switch-status { margin-left: 12px; }
+.lang-switch-status .lang-btn { padding: 2px 7px; font-size: 9px; }
+.home-btn { font-size: 14px; padding: 0 9px; }
+.header-hud .brand-badge[data-home] { cursor: pointer; }
+.header-hud .brand-badge[data-home]:hover .brand-title, .header-hud .brand-badge[data-home]:focus-visible .brand-title { color: #fde68a; }
+
+/* The header did not fit at 1440 px: every part refused to shrink, so it overflowed and the
+   brand and scene picker (or the Codex and Help buttons) fell outside the view. The session
+   strip (campaign name, invitation) now gives way and truncates; everything else stays. */
+.header-hud .header-left { flex-shrink: 1 !important; min-width: 0 !important; }
+.header-hud .brand-badge { flex-shrink: 0; }
+.header-hud .scene-quick-picker { flex: 0 1 190px; min-width: 120px; }
+.header-hud .scene-quick-picker > * { min-width: 0 !important; width: 100%; }
+.header-hud .header-session-slot { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.header-hud .header-session-slot > * { min-width: 0; }
+.header-hud .header-session-slot :is(span, strong, b) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

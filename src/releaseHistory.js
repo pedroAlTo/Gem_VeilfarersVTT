@@ -1,6 +1,24 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.11.0', date: '2026-11-17', title: 'V2 · Interfaz en un solo idioma (español / inglés) y botón de inicio',
+    sections: [
+      { title: 'Idioma', items: [
+        'La interfaz, que mezclaba español e inglés, se muestra entera en un idioma. Por defecto, español.',
+        'Selector ES / EN en la barra inferior de la mesa y en la esquina del lobby. El idioma elegido se recuerda en este navegador.',
+        'Se traducen botones, pestañas, etiquetas, avisos, títulos de ayuda emergente y textos con números (contadores, pasos, «TIRAR FINESSE (+1)»), también los que aparecen después de cargar.',
+        'Los términos de reglas del Corebook (Hope, Fear, Stress, HP, Evasion, Armor Slots, Proficiency, Effort, Resolve y los Traits) se mantienen en inglés en los dos idiomas, como en los libros.',
+        'No se traducen el chat, el registro, los nombres ni el texto de los libros (cartas, Poderes, habilidades de adversarios, módulos de dron).',
+      ] },
+      { title: 'Inicio', items: [
+        'Botón ⌂ en la cabecera, y también el logo VEILFARERS, para volver a la pantalla de inicio (salas y personajes) sin cerrar la mesa.',
+      ] },
+      { title: 'Cabecera', items: [
+        'La cabecera ya no se sale de la pantalla a 1440 px: el nombre de la campaña y la invitación se acortan para dejar visibles el logo, el selector de escena y todos los botones.',
+      ] },
+    ],
+  },
+  {
     version: '2.10.0', date: '2026-11-17', title: 'V2 · Mano del Keeper (Fear y adversarios), Bear Down y Effort como cartas',
     sections: [
       { title: 'Mano del Keeper', items: [

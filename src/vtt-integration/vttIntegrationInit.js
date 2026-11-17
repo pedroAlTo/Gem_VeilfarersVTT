@@ -45,6 +45,7 @@ export function initVeilfarersApp(options = {}) {
       options.onJoinRoom({ roomId, currentUser, activeCharId });
     }
   });
+  if (typeof window !== 'undefined') window.veilLobby = lobby;
   return lobby;
 }
 

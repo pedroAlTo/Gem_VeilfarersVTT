@@ -6,6 +6,9 @@ import './vtt-integration/styles/lobby-fates.css';
 import './theme-violet.css';
 import './card-hand.css';
 import { CardHand, CardFeed } from './cardHandUI.js';
+import './language.css';
+import { startTranslation } from './i18n.js';
+import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';
 import { openColorPickerPopover } from './colorPicker.js';
 import './chat.css';
@@ -61,8 +64,12 @@ if (typeof window !== 'undefined') {
 
 window.addEventListener('DOMContentLoaded', async () => {
   setupVeilfarersIntegration();
+  // One interface language (ES / EN), and the Home button and language switch.
+  mountHeaderControls();
+  startTranslation(document.body);
   await store.ready;
   initOrbitalUI();
+  mountStatusbarLanguage();
   const helpButton = document.getElementById('help_btn');
   helpButton.title = `Ayuda y changelog · ${APP_LABEL}`;
   helpButton.onclick = () => import('./help.js').then(({ openHelp }) => openHelp()).catch(error => notify(`No se pudo abrir la ayuda: ${error.message}`, 'error'));
