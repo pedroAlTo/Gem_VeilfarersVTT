@@ -5,10 +5,16 @@ import { network } from './networkManager.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
 import { cardData, loadCardData } from './cardData.js';
-import { characterCards, costLabel, CARD_KINDS, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic } from './loadoutCards.js';
+import { characterCards, keeperCards, costLabel, CARD_KINDS, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic } from './loadoutCards.js';
+
+const KEEPER_KINDS = new Set(['fear', 'adversary']);
+const keeperView = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
 
 const DRAG_START = 9; // pixels the pointer must travel before a click becomes a drag
 const affordable = (token, card) => {
+  if (KEEPER_KINDS.has(card.kind)) return (store.state.fear || 0) >= (card.cost.fear || 0);
+  // A Common Effort can always be paid at 0 Effort through Burnout.
+  if (card.kind === 'effort') return (token.effort || 0) >= card.cost.effort || (token.effort || 0) === 0;
   const c = card.cost, stressRoom = (token.stress?.max ?? 6) - (token.stress?.current || 0);
   if (card.kind === 'archive') return (token.resolve?.current || 0) >= 1 && c.stress <= stressRoom;
   return (token.hope || 0) >= c.hope && (token.effort || 0) >= c.effort && (token.resolve?.current || 0) >= c.resolve && c.stress <= stressRoom;
@@ -18,6 +24,7 @@ const pills = card => {
   if (card.type && (card.kind === 'power' || card.kind === 'vault' || card.kind === 'archive')) list.push(['type', card.type.replace(/\s*\(.*$/, '')]);
   if (card.tier) list.push(['plain', card.tier]);
   if (card.kind === 'archive') list.push(['resolve', '1+ Resolve']);
+  if (c.fear) list.push(['fear', `${c.fear} Fear`]);
   if (c.hope && card.kind !== 'archive') list.push(['hope', `${c.hope} Hope`]);
   if (c.stress) list.push(['stress', `${c.stress} Stress`]);
   if (c.effort) list.push(['effort', `${c.effort} Effort`]);
@@ -32,6 +39,7 @@ const pills = card => {
 const badge = card => {
   const c = card.cost;
   if (card.kind === 'archive') return ['resolve', '1+'];
+  if (c.fear) return ['fear', c.fear];
   if (c.hope) return ['hope', c.hope]; if (c.effort) return ['effort', c.effort];
   if (c.resolve) return ['resolve', `${c.resolve}${c.open ? '+' : ''}`]; if (c.stress) return ['stress', c.stress];
   return null;
@@ -70,36 +78,37 @@ export class CardHand {
     this.render();
   }
 
-  // The hand belongs to the player stance: the character you control, selected.
+  // The hand belongs to the player stance: the character you control, selected. The Keeper's
+  // own table (local or hosting) previewing the Player view sees the hand of any character.
   owner() {
     const token = store.getSelectedToken?.();
     const playerStance = store.sessionRole === 'player' || store.state.userRole !== 'keeper';
-    return token && playerStance && token.isPlayer !== false && token.actorType !== 'drone' && store.canEditToken(token.id) ? token : null;
+    if (!token || !playerStance || token.isPlayer === false || token.actorType === 'drone') return null;
+    return store.sessionRole !== 'player' || store.canEditToken(token.id) ? token : null;
   }
 
   render() {
+    if (keeperView()) return this.renderKeeper();
     const token = this.owner(), data = cardData();
     if (!token || !data) { this.signature = ''; this.tokenId = null; this.root.classList.add('hidden'); this.quickbar.classList.remove('with-hand'); return; }
-    const cards = characterCards(token, data);
+    const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts });
     const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, cards.map(c => c.id)]);
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token.id;
     const hand = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault'), n = hand.length;
-    this.root.classList.toggle('hidden', !cards.length); this.quickbar.classList.toggle('with-hand', !!cards.length);
+    this.root.classList.remove('hidden'); this.quickbar.classList.add('with-hand');
+    if (!cards.length) {
+      // Say why instead of showing nothing: the sheet has no class, ancestry or Powers to read.
+      this.root.innerHTML = sanitizeHTML(`<div class="card-hand-empty"><strong>Sin cartas</strong><p>La ficha de ${e(token.name)} no indica clase, ancestry, background ni Poderes, así que no hay cartas que mostrar.</p><button type="button" class="hud-btn hud-btn-xs" data-open-sheet>Completar la ficha</button></div>`);
+      this.root.querySelector('[data-open-sheet]').onclick = async () => { const { openDossier } = await import('./dossierUI.js'); openDossier(store.state.tokens.find(t => t.id === token.id), () => {}, 'stats'); };
+      return;
+    }
     const title = token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
     this.root.innerHTML = sanitizeHTML(`
       <div class="card-hand-label"><span>${e(title)}</span></div>
       <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}">${cardFace(card)}</button>`).join('')}</div>
       ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : ''}`);
-    // The fan opens as far as the hand is wide; with many cards they overlap more.
-    // The hand takes the room the stats leave free, so neither covers the other.
-    const room = (this.root.parentElement?.clientWidth || 0) - (this.quickbar.offsetWidth || 0) - 44;
-    if (room > 0) this.root.style.width = `${Math.max(240, Math.min(560, room))}px`;
-    const width = this.root.clientWidth || 520, cardWidth = this.root.querySelector('.vf-card')?.offsetWidth || 124;
-    // A big hand keeps the same gentle arc: the outer cards never tip over or sink off screen.
-    const half = Math.max(1, (n - 1) / 2), fan = this.root.querySelector('.card-hand-fan');
-    fan.style.setProperty('--tilt', `${Math.min(4, 14 / half).toFixed(2)}deg`); fan.style.setProperty('--drop', `${(22 / (half * half)).toFixed(2)}px`);
-    fan.style.setProperty('--spread', `${Math.max(18, Math.min(92, (width - cardWidth) / Math.max(1, n - 1))).toFixed(1)}px`);
+    this.layoutFan(n);
     this.bind();
   }
 
@@ -146,18 +155,51 @@ export class CardHand {
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
   }
 
-  // A card whose Resolve is chosen by the player (open Moves, Uncanny Power) asks how many.
+  layoutFan(n) {
+    // The fan opens as far as the hand is wide; with many cards they overlap more.
+    // The hand takes the room the stats leave free, so neither covers the other.
+    const room = (this.root.parentElement?.clientWidth || 0) - (this.quickbar.offsetWidth || 0) - 44;
+    if (room > 0) this.root.style.width = `${Math.max(240, Math.min(560, room))}px`;
+    const width = this.root.clientWidth || 520, cardWidth = this.root.querySelector('.vf-card')?.offsetWidth || 124;
+    // A big hand keeps the same gentle arc: the outer cards never tip over or sink off screen.
+    const half = Math.max(1, (n - 1) / 2), fan = this.root.querySelector('.card-hand-fan');
+    fan.style.setProperty('--tilt', `${Math.min(4, 14 / half).toFixed(2)}deg`); fan.style.setProperty('--drop', `${(22 / (half * half)).toFixed(2)}px`);
+    fan.style.setProperty('--spread', `${Math.max(18, Math.min(92, (width - cardWidth) / Math.max(1, n - 1))).toFixed(1)}px`);
+    this.bind();
+  }
+
+  // The Keeper's hand: the Fear moves, plus the abilities of the adversary selected, if any.
+  renderKeeper() {
+    const selected = store.getSelectedToken?.(), token = selected && selected.isPlayer === false && selected.actorType !== 'drone' ? selected : null;
+    const cards = keeperCards(token), fear = store.state.fear || 0;
+    const signature = JSON.stringify(['keeper', token?.id, token?.featureNotes?.length, fear, cards.map(c => c.id)]);
+    if (signature === this.signature) return;
+    this.signature = signature; this.cards = cards; this.tokenId = token?.id || null;
+    this.root.classList.remove('hidden'); this.quickbar.classList.add('with-hand');
+    const n = cards.length;
+    this.root.innerHTML = sanitizeHTML(`
+      <div class="card-hand-label"><span>Fear ${fear}/12${token ? ` · ${e(token.name)}` : ''}</span></div>
+      <div class="card-hand-fan" style="--n:${n}">${cards.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(null, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(card.costText)}">${cardFace(card)}</button>`).join('')}</div>`);
+    this.layoutFan(n);
+  }
+
+  // A card whose Resolve is chosen by the player (open Moves, Uncanny Power, Bear Down) asks how
+  // many; a Common Effort at 0 Effort asks to confirm Burnout.
   use(card, point = null) {
+    if (KEEPER_KINDS.has(card.kind)) { if (card.playable) this.playKeeper(card, point); else this.inspect(card); return; }
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return;
+    if (card.kind === 'effort' && (token.effort || 0) < card.cost.effort) { this.inspect(card, point); return; }
     if (!card.playable) { this.inspect(card); return; }
     if (card.kind === 'archive' || (card.cost.open && card.cost.resolve)) { this.inspect(card, point); return; }
     this.play(card, point);
   }
 
-  async play(card, point = null, resolveSpent = null) {
+  async play(card, point = null, resolveSpent = null, { burnout = false } = {}) {
+    if (KEEPER_KINDS.has(card.kind)) return this.playKeeper(card, point);
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return false;
+    if (card.kind === 'beardown' || card.kind === 'effort') return this.playSleeping(card, token, point, resolveSpent, burnout);
     try {
       const playerName = store.state.userName || store.state.playerName || 'Jugador';
       const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, resolveSpent, playerName, tokenName: token.name });
@@ -173,10 +215,61 @@ export class CardHand {
     } catch (error) { notify(error.message, 'error'); return false; }
   }
 
+  // Bear Down and the Common Efforts go through the actions the quickbar already used, so their
+  // effects (the +2 of Steady Hands, Advantage, Brace) are prepared exactly as before.
+  async playSleeping(card, token, point, resolveSpent, burnout) {
+    try {
+      const playerName = store.state.userName || store.state.playerName || 'Jugador';
+      let summary;
+      if (card.kind === 'beardown') {
+        const result = await network.requestAction({ type: 'RESOLVE', actorId: token.id, count: Math.max(1, Number(resolveSpent) || 1), visibility: window.veilDiceRoller?.rollVisibility() || 'table' });
+        await window.veilDiceRoller?.applyBearDown(result);
+        summary = `Bear Down ${result.bearDown.count}${token.resolve?.dieType || 'd4'} [${result.bearDown.dice.join(', ')}] = +${result.bearDown.bonus}: total ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}.`;
+      } else {
+        const result = await network.requestAction({ type: 'EFFORT', actorId: token.id, move: card.move, burnout });
+        summary = `${card.name} · ${result?.log?.details || ''}`.trim();
+      }
+      window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: CARD_KINDS[card.kind].toUpperCase(), modifiers: summary, details: summary });
+      if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
+      const line = `🂠 ${playerName} (${token.name}) usa ${card.name} — ${summary} Efecto: ${card.text}`;
+      network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
+      return true;
+    } catch (error) { notify(error.message, 'error'); return false; }
+  }
+
+  // The Keeper plays at their own table: Fear is spent there and the table is told, unless the
+  // dice panel is set to secret rolls, in which case only the Keeper's log keeps it.
+  playKeeper(card, point = null) {
+    if (!keeperView()) return false;
+    const fear = store.state.fear || 0, cost = card.cost.fear || 0;
+    if (fear < cost) { notify(`No hay Fear suficiente: hacen falta ${cost} y quedan ${fear}.`, 'error'); return false; }
+    const target = card.actorId ? store.state.tokens.find(t => t.id === card.actorId) : store.getSelectedToken?.();
+    // Spotlight Enemies with an adversary selected hands it the Spotlight; the table already
+    // charges 1 Fear for that, so it is not charged twice.
+    if (card.spotlight && target && target.isPlayer === false && !target.hasSpotlight && !target.spotlight?.enabled) {
+      if (store.updateToken(target.id, { hasSpotlight: true, spotlight: { ...(target.spotlight || {}), enabled: true } }) === false) return false;
+    } else if (cost && !store.spendFear(cost, card.actorName ? `${card.actorName}: ${card.name}` : card.name)) { notify('No se pudo gastar el Fear.', 'error'); return false; }
+    network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
+    const roll = card.die ? Math.floor(Math.random() * card.die) + 1 : null;
+    const who = card.actorName || (card.spotlight && target?.isPlayer === false ? target.name : 'Keeper');
+    const summary = `${who} · ${card.name}${cost ? ` · ${cost} Fear (quedan ${store.state.fear})` : ''}${roll ? ` · d${card.die} [${roll}]` : ''}`;
+    const secret = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
+    window.veilDiceEngine?.showCallout?.({ playerName: 'Keeper', tokenName: who, label: card.name, skill: card.name, outcome: cost ? `${cost} FEAR` : CARD_KINDS[card.kind].toUpperCase(), modifiers: summary, details: summary, visibility: secret ? 'keeper' : 'table' });
+    if (!cost) store.addLog({ sender: 'Keeper', type: 'KEEPER_MOVE', title: card.name, details: summary, ...(secret ? { visibility: 'keeper' } : {}) });
+    if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); if (!secret) network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
+    if (!secret) {
+      const line = `🜏 Keeper · ${summary} — ${card.text.replace(/\s+/g, ' ').trim()}`;
+      network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: 'Keeper', text: line, channel: 'table' }));
+    }
+    this.render();
+    return true;
+  }
+
   inspect(card, point = null) {
     const token = store.state.tokens.find(t => t.id === this.tokenId);
-    if (!token) return;
-    const chooses = card.playable && (card.kind === 'archive' || (card.cost.open && card.cost.resolve)), available = token.resolve?.current || 0;
+    if (!token && !KEEPER_KINDS.has(card.kind)) return;
+    const burnoutOnly = card.kind === 'effort' && (token.effort || 0) === 0;
+    const chooses = card.playable && (card.kind === 'archive' || (card.cost.open && card.cost.resolve)), available = token?.resolve?.current || 0;
     const modal = dossierDialog(card.name, `
       <div class="card-inspect">
         <div class="vf-card vf-card-large">${cardFace(card, { large: true })}</div>
@@ -186,17 +279,23 @@ export class CardHand {
           ${card.kind === 'archive' ? '<p class="dossier-muted">Uncanny Power: gasta Resolve, tira un dado de Resolve por cada uno y suma Knowledge; el resultado es el nivel máximo que alcanzas. El Keeper gana 1 Fear por Resolve. Ignoras el coste de Hope y tiras Knowledge contra DC 10 + nivel.</p>' : ''}
           ${card.zone === 'vault' ? '<p class="dossier-muted">Esta carta está en el Vault. Tráela al Loadout con un Recall.</p>' : ''}
           ${!card.playable && card.zone !== 'vault' ? '<p class="dossier-muted">Carta pasiva, de reacción no reproducible o proyecto a largo plazo: se consulta, no se juega desde la mano.</p>' : ''}
+          ${KEEPER_KINDS.has(card.kind) ? `<p class="dossier-muted">Fear del Keeper: ${store.state.fear || 0}/12.${card.kind === 'adversary' ? ' Una criatura usa como mucho una Fear Ability por ciclo de Spotlight, más una Reaction defensiva.' : ''}</p>` : ''}
+          ${burnoutOnly ? '<p class="dossier-muted">No te queda Effort: puedes usarla con Burnout. Pagas 1 HP, marcas 1 Stress y tu Stress máximo baja 1 hasta tu próxima Recovery.</p>' : card.kind === 'effort' && (token.effort || 0) < card.cost.effort ? `<p class="dossier-error">Hace falta ${card.cost.effort} Effort y tienes ${token.effort || 0}.</p>` : ''}
           ${chooses ? `<label class="dossier-field"><span>Resolve que gastas (tienes ${available})</span><input class="hud-input" type="number" name="card_resolve" min="1" max="${Math.max(1, available)}" value="${Math.max(1, card.cost.resolve || 1)}" /></label>` : ''}
           <p class="dossier-error" role="alert"></p>
           <footer class="dossier-footer">${card.zone === 'vault' ? '<button type="button" class="hud-btn hud-btn-primary" data-card-recall>Recall al Loadout</button>' : card.playable ? `<button type="button" class="hud-btn hud-btn-primary" data-card-play>Jugar · ${e(card.kind === 'archive' ? 'Uncanny Power' : costLabel(card.cost))}</button>` : ''}</footer>
         </div>
       </div>`, 'card-inspect-dialog');
     const playButton = modal.querySelector('[data-card-play]');
-    if (playButton) playButton.onclick = async () => {
-      const spent = chooses ? Math.max(1, Number(modal.querySelector('[name="card_resolve"]').value) || 1) : null;
-      playButton.disabled = true;
-      if (await this.play(card, point, spent)) modal.remove(); else playButton.disabled = false;
-    };
+    if (playButton) {
+      if (burnoutOnly) playButton.textContent = 'Usar con Burnout · 1 HP';
+      if (card.kind === 'effort' && !burnoutOnly && (token.effort || 0) < card.cost.effort) playButton.disabled = true;
+      playButton.onclick = async () => {
+        const spent = chooses ? Math.max(1, Number(modal.querySelector('[name="card_resolve"]').value) || 1) : null;
+        playButton.disabled = true;
+        if (await this.play(card, point, spent, { burnout: burnoutOnly })) modal.remove(); else playButton.disabled = false;
+      };
+    }
     const recall = modal.querySelector('[data-card-recall]');
     if (recall) recall.onclick = () => { modal.remove(); this.toggleDrawer(card.name, true); };
     return modal;
@@ -271,11 +370,21 @@ export class CardFeed {
     setTimeout(() => { this.entries = this.entries.filter(x => x.id !== id); this.render(); }, CARD_FEED_LIFE);
     this.render();
   }
+  // Incremental: a card that arrives is added and one that expires is removed; the others are
+  // left alone, so they never replay their entrance (redrawing the whole feed made them blink).
   render() {
-    const shown = this.isKeeper() ? this.entries : [];
+    const shown = this.isKeeper() ? this.entries : [], ids = new Set(shown.map(x => x.id));
     this.root.classList.toggle('hidden', !shown.length);
-    this.root.innerHTML = sanitizeHTML(shown.map(x => `<button type="button" class="card-feed-item" data-feed="${e(x.id)}" title="${e(x.actorName)} usa ${e(x.card.name)}: clic para ampliar"><span class="vf-card vf-card-mini">${cardFace(x.card)}</span><span class="card-feed-who">${e(x.actorName)}${x.failed ? ' · no se manifiesta' : ''}</span></button>`).join(''));
-    this.root.querySelectorAll('[data-feed]').forEach(button => button.onclick = () => this.open(this.entries.find(x => x.id === button.dataset.feed)));
+    for (const node of [...this.root.children]) if (!ids.has(node.dataset.feed)) node.remove();
+    const present = new Set([...this.root.children].map(node => node.dataset.feed));
+    for (const x of shown) {
+      if (present.has(x.id)) continue;
+      const holder = document.createElement('div');
+      holder.innerHTML = sanitizeHTML(`<button type="button" class="card-feed-item" data-feed="${e(x.id)}" title="${e(x.actorName)} usa ${e(x.card.name)}: clic para ampliar"><span class="vf-card vf-card-mini">${cardFace(x.card)}</span><span class="card-feed-who">${e(x.actorName)}${x.failed ? ' · no se manifiesta' : ''}</span></button>`);
+      const button = holder.firstElementChild;
+      button.onclick = () => this.open(this.entries.find(entry => entry.id === x.id));
+      this.root.append(button);
+    }
   }
   open(entry) {
     if (!entry) return null;

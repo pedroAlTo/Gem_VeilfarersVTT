@@ -8,7 +8,15 @@ import { handoffControl } from './drones.js';
 import { characterCards, playCard, recallPower, costLabel, CARD_KINDS } from './loadoutCards.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
+// The table that resolves an action (the Keeper's, local or hosting) applies it even while its
+// own screen previews the Player view, whose edit guard would otherwise drop the change silently.
+// tableActing lifts only that guard; saving and broadcasting work as usual.
 export function performGameAction(action, store = defaultStore) {
+  const before = store.tableActing;
+  store.tableActing = store.sessionRole !== 'player' || !!before;
+  try { return resolveGameAction(action, store); } finally { store.tableActing = before; }
+}
+function resolveGameAction(action, store) {
   const secret = action.visibility === 'keeper';
   if (secret && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) throw new Error('Solo el Keeper puede hacer tiradas secretas.');
   const standalone = secret && action.type === 'CHECK' && !action.actorId;
@@ -37,11 +45,14 @@ export function performGameAction(action, store = defaultStore) {
     const data = cardData();
     if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
+    // The table that resolves the action applies it, even while its own screen previews the
+    // Player view (whose edit guard would otherwise drop the payment silently).
+    const apply = patch => store.updateToken(actor.id, patch);
     const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
     const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
     if (action.type === 'CARD_RECALL') {
       const result = recallPower(actor, data, String(action.name ?? ''), { mode: action.mode, replace: String(action.replace ?? '') });
-      store.updateToken(actor.id, { ...resources(result.token), ...sheet(result.token) });
+      apply({ ...resources(result.token), ...sheet(result.token) });
       const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Recall`, details: result.summary };
       store.addLog(log);
       return { id: newId(), actorId: actor.id, log, outcomeTitle: 'RECALL', summary: result.summary, entered: result.entered, left: result.left };
@@ -49,7 +60,7 @@ export function performGameAction(action, store = defaultStore) {
     const card = characterCards(actor, data).find(c => c.id === action.cardId);
     if (!card) throw new Error('Esa carta ya no está en la mano de este personaje.');
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
-    store.updateToken(actor.id, resources(result.token));
+    apply(resources(result.token));
     if (result.fear) store.addFear(result.fear);
     const details = [result.summary, ...result.notes].join(' ');
     const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };
@@ -154,10 +165,13 @@ export function performGameAction(action, store = defaultStore) {
       throw new Error('Make a check first, then use Bear Down before narrating its outcome.');
     if (actor.path !== 'Sleeping' || (actor.resolve?.current || 0) < 1)
       throw new Error('No Resolve available.');
+    // Bear Down spends any number of Resolve Dice and adds their total (Corebook ch. 7).
+    const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
     const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
-      bonus = 1 + Math.floor(Math.random() * sides);
+      dice = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
+      bonus = dice.reduce((n, v) => n + v, 0);
     store.updateToken(actor.id, {
-      resolve: { ...actor.resolve, current: actor.resolve.current - 1 },
+      resolve: { ...actor.resolve, current: actor.resolve.current - count },
     });
     const result = {
       ...previous,
@@ -169,15 +183,16 @@ export function performGameAction(action, store = defaultStore) {
       const success = result.total >= result.dc;
       result.resultType = `${success ? 'SUCCESS' : 'FAILURE'}_WITH_${result.dominance.toUpperCase()}`;
       result.outcomeTitle = result.resultType.replaceAll('_', ' ');
-      result.outcomeDesc = `Bear Down adds ${bonus}. ${success ? 'The check succeeds.' : 'The check still fails.'} Dominance and Path payout are unchanged.`;
+      result.outcomeDesc = `Bear Down adds ${bonus} (${count}${actor.resolve.dieType || 'd4'}: ${dice.join(', ')}). ${success ? 'The check succeeds.' : 'The check still fails.'} Dominance and Path payout are unchanged.`;
     }
+    result.bearDown = { count, dice, bonus };
     lastRoll.set(rollKey, result);
     const log = {
       sender: actor.name,
       type: 'RESOLVE',
       ...(secret ? { visibility: 'keeper' } : {}),
       title: 'Bear Down',
-      details: `+${bonus}; ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}`,
+      details: `${count}${actor.resolve.dieType || 'd4'} [${dice.join(', ')}] = +${bonus}; ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}`,
     };
     store.addLog(log);
     return { ...result, log };

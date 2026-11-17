@@ -342,7 +342,7 @@ class StateStore {
   setTokenSpotlight(tokenId, active = true) {
     const target = this.state.tokens.find(t => t.id === tokenId);
     if (!target) return false;
-    if (!this.remoteApplying && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
+    if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
 
     if (active) {
       const isAdversary = (target.actorType === 'adversary' || target.isPlayer === false) && target.actorType !== 'drone';
@@ -388,7 +388,7 @@ class StateStore {
   }
 
   updateToken(tokenId, partial) {
-    if (!this.remoteApplying && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
+    if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
     if (this.sessionRole === 'player' && !this.remoteApplying) {
       if (this.canEditToken(tokenId)) return this.sendTokenPatch?.(tokenId, partial);
       return false;

@@ -13,8 +13,15 @@
   transform-origin: 50% 120%;
   transform: translateX(calc(-50% + var(--offset) * var(--spread))) rotate(calc(var(--offset) * var(--tilt, 4deg))) translateY(calc(var(--offset) * var(--offset) * var(--drop, 3px)));
   transition: transform .22s cubic-bezier(.2,.9,.3,1.2), filter .2s ease; z-index: calc(10 + var(--i)); }
-.card-hand-fan .vf-card:hover, .card-hand-fan .vf-card:focus-visible { z-index: 60;
-  transform: translateX(calc(-50% + var(--offset) * var(--spread))) translateY(-86px) scale(1.34) rotateX(var(--rx)) rotateY(var(--ry)); }
+/* Hover without flicker: the card's hit area never moves; only its face rises. While it is up,
+   the hit area also reaches over the raised face, so the pointer can follow it. A transition
+   always runs back from wherever it is, so leaving mid-way reverses smoothly instead of snapping. */
+.card-hand-fan .vf-card:hover, .card-hand-fan .vf-card:focus-visible { z-index: 60; }
+.card-hand-fan .vf-card::before { content: ''; position: absolute; left: -18%; right: -18%; bottom: 100%; height: 0; }
+.card-hand-fan .vf-card:hover::before { height: 150px; }
+.card-hand-fan .vf-card .vf-card-frame { transform-origin: 50% 100%; transition: transform .26s cubic-bezier(.2,.9,.3,1.1), box-shadow .2s ease; will-change: transform; }
+.card-hand-fan .vf-card:hover .vf-card-frame, .card-hand-fan .vf-card:focus-visible .vf-card-frame {
+  transform: rotate(calc(var(--offset) * var(--tilt, 4deg) * -1)) translateY(-64px) scale(1.34) rotateX(var(--rx)) rotateY(var(--ry)); }
 .card-hand-fan .vf-card.dragging { opacity: .25; }
 .vf-card-frame { --card-color: #6d28d9; position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; border-radius: 9px; padding: 3px;
   background: linear-gradient(135deg, #f6d98a 0%, #e9a93a 28%, #fbe6ae 52%, #d08a12 76%, #f3cf7a 100%);
@@ -27,7 +34,7 @@
 .vf-card-flag b { position: absolute; left: 0; right: 0; top: 7%; text-align: center; font: 800 9px/1 'Chakra Petch', system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 .vf-card-badge { position: absolute; right: 6%; top: 5%; min-width: 15%; aspect-ratio: 1 / 1.1; display: grid; place-items: center; padding: 0 2px; box-sizing: border-box; font: 800 9px/1 ui-monospace, monospace; color: #1b1420; background: #fff;
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
-.vf-card-badge.hope { background: #fde68a; } .vf-card-badge.stress { background: #d8b4fe; } .vf-card-badge.effort { background: #fbbf24; } .vf-card-badge.resolve { background: #6ee7b7; }
+.vf-card-badge.fear { background: #c084fc; color: #fff; } .vf-card-badge.hope { background: #fde68a; } .vf-card-badge.stress { background: #d8b4fe; } .vf-card-badge.effort { background: #fbbf24; } .vf-card-badge.resolve { background: #6ee7b7; }
 .vf-card-band { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: auto; display: block; }
 .vf-card-frame.layout-corner .vf-card-art { flex-basis: 40%; background: repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 9px), linear-gradient(180deg, color-mix(in srgb, var(--card-color) 80%, #2a1b12) 0%, color-mix(in srgb, var(--card-color) 40%, #12090f) 100%); }
 .vf-card-frame.layout-corner .vf-card-band { bottom: -1px; }
@@ -38,6 +45,7 @@
 .vf-card-pill.type { background: color-mix(in srgb, var(--card-color) 16%, #fff); color: color-mix(in srgb, var(--card-color) 80%, #000); border-color: color-mix(in srgb, var(--card-color) 45%, #fff); }
 .vf-card-pill.hope { background: #fdf3c4; color: #7a5a00; border-color: #f1d674; } .vf-card-pill.stress { background: #f1e3ff; color: #5b2a86; border-color: #d8b4fe; }
 .vf-card-pill.effort { background: #ffedc2; color: #7a4a00; border-color: #fbbf24; } .vf-card-pill.resolve { background: #d9f8ea; color: #0f5a3c; border-color: #6ee7b7; }
+.vf-card-pill.fear { background: #f3e8ff; color: #6b21a8; border-color: #c084fc; }
 .vf-card-pill.roll { background: #dff6fb; color: #0a5568; border-color: #9ddfee; }
 .vf-card-text { font: 400 7px/1.35 system-ui, sans-serif; color: #2a2430; overflow: hidden; flex: 1; white-space: pre-line; }
 .vf-card-foot { display: flex; justify-content: space-between; gap: 6px; border-top: 1px solid #ead6a4; padding-top: 2px; }
@@ -63,7 +71,7 @@
 .card-inspect-text { color: #e2e8f0; font-size: 13px; line-height: 1.55; margin: 0; max-height: 300px; overflow: auto; }
 .card-vault { display: flex; flex-direction: column; gap: 10px; } .card-vault-preview { display: flex; justify-content: center; }
 @media (max-width: 1024px) { .token-quickbar-container.with-hand { max-width: calc(100% - 24px); bottom: 150px; } .card-hand { width: calc(100% - 32px); height: 150px; } .vf-card { --w: 104px; --h: 146px; } .card-inspect { grid-template-columns: 1fr; justify-items: center; } }
-@media (prefers-reduced-motion: reduce) { .card-hand-fan .vf-card, .vf-card-ghost { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .card-hand-fan .vf-card, .card-hand-fan .vf-card .vf-card-frame, .vf-card-mini .vf-card-frame, .vf-card-ghost { transition: none; } }
 
 /* The deck: a small stack after the fan; it opens the drawer where Loadout and Vault swap. */
 .card-deck { all: unset; box-sizing: border-box; position: absolute; right: 6px; bottom: 10px; z-index: 70; pointer-events: auto; cursor: pointer; width: 46px; height: 62px; display: grid; place-items: center; }
@@ -83,14 +91,19 @@
 .card-drawer-row { display: flex; gap: 10px; flex-wrap: wrap; min-height: 40px; align-items: flex-start; }
 .card-drawer-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .vf-card-mini { --w: 96px; --h: 134px; cursor: pointer; transition: transform .15s ease; }
-.vf-card-mini:hover, .vf-card-mini:focus-visible { transform: translateY(-4px); }
+.vf-card-mini .vf-card-frame { transition: transform .15s ease, box-shadow .2s ease; }
+.vf-card-mini:hover .vf-card-frame, .vf-card-mini:focus-visible .vf-card-frame { transform: translateY(-4px); }
 .vf-card-mini.chosen .vf-card-frame { box-shadow: 0 0 0 3px #00f3ff, 0 0 22px rgba(0,243,255,.6); }
 .vf-card-mini .vf-card-text { display: none; } .vf-card-mini .vf-card-title { font-size: 8.5px; } .vf-card-mini .vf-card-pill { font-size: 5.5px; }
 /* The Keeper's feed of cards used by the players */
-.card-feed { position: absolute; right: 14px; bottom: 44px; z-index: 119; display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
+.card-feed { position: absolute; right: 14px; bottom: 214px; z-index: 119; display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
 .card-feed.hidden { display: none; }
 .card-feed-item { all: unset; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; animation: card-drawer-in .25s ease both; }
 .card-feed-item .vf-card-mini { --w: 78px; --h: 109px; pointer-events: none; }
 .card-feed-item:hover .vf-card-frame, .card-feed-item:focus-visible .vf-card-frame { box-shadow: 0 0 0 2px #00f3ff, 0 0 18px rgba(0,243,255,.55); }
 .card-feed-who { max-width: 90px; font: 700 9px/1.2 system-ui, sans-serif; color: #fde68a; text-align: center; background: rgba(13,4,32,.9); padding: 3px 6px; border: 1px solid rgba(253,230,138,.4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .card-drawer, .card-feed-item { animation: none; } }
+
+.card-hand-empty { pointer-events: auto; align-self: flex-end; margin-top: auto; margin-bottom: 12px; max-width: 320px; padding: 10px 12px; background: rgba(13,4,32,.92); border: 1px dashed rgba(192,132,252,.55); display: flex; flex-direction: column; gap: 6px; }
+.card-hand-empty strong { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #c084fc; }
+.card-hand-empty p { margin: 0; font-size: 11.5px; line-height: 1.45; color: #cbd5e1; } .card-hand-empty button { align-self: flex-start; }
