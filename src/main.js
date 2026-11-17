@@ -9,6 +9,7 @@ import { CardHand, CardFeed } from './cardHandUI.js';
 import './language.css';
 import './account.css';
 import './onboarding.css';
+import './mobile.css';
 import { startTranslation } from './i18n.js';
 import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';
@@ -71,6 +72,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   startTranslation(document.body);
   await store.ready;
   initOrbitalUI();
+  import('./mobileUI.js').then(({ mountMobileNotice }) => mountMobileNotice()).catch(() => {});
   import('./onboardingUI.js').then(({ mountOnboarding }) => mountOnboarding({ cloud: !LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured })).catch(error => console.warn('Guide unavailable:', error));
   mountStatusbarLanguage();
   const helpButton = document.getElementById('help_btn');

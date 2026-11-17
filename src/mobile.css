@@ -1,0 +1,26 @@
+/* Smaller screens. The table is designed for a computer; these rules keep it usable on a
+   tablet and readable on a phone without redesigning it. */
+.mobile-notice { position: fixed; left: 10px; right: 10px; bottom: 44px; z-index: 950; display: flex; gap: 10px; align-items: center;
+  padding: 10px 12px; background: rgba(13,4,32,.96); border: 1px solid rgba(253,230,138,.5); color: #e9d5ff; font-size: 12px; line-height: 1.4; }
+.mobile-notice[hidden] { display: none; }
+.mobile-notice p { margin: 0; flex: 1; }
+.mobile-notice strong { color: #fde68a; }
+
+@media (max-width: 1100px) {
+  /* The account badge sat on top of the VEILFARERS title: keep the emblem, drop the word. */
+  html body .header-hud .brand-title, html body .header-hud .brand-version { display: none; }
+}
+@media (max-width: 1024px) {
+  /* Tactical layers: out of the way of the character bar at the bottom. */
+  html body .layer-hud-container:not([style*="top"]) { top: 8px; right: 12px; left: auto; bottom: auto; }
+  html body .guide-panel.in-map { top: 56px; }
+}
+@media (max-width: 600px) {
+  /* Map editing tools are for larger screens. */
+  html body .layer-hud-container { display: none; }
+  /* Clocks stay in the CLOCKS tab; on the map they would cover most of it. */
+  html body #clocks_layer_overlay { display: none !important; }
+  html body .guide-panel.in-map { top: 8px; left: 8px; right: 8px; max-height: 55vh; }
+  html body .card-hand-empty { max-width: none; margin: 0 8px 8px; padding: 6px 8px; }
+  html body .card-hand-empty p { display: none; }
+}

@@ -12,7 +12,7 @@ export async function openEnvironment(mapId, catalog) {
   const env = map.environment || { tier: 1 };
   const modal = dossierDialog('Entorno de la escena', `
     <span class="dossier-eyebrow">KEEPER’S COMPANION · CAPÍTULOS 9 Y 10</span><h2>${e(map.name)}</h2>
-    <p class="dossier-muted">El microentorno aporta la ficha completa. Añade <strong>una sola característica Passive o Action</strong> del macroentorno. El clima visual se ajusta por separado.</p>
+    <p class="dossier-muted">El microentorno aporta la ficha completa. Añade una sola característica Passive o Action del macroentorno. El clima visual se ajusta por separado.</p>
     <div class="encounter-grid">
       <label class="dossier-field">Microentorno · ficha base<vf-select class="hud-select" data-micro>${options(entries.filter(x => x.layer === 'micro'), env.microId)}</vf-select></label>
       <label class="dossier-field">Macroentorno · bioma<vf-select class="hud-select" data-macro>${options(entries.filter(x => x.layer === 'macro'), env.macroId, 'Sin modificador macro')}</vf-select></label>

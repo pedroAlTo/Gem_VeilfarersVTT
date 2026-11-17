@@ -1,10 +1,32 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.14.1**.
-Paquete: `VeilFarers_VTT_v2.14.1.zip`.
+Versión actual del VTT: **v2.14.2**.
+Paquete: `VeilFarers_VTT_v2.14.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.14.2] — 2026-11-17
+
+V2 · Idioma revisado pantalla a pantalla, móvil y primeros pasos en la ayuda
+
+### Idioma
+
+- Revisión automática de todas las pantallas en los dos idiomas: unos 350 textos que se quedaban en el otro idioma ya cambian con el selector.
+- Cubre lobby, ficha (estadísticas, rasgos y vínculos), ajustes del token, crear escena, entorno, boss, arcos, consola de dron, biblioteca de adversarios, importación de fichas, nave, herramientas de dibujo y agua, y la tarjeta de resultado de las tiradas («¡La acción sale bien, pero con un coste!…»).
+- Las frases partidas por negritas (consola de dron, entorno) se reescribieron para poder traducirse enteras. Las bandas de alcance (Close, Far…) no se traducen dentro de los avisos de ataque.
+- No se traducen, como antes: nombres, chat, registro, contenido de los libros (ancestries, adversarios, módulos, compendio de reglas), los datos de la campaña de ejemplo y los términos de reglas del Corebook.
+
+### Móvil y tablet
+
+- La mesa sigue pensada para ordenador o tablet. En un teléfono aparece una vez un aviso que lo explica y dice qué funciona bien ahí: seguir la partida, la ficha, los dados y el chat.
+- Teléfono: la guía de primeros pasos empieza minimizada, se ocultan el panel de capas y los relojes sobre el mapa (siguen en la pestaña RELOJES) y el aviso «Sin cartas» es compacto.
+- Tablet: el panel de capas pasa arriba a la derecha del mapa y ya no tapa la barra del personaje; el título de la cabecera deja de pisarse con la cuenta.
+
+### Primeros pasos
+
+- En AYUDA, la sección se llama ahora «Primeros pasos», con los botones «Volver a ver los primeros pasos» y «Empezar desde cero».
+- Al cerrar la guía, un aviso recuerda que se puede volver a ver desde AYUDA.
 
 ## [2.14.1] — 2026-11-17
 

@@ -323,6 +323,8 @@ export const MESSAGE_PAIRS = [
   ['El Keeper gestiona los sistemas de la nave.', 'Ship systems are managed by the Keeper.'],
   ['Heat cap superado: cada sistema pierde 1 Integrity. Selecciona al piloto y resuelve Instinct DC 15.', 'Heat cap exceeded: every system loses 1 Integrity. Select the pilot and resolve Instinct DC 15.'],
   ['Faltan los datos de la nave.', 'Missing starship data.'],
+  // Guide
+  ["Puedes volver a ver los primeros pasos desde AYUDA.", "You can see the first steps again from HELP."],
 ];
 
 export const MESSAGE_PATTERNS = [

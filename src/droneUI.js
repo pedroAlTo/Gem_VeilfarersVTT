@@ -23,7 +23,7 @@ export function openDroneConsole(tokenId = null) {
   const modal = dossierDialog(token ? `DRON · ${token.name}` : 'NUEVO DRON', `
     <form id="drone_console" class="drone-console">
       ${legacy ? '<p class="dossier-error">Este dron se creó con una plantilla antigua que no seguía el Corebook. Elige su Grado y sus módulos: al guardar se ajustan HP, Evasion, umbrales y Armor Slots a los del libro.</p>' : ''}
-      <p class="dossier-muted">Un dron es equipo, no un personaje: no da Spotlights extra y lo maneja su operador con su propia Acción y su propia tirada (Corebook, cap. 14). Su <strong>Grado</strong> es el chasis; sus <strong>Módulos</strong>, lo que sabe hacer.</p>
+      <p class="dossier-muted">Un dron es equipo, no un personaje: no da Spotlights extra y lo maneja su operador con su propia Acción y su propia tirada (Corebook, cap. 14). Su Grado es el chasis; sus Módulos, lo que sabe hacer.</p>
       <div class="dossier-identity">
         <label class="dossier-field"><span>Nombre</span><input class="hud-input" name="drone_name" maxlength="80" required value="${e(token?.name || 'Cheap Scout Mote')}" /></label>
         <label class="dossier-field"><span>Configuración de ejemplo del libro</span><select class="hud-select" name="drone_sample">${token ? '<option value="">— Configuración actual —</option>' : ''}${DRONE_SAMPLE_BUILDS.map(b => `<option value="${b.id}">${e(b.name)} · ${GRADE_LABEL[b.grade]}</option>`).join('')}<option value="custom">A medida</option></select></label>
@@ -83,7 +83,9 @@ export function openDroneConsole(tokenId = null) {
     q('[data-drone-shared]').textContent = state.modules.includes(SHARED_CONTROL_MODULE)
       ? 'Neural Network Control instalado: los jugadores registrados (Sesión → control del token) lo controlan por turnos. Pasar el control es gratis con señal Stable, cuesta 1 Stress a quien lo recibe con Unstable y no funciona con Lost.'
       : 'Sin Neural Network Control el dron está emparejado con un solo operador. Añade ese módulo (1 Cr, 0 Slots) para que lo controlen varios jugadores.';
-    q('[data-drone-signal]').textContent = `${SIGNAL_STATES[form.elements.drone_signal.value].effect} ${LINK_MODES[form.elements.drone_linkMode.value].effect} Protocolo: ${LOST_PROTOCOLS[form.elements.drone_protocol.value].effect}`;
+    // One span per piece, so each sentence can be shown in the interface language.
+    const piece = text => Object.assign(document.createElement('span'), { textContent: text });
+    q('[data-drone-signal]').replaceChildren(piece(SIGNAL_STATES[form.elements.drone_signal.value].effect), ' ', piece(LINK_MODES[form.elements.drone_linkMode.value].effect), ' ', piece('Protocolo:'), ' ', piece(LOST_PROTOCOLS[form.elements.drone_protocol.value].effect));
     return b;
   };
   const refresh = () => { renderSummary(); renderModules(); };

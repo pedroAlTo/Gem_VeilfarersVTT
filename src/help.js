@@ -16,7 +16,7 @@ const TEXT = {
     legacy: 'Entregas anteriores · Orbital', legacyText: 'Conservan sus nombres originales, sin asignarles versiones retroactivas.',
     legacyFull: 'El historial técnico completo se conserva en <strong>RELEASE_ORBITAL.md</strong>, dentro del ZIP.',
     shortcuts: 'Atajos útiles',
-    guideTitle: 'Guía de primer uso', guideText: 'Una lista corta de pasos para tu papel (jugador o Keeper). Cada paso se marca solo cuando lo haces en la mesa.', guideOpen: 'Abrir la guía', guideRestart: 'Empezar de nuevo',
+    guideTitle: 'Primeros pasos', guideText: 'La guía de primer uso: una lista corta de pasos para tu papel (jugador o Keeper). Cada paso se marca solo cuando lo haces en la mesa. Puedes volver a verla con tu progreso o empezarla desde cero.', guideOpen: 'Volver a ver los primeros pasos', guideRestart: 'Empezar desde cero',
     keys: '<kbd>B</kbd> Dibujar · <kbd>D</kbd> Borrar dibujos · <kbd>Ctrl</kbd> + <kbd>C</kbd>/<kbd>V</kbd> Copiar/pegar · <kbd>U</kbd> Agua · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Deshacer · <kbd>Ctrl</kbd> + <kbd>Y</kbd> Rehacer · <kbd>Esc</kbd> Cancelar trazado',
     guideItems: version => [
       ['Idioma e inicio', 'El selector <strong>ES / EN</strong> de la barra inferior (y del vestíbulo) cambia toda la interfaz, esta ayuda y los avisos. Los términos de reglas del Corebook se mantienen en inglés. El botón <strong>⌂</strong> de la cabecera vuelve a la pantalla de inicio.'],
@@ -43,7 +43,7 @@ const TEXT = {
     legacy: 'Earlier deliveries · Orbital', legacyText: 'They keep their original names, with no retroactive version numbers.',
     legacyFull: 'The full technical history is kept in <strong>RELEASE_ORBITAL.md</strong>, inside the ZIP.',
     shortcuts: 'Useful shortcuts',
-    guideTitle: 'First-use guide', guideText: 'A short list of steps for your role (player or Keeper). Each step ticks itself when you do it at the table.', guideOpen: 'Open the guide', guideRestart: 'Start over',
+    guideTitle: 'First steps', guideText: 'The first-use guide: a short list of steps for your role (player or Keeper). Each step ticks itself when you do it at the table. You can see it again with your progress or start it from scratch.', guideOpen: 'See the first steps again', guideRestart: 'Start from scratch',
     keys: '<kbd>B</kbd> Draw · <kbd>D</kbd> Erase drawings · <kbd>Ctrl</kbd> + <kbd>C</kbd>/<kbd>V</kbd> Copy/paste · <kbd>U</kbd> Water · <kbd>Ctrl</kbd> + <kbd>Z</kbd> Undo · <kbd>Ctrl</kbd> + <kbd>Y</kbd> Redo · <kbd>Esc</kbd> Cancel stroke',
     guideItems: version => [
       ['Language and home', 'The <strong>ES / EN</strong> switch in the bottom bar (and in the lobby) changes the whole interface, this help and the notices. Corebook rule terms stay in English. The <strong>⌂</strong> button in the header goes back to the home screen.'],

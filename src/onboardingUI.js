@@ -1,12 +1,14 @@
 // The first-use guide on screen: a small panel at the bottom left of the table with the steps
 // of the current role. Steps tick themselves when the action really happens.
 import { store } from './state.js';
-import { escapeHTML as e, sanitizeHTML } from './ui.js';
+import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import {
   stepsFor, guideRole, readProgress, writeProgress, mark, settled, stepsFromState, baselineOf,
 } from './onboarding.js';
 
-let panel = null, progress = readProgress(), base = null, minimized = false, ctx = { cloud: false, keeperRoom: false };
+// On a phone the guide starts as a small pill: expanded it would cover most of the map.
+const narrow = () => typeof matchMedia === 'function' && matchMedia('(max-width: 600px)').matches;
+let panel = null, progress = readProgress(), base = null, minimized = narrow(), ctx = { cloud: false, keeperRoom: false };
 let rooms = null, lastRole = '';
 
 const role = () => guideRole(store.sessionRole, store.state.userRole);
@@ -70,8 +72,9 @@ function render() {
       </li>`;
     }).join('')}</ol>`);
   panel.querySelector('[data-guide-min]').onclick = () => { minimized = true; render(); };
-  panel.querySelector('[data-guide-close]').onclick = () => { progress[r].closed = true; save(); render(); };
-  panel.querySelector('[data-guide-finish]')?.addEventListener('click', () => { progress[r].closed = true; save(); render(); });
+  const close = () => { progress[r].closed = true; save(); render(); notify('Puedes volver a ver los primeros pasos desde AYUDA.'); };
+  panel.querySelector('[data-guide-close]').onclick = close;
+  panel.querySelector('[data-guide-finish]')?.addEventListener('click', close);
   panel.querySelector('[data-guide-show]')?.addEventListener('click', event => {
     if (!spotlight(current)) { event.currentTarget.textContent = 'No está a la vista'; event.currentTarget.disabled = true; }
   });

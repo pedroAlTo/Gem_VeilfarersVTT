@@ -294,7 +294,7 @@ export class VeilfarersLobbyGateway {
                   </label>
                 </div>
               </div>
-              <p class="panel-hint">Solo tú ves estos personajes. Ya en la mesa, tráelos desde Cuenta → Use in game, o pide al Keeper que te asigne un token.</p>
+              <p class="panel-hint">Solo tú ves estos personajes. Ya en la mesa, tráelos desde Cuenta → Personajes → Usar en la partida, o pide al Keeper que te asigne un token.</p>
               <div id="vf-vault-list" class="vf-vault-list"></div>
             </section>
           </div>

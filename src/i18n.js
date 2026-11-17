@@ -57,7 +57,8 @@ export function translate(text, lang = language) {
         const target = lang === 'es' ? pair.es : pair.en;
         result = target.template.replace(/\{(\w+)\}/g, (_, name) => {
           const value = match[side.names.indexOf(name) + 1] ?? '';
-          return translate(value, lang) ?? value;
+          // {_x}: a rule term or name that stays as written ("Close" is a range band, not a button).
+          return name.startsWith('_') ? value : (translate(value, lang) ?? value);
         });
         break;
       }
