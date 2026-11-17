@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.8.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.8**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.8** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.8.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.9.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.9**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.9** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.9.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -54,6 +54,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.8.zip**. Abre **AYUDA
 39. **(V3) Armas de fuego de alcance Close.** Una pistola (o escopeta, subfusil…) de alcance Close ataca a Close y en Melee sin Desventaja. Un rifle de alcance Far contra un objetivo en Melee: «Arma de alcance Far contra un objetivo en Melee: Desventaja». Cualquier arma más allá de su alcance: Desventaja.
 40. **(V3) Propiedades de arma y modificadores.** Da a un arma «Massive; Devastating; Cutting; Ignite; Poison; Stunning» (TT2) y ataca en Melee: el resultado lista Massive con su dado extra, Devastating si llega a Severe, Cutting (sin escudos), Stunning con CD 15. «Aplicar daño» resta HP, marca 1 Stress (Poison) y pone On Fire. Toda tarjeta de resultado (abajo en el centro) muestra la línea de modificadores.
 41. **(V3) Movimiento animado y distancia viva.** Con dos navegadores en una sala, mueve un token en uno: en el otro se desliza hasta su sitio (no aparece de golpe). Marca un objetivo para atacar y mueve el objetivo o tu token: la Ficha actualiza banda, metros y Ventaja/Desventaja.
+42. **(V3) Peana a peana.** Pon tu token pegado a un adversario grande (tamaño 2): la línea de objetivo y la Ficha dicen MELEE · 0.0 m. Con una casilla vacía entre las peanas: VERY CLOSE · 2.0 m.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

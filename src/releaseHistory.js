@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.9', date: '2026-11-17', title: 'V3 · Distancias de peana a peana',
+    sections: [
+      { title: 'Distancias', items: [
+        'La distancia entre dos tokens se mide de peana a peana (el hueco entre sus bordes), no entre centros: una criatura grande está en Melee cuando su peana toca la tuya, también en diagonal.',
+        'Lo usan el ataque, la Ficha del jugador y la línea de objetivo del mapa. La regla de medir del mapa sigue midiendo entre los dos puntos que marcas.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.8', date: '2026-11-17', title: 'V3 · Tokens que se deslizan y distancias que se recalculan',
     sections: [
       { title: 'Movimiento', items: [

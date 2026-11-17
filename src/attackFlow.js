@@ -20,6 +20,22 @@ export function tokenDistanceSquares(a, b, gridSize) {
   return Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0)) / (gridSize || 64);
 }
 
+// Distance between two tokens is measured base to base (user ruling, 17 Nov 2026): the gap
+// between the edges of their bases, so a large creature is in Melee when its base touches yours.
+export function tokenGapSquares(a, b, gridSize) {
+  const centre = tokenDistanceSquares(a, b, gridSize);
+  return Math.max(0, centre - ((Number(a?.size) || 1) + (Number(b?.size) || 1)) / 2);
+}
+// Bands for a gap between bases: touching (also diagonally) is Melee; then by whole metres of gap.
+export function gapBandFor(gapSquares, metersPerSquare = DEFAULT_METERS_PER_SQUARE) {
+  const meters = Math.round(gapSquares * metersPerSquare);
+  if (gapSquares <= 0.5 || meters <= 1) return 'Melee';
+  if (meters <= 5) return 'Very Close';
+  if (meters <= 10) return 'Close';
+  if (meters <= 25) return 'Far';
+  return 'Extreme';
+}
+
 // Walls and closed doors stop a shot; windows and open doors do not.
 function crosses(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y) {
   const d = (p2x - p1x) * (p4y - p3y) - (p2y - p1y) * (p4x - p3x);
@@ -39,8 +55,8 @@ export function lineBlockedByWall(a, b, walls = []) {
 // Everything the table needs to know about the gap between two tokens, in one place:
 // the lock line, the ruler and the attack all read it from here.
 export function distanceInfo(a, b, map = {}) {
-  const squares = tokenDistanceSquares(a, b, map.gridSize), metersPerSquare = map.gridScaleMeters || DEFAULT_METERS_PER_SQUARE;
-  return { squares, meters: squares * metersPerSquare, band: rangeBandFor(squares, metersPerSquare), blocked: lineBlockedByWall(a, b, map.walls || []) };
+  const squares = tokenGapSquares(a, b, map.gridSize), metersPerSquare = map.gridScaleMeters || DEFAULT_METERS_PER_SQUARE;
+  return { squares, meters: squares * metersPerSquare, band: gapBandFor(squares, metersPerSquare), blocked: lineBlockedByWall(a, b, map.walls || []) };
 }
 
 const bandFromMeters = meters => (meters <= 1 ? 'Melee' : meters <= 5 ? 'Very Close' : meters <= 10 ? 'Close' : meters <= 25 ? 'Far' : 'Extreme');

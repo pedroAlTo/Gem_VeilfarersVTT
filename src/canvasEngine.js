@@ -18,7 +18,7 @@ import { undoManager } from './undoManager.js';
 import { pointInWater } from './waterGeometry.js';
 import { notify, confirmAction } from './ui.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
-import { rangeBandFor, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
+import { rangeBandFor, gapBandFor, tokenGapSquares, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -4022,9 +4022,11 @@ export class CanvasEngine {
     const gridSize = map.gridSize || 64;
     // Same scale and bands as the attack and the ruler.
     const metersPerSquare = map.gridScaleMeters || DEFAULT_METERS_PER_SQUARE;
-    const distSquares = (distPx / gridSize).toFixed(1);
-    const distMeters = ((distPx / gridSize) * metersPerSquare).toFixed(1);
-    const lockBand = rangeBandFor(distPx / gridSize, metersPerSquare).toUpperCase();
+    // Base to base, like the attack: the gap between the edges of the two tokens.
+    const gapSquares = tokenGapSquares(attacker, target, gridSize);
+    const distSquares = gapSquares.toFixed(1);
+    const distMeters = (gapSquares * metersPerSquare).toFixed(1);
+    const lockBand = gapBandFor(gapSquares, metersPerSquare).toUpperCase();
 
     // LOS obstruction test against walls and closed doors
     let losBlocked = false;

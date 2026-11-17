@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.8**.
-Paquete: `VeilFarers_VTT_v2.17.8.zip`.
+Versión actual del VTT: **v2.17.9**.
+Paquete: `VeilFarers_VTT_v2.17.9.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.9] — 2026-11-17
+
+V3 · Distancias de peana a peana
+
+### Distancias
+
+- La distancia entre dos tokens se mide de peana a peana (el hueco entre sus bordes), no entre centros: una criatura grande está en Melee cuando su peana toca la tuya, también en diagonal.
+- Lo usan el ataque, la Ficha del jugador y la línea de objetivo del mapa. La regla de medir del mapa sigue midiendo entre los dos puntos que marcas.
 
 ## [2.17.8] — 2026-11-17
 
