@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.5**.
-Paquete: `VeilFarers_VTT_v2.17.5.zip`.
+Versión actual del VTT: **v2.17.6**.
+Paquete: `VeilFarers_VTT_v2.17.6.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.6] — 2026-11-17
+
+V3 · Armas de fuego de alcance Close sin Desventaja a Close ni en Melee
+
+### Reglas de alcance
+
+- Regla de la mesa: cualquier arma de fuego con alcance máximo Close (o Very Close) no tiene Desventaja a Close ni en Melee, se llame como se llame (pistola, escopeta recortada, subfusil…). Así se sabe qué armas de fuego se pueden usar en Melee/Close.
+- Un arma de alcance Far o más sigue teniendo Desventaja contra un objetivo en Melee, y pasarse del alcance del arma sigue dando Desventaja.
+- Se retira la Desventaja de las pistolas a Close añadida en v2.17.1.
 
 ## [2.17.5] — 2026-11-17
 

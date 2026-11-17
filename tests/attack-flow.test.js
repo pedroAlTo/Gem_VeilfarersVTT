@@ -75,7 +75,7 @@ test('a melee weapon only attacks at Melee; a ranged weapon beyond its band, or 
   assert.equal(rangeCheck({ range: 'Melee' }, 'Melee').allowed, true);
   const tooFar = rangeCheck({ range: 'Melee' }, 'Very Close');
   assert.equal(tooFar.allowed, false); assert.match(tooFar.reason, /fuera de Melee/);
-  assert.deepEqual([rangeCheck({ range: 'Close' }, 'Close').disadvantage, rangeCheck({ range: 'Close' }, 'Melee').disadvantage, rangeCheck({ range: 'Close' }, 'Far').disadvantage, rangeCheck({ range: 'Close' }, 'Extreme').disadvantage], [false, true, true, true]);
+  assert.deepEqual([rangeCheck({ range: 'Close' }, 'Close').disadvantage, rangeCheck({ range: 'Close' }, 'Melee').disadvantage, rangeCheck({ range: 'Close' }, 'Far').disadvantage, rangeCheck({ range: 'Close' }, 'Extreme').disadvantage], [false, false, true, true]);
   // A long ranged weapon at Melee has Disadvantage; a short one (a pistol) does not.
   assert.match(rangeCheck({ name: 'Rifle de Asalto Automático', range: 'Far' }, 'Melee').reason, /objetivo en Melee: Desventaja/);
   assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Melee').disadvantage, false);
@@ -83,10 +83,13 @@ test('a melee weapon only attacks at Melee; a ranged weapon beyond its band, or 
   assert.equal(rangeCheck({ name: 'Arma rara', range: 'Close', short: true }, 'Melee').disadvantage, false, 'a weapon can be marked short');
   assert.equal(rangeCheck({ name: 'Pistola pesada', range: 'Close', short: false }, 'Melee').disadvantage, true, 'or explicitly not');
   assert.equal(rangeCheck({ range: 'Close' }, 'Far').allowed, true);
-  // Corebook: "Close: ... Pistols take a penalty."
-  assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Very Close').disadvantage, false);
-  assert.match(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Close').reason, /pistola.*Desventaja/i);
-  assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Close').disadvantage, true);
+  // User ruling: any firearm with a maximum range of Close has no Disadvantage at Close or Melee,
+  // whatever its name; a Far weapon does at Melee.
+  assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Close').disadvantage, false);
+  assert.equal(rangeCheck({ name: 'Escopeta recortada', range: 'Very Close' }, 'Melee').disadvantage, false);
+  assert.equal(rangeCheck({ name: 'Subfusil compacto', range: 'Close' }, 'Melee').disadvantage, false);
+  assert.equal(rangeCheck({ name: 'Pistola de largo alcance', range: 'Far' }, 'Melee').disadvantage, true, 'a long-range pistol is not short');
+  assert.match(rangeCheck({ name: 'Rifle de Asalto Automático', range: 'Far' }, 'Melee').reason, /alcance Far.*Desventaja/);
   assert.equal(rangeCheck({ name: 'Rifle de Asalto Automático', range: 'Far' }, 'Close').disadvantage, false);
   // Without a weapon the attack is an unarmed strike: Melee only.
   assert.equal(rangeCheck(null, 'Melee').allowed, true);

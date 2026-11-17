@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.6', date: '2026-11-17', title: 'V3 · Armas de fuego de alcance Close sin Desventaja a Close ni en Melee',
+    sections: [
+      { title: 'Reglas de alcance', items: [
+        'Regla de la mesa: cualquier arma de fuego con alcance máximo Close (o Very Close) no tiene Desventaja a Close ni en Melee, se llame como se llame (pistola, escopeta recortada, subfusil…). Así se sabe qué armas de fuego se pueden usar en Melee/Close.',
+        'Un arma de alcance Far o más sigue teniendo Desventaja contra un objetivo en Melee, y pasarse del alcance del arma sigue dando Desventaja.',
+        'Se retira la Desventaja de las pistolas a Close añadida en v2.17.1.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.5', date: '2026-11-17', title: 'V3 · Alcance y propiedades de las armas en el ataque',
     sections: [
       { title: 'Reglas de las armas', items: [

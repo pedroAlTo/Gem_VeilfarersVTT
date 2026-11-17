@@ -1311,10 +1311,10 @@ export const PATTERNS = [
   ["{_a}: toca otra vez para tirar · Esc para cancelar", "{_a}: tap again to roll · Esc to cancel"],
   ["{_a} · DC {b}", "{_a} · DC {b}"],
   ["{a} a la próxima tirada", "{a} to the next roll"],
-  ["Arma corta (pistola) con el objetivo a {_a}: Desventaja (las pistolas tienen penalización a Close).", "Short weapon (pistol) with the target at {_a}: Disadvantage (pistols take a penalty at Close)."],
   ["{_a}: elige el Trait · Esc para cancelar", "{_a}: choose the Trait · Esc to cancel"],
   ["Fuera de competencia (Desventaja): {_a}", "Outside competence (Disadvantage): {_a}"],
   ["Propiedades del arma: {_a} al ataque.", "Weapon properties: {_a} to the attack."],
   ["Propiedades del arma: {_a}.", "Weapon properties: {_a}."],
   ["Daño {_a}: umbrales del objetivo −{b} en este impacto.", "{_a} damage: target thresholds −{b} for this hit."],
+  ["Arma de alcance {_a} contra un objetivo en Melee: Desventaja (las armas de alcance máximo Close no la tienen).", "{_a}-range weapon against a target in Melee: Disadvantage (weapons with a maximum range of Close do not have it)."],
 ];

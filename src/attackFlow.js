@@ -89,19 +89,19 @@ export function weaponRangeBand(weapon) {
   return (match && bandFromText(match.range)) || bandFromKind(weapon);
 }
 
-// A short firearm (pistol, hand blaster, revolver...) can be fired point-blank without penalty
-// (Corebook ch. 10: "point-blank pistol range"). A weapon can also say so with `short: true`.
-const SHORT_WEAPON = /pistol|pistola|revolver|revólver|derringer|bl[aá]ster|holdout|sidearm|hand ?cannon/i;
-export function isShortWeapon(weapon) {
+// A short firearm is one whose maximum range is Close or less (user ruling, 17 Nov 2026): it
+// fires at Close and point-blank in Melee without penalty. A weapon can also say so with
+// `short: true` (or not, with `short: false`).
+export function isShortWeapon(weapon, reach = weaponRangeBand(weapon)) {
   if (!weapon) return false;
   if (typeof weapon.short === 'boolean') return weapon.short;
-  return SHORT_WEAPON.test([weapon.name, weapon.features, weapon.type].filter(Boolean).join(' '));
+  return reach === 'Very Close' || reach === 'Close';
 }
 
-// Table rule: a melee weapon only works at Melee; a ranged weapon fired beyond the band
-// it covers attacks with Disadvantage, and so does a long ranged weapon fired at a target in
-// Melee (user decision, 17 Nov 2026; short weapons such as pistols are exempt) and a short
-// weapon fired at Close or farther (Corebook: pistols take a penalty at Close).
+// Table rule: a melee weapon only works at Melee (Reach: also Very Close); a ranged weapon fired
+// beyond the band it covers attacks with Disadvantage; a long ranged weapon (maximum range Far or
+// more) fired at a target in Melee attacks with Disadvantage. A firearm with a maximum range of
+// Close has no Disadvantage at Close or in Melee.
 export function rangeCheck(weapon, band) {
   // No weapon in hand is an unarmed strike: a Melee attack (Corebook ch. 10).
   if (!weapon) return band && band !== 'Melee'
@@ -116,10 +116,7 @@ export function rangeCheck(weapon, band) {
   }
   const beyond = RANGE_BANDS.indexOf(band) > RANGE_BANDS.indexOf(reach);
   if (beyond) return { allowed: true, disadvantage: true, reach, band, reason: `Objetivo a ${band}, más allá del alcance del arma (${reach}): Desventaja.` };
-  // Corebook ch. 10, Range Bands: "Close: ... Pistols take a penalty." A short weapon fired at
-  // Close (or farther, within its reach) attacks with Disadvantage.
-  if (isShortWeapon(weapon) && RANGE_BANDS.indexOf(band) >= RANGE_BANDS.indexOf('Close')) return { allowed: true, disadvantage: true, reach, band, reason: `Arma corta (pistola) con el objetivo a ${band}: Desventaja (las pistolas tienen penalización a Close).` };
-  if (band === 'Melee' && !isShortWeapon(weapon)) return { allowed: true, disadvantage: true, reach, band, reason: 'Arma a distancia larga contra un objetivo en Melee: Desventaja (las armas cortas, como las pistolas, no la tienen).' };
+  if (band === 'Melee' && !isShortWeapon(weapon, reach)) return { allowed: true, disadvantage: true, reach, band, reason: `Arma de alcance ${reach} contra un objetivo en Melee: Desventaja (las armas de alcance máximo Close no la tienen).` };
   return { allowed: true, disadvantage: false, reach, band, reason: '' };
 }
 
