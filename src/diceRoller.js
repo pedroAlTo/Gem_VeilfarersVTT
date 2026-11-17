@@ -12,7 +12,7 @@ import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
-import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from './attackFlow.js';
+import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
 import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
@@ -1115,7 +1115,8 @@ export class DiceRollerSidebar {
     const hasDisadvantage = edge.disadvantage;
     const useResolve = this.container.querySelector('#dice_use_resolve').checked;
     const expMod = parseInt(this.container.querySelector('#dice_exp_mod').value, 10) || 0;
-    const customMod = parseInt(this.container.querySelector('#dice_custom_mod').value, 10) || 0;
+    // An attack adds its weapon's properties (Reliable, Accurate, Smart Scope).
+    const customMod = (parseInt(this.container.querySelector('#dice_custom_mod').value, 10) || 0) + (attack?.bonus || 0);
 
     const traitObj = TRAITS.find(t => t.id === this.selectedTraitId);
     let traitName = traitObj ? traitObj.name : 'Finesse';
@@ -1323,10 +1324,11 @@ export class DiceRollerSidebar {
     if (attacker.isPlayer !== false || drone) {
       const traitId = weaponTraitId(weapon);
       if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
-      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '' });
+      const props = weaponAttackBonus(drone ? null : weapon, band);
+      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '', bonus: props.bonus });
       if (!result) return { hit: false, band };
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
-      detail = `${checkMath(result)}.`;
+      detail = `${checkMath(result)}.${props.notes.length ? ` Propiedades del arma: ${props.notes.join(', ')}.` : ''}`;
       // Failure with Fear on an attack: the consequence is best taken from the weapon (or drone).
       if (result.resultType === 'FAILURE_WITH_FEAR') fearAdvice = drone ? failureWithFearAdvice('drone', attacker.name) : weapon ? failureWithFearAdvice('weapon', weapon.name, weapon.features) : '';
       rolled3D = this.can3D();
@@ -1488,7 +1490,9 @@ export class DiceRollerSidebar {
     const wSelect = this.container.querySelector('#dmg_weapon_select');
     const chosenType = this.container.querySelector('#dmg_damage_type').value;
     const activeWeapon = this.currentActor && wSelect?.value ? (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value) : null;
-    const damageType = chosenType && chosenType !== 'auto' ? chosenType : damageTypeOf(formula || activeWeapon || '');
+    // The formula left in the panel may be just dice ("1d6+1"): then the weapon says the type (Energy −2…).
+    const formulaType = formula ? damageTypeOf(formula) : 'physical';
+    const damageType = chosenType && chosenType !== 'auto' ? chosenType : formulaType !== 'physical' ? formulaType : damageTypeOf(activeWeapon || formula || '');
     if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
     // A drone is fired by a player character: its Critical doubles the dice like any player's.
     const keeperAttack = this.currentActor?.isPlayer === false && !isDroneToken(this.currentActor);

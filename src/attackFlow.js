@@ -76,11 +76,13 @@ const bandFromKind = weapon => {
   const text = plainName([weapon?.name, weapon?.type, weapon?.features].filter(Boolean).join(' '));
   return KIND_BANDS.find(([pattern]) => pattern.test(text))?.[1] || '';
 };
-// The band a weapon reaches: its own Range text; when the sheet left it blank, the range of
+// The band a weapon reaches: its own Range text (or the Trait text, when the range was written
+// there); when the sheet left it blank, the range of
 // the catalog weapon with the same name; failing that, the kind of weapon its name says.
 // '' means it is not known.
 export function weaponRangeBand(weapon) {
-  const own = bandFromText(weapon?.range);
+  // Some imported sheets write the range with the Trait ("Agility · Melee").
+  const own = bandFromText(weapon?.range) || bandFromText(weapon?.trait);
   if (own || !weapon?.name) return own;
   const names = nameAliases(weapon.name);
   const match = names.length && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && nameAliases(item.name).some(alias => names.includes(alias)));
@@ -108,7 +110,7 @@ export function rangeCheck(weapon, band) {
   const reach = weaponRangeBand(weapon);
   if (!reach || !band) return { allowed: true, disadvantage: false, reach, band, reason: '' };
   if (reach === 'Melee') {
-    return band === 'Melee'
+    return band === 'Melee' || (band === 'Very Close' && hasReach(weapon))
       ? { allowed: true, disadvantage: false, reach, band, reason: '' }
       : { allowed: false, disadvantage: false, reach, band, reason: `Arma cuerpo a cuerpo: el objetivo está a ${band}, fuera de Melee.` };
   }
@@ -120,6 +122,20 @@ export function rangeCheck(weapon, band) {
   if (band === 'Melee' && !isShortWeapon(weapon)) return { allowed: true, disadvantage: true, reach, band, reason: 'Arma a distancia larga contra un objetivo en Melee: Desventaja (las armas cortas, como las pistolas, no la tienen).' };
   return { allowed: true, disadvantage: false, reach, band, reason: '' };
 }
+
+// Weapon properties that change the attack roll (Corebook ch. 13, weapon features):
+// Reliable +1 always; Accurate +1 and Smart Scope +2 at Far or Very Far.
+export function weaponAttackBonus(weapon, band = '') {
+  const text = [weapon?.features, weapon?.name, weapon?.type].filter(Boolean).join(' ').toLowerCase();
+  const far = band === 'Far' || band === 'Extreme';
+  const parts = [];
+  if (/\breliable\b|\bfiable\b/.test(text)) parts.push(['Reliable', 1]);
+  if (/\baccurate\b|\bprecis[ao]\b/.test(text) && far) parts.push(['Accurate', 1]);
+  if (/smart\s*scope|mira\s*inteligente/.test(text) && far) parts.push(['Smart Scope', 2]);
+  return { bonus: parts.reduce((sum, [, n]) => sum + n, 0), notes: parts.map(([name, n]) => `${name} +${n}`) };
+}
+// Reach (Corebook): a Melee weapon may attack at Very Close.
+const hasReach = weapon => /\breach\b|\balcance\s+extendido\b/i.test([weapon?.features, weapon?.name].filter(Boolean).join(' '));
 
 // The Trait a weapon attacks with, as a Trait id; '' when its text names none.
 export function weaponTraitId(weapon) {

@@ -2,7 +2,7 @@ import test, { beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { createActor } from '../src/actors.js';
-import { RANGE_BANDS, rangeBandFor, tokenDistanceSquares, weaponRangeBand, lineBlockedByWall, distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from '../src/attackFlow.js';
+import { RANGE_BANDS, rangeBandFor, tokenDistanceSquares, weaponRangeBand, lineBlockedByWall, distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from '../src/attackFlow.js';
 
 const dom = new JSDOM('<body></body>', { url: 'http://localhost/' });
 for (const key of ['window', 'document', 'HTMLElement', 'customElements', 'MutationObserver', 'localStorage', 'Event', 'CustomEvent', 'FormData']) globalThis[key] = dom.window[key];
@@ -55,6 +55,8 @@ test('a weapon whose sheet has no Range takes it from the catalog weapon of the 
   // Imported sheets: Spanish words, metres, the English name of a catalog weapon, or its kind.
   assert.deepEqual(['Lejano', 'Muy lejano', 'Cercano', 'Distancia media', '15 m', '4m', '40 metros'].map(range => weaponRangeBand({ range })), ['Far', 'Extreme', 'Close', 'Close', 'Far', 'Very Close', 'Extreme']);
   assert.equal(weaponRangeBand({ name: 'Slug Pistol' }), 'Close');
+  assert.equal(weaponRangeBand({ name: 'Energy Dagger', trait: 'Agility · Melee', range: '' }), 'Melee', 'range written with the Trait');
+  assert.equal(rangeCheck({ name: 'Energy Dagger', trait: 'Agility · Melee', range: '' }, 'Extreme').allowed, false);
   assert.deepEqual(['Sniper Rifle', 'Assault Rifle', 'Combat Shotgun', 'Combat Knife', 'Heavy Revolver'].map(name => weaponRangeBand({ name })), ['Extreme', 'Far', 'Very Close', 'Melee', 'Close']);
   assert.equal(weaponRangeBand({ name: 'Pistola Cinética Militar', range: 'Far' }), 'Far', 'its own Range wins');
 });
@@ -305,4 +307,14 @@ test('a roll is announced once: the golden card of the results stack, never a se
   assert.deepEqual(pushed.map(c => c.tokenName), ['Maren', 'Pirata']);
   assert.deepEqual(sent.filter(m => m.type === 'DICE_ROLL').map(m => m.result.tokenName), ['Maren'], 'a secret roll is not sent to the table');
   delete window.VFDice3D; void VeilfarersDiceEngine3D;
+});
+
+test('weapon properties that change the attack roll: Reliable, Accurate, Smart Scope; Reach', () => {
+  assert.deepEqual(weaponAttackBonus({ features: 'Reliable: +1 attack' }, 'Close'), { bonus: 1, notes: ['Reliable +1'] });
+  assert.deepEqual(weaponAttackBonus({ features: 'Accurate' }, 'Close').bonus, 0);
+  assert.deepEqual(weaponAttackBonus({ features: 'Accurate; Smart Scope' }, 'Far'), { bonus: 3, notes: ['Accurate +1', 'Smart Scope +2'] });
+  assert.deepEqual(weaponAttackBonus({ features: 'Lightweight: 0 Burden; Energy Tag: Energy dmg; Pen -2' }, 'Melee'), { bonus: 0, notes: [] });
+  assert.equal(weaponAttackBonus(null, 'Far').bonus, 0);
+  assert.equal(rangeCheck({ name: 'Vibro-lanza', range: 'Melee', features: 'Reach' }, 'Very Close').allowed, true);
+  assert.equal(rangeCheck({ name: 'Vibro-lanza', range: 'Melee', features: 'Reach' }, 'Close').allowed, false);
 });

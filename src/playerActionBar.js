@@ -15,7 +15,8 @@ import { tokenInventory } from './equipment.js';
 import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { normalizeConditions, conditionDefinition } from './conditions.js';
-import { distanceInfo, rangeCheck, netEdge } from './attackFlow.js';
+import { distanceInfo, rangeCheck, netEdge, weaponRangeBand, weaponAttackBonus } from './attackFlow.js';
+import { damageTypeOf, penetrationFor } from './rulesEngine.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -117,7 +118,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -156,7 +157,7 @@ export class PlayerActionBar {
       </div>` : ''}
       <div class="pab-row">
         <span class="pab-label">Atacar</span>
-        <div class="pab-buttons">${weapons.length ? weapons.map(w => `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}"><b>${e(w.name)}</b><span data-no-i18n>${e(w.range || '—')}</span></button>`).join('')
+        <div class="pab-buttons">${weapons.length ? weapons.map(w => `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}"><b>${e(w.name)}</b><span data-no-i18n>${e(weaponRangeBand(w) || '—')}</span></button>`).join('')
           : `<button type="button" class="pab-weapon ${this.targeting?.weaponId === '' ? 'active' : ''}" data-pab-weapon="" title="Sin armas: ataque desarmado (Melee)"><b>Desarmado</b><span>Melee</span></button>`}</div>
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
@@ -252,6 +253,8 @@ export class PlayerActionBar {
       // First touch marks the target (the map draws the line and the distance); a second
       // touch on the same token attacks it.
       if (this.targeting.targetId !== target.id) { this.markTarget(target); return; }
+      // Out of reach (a melee weapon at a distance): no attack, the sheet already says why.
+      if (this.targeting.preview && !this.targeting.preview.allowed) { notify(this.targeting.preview.reasons[0] || 'Fuera de alcance.', 'error'); return; }
       const chosen = this.targeting.weaponId;
       this.stopTargeting(true, { keepMark: true });
       this.attack(chosen, target);
@@ -273,7 +276,10 @@ export class PlayerActionBar {
     const gear = await window.veilDiceRoller?.gearCheck?.(token, { weapon }).catch(() => null) || { disadvantage: false, text: '' };
     if (this.targeting !== targeting || targeting.targetId !== target.id) return;
     const edge = netEdge(!!token.pendingAdvantage, check.disadvantage || gear.disadvantage);
-    const reasons = [check.disadvantage || !check.allowed ? check.reason : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
+    const props = weaponAttackBonus(weapon, gap.band), type = damageTypeOf(weapon || ''), pen = penetrationFor(type);
+    const reasons = [check.disadvantage || !check.allowed ? check.reason : '',
+      props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',
+      pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
     targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed, edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
     this.signature = ''; this.render();
   }

@@ -1314,4 +1314,7 @@ export const PATTERNS = [
   ["Arma corta (pistola) con el objetivo a {_a}: Desventaja (las pistolas tienen penalización a Close).", "Short weapon (pistol) with the target at {_a}: Disadvantage (pistols take a penalty at Close)."],
   ["{_a}: elige el Trait · Esc para cancelar", "{_a}: choose the Trait · Esc to cancel"],
   ["Fuera de competencia (Desventaja): {_a}", "Outside competence (Disadvantage): {_a}"],
+  ["Propiedades del arma: {_a} al ataque.", "Weapon properties: {_a} to the attack."],
+  ["Propiedades del arma: {_a}.", "Weapon properties: {_a}."],
+  ["Daño {_a}: umbrales del objetivo −{b} en este impacto.", "{_a} damage: target thresholds −{b} for this hit."],
 ];

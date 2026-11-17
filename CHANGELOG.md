@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.4**.
-Paquete: `VeilFarers_VTT_v2.17.4.zip`.
+Versión actual del VTT: **v2.17.5**.
+Paquete: `VeilFarers_VTT_v2.17.5.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.5] — 2026-11-17
+
+V3 · Alcance y propiedades de las armas en el ataque
+
+### Reglas de las armas
+
+- Corregido: en fichas importadas el alcance venía junto al Trait («Agility · Melee») y el ataque no lo veía, así que un arma cuerpo a cuerpo atacaba a cualquier distancia y sin Desventaja por rango. Ahora se lee también de ahí, y la Ficha muestra el alcance real de cada arma.
+- Si el objetivo está fuera de alcance (un arma cuerpo a cuerpo a distancia), el segundo toque no ataca: la Ficha ya dice por qué.
+- Propiedades de arma en la tirada de ataque (Corebook): Reliable +1 siempre; Accurate +1 y Smart Scope +2 a Far o más. Reach permite atacar a Very Close con un arma cuerpo a cuerpo.
+- Penetración: si la fórmula del panel no dice el tipo de daño, se usa el del arma (por ejemplo, «d6+1 ene.»: Energy, umbrales −2).
+- Al marcar el objetivo, la Ficha lista también las propiedades que se aplican y la penetración del daño.
 
 ## [2.17.4] — 2026-11-17
 
