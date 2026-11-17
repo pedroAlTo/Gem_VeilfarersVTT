@@ -1,10 +1,33 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.9.7**.
-Paquete: `VeilFarers_VTT_v2.9.7.zip`.
+Versión actual del VTT: **v2.10.0**.
+Paquete: `VeilFarers_VTT_v2.10.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.10.0] — 2026-11-17
+
+V2 · Mano del Keeper (Fear y adversarios), Bear Down y Effort como cartas
+
+### Mano del Keeper
+
+- En vista de Keeper la zona inferior muestra una mano con las cuatro jugadas de Fear del Corebook: Spotlight Enemies (1), Declare a Complication (1), Interrupt an Action (2) y Ancestry Complication (1, tira 1d6).
+- Con un adversario seleccionado se añaden sus habilidades impresas como cartas, con su tipo (Action, Reaction, Passive) y su coste en Fear. Se leen del texto del libro: tabla del Keeper's Companion, líneas de Alien Species y «Special» de Rust & Steel (158 habilidades en 42 adversarios).
+- Jugar una carta gasta el Fear, la anuncia a la mesa (aviso y chat) y marca el punto del mapa si se suelta sobre él. Con «Tirada secreta» activada solo queda en el registro del Keeper.
+- Spotlight Enemies con un adversario seleccionado le da el Spotlight y cobra 1 Fear una sola vez.
+- Las pasivas se consultan, no se juegan. El aviso de cartas usadas por los jugadores sube por encima de la mano.
+
+### Sleeping: Bear Down y Effort
+
+- Bear Down y los Effort comunes (Steady Hands, Read the Room, Push Through, The Opening, Try Again, Brace, Cover the Angle) están en la mano de todo Sleeping. Second Wind y Seize the Moment, solo si el Keeper activa el módulo opcional.
+- Bear Down gasta los dados de Resolve que elijas y suma todos (antes, uno por pulsación), como dice el Corebook. Nunca cambia qué dado es mayor ni crea un Crítico.
+- Si se usa Bear Down tras un ataque fallido y el nuevo total alcanza la Evasion, el ataque pasa a impactar y se calcula el daño.
+- Un Effort común sin Effort disponible se puede usar con Burnout desde la carta: pide confirmación y explica el coste (1 HP, 1 Stress y −1 al Stress máximo hasta la Recovery).
+
+### Corregido
+
+- Con el Keeper en vista de jugador, las tiradas, Effort, Bear Down, condiciones y cartas de los jugadores no se aplicaban en su mesa. Ahora sí, y se guardan (la corrección de la v2.9.7 pagaba la carta pero ese cambio no se guardaba en el navegador hasta el siguiente).
 
 ## [2.9.7] — 2026-11-17
 

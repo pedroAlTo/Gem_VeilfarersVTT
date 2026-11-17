@@ -1023,6 +1023,23 @@ export class DiceRollerSidebar {
     if (!secret) network.broadcast?.({ type: 'DICE_ROLL', result: { ...card, id: String(Date.now()), breakdown: card.modifiers, details: card.modifiers } });
   }
 
+  // Bear Down adds to the total of the last roll. If that roll was an attack that missed and the
+  // new total reaches the Evasion, the attack now hits and its damage is worked out.
+  async applyBearDown(result) {
+    if (!result) return;
+    this.showResult(result);
+    const attack = this.lastAttack;
+    if (!attack || attack.hit || attack.rollerId !== result.actorId) return;
+    if (result.total < attack.evasion) { this.container.querySelector('#atk_total_val').textContent = result.total; this.container.querySelector('#atk_detail_text').textContent += ` Bear Down: ${result.total}, sigue sin alcanzar la Evasion ${attack.evasion}.`; return; }
+    attack.hit = true;
+    this.container.querySelector('#attack_result_display').style.display = 'block';
+    this.container.querySelector('#atk_total_val').textContent = result.total;
+    const out = this.container.querySelector('#atk_outcome_val'); out.textContent = 'IMPACTO'; out.dataset.tone = 'hit';
+    this.container.querySelector('#atk_detail_text').textContent = `${attack.where}${attack.rangeNote} ${attack.detail} Bear Down +${result.bearDown?.bonus ?? ''}: ${result.total}. Alcanza la Evasion ${attack.evasion}. Daño calculado abajo.`;
+    this.container.querySelector('#dmg_is_critical').checked = false;
+    await this.executeDamageCalc();
+  }
+
   can3D() {
     return this.is3D && store.state.dice3d !== false && typeof window !== 'undefined' && typeof window.VFDice3D?.roll === 'function';
   }
@@ -1282,6 +1299,8 @@ export class DiceRollerSidebar {
       if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: attacker.name, text: summary, channel: 'table' }));
     }
     const rangeNote = (range.disadvantage ? ` ${range.reason}` : '') + (drone ? ` Tira ${operator.name}, operador del dron.${command.disadvantage ? ' ' + command.reason : ''}` : '');
+    // Bear Down after a missed attack may still carry it over the Evasion (applyBearDown).
+    this.lastAttack = { actorId: attacker.id, rollerId: (attacker.isPlayer !== false || drone) ? (operator?.id || attacker.id) : null, evasion, hit, where, rangeNote, detail };
     if (!hit) { show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.`, 'miss'); return { hit: false, critical: false, total, band }; }
     show(total, critical ? 'CRÍTICO' : 'IMPACTO', `${where}${rangeNote} ${detail} ${critical ? 'Crítico: impacta siempre.' : `Alcanza la Evasion ${evasion}.`} Daño calculado abajo.`, critical ? 'crit' : 'hit');
     q('#dmg_is_critical').checked = critical;

@@ -197,7 +197,7 @@ test('older tokens without class or ancestry fields get them from their role tex
   assert.deepEqual([classOf(vea, data)?.id, classOf(he09, data)?.id, ancestryOf(he09, data)?.name, classOf(harker, data)], ['pilot', 'engineer', 'Synthetic', null]);
   assert.equal(classOf({ characterClass: 'Soldier', roleTag: 'Ace Pilot' }, data).id, 'soldier', 'the sheet field wins over the free text');
   assert.equal(classOf({ roleTag: 'Copilot of the Vagrant' }, data), null, 'whole words only');
-  assert.deepEqual(characterCards(he09, data).map(c => c.kind), ['move', 'move', 'feature', 'ancestry']);
+  assert.deepEqual(characterCards(he09, data).map(c => c.kind), ['move', 'move', 'feature', 'ancestry', 'beardown', 'effort', 'effort', 'effort', 'effort', 'effort', 'effort', 'effort']);
   assert.deepEqual(characterCards(harker, data), []);
 });
 
@@ -208,9 +208,50 @@ test('the table pays a played card even while its own screen previews the Player
   const hero = { ...character(), id: 'tok_hero', hope: 2, stress: { current: 0, max: 6 } };
   // A store whose edit guard refuses changes in the Player view unless the table is applying them.
   const store = { sessionRole: 'host', remoteApplying: false, state: { userRole: 'player', campaignId: 'c', tokens: [hero], fear: 0 },
-    updateToken(id, patch) { if (!this.remoteApplying && this.state.userRole === 'player') return false; Object.assign(this.state.tokens.find(t => t.id === id), patch); return true; },
+    updateToken(id, patch) { if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player') return false; Object.assign(this.state.tokens.find(t => t.id === id), patch); return true; },
     addFear() {}, addLog() {} };
   const card = characterCards(hero, data).find(c => c.kind === 'power' && c.cost.hope === 1);
   performGameAction({ type: 'CARD_PLAY', actorId: 'tok_hero', cardId: card.id }, store);
-  assert.equal(hero.hope, 1); assert.equal(store.remoteApplying, false, 'the guard is restored afterwards');
+  assert.equal(hero.hope, 1); assert.ok(!store.tableActing, 'the guard is restored afterwards');
+  // remoteApplying would also skip saving: it must not be used for this.
+  assert.equal(store.remoteApplying, false);
+  // A connected player's own table is never given this authority.
+  const guest = { ...store, sessionRole: 'player', tableActing: false, state: { ...store.state, tokens: [{ ...hero, hope: 2 }] } };
+  performGameAction({ type: 'CARD_PLAY', actorId: 'tok_hero', cardId: card.id }, guest);
+  assert.equal(guest.state.tokens[0].hope, 2, 'a guest table does not apply the change: the Keeper does');
+});
+
+test('the Keeper holds the four Fear moves and, with an adversary selected, its printed abilities', async () => {
+  const { keeperCards, adversaryAbilities, FEAR_MOVES } = await import('../src/loadoutCards.js');
+  assert.deepEqual(FEAR_MOVES.map(c => [c.name, c.cost.fear]), [['Spotlight Enemies', 1], ['Declare a Complication', 1], ['Interrupt an Action', 2], ['Ancestry Complication', 1]]);
+  assert.deepEqual(keeperCards(null).map(c => c.kind), ['fear', 'fear', 'fear', 'fear']);
+  // The three formats the books print.
+  const table = '| FEATURE NAME | TYPE | DESCRIPTION |\n| --- | --- | --- |\n| **Compliance Protocol** | Action | Siren. |\n| **Networked** | Passive | +2 Attack. |\n| **Self-Destruct** | Reaction | Trigger: The Keeper spends 1 Fear when the Drone hits 0 HP. |';
+  assert.deepEqual(adversaryAbilities(table).map(a => [a.name, a.type, a.fear]), [['Compliance Protocol', 'Action', 0], ['Networked', 'Passive', 0], ['Self-Destruct', 'Reaction', 1]]);
+  const species = '**Swarm Tactics** _(Passive):_ While the Horde has 3+ HP...\n**Scatter** _(Action):_ The swarm separates.\nBlackout Hunt (Fear 2) The Gloomfang disables lights.\n**Tactics** Not an ability.';
+  assert.deepEqual(adversaryAbilities(species).map(a => [a.name, a.type, a.fear]), [['Swarm Tactics', 'Passive', 0], ['Scatter', 'Action', 0], ['Blackout Hunt', 'Fear', 2]]);
+  assert.deepEqual(adversaryAbilities('- **Special:** Can target one augmentation.').map(a => a.name), ['Special']);
+  const enemy = { id: 'tok_e', name: 'Gloomfang', isPlayer: false, actorType: 'adversary', featureNotes: species };
+  const cards = keeperCards(enemy).filter(c => c.kind === 'adversary');
+  assert.deepEqual(cards.map(c => [c.name, c.playable, c.cost.fear, c.actorId]), [['Swarm Tactics', false, 0, 'tok_e'], ['Scatter', true, 0, 'tok_e'], ['Blackout Hunt', true, 2, 'tok_e']]);
+  assert.equal(keeperCards({ ...enemy, isPlayer: true }).length, 4, 'a player character adds no adversary cards');
+  assert.equal(keeperCards({ ...enemy, actorType: 'drone' }).length, 4);
+});
+
+test('Bear Down spends the dice chosen and adds them all; a Sleeping hand holds it with the Common Efforts', async () => {
+  const { performGameAction } = await import('../src/gameActions.js');
+  const { sleepingCommonCards } = await import('../src/loadoutCards.js');
+  const vell = { id: 'tok_vell', name: 'Vell', isPlayer: true, path: 'Sleeping', traits: { finesse: 1, agility: 0, strength: 0, instinct: 0, presence: 0, knowledge: 0 }, effort: 0, effortTrack: [false, false], hope: 0, resolve: { current: 3, max: 3, dieType: 'd4' }, stress: { current: 0, max: 6 }, hp: { current: 6, max: 6 } };
+  const store = { sessionRole: 'local', state: { userRole: 'keeper', campaignId: 'bd', tokens: [vell], fear: 0 }, updateToken(id, patch) { Object.assign(vell, patch); }, addFear() {}, addLog() {} };
+  assert.throws(() => performGameAction({ type: 'RESOLVE', actorId: 'tok_vell', count: 2 }, store), /Make a check first/);
+  performGameAction({ type: 'CHECK', actorId: 'tok_vell', options: { traitId: 'finesse', dc: 30, forcedHope: 3, forcedFear: 5 } }, store);
+  const result = performGameAction({ type: 'RESOLVE', actorId: 'tok_vell', count: 2 }, store);
+  assert.equal(vell.resolve.current, 1); assert.equal(result.bearDown.count, 2); assert.equal(result.bearDown.dice.length, 2);
+  assert.equal(result.total, 3 + 5 + 1 + result.bearDown.bonus); assert.equal(result.dominance, 'Fear', 'Bear Down never changes which die is higher');
+  const capped = performGameAction({ type: 'RESOLVE', actorId: 'tok_vell', count: 9 }, store);
+  assert.equal(capped.bearDown.count, 1, 'never more dice than Resolve left'); assert.equal(vell.resolve.current, 0);
+  const cards = sleepingCommonCards(vell);
+  assert.deepEqual(cards.map(c => c.name), ['Bear Down', 'Steady Hands', 'Read the Room', 'Push Through', 'The Opening', 'Try Again', 'Brace', 'Cover the Angle']);
+  assert.equal(sleepingCommonCards(vell, { optionalEfforts: true }).length, 10, 'Second Wind and Seize the Moment only when the Keeper adopts them');
+  assert.deepEqual(sleepingCommonCards({ ...vell, path: 'Awakened' }), []);
 });

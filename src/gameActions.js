@@ -8,7 +8,15 @@ import { handoffControl } from './drones.js';
 import { characterCards, playCard, recallPower, costLabel, CARD_KINDS } from './loadoutCards.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
+// The table that resolves an action (the Keeper's, local or hosting) applies it even while its
+// own screen previews the Player view, whose edit guard would otherwise drop the change silently.
+// tableActing lifts only that guard; saving and broadcasting work as usual.
 export function performGameAction(action, store = defaultStore) {
+  const before = store.tableActing;
+  store.tableActing = store.sessionRole !== 'player' || !!before;
+  try { return resolveGameAction(action, store); } finally { store.tableActing = before; }
+}
+function resolveGameAction(action, store) {
   const secret = action.visibility === 'keeper';
   if (secret && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) throw new Error('Solo el Keeper puede hacer tiradas secretas.');
   const standalone = secret && action.type === 'CHECK' && !action.actorId;
@@ -39,7 +47,7 @@ export function performGameAction(action, store = defaultStore) {
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
     // The table that resolves the action applies it, even while its own screen previews the
     // Player view (whose edit guard would otherwise drop the payment silently).
-    const apply = patch => { const before = store.remoteApplying; store.remoteApplying = store.sessionRole !== 'player' || before; try { store.updateToken(actor.id, patch); } finally { store.remoteApplying = before; } };
+    const apply = patch => store.updateToken(actor.id, patch);
     const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
     const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
     if (action.type === 'CARD_RECALL') {
@@ -157,10 +165,13 @@ export function performGameAction(action, store = defaultStore) {
       throw new Error('Make a check first, then use Bear Down before narrating its outcome.');
     if (actor.path !== 'Sleeping' || (actor.resolve?.current || 0) < 1)
       throw new Error('No Resolve available.');
+    // Bear Down spends any number of Resolve Dice and adds their total (Corebook ch. 7).
+    const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
     const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
-      bonus = 1 + Math.floor(Math.random() * sides);
+      dice = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
+      bonus = dice.reduce((n, v) => n + v, 0);
     store.updateToken(actor.id, {
-      resolve: { ...actor.resolve, current: actor.resolve.current - 1 },
+      resolve: { ...actor.resolve, current: actor.resolve.current - count },
     });
     const result = {
       ...previous,
@@ -172,15 +183,16 @@ export function performGameAction(action, store = defaultStore) {
       const success = result.total >= result.dc;
       result.resultType = `${success ? 'SUCCESS' : 'FAILURE'}_WITH_${result.dominance.toUpperCase()}`;
       result.outcomeTitle = result.resultType.replaceAll('_', ' ');
-      result.outcomeDesc = `Bear Down adds ${bonus}. ${success ? 'The check succeeds.' : 'The check still fails.'} Dominance and Path payout are unchanged.`;
+      result.outcomeDesc = `Bear Down adds ${bonus} (${count}${actor.resolve.dieType || 'd4'}: ${dice.join(', ')}). ${success ? 'The check succeeds.' : 'The check still fails.'} Dominance and Path payout are unchanged.`;
     }
+    result.bearDown = { count, dice, bonus };
     lastRoll.set(rollKey, result);
     const log = {
       sender: actor.name,
       type: 'RESOLVE',
       ...(secret ? { visibility: 'keeper' } : {}),
       title: 'Bear Down',
-      details: `+${bonus}; ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}`,
+      details: `${count}${actor.resolve.dieType || 'd4'} [${dice.join(', ')}] = +${bonus}; ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}`,
     };
     store.addLog(log);
     return { ...result, log };

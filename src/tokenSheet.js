@@ -537,7 +537,7 @@ export class TokenHUD {
     const bearDownBtn = this.container.querySelector('#bear_down_btn');
     if (bearDownBtn) {
       bearDownBtn.onclick = async () => {
-        try { const result=await network.requestAction({type:'RESOLVE',actorId:token.id,visibility:window.veilDiceRoller?.rollVisibility() || 'table'});window.veilDiceRoller?.showResult(result); }
+        try { const result=await network.requestAction({type:'RESOLVE',actorId:token.id,count:1,visibility:window.veilDiceRoller?.rollVisibility() || 'table'});await window.veilDiceRoller?.applyBearDown(result); }
         catch(e){notify(e.message,'error');}
       };
     }

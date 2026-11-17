@@ -34,7 +34,7 @@
 .vf-card-flag b { position: absolute; left: 0; right: 0; top: 7%; text-align: center; font: 800 9px/1 'Chakra Petch', system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 .vf-card-badge { position: absolute; right: 6%; top: 5%; min-width: 15%; aspect-ratio: 1 / 1.1; display: grid; place-items: center; padding: 0 2px; box-sizing: border-box; font: 800 9px/1 ui-monospace, monospace; color: #1b1420; background: #fff;
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
-.vf-card-badge.hope { background: #fde68a; } .vf-card-badge.stress { background: #d8b4fe; } .vf-card-badge.effort { background: #fbbf24; } .vf-card-badge.resolve { background: #6ee7b7; }
+.vf-card-badge.fear { background: #c084fc; color: #fff; } .vf-card-badge.hope { background: #fde68a; } .vf-card-badge.stress { background: #d8b4fe; } .vf-card-badge.effort { background: #fbbf24; } .vf-card-badge.resolve { background: #6ee7b7; }
 .vf-card-band { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: auto; display: block; }
 .vf-card-frame.layout-corner .vf-card-art { flex-basis: 40%; background: repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 9px), linear-gradient(180deg, color-mix(in srgb, var(--card-color) 80%, #2a1b12) 0%, color-mix(in srgb, var(--card-color) 40%, #12090f) 100%); }
 .vf-card-frame.layout-corner .vf-card-band { bottom: -1px; }
@@ -45,6 +45,7 @@
 .vf-card-pill.type { background: color-mix(in srgb, var(--card-color) 16%, #fff); color: color-mix(in srgb, var(--card-color) 80%, #000); border-color: color-mix(in srgb, var(--card-color) 45%, #fff); }
 .vf-card-pill.hope { background: #fdf3c4; color: #7a5a00; border-color: #f1d674; } .vf-card-pill.stress { background: #f1e3ff; color: #5b2a86; border-color: #d8b4fe; }
 .vf-card-pill.effort { background: #ffedc2; color: #7a4a00; border-color: #fbbf24; } .vf-card-pill.resolve { background: #d9f8ea; color: #0f5a3c; border-color: #6ee7b7; }
+.vf-card-pill.fear { background: #f3e8ff; color: #6b21a8; border-color: #c084fc; }
 .vf-card-pill.roll { background: #dff6fb; color: #0a5568; border-color: #9ddfee; }
 .vf-card-text { font: 400 7px/1.35 system-ui, sans-serif; color: #2a2430; overflow: hidden; flex: 1; white-space: pre-line; }
 .vf-card-foot { display: flex; justify-content: space-between; gap: 6px; border-top: 1px solid #ead6a4; padding-top: 2px; }
@@ -95,7 +96,7 @@
 .vf-card-mini.chosen .vf-card-frame { box-shadow: 0 0 0 3px #00f3ff, 0 0 22px rgba(0,243,255,.6); }
 .vf-card-mini .vf-card-text { display: none; } .vf-card-mini .vf-card-title { font-size: 8.5px; } .vf-card-mini .vf-card-pill { font-size: 5.5px; }
 /* The Keeper's feed of cards used by the players */
-.card-feed { position: absolute; right: 14px; bottom: 44px; z-index: 119; display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
+.card-feed { position: absolute; right: 14px; bottom: 214px; z-index: 119; display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
 .card-feed.hidden { display: none; }
 .card-feed-item { all: unset; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; animation: card-drawer-in .25s ease both; }
 .card-feed-item .vf-card-mini { --w: 78px; --h: 109px; pointer-events: none; }

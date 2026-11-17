@@ -94,7 +94,7 @@ const powerCard = (power, zone, sheet = {}) => {
 };
 
 // Every card of the character, in hand order: what it can play first, the Vault last.
-export function characterCards(token, data) {
+export function characterCards(token, data, options = {}) {
   if (!token || token.isPlayer === false || !data) return [];
   const f = fieldsOf(token), cards = [], sleeping = token.path === 'Sleeping';
   const cls = classOf(token, data), rules = sleeping && cls?.sleepingRules ? cls.sleepingRules : cls;
@@ -132,6 +132,8 @@ export function characterCards(token, data) {
   const community = byName(data.communities, token.community);
   if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
   if (!sleeping) for (const name of vaultNames(token)) { const known = byName(data.powers, name); cards.push(powerCard(known || { n: name }, 'vault')); }
+  // Bear Down and the Common Efforts come after the character's own cards.
+  if (sleeping) cards.push(...sleepingCommonCards(token, options));
   return cards;
 }
 
@@ -219,4 +221,76 @@ export function recallPower(source, data, vaultName, { mode = 'long', replace = 
   });
   f.a_vault = nextVault.map(name => { const p = byName(data.powers, name); return p ? `${p.d} · L${p.l} · ${p.n}` : name; }).join('\n');
   return { token, cost, entered: incoming.n, left: leaving, summary: `Recall (${RECALL_MODES[mode].name}): ${incoming.n} entra en el Loadout${leaving ? `; ${leaving} pasa al Vault` : ''}. ${[cost.stress && `${cost.stress} Stress`, cost.hope && `${cost.hope} Hope`, cost.action && 'Acción'].filter(Boolean).join(' + ') || 'Sin coste'}.` };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sleeping: Bear Down and the Common Efforts (Corebook ch. 7), as cards. Their move names are
+// the ones the EFFORT action knows.
+export const COMMON_EFFORTS = [
+  { move: 'Steady Hands (+2)', name: 'Steady Hands', effort: 1, text: 'Before you make a Core Trait Roll that draws on something genuinely practiced, spend 1 Effort to add +2; justify the practice in the fiction.' },
+  { move: 'Read the Room', name: 'Read the Room', effort: 1, text: 'Ask the Keeper one question about the immediate tactical or social situation (exits, who holds power here, where the tension sits) and they answer truthfully.' },
+  { move: 'Push Through', name: 'Push Through', effort: 1, text: 'Ignore one minor environmental or condition penalty on your next action (smoke, partial darkness, awkward footing).' },
+  { move: 'The Opening', name: 'The Opening', effort: 2, text: 'You gain Advantage on your next roll, the product of preparation, position, or hard experience.' },
+  { move: 'Try Again', name: 'Try Again', effort: 2, text: 'After you roll, reroll one of your two Duality dice (the Hope die or the Fear die) and use the new result. If you reroll the Fear die and it comes up higher, you live with it.' },
+  { move: 'Brace (Mitigate)', name: 'Brace', effort: 2, text: 'Against harm you see coming, drop the next hit you take by one severity band (Severe to Major, Major to Minor). This spends no Armor Slots.' },
+  { move: 'Cover the Angle', name: 'Cover the Angle', effort: 2, text: 'Give your Reaction to an ally within range: the next Core Trait Roll they make before the start of your next Spotlight gains +2 as you cover, guide, or warn them.' },
+  { move: 'Second Wind', name: 'Second Wind', effort: 3, optional: true, text: 'Optional module. Clear 2 Stress outside of a rest, catching your breath mid-action.' },
+  { move: 'Seize the Moment', name: 'Seize the Moment', effort: 3, optional: true, text: 'Optional module. After a success, add one extra favorable consequence to the fiction, which the Keeper validates. It is a branch, not a second success.' },
+];
+const NO_COST = () => ({ hope: 0, stress: 0, effort: 0, resolve: 0, hp: 0, fear: 0, open: false });
+export function sleepingCommonCards(token, { optionalEfforts = false } = {}) {
+  if (token?.path !== 'Sleeping' || token.isPlayer === false) return [];
+  const bearDown = { id: 'resolve:bear-down', kind: 'beardown', zone: 'innate', name: 'Bear Down', subtitle: 'Resolve Move universal', color: '#b45309', art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band' },
+    costText: 'spend and roll 1+', cost: { ...NO_COST(), resolve: 1, open: true, rolls: true }, roll: null, rollText: `Tira ${token.resolve?.dieType || 'd4'} por Resolve`, rc: 0, playable: true,
+    text: 'After any Duality Roll, attack, reaction, or damage roll, before the outcome is narrated, spend Resolve Dice and add their total. It adds to the total only: it never changes which die came up higher and never makes a Critical.' };
+  const efforts = COMMON_EFFORTS.filter(e => !e.optional || optionalEfforts).map(e => ({ id: `effort:${slug(e.name)}`, kind: 'effort', zone: 'innate', move: e.move, name: e.name, subtitle: `Common Effort · ${e.effort} Effort`, color: '#a16207',
+    art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band' }, costText: `${e.effort} Effort`, cost: { ...NO_COST(), effort: e.effort }, roll: null, rollText: '', rc: 0, playable: true, text: e.text }));
+  return [bearDown, ...efforts];
+}
+
+// ---------------------------------------------------------------------------------------------
+// The Keeper's hand: the Fear moves of the Corebook (ch. 9) and, with an adversary selected,
+// its printed abilities.
+export const FEAR_COLOR = '#7e22ce';
+const fearCard = (id, name, fear, text, extra = {}) => ({ id: `fear:${id}`, kind: 'fear', zone: 'innate', name, subtitle: 'Fear · Keeper', color: FEAR_COLOR, art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band' },
+  costText: `${fear} Fear`, cost: { ...NO_COST(), fear }, roll: null, rollText: '', rc: 0, playable: true, text, ...extra });
+export const FEAR_MOVES = [
+  fearCard('spotlight', 'Spotlight Enemies', 1, 'Spend 1 Fear to let one eligible NPC that has not yet acted in the current Spotlight cycle take its Spotlight now. This changes order but never grants a second Spotlight in that cycle. A defensive Reaction still requires its own printed trigger.', { spotlight: true }),
+  fearCard('complication', 'Declare a Complication', 1, 'Spend 1 Fear after a noncritical Roll to activate one threat, clock trigger, witness, alarm, or equipment risk established before that Roll. Apply its printed or predeclared effect. This move cannot invent damage, item failure, an enemy, or a retroactive fact.'),
+  fearCard('interrupt', 'Interrupt an Action', 2, "After the player declares an Action but before dice are rolled or costs paid, spend 2 Fear to activate one previously established threat. Resolve that threat, then the player may continue, change, or cancel the Action. No cost is lost for changing or canceling it."),
+  fearCard('ancestry', 'Ancestry Complication', 1, "At most once per character per session, after a player-rolled Fear-dominant noncritical Roll materially uses an Ancestry Gift, spend 1 Fear and roll 1d6 on that ancestry's table. The result is rolled, never chosen. Matching dice never trigger it. If a row lacks a complete effect, its full mechanical effect is to mark 1 Stress.", { die: 6 }),
+];
+
+// The abilities printed in an adversary's text, in the formats the three books use: a feature
+// table, "**Name** _(Type):_ text", "Name (Fear 2) text" and Rust & Steel's "- **Special:** text".
+export function adversaryAbilities(source) {
+  const lines = text(source).replace(/\r/g, '').split('\n').map(line => line.trim()), found = [];
+  const add = (name, type, body) => {
+    const clean = value => text(value).replace(/\*\*|__|(^|\s)_|_(\s|$)/g, '$1$2').replace(/\*/g, '').trim();
+    name = clean(name).replace(/[:.]$/, ''); type = clean(type); body = clean(body);
+    if (!name || name.length > 60 || /^(feature name|type|description)$/i.test(name) || found.some(a => lower(a.name) === lower(name))) return;
+    const fear = Number((type.match(/Fear\s*(\d+)/i) || body.match(/spends?\s+(\d+)\s+Fear/i) || [])[1] || 0);
+    const kind = /reaction/i.test(type) ? 'Reaction' : /passive/i.test(type) && !fear ? 'Passive' : /action/i.test(type) ? 'Action' : fear ? 'Fear' : type || 'Action';
+    found.push({ name, type: kind, fear, text: body });
+  };
+  for (const line of lines) {
+    let m;
+    if ((m = line.match(/^\|\s*\*\*(.+?)\*\*\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|?\s*$/))) add(m[1], m[2], m[3]);
+    else if ((m = line.match(/^(?:-\s*)?\*\*(.+?)\*\*\s*[_*]\((.+?)\):?[_*]:?\s*(.+)$/))) add(m[1], m[2], m[3]);
+    else if ((m = line.match(/^(?:-\s*)?\*\*(.+?)\s*\(([^)]*(?:Action|Reaction|Passive|Fear)[^)]*)\)[:.]?\*\*:?\s*(.+)$/i))) add(m[1], m[2], m[3]);
+    else if ((m = line.match(/^(?:-\s*)?(?:\*\*)?([A-Z][A-Za-z' -]{2,40}?)(?:\*\*)?\s*\((Fear\s*\d+[^)]*)\)\s*[:.]?\s*(.+)$/))) add(m[1], m[2], m[3]);
+    else if ((m = line.match(/^-\s*\*\*(Special):\*\*\s*(.+)$/))) add(m[1], 'Action', m[2]);
+  }
+  return found;
+}
+export function keeperCards(token) {
+  const cards = [...FEAR_MOVES];
+  if (token && token.isPlayer === false && token.actorType !== 'drone') {
+    for (const ability of adversaryAbilities(token.featureNotes)) cards.push({
+      id: `adversary:${token.id}:${slug(ability.name)}`, kind: 'adversary', zone: 'innate', name: ability.name, subtitle: `${token.name} · ${ability.type}${ability.fear ? ` · Fear ${ability.fear}` : ''}`,
+      color: ability.fear ? FEAR_COLOR : '#9b150c', art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band' }, costText: ability.fear ? `${ability.fear} Fear` : '—',
+      cost: { ...NO_COST(), fear: ability.fear }, roll: null, rollText: '', rc: 0, reaction: ability.type === 'Reaction', playable: ability.type !== 'Passive', text: ability.text, actorId: token.id, actorName: token.name,
+    });
+  }
+  return cards;
 }
