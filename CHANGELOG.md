@@ -1,10 +1,31 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.15.0**.
-Paquete: `VeilFarers_VTT_v2.15.0.zip`.
+Versión actual del VTT: **v2.15.1**.
+Paquete: `VeilFarers_VTT_v2.15.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.15.1] — 2026-11-17
+
+V2 · La sesión no caduca en la mesa, reintentos al entrar y Fear visible en tablet
+
+### Sesión en la mesa
+
+- Mientras estás en la mesa, la sala ya no «caduca»: el latido que la mantiene viva (cada 5 s, con un margen de 20 s) sigue a su ritmo aunque la pestaña quede en segundo plano. Antes el navegador lo frenaba hasta una vez por minuto y la sala se daba por perdida.
+- Un fallo de red puntual ya no desconecta: solo tres latidos fallidos seguidos cuentan como corte.
+- Al volver a la pestaña, recuperar la red o enfocar la ventana, la mesa se reconecta al momento en vez de esperar al siguiente ciclo.
+
+### Entrar en una sala
+
+- Al entrar (desde el inicio, con invitación, desde SESIONES o al volver tras recargar) se muestra un panel «Entrando en la sala» con el intento, la cuenta atrás del siguiente («Reintentando en 4 s · intento 3») y el último error. Reintenta solo hasta conectar (2, 4, 8 y luego cada 15 s), y «Cancelar» vuelve al inicio.
+- Si el error no tiene arreglo (la sala ya no existe, te han expulsado, falta iniciar sesión), se muestra como antes, sin reintentar.
+- Ya dentro, si un jugador está esperando al Keeper o reconectando, o el Keeper está recuperando la sala, el mismo panel lo dice con su cuenta atrás y permite cancelar.
+
+### Fear en tablet
+
+- En pantallas de poca altura (tablets), al tocar o arrastrar una carta de la mano el navegador desplazaba el mapa para mostrarla entera, y la barra de Fear y el título de la escena salían de la pantalla, sobre todo como Keeper. El mapa, la mesa y la página ya no se desplazan.
+- «Muéstramelo» de la guía ya no desplaza la vista.
 
 ## [2.15.0] — 2026-11-17
 

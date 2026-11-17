@@ -789,7 +789,11 @@ export class VeilfarersLobbyGateway {
     }
     // The local table and guests never touch the cloud.
     if (roomId === 'mesa-principal' || !this.hasCloudAccount()) return;
-    this.runRoomAction(rooms => rooms.enter(roomId), 'No se pudo abrir la sala');
+    // Keeps trying until it connects, with a counter and Cancel (back to the home screen).
+    this.runRoomAction(async rooms => {
+      const { retryUntilConnected } = await import('../../connectRetryUI.js');
+      await retryUntilConnected(() => rooms.enter(roomId), { label: 'Entrando en la sala', onCancel: () => { this.showHubScreen(); this.loadRoomsList(); } });
+    }, 'No se pudo abrir la sala');
   }
 
   joinWithCode(code) {
@@ -811,7 +815,10 @@ export class VeilfarersLobbyGateway {
         activeCharId: null
       });
     }
-    this.runRoomAction(rooms => rooms.join(trimmed, this.currentUser?.displayName || 'Viajero'), 'No se pudo entrar con ese código');
+    this.runRoomAction(async rooms => {
+      const { retryUntilConnected } = await import('../../connectRetryUI.js');
+      await retryUntilConnected(() => rooms.join(trimmed, this.currentUser?.displayName || 'Viajero'), { label: 'Entrando con la invitación', onCancel: () => { this.showHubScreen(); this.loadRoomsList(); } });
+    }, 'No se pudo entrar con ese código');
   }
 
   createNewRoom(name) {

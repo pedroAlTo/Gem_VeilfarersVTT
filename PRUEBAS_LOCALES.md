@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.15.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.15.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.15.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.15.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.15.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.15.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.15.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.15.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -39,6 +39,9 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.15.0.zip**. Abre **AYUDA
 24. **Armas a distancia en Melee.** Pon un PJ adyacente a un adversario. Ataca con un rifle: tira con Desventaja (d6 restado) y el aviso dice «Arma a distancia larga contra un objetivo en Melee». Repite con una pistola: sin Desventaja.
 25. **Competencia tecnológica.** Con un PJ de clase conocida (p. ej. Mystic nivel 1): **Ficha → Armas y equipo → Armas**: solo salen cuerpo a cuerpo y pistolas Common, con la línea «Mystic · nivel 1 · Common (TT1)…». Desmarca «Solo lo que puedo usar»: aparecen rifles con la etiqueta «Fuera de tu competencia · Desventaja». Añade un rifle y ataca con él: el detalle dice «Fuera de competencia (Desventaja)» y se resta un d6. Si el ataque sale Failure with Fear, aparece la recomendación sobre el arma. Ponle una armadura Heavy: cualquier tirada suya lleva Desventaja.
 26. **Catálogo de Poderes.** Con un PJ Awakened, abre el mazo (icono junto a las cartas): debajo del Vault, «Todos los poderes» con «Solo los de mi acceso» marcado muestra los de sus Dominios hasta su nivel. Elige uno → **Añadir al Vault**: entra en el Vault. Desmarca la casilla: se ven todos, los de otros Dominios o niveles atenuados y sin poder añadirse. En una sala online, un jugador puede jugar cartas, hacer Recall y añadir Poderes.
+27. **Sesión que no caduca.** Como Keeper en una sala online, deja la pestaña en segundo plano 10 minutos (otra pestaña delante): al volver, la sala sigue online y los jugadores no han perdido la conexión. Corta la red unos segundos: no aparece error; al volver, la mesa se reconecta sola.
+28. **Reintentos al entrar.** Con la red cortada, entra en una sala desde el inicio: aparece «Entrando en la sala» con «Reintentando en N s · intento N» y el error. Recupera la red: entra sola. Repite y pulsa **Cancelar**: vuelve al inicio. Como jugador con el Keeper desconectado: panel «Esperando al Keeper».
+29. **Fear en tablet.** En una tablet (o el navegador a 1280×720) como Keeper, toca y arrastra cartas de la mano: la barra de Fear y el título de la escena siguen visibles arriba.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

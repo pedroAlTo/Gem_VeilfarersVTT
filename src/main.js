@@ -10,6 +10,7 @@ import './language.css';
 import './account.css';
 import './onboarding.css';
 import './mobile.css';
+import './connect.css';
 import { startTranslation } from './i18n.js';
 import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';
@@ -72,6 +73,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   startTranslation(document.body);
   await store.ready;
   initOrbitalUI();
+  import('./layoutLock.js').then(({ lockLayoutScroll }) => lockLayoutScroll()).catch(() => {});
   import('./mobileUI.js').then(({ mountMobileNotice }) => mountMobileNotice()).catch(() => {});
   import('./onboardingUI.js').then(({ mountOnboarding }) => mountOnboarding({ cloud: !LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured })).catch(error => console.warn('Guide unavailable:', error));
   mountStatusbarLanguage();
@@ -760,10 +762,11 @@ async function setupSessionPersistence() {
     account.subscribe(user => {
       if (!user || rooms.room) return;
       if (invitation) openSessionLobby(invitation);
-      else rooms.restore().catch(error => notify(error.message, 'error'));
+      else import('./connectRetryUI.js').then(({ retryUntilConnected }) => retryUntilConnected(() => rooms.restore(), { label: 'Volviendo a tu sala' })).catch(error => notify(error.message, 'error'));
     });
     if (invitation) { openSessionLobby(invitation); return; }
-    if (account.user) rooms.restore().catch(error => { notify(error.message, 'error'); openSessionLobby(); });
+    if (account.user) import('./connectRetryUI.js').then(({ retryUntilConnected }) => retryUntilConnected(() => rooms.restore(), { label: 'Volviendo a tu sala' })).catch(error => { notify(error.message, 'error'); openSessionLobby(); });
+    import('./connectRetryUI.js').then(({ mountRoomConnectionBanner }) => import('./roomService.js').then(({ roomOnline }) => mountRoomConnectionBanner(rooms, store, { roomOnline }))).catch(() => {});
     return;
   }
   const searchParams = new URLSearchParams(location.search);

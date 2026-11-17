@@ -31,7 +31,6 @@ function complete(ids) {
 function spotlight(step) {
   const target = (step.target || []).map(selector => document.querySelector(selector)).find(el => el && el.getClientRects().length);
   if (!target) return false;
-  target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   target.classList.remove('guide-spot'); void target.offsetWidth; target.classList.add('guide-spot');
   setTimeout(() => target.classList.remove('guide-spot'), 4200);
   return true;

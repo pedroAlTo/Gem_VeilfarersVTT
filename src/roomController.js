@@ -5,6 +5,7 @@ import { newId } from './persistence.js';
 import { CAMPAIGN_KEYS } from './validation.js';
 import { notify } from './ui.js';
 import { RoomService, roomOnline, roomError, ROOM_HEARTBEAT_MS, ROOM_LEASE_MS } from './roomService.js';
+import { every } from './backgroundTicker.js';
 import { RoomWire, createRoomWire } from './roomWire.js';
 
 export const activeRoomKey = uid => 'veil.room.active.' + uid;
@@ -121,8 +122,9 @@ export class RoomController {
         this.fail(error);
       }));
       if (this.isKeeper) { this.watchWires(generation); this.service.cleanOldWires(id, this.epoch).catch(() => {}); }
-      this.presenceTimer = setInterval(() => this.checkPresence(), 1000);
-      this.heartbeatTimer = setInterval(() => this.heartbeat().catch(error => this.fail(error)), ROOM_HEARTBEAT_MS);
+      // Both keep their pace in a hidden tab (see backgroundTicker.js).
+      this.stopPresence = every(1000, () => this.checkPresence());
+      this.stopHeartbeat = every(ROOM_HEARTBEAT_MS, () => this.beat());
       this.checkPresence(); this.emit();
       if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         import('./vtt-integration/vttIntegrationInit.js').then(async ({ initVeilfarersVTTModules }) => {
@@ -211,14 +213,14 @@ export class RoomController {
   }
   async connectPlayer() {
     if (this.connecting || this.leaving) return;
-    this.connecting = true;
+    this.connecting = true; this.connectAttempts = (this.connectAttempts || 0) + 1; this.emit();
     const generation = this.generation, epoch = this.room.hostEpoch;
     try {
       const id = await createRoomWire(this.service, this.room, this.service.account.user.displayName);
       if (generation !== this.generation || !roomOnline(this.room, this.clock()) || this.room.hostEpoch !== epoch) return;
       this.network.lastRevision = -1; this.network.seen.clear(); this.network.tokenPatchSequence = 0; this.network.clearTokenPatches(true);
       const wire = new RoomWire(this.service, this.room.id, id, 'player', {
-        onData: async data => { if (generation === this.generation && roomOnline(this.room, this.clock()) && this.room.hostEpoch === epoch) { await this.network.handleIncomingMessage(data, this.room.ownerUid); if (data.type === 'INITIAL_STATE' && this.store.state.isConnected) { this.lastError = ''; this.store.update({ roomPaused: false }); this.emit(); } } },
+        onData: async data => { if (generation === this.generation && roomOnline(this.room, this.clock()) && this.room.hostEpoch === epoch) { await this.network.handleIncomingMessage(data, this.room.ownerUid); if (data.type === 'INITIAL_STATE' && this.store.state.isConnected) { this.lastError = ''; this.connectAttempts = 0; this.store.update({ roomPaused: false }); this.emit(); } } },
         onClose: error => { this.pausePlayer(); this.lastError = error?.code === 'permission-denied' ? 'La conexión anterior ha caducado. Reconectando…' : roomError(error); this.retryAt = this.clock() + 3000; this.emit(); }
       });
       wire.peer = this.room.ownerUid; this.playerWire = wire; this.playerWireId = id; this.playerEpoch = epoch; this.network.hostConn = wire;
@@ -244,6 +246,20 @@ export class RoomController {
     } else if (!online || (this.playerEpoch && this.playerEpoch !== this.room.hostEpoch)) {
       if (this.playerWire || this.store.state.isConnected || this.store.state.joiningSession) this.pausePlayer();
     } else if (!this.playerWire && this.clock() >= (this.retryAt || 0)) this.connectPlayer();
+  }
+  // One heartbeat, tolerant of a passing network error: the lease lasts 20 s and beats come
+  // every 5 s, so only three failures in a row mean the connection is really gone.
+  beat() {
+    return this.heartbeat().then(() => { this.beatFailures = 0; }).catch(error => {
+      this.beatFailures = (this.beatFailures || 0) + 1;
+      if (this.beatFailures >= 3) { this.beatFailures = 0; this.fail(error); }
+    });
+  }
+  // Back to the tab, back online or focused: beat and reconnect now, not at the next tick.
+  wake() {
+    if (!this.room || this.leaving) return;
+    this.retryAt = 0;
+    this.beat(); this.checkPresence();
   }
   async heartbeat() {
     if (!this.room || this.leaving || this.beating || (this.isKeeper && !this.serverConfirmed)) return;
@@ -283,7 +299,7 @@ export class RoomController {
       if (this.isKeeper && this.epoch) await this.service.release(this.room.id, this.epoch);
     } catch (error) { this.lastError = roomError(error); if (save) { this.leaving = false; throw error; } }
     if (!preserveRemembered) this.remember(null);
-    ++this.generation; clearInterval(this.heartbeatTimer); clearInterval(this.presenceTimer);
+    ++this.generation; this.stopHeartbeat?.(); this.stopPresence?.(); this.stopHeartbeat = this.stopPresence = null;
     this.unsubscribers.splice(0).forEach(fn => fn());
     this.playerWire?.close();
     if (this.playerWireId) this.service.deleteWire(this.room.id, this.playerWireId).catch(() => {});
@@ -303,6 +319,11 @@ export const rooms = new RoomController();
 account.subscribe(user => {
   if (rooms.room && (!user || user.uid !== rooms.service.uid)) rooms.leave({ save: false, preserveRemembered: true }).catch(error => rooms.fail(error));
 });
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => rooms.wake());
+  window.addEventListener('focus', () => rooms.wake());
+  document.addEventListener?.('visibilitychange', () => { if (document.visibilityState === 'visible') rooms.wake(); });
+}
 if (typeof window !== 'undefined') window.addEventListener('pagehide', () => {
   if (rooms.isKeeper) rooms.service.release(rooms.room.id, rooms.epoch).catch(() => {});
 });

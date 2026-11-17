@@ -1,0 +1,11 @@
+/* Entering or reconnecting to a room: counter, last error and Cancel */
+.connect-retry { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); z-index: 960; display: flex; align-items: center; gap: 12px;
+  min-width: min(440px, calc(100vw - 24px)); max-width: calc(100vw - 24px); padding: 10px 14px; background: rgba(13,4,32,.97);
+  border: 1px solid rgba(192,132,252,.55); border-top: 2px solid #fde68a; box-shadow: 0 12px 40px rgba(0,0,0,.55); color: #e9d5ff; font-size: 12px; }
+.connect-retry-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.connect-retry-text strong { font: 700 11px/1.2 'Chakra Petch', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #fde68a; }
+.connect-retry-text small { color: #fca5a5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.connect-retry-text small:empty { display: none; }
+.connect-retry-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(192,132,252,.3); border-top-color: #fde68a; animation: connect-spin 1s linear infinite; flex: 0 0 auto; }
+@keyframes connect-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .connect-retry-spinner { animation: none; } }

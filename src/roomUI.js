@@ -55,7 +55,7 @@ export function openRoomLobby(prefill = '') {
     bind('[data-room-archive]', () => openAccount({ tab: 'characters' }));
     bind('[data-room-notes]', () => { const roomId = rooms.room?.id; modal.remove(); openAccount({ tab: 'games', roomId }); });
     bind('[data-room-leave]', () => run(async () => { await rooms.leave(); await refresh(); }));
-    bind('[data-room-reconnect]', () => run(async () => { const id = rooms.room.id; await rooms.leave({ preserveRemembered: true }); await rooms.enter(id); await refresh(); }));
+    bind('[data-room-reconnect]', () => run(async () => { const id = rooms.room.id; await rooms.leave({ preserveRemembered: true }); const { retryUntilConnected } = await import('./connectRetryUI.js'); await retryUntilConnected(() => rooms.enter(id), { label: 'Volviendo a conectar' }); await refresh(); }));
     bind('[data-room-delete]', () => run(async () => {
       const roomName = rooms.room?.name || 'esta sala';
       if (await confirmAction(`¿Eliminar la sala "${roomName}" permanentemente? Se expulsará a los jugadores y se borrará la campaña en la nube.`)) {
@@ -83,7 +83,7 @@ export function openRoomLobby(prefill = '') {
     bind('[data-room-copy]', () => run(() => copy(rooms.room.inviteCode)));
     bind('[data-room-link]', () => run(() => copy(`${location.origin}${location.pathname}#roomInvite=${encodeURIComponent(rooms.room.inviteCode)}`)));
     bind('[data-room-rotate]', () => run(async () => { if (await confirmAction('¿Regenerar la invitación? El código anterior dejará de admitir nuevas entradas. Los miembros actuales mantendrán su acceso.')) { await rooms.rotate(); await refresh(); } }));
-    body.querySelectorAll('[data-enter-room]').forEach(b => { b.onclick = () => run(async () => { await rooms.enter(b.dataset.enterRoom); await refresh(); }); });
+    body.querySelectorAll('[data-enter-room]').forEach(b => { b.onclick = () => run(async () => { const { retryUntilConnected } = await import('./connectRetryUI.js'); await retryUntilConnected(() => rooms.enter(b.dataset.enterRoom), { label: 'Entrando en la sala' }); await refresh(); }); });
     const create = body.querySelector('[data-room-create]'); if (create) create.onsubmit = event => { event.preventDefault(); run(async () => { await rooms.create(create.elements.roomName.value); await refresh(); }); };
     const join = body.querySelector('[data-room-join]'); if (join) join.onsubmit = event => { event.preventDefault(); run(async () => { await rooms.join(join.elements.invitation.value, account.user.displayName || store.state.userName); prefill = ''; if (location.hash.includes('roomInvite=')) history.replaceState(null, '', location.pathname + location.search); await refresh(); }); };
     updateLive();

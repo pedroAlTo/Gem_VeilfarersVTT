@@ -1154,6 +1154,18 @@ export const PAIRS = [
   ["No hay Poderes nuevos a tu alcance ahora mismo. Desmarca la casilla para verlos todos.", "No new Powers within your reach right now. Untick the box to see them all."],
   ["Leer", "Read"],
   ["Añadir al Vault", "Add to Vault"],
+  // Room connection retries (v2.15.1)
+  ["Entrando en la sala", "Entering the room"],
+  ["Entrando con la invitación", "Joining with the invitation"],
+  ["Volviendo a tu sala", "Returning to your room"],
+  ["Volviendo a conectar", "Reconnecting"],
+  ["Conectando con la sala", "Connecting to the room"],
+  ["Conectando…", "Connecting…"],
+  ["Reconectando la sala", "Reconnecting the room"],
+  ["Recuperando la conexión con la nube… (puedes cancelar)", "Recovering the cloud connection… (you can cancel)"],
+  ["Esperando al Keeper", "Waiting for the Keeper"],
+  ["La sala está en pausa hasta que el Keeper vuelva. Se conectará sola (puedes cancelar).", "The room is paused until the Keeper returns. It will connect by itself (you can cancel)."],
+  ["Conectando con el Keeper", "Connecting to the Keeper"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1228,4 +1240,7 @@ export const PATTERNS = [
   ["{a}: ya lo conoces.", "{a}: you already know it."],
   ["{a}: fuera de tu acceso (otro Dominio o nivel superior).", "{a}: outside your access (another Domain or a higher level)."],
   ["{_a} · nivel {b} · {_c}: {_d}", "{_a} · level {b} · {_c}: {_d}"],
+  ["Intento {a}…", "Attempt {a}…"],
+  ["Reintentando en {a} s · intento {b} (puedes cancelar)", "Retrying in {a} s · attempt {b} (you can cancel)"],
+  ["Intento {a}… (puedes cancelar)", "Attempt {a}… (you can cancel)"],
 ];
