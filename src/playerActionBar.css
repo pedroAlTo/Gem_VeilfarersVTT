@@ -1,0 +1,39 @@
+/* Player action bar: TIRAR (six Traits) and ATACAR (one button per weapon) */
+.player-action-bar { position: absolute; left: 16px; bottom: 120px; z-index: 112; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px;
+  max-width: min(560px, calc(100% - 32px)); background: rgba(13,4,32,.94); border: 1px solid rgba(192,132,252,.45); border-left: 3px solid #fde68a; box-shadow: 0 8px 28px rgba(0,0,0,.5); pointer-events: auto; }
+.player-action-bar.hidden { display: none; }
+.pab-row { display: flex; align-items: center; gap: 8px; }
+.pab-label { flex: 0 0 64px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: #fde68a; }
+.pab-buttons { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+.pab-trait, .pab-weapon { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: baseline; gap: 6px; padding: 7px 10px; min-height: 34px;
+  border: 1px solid rgba(192,132,252,.5); background: rgba(42,11,92,.55); color: #f3e8ff; font: 600 12px/1 'Rajdhani', system-ui, sans-serif; }
+.pab-trait b, .pab-weapon b { font: 700 12px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .08em; }
+.pab-trait span { color: #fde68a; font-weight: 700; }
+.pab-weapon span { color: #c4b5fd; font-size: 11px; }
+.pab-weapon b { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pab-trait:hover, .pab-trait:focus-visible, .pab-weapon:hover, .pab-weapon:focus-visible { border-color: #fde68a; background: rgba(109,40,217,.55); }
+.pab-weapon.active { border-color: #00f3ff; box-shadow: 0 0 0 2px rgba(0,243,255,.35); }
+.pab-more { all: unset; cursor: pointer; width: 30px; height: 30px; text-align: center; line-height: 28px; color: #c4b5fd; border: 1px solid rgba(192,132,252,.4); font-size: 16px; }
+.pab-more.active, .pab-more:hover { color: #fff; border-color: #c084fc; }
+.pab-options { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 0 2px 72px; }
+.pab-edges { display: inline-flex; border: 1px solid rgba(192,132,252,.45); }
+.pab-edge { all: unset; cursor: pointer; padding: 5px 9px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #c4b5fd; }
+.pab-edge.active { background: #c084fc; color: #0d0420; }
+.pab-dc { font: 700 11px/1 'Chakra Petch', system-ui, sans-serif; color: #fde68a; letter-spacing: .1em; }
+.pab-hint { margin: 0; font-size: 12px; color: #00f3ff; }
+body.pab-targeting #tactical_canvas { cursor: crosshair !important; }
+@media (max-width: 600px) { .player-action-bar { left: 8px !important; right: 8px; max-width: none; } .pab-label { flex-basis: 52px; } .pab-trait, .pab-weapon { padding: 6px 8px; } }
+/* In player stance the layers panel is not needed and would sit on the action bar. */
+body.player-stance #layer_hud_container { display: none !important; }
+/* The last attack, with its damage and the step to apply it */
+.pab-result { border-top: 1px solid rgba(192,132,252,.25); padding-top: 6px; }
+.pab-result-text { flex: 1; min-width: 0; font-size: 12px; color: #e9d5ff; }
+.pab-result.hit .pab-result-text b { color: #fde68a; }
+.pab-result.miss .pab-result-text b { color: #fca5a5; }
+.pab-result-actions { display: flex; gap: 6px; align-items: center; }
+.pab-applied { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #86efac; }
+/* A player's dice menu only gives dice. */
+body.player-stance #dice_dock_panel .dice-mode-subtabs, body.player-stance #dice_dock_panel #section_action_check, body.player-stance #dice_dock_panel #section_damage_calc,
+body.player-stance #dice_dock_panel .keeper-roll-switch, body.player-stance #dice_dock_panel [data-secret-help] { display: none !important; }
+body.player-stance #dice_dock_panel #section_standard_dice { display: block !important; }
+.pab-dc select { margin-left: 4px; background: #1a0b3a; color: #fde68a; border: 1px solid rgba(192,132,252,.5); font: 700 11px/1 'Chakra Petch', system-ui, sans-serif; padding: 3px 4px; }

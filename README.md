@@ -1,8 +1,8 @@
-# VeilFarers VTT · v2.15.2
+# VeilFarers VTT · v2.16.0
 
 A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v2.15.2**. Download package: **VeilFarers_VTT_v2.15.2.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.16.0**. Download package: **VeilFarers_VTT_v2.16.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -30,6 +30,7 @@ Development happens on the `V2` branch. [HANDOVER_V2.md](HANDOVER_V2.md) records
 - **Lighter first load (v2.14.1).** The 3D dice engine warms up once the page has loaded and the browser is idle; card rules data loads only when a hand is shown; token portraits and sample maps were recompressed (same paths).
 - **First-use guide.** At the table, a short checklist for your role (player or Keeper) sits at the top right of the map. Steps tick themselves when you really do them (move your token, roll, play a card, spend Fear…); **Show me** highlights the control a step talks about. It can be minimised, skipped step by step, closed, and reopened or restarted from **Help → First steps** (*See the first steps again* / *Start from scratch*).
 - **Technology Access (v2.15.0).** Gear is filtered first by what the character can use (class, level, Technology Access; the box is ticked by default). Anything used outside that training rolls with Disadvantage (weapon, worn armor and augmentations, the drone). Failure with Fear on an attack suggests a consequence from the weapon. The deck drawer shows every Power, with *Only those I can access* ticked by default; Powers within reach can be added to the Vault.
+- **(V3) Player bar and dice icon.** In player stance an action bar sits above the character: ROLL (the six Traits, one touch) and ATTACK (one button per weapon, then the target on the map), with the attack result and *Apply damage*. The dice are a translucent icon in the top corner of the map; for players it only gives dice.
 - **Phones and tablets.** The table is designed for a computer or tablet. On a phone a one-time notice says so; the guide starts minimised and the layers panel and map clocks are hidden. On a tablet the layers panel moves to the top right of the map.
 - **Language.** The interface shows in one language, Spanish by default, with an **ES / EN** switch in the status bar and in the lobby corner; the choice is remembered. Corebook rule terms (Hope, Fear, Stress, Evasion…) stay in English in both, and chat, names and book text are never translated. The help and the notices (toasts and error messages) follow the same switch; release notes keep the language they were written in. The **⌂** button (or the VEILFARERS badge) goes back to the home screen without closing the table.
 - **Roll results.** One golden card per roll on the right, stacked in arrival order so every player's roll is visible, plus the chat line. Secret Keeper rolls stay with the Keeper.

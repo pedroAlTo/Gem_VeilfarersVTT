@@ -1172,6 +1172,28 @@ export const PAIRS = [
   ["MAZO · TODOS LOS PODERES", "DECK · ALL POWERS"],
   ["Consulta todos los Poderes del juego. Selecciona un personaje Awakened en postura de jugador para gestionar su Loadout y su Vault.", "Read every Power in the game. Select an Awakened character in player stance to manage their Loadout and Vault."],
   ["Cerrar el mazo", "Close the deck"],
+  // Player action bar and dice icon (V3)
+  ["Acciones del personaje", "Character actions"],
+  ["Tirar", "Roll"],
+  ["Opciones de la tirada", "Roll options"],
+  ["Desventaja", "Disadvantage"],
+  ["Normal", "Normal"],
+  ["Ventaja", "Advantage"],
+  ["Más opciones de tirada", "More roll options"],
+  ["Desarmado", "Unarmed"],
+  ["Sin armas: ataque desarmado (Melee)", "No weapons: unarmed attack (Melee)"],
+  ["Toca el objetivo en el mapa · Esc para cancelar", "Tap the target on the map · Esc to cancel"],
+  ["Dados", "Dice"],
+  ["Abrir los dados", "Open the dice"],
+  ["Cerrar los dados", "Close the dice"],
+  ["En la barra TIRAR, sobre tu personaje, toca un Trait. Para atacar, toca tu arma en ATACAR y luego el objetivo en el mapa.", "In the ROLL bar, above your character, tap a Trait. To attack, tap your weapon under ATTACK and then the target on the map."],
+  ["Abre los dados con el icono de arriba a la derecha del mapa y tira por un adversario (1d20 + Ataque). Con «Tirada secreta» solo la ves tú.", "Open the dice with the icon at the top right of the map and roll for an adversary (1d20 + Attack). With “Secret roll” only you see it."],
+  // Player bar result (V3)
+  ["Resultado", "Result"],
+  ["Escudos", "Shields"],
+  ["Aplicar daño", "Apply damage"],
+  ["Daño aplicado", "Damage applied"],
+  ["Quitar el resultado", "Clear the result"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1250,4 +1272,7 @@ export const PATTERNS = [
   ["Reintentando en {a} s · intento {b} (puedes cancelar)", "Retrying in {a} s · attempt {b} (you can cancel)"],
   ["Intento {a}… (puedes cancelar)", "Attempt {a}… (you can cancel)"],
   ["{a} es Sleeping: no tiene Loadout ni Vault. Aquí puedes consultar todos los Poderes.", "{a} is Sleeping: no Loadout or Vault. Here you can read every Power."],
+  ["{_a} · tirar contra DC {b}", "{_a} · roll against DC {b}"],
+  ["Atacar con {a}", "Attack with {a}"],
+  ["{a} de daño · {_b} · {c}", "{a} damage · {_b} · {c}"],
 ];

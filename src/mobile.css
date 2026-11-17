@@ -13,14 +13,14 @@
 @media (max-width: 1024px) {
   /* Tactical layers: out of the way of the character bar at the bottom. */
   html body .layer-hud-container:not([style*="top"]) { top: 8px; right: 12px; left: auto; bottom: auto; }
-  html body .guide-panel.in-map { top: 56px; }
+  html body .guide-panel.in-map { top: 58px; }
 }
 @media (max-width: 600px) {
   /* Map editing tools are for larger screens. */
   html body .layer-hud-container { display: none; }
   /* Clocks stay in the CLOCKS tab; on the map they would cover most of it. */
   html body #clocks_layer_overlay { display: none !important; }
-  html body .guide-panel.in-map { top: 8px; left: 8px; right: 8px; max-height: 55vh; }
+  html body .guide-panel.in-map { top: 56px; left: 8px; right: 8px; max-height: 55vh; }
   html body .card-hand-empty { max-width: none; margin: 0 8px 8px; padding: 6px 8px; }
   html body .card-hand-empty p { display: none; }
 }

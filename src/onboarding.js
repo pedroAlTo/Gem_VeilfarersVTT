@@ -12,7 +12,7 @@ export const GUIDES = {
     { id: 'character', title: 'Ten tu personaje', text: 'Pide al Keeper que te asigne un token o importa tu ficha desde SESIONES. Tu personaje aparece abajo, en tu mano de cartas y tus stats.', target: ['#network_modal_btn'] },
     { id: 'sheet', title: 'Abre tu ficha', text: 'Pulsa FICHA en la barra de tu token para ver recursos, condiciones, armas e inventario.', target: ['#open_sheet_btn', '#hud-toggle-btn'] },
     { id: 'move', title: 'Mueve tu token', text: 'Arrastra tu token por el mapa. El Keeper confirma el movimiento y tu visión se actualiza.', target: ['#tactical_canvas'] },
-    { id: 'roll', title: 'Haz una tirada', text: 'En la pestaña DICE elige un Trait y pulsa TIRAR. El resultado aparece en la tarjeta dorada y en el chat.', target: ['.tab-nav-btn[data-tab="dice"]'] },
+    { id: 'roll', title: 'Haz una tirada', text: 'En la barra TIRAR, sobre tu personaje, toca un Trait. Para atacar, toca tu arma en ATACAR y luego el objetivo en el mapa.', target: ['#player_action_bar', '#dice_dock_btn'] },
     { id: 'card', title: 'Usa una carta', text: 'Pasa el ratón por tu mano de cartas y arrastra una al tablero (o haz clic) para usarla; se paga su coste y la mesa ve el efecto.', target: ['#card_hand_root'] },
     { id: 'chat', title: 'Escribe a la mesa', text: 'Abre CHAT (o pulsa Intro), escribe un mensaje a la mesa o susúrrale al Keeper.', target: ['.tab-nav-btn[data-tab="chat"]'] },
   ],
@@ -22,7 +22,7 @@ export const GUIDES = {
     { id: 'adversary', title: 'Coloca un adversario', text: 'En ROSTER abre la biblioteca de adversarios y coloca uno en la escena (puede entrar oculto).', target: ['.tab-nav-btn[data-tab="roster"]'] },
     { id: 'assign', title: 'Asigna un personaje', text: 'Cuando un jugador entre, asígnale su token desde SESIONES o desde el token. Sin jugadores, puedes saltar este paso.', target: ['#network_modal_btn'] },
     { id: 'fear', title: 'Gasta Fear', text: 'Tu mano de Keeper tiene las jugadas de Fear: arrastra una al tablero para usarla. El contador de Fear baja.', target: ['#card_hand_root'] },
-    { id: 'roll', title: 'Haz una tirada', text: 'En DICE tira por un adversario (1d20 + Ataque) o pide una tirada. Con «Tirada secreta» solo la ves tú.', target: ['.tab-nav-btn[data-tab="dice"]'] },
+    { id: 'roll', title: 'Haz una tirada', text: 'Abre los dados con el icono de arriba a la derecha del mapa y tira por un adversario (1d20 + Ataque). Con «Tirada secreta» solo la ves tú.', target: ['#dice_dock_btn'] },
   ],
 };
 

@@ -1,0 +1,15 @@
+/* Dice icon in the top corner of the map, and the dice menu it opens */
+.dice-dock-btn { all: unset; box-sizing: border-box; position: absolute; top: 10px; right: 12px; z-index: 141; width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer;
+  color: #e9d5ff; background: rgba(13,4,32,.35); border: 1px solid rgba(192,132,252,.35); border-radius: 50%; opacity: .7; transition: opacity .15s ease, background .15s ease, border-color .15s ease; }
+.dice-dock-btn:hover, .dice-dock-btn:focus-visible, .dice-dock-btn.active { opacity: 1; background: rgba(42,11,92,.85); border-color: #fde68a; color: #fde68a; }
+.dice-dock-panel { position: absolute; top: 58px; right: 12px; z-index: 140; width: min(380px, calc(100% - 24px)); max-height: calc(100% - 150px); overflow: auto;
+  background: rgba(13,4,32,.97); border: 1px solid rgba(192,132,252,.55); border-top: 2px solid #fde68a; box-shadow: 0 14px 40px rgba(0,0,0,.6); }
+.dice-dock-panel[hidden] { display: none; }
+.dice-dock-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(13,4,32,.98); border-bottom: 1px solid rgba(192,132,252,.25); }
+.dice-dock-head strong { font: 700 11px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #fde68a; }
+.dice-dock-close { all: unset; cursor: pointer; color: #c4b5fd; font-size: 20px; line-height: 1; padding: 0 4px; }
+.dice-dock-close:hover { color: #fff; }
+.dice-dock-body { padding: 8px 10px 12px; }
+/* The first-steps guide sits below the icon. */
+html body .guide-panel.in-map { top: 58px; }
+@media (max-width: 600px) { .dice-dock-panel { left: 8px; right: 8px; width: auto; top: 56px; } }

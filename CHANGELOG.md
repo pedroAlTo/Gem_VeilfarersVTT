@@ -1,10 +1,28 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.15.2**.
-Paquete: `VeilFarers_VTT_v2.15.2.zip`.
+Versión actual del VTT: **v2.16.0**.
+Paquete: `VeilFarers_VTT_v2.16.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.16.0] — 2026-11-17
+
+V3 · Vista del jugador: barra Tirar y Atacar, y los dados en un icono
+
+### Barra del jugador (rama V3, en pruebas)
+
+- En postura de jugador, sobre la barra del personaje aparece la barra de acciones con lo que más se usa, a un toque.
+- TIRAR: los seis Traits con su valor («FIN +1»); un toque tira contra la DC. En «⋯»: Desventaja / Normal / Ventaja, la DC y más opciones.
+- ATACAR: un botón por arma (o «Desarmado»). Se toca el arma, luego el objetivo en el mapa (Esc cancela), y la mesa hace el resto: alcance, competencia, tirada y daño.
+- RESULTADO: el último ataque queda en la barra, con el daño y la severidad, «Escudos» para que el defensor gaste Armor y «Aplicar daño» (paso aparte, decisión 8). Bear Down actualiza el daño.
+- En postura de jugador se oculta el panel de capas, que no hace falta para jugar.
+
+### Dados en un icono
+
+- Los dados pasan a un icono transparente en la esquina superior derecha del mapa; la pestaña «Dados» del panel lateral desaparece.
+- Para el jugador, el panel de dados solo da dados (d4 a d100). Tirar y atacar se hacen desde su barra.
+- Para el Keeper, el panel conserva por ahora Dualidad, Dados estándar y Daño; su vista se simplifica en la siguiente fase.
 
 ## [2.15.2] — 2026-11-17
 

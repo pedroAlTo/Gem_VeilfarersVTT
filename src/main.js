@@ -11,6 +11,8 @@ import './account.css';
 import './onboarding.css';
 import './mobile.css';
 import './connect.css';
+import './playerActionBar.css';
+import './diceDock.css';
 import { startTranslation } from './i18n.js';
 import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';
@@ -98,6 +100,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.veilTokenHUD = new TokenHUD(quickbarContainer);
   // 4b. The card hand: the selected character's Loadout, beside its stats
   window.veilCardHand = new CardHand(quickbarContainer);
+  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(quickbarContainer.parentElement); }).catch(error => console.warn('Action bar unavailable:', error));
   window.veilCardFeed = new CardFeed(quickbarContainer.parentElement);
 
   // 5. Initialize Tactical Layers HUD
@@ -115,6 +118,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 7. Initialize Sidebar Tabs
   const dicePane = document.getElementById('tab_pane_dice');
   new DiceRollerSidebar(dicePane);
+  // The dice live behind an icon in the top corner of the map (V3).
+  import('./diceDock.js').then(({ DiceDock }) => { window.veilDiceDock = new DiceDock(document.getElementById('canvas_viewport_root'), dicePane); }).catch(error => console.warn('Dice dock unavailable:', error));
 
   const rosterPane = document.getElementById('tab_pane_roster');
   new RosterManager(rosterPane);
@@ -668,6 +673,7 @@ function setupSidebarTabNavigation() {
 
   window.addEventListener('veil:open_sidebar_tab', (e) => {
     const tabName = e.detail?.tab;
+    if (tabName === 'dice' && window.veilDiceDock) { window.veilDiceDock.open(); return; }
     if (tabName) {
       const targetTabBtn = document.querySelector(`.tab-nav-btn[data-tab="${tabName}"]`);
       if (targetTabBtn) targetTabBtn.click();
