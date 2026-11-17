@@ -52,3 +52,21 @@ test('a player sees Ficha, Nave, Dossiers, Registro and Chat in the right panel'
   const { PLAYER_TABS } = await import('../src/playerActionBar.js');
   assert.deepEqual(PLAYER_TABS, ['sheet', 'ship', 'handouts', 'log', 'chat']);
 });
+
+test('the Ficha tab reads defense, resources and pending effects from the token', async () => {
+  const { sheetStats } = await import('../src/playerActionBar.js');
+  const awake = sheetStats({ path: 'Awakened', evasion: 11, hp: { current: 9, max: 16, majorThreshold: 6, severeThreshold: 12 }, armor: { current: 2, max: 4 }, stress: { current: 1, max: 6 }, hope: 3, pendingAdvantage: true, pendingCheckBonus: 2, conditions: ['Vulnerable'] }, 'Chaleco táctico');
+  assert.equal(awake.evasion, 11);
+  assert.deepEqual(awake.thresholds, [6, 12]);
+  assert.deepEqual(awake.shields, { current: 2, max: 4 });
+  assert.equal(awake.armor, 'Chaleco táctico');
+  assert.deepEqual(awake.path, { label: 'HOPE', current: 3, max: 6 });
+  assert.equal(awake.resolve, null);
+  assert.deepEqual(awake.others.slice(0, 2), ['Ventaja preparada', '+2 a la próxima tirada']);
+  assert.equal(awake.others.length, 3);
+  const sleeper = sheetStats({ path: 'Sleeping', effort: 2, resolve: { current: 1, max: 3, dieType: 'd6' } });
+  assert.deepEqual(sleeper.path, { label: 'EFFORT', current: 2, max: 6 });
+  assert.deepEqual(sleeper.resolve, { current: 1, max: 3, die: 'd6' });
+  assert.equal(sleeper.armor, '—');
+  assert.deepEqual(sleeper.others, []);
+});

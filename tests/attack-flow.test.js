@@ -77,6 +77,11 @@ test('a melee weapon only attacks at Melee; a ranged weapon beyond its band, or 
   assert.equal(rangeCheck({ name: 'Arma rara', range: 'Close', short: true }, 'Melee').disadvantage, false, 'a weapon can be marked short');
   assert.equal(rangeCheck({ name: 'Pistola pesada', range: 'Close', short: false }, 'Melee').disadvantage, true, 'or explicitly not');
   assert.equal(rangeCheck({ range: 'Close' }, 'Far').allowed, true);
+  // Corebook: "Close: ... Pistols take a penalty."
+  assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Very Close').disadvantage, false);
+  assert.match(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Close').reason, /pistola.*Desventaja/i);
+  assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Close').disadvantage, true);
+  assert.equal(rangeCheck({ name: 'Rifle de Asalto Automático', range: 'Far' }, 'Close').disadvantage, false);
   // Without a weapon the attack is an unarmed strike: Melee only.
   assert.equal(rangeCheck(null, 'Melee').allowed, true);
   const unarmed = rangeCheck(null, 'Far');

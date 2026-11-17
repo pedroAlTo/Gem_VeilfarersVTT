@@ -74,7 +74,8 @@ export function isShortWeapon(weapon) {
 
 // Table rule: a melee weapon only works at Melee; a ranged weapon fired beyond the band
 // it covers attacks with Disadvantage, and so does a long ranged weapon fired at a target in
-// Melee (user decision, 17 Nov 2026; short weapons such as pistols are exempt).
+// Melee (user decision, 17 Nov 2026; short weapons such as pistols are exempt) and a short
+// weapon fired at Close or farther (Corebook: pistols take a penalty at Close).
 export function rangeCheck(weapon, band) {
   // No weapon in hand is an unarmed strike: a Melee attack (Corebook ch. 10).
   if (!weapon) return band && band !== 'Melee'
@@ -89,6 +90,9 @@ export function rangeCheck(weapon, band) {
   }
   const beyond = RANGE_BANDS.indexOf(band) > RANGE_BANDS.indexOf(reach);
   if (beyond) return { allowed: true, disadvantage: true, reach, band, reason: `Objetivo a ${band}, más allá del alcance del arma (${reach}): Desventaja.` };
+  // Corebook ch. 10, Range Bands: "Close: ... Pistols take a penalty." A short weapon fired at
+  // Close (or farther, within its reach) attacks with Disadvantage.
+  if (isShortWeapon(weapon) && RANGE_BANDS.indexOf(band) >= RANGE_BANDS.indexOf('Close')) return { allowed: true, disadvantage: true, reach, band, reason: `Arma corta (pistola) con el objetivo a ${band}: Desventaja (las pistolas tienen penalización a Close).` };
   if (band === 'Melee' && !isShortWeapon(weapon)) return { allowed: true, disadvantage: true, reach, band, reason: 'Arma a distancia larga contra un objetivo en Melee: Desventaja (las armas cortas, como las pistolas, no la tienen).' };
   return { allowed: true, disadvantage: false, reach, band, reason: '' };
 }

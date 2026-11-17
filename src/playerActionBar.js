@@ -13,6 +13,9 @@ import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { TRAITS } from './rulesEngine.js';
 import { tokenInventory } from './equipment.js';
 import { characterDetails } from './characterImport.js';
+import { statGaugeHTML } from './tokenVitals.js';
+import { normalizeConditions, conditionDefinition } from './conditions.js';
+import { distanceInfo, rangeCheck } from './attackFlow.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -60,6 +63,26 @@ export const experienceCost = token => (token?.path === 'Sleeping' ? 0 : 1);
 export const experienceAvailable = token => experienceCost(token) === 0 || (Number(token?.hope) || 0) >= 1;
 export const experienceBonus = exp => Math.max(0, Math.min(10, parseInt(String(exp?.bonus ?? '').replace(/\s/g, ''), 10) || 0));
 
+// What the Ficha tab shows of the character, read-only (the character bar keeps the steppers).
+export function sheetStats(token, armorName = '') {
+  const sleeping = token.path === 'Sleeping';
+  const others = [];
+  if (token.pendingAdvantage) others.push('Ventaja preparada');
+  if (Number(token.pendingCheckBonus)) others.push(`${sign(Number(token.pendingCheckBonus))} a la próxima tirada`);
+  for (const name of normalizeConditions(token.conditions || [])) others.push(conditionDefinition(name)?.label || name);
+  return {
+    evasion: token.evasion ?? 10,
+    thresholds: [token.hp?.majorThreshold, token.hp?.severeThreshold].map(v => (v ?? '—')),
+    shields: { current: token.armor?.current ?? 0, max: token.armor?.max ?? 0 },
+    armor: armorName || '—',
+    hp: { current: token.hp?.current ?? 0, max: token.hp?.max ?? 0 },
+    stress: { current: token.stress?.current ?? 0, max: token.stress?.max ?? 6 },
+    path: sleeping ? { label: 'EFFORT', current: token.effort ?? 0, max: token.effortMax ?? 6 } : { label: 'HOPE', current: token.hope ?? 0, max: token.hopeMax ?? 6 },
+    resolve: sleeping ? { current: token.resolve?.current ?? 0, max: token.resolve?.max ?? 0, die: token.resolve?.dieType || 'd4' } : null,
+    others,
+  };
+}
+
 export class PlayerActionBar {
   constructor(parent) {
     this.root = document.createElement('section');
@@ -78,24 +101,30 @@ export class PlayerActionBar {
     // Player stance: the map-editing panels are hidden (see playerActionBar.css).
     document.body.classList.toggle('player-stance', !!token);
     if (!token) {
+      this.edgeKey = '';
       this.stopTargeting(false); document.body.classList.remove('pab-hope-pending');
       if (this.signature !== 'empty') { this.signature = 'empty'; this.tokenId = null; this.root.innerHTML = sanitizeHTML('<p class="pab-empty">Aún no tienes personaje. Pide al Keeper que te asigne uno o importa tu ficha desde SESIONES.</p>'); }
       return;
     }
     const weapons = (tokenInventory(token).weapons || []).filter(usableWeapon);
-    const experiences = (characterDetails(token).experiences || []).filter(x => x.name);
+    const details = characterDetails(token);
+    const experiences = (details.experiences || []).filter(x => x.name);
+    const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
     const { trait, exp } = this.pick, canExp = experienceAvailable(token), cost = experienceCost(token);
     const traitName = TRAITS.find(t => t.id === trait)?.name || '';
-    const edges = `<div class="pab-row pab-edge-row"><span class="pab-label"></span><div class="pab-buttons">
+    const edgeKey = !trait ? '' : exp === null ? 'trait' : 'exp', enterEdge = edgeKey && edgeKey !== this.edgeKey ? ' pab-enter' : '';
+    const enterExp = trait && !this.edgeKey ? ' pab-enter' : '';
+    this.edgeKey = edgeKey;
+    const edges = `<div class="pab-row pab-edge-row${enterEdge}"><span class="pab-label"></span><div class="pab-buttons">
         <button type="button" class="pab-edge-btn dis" data-pab-edge="dis">Desventaja</button>
         <button type="button" class="pab-edge-btn adv" data-pab-edge="adv">Ventaja</button></div></div>`;
     const hope = Number(token.hope) || 0;
-    const expRow = trait && experiences.length ? `<div class="pab-row pab-exp-row"><span class="pab-label">Exp.</span><div class="pab-buttons">
+    const expRow = trait && experiences.length ? `<div class="pab-row pab-exp-row${enterExp}"><span class="pab-label">Exp.</span><div class="pab-buttons">
         ${experiences.map((x, i) => `<button type="button" class="pab-exp ${exp === i ? 'selected' : ''}" data-pab-exp="${i}" ${canExp ? '' : 'disabled'} aria-pressed="${exp === i}" title="${canExp ? (cost ? 'Cuesta 1 Hope' : 'Sin coste (Sleeping)') : 'Necesitas 1 Hope'}"><b>${e(x.name)}</b><span data-no-i18n>${e(sign(experienceBonus(x)))}</span></button>`).join('')}
         ${!canExp ? '<span class="pab-tip">Sin Hope para experiencias</span>' : exp !== null && cost ? `<span class="pab-hope-cost" role="status">−1 Hope · ${hope} → ${hope - 1}</span>` : ''}
       </div></div>` : '';
@@ -104,6 +133,7 @@ export class PlayerActionBar {
     this.root.innerHTML = sanitizeHTML(`
       <header class="pab-head"><div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
         <button type="button" class="hud-btn hud-btn-xs" data-pab-sheet>Ficha completa</button></header>
+      ${this.statsHTML(stats)}
       <div class="pab-row">
         <span class="pab-label">Tirar</span>
         <div class="pab-buttons pab-traits">${TRAITS.map(t => `<button type="button" class="pab-trait ${trait === t.id ? 'selected' : ''}" data-pab-trait="${t.id}" aria-pressed="${trait === t.id}" title="${e(t.name)} · DC ${e(dc)}"><b>${e(t.short)}</b><span>${sign(Number(token.traits?.[t.id]) || 0)}</span></button>`).join('')}</div>
@@ -135,6 +165,17 @@ export class PlayerActionBar {
     this.root.querySelector('[data-pab-shields]')?.addEventListener('click', () => document.querySelector('#dmg_mitigate_btn')?.click());
     this.root.querySelector('[data-pab-clear]')?.addEventListener('click', () => { this.result = null; this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-panel]')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } })));
+  }
+
+  statsHTML(st) {
+    const cell = (label, value, extra = '') => `<div class="pab-cell${extra}"><span>${label}</span><b data-no-i18n>${value}</b></div>`;
+    return `<div class="pab-stats">
+      <div class="pab-cells">${cell('Evasión', e(st.evasion))}${cell('Umbrales', `${e(st.thresholds[0])} / ${e(st.thresholds[1])}`)}${cell('Escudos', `${e(st.shields.current)} / ${e(st.shields.max)}`)}</div>
+      <div class="pab-armor"><span>Armadura</span><b>${e(st.armor)}</b></div>
+      <div class="pab-gauges">${statGaugeHTML('HP', st.hp.current, st.hp.max, 'hp')}${statGaugeHTML('STRESS', st.stress.current, st.stress.max, 'stress')}${statGaugeHTML(st.path.label, st.path.current, st.path.max, 'path')}
+        ${st.resolve ? cell(`Resolve ${e(st.resolve.die)}`, `${e(st.resolve.current)} / ${e(st.resolve.max)}`, ' pab-resolve') : ''}</div>
+      ${st.others.length ? `<div class="pab-others"><span>Otros</span>${st.others.map(o => `<i>${e(o)}</i>`).join('')}</div>` : ''}
+    </div>`;
   }
 
   // Entering the player view opens Ficha; going back to the Keeper leaves it for Reparto.
@@ -228,6 +269,7 @@ export class PlayerActionBar {
     return `<div class="pab-row pab-result ${hit ? 'hit' : 'miss'}" role="status">
       <span class="pab-label">Resultado</span>
       <div class="pab-result-text"><b>${e(r.outcome || '—')}</b> <span>${e(r.targetName)}</span>${hit ? ` · <span>${e(r.raw)} de daño · ${e(r.severity)} · ${e(r.loss)}</span>` : ''}</div>
+      ${this.resultRange ? `<div class="pab-range ${this.resultRange.penalty ? 'penalty' : ''}">Distancia: <span data-no-i18n>${e(this.resultRange.band)} · ${e(this.resultRange.meters.toFixed(1))} m</span>${this.resultRange.penalty ? ` · ${e(this.resultRange.penalty)}` : ''}</div>` : ''}
       <div class="pab-result-actions">${hit && r.shields && !r.applied ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-shields>Escudos</button>' : ''}${hit && !r.applied ? `<button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-pab-apply ${r.canApply ? '' : 'disabled'}>Aplicar daño</button>` : ''}${r.applied ? '<span class="pab-applied">Daño aplicado</span>' : ''}<button type="button" class="pab-more" data-pab-clear aria-label="Quitar el resultado">×</button></div>
     </div>`;
   }
@@ -251,6 +293,10 @@ export class PlayerActionBar {
       if (targetSelect) { targetSelect.value = target.id; targetSelect.onchange?.(); }
       this.applyRoll('normal', 0);
       await dice.executeAttack();
+      // The range and its penalty, said in the bar (the panel says it in its detail line).
+      const weapon = (tokenInventory(token).weapons || []).find(w => w.id === weaponId) || null;
+      const gap = distanceInfo(token, target, store.getActiveMap?.() || {}), check = rangeCheck(weapon, gap.band);
+      this.resultRange = { band: gap.band, meters: gap.meters, penalty: check.disadvantage ? check.reason : '' };
       this.result = this.readResult(target.name); this.signature = ''; this.render();
       if (this.reopenDrawer) { this.reopenDrawer = false; window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'sheet' } })); }
       // Bear Down can still raise the damage before it is applied: follow the panel.

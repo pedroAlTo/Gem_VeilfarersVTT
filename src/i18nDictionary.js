@@ -1205,6 +1205,13 @@ export const PAIRS = [
   ["Mi personaje", "My character"],
   ["Ficha completa", "Full sheet"],
   ["Aún no tienes personaje. Pide al Keeper que te asigne uno o importa tu ficha desde SESIONES.", "You have no character yet. Ask the Keeper to assign you one or import your sheet from SESSIONS."],
+  // Player sheet stats (v2.17.1)
+  ["Evasión", "Evasion"],
+  ["Umbrales", "Thresholds"],
+  ["Otros", "Other"],
+  ["Ventaja preparada", "Advantage ready"],
+  // Pistols at Close (v2.17.1)
+  ["Distancia:", "Distance:"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1288,4 +1295,6 @@ export const PATTERNS = [
   ["{a} de daño · {_b} · {c}", "{a} damage · {_b} · {c}"],
   ["{_a}: toca otra vez para tirar · Esc para cancelar", "{_a}: tap again to roll · Esc to cancel"],
   ["{_a} · DC {b}", "{_a} · DC {b}"],
+  ["{a} a la próxima tirada", "{a} to the next roll"],
+  ["Arma corta (pistola) con el objetivo a {_a}: Desventaja (las pistolas tienen penalización a Close).", "Short weapon (pistol) with the target at {_a}: Disadvantage (pistols take a penalty at Close)."],
 ];

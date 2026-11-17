@@ -1,6 +1,23 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.1', date: '2026-11-17', title: 'V3 · Ficha con defensa y recursos, resultados compactos y pistolas a Close',
+    sections: [
+      { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [
+        'Muestra Evasión, Umbrales (Major / Severe), Escudos, la armadura equipada, HP, Stress y Hope (Awakened) o Effort y Resolve (Sleeping), y en «Otros» lo pendiente: Ventaja preparada, bonificador para la próxima tirada y condiciones.',
+        'Nuevo aspecto, igual que el panel de dados: líneas finas, celdas oscuras, etiquetas en mayúsculas y cian para lo seleccionado.',
+        'Desventaja y Ventaja aparecen al seleccionar un Trait, y las experiencias con él, siempre con una entrada suave; al elegir una experiencia, la fila baja debajo de ellas con la misma animación.',
+        'El resultado del ataque dice la distancia y, si la hay, la penalización por alcance y su motivo.',
+      ] },
+      { title: 'Resultados de las tiradas', items: [
+        'Las tarjetas de resultado son más pequeñas y salen abajo en el centro, sobre la barra de estado (la zona de comunicaciones), con un máximo de tres a la vista. El detalle completo sigue en el registro y en el chat.',
+      ] },
+      { title: 'Reglas', items: [
+        'Pistolas y armas cortas a Close o más lejos: Desventaja (Corebook, bandas de alcance: «Close: … Pistols take a penalty»). A Very Close y en Melee siguen sin penalización.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.0', date: '2026-11-17', title: 'V3 · La ficha del jugador en el panel derecho',
     sections: [
       { title: 'Panel derecho del jugador (rama V3, en pruebas)', items: [

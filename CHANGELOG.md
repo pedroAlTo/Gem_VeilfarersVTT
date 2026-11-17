@@ -1,10 +1,29 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.0**.
-Paquete: `VeilFarers_VTT_v2.17.0.zip`.
+Versión actual del VTT: **v2.17.1**.
+Paquete: `VeilFarers_VTT_v2.17.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.1] — 2026-11-17
+
+V3 · Ficha con defensa y recursos, resultados compactos y pistolas a Close
+
+### Pestaña Ficha (rama V3, en pruebas)
+
+- Muestra Evasión, Umbrales (Major / Severe), Escudos, la armadura equipada, HP, Stress y Hope (Awakened) o Effort y Resolve (Sleeping), y en «Otros» lo pendiente: Ventaja preparada, bonificador para la próxima tirada y condiciones.
+- Nuevo aspecto, igual que el panel de dados: líneas finas, celdas oscuras, etiquetas en mayúsculas y cian para lo seleccionado.
+- Desventaja y Ventaja aparecen al seleccionar un Trait, y las experiencias con él, siempre con una entrada suave; al elegir una experiencia, la fila baja debajo de ellas con la misma animación.
+- El resultado del ataque dice la distancia y, si la hay, la penalización por alcance y su motivo.
+
+### Resultados de las tiradas
+
+- Las tarjetas de resultado son más pequeñas y salen abajo en el centro, sobre la barra de estado (la zona de comunicaciones), con un máximo de tres a la vista. El detalle completo sigue en el registro y en el chat.
+
+### Reglas
+
+- Pistolas y armas cortas a Close o más lejos: Desventaja (Corebook, bandas de alcance: «Close: … Pistols take a penalty»). A Very Close y en Melee siguen sin penalización.
 
 ## [2.17.0] — 2026-11-17
 
