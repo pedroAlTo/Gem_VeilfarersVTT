@@ -68,6 +68,10 @@ export function cardFace(card, { large = false } = {}) {
     </span>`;
 }
 
+// The deck icon of a hand without a Vault (the Keeper's, a Sleeping character's): it opens the
+// whole catalog of Powers to read.
+const deckButton = title => `<button type="button" class="card-deck card-deck-catalog" data-open-vault title="${e(title)}" aria-label="${e(title)}"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>∞</b></button>`;
+
 export class CardHand {
   constructor(quickbar) {
     this.quickbar = quickbar; this.signature = ''; this.cards = []; this.tokenId = null;
@@ -92,7 +96,16 @@ export class CardHand {
     const token = this.owner(), data = cardData();
     // The rules data (~375 KB) is only fetched once a player character's hand has to be shown.
     if (token && !data) loadCardData().then(() => this.render()).catch(error => console.warn('[CardHand] rules data', error));
-    if (!token || !data) { this.signature = ''; this.tokenId = null; this.root.classList.add('hidden'); this.quickbar.classList.remove('with-hand'); return; }
+    // No character of yours selected: the hand is just the deck, to read every Power.
+    if (!token) {
+      if (this.signature === 'deck-only') return;
+      this.signature = 'deck-only'; this.tokenId = null; this.cards = [];
+      this.root.classList.remove('hidden'); this.quickbar.classList.remove('with-hand');
+      this.root.innerHTML = sanitizeHTML(deckButton('Mazo: consulta todos los Poderes del juego'));
+      this.root.querySelector('[data-open-vault]').onclick = () => this.toggleDrawer('', false, { catalogOnly: true });
+      return;
+    }
+    if (!data) { this.signature = ''; this.tokenId = null; this.root.classList.add('hidden'); this.quickbar.classList.remove('with-hand'); return; }
     const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts });
     const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, cards.map(c => c.id)]);
     if (signature === this.signature) return;
@@ -101,7 +114,8 @@ export class CardHand {
     this.root.classList.remove('hidden'); this.quickbar.classList.add('with-hand');
     if (!cards.length) {
       // Say why instead of showing nothing: the sheet has no class, ancestry or Powers to read.
-      this.root.innerHTML = sanitizeHTML(`<div class="card-hand-empty"><strong>Sin cartas</strong><p>La ficha de ${e(token.name)} no indica clase, ancestry, background ni Poderes, así que no hay cartas que mostrar.</p><button type="button" class="hud-btn hud-btn-xs" data-open-sheet>Completar la ficha</button></div>`);
+      this.root.innerHTML = sanitizeHTML(`<div class="card-hand-empty"><strong>Sin cartas</strong><p>La ficha de ${e(token.name)} no indica clase, ancestry, background ni Poderes, así que no hay cartas que mostrar.</p><button type="button" class="hud-btn hud-btn-xs" data-open-sheet>Completar la ficha</button></div>${deckButton('Mazo: consulta todos los Poderes del juego')}`);
+      this.root.querySelector('[data-open-vault]').onclick = () => this.toggleDrawer('', false, { catalogOnly: true });
       this.root.querySelector('[data-open-sheet]').onclick = async () => { const { openDossier } = await import('./dossierUI.js'); openDossier(store.state.tokens.find(t => t.id === token.id), () => {}, 'stats'); };
       return;
     }
@@ -109,7 +123,7 @@ export class CardHand {
     this.root.innerHTML = sanitizeHTML(`
       <div class="card-hand-label"><span>${e(title)}</span></div>
       <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}">${cardFace(card)}</button>`).join('')}</div>
-      ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : ''}`);
+      ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : deckButton('Mazo: consulta todos los Poderes')}`);
     this.layoutFan(n);
     this.bind();
   }
@@ -181,8 +195,11 @@ export class CardHand {
     const n = cards.length;
     this.root.innerHTML = sanitizeHTML(`
       <div class="card-hand-label"><span>Fear ${fear}/12${token ? ` · ${e(token.name)}` : ''}</span></div>
-      <div class="card-hand-fan" style="--n:${n}">${cards.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(null, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(card.costText)}">${cardFace(card)}</button>`).join('')}</div>`);
+      <div class="card-hand-fan" style="--n:${n}">${cards.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(null, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(card.costText)}">${cardFace(card)}</button>`).join('')}</div>
+      ${deckButton('Mazo: consulta todos los Poderes del juego')}`);
     this.layoutFan(n);
+    const deck = this.root.querySelector('[data-open-vault]');
+    if (deck) deck.onclick = () => this.toggleDrawer('', false, { catalogOnly: true });
   }
 
   // A card whose Resolve is chosen by the player (open Moves, Uncanny Power, Bear Down) asks how
@@ -316,11 +333,29 @@ export class CardHand {
 
   // The deck drawer: Loadout above, Vault below. Pick a Vault card, pick the moment, and if the
   // Loadout is full pick the card that leaves. Nothing is paid until Recall is pressed.
-  toggleDrawer(selected = '', forceOpen = false) {
+  // The catalog alone: every Power, by Domain, to read. Used by the Keeper and by Sleeping
+  // characters (who have no Vault).
+  drawCatalog(drawer, data, live, choice) {
+    const domains = [...new Set(data.powers.map(p => p.d))];
+    const catalog = data.powers.filter(p => choice.domain === 'all' || p.d === choice.domain).sort((a, b) => a.d.localeCompare(b.d) || a.l - b.l || a.n.localeCompare(b.n));
+    drawer.innerHTML = sanitizeHTML(`
+      <header class="card-drawer-head"><strong>MAZO · TODOS LOS PODERES</strong><span style="flex:1"></span><button type="button" class="card-drawer-close" data-drawer-close aria-label="Cerrar el mazo">×</button></header>
+      <p class="card-drawer-step">${live ? `${e(live.name)} es Sleeping: no tiene Loadout ni Vault. Aquí puedes consultar todos los Poderes.` : 'Consulta todos los Poderes del juego. Selecciona un personaje Awakened en postura de jugador para gestionar su Loadout y su Vault.'}</p>
+      <div class="equip-chips" role="group" aria-label="Dominio">${['all', ...domains].map(d => `<button type="button" class="equip-chip ${choice.domain === d ? 'active' : ''}" data-drawer-domain="${e(d)}">${d === 'all' ? 'Todos' : e(d)}</button>`).join('')}</div>
+      <h4>TODOS LOS PODERES · ${catalog.length}</h4>
+      <div class="card-drawer-row card-drawer-catalog">${catalog.map(p => `<button type="button" class="vf-card vf-card-mini" data-drawer-catalog="${e(p.n)}" title="${e(p.n)} · ${e(p.d)} L${p.l}">${cardFace(powerCard(p, 'vault'))}</button>`).join('')}</div>`);
+    drawer.querySelector('[data-drawer-close]').onclick = () => drawer.remove();
+    drawer.querySelectorAll('[data-drawer-domain]').forEach(b => b.onclick = () => { choice.domain = b.dataset.drawerDomain; this.drawCatalog(drawer, data, live, choice); });
+    drawer.querySelectorAll('[data-drawer-catalog]').forEach(b => b.onclick = () => { const p = data.powers.find(x => x.n === b.dataset.drawerCatalog); if (p) this.inspect(powerCard(p, 'vault')); });
+  }
+
+  // catalogOnly (the Keeper's hand): no character, the whole catalog to read. A Sleeping
+  // character also gets only the catalog: it has no Loadout or Vault.
+  toggleDrawer(selected = '', forceOpen = false, { catalogOnly = false } = {}) {
     const open = document.getElementById('card_deck_drawer');
     if (open) { open.remove(); if (!forceOpen) return null; }
-    const token = store.state.tokens.find(t => t.id === this.tokenId);
-    if (!token) return null;
+    const token = catalogOnly ? null : store.state.tokens.find(t => t.id === this.tokenId);
+    if (!token && !catalogOnly) return null;
     const drawer = document.createElement('section');
     drawer.id = 'card_deck_drawer'; drawer.className = 'card-drawer'; drawer.setAttribute('aria-label', 'Mazo de cartas');
     this.root.parentElement.append(drawer);
@@ -328,8 +363,10 @@ export class CardHand {
     // what this character can take (its Domains, up to its level); unticked, every Power.
     const choice = { vault: selected, replace: '', mode: 'scene', learn: '', onlyMine: true, domain: 'all' };
     const draw = () => {
-      const live = store.state.tokens.find(t => t.id === this.tokenId), data = cardData();
-      if (!live || !data) { drawer.remove(); return; }
+      const live = catalogOnly ? null : store.state.tokens.find(t => t.id === this.tokenId), data = cardData();
+      if (!data) { loadCardData().then(() => { if (drawer.isConnected) draw(); }).catch(() => drawer.remove()); return; }
+      if (!live && !catalogOnly) { drawer.remove(); return; }
+      if (!live || live.path === 'Sleeping') { this.drawCatalog(drawer, data, live, choice); return; }
       const cards = characterCards(live, data), vault = cards.filter(c => c.zone === 'vault'), loadout = cards.filter(c => c.kind === 'power'), cap = loadoutCap(live), full = loadout.length >= cap;
       if (!vault.some(c => c.name === choice.vault)) choice.vault = '';
       if (!loadout.some(c => c.name === choice.replace)) choice.replace = '';

@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.15.2', date: '2026-11-17', title: 'V2 · El icono del mazo siempre a la vista',
+    sections: [
+      { title: 'Mazo', items: [
+        'El icono del mazo, a la derecha de las cartas, se ve siempre: en la mano del Keeper, con un personaje Sleeping, con una ficha sin cartas y en postura de jugador sin personaje seleccionado (entonces la mano es solo el mazo).',
+        'Con un personaje Awakened abre su mazo de siempre (Loadout, Vault y catálogo para añadir Poderes). En los demás casos abre «Mazo · Todos los poderes»: el catálogo completo para consultar, con filtro por Dominio y lectura de cada carta.',
+      ] },
+    ],
+  },
+  {
     version: '2.15.1', date: '2026-11-17', title: 'V2 · La sesión no caduca en la mesa, reintentos al entrar y Fear visible en tablet',
     sections: [
       { title: 'Sesión en la mesa', items: [

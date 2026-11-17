@@ -1166,6 +1166,12 @@ export const PAIRS = [
   ["Esperando al Keeper", "Waiting for the Keeper"],
   ["La sala está en pausa hasta que el Keeper vuelva. Se conectará sola (puedes cancelar).", "The room is paused until the Keeper returns. It will connect by itself (you can cancel)."],
   ["Conectando con el Keeper", "Connecting to the Keeper"],
+  // Deck icon everywhere (v2.15.2)
+  ["Mazo: consulta todos los Poderes", "Deck: read every Power"],
+  ["Mazo: consulta todos los Poderes del juego", "Deck: read every Power in the game"],
+  ["MAZO · TODOS LOS PODERES", "DECK · ALL POWERS"],
+  ["Consulta todos los Poderes del juego. Selecciona un personaje Awakened en postura de jugador para gestionar su Loadout y su Vault.", "Read every Power in the game. Select an Awakened character in player stance to manage their Loadout and Vault."],
+  ["Cerrar el mazo", "Close the deck"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1243,4 +1249,5 @@ export const PATTERNS = [
   ["Intento {a}…", "Attempt {a}…"],
   ["Reintentando en {a} s · intento {b} (puedes cancelar)", "Retrying in {a} s · attempt {b} (you can cancel)"],
   ["Intento {a}… (puedes cancelar)", "Attempt {a}… (you can cancel)"],
+  ["{a} es Sleeping: no tiene Loadout ni Vault. Aquí puedes consultar todos los Poderes.", "{a} is Sleeping: no Loadout or Vault. Here you can read every Power."],
 ];

@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.15.1**.
-Paquete: `VeilFarers_VTT_v2.15.1.zip`.
+Versión actual del VTT: **v2.15.2**.
+Paquete: `VeilFarers_VTT_v2.15.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.15.2] — 2026-11-17
+
+V2 · El icono del mazo siempre a la vista
+
+### Mazo
+
+- El icono del mazo, a la derecha de las cartas, se ve siempre: en la mano del Keeper, con un personaje Sleeping, con una ficha sin cartas y en postura de jugador sin personaje seleccionado (entonces la mano es solo el mazo).
+- Con un personaje Awakened abre su mazo de siempre (Loadout, Vault y catálogo para añadir Poderes). En los demás casos abre «Mazo · Todos los poderes»: el catálogo completo para consultar, con filtro por Dominio y lectura de cada carta.
 
 ## [2.15.1] — 2026-11-17
 
