@@ -1,11 +1,16 @@
 // The player's action bar (V3, phase A): what a player does most, in one touch.
-// TIRAR: the six Traits with their values; a touch rolls against the DC the table has set.
+// TIRAR: the six Traits with their values. A touch selects one and shows Disadvantage/Advantage
+// below; a second touch rolls it, and so does Advantage or Disadvantage. With a Trait selected
+// the character's Experiences appear: selecting one (Awakened: only with Hope, and it marks the
+// Hope it will spend) moves the edge buttons under the Experiences; a second touch rolls Trait +
+// Experience, and Advantage or Disadvantage rolls it with that edge.
 // ATACAR: one button per weapon; a touch, then the target on the map, and the table does the
 // rest (range, training, damage, the defender's armor). Everything else stays where it was.
 import { store } from './state.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { TRAITS } from './rulesEngine.js';
 import { tokenInventory } from './equipment.js';
+import { characterDetails } from './characterImport.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -30,19 +35,41 @@ export function tokenAtPoint(tokens, world, gridSize, { exclude = '' } = {}) {
   return null;
 }
 
+// The selection logic, without the DOM. `pick` is { trait, exp }; a tap is
+// { kind: 'trait' | 'exp' | 'edge', id }. Returns the new pick and, when the tap rolls, the roll.
+export const EMPTY_PICK = Object.freeze({ trait: null, exp: null });
+export function tapPick(pick, tap) {
+  const cur = pick || EMPTY_PICK;
+  if (tap.kind === 'trait') {
+    if (cur.trait === tap.id) return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: 'normal' } };
+    return { pick: { trait: tap.id, exp: null } };
+  }
+  if (!cur.trait) return { pick: cur };
+  if (tap.kind === 'exp') {
+    if (cur.exp === tap.id) return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: 'normal' } };
+    return { pick: { trait: cur.trait, exp: tap.id } };
+  }
+  if (tap.kind === 'edge') return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: tap.id === 'adv' ? 'adv' : 'dis' } };
+  return { pick: cur };
+}
+// An Awakened character pays 1 Hope for an Experience; a Sleeping one pays nothing.
+export const experienceCost = token => (token?.path === 'Sleeping' ? 0 : 1);
+export const experienceAvailable = token => experienceCost(token) === 0 || (Number(token?.hope) || 0) >= 1;
+export const experienceBonus = exp => Math.max(0, Math.min(10, parseInt(String(exp?.bonus ?? '').replace(/\s/g, ''), 10) || 0));
+
 export class PlayerActionBar {
   constructor(parent) {
     this.root = document.createElement('section');
     this.root.id = 'player_action_bar'; this.root.className = 'player-action-bar hidden';
     this.root.setAttribute('aria-label', 'Acciones del personaje');
     parent.append(this.root);
-    this.signature = ''; this.targeting = null; this.edge = 'normal'; this.optionsOpen = false;
+    this.signature = ''; this.targeting = null; this.pick = EMPTY_PICK; this.optionsOpen = false;
     store.subscribe(() => this.render());
     window.addEventListener('resize', () => this.place());
     // It sits right above the character bar, whatever height that bar has.
     const quickbar = document.getElementById('token_quickbar_root');
     if (quickbar && typeof ResizeObserver === 'function') new ResizeObserver(() => this.place()).observe(quickbar);
-    window.addEventListener('keydown', event => { if (event.key === 'Escape' && this.targeting) this.stopTargeting(); });
+    window.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (this.targeting) this.stopTargeting(); else if (this.pick.trait) { this.pick = EMPTY_PICK; this.render(); } });
     this.render();
   }
 
@@ -52,20 +79,35 @@ export class PlayerActionBar {
     document.body.classList.toggle('player-stance', !!token);
     if (!token) { this.signature = ''; this.root.classList.add('hidden'); this.stopTargeting(); return; }
     const weapons = (tokenInventory(token).weapons || []).filter(usableWeapon);
-    const signature = JSON.stringify([token.id, token.traits, weapons.map(w => [w.id, w.name, w.range]), this.edge, this.optionsOpen, this.targeting?.weaponId ?? null, this.result]);
+    const experiences = (characterDetails(token).experiences || []).filter(x => x.name);
+    if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
+    const signature = JSON.stringify([token.id, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.result]);
     if (signature === this.signature) return;
-    this.signature = signature; this.tokenId = token.id; this.weapons = weapons;
+    this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     this.root.classList.remove('hidden');
     const dc = document.getElementById('dice_dc_select')?.value || '15';
-    const edgeButton = (id, label) => `<button type="button" class="pab-edge ${this.edge === id ? 'active' : ''}" data-pab-edge="${id}">${label}</button>`;
+    const { trait, exp } = this.pick, canExp = experienceAvailable(token), cost = experienceCost(token);
+    const traitName = TRAITS.find(t => t.id === trait)?.name || '';
+    const edges = `<div class="pab-row pab-edge-row"><span class="pab-label"></span><div class="pab-buttons">
+        <button type="button" class="pab-edge-btn dis" data-pab-edge="dis">Desventaja</button>
+        <button type="button" class="pab-edge-btn adv" data-pab-edge="adv">Ventaja</button></div></div>`;
+    const hope = Number(token.hope) || 0;
+    const expRow = trait && experiences.length ? `<div class="pab-row pab-exp-row"><span class="pab-label">Exp.</span><div class="pab-buttons">
+        ${experiences.map((x, i) => `<button type="button" class="pab-exp ${exp === i ? 'selected' : ''}" data-pab-exp="${i}" ${canExp ? '' : 'disabled'} aria-pressed="${exp === i}" title="${canExp ? (cost ? 'Cuesta 1 Hope' : 'Sin coste (Sleeping)') : 'Necesitas 1 Hope'}"><b>${e(x.name)}</b><span data-no-i18n>${e(sign(experienceBonus(x)))}</span></button>`).join('')}
+        ${!canExp ? '<span class="pab-tip">Sin Hope para experiencias</span>' : exp !== null && cost ? `<span class="pab-hope-cost" role="status">−1 Hope · ${hope} → ${hope - 1}</span>` : ''}
+      </div></div>` : '';
+    document.body.classList.toggle('pab-hope-pending', exp !== null && cost > 0);
     this.root.innerHTML = sanitizeHTML(`
       <div class="pab-row">
         <span class="pab-label">Tirar</span>
-        <div class="pab-buttons">${TRAITS.map(t => `<button type="button" class="pab-trait" data-pab-trait="${t.id}" title="${e(t.name)} · tirar contra DC ${e(dc)}"><b>${e(t.short)}</b><span>${sign(Number(token.traits?.[t.id]) || 0)}</span></button>`).join('')}</div>
+        <div class="pab-buttons">${TRAITS.map(t => `<button type="button" class="pab-trait ${trait === t.id ? 'selected' : ''}" data-pab-trait="${t.id}" aria-pressed="${trait === t.id}" title="${e(t.name)} · DC ${e(dc)}"><b>${e(t.short)}</b><span>${sign(Number(token.traits?.[t.id]) || 0)}</span></button>`).join('')}</div>
         <button type="button" class="pab-more ${this.optionsOpen ? 'active' : ''}" data-pab-options title="Opciones de la tirada" aria-expanded="${this.optionsOpen}">⋯</button>
       </div>
+      ${trait && exp === null ? edges : ''}
+      ${expRow}
+      ${trait && exp !== null ? edges : ''}
+      ${trait ? `<p class="pab-hint pab-pick-hint" role="status">${e(traitName)}${exp !== null ? ` + ${e(experiences[exp]?.name || '')}` : ''}: toca otra vez para tirar · Esc para cancelar</p>` : ''}
       ${this.optionsOpen ? `<div class="pab-options">
-        <div class="pab-edges" role="group" aria-label="Ventaja">${edgeButton('dis', 'Desventaja')}${edgeButton('normal', 'Normal')}${edgeButton('adv', 'Ventaja')}</div>
         <label class="pab-dc">DC <select data-pab-dc>${[5, 10, 12, 15, 18, 20, 25, 30].map(v => `<option value="${v}" ${String(v) === String(dc) ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <button type="button" class="hud-btn hud-btn-xs" data-pab-panel>Más opciones de tirada</button>
       </div>` : ''}
@@ -77,10 +119,11 @@ export class PlayerActionBar {
       ${this.targeting ? '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>' : ''}
       ${this.result ? this.resultRow() : ''}`);
     this.place();
-    this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.roll(b.dataset.pabTrait); });
+    this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.tap({ kind: 'trait', id: b.dataset.pabTrait }); });
+    this.root.querySelectorAll('[data-pab-exp]').forEach(b => { b.onclick = () => this.tap({ kind: 'exp', id: Number(b.dataset.pabExp) }); });
     this.root.querySelectorAll('[data-pab-weapon]').forEach(b => { b.onclick = () => (this.targeting?.weaponId === b.dataset.pabWeapon ? this.stopTargeting() : this.startTargeting(b.dataset.pabWeapon)); });
     this.root.querySelector('[data-pab-options]').onclick = () => { this.optionsOpen = !this.optionsOpen; this.render(); };
-    this.root.querySelectorAll('[data-pab-edge]').forEach(b => { b.onclick = () => { this.edge = b.dataset.pabEdge; this.applyEdge(); this.render(); }; });
+    this.root.querySelectorAll('[data-pab-edge]').forEach(b => { b.onclick = () => this.tap({ kind: 'edge', id: b.dataset.pabEdge }); });
     this.root.querySelector('[data-pab-dc]')?.addEventListener('change', event => { const panel = document.getElementById('dice_dc_select'); if (panel) { panel.value = event.target.value; panel.dispatchEvent(new Event('change')); } this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-apply]')?.addEventListener('click', () => this.applyDamage());
     this.root.querySelector('[data-pab-shields]')?.addEventListener('click', () => document.querySelector('#dmg_mitigate_btn')?.click());
@@ -96,18 +139,32 @@ export class PlayerActionBar {
     if (bar) this.root.style.left = `${Math.round(bar.left - box.left)}px`;
   }
 
-  // The dice panel keeps the edge; the bar only sets it.
-  applyEdge() {
-    const adv = document.getElementById('dice_advantage'), dis = document.getElementById('dice_disadvantage');
-    if (adv) adv.checked = this.edge === 'adv';
-    if (dis) dis.checked = this.edge === 'dis';
+  tap(action) {
+    this.stopTargeting(false);
+    const { pick, roll } = tapPick(this.pick, action);
+    this.pick = pick;
+    if (roll) this.roll(roll);
+    this.render();
   }
 
-  roll(traitId) {
+  // The bar sets the edge and the Experience of the dice panel, which makes the roll.
+  applyRoll(edge, expMod) {
+    const panel = window.veilDiceRoller?.container || document;
+    const adv = panel.querySelector('#dice_advantage'), dis = panel.querySelector('#dice_disadvantage'), mod = panel.querySelector('#dice_exp_mod');
+    if (adv) adv.checked = edge === 'adv';
+    if (dis) dis.checked = edge === 'dis';
+    if (mod) mod.value = String(expMod);
+  }
+
+  roll({ trait, exp = null, edge = 'normal' }) {
     const dice = window.veilDiceRoller, token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!dice || !token) { notify('El panel de dados todavía no está disponible.'); return; }
-    this.stopTargeting(); this.applyEdge();
-    dice.setCheckData({ actor: token, traitId, rollNow: true });
+    const experience = exp === null ? null : this.experiences?.[exp];
+    if (experience && !experienceAvailable(token)) { notify('Necesitas 1 Hope para usar una experiencia.'); return; }
+    // First the actor and the Trait (changing actor clears the Experience), then edge and Experience.
+    dice.setCheckData({ actor: token, traitId: trait, rollNow: false });
+    this.applyRoll(edge, experience ? Math.max(1, experienceBonus(experience)) : 0);
+    dice.selectTrait(trait, { rollNow: true });
   }
 
   startTargeting(weaponId) {
@@ -182,7 +239,7 @@ export class PlayerActionBar {
       const targetSelect = dice.container.querySelector('#dmg_target_select'), weaponSelect = dice.container.querySelector('#dmg_weapon_select');
       if (weaponSelect) weaponSelect.value = weaponId || '';
       if (targetSelect) { targetSelect.value = target.id; targetSelect.onchange?.(); }
-      this.applyEdge();
+      this.applyRoll('normal', 0);
       await dice.executeAttack();
       this.result = this.readResult(target.name); this.signature = ''; this.render();
       // Bear Down can still raise the damage before it is applied: follow the panel.

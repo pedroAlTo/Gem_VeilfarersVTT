@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.16.1', date: '2026-11-17', title: 'V3 · Tirar en dos toques: Trait, ventaja y experiencias',
+    sections: [
+      { title: 'Barra del jugador (rama V3, en pruebas)', items: [
+        'Un toque en un Trait lo selecciona y muestra debajo Desventaja y Ventaja. Un segundo toque en el Trait tira sin ventaja; Ventaja o Desventaja tiran con ella.',
+        'Con un Trait seleccionado aparecen las experiencias del personaje. Al elegir una, Desventaja y Ventaja pasan debajo de las experiencias; un segundo toque en la experiencia tira Trait + experiencia, y Ventaja o Desventaja tiran con ella.',
+        'Awakened: las experiencias solo están disponibles con Hope; al elegir una se marca el Hope que se va a gastar (en la barra y en el contador HOPE del personaje). Sleeping: la experiencia se marca y no cuesta nada.',
+        'Esc o tocar otro Trait cambia o cancela la selección. En «⋯» quedan la DC y «Más opciones de tirada».',
+      ] },
+    ],
+  },
+  {
     version: '2.16.0', date: '2026-11-17', title: 'V3 · Vista del jugador: barra Tirar y Atacar, y los dados en un icono',
     sections: [
       { title: 'Barra del jugador (rama V3, en pruebas)', items: [

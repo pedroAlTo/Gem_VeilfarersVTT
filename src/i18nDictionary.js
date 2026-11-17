@@ -1186,7 +1186,7 @@ export const PAIRS = [
   ["Dados", "Dice"],
   ["Abrir los dados", "Open the dice"],
   ["Cerrar los dados", "Close the dice"],
-  ["En la barra TIRAR, sobre tu personaje, toca un Trait. Para atacar, toca tu arma en ATACAR y luego el objetivo en el mapa.", "In the ROLL bar, above your character, tap a Trait. To attack, tap your weapon under ATTACK and then the target on the map."],
+  ["En la barra TIRAR, sobre tu personaje, toca un Trait y vuelve a tocarlo para tirar (o elige Ventaja, Desventaja o una experiencia). Para atacar, toca tu arma en ATACAR y luego el objetivo en el mapa.", "In the ROLL bar, above your character, tap a Trait and tap it again to roll (or choose Advantage, Disadvantage or an Experience). To attack, tap your weapon under ATTACK and then the target on the map."],
   ["Abre los dados con el icono de arriba a la derecha del mapa y tira por un adversario (1d20 + Ataque). Con «Tirada secreta» solo la ves tú.", "Open the dice with the icon at the top right of the map and roll for an adversary (1d20 + Attack). With “Secret roll” only you see it."],
   // Player bar result (V3)
   ["Resultado", "Result"],
@@ -1194,6 +1194,13 @@ export const PAIRS = [
   ["Aplicar daño", "Apply damage"],
   ["Daño aplicado", "Damage applied"],
   ["Quitar el resultado", "Clear the result"],
+  // Player action bar: selection flow (v2.17.0)
+  ["Exp.", "Exp."],
+  ["Sin Hope para experiencias", "No Hope for Experiences"],
+  ["Cuesta 1 Hope", "Costs 1 Hope"],
+  ["Sin coste (Sleeping)", "No cost (Sleeping)"],
+  ["Necesitas 1 Hope", "You need 1 Hope"],
+  ["Necesitas 1 Hope para usar una experiencia.", "You need 1 Hope to use an Experience."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1275,4 +1282,6 @@ export const PATTERNS = [
   ["{_a} · tirar contra DC {b}", "{_a} · roll against DC {b}"],
   ["Atacar con {a}", "Attack with {a}"],
   ["{a} de daño · {_b} · {c}", "{a} damage · {_b} · {c}"],
+  ["{_a}: toca otra vez para tirar · Esc para cancelar", "{_a}: tap again to roll · Esc to cancel"],
+  ["{_a} · DC {b}", "{_a} · DC {b}"],
 ];

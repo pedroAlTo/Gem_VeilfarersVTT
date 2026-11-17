@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.16.0**.
-Paquete: `VeilFarers_VTT_v2.16.0.zip`.
+Versión actual del VTT: **v2.16.1**.
+Paquete: `VeilFarers_VTT_v2.16.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.16.1] — 2026-11-17
+
+V3 · Tirar en dos toques: Trait, ventaja y experiencias
+
+### Barra del jugador (rama V3, en pruebas)
+
+- Un toque en un Trait lo selecciona y muestra debajo Desventaja y Ventaja. Un segundo toque en el Trait tira sin ventaja; Ventaja o Desventaja tiran con ella.
+- Con un Trait seleccionado aparecen las experiencias del personaje. Al elegir una, Desventaja y Ventaja pasan debajo de las experiencias; un segundo toque en la experiencia tira Trait + experiencia, y Ventaja o Desventaja tiran con ella.
+- Awakened: las experiencias solo están disponibles con Hope; al elegir una se marca el Hope que se va a gastar (en la barra y en el contador HOPE del personaje). Sleeping: la experiencia se marca y no cuesta nada.
+- Esc o tocar otro Trait cambia o cancela la selección. En «⋯» quedan la DC y «Más opciones de tirada».
 
 ## [2.16.0] — 2026-11-17
 
