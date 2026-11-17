@@ -1,10 +1,25 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.9.5**.
-Paquete: `VeilFarers_VTT_v2.9.5.zip`.
+Versión actual del VTT: **v2.9.6**.
+Paquete: `VeilFarers_VTT_v2.9.6.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.9.6] — 2026-11-17
+
+V2 · Cartas sin parpadeo
+
+### Mano de cartas
+
+- Las cartas ya no parpadean al pasar el ratón por su borde. La carta se levantaba y dejaba de estar bajo el puntero, bajaba y volvía a estarlo, sin parar.
+- Ahora la zona que detecta el ratón no se mueve: solo sube la cara visible de la carta, y mientras está levantada se puede subir el ratón hasta ella sin que baje.
+- Si el ratón sale a mitad de la animación, la carta vuelve suavemente desde donde esté, sin saltos.
+- La carta levantada se ve recta, sin el giro del abanico.
+
+### Keeper
+
+- Las cartas de la esquina inferior derecha ya no repiten su animación de entrada cada vez que llega o caduca otra.
 
 ## [2.9.5] — 2026-11-17
 

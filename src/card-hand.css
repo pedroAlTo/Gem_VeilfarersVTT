@@ -13,8 +13,15 @@
   transform-origin: 50% 120%;
   transform: translateX(calc(-50% + var(--offset) * var(--spread))) rotate(calc(var(--offset) * var(--tilt, 4deg))) translateY(calc(var(--offset) * var(--offset) * var(--drop, 3px)));
   transition: transform .22s cubic-bezier(.2,.9,.3,1.2), filter .2s ease; z-index: calc(10 + var(--i)); }
-.card-hand-fan .vf-card:hover, .card-hand-fan .vf-card:focus-visible { z-index: 60;
-  transform: translateX(calc(-50% + var(--offset) * var(--spread))) translateY(-86px) scale(1.34) rotateX(var(--rx)) rotateY(var(--ry)); }
+/* Hover without flicker: the card's hit area never moves; only its face rises. While it is up,
+   the hit area also reaches over the raised face, so the pointer can follow it. A transition
+   always runs back from wherever it is, so leaving mid-way reverses smoothly instead of snapping. */
+.card-hand-fan .vf-card:hover, .card-hand-fan .vf-card:focus-visible { z-index: 60; }
+.card-hand-fan .vf-card::before { content: ''; position: absolute; left: -18%; right: -18%; bottom: 100%; height: 0; }
+.card-hand-fan .vf-card:hover::before { height: 150px; }
+.card-hand-fan .vf-card .vf-card-frame { transform-origin: 50% 100%; transition: transform .26s cubic-bezier(.2,.9,.3,1.1), box-shadow .2s ease; will-change: transform; }
+.card-hand-fan .vf-card:hover .vf-card-frame, .card-hand-fan .vf-card:focus-visible .vf-card-frame {
+  transform: rotate(calc(var(--offset) * var(--tilt, 4deg) * -1)) translateY(-64px) scale(1.34) rotateX(var(--rx)) rotateY(var(--ry)); }
 .card-hand-fan .vf-card.dragging { opacity: .25; }
 .vf-card-frame { --card-color: #6d28d9; position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; border-radius: 9px; padding: 3px;
   background: linear-gradient(135deg, #f6d98a 0%, #e9a93a 28%, #fbe6ae 52%, #d08a12 76%, #f3cf7a 100%);
@@ -63,7 +70,7 @@
 .card-inspect-text { color: #e2e8f0; font-size: 13px; line-height: 1.55; margin: 0; max-height: 300px; overflow: auto; }
 .card-vault { display: flex; flex-direction: column; gap: 10px; } .card-vault-preview { display: flex; justify-content: center; }
 @media (max-width: 1024px) { .token-quickbar-container.with-hand { max-width: calc(100% - 24px); bottom: 150px; } .card-hand { width: calc(100% - 32px); height: 150px; } .vf-card { --w: 104px; --h: 146px; } .card-inspect { grid-template-columns: 1fr; justify-items: center; } }
-@media (prefers-reduced-motion: reduce) { .card-hand-fan .vf-card, .vf-card-ghost { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .card-hand-fan .vf-card, .card-hand-fan .vf-card .vf-card-frame, .vf-card-mini .vf-card-frame, .vf-card-ghost { transition: none; } }
 
 /* The deck: a small stack after the fan; it opens the drawer where Loadout and Vault swap. */
 .card-deck { all: unset; box-sizing: border-box; position: absolute; right: 6px; bottom: 10px; z-index: 70; pointer-events: auto; cursor: pointer; width: 46px; height: 62px; display: grid; place-items: center; }
@@ -83,7 +90,8 @@
 .card-drawer-row { display: flex; gap: 10px; flex-wrap: wrap; min-height: 40px; align-items: flex-start; }
 .card-drawer-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .vf-card-mini { --w: 96px; --h: 134px; cursor: pointer; transition: transform .15s ease; }
-.vf-card-mini:hover, .vf-card-mini:focus-visible { transform: translateY(-4px); }
+.vf-card-mini .vf-card-frame { transition: transform .15s ease, box-shadow .2s ease; }
+.vf-card-mini:hover .vf-card-frame, .vf-card-mini:focus-visible .vf-card-frame { transform: translateY(-4px); }
 .vf-card-mini.chosen .vf-card-frame { box-shadow: 0 0 0 3px #00f3ff, 0 0 22px rgba(0,243,255,.6); }
 .vf-card-mini .vf-card-text { display: none; } .vf-card-mini .vf-card-title { font-size: 8.5px; } .vf-card-mini .vf-card-pill { font-size: 5.5px; }
 /* The Keeper's feed of cards used by the players */

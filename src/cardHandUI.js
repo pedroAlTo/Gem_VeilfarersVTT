@@ -271,11 +271,21 @@ export class CardFeed {
     setTimeout(() => { this.entries = this.entries.filter(x => x.id !== id); this.render(); }, CARD_FEED_LIFE);
     this.render();
   }
+  // Incremental: a card that arrives is added and one that expires is removed; the others are
+  // left alone, so they never replay their entrance (redrawing the whole feed made them blink).
   render() {
-    const shown = this.isKeeper() ? this.entries : [];
+    const shown = this.isKeeper() ? this.entries : [], ids = new Set(shown.map(x => x.id));
     this.root.classList.toggle('hidden', !shown.length);
-    this.root.innerHTML = sanitizeHTML(shown.map(x => `<button type="button" class="card-feed-item" data-feed="${e(x.id)}" title="${e(x.actorName)} usa ${e(x.card.name)}: clic para ampliar"><span class="vf-card vf-card-mini">${cardFace(x.card)}</span><span class="card-feed-who">${e(x.actorName)}${x.failed ? ' · no se manifiesta' : ''}</span></button>`).join(''));
-    this.root.querySelectorAll('[data-feed]').forEach(button => button.onclick = () => this.open(this.entries.find(x => x.id === button.dataset.feed)));
+    for (const node of [...this.root.children]) if (!ids.has(node.dataset.feed)) node.remove();
+    const present = new Set([...this.root.children].map(node => node.dataset.feed));
+    for (const x of shown) {
+      if (present.has(x.id)) continue;
+      const holder = document.createElement('div');
+      holder.innerHTML = sanitizeHTML(`<button type="button" class="card-feed-item" data-feed="${e(x.id)}" title="${e(x.actorName)} usa ${e(x.card.name)}: clic para ampliar"><span class="vf-card vf-card-mini">${cardFace(x.card)}</span><span class="card-feed-who">${e(x.actorName)}${x.failed ? ' · no se manifiesta' : ''}</span></button>`);
+      const button = holder.firstElementChild;
+      button.onclick = () => this.open(this.entries.find(entry => entry.id === x.id));
+      this.root.append(button);
+    }
   }
   open(entry) {
     if (!entry) return null;

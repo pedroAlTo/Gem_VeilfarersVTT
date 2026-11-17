@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.9.6', date: '2026-11-17', title: 'V2 · Cartas sin parpadeo',
+    sections: [
+      { title: 'Mano de cartas', items: [
+        'Las cartas ya no parpadean al pasar el ratón por su borde. La carta se levantaba y dejaba de estar bajo el puntero, bajaba y volvía a estarlo, sin parar.',
+        'Ahora la zona que detecta el ratón no se mueve: solo sube la cara visible de la carta, y mientras está levantada se puede subir el ratón hasta ella sin que baje.',
+        'Si el ratón sale a mitad de la animación, la carta vuelve suavemente desde donde esté, sin saltos.',
+        'La carta levantada se ve recta, sin el giro del abanico.',
+      ] },
+      { title: 'Keeper', items: [
+        'Las cartas de la esquina inferior derecha ya no repiten su animación de entrada cada vez que llega o caduca otra.',
+      ] },
+    ],
+  },
+  {
     version: '2.9.5', date: '2026-11-17', title: 'V2 · Mazo con cajón, Gifts de Ancestry activos y aviso al Keeper',
     sections: [
       { title: 'Mazo', items: [
