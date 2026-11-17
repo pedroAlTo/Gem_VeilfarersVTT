@@ -613,11 +613,36 @@ export class CanvasEngine {
   }
   displayTokens() {
     this.reconcileTokenDrag();
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     return store.getTokensForActiveMap().map(token => {
-      if (this.draggedToken?.id === token.id) return { ...token, x: this.draggedToken.x, y: this.draggedToken.y };
-      if (this.draggedTokenFacing?.id === token.id) return { ...token, facingAngle: this.draggedTokenFacing.facingAngle };
-      return token;
+      if (this.draggedToken?.id === token.id) { this.noteTokenAt(token.id, this.draggedToken.x, this.draggedToken.y, token.mapId); return { ...token, x: this.draggedToken.x, y: this.draggedToken.y }; }
+      const shown = this.glideToken(token, now);
+      if (this.draggedTokenFacing?.id === token.id) return { ...shown, facingAngle: this.draggedTokenFacing.facingAngle };
+      return shown;
     });
+  }
+  // A token that changes place without being dragged here (another player's move, a move the
+  // Keeper confirms, an undo) slides from where it was drawn to its new place instead of jumping.
+  noteTokenAt(id, x, y, mapId) {
+    this.tokenGlides ??= new Map();
+    this.tokenGlides.set(id, { x, y, toX: x, toY: y, fromX: x, fromY: y, start: 0, dur: 0, mapId });
+  }
+  glideToken(token, now) {
+    this.tokenGlides ??= new Map();
+    const g = this.tokenGlides.get(token.id);
+    if (!g || g.mapId !== token.mapId) { this.noteTokenAt(token.id, token.x, token.y, token.mapId); return token; }
+    if (g.toX !== token.x || g.toY !== token.y) {
+      const grid = store.getActiveMap?.()?.gridSize || 64;
+      const dist = Math.hypot(token.x - g.x, token.y - g.y);
+      // Far jumps (a new scene, a teleport across the map) are not animated.
+      if (dist > grid * 40 || !Number.isFinite(dist)) { this.noteTokenAt(token.id, token.x, token.y, token.mapId); return token; }
+      Object.assign(g, { fromX: g.x, fromY: g.y, toX: token.x, toY: token.y, start: now, dur: Math.max(220, Math.min(900, (dist / grid) * 110)) });
+    }
+    if (!g.dur) return token;
+    const t = Math.min(1, (now - g.start) / g.dur), ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    g.x = g.fromX + (g.toX - g.fromX) * ease; g.y = g.fromY + (g.toY - g.fromY) * ease;
+    if (t >= 1) { g.x = g.toX; g.y = g.toY; g.dur = 0; return token; }
+    return { ...token, x: g.x, y: g.y };
   }
   visionTokens() {
     return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId);

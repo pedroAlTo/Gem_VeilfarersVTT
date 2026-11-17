@@ -113,6 +113,13 @@ export class PlayerActionBar {
       if (this.signature !== 'empty') { this.signature = 'empty'; this.tokenId = null; this.root.innerHTML = sanitizeHTML('<p class="pab-empty">Aún no tienes personaje. Pide al Keeper que te asigne uno o importa tu ficha desde SESIONES.</p>'); }
       return;
     }
+    // The target marked for an attack: if either token moves, the distance is worked out again.
+    if (this.targeting?.targetId) {
+      const target = store.state.tokens.find(t => t.id === this.targeting.targetId);
+      const key = target ? `${token.x},${token.y},${target.x},${target.y}` : '';
+      if (!target) this.stopTargeting(false);
+      else if (this.targeting.posKey && key !== this.targeting.posKey) { this.targeting.posKey = key; this.markTarget(target); }
+    }
     const weapons = (tokenInventory(token).weapons || []).filter(usableWeapon);
     const details = characterDetails(token);
     const experiences = (details.experiences || []).filter(x => x.name);
@@ -272,6 +279,7 @@ export class PlayerActionBar {
     const gap = distanceInfo(token, target, store.getActiveMap?.() || {}), check = rangeCheck(weapon, gap.band);
     const targeting = this.targeting;
     targeting.targetId = target.id;
+    targeting.posKey = `${token.x},${token.y},${target.x},${target.y}`;
     window.veilCanvas?.setAttackTarget?.(this.tokenId, target.id);
     const gear = await window.veilDiceRoller?.gearCheck?.(token, { weapon }).catch(() => null) || { disadvantage: false, text: '' };
     if (this.targeting !== targeting || targeting.targetId !== target.id) return;

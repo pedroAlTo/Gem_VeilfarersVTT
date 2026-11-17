@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.7**.
-Paquete: `VeilFarers_VTT_v2.17.7.zip`.
+Versión actual del VTT: **v2.17.8**.
+Paquete: `VeilFarers_VTT_v2.17.8.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.8] — 2026-11-17
+
+V3 · Tokens que se deslizan y distancias que se recalculan
+
+### Movimiento
+
+- Cuando un token cambia de sitio sin que lo arrastres tú (el movimiento de otro jugador, uno que confirma el Keeper, un deshacer), se desliza de un punto a otro en vez de aparecer de golpe. Los saltos muy largos (cambio de escena) no se animan.
+- Si el atacante o el objetivo marcado se mueve, la Ficha recalcula la distancia, la penalización y si el ataque va con Ventaja o Desventaja.
 
 ## [2.17.7] — 2026-11-17
 

@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.8', date: '2026-11-17', title: 'V3 · Tokens que se deslizan y distancias que se recalculan',
+    sections: [
+      { title: 'Movimiento', items: [
+        'Cuando un token cambia de sitio sin que lo arrastres tú (el movimiento de otro jugador, uno que confirma el Keeper, un deshacer), se desliza de un punto a otro en vez de aparecer de golpe. Los saltos muy largos (cambio de escena) no se animan.',
+        'Si el atacante o el objetivo marcado se mueve, la Ficha recalcula la distancia, la penalización y si el ataque va con Ventaja o Desventaja.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.7', date: '2026-11-17', title: 'V3 · Todas las propiedades de arma del Corebook, y modificadores en cada resultado',
     sections: [
       { title: 'Propiedades de arma (glosario del Corebook)', items: [
