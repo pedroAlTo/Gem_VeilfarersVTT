@@ -186,6 +186,7 @@ Orden de trabajo de la Fase 1:
 
 ## Normas de trabajo
 - **Ramas (17 nov 2026, decisión del usuario)**: `main` es la versión **estable** (v2.15.2, commit `57e12a0`, igual que `V2`). **No se fusiona nada en `main` sin que el usuario lo pida** tras validarlo. El trabajo nuevo, empezando por la **simplificación de la interfaz**, va en la rama **`V3`**, creada desde ese punto. Un arreglo urgente para la versión estable se hace en `V2` y se lleva a `main` solo con el visto bueno del usuario.
+- **V3 · simplificación**: la propuesta está en `docs/propuesta-simplificacion/PROPUESTA.md` (diagnóstico medido, 8 cambios, fases A–D, maquetas). Pendiente de que el usuario decida agrupación de pestañas, «Editar escena», Básico por defecto y por qué fase empezar.
 - Cada cambio: entrada en `src/releaseHistory.js` (primera entrada = versión de `package.json` y `package-lock.json`), luego `npm run release:notes` para regenerar `CHANGELOG.md`. El changelog se ve en la app y se copia al proyecto de Claude.
 - Antes de cerrar: `npm test` y `npm run build`.
 - UTF-8 estricto. Commit y push al terminar cada tarea.
