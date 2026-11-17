@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.3**.
-Paquete: `VeilFarers_VTT_v2.17.3.zip`.
+Versión actual del VTT: **v2.17.4**.
+Paquete: `VeilFarers_VTT_v2.17.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.4] — 2026-11-17
+
+V3 · La Desventaja por alcance también con armas importadas
+
+### Reglas de alcance
+
+- Corregido: si el arma de una ficha importada no indicaba su alcance en un formato conocido, no se aplicaba ningún límite y no había Desventaja por distancia.
+- Ahora el alcance se lee también en español («Cercano», «Lejano», «Muy lejano», «Media») y en metros («15 m»); si la ficha no lo dice, se busca el arma del catálogo por su nombre en inglés o en español (por ejemplo, «Slug Pistol»); y si tampoco, se deduce del tipo de arma (pistola, rifle, francotirador, escopeta, cuchillo, espada…).
+- Si aun así no se sabe, la Ficha lo dice al marcar el objetivo: «El arma no indica su alcance: no se aplica límite de distancia».
 
 ## [2.17.3] — 2026-11-17
 

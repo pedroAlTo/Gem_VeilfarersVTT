@@ -52,6 +52,10 @@ test('a weapon whose sheet has no Range takes it from the catalog weapon of the 
   assert.equal(weaponRangeBand({ name: 'Pistola Cinética Militar', range: '' }), 'Close');
   assert.equal(weaponRangeBand({ name: 'Pistola Cinética Militar (Slug Pistol)' }), 'Close');
   assert.equal(weaponRangeBand({ name: 'Arma inventada', range: '' }), '');
+  // Imported sheets: Spanish words, metres, the English name of a catalog weapon, or its kind.
+  assert.deepEqual(['Lejano', 'Muy lejano', 'Cercano', 'Distancia media', '15 m', '4m', '40 metros'].map(range => weaponRangeBand({ range })), ['Far', 'Extreme', 'Close', 'Close', 'Far', 'Very Close', 'Extreme']);
+  assert.equal(weaponRangeBand({ name: 'Slug Pistol' }), 'Close');
+  assert.deepEqual(['Sniper Rifle', 'Assault Rifle', 'Combat Shotgun', 'Combat Knife', 'Heavy Revolver'].map(name => weaponRangeBand({ name })), ['Extreme', 'Far', 'Very Close', 'Melee', 'Close']);
   assert.equal(weaponRangeBand({ name: 'Pistola Cinética Militar', range: 'Far' }), 'Far', 'its own Range wins');
 });
 

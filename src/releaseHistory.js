@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.4', date: '2026-11-17', title: 'V3 · La Desventaja por alcance también con armas importadas',
+    sections: [
+      { title: 'Reglas de alcance', items: [
+        'Corregido: si el arma de una ficha importada no indicaba su alcance en un formato conocido, no se aplicaba ningún límite y no había Desventaja por distancia.',
+        'Ahora el alcance se lee también en español («Cercano», «Lejano», «Muy lejano», «Media») y en metros («15 m»); si la ficha no lo dice, se busca el arma del catálogo por su nombre en inglés o en español (por ejemplo, «Slug Pistol»); y si tampoco, se deduce del tipo de arma (pistola, rifle, francotirador, escopeta, cuchillo, espada…).',
+        'Si aun así no se sabe, la Ficha lo dice al marcar el objetivo: «El arma no indica su alcance: no se aplica límite de distancia».',
+      ] },
+    ],
+  },
+  {
     version: '2.17.3', date: '2026-11-17', title: 'V3 · El ataque dice si va con Ventaja o Desventaja y ya se ejecuta en la vista de jugador local',
     sections: [
       { title: 'Atacar desde la Ficha (rama V3, en pruebas)', items: [

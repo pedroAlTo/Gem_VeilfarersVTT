@@ -43,24 +43,48 @@ export function distanceInfo(a, b, map = {}) {
   return { squares, meters: squares * metersPerSquare, band: rangeBandFor(squares, metersPerSquare), blocked: lineBlockedByWall(a, b, map.walls || []) };
 }
 
+const bandFromMeters = meters => (meters <= 1 ? 'Melee' : meters <= 5 ? 'Very Close' : meters <= 10 ? 'Close' : meters <= 25 ? 'Far' : 'Extreme');
 const bandFromText = value => {
   const text = String(value ?? '').toLowerCase();
   if (/very\s*far|extreme|extremo|muy\s*lej/.test(text)) return 'Extreme';
-  if (/\bfar\b|lejos|largo/.test(text)) return 'Far';
+  if (/\bfar\b|lejos|lejan|largo|larga/.test(text)) return 'Far';
   if (/very\s*close|muy\s*cerca/.test(text)) return 'Very Close';
-  if (/\bclose\b|cerca|corto/.test(text)) return 'Close';
-  if (/melee|cuerpo|contact/.test(text)) return 'Melee';
+  if (/\bclose\b|cerca|corto|media|medio/.test(text)) return 'Close';
+  if (/melee|cuerpo|contact|adyacente|adjacent/.test(text)) return 'Melee';
+  // "15 m", "10m", "5 metros"
+  const meters = text.match(/(\d+(?:[.,]\d+)?)\s*(?:m\b|metros?)/);
+  if (meters) return bandFromMeters(Number(meters[1].replace(',', '.')));
   return '';
 };
-const plainName = value => String(value ?? '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9áéíóúüñ]+/g, ' ').trim();
-// The band a weapon reaches: its own Range text or, when the sheet left it blank, the range
-// of the catalog weapon with the same name. '' means it is not known.
+const plainName = value => String(value ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+// A catalog weapon answers to its whole name, to the part in brackets and to each side of
+// "English / Español": "Slug Pistol" finds "Pistola Cinética Militar (Slug Pistol)".
+const nameAliases = value => {
+  const raw = String(value ?? '');
+  const parts = [raw, raw.replace(/\(.*?\)/g, ''), ...(raw.match(/\(([^)]*)\)/g) || []).map(x => x.slice(1, -1)), ...raw.replace(/\(.*?\)/g, '').split('/')];
+  return [...new Set(parts.map(plainName).filter(Boolean))];
+};
+// When neither the sheet nor the catalog says, the kind of weapon does.
+const KIND_BANDS = [
+  [/sniper|francotirador|marksman|precision/, 'Extreme'],
+  [/shotgun|escopeta|flamer|lanzallamas/, 'Very Close'],
+  [/pistol|revolver|derringer|blaster|holdout|sidearm|\bsmg\b|subfusil|hand ?cannon/, 'Close'],
+  [/rifle|fusil|carbine|carabina|launcher|lanzador|lanzagranadas|cannon|canon\b|railgun|machine ?gun|ametralladora/, 'Far'],
+  [/knife|cuchill|blade|hoja|sword|espada|dagger|daga|\baxe\b|hacha|hammer|martillo|\bclub\b|porra|baton|whip|latigo|glaive|estoque|rapier|vibro|fist|puno|claw|garra|spear|lanza\b|machete|katana|mace|maza|staff|baston|cutter|cortador|unarmed|desarmado/, 'Melee'],
+];
+const bandFromKind = weapon => {
+  const text = plainName([weapon?.name, weapon?.type, weapon?.features].filter(Boolean).join(' '));
+  return KIND_BANDS.find(([pattern]) => pattern.test(text))?.[1] || '';
+};
+// The band a weapon reaches: its own Range text; when the sheet left it blank, the range of
+// the catalog weapon with the same name; failing that, the kind of weapon its name says.
+// '' means it is not known.
 export function weaponRangeBand(weapon) {
   const own = bandFromText(weapon?.range);
   if (own || !weapon?.name) return own;
-  const name = plainName(weapon.name);
-  const match = name && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && plainName(item.name) === name);
-  return match ? bandFromText(match.range) : '';
+  const names = nameAliases(weapon.name);
+  const match = names.length && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && nameAliases(item.name).some(alias => names.includes(alias)));
+  return (match && bandFromText(match.range)) || bandFromKind(weapon);
 }
 
 // A short firearm (pistol, hand blaster, revolver...) can be fired point-blank without penalty

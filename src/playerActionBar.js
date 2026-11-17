@@ -273,7 +273,7 @@ export class PlayerActionBar {
     const gear = await window.veilDiceRoller?.gearCheck?.(token, { weapon }).catch(() => null) || { disadvantage: false, text: '' };
     if (this.targeting !== targeting || targeting.targetId !== target.id) return;
     const edge = netEdge(!!token.pendingAdvantage, check.disadvantage || gear.disadvantage);
-    const reasons = [check.disadvantage || !check.allowed ? check.reason : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
+    const reasons = [check.disadvantage || !check.allowed ? check.reason : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
     targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed, edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
     this.signature = ''; this.render();
   }

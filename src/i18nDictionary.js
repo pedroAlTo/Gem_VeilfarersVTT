@@ -1225,6 +1225,8 @@ export const PAIRS = [
   ["Con Ventaja", "With Advantage"],
   ["Con Desventaja", "With Disadvantage"],
   ["Tirada normal", "Normal roll"],
+  // Weapon range unknown (v2.17.4)
+  ["El arma no indica su alcance: no se aplica límite de distancia.", "The weapon does not state its range: no distance limit applies."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
