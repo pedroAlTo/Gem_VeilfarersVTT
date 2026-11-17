@@ -1,6 +1,41 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.9.5', date: '2026-11-17', title: 'V2 · Mazo con cajón, Gifts de Ancestry activos y aviso al Keeper',
+    sections: [
+      { title: 'Mazo', items: [
+        'Después de las cartas de un Awakened hay un pequeño mazo con el número de Poderes del Vault. Al pulsarlo se abre un cajón sobre la mano.',
+        'El cajón muestra el Loadout arriba y el Vault abajo. Se elige el momento (Long Rest, Short Rest o escena activa), la carta del Vault que entra y, si el Loadout está lleno, la que sale.',
+        'El coste se ve antes de confirmar y no se paga nada hasta pulsar Recall. El cajón sigue abierto para hacer más cambios.',
+      ] },
+      { title: 'Cartas de Ancestry', items: [
+        'Cada Gift que se usa (tiene un momento, un coste o un límite) es su propia carta, con su coste y su límite de usos. Los Gifts pasivos ya no aparecen en la mano: siguen en la ficha.',
+        'Los «path resources» de un Gift se cobran en Hope a un Awakened y en Effort a un Sleeping. Lo que el Gift devuelve no se cobra.',
+        'Una Ancestry con solo Gifts pasivos no añade carta.',
+      ] },
+      { title: 'Keeper', items: [
+        'Cuando un jugador usa una carta, el Keeper la ve en pequeño en la esquina inferior derecha del mapa, con el nombre del personaje.',
+        'Al pulsarla se abre en grande con quién la usó, lo que pagó y su efecto. Se guardan las cuatro últimas durante minuto y medio.',
+        'La línea del chat dice quién la usó (jugador y personaje), qué carta es, su coste y su efecto completo.',
+      ] },
+    ],
+  },
+  {
+    version: '2.9.4', date: '2026-11-17', title: 'V2 · Rendimiento: mapa más ligero y carga más rápida',
+    sections: [
+      { title: 'Mapa', items: [
+        'La niebla de guerra ya no se recalcula en cada fotograma: solo cuando se mueve un personaje, cambia un muro o una puerta, cambia una luz o cambia lo explorado.',
+        'Las luces fijas se dibujan una vez y se reutilizan; las que parpadean o pulsan se redibujan 30 veces por segundo en lugar de 60.',
+        'Saber si un punto o un muro está explorado ya no pide una lectura a la tarjeta gráfica por cada consulta: se usa una copia reducida que se actualiza solo al cambiar lo explorado.',
+        'El guardado de la exploración del Keeper solo se ejecuta cuando ha cambiado algo.',
+      ] },
+      { title: 'Carga', items: [
+        'Las texturas de los dados 3D pesan 3,7 MB en lugar de 19,5 MB: la pantalla de acceso descarga unos 16 MB menos.',
+        'Los 94 retratos de token pesan 25 MB en lugar de 79 MB, con la misma resolución (1024 px).',
+      ] },
+    ],
+  },
+  {
     version: '2.9.3', date: '2026-11-16', title: 'V2 · Cartas con el arte de Dominios y clases',
     sections: [
       { title: 'Mano de cartas', items: [

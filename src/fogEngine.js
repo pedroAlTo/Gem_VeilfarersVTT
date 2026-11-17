@@ -1,10 +1,11 @@
-import { drawSoftened, visionFill } from './softMask.js';
+import { drawSoftened, visionFill, fingerprint, wallValues } from './softMask.js';
 // src/fogEngine.js
 // Advanced Fog of War & Exploration Shroud Engine for Veilfarers VTT
 // Supports Unvisited Total Darkness (100%), Explored Shroud (80%-95%), and Real-time LOS FOV
 
 // Width, in map pixels, of the gradient that replaces every hard cut of the fog.
 export const FOG_SOFTNESS = 12;
+const MASK_CELL = 4; // map pixels per cell of the exploration mask
 
 export class FogOfWarEngine {
   constructor() {
@@ -16,6 +17,38 @@ export class FogOfWarEngine {
 
     // Default explored shroud opacity (88% black transparency)
     this.defaultExploredOpacity = 0.88;
+
+    // Every change to an exploration memory bumps this; masks and caches compare against it.
+    this.exploredVersion = 0;
+    this.masks = new Map();       // mapId -> low-resolution copy of the memory for point tests
+    this.fogKey = null;           // fingerprint of the last fog drawn
+    this.fogVersion = 0;          // bumps when the fog canvas is redrawn
+    this.lastVision = [];
+  }
+
+  // A reduced copy of the exploration memory, read back once per change. Asking whether a
+  // point is explored then costs an array lookup instead of a GPU readback per question.
+  explorationMask(mapId) {
+    const canvas = this.exploredCanvases.get(mapId);
+    if (!canvas || typeof document === 'undefined') return null;
+    let mask = this.masks.get(mapId);
+    if (mask && mask.version === this.exploredVersion && mask.width === canvas.width && mask.height === canvas.height) return mask.data ? mask : null;
+    const cell = MASK_CELL, cols = Math.ceil(canvas.width / cell), rows = Math.ceil(canvas.height / cell);
+    mask = { version: this.exploredVersion, width: canvas.width, height: canvas.height, cell, cols, rows, data: null };
+    this.masks.set(mapId, mask);
+    try {
+      const small = mask.canvas || document.createElement('canvas');
+      small.width = cols; small.height = rows;
+      const ctx = small.getContext('2d', { willReadFrequently: true });
+      ctx.clearRect(0, 0, cols, rows);
+      ctx.drawImage(canvas, 0, 0, cols * cell, rows * cell, 0, 0, cols, rows);
+      const pixels = ctx.getImageData(0, 0, cols, rows).data;
+      if (pixels.length !== cols * rows * 4) return null; // no real canvas here: fall back to single reads
+      const data = new Uint8Array(cols * rows);
+      for (let i = 0; i < data.length; i++) data[i] = Math.max(pixels[i * 4], pixels[i * 4 + 3]);
+      mask.data = data;
+      return mask;
+    } catch { return null; }
   }
 
   /**
@@ -65,6 +98,7 @@ export class FogOfWarEngine {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
+    this.exploredVersion++;
   }
 
   /**
@@ -75,6 +109,7 @@ export class FogOfWarEngine {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
+    this.exploredVersion++;
   }
 
   /**
@@ -98,12 +133,14 @@ export class FogOfWarEngine {
     const bytes = new Uint8Array(numBytes);
 
     let setBits = 0;
+    const mask = this.explorationMask(mapId);
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const sampleX = Math.min(mapWidth - 1, Math.floor(c * cellSize + cellSize / 2));
         const sampleY = Math.min(mapHeight - 1, Math.floor(r * cellSize + cellSize / 2));
         try {
-          const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+          // One lookup in the mask instead of one canvas readback per cell.
+          const pixel = mask ? [mask.data[Math.floor(sampleY / mask.cell) * mask.cols + Math.floor(sampleX / mask.cell)] || 0, 0, 0, 0] : ctx.getImageData(sampleX, sampleY, 1, 1).data;
           if (pixel[0] > 64 || pixel[3] > 64) {
             const index = r * cols + c;
             const byteIndex = Math.floor(index / 8);
@@ -139,6 +176,7 @@ export class FogOfWarEngine {
       return;
     }
     if (typeof fogExplored === 'object' && fogExplored.status === 'custom' && fogExplored.bits) {
+      this.exploredVersion++;
       const canvas = this.getExploredCanvas(mapId, mapWidth, mapHeight);
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, mapWidth, mapHeight);
@@ -174,6 +212,7 @@ export class FogOfWarEngine {
    */
   stampExploration(exploredCtx, polygon) {
     if (!polygon || polygon.length < 3) return;
+    this.exploredVersion++;
     exploredCtx.save();
     exploredCtx.fillStyle = '#ffffff';
     exploredCtx.beginPath();
@@ -197,6 +236,8 @@ export class FogOfWarEngine {
     const ix = Math.floor(x);
     const iy = Math.floor(y);
     if (ix < 0 || iy < 0 || ix >= canvas.width || iy >= canvas.height) return false;
+    const mask = this.explorationMask(mapId);
+    if (mask) return mask.data[Math.floor(iy / mask.cell) * mask.cols + Math.floor(ix / mask.cell)] > 64;
     try {
       const ctx = canvas.getContext('2d');
       const pixel = ctx.getImageData(ix, iy, 1, 1).data;
@@ -243,6 +284,19 @@ export class FogOfWarEngine {
     const exploredCanvas = this.getExploredCanvas(mapId, mapWidth, mapHeight);
     const expCtx = exploredCanvas.getContext('2d');
 
+    // Nothing the fog depends on has changed since the last frame: draw the same fog again.
+    const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp,
+      ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.visionRange || 0, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
+      -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360]),
+      -2, ...wallValues(walls)]);
+    if (key === this.fogKey && this.fogKeyVersion === this.exploredVersion) {
+      ctx.save();
+      if (isKeeperGM) ctx.globalAlpha = 0.32;
+      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS, this.fogVersion);
+      ctx.restore();
+      return this.lastVision;
+    }
+
     // 1. Calculate active real-time vision polygons for all viewing tokens
     const currentVisionPolygons = [], visionShapes = [];
     for (const viewer of viewers) {
@@ -281,13 +335,7 @@ export class FogOfWarEngine {
         const ly = Math.round(light.y);
         if (lx < 0 || ly < 0 || lx >= mapWidth || ly >= mapHeight) continue;
 
-        let isVisited = false;
-        try {
-          const pixel = expCtx.getImageData(lx, ly, 1, 1).data;
-          isVisited = (pixel[0] > 64 || pixel[3] > 64);
-        } catch {
-          isVisited = false;
-        }
+        const isVisited = this.isPointExplored(lx, ly, mapId);
 
         if (isVisited) {
           const lRadius = light.radius || 200;
@@ -363,13 +411,15 @@ export class FogOfWarEngine {
     if (isKeeperGM) {
       // Keeper GM Vision: show explored vs unexplored with subtle 30% overlay
       ctx.globalAlpha = 0.32;
-      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS);
+      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS, ++this.fogVersion);
     } else {
       // Player Perspective: Full strict Fog of War, with feathered edges
-      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS);
+      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS, ++this.fogVersion);
     }
     ctx.restore();
 
+    // Stamping the same shapes again changes nothing, so this frame can be reused as is.
+    this.fogKey = key; this.fogKeyVersion = this.exploredVersion; this.lastVision = currentVisionPolygons;
     return currentVisionPolygons;
   }
 }

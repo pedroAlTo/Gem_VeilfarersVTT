@@ -37,6 +37,21 @@ export function parseRoll(value) {
 export const costLabel = cost => [cost.hope && `${cost.hope} Hope`, cost.stress && `${cost.stress} Stress`, cost.effort && `${cost.effort} Effort`, cost.resolve && `${cost.resolve}${cost.open ? '+' : ''} Resolve`, cost.hp && `${cost.hp} HP`].filter(Boolean).join(' + ') || (cost.open ? 'Variable' : 'Sin coste');
 
 const byName = (list, name) => list.find(item => lower(item.name ?? item.n) === lower(name)) || list.find(item => lower(item.id) === slug(name)) || null;
+// An ancestry Gift is "used" when its text gives it a moment, a price or a limit.
+export const usableGift = gift => /\bonce per\b|\bmay (?:choose to )?(?:mark|spend)\b|\bcan (?:mark|spend|use your)\b/i.test(text(gift?.text));
+export const giftLimit = gift => { const match = text(gift?.text).match(/once per ((?:game )?session|long rest|short rest|rest|scene)/i); return match ? `1 / ${match[1].replace(/^game /i, '')}` : ''; };
+// What a Gift asks you to mark or spend. "Path resources" are Hope for the Awakened and
+// Effort for the Sleeping. Amounts it gives back ("clear 1 Stress") are not a price.
+export function giftCost(gift, sleeping = false) {
+  const cost = { hope: 0, stress: 0, effort: 0, resolve: 0, hp: 0, open: false };
+  for (const match of text(gift?.text).matchAll(/(?:mark|spend)s?\s+(\d+)\s+(Stress|Hope|Effort|path resources?)/gi)) {
+    const amount = Number(match[1]), what = lower(match[2]);
+    const key = what === 'stress' ? 'stress' : what === 'hope' ? 'hope' : what === 'effort' ? 'effort' : sleeping ? 'effort' : 'hope';
+    cost[key] = Math.max(cost[key], amount);
+  }
+  if (/spend Hope\b/i.test(text(gift?.text)) && !cost.hope) cost.open = true;
+  return cost;
+}
 export const isSleepingMystic = token => token?.path === 'Sleeping' && /mystic/i.test(text(token.characterClass));
 
 // Loadout and Vault as the sheet stores them.
@@ -101,8 +116,10 @@ export function characterCards(token, data) {
   }
   const pathFeature = sleeping ? rules?.effortFeature : rules?.hopeFeature;
   if (pathFeature) cards.push({ id: `feature:${slug(pathFeature.name)}`, kind: 'feature', zone: 'innate', name: pathFeature.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${sleeping ? 'Effort Feature' : 'Hope Feature'}`, color: cls.color || '#c084fc', art: classArt(cls), costText: (pathFeature.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(pathFeature.name), roll: null, rollText: '', rc: 0, text: text(pathFeature.text), playable: true });
+  // One card per Gift that is used (it has a moment, a price or a limit); passive Gifts are
+  // always on and stay on the sheet.
   const ancestry = byName(data.ancestries, token.species);
-  if (ancestry) cards.push({ id: `ancestry:${ancestry.id}`, kind: 'ancestry', zone: 'innate', name: ancestry.name, subtitle: `Ancestry · ${ancestry.tag || ''}`.replace(/ · $/, ''), color: ancestry.color || '#94a3b8', art: cornerArt('ancestry'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: (ancestry.gifts || []).map(g => `${g.name}. ${g.text}`).join('\n\n'), playable: true });
+  for (const gift of (ancestry?.gifts || []).filter(usableGift)) cards.push({ id: `ancestry:${ancestry.id}:${slug(gift.name)}`, kind: 'ancestry', zone: 'innate', name: gift.name, subtitle: `Ancestry · ${ancestry.name}`, color: ancestry.color || '#94a3b8', art: cornerArt('ancestry'), costText: costLabel(giftCost(gift, sleeping)), cost: giftCost(gift, sleeping), roll: null, rollText: '', rc: 0, text: text(gift.text), limit: giftLimit(gift), playable: true });
   const community = byName(data.communities, token.community);
   if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
   if (!sleeping) for (const name of vaultNames(token)) { const known = byName(data.powers, name); cards.push(powerCard(known || { n: name }, 'vault')); }

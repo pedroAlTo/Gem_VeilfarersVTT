@@ -88,8 +88,9 @@ export class CardHand {
     this.root.classList.toggle('hidden', !cards.length); this.quickbar.classList.toggle('with-hand', !!cards.length);
     const title = token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
     this.root.innerHTML = sanitizeHTML(`
-      <div class="card-hand-label"><span>${e(title)}</span>${token.path !== 'Sleeping' ? `<button type="button" class="card-hand-vault" data-open-vault title="Recall: traer Poderes del Vault al Loadout">Vault · ${vault.length}</button>` : ''}</div>
-      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}">${cardFace(card)}</button>`).join('')}</div>`);
+      <div class="card-hand-label"><span>${e(title)}</span></div>
+      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}">${cardFace(card)}</button>`).join('')}</div>
+      ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : ''}`);
     // The fan opens as far as the hand is wide; with many cards they overlap more.
     // The hand takes the room the stats leave free, so neither covers the other.
     const room = (this.root.parentElement?.clientWidth || 0) - (this.quickbar.offsetWidth || 0) - 44;
@@ -104,7 +105,7 @@ export class CardHand {
 
   bind() {
     const vault = this.root.querySelector('[data-open-vault]');
-    if (vault) vault.onclick = () => this.openVault();
+    if (vault) vault.onclick = () => this.toggleDrawer();
     for (const node of this.root.querySelectorAll('.vf-card')) {
       const card = this.cards.find(c => c.id === node.dataset.card);
       node.onpointermove = event => { // the card tilts towards the pointer
@@ -163,7 +164,9 @@ export class CardHand {
       const detail = [result.summary, ...(result.notes || [])].join(' ');
       window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: result.failed ? 'NO SE MANIFIESTA' : result.outcomeTitle, modifiers: detail, details: detail });
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
-      const line = `🂠 ${token.name} juega ${card.name} — ${detail}`;
+      // Who used it, what it cost and what it does, for the whole table.
+      const effect = card.text.replace(/\s+/g, ' ').trim();
+      const line = `🂠 ${playerName} (${token.name}) usa ${card.name} [${CARD_KINDS[card.kind]}] — ${detail} Efecto: ${effect}`;
       network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
       if (result.roll && !result.failed) { window.veilDiceRoller?.prepareCheck?.({ tokenId: token.id, ...result.roll }); notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`); }
       return true;
@@ -195,44 +198,97 @@ export class CardHand {
       if (await this.play(card, point, spent)) modal.remove(); else playButton.disabled = false;
     };
     const recall = modal.querySelector('[data-card-recall]');
-    if (recall) recall.onclick = () => { modal.remove(); this.openVault(card.name); };
+    if (recall) recall.onclick = () => { modal.remove(); this.toggleDrawer(card.name, true); };
     return modal;
   }
 
-  openVault(selected = '') {
+  // The deck drawer: Loadout above, Vault below. Pick a Vault card, pick the moment, and if the
+  // Loadout is full pick the card that leaves. Nothing is paid until Recall is pressed.
+  toggleDrawer(selected = '', forceOpen = false) {
+    const open = document.getElementById('card_deck_drawer');
+    if (open) { open.remove(); if (!forceOpen) return null; }
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return null;
-    const vault = this.cards.filter(c => c.zone === 'vault'), loadout = this.cards.filter(c => c.kind === 'power'), full = loadout.length >= loadoutCap(token);
-    const modal = dossierDialog(`VAULT · ${token.name}`, vault.length ? `
-      <form class="card-vault">
-        <p class="dossier-muted">El Loadout es lo que tienes preparado (${loadout.length}/${loadoutCap(token)}). El Vault es lo demás que conoces: para usarlo hay que traerlo con un Recall, y cuesta más cuanto más cerca estás del peligro.</p>
-        <div class="dossier-identity">
-          <label class="dossier-field"><span>Poder del Vault</span><select class="hud-select" name="vault_power">${vault.map(c => `<option value="${e(c.name)}" ${c.name === selected ? 'selected' : ''}>${e(c.name)} · ${e(c.subtitle)} · RC ${c.rc}</option>`).join('')}</select></label>
-          <label class="dossier-field"><span>Momento</span><select class="hud-select" name="vault_mode">${Object.entries(RECALL_MODES).map(([id, m]) => `<option value="${id}" ${id === 'scene' ? 'selected' : ''}>${e(m.name)}</option>`).join('')}</select></label>
-          ${full ? `<label class="dossier-field"><span>Loadout lleno: pasa al Vault</span><select class="hud-select" name="vault_replace">${loadout.map(c => `<option value="${e(c.name)}">${e(c.name)}</option>`).join('')}</select></label>` : ''}
-        </div>
-        <p class="dossier-muted" data-vault-cost></p>
-        <div class="card-vault-preview" data-vault-preview></div>
-        <p class="dossier-error" role="alert"></p>
-        <footer class="dossier-footer"><button class="hud-btn hud-btn-primary" type="submit">Hacer Recall</button></footer>
-      </form>` : '<p class="dossier-muted">El Vault está vacío. Los Poderes nuevos que aprendas al subir de nivel entran aquí.</p>', 'card-vault-dialog');
-    const form = modal.querySelector('form');
-    if (!form) return modal;
-    const refresh = () => {
-      const card = vault.find(c => c.name === form.elements.vault_power.value), mode = form.elements.vault_mode.value, cost = recallCost(card, mode);
-      modal.querySelector('[data-vault-cost]').textContent = `${RECALL_MODES[mode].text} Coste: ${[cost.stress && `${cost.stress} Stress`, cost.hope && `${cost.hope} Hope`, cost.action && 'tu Acción'].filter(Boolean).join(' + ') || 'ninguno'}.`;
-      modal.querySelector('[data-vault-preview]').innerHTML = sanitizeHTML(`<div class="vf-card vf-card-large">${cardFace(card, { large: true })}</div>`);
+    const drawer = document.createElement('section');
+    drawer.id = 'card_deck_drawer'; drawer.className = 'card-drawer'; drawer.setAttribute('aria-label', 'Mazo de cartas');
+    this.root.parentElement.append(drawer);
+    const choice = { vault: selected, replace: '', mode: 'scene' };
+    const draw = () => {
+      const live = store.state.tokens.find(t => t.id === this.tokenId), data = cardData();
+      if (!live || !data) { drawer.remove(); return; }
+      const cards = characterCards(live, data), vault = cards.filter(c => c.zone === 'vault'), loadout = cards.filter(c => c.kind === 'power'), cap = loadoutCap(live), full = loadout.length >= cap;
+      if (!vault.some(c => c.name === choice.vault)) choice.vault = '';
+      if (!loadout.some(c => c.name === choice.replace)) choice.replace = '';
+      const picked = vault.find(c => c.name === choice.vault), cost = picked ? recallCost(picked, choice.mode) : null;
+      const price = cost ? [cost.stress && `${cost.stress} Stress`, cost.hope && `${cost.hope} Hope`, cost.action && 'tu Acción'].filter(Boolean).join(' + ') || 'gratis' : '';
+      const step = !vault.length ? 'El Vault está vacío. Los Poderes que aprendas al subir de nivel entran aquí.'
+        : !picked ? '1 · Elige la carta del Vault que quieres preparar.'
+        : full && !choice.replace ? `2 · El Loadout está lleno (${cap}): elige la carta que pasa al Vault.`
+        : `Listo: ${picked.name} entra${choice.replace ? ` y ${choice.replace} sale` : ''}. Coste: ${price}.`;
+      const mini = (card, zone) => `<button type="button" class="vf-card vf-card-mini ${(zone === 'vault' ? choice.vault : choice.replace) === card.name ? 'chosen' : ''}" data-drawer-${zone}="${e(card.name)}" title="${e(card.name)} · RC ${card.rc}">${cardFace(card)}</button>`;
+      drawer.innerHTML = sanitizeHTML(`
+        <header class="card-drawer-head"><strong>MAZO</strong><div class="card-drawer-modes" role="group" aria-label="Momento del Recall">${Object.entries(RECALL_MODES).map(([id, m]) => `<button type="button" class="equip-chip ${id === choice.mode ? 'active' : ''}" data-drawer-mode="${id}" title="${e(m.text)}">${e(m.name)}</button>`).join('')}</div><button type="button" class="card-drawer-close" data-drawer-close aria-label="Cerrar el mazo">×</button></header>
+        <p class="card-drawer-step">${e(step)}</p>
+        <h4>LOADOUT · ${loadout.length}/${cap}</h4><div class="card-drawer-row">${loadout.map(c => mini(c, 'loadout')).join('') || '<p class="dossier-muted">Sin Poderes preparados.</p>'}</div>
+        <h4>VAULT · ${vault.length}</h4><div class="card-drawer-row">${vault.map(c => mini(c, 'vault')).join('') || '<p class="dossier-muted">Vacío.</p>'}</div>
+        <p class="dossier-error" role="alert" data-drawer-error></p>
+        <footer class="card-drawer-foot"><span class="dossier-muted">${e(RECALL_MODES[choice.mode].text)}</span><button type="button" class="hud-btn hud-btn-primary" data-drawer-recall ${picked && (!full || choice.replace) ? '' : 'disabled'}>Recall${price ? ` · ${e(price)}` : ''}</button></footer>`);
+      drawer.querySelector('[data-drawer-close]').onclick = () => drawer.remove();
+      drawer.querySelectorAll('[data-drawer-mode]').forEach(b => b.onclick = () => { choice.mode = b.dataset.drawerMode; draw(); });
+      drawer.querySelectorAll('[data-drawer-vault]').forEach(b => b.onclick = () => { choice.vault = choice.vault === b.dataset.drawerVault ? '' : b.dataset.drawerVault; draw(); });
+      // A Loadout card is only picked to make room; with room to spare it is just read.
+      drawer.querySelectorAll('[data-drawer-loadout]').forEach(b => b.onclick = () => { if (full && picked) { choice.replace = choice.replace === b.dataset.drawerLoadout ? '' : b.dataset.drawerLoadout; draw(); } else this.inspect(loadout.find(c => c.name === b.dataset.drawerLoadout)); });
+      drawer.querySelector('[data-drawer-recall]').onclick = async () => {
+        try {
+          const result = await network.requestAction({ type: 'CARD_RECALL', actorId: live.id, name: choice.vault, mode: choice.mode, replace: choice.replace });
+          const line = `🂠 ${live.name} · ${result.summary}`;
+          network.sendChat({ text: line, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: live.name, text: line, channel: 'table' }));
+          notify(result.summary); choice.vault = ''; choice.replace = ''; draw();
+        } catch (error) { drawer.querySelector('[data-drawer-error]').textContent = error.message; }
+      };
     };
-    form.elements.vault_power.onchange = refresh; form.elements.vault_mode.onchange = refresh; refresh();
-    form.onsubmit = async event => {
-      event.preventDefault();
-      try {
-        const result = await network.requestAction({ type: 'CARD_RECALL', actorId: token.id, name: form.elements.vault_power.value, mode: form.elements.vault_mode.value, replace: form.elements.vault_replace?.value || '' });
-        const line = `🂠 ${token.name} · ${result.summary}`;
-        network.sendChat({ text: line, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
-        notify(result.summary); modal.remove();
-      } catch (error) { modal.querySelector('.dossier-error').textContent = error.message; }
-    };
-    return modal;
+    draw();
+    return drawer;
   }
 }
+
+// The Keeper's card feed: when a player uses a card, a small copy lands in the bottom-right
+// corner of the map; a click opens it full size with who used it and what it does.
+export class CardFeed {
+  constructor(parent) {
+    this.entries = [];
+    this.root = document.createElement('div');
+    this.root.id = 'card_feed_root'; this.root.className = 'card-feed hidden'; this.root.setAttribute('aria-live', 'polite');
+    parent.append(this.root);
+    window.addEventListener('veil:card-played', event => this.add(event.detail));
+    this.unsubscribe = store.subscribe((_, keys) => { if (keys.some(k => ['userRole', 'isConnected'].includes(k))) this.render(); });
+  }
+  isKeeper() { return store.sessionRole !== 'player' && store.state.userRole === 'keeper'; }
+  add(entry) {
+    if (!entry?.card) return;
+    this.entries = [...this.entries, { ...entry, id: `${entry.at}-${Math.random().toString(36).slice(2, 7)}` }].slice(-CARD_FEED_LIMIT);
+    const id = this.entries.at(-1).id;
+    setTimeout(() => { this.entries = this.entries.filter(x => x.id !== id); this.render(); }, CARD_FEED_LIFE);
+    this.render();
+  }
+  render() {
+    const shown = this.isKeeper() ? this.entries : [];
+    this.root.classList.toggle('hidden', !shown.length);
+    this.root.innerHTML = sanitizeHTML(shown.map(x => `<button type="button" class="card-feed-item" data-feed="${e(x.id)}" title="${e(x.actorName)} usa ${e(x.card.name)}: clic para ampliar"><span class="vf-card vf-card-mini">${cardFace(x.card)}</span><span class="card-feed-who">${e(x.actorName)}${x.failed ? ' · no se manifiesta' : ''}</span></button>`).join(''));
+    this.root.querySelectorAll('[data-feed]').forEach(button => button.onclick = () => this.open(this.entries.find(x => x.id === button.dataset.feed)));
+  }
+  open(entry) {
+    if (!entry) return null;
+    const card = entry.card;
+    return dossierDialog(`${entry.actorName} usa ${card.name}`, `
+      <div class="card-inspect">
+        <div class="vf-card vf-card-large">${cardFace(card, { large: true })}</div>
+        <div class="card-inspect-side">
+          <p class="dossier-muted">Usada por <strong>${e(entry.actorName)}</strong>${entry.playerName ? ` (${e(entry.playerName)})` : ''} · ${e(card.subtitle)}</p>
+          <p class="card-inspect-text"><strong>${e(entry.summary)}</strong>${entry.notes?.length ? `<br>${e(entry.notes.join(' '))}` : ''}</p>
+          <p class="card-inspect-text">${e(card.text).replace(/\n/g, '<br>')}</p>
+        </div>
+      </div>`, 'card-inspect-dialog');
+  }
+}
+const CARD_FEED_LIMIT = 4, CARD_FEED_LIFE = 90000;

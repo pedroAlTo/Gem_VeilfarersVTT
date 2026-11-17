@@ -5,7 +5,7 @@ import './vtt-integration/styles/lobby.css';
 import './vtt-integration/styles/lobby-fates.css';
 import './theme-violet.css';
 import './card-hand.css';
-import { CardHand } from './cardHandUI.js';
+import { CardHand, CardFeed } from './cardHandUI.js';
 import './colorPicker.css';
 import { openColorPickerPopover } from './colorPicker.js';
 import './chat.css';
@@ -84,6 +84,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.veilTokenHUD = new TokenHUD(quickbarContainer);
   // 4b. The card hand: the selected character's Loadout, beside its stats
   window.veilCardHand = new CardHand(quickbarContainer);
+  window.veilCardFeed = new CardFeed(quickbarContainer.parentElement);
 
   // 5. Initialize Tactical Layers HUD
   const layerContainer = document.getElementById('layer_hud_container');

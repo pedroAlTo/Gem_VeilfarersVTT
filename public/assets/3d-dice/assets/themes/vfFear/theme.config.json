@@ -8,8 +8,8 @@
   "material": {
     "type": "color",
     "diffuseTexture": {
-      "light": "diffuse-dark.png",
-      "dark": "diffuse-dark.png"
+      "light": "diffuse-dark.jpg",
+      "dark": "diffuse-dark.jpg"
     },
     "diffuseLevel": 1,
     "bumpTexture": "tech-normal.png",
