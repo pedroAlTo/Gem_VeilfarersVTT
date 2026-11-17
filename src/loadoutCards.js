@@ -37,6 +37,15 @@ export function parseRoll(value) {
 export const costLabel = cost => [cost.hope && `${cost.hope} Hope`, cost.stress && `${cost.stress} Stress`, cost.effort && `${cost.effort} Effort`, cost.resolve && `${cost.resolve}${cost.open ? '+' : ''} Resolve`, cost.hp && `${cost.hp} HP`].filter(Boolean).join(' + ') || (cost.open ? 'Variable' : 'Sin coste');
 
 const byName = (list, name) => list.find(item => lower(item.name ?? item.n) === lower(name)) || list.find(item => lower(item.id) === slug(name)) || null;
+// Older tokens only say who they are in free text ("Ace Pilot // Awakened Starchaser",
+// "Heavy Engineer // Sleeping Synthetic"): the class or ancestry is taken from there when the
+// sheet has no field for it.
+const inText = (list, ...texts) => {
+  const source = texts.filter(Boolean).join(' ');
+  return source ? list.find(item => new RegExp(`\\b${String(item.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(source)) || null : null;
+};
+export const classOf = (token, data) => byName(data.classes, token?.characterClass) || inText(data.classes, token?.characterClass, token?.roleTag);
+export const ancestryOf = (token, data) => byName(data.ancestries, token?.species) || inText(data.ancestries, token?.species, token?.roleTag);
 // An ancestry Gift is "used" when its text gives it a moment, a price or a limit.
 export const usableGift = gift => /\bonce per\b|\bmay (?:choose to )?(?:mark|spend)\b|\bcan (?:mark|spend|use your)\b/i.test(text(gift?.text));
 export const giftLimit = gift => { const match = text(gift?.text).match(/once per ((?:game )?session|long rest|short rest|rest|scene)/i); return match ? `1 / ${match[1].replace(/^game /i, '')}` : ''; };
@@ -88,7 +97,7 @@ const powerCard = (power, zone, sheet = {}) => {
 export function characterCards(token, data) {
   if (!token || token.isPlayer === false || !data) return [];
   const f = fieldsOf(token), cards = [], sleeping = token.path === 'Sleeping';
-  const cls = byName(data.classes, token.characterClass), rules = sleeping && cls?.sleepingRules ? cls.sleepingRules : cls;
+  const cls = classOf(token, data), rules = sleeping && cls?.sleepingRules ? cls.sleepingRules : cls;
   if (!sleeping) {
     const sheetPower = (name, i) => ({ text: text(f[`a_pwr_${i}_d`]), rc: f[`a_pwr_${i}_rc`] });
     const keys = Object.keys(f).filter(k => /^a_pwr_\d+_n$/.test(k)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -118,7 +127,7 @@ export function characterCards(token, data) {
   if (pathFeature) cards.push({ id: `feature:${slug(pathFeature.name)}`, kind: 'feature', zone: 'innate', name: pathFeature.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${sleeping ? 'Effort Feature' : 'Hope Feature'}`, color: cls.color || '#c084fc', art: classArt(cls), costText: (pathFeature.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(pathFeature.name), roll: null, rollText: '', rc: 0, text: text(pathFeature.text), playable: true });
   // One card per Gift that is used (it has a moment, a price or a limit); passive Gifts are
   // always on and stay on the sheet.
-  const ancestry = byName(data.ancestries, token.species);
+  const ancestry = ancestryOf(token, data);
   for (const gift of (ancestry?.gifts || []).filter(usableGift)) cards.push({ id: `ancestry:${ancestry.id}:${slug(gift.name)}`, kind: 'ancestry', zone: 'innate', name: gift.name, subtitle: `Ancestry · ${ancestry.name}`, color: ancestry.color || '#94a3b8', art: cornerArt('ancestry'), costText: costLabel(giftCost(gift, sleeping)), cost: giftCost(gift, sleeping), roll: null, rollText: '', rc: 0, text: text(gift.text), limit: giftLimit(gift), playable: true });
   const community = byName(data.communities, token.community);
   if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });

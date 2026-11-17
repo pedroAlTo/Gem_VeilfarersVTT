@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.9.7', date: '2026-11-17', title: 'V2 · El Keeper ve la mano de cada personaje',
+    sections: [
+      { title: 'Mano de cartas', items: [
+        'El Keeper, al pasar a modo jugador, ve la mano de cualquier personaje que seleccione, no solo la del personaje reclamado, y puede jugar sus cartas.',
+        'Los personajes antiguos sin clase ni ancestry en la ficha las toman del texto de su papel: «Ace Pilot» da las cartas de Pilot y «Heavy Engineer // Sleeping Synthetic», las de Engineer y Synthetic.',
+        'Si un personaje no tiene nada de lo que salen las cartas, la mano lo dice y ofrece abrir la ficha para completarla, en lugar de no mostrar nada.',
+        'Corregido: si el Keeper estaba en vista de jugador cuando un jugador jugaba una carta o hacía un Recall, el coste no se aplicaba.',
+      ] },
+    ],
+  },
+  {
     version: '2.9.6', date: '2026-11-17', title: 'V2 · Cartas sin parpadeo',
     sections: [
       { title: 'Mano de cartas', items: [

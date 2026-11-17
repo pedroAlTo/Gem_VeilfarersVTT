@@ -188,3 +188,29 @@ test('the table announces a used card so the Keeper can see it', async () => {
     assert.ok(heard[0].card.text.length > 20 && heard[0].card.art.band, 'the whole card travels: text and art');
   } finally { delete globalThis.window; }
 });
+
+test('older tokens without class or ancestry fields get them from their role text', async () => {
+  const { classOf, ancestryOf } = await import('../src/loadoutCards.js');
+  const vea = { isPlayer: true, path: 'Awakened', name: 'Vea Kaelen', roleTag: 'Ace Pilot // Awakened Starchaser' };
+  const he09 = { isPlayer: true, path: 'Sleeping', name: 'Unit HE-09', roleTag: 'Heavy Engineer // Sleeping Synthetic' };
+  const harker = { isPlayer: true, path: 'Awakened', name: 'Capt. Jonathan Harker', roleTag: 'Captain // Awakened Voidwalker' };
+  assert.deepEqual([classOf(vea, data)?.id, classOf(he09, data)?.id, ancestryOf(he09, data)?.name, classOf(harker, data)], ['pilot', 'engineer', 'Synthetic', null]);
+  assert.equal(classOf({ characterClass: 'Soldier', roleTag: 'Ace Pilot' }, data).id, 'soldier', 'the sheet field wins over the free text');
+  assert.equal(classOf({ roleTag: 'Copilot of the Vagrant' }, data), null, 'whole words only');
+  assert.deepEqual(characterCards(he09, data).map(c => c.kind), ['move', 'move', 'feature', 'ancestry']);
+  assert.deepEqual(characterCards(harker, data), []);
+});
+
+test('the table pays a played card even while its own screen previews the Player view', async () => {
+  const { performGameAction } = await import('../src/gameActions.js');
+  const { setCardData } = await import('../src/cardData.js');
+  setCardData(data);
+  const hero = { ...character(), id: 'tok_hero', hope: 2, stress: { current: 0, max: 6 } };
+  // A store whose edit guard refuses changes in the Player view unless the table is applying them.
+  const store = { sessionRole: 'host', remoteApplying: false, state: { userRole: 'player', campaignId: 'c', tokens: [hero], fear: 0 },
+    updateToken(id, patch) { if (!this.remoteApplying && this.state.userRole === 'player') return false; Object.assign(this.state.tokens.find(t => t.id === id), patch); return true; },
+    addFear() {}, addLog() {} };
+  const card = characterCards(hero, data).find(c => c.kind === 'power' && c.cost.hope === 1);
+  performGameAction({ type: 'CARD_PLAY', actorId: 'tok_hero', cardId: card.id }, store);
+  assert.equal(hero.hope, 1); assert.equal(store.remoteApplying, false, 'the guard is restored afterwards');
+});

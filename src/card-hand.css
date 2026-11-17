@@ -102,3 +102,7 @@
 .card-feed-item:hover .vf-card-frame, .card-feed-item:focus-visible .vf-card-frame { box-shadow: 0 0 0 2px #00f3ff, 0 0 18px rgba(0,243,255,.55); }
 .card-feed-who { max-width: 90px; font: 700 9px/1.2 system-ui, sans-serif; color: #fde68a; text-align: center; background: rgba(13,4,32,.9); padding: 3px 6px; border: 1px solid rgba(253,230,138,.4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .card-drawer, .card-feed-item { animation: none; } }
+
+.card-hand-empty { pointer-events: auto; align-self: flex-end; margin-top: auto; margin-bottom: 12px; max-width: 320px; padding: 10px 12px; background: rgba(13,4,32,.92); border: 1px dashed rgba(192,132,252,.55); display: flex; flex-direction: column; gap: 6px; }
+.card-hand-empty strong { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #c084fc; }
+.card-hand-empty p { margin: 0; font-size: 11.5px; line-height: 1.45; color: #cbd5e1; } .card-hand-empty button { align-self: flex-start; }

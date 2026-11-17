@@ -37,11 +37,14 @@ export function performGameAction(action, store = defaultStore) {
     const data = cardData();
     if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
+    // The table that resolves the action applies it, even while its own screen previews the
+    // Player view (whose edit guard would otherwise drop the payment silently).
+    const apply = patch => { const before = store.remoteApplying; store.remoteApplying = store.sessionRole !== 'player' || before; try { store.updateToken(actor.id, patch); } finally { store.remoteApplying = before; } };
     const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
     const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
     if (action.type === 'CARD_RECALL') {
       const result = recallPower(actor, data, String(action.name ?? ''), { mode: action.mode, replace: String(action.replace ?? '') });
-      store.updateToken(actor.id, { ...resources(result.token), ...sheet(result.token) });
+      apply({ ...resources(result.token), ...sheet(result.token) });
       const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Recall`, details: result.summary };
       store.addLog(log);
       return { id: newId(), actorId: actor.id, log, outcomeTitle: 'RECALL', summary: result.summary, entered: result.entered, left: result.left };
@@ -49,7 +52,7 @@ export function performGameAction(action, store = defaultStore) {
     const card = characterCards(actor, data).find(c => c.id === action.cardId);
     if (!card) throw new Error('Esa carta ya no está en la mano de este personaje.');
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
-    store.updateToken(actor.id, resources(result.token));
+    apply(resources(result.token));
     if (result.fear) store.addFear(result.fear);
     const details = [result.summary, ...result.notes].join(' ');
     const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };

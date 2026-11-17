@@ -70,11 +70,13 @@ export class CardHand {
     this.render();
   }
 
-  // The hand belongs to the player stance: the character you control, selected.
+  // The hand belongs to the player stance: the character you control, selected. The Keeper's
+  // own table (local or hosting) previewing the Player view sees the hand of any character.
   owner() {
     const token = store.getSelectedToken?.();
     const playerStance = store.sessionRole === 'player' || store.state.userRole !== 'keeper';
-    return token && playerStance && token.isPlayer !== false && token.actorType !== 'drone' && store.canEditToken(token.id) ? token : null;
+    if (!token || !playerStance || token.isPlayer === false || token.actorType === 'drone') return null;
+    return store.sessionRole !== 'player' || store.canEditToken(token.id) ? token : null;
   }
 
   render() {
@@ -85,7 +87,13 @@ export class CardHand {
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token.id;
     const hand = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault'), n = hand.length;
-    this.root.classList.toggle('hidden', !cards.length); this.quickbar.classList.toggle('with-hand', !!cards.length);
+    this.root.classList.remove('hidden'); this.quickbar.classList.add('with-hand');
+    if (!cards.length) {
+      // Say why instead of showing nothing: the sheet has no class, ancestry or Powers to read.
+      this.root.innerHTML = sanitizeHTML(`<div class="card-hand-empty"><strong>Sin cartas</strong><p>La ficha de ${e(token.name)} no indica clase, ancestry, background ni Poderes, así que no hay cartas que mostrar.</p><button type="button" class="hud-btn hud-btn-xs" data-open-sheet>Completar la ficha</button></div>`);
+      this.root.querySelector('[data-open-sheet]').onclick = async () => { const { openDossier } = await import('./dossierUI.js'); openDossier(store.state.tokens.find(t => t.id === token.id), () => {}, 'stats'); };
+      return;
+    }
     const title = token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
     this.root.innerHTML = sanitizeHTML(`
       <div class="card-hand-label"><span>${e(title)}</span></div>

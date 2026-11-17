@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.9.6**.
-Paquete: `VeilFarers_VTT_v2.9.6.zip`.
+Versión actual del VTT: **v2.9.7**.
+Paquete: `VeilFarers_VTT_v2.9.7.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.9.7] — 2026-11-17
+
+V2 · El Keeper ve la mano de cada personaje
+
+### Mano de cartas
+
+- El Keeper, al pasar a modo jugador, ve la mano de cualquier personaje que seleccione, no solo la del personaje reclamado, y puede jugar sus cartas.
+- Los personajes antiguos sin clase ni ancestry en la ficha las toman del texto de su papel: «Ace Pilot» da las cartas de Pilot y «Heavy Engineer // Sleeping Synthetic», las de Engineer y Synthetic.
+- Si un personaje no tiene nada de lo que salen las cartas, la mano lo dice y ofrece abrir la ficha para completarla, en lugar de no mostrar nada.
+- Corregido: si el Keeper estaba en vista de jugador cuando un jugador jugaba una carta o hacía un Recall, el coste no se aplicaba.
 
 ## [2.9.6] — 2026-11-17
 
