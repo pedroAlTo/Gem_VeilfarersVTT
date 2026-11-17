@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.10', date: '2026-11-17', title: 'V3 · Resolve en marcas amarillas',
+    sections: [
+      { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [
+        'Resolve se muestra como pequeñas marcas amarillas, una por punto: triángulos si son dados d4 y cuadrados si se compró la mejora a d6. Encendidas si el punto está disponible, apagadas si se ha gastado.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.9', date: '2026-11-17', title: 'V3 · Distancias de peana a peana',
     sections: [
       { title: 'Distancias', items: [

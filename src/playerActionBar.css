@@ -88,3 +88,9 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-confirm { font-size: 11px; color: #00f3ff; }
 .pab-notes { margin: 2px 0 0; padding-left: 14px; font-size: 11px; line-height: 1.4; color: #e9d5ff; }
 .pab-notes li { margin: 1px 0; }
+/* Resolve: small yellow triangles (d4) or squares (d6), lit when available */
+.pab-res-row { display: inline-flex; gap: 4px; align-items: center; }
+.pab-res { display: inline-block; width: 9px; height: 9px; background: rgba(237,213,138,.18); }
+.pab-res.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.pab-res.sq { width: 8px; height: 8px; }
+.pab-res.on { background: #edd58a; box-shadow: 0 0 4px rgba(237,213,138,.55); }

@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.9**.
-Paquete: `VeilFarers_VTT_v2.17.9.zip`.
+Versión actual del VTT: **v2.17.10**.
+Paquete: `VeilFarers_VTT_v2.17.10.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.10] — 2026-11-17
+
+V3 · Resolve en marcas amarillas
+
+### Pestaña Ficha (rama V3, en pruebas)
+
+- Resolve se muestra como pequeñas marcas amarillas, una por punto: triángulos si son dados d4 y cuadrados si se compró la mejora a d6. Encendidas si el punto está disponible, apagadas si se ha gastado.
 
 ## [2.17.9] — 2026-11-17
 

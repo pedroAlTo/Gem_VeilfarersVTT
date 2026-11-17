@@ -192,13 +192,21 @@ export class PlayerActionBar {
     </div>`;
   }
 
+  // Resolve: one small yellow mark per point, a triangle for d4 dice and a square for d6;
+  // lit while the point is available, dim once it is spent.
+  resolveHTML(r) {
+    const shape = String(r.die).toLowerCase() === 'd4' ? 'tri' : 'sq';
+    const pips = Array.from({ length: Math.max(0, Number(r.max) || 0) }, (_, i) => `<i class="pab-res ${shape} ${i < (Number(r.current) || 0) ? 'on' : ''}"></i>`).join('');
+    return `<div class="pab-cell pab-resolve" title="Resolve ${e(r.current)} / ${e(r.max)} (${e(r.die)})"><span>Resolve ${e(r.die)}</span><span class="pab-res-row" role="meter" aria-label="Resolve" aria-valuemin="0" aria-valuemax="${e(r.max)}" aria-valuenow="${e(r.current)}">${pips || '<b data-no-i18n>0</b>'}</span></div>`;
+  }
+
   statsHTML(st) {
     const cell = (label, value, extra = '') => `<div class="pab-cell${extra}"><span>${label}</span><b data-no-i18n>${value}</b></div>`;
     return `<div class="pab-stats">
       <div class="pab-cells">${cell('Evasión', e(st.evasion))}${cell('Umbrales', `${e(st.thresholds[0])} / ${e(st.thresholds[1])}`)}${cell('Escudos', `${e(st.shields.current)} / ${e(st.shields.max)}`)}</div>
       <div class="pab-armor"><span>Armadura</span><b>${e(st.armor)}</b></div>
       <div class="pab-gauges">${statGaugeHTML('HP', st.hp.current, st.hp.max, 'hp')}${statGaugeHTML('STRESS', st.stress.current, st.stress.max, 'stress')}${statGaugeHTML(st.path.label, st.path.current, st.path.max, 'path')}
-        ${st.resolve ? cell(`Resolve ${e(st.resolve.die)}`, `${e(st.resolve.current)} / ${e(st.resolve.max)}`, ' pab-resolve') : ''}</div>
+        ${st.resolve ? this.resolveHTML(st.resolve) : ''}</div>
       ${st.others.length ? `<div class="pab-others"><span>Otros</span>${st.others.map(o => `<i>${e(o)}</i>`).join('')}</div>` : ''}
     </div>`;
   }
