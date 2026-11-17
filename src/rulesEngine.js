@@ -172,6 +172,12 @@ export function rollVeilfarersCheck({
 // The sum of a check written out, so no die hides inside a single "modifier" figure:
 // "Hope [7] + Fear [3] + 2 − d6 [5] (Desventaja) = 7".
 export function checkMath(result) {
+  if (result.keeperD20) {
+    const flat = result.totalMod - (result.advVal || 0) + (result.disadvVal || 0);
+    return `d20 [${result.d20}]${flat ? ` ${flat > 0 ? '+' : '−'} ${Math.abs(flat)}` : ''}`
+      + (result.advVal ? ` + d6 [${result.advVal}] (Ventaja)` : '') + (result.disadvVal ? ` − d6 [${result.disadvVal}] (Desventaja)` : '')
+      + ` = ${result.total}`;
+  }
   const flat = result.totalMod - (result.advVal || 0) + (result.disadvVal || 0) - (result.resolveVal || 0);
   return `Hope [${result.hopeVal}] + Fear [${result.fearVal}]${flat ? ` ${flat > 0 ? '+' : '−'} ${Math.abs(flat)}` : ''}`
     + (result.resolveVal ? ` + ${result.resolveDieType || 'd4'} [${result.resolveVal}] (Resolve)` : '')

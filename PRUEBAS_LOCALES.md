@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.14.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.14.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.14.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.14.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.14.3.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.14.3**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.14.3** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.14.3.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -35,6 +35,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.14.2.zip**. Abre **AYUDA
 20. **Carga inicial.** Con la caché vacía (ventana privada), abre la app: la pantalla de inicio debe aparecer en uno o dos segundos. Entra en la mesa y haz enseguida una tirada 3D: debe salir aunque la precarga no haya terminado. Pasa a postura de jugador con un personaje con clase: aparece su mano de cartas. Como Keeper online, que un jugador juegue una carta: se resuelve sin el aviso «Las cartas aún se están cargando». Los retratos y mapas se ven igual de nítidos.
 21. **Idioma, pantalla a pantalla.** Con **EN** activo, abre ajustes del token, crear escena, entorno, boss (ficha de un adversario → Boss), nuevo arco, consola de dron, biblioteca de adversarios, importar personajes y la ficha (Ficha, Rasgos, Vínculos): no debe quedar texto de interfaz en español. Haz una tirada: la tarjeta de resultado está en inglés. Repite con **ES**: nada de interfaz en inglés salvo términos de reglas, nombres y textos de los libros.
 22. **Móvil y tablet.** En un teléfono (o el modo dispositivo del navegador a 390 px) entra a la mesa: aparece el aviso «Pensada para ordenador o tablet»; «Entendido» lo cierra para siempre. La guía sale minimizada, no hay panel de capas ni relojes sobre el mapa y no hay desplazamiento horizontal. En tablet (810 px) el panel de capas está arriba a la derecha del mapa y no tapa la barra del personaje.
+23. **d20 del adversario y Bear Down sobre el daño.** Selecciona un adversario y tira en **DICE → Dualidad**: sale un d20 (casilla «D20», la de Fear con «—»), sin Fear ganado, y el registro muestra «d20 [x] + mod = total vs DC». Con un personaje Sleeping con Resolve, ataca y acierta: con el daño calculado y sin aplicar, juega la carta **Bear Down**; el daño sube en la suma de los dados de Resolve (mismos dados de daño) y la severidad se recalcula. Si el ataque falla, Bear Down suma a la tirada de ataque.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

@@ -225,9 +225,18 @@ export class CardHand {
       const playerName = store.state.userName || store.state.playerName || 'Jugador';
       let summary;
       if (card.kind === 'beardown') {
-        const result = await network.requestAction({ type: 'RESOLVE', actorId: token.id, count: Math.max(1, Number(resolveSpent) || 1), visibility: window.veilDiceRoller?.rollVisibility() || 'table' });
-        await window.veilDiceRoller?.applyBearDown(result);
-        summary = `Bear Down ${result.bearDown.count}${token.resolve?.dieType || 'd4'} [${result.bearDown.dice.join(', ')}] = +${result.bearDown.bonus}: total ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}.`;
+        // After a damage roll that is still open, Bear Down adds to the damage; otherwise to the
+        // latest check or attack.
+        const damage = window.veilDiceRoller?.pendingDamageFor?.(token.id);
+        const result = await network.requestAction({ type: 'RESOLVE', actorId: token.id, count: Math.max(1, Number(resolveSpent) || 1), visibility: window.veilDiceRoller?.rollVisibility() || 'table', ...(damage ? { target: 'damage' } : {}) });
+        const rolled = `Bear Down ${result.bearDown.count}${token.resolve?.dieType || 'd4'} [${result.bearDown.dice.join(', ')}] = +${result.bearDown.bonus}`;
+        if (damage) {
+          const updated = await window.veilDiceRoller.applyBearDownDamage(result.bearDown.bonus);
+          summary = `${rolled} al daño: ${updated?.raw ?? '?'} (${updated?.severity ?? ''}).`;
+        } else {
+          await window.veilDiceRoller?.applyBearDown(result);
+          summary = `${rolled}: total ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}.`;
+        }
       } else {
         const result = await network.requestAction({ type: 'EFFORT', actorId: token.id, move: card.move, burnout });
         summary = `${card.name} · ${result?.log?.details || ''}`.trim();

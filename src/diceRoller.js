@@ -1028,6 +1028,18 @@ export class DiceRollerSidebar {
 
   // Bear Down adds to the total of the last roll. If that roll was an attack that missed and the
   // new total reaches the Evasion, the attack now hits and its damage is worked out.
+  // A damage roll by this character that has not been applied yet, if it is the latest roll.
+  pendingDamageFor(tokenId) {
+    const d = this.lastDamage;
+    return this.lastRollKind === 'damage' && d && !d.applied && d.actorId === tokenId ? d : null;
+  }
+  async applyBearDownDamage(bonus) {
+    const d = this.lastDamage;
+    if (!d || d.applied) return null;
+    this.executeDamageCalc(d.faces.slice(), { bearDown: d.bonus + bonus });
+    return this.lastDamage;
+  }
+
   async applyBearDown(result) {
     if (!result) return;
     this.showResult(result);
@@ -1101,16 +1113,20 @@ export class DiceRollerSidebar {
     const customMod = parseInt(this.container.querySelector('#dice_custom_mod').value, 10) || 0;
 
     const traitObj = TRAITS.find(t => t.id === this.selectedTraitId);
-    const traitName = traitObj ? traitObj.name : 'Finesse';
+    let traitName = traitObj ? traitObj.name : 'Finesse';
 
     audio.playDiceRoll();
 
+    // An adversary's roll is 1d20 + modifier (decision 6); a character's, the Duality dice.
+    const keeperRoll = actor.isPlayer === false && !attack;
+    if (keeperRoll) traitName = 'd20 + Attack';
     // Prepare 3D dice groups
-    const groups = [
+    const groups = keeperRoll ? [{ qty: 1, sides: 20, theme: 'vfNeutral', role: 'Attack' }] : [
       { qty: 1, sides: 12, theme: 'vfHope', role: 'Hope' },
       { qty: 1, sides: 12, theme: 'vfFear', role: 'Fear' }
     ];
-    if (hasAdvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: 'Advantage' });
+    if (keeperRoll) { if (hasAdvantage || hasDisadvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: hasAdvantage ? 'Advantage' : 'Disadvantage' }); }
+    else if (hasAdvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: 'Advantage' });
     else if (hasDisadvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: 'Disadvantage' });
     if (useResolve) groups.push({ qty: 1, sides: 4, theme: 'vfNeutral', role: 'Resolve' });
 
@@ -1118,6 +1134,7 @@ export class DiceRollerSidebar {
     const label = attack ? `${actor.name || 'Operative'}${attack.via ? ` (${attack.via})` : ''} · Ataque (${traitName}) vs ${attack.targetName}` : `${actor.name || 'Operative'} · ${traitName} Check`;
 
     let forcedHope = null;
+    let forcedD20 = null;
     let forcedFear = null;
     let forcedAdv = null;
     let forcedResolve = null;
@@ -1125,7 +1142,10 @@ export class DiceRollerSidebar {
     if (this.is3D && store.state.dice3d !== false && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.roll === 'function') {
       try {
         const roll3d = await window.VFDice3D.roll(themedGroups, { label, style: 'overlay', deferResults: true });
-        if (roll3d && Array.isArray(roll3d.values) && roll3d.values.length >= 2) {
+        if (keeperRoll && roll3d && Array.isArray(roll3d.values) && roll3d.values.length >= 1) {
+          forcedD20 = roll3d.values[0];
+          if ((hasAdvantage || hasDisadvantage) && roll3d.values.length >= 2) forcedAdv = roll3d.values[1];
+        } else if (roll3d && Array.isArray(roll3d.values) && roll3d.values.length >= 2) {
           forcedHope = roll3d.values[0];
           forcedFear = roll3d.values[1];
           // Every die on the table counts: the d6 and the Resolve die are read, not re-rolled.
@@ -1162,6 +1182,7 @@ export class DiceRollerSidebar {
           meaningful: this.container.querySelector('#meaningful_roll').checked,
           forcedHope,
           forcedFear,
+          forcedD20,
           forcedAdv,
           forcedResolve
         }
@@ -1176,7 +1197,7 @@ export class DiceRollerSidebar {
     // Overlay 3D results banner
     if (this.is3D && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
       if (result.visibility !== 'keeper' || (store.sessionRole !== 'player' && store.state.userRole === 'keeper')) {
-        const rolls = [
+        const rolls = result.keeperD20 ? [{ value: result.d20, sides: 20, role: 'Attack' }] : [
           { value: result.hopeVal, sides: 12, role: 'Hope' },
           { value: result.fearVal, sides: 12, role: 'Fear' }
         ];
@@ -1193,8 +1214,8 @@ export class DiceRollerSidebar {
           skill: traitName,
           modifiers: math,
           outcome: result.outcomeTitle,
-          hope: result.hopeVal,
-          fear: result.fearVal,
+          hope: result.keeperD20 ? undefined : result.hopeVal,
+          fear: result.keeperD20 ? undefined : result.fearVal,
           crit: result.isCritical,
           value: result.total,
           total: result.total,
@@ -1213,9 +1234,9 @@ export class DiceRollerSidebar {
         label,
         total: result.total,
         outcomeTitle: result.outcomeTitle,
-        outcomeType: result.isCritical ? 'crit' : (result.fearVal > result.hopeVal ? 'fear' : 'hope'),
-        hopeVal: result.hopeVal,
-        fearVal: result.fearVal,
+        outcomeType: result.isCritical ? 'crit' : result.keeperD20 ? (result.total >= result.dc ? 'hope' : 'fear') : (result.fearVal > result.hopeVal ? 'fear' : 'hope'),
+        hopeVal: result.keeperD20 ? undefined : result.hopeVal,
+        fearVal: result.keeperD20 ? undefined : result.fearVal,
         dc: result.dc,
         details: `${math} vs DC ${result.dc}`,
         breakdown: `${math} vs DC ${result.dc}`,
@@ -1314,6 +1335,7 @@ export class DiceRollerSidebar {
   }
 
   showResult(result) {
+    this.lastRollKind = 'check';
     if (result.visibility === 'keeper' && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) return;
     guideEvent('roll');
     this.lastResult = result;
@@ -1329,7 +1351,10 @@ export class DiceRollerSidebar {
     const cubeFearBox = this.container.querySelector('#cube_fear');
 
     if (cubeHope) cubeHope.textContent = result.hopeVal;
-    if (cubeFear) cubeFear.textContent = result.fearVal;
+    if (cubeFear) cubeFear.textContent = result.keeperD20 ? '—' : result.fearVal;
+    // An adversary's d20 sits in the first box, labelled as such.
+    const hopeLabel = this.container.querySelector('.duality-live-label.hope-label');
+    if (hopeLabel) hopeLabel.textContent = result.keeperD20 ? 'D20' : 'HOPE';
 
     if (result.isCritical) {
       cubeHopeBox?.classList.add('crit-pulse');
@@ -1386,7 +1411,7 @@ export class DiceRollerSidebar {
 
   // rolled: the faces read from the 3D dice. Without them (3D off, or a first call) the dice
   // are thrown on the table first and this runs again with what they show.
-  executeDamageCalc(rolled = null) {
+  executeDamageCalc(rolled = null, { bearDown = 0 } = {}) {
     const bossPhase = this.currentActor?.boss?.states[this.currentActor.boss.index];
     if (bossPhase?.canAttack === false) { notify('Este estado usa su procedimiento especial; no tiene un ataque de daño estándar.', 'error'); return; }
     const targetSelect = this.container.querySelector('#dmg_target_select');
@@ -1449,7 +1474,7 @@ export class DiceRollerSidebar {
       targetName: targetToken?.name || 'Target',
       diceCount: diceCount + proficiency - 1,
       diceSides,
-      flatModifier: flatMod + honed,
+      flatModifier: flatMod + honed + bearDown,
       ...(faces.length ? { rollDie: sides => { const face = faces.shift(); return Number.isInteger(face) && face >= 1 && face <= sides ? face : Math.floor(Math.random() * sides) + 1; } } : {}),
       isCritical: isCritical && !keeperAttack,
       isKeeperCritical: isCritical && keeperAttack,
@@ -1473,7 +1498,7 @@ export class DiceRollerSidebar {
       this.announceRoll({
         label: `Daño · ${damageOptions.attackerName}${targetToken ? ` → ${targetToken.name}` : ''}`, actorName: damageOptions.attackerName,
         playerName: store.state.userName || store.state.playerName || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador'),
-        tokenName: damageOptions.attackerName, skill: 'Daño',
+        tokenName: damageOptions.attackerName, skill: bearDown ? `Daño · Bear Down +${bearDown}` : 'Daño',
         modifiers: `${formula || `${damageOptions.diceCount}d${diceSides}`}${proficiency > 1 ? ` · Proficiency ${proficiency}` : ''}${honed ? ` · Honed Edge +${honed}` : ''}${damageOptions.isCritical ? ' · Crítico: dados dobles' : ''}`,
         value: dmgResult.rawDamage, total: dmgResult.rawDamage, outcome: `${dmgResult.rawDamage} · ${dmgResult.finalSeverity}`,
         rolls: dmgResult.rolls.map((value, i) => ({ value, sides: sidesOf[i] || diceSides, role: 'Damage' })), style: 'overlay'
@@ -1486,7 +1511,7 @@ export class DiceRollerSidebar {
     this.container.querySelector('#dmg_severity_val').textContent = dmgResult.finalSeverity;
     this.container.querySelector('#dmg_hp_loss_val').textContent = `${dmgResult.finalHpDamage} HP`;
 
-    const detailText = (formula ? formula + ' · ' : '') + `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
+    const detailText = (bearDown ? `Bear Down +${bearDown} · ` : '') + (formula ? formula + ' · ' : '') + `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
       (dmgResult.penetration
         ? `${DAMAGE_TYPES[dmgResult.damageType]} · Penetración −${dmgResult.penetration}: umbrales ${major}/${severe} → ${dmgResult.effectiveMajor}/${dmgResult.effectiveSevere} para este impacto. `
         : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
@@ -1530,6 +1555,9 @@ export class DiceRollerSidebar {
     // Apply button - Enabled for both Keeper and Token Owner Players
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
     let applied = false;
+    // The damage stays open to Bear Down until it is applied: the same dice, plus the bonus.
+    const pending = { actorId: attackerId, faces: dmgResult.rolls.slice(), bonus: bearDown, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, applied: false };
+    this.lastDamage = pending; this.lastRollKind = 'damage';
     applyBtn.disabled = !targetToken;
     applyBtn.textContent = targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
     applyBtn.onclick = () => {
@@ -1542,7 +1570,7 @@ export class DiceRollerSidebar {
       }
 
       const applyFinalDamage = (spentShields = 0) => {
-        applied = true;
+        applied = true; pending.applied = true;
         applyBtn.disabled = true;
         applyBtn.textContent = 'DAMAGE APPLIED';
         const targetToken = store.state.tokens.find(t => t.id === targetId) || currentTarget;

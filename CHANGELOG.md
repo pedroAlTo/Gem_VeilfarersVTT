@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.14.2**.
-Paquete: `VeilFarers_VTT_v2.14.2.zip`.
+Versión actual del VTT: **v2.14.3**.
+Paquete: `VeilFarers_VTT_v2.14.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.14.3] — 2026-11-17
+
+V2 · Tiradas de adversario con d20 y Bear Down sobre el daño
+
+### Reglas
+
+- Cualquier tirada de un adversario en el panel de dados es ahora 1d20 + su modificador contra la DC, como su ataque (decisión 6: el texto del Corebook que hace tirar Dualidad al Keeper es una errata). Ventaja suma 1d6, Desventaja lo resta; un 20 natural es éxito crítico. Sin pago de senda ni Fear.
+- El panel muestra el d20 en la primera casilla (etiqueta D20) y el registro escribe la cuenta completa: «d20 [12] + 2 = 14 vs DC 15».
+- Bear Down también vale tras una tirada de daño (Corebook, cap. 7: «después de cualquier tirada de Dualidad, ataque, reacción o daño»). Si lo último que ha tirado el personaje es un daño aún sin aplicar, la carta suma sus dados de Resolve a ese daño con los mismos dados ya tirados, y se recalcula la severidad. Si el ataque falló, Bear Down sigue sumando a la tirada de ataque, como antes.
 
 ## [2.14.2] — 2026-11-17
 

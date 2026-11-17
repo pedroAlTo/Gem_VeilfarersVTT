@@ -1135,6 +1135,15 @@ export const PAIRS = [
   ["Pensada para ordenador o tablet.", "Designed for a computer or tablet."],
   ["En el móvil puedes seguir la partida, consultar tu ficha, tirar dados y usar el chat. Para dirigir o editar el mapa usa una pantalla más grande, mejor en horizontal.", "On a phone you can follow the game, check your sheet, roll dice and use the chat. To run the game or edit the map, use a bigger screen, ideally in landscape."],
   ["Entendido", "Got it"],
+  // Adversary d20 checks (v2.14.3)
+  ["ÉXITO CRÍTICO (20 natural)", "CRITICAL SUCCESS (natural 20)"],
+  ["ÉXITO", "SUCCESS"],
+  ["Éxito automático. En un ataque, el daño normal se maximiza.", "Automatic success. On an attack, normal damage is maximised."],
+  ["El adversario lo consigue: aplica el resultado establecido.", "The adversary succeeds: apply the established outcome."],
+  ["El adversario no lo consigue.", "The adversary fails."],
+  ["Tirada del Keeper (1d20): sin pago de senda ni Fear.", "Keeper roll (1d20): no Path payout or Fear."],
+  // Bear Down on damage (v2.14.3)
+  ["Bear Down · daño", "Bear Down · damage"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1202,4 +1211,6 @@ export const PATTERNS = [
   ["🛡️ MITIGACIÓN CON ESCUDOS · {a}", "🛡️ SHIELD MITIGATION · {a}"],
   ["{a} · (Sin ficha)", "{a} · (No sheet)"],
   ["{a} — ya subió en este Tier", "{a} — already raised this Tier"],
+  ["{a} = +{b} al daño: {c} ({d}).", "{a} = +{b} to damage: {c} ({d})."],
+  ["{a} = +{b} al daño.", "{a} = +{b} to damage."],
 ];

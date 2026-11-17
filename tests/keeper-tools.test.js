@@ -150,3 +150,32 @@ test('secret mode is usable without a token and removes private results on switc
   assert.doesNotMatch(logNode.textContent, /SOLO KEEPER/);
   assert.equal(logNode.querySelectorAll('.log-card').length, 0);
 });
+
+test('Bear Down after a damage roll spends Resolve and needs no previous check', () => {
+  const pc = store.addToken({ name: 'Rook', isPlayer: true, actorType: 'player', path: 'Sleeping', resolve: { current: 3, max: 3, dieType: 'd6' } });
+  const result = performGameAction({ type: 'RESOLVE', actorId: pc.id, count: 2, target: 'damage' });
+  assert.equal(result.damage, true); assert.equal(result.bearDown.count, 2); assert.equal(result.bearDown.dice.length, 2);
+  assert.ok(result.bearDown.dice.every(v => v >= 1 && v <= 6));
+  assert.equal(result.bearDown.bonus, result.bearDown.dice[0] + result.bearDown.dice[1]);
+  assert.equal(store.state.tokens.find(t => t.id === pc.id).resolve.current, 1);
+  assert.throws(() => performGameAction({ type: 'RESOLVE', actorId: store.addToken({ name: 'Ava', isPlayer: true, actorType: 'player', path: 'Awakened' }).id, target: 'damage' }), /No Resolve/);
+});
+
+test('the dice panel adds Bear Down to the open damage roll with the same dice', () => {
+  const panel = new DiceRollerSidebar(mount());
+  const pc = store.addToken({ name: 'Rook', isPlayer: true, actorType: 'player', path: 'Sleeping', resolve: { current: 3, max: 3, dieType: 'd4' } });
+  const target = store.addToken({ name: 'Drone', isPlayer: false, actorType: 'adversary', hp: { current: 6, max: 6, majorThreshold: 7, severeThreshold: 13 } });
+  store.update({ selectedTokenId: pc.id });
+  panel.currentActor = store.state.tokens.find(t => t.id === pc.id);
+  const q = id => panel.container.querySelector(id);
+  q('#dmg_target_select').innerHTML = `<option value="${target.id}">Drone</option>`; q('#dmg_target_select').value = target.id;
+  q('#dmg_formula').value = ''; q('#dmg_dice_count').value = '1'; q('#dmg_dice_sides').value = '8'; q('#dmg_flat_mod').value = '0';
+  q('#dmg_proficiency').value = '1'; q('#dmg_honed').value = '0';
+  panel.executeDamageCalc([5]);
+  assert.equal(panel.pendingDamageFor(pc.id)?.raw, 5);
+  return panel.applyBearDownDamage(3).then(updated => {
+    assert.equal(updated.raw, 8, 'same d8 face (5) + Bear Down 3');
+    assert.equal(q('#dmg_raw_val').textContent, '8');
+    assert.equal(panel.pendingDamageFor(target.id), null, 'only the roller can Bear Down on it');
+  });
+});

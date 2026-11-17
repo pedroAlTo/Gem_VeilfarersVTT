@@ -105,6 +105,24 @@ export function rollAdversaryAttack({ attackModifier = 0, evasion = 10, hasAdvan
   return { d20, d6, edge: edge.advantage ? 'Advantage' : edge.disadvantage ? 'Disadvantage' : '', attackModifier, total, evasion, isCritical, hit: isCritical || total >= evasion };
 }
 
+// Any other roll a Keeper makes for an adversary (decision 6 of HANDOVER_V2: the Corebook text
+// that has the Keeper roll Duality dice is an erratum): 1d20 + modifier against a DC, the same
+// dice as its attack. A natural 20 is a critical success. Shaped like a Duality result so the
+// dice panel, the log and the chat can show it.
+export function rollAdversaryCheck({ actorName = '', modifier = 0, traitMod = modifier, dc = 15, hasAdvantage = false, hasDisadvantage = false, forcedD20 = null, forcedD6 = null, random = Math.random } = {}) {
+  const roll = rollAdversaryAttack({ attackModifier: modifier, evasion: dc, hasAdvantage, hasDisadvantage, forcedD20, forcedD6, random });
+  const success = roll.hit;
+  return {
+    actorName, traitName: 'Attack', traitMod, keeperD20: true, d20: roll.d20, hopeVal: roll.d20, fearVal: null,
+    advVal: roll.edge === 'Advantage' ? roll.d6 : 0, disadvVal: roll.edge === 'Disadvantage' ? roll.d6 : 0,
+    totalMod: roll.total - roll.d20, total: roll.total, dc, isCritical: roll.isCritical, dominance: 'Keeper', fearGain: 0,
+    resultType: roll.isCritical ? 'CRITICAL_SUCCESS' : success ? 'SUCCESS_WITH_HOPE' : 'FAILURE_WITH_FEAR',
+    outcomeTitle: roll.isCritical ? 'ÉXITO CRÍTICO (20 natural)' : success ? 'ÉXITO' : 'FALLO',
+    outcomeDesc: roll.isCritical ? 'Éxito automático. En un ataque, el daño normal se maximiza.' : success ? 'El adversario lo consigue: aplica el resultado establecido.' : 'El adversario no lo consigue.',
+    pathPayout: 'Tirada del Keeper (1d20): sin pago de senda ni Fear.',
+  };
+}
+
 // A player's Duality attack hits when it is critical or its total reaches the target's Evasion.
 export function dualityAttackHit(result, evasion) {
   return !!result && (!!result.isCritical || result.total >= evasion);

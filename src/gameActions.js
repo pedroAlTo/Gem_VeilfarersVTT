@@ -1,6 +1,7 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { rollAdversaryCheck } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
 import { cardData } from './cardData.js';
@@ -88,7 +89,17 @@ function resolveGameAction(action, store) {
     if (exp && !sleeping && (actor.hope || 0) < 1) throw new Error('An Experience costs 1 Hope.');
     if (resolve && (!sleeping || (actor.resolve?.current || 0) < resolve))
       throw new Error('Resolve requires a Sleeping character with available Resolve.');
-    const result = rollVeilfarersCheck({
+    const keeperRoll = !player;
+    const result = keeperRoll ? rollAdversaryCheck({
+      actorName: actor.name,
+      modifier: (actor.attackModifier ?? 0) + (o.customMod || 0) + (actor.pendingCheckBonus || 0),
+      traitMod: actor.attackModifier ?? 0,
+      dc: o.dc,
+      hasAdvantage: !!o.hasAdvantage || !!actor.pendingAdvantage,
+      hasDisadvantage: !!o.hasDisadvantage,
+      forcedD20: o.forcedD20 ?? null,
+      forcedD6: o.forcedAdv ?? null,
+    }) : rollVeilfarersCheck({
       actorName: actor.name,
       path: actor.path,
       traitName: !player && actor.attackModifier !== undefined ? 'Attack' : o.traitId,
@@ -108,13 +119,6 @@ function resolveGameAction(action, store) {
       forcedResolve: o.forcedResolve,
     });
     const patch = { pendingCheckBonus: 0, pendingAdvantage: false };
-    if (!player) {
-      result.fearGain = 0;
-      result.pathPayout = 'Keeper roll: no Path payout or Fear gain.';
-      result.outcomeDesc = result.isCritical
-        ? 'Automatic success. Maximize the normal damage pool.'
-        : 'Resolve the established attack outcome.';
-    }
     if (resolve) patch.resolve = { ...actor.resolve, current: actor.resolve.current - 1 };
     if (player && !sleeping) {
       patch.hope = clamp(
@@ -158,6 +162,23 @@ function resolveGameAction(action, store) {
     };
     store.addLog(log);
     return { ...record, log };
+  }
+  // Bear Down after a damage roll (Corebook ch. 7: "any Duality Roll, attack, reaction, or
+  // damage roll"): the Resolve Dice are spent and rolled here; the dice panel adds the total
+  // to the damage that has not been applied yet.
+  if (action.type === 'RESOLVE' && action.target === 'damage') {
+    if (actor.path !== 'Sleeping' || (actor.resolve?.current || 0) < 1) throw new Error('No Resolve available.');
+    const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
+    const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
+      dice = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
+      bonus = dice.reduce((n, v) => n + v, 0);
+    store.updateToken(actor.id, { resolve: { ...actor.resolve, current: actor.resolve.current - count } });
+    const log = {
+      sender: actor.name, type: 'RESOLVE', ...(secret ? { visibility: 'keeper' } : {}),
+      title: 'Bear Down · daño', details: `${count}${actor.resolve.dieType || 'd4'} [${dice.join(', ')}] = +${bonus} al daño.`,
+    };
+    store.addLog(log);
+    return { id: newId(), actorId: actor.id, damage: true, bearDown: { count, dice, bonus }, log };
   }
   if (action.type === 'RESOLVE') {
     const previous = lastRoll.get(rollKey);
