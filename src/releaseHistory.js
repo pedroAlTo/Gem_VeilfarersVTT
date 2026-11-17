@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.0', date: '2026-11-17', title: 'V3 · La ficha del jugador en el panel derecho',
+    sections: [
+      { title: 'Panel derecho del jugador (rama V3, en pruebas)', items: [
+        'Para el jugador, el panel derecho tiene cinco pestañas: Ficha, Nave (por ahora), Dossiers, Registro y Chat. Relojes, Reparto y Escenas quedan para el Keeper; los relojes siguen viéndose sobre el mapa.',
+        'Nueva pestaña «Ficha» («Mi personaje»), que se abre sola al pasar a jugador: nombre, clase y Path, «Ficha completa», TIRAR (los seis Traits en dos filas), experiencias, Ventaja/Desventaja y ATACAR. Sin personaje asignado explica cómo conseguirlo.',
+        'TIRAR y ATACAR dejan de flotar sobre el mapa. En tablet, al elegir un arma el panel se cierra para tocar el objetivo y se vuelve a abrir con el resultado.',
+        'El contador de la cabecera del panel cuenta solo las pestañas visibles (por ejemplo «01 / 05»).',
+      ] },
+    ],
+  },
+  {
     version: '2.16.1', date: '2026-11-17', title: 'V3 · Tirar en dos toques: Trait, ventaja y experiencias',
     sections: [
       { title: 'Barra del jugador (rama V3, en pruebas)', items: [

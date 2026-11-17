@@ -1,29 +1,37 @@
-/* Player action bar: TIRAR (six Traits) and ATACAR (one button per weapon) */
-.player-action-bar { position: absolute; left: 16px; bottom: 120px; z-index: 112; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px;
-  max-width: min(560px, calc(100% - 32px)); background: rgba(13,4,32,.94); border: 1px solid rgba(192,132,252,.45); border-left: 3px solid #fde68a; box-shadow: 0 8px 28px rgba(0,0,0,.5); pointer-events: auto; }
-.player-action-bar.hidden { display: none; }
-.pab-row { display: flex; align-items: center; gap: 8px; }
-.pab-label { flex: 0 0 64px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: #fde68a; }
-.pab-buttons { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
-.pab-trait, .pab-weapon { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: baseline; gap: 6px; padding: 7px 10px; min-height: 34px;
+/* Player character panel: the "Ficha" tab of the right panel (V3). TIRAR, experiences, ATACAR. */
+.player-action-bar { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px 12px; }
+.pab-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(192,132,252,.25); }
+.pab-head strong { display: block; font: 700 14px/1.2 'Chakra Petch', system-ui, sans-serif; color: #f3e8ff; letter-spacing: .04em; }
+.pab-head small { display: block; margin-top: 2px; font-size: 11px; color: #a78bfa; }
+.pab-empty { margin: 8px 0; font-size: 13px; line-height: 1.5; color: #c4b5fd; }
+.pab-row { display: flex; flex-direction: column; gap: 6px; position: relative; }
+.pab-label { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: #fde68a; }
+.pab-label:empty { display: none; }
+.pab-buttons { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.pab-traits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pab-trait, .pab-weapon { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 9px 10px; min-height: 38px;
   border: 1px solid rgba(192,132,252,.5); background: rgba(42,11,92,.55); color: #f3e8ff; font: 600 12px/1 'Rajdhani', system-ui, sans-serif; }
+.pab-weapon { width: 100%; }
 .pab-trait b, .pab-weapon b { font: 700 12px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .08em; }
-.pab-trait span { color: #fde68a; font-weight: 700; }
-.pab-weapon span { color: #c4b5fd; font-size: 11px; }
-.pab-weapon b { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pab-trait span { color: #fde68a; font-weight: 700; font-size: 14px; }
+.pab-weapon span { color: #c4b5fd; font-size: 11px; flex: none; }
+.pab-weapon b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pab-trait:hover, .pab-trait:focus-visible, .pab-weapon:hover, .pab-weapon:focus-visible { border-color: #fde68a; background: rgba(109,40,217,.55); }
 .pab-weapon.active { border-color: #00f3ff; box-shadow: 0 0 0 2px rgba(0,243,255,.35); }
-.pab-more { all: unset; cursor: pointer; width: 30px; height: 30px; text-align: center; line-height: 28px; color: #c4b5fd; border: 1px solid rgba(192,132,252,.4); font-size: 16px; }
+.pab-more { all: unset; cursor: pointer; position: absolute; top: -6px; right: 0; width: 26px; height: 22px; text-align: center; line-height: 20px; color: #c4b5fd; border: 1px solid rgba(192,132,252,.4); font-size: 14px; }
 .pab-more.active, .pab-more:hover { color: #fff; border-color: #c084fc; }
-.pab-options { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 0 2px 72px; }
+.pab-options { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pab-dc { font: 700 11px/1 'Chakra Petch', system-ui, sans-serif; color: #fde68a; letter-spacing: .1em; }
 .pab-hint { margin: 0; font-size: 12px; color: #00f3ff; }
 body.pab-targeting #tactical_canvas { cursor: crosshair !important; }
-@media (max-width: 600px) { .player-action-bar { left: 8px !important; right: 8px; max-width: none; } .pab-label { flex-basis: 52px; } .pab-trait, .pab-weapon { padding: 6px 8px; } }
+/* A player's right panel: Ficha, Nave, Dossiers, Registro and Chat. */
+.tab-nav-btn[data-tab="sheet"] { display: none !important; }
+body.player-view .tab-nav-btn[data-tab="sheet"] { display: flex !important; }
+body.player-view .tab-nav-btn[data-tab="clocks"], body.player-view .tab-nav-btn[data-tab="roster"], body.player-view .tab-nav-btn[data-tab="scenes"] { display: none !important; }
 /* In player stance the layers panel is not needed and would sit on the action bar. */
 body.player-stance #layer_hud_container { display: none !important; }
 /* The last attack, with its damage and the step to apply it */
-.pab-result { border-top: 1px solid rgba(192,132,252,.25); padding-top: 6px; }
+.pab-result { border-top: 1px solid rgba(192,132,252,.25); padding-top: 8px; }
 .pab-result-text { flex: 1; min-width: 0; font-size: 12px; color: #e9d5ff; }
 .pab-result.hit .pab-result-text b { color: #fde68a; }
 .pab-result.miss .pab-result-text b { color: #fca5a5; }
@@ -42,7 +50,8 @@ body.player-stance #dice_dock_panel #section_standard_dice { display: block !imp
 .pab-exp span { color: #86efac; font-weight: 700; }
 .pab-exp:hover:not([disabled]), .pab-exp:focus-visible { border-color: #86efac; }
 .pab-exp[disabled] { opacity: .4; cursor: not-allowed; }
-.pab-edge-btn { all: unset; box-sizing: border-box; cursor: pointer; padding: 7px 12px; min-height: 32px; font: 700 11px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; border: 1px solid; }
+.pab-edge-row .pab-buttons { display: grid; grid-template-columns: 1fr 1fr; }
+.pab-edge-btn { all: unset; box-sizing: border-box; text-align: center; cursor: pointer; padding: 7px 12px; min-height: 32px; font: 700 11px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; border: 1px solid; }
 .pab-edge-btn.dis { color: #fca5a5; border-color: rgba(248,113,113,.6); background: rgba(127,29,29,.35); }
 .pab-edge-btn.adv { color: #86efac; border-color: rgba(74,222,128,.6); background: rgba(20,83,45,.4); }
 .pab-edge-btn:hover, .pab-edge-btn:focus-visible { filter: brightness(1.3); }

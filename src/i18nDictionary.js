@@ -1186,7 +1186,7 @@ export const PAIRS = [
   ["Dados", "Dice"],
   ["Abrir los dados", "Open the dice"],
   ["Cerrar los dados", "Close the dice"],
-  ["En la barra TIRAR, sobre tu personaje, toca un Trait y vuelve a tocarlo para tirar (o elige Ventaja, Desventaja o una experiencia). Para atacar, toca tu arma en ATACAR y luego el objetivo en el mapa.", "In the ROLL bar, above your character, tap a Trait and tap it again to roll (or choose Advantage, Disadvantage or an Experience). To attack, tap your weapon under ATTACK and then the target on the map."],
+  ["En la pestaña FICHA del panel derecho, toca un Trait y vuelve a tocarlo para tirar (o elige Ventaja, Desventaja o una experiencia). Para atacar, toca tu arma en ATACAR y luego el objetivo en el mapa.", "In the SHEET tab of the right panel, tap a Trait and tap it again to roll (or choose Advantage, Disadvantage or an Experience). To attack, tap your weapon under ATTACK and then the target on the map."],
   ["Abre los dados con el icono de arriba a la derecha del mapa y tira por un adversario (1d20 + Ataque). Con «Tirada secreta» solo la ves tú.", "Open the dice with the icon at the top right of the map and roll for an adversary (1d20 + Attack). With “Secret roll” only you see it."],
   // Player bar result (V3)
   ["Resultado", "Result"],
@@ -1201,6 +1201,10 @@ export const PAIRS = [
   ["Sin coste (Sleeping)", "No cost (Sleeping)"],
   ["Necesitas 1 Hope", "You need 1 Hope"],
   ["Necesitas 1 Hope para usar una experiencia.", "You need 1 Hope to use an Experience."],
+  // Player character panel in the right panel (v2.17.0)
+  ["Mi personaje", "My character"],
+  ["Ficha completa", "Full sheet"],
+  ["Aún no tienes personaje. Pide al Keeper que te asigne uno o importa tu ficha desde SESIONES.", "You have no character yet. Ask the Keeper to assign you one or import your sheet from SESSIONS."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

@@ -47,3 +47,8 @@ test('the Experience bonus is read from the sheet text', () => {
   assert.equal(experienceBonus({ bonus: '' }), 0);
   assert.equal(experienceBonus({ bonus: '99' }), 10);
 });
+
+test('a player sees Ficha, Nave, Dossiers, Registro and Chat in the right panel', async () => {
+  const { PLAYER_TABS } = await import('../src/playerActionBar.js');
+  assert.deepEqual(PLAYER_TABS, ['sheet', 'ship', 'handouts', 'log', 'chat']);
+});

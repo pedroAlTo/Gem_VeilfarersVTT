@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.16.1**.
-Paquete: `VeilFarers_VTT_v2.16.1.zip`.
+Versión actual del VTT: **v2.17.0**.
+Paquete: `VeilFarers_VTT_v2.17.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.0] — 2026-11-17
+
+V3 · La ficha del jugador en el panel derecho
+
+### Panel derecho del jugador (rama V3, en pruebas)
+
+- Para el jugador, el panel derecho tiene cinco pestañas: Ficha, Nave (por ahora), Dossiers, Registro y Chat. Relojes, Reparto y Escenas quedan para el Keeper; los relojes siguen viéndose sobre el mapa.
+- Nueva pestaña «Ficha» («Mi personaje»), que se abre sola al pasar a jugador: nombre, clase y Path, «Ficha completa», TIRAR (los seis Traits en dos filas), experiencias, Ventaja/Desventaja y ATACAR. Sin personaje asignado explica cómo conseguirlo.
+- TIRAR y ATACAR dejan de flotar sobre el mapa. En tablet, al elegir un arma el panel se cierra para tocar el objetivo y se vuelve a abrir con el resultado.
+- El contador de la cabecera del panel cuenta solo las pestañas visibles (por ejemplo «01 / 05»).
 
 ## [2.16.1] — 2026-11-17
 

@@ -100,7 +100,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.veilTokenHUD = new TokenHUD(quickbarContainer);
   // 4b. The card hand: the selected character's Loadout, beside its stats
   window.veilCardHand = new CardHand(quickbarContainer);
-  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(quickbarContainer.parentElement); }).catch(error => console.warn('Action bar unavailable:', error));
+  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(document.getElementById('tab_pane_sheet')); }).catch(error => console.warn('Action bar unavailable:', error));
   window.veilCardFeed = new CardFeed(quickbarContainer.parentElement);
 
   // 5. Initialize Tactical Layers HUD
@@ -621,6 +621,7 @@ function setupSidebarTabNavigation() {
   const tabs = document.querySelectorAll('.tab-nav-btn');
   const panes = {
     dice: document.getElementById('tab_pane_dice'),
+    sheet: document.getElementById('tab_pane_sheet'),
     clocks: document.getElementById('tab_pane_clocks'),
     ship: document.getElementById('tab_pane_ship'),
     roster: document.getElementById('tab_pane_roster'),

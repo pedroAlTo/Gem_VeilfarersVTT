@@ -1,4 +1,6 @@
-// The player's action bar (V3, phase A): what a player does most, in one touch.
+// The player's character panel (V3, phase A): the "Ficha" tab of the right panel, with what a
+// player does most, in one touch. A player's right panel shows Ficha, Nave, Dossiers, Registro
+// and Chat; Relojes, Reparto and Escenas are the Keeper's.
 // TIRAR: the six Traits with their values. A touch selects one and shows Disadvantage/Advantage
 // below; a second touch rolls it, and so does Advantage or Disadvantage. With a Trait selected
 // the character's Experiences appear: selecting one (Awakened: only with Hope, and it marks the
@@ -16,9 +18,10 @@ const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
 
 // The bar belongs to the player stance: the player character you control, selected.
+export const isPlayerView = (state = store.state) => store.sessionRole === 'player' || state.userRole === 'player';
+export const PLAYER_TABS = ['sheet', 'ship', 'handouts', 'log', 'chat'];
 export function barOwner(state = store.state) {
-  const playerStance = store.sessionRole === 'player' || state.userRole === 'player';
-  if (!playerStance) return null;
+  if (!isPlayerView(state)) return null;
   const token = state.tokens.find(t => t.id === state.selectedTokenId) || state.tokens.find(t => t.id === state.claimedTokenId);
   if (!token || token.isPlayer === false || token.actorType === 'drone') return null;
   return store.sessionRole !== 'player' || store.canEditToken(token.id) ? token : null;
@@ -60,31 +63,31 @@ export const experienceBonus = exp => Math.max(0, Math.min(10, parseInt(String(e
 export class PlayerActionBar {
   constructor(parent) {
     this.root = document.createElement('section');
-    this.root.id = 'player_action_bar'; this.root.className = 'player-action-bar hidden';
+    this.root.id = 'player_action_bar'; this.root.className = 'player-action-bar';
     this.root.setAttribute('aria-label', 'Acciones del personaje');
     parent.append(this.root);
-    this.signature = ''; this.targeting = null; this.pick = EMPTY_PICK; this.optionsOpen = false;
+    this.signature = ''; this.targeting = null; this.pick = EMPTY_PICK; this.optionsOpen = false; this.view = null;
     store.subscribe(() => this.render());
-    window.addEventListener('resize', () => this.place());
-    // It sits right above the character bar, whatever height that bar has.
-    const quickbar = document.getElementById('token_quickbar_root');
-    if (quickbar && typeof ResizeObserver === 'function') new ResizeObserver(() => this.place()).observe(quickbar);
     window.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (this.targeting) this.stopTargeting(); else if (this.pick.trait) { this.pick = EMPTY_PICK; this.render(); } });
     this.render();
   }
 
   render() {
+    this.syncTabs();
     const token = barOwner();
     // Player stance: the map-editing panels are hidden (see playerActionBar.css).
     document.body.classList.toggle('player-stance', !!token);
-    if (!token) { this.signature = ''; this.root.classList.add('hidden'); this.stopTargeting(); return; }
+    if (!token) {
+      this.stopTargeting(false); document.body.classList.remove('pab-hope-pending');
+      if (this.signature !== 'empty') { this.signature = 'empty'; this.tokenId = null; this.root.innerHTML = sanitizeHTML('<p class="pab-empty">Aún no tienes personaje. Pide al Keeper que te asigne uno o importa tu ficha desde SESIONES.</p>'); }
+      return;
+    }
     const weapons = (tokenInventory(token).weapons || []).filter(usableWeapon);
     const experiences = (characterDetails(token).experiences || []).filter(x => x.name);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
-    this.root.classList.remove('hidden');
     const dc = document.getElementById('dice_dc_select')?.value || '15';
     const { trait, exp } = this.pick, canExp = experienceAvailable(token), cost = experienceCost(token);
     const traitName = TRAITS.find(t => t.id === trait)?.name || '';
@@ -97,10 +100,13 @@ export class PlayerActionBar {
         ${!canExp ? '<span class="pab-tip">Sin Hope para experiencias</span>' : exp !== null && cost ? `<span class="pab-hope-cost" role="status">−1 Hope · ${hope} → ${hope - 1}</span>` : ''}
       </div></div>` : '';
     document.body.classList.toggle('pab-hope-pending', exp !== null && cost > 0);
+    const subtitle = [token.characterClass, token.path].filter(Boolean).join(' · ');
     this.root.innerHTML = sanitizeHTML(`
+      <header class="pab-head"><div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
+        <button type="button" class="hud-btn hud-btn-xs" data-pab-sheet>Ficha completa</button></header>
       <div class="pab-row">
         <span class="pab-label">Tirar</span>
-        <div class="pab-buttons">${TRAITS.map(t => `<button type="button" class="pab-trait ${trait === t.id ? 'selected' : ''}" data-pab-trait="${t.id}" aria-pressed="${trait === t.id}" title="${e(t.name)} · DC ${e(dc)}"><b>${e(t.short)}</b><span>${sign(Number(token.traits?.[t.id]) || 0)}</span></button>`).join('')}</div>
+        <div class="pab-buttons pab-traits">${TRAITS.map(t => `<button type="button" class="pab-trait ${trait === t.id ? 'selected' : ''}" data-pab-trait="${t.id}" aria-pressed="${trait === t.id}" title="${e(t.name)} · DC ${e(dc)}"><b>${e(t.short)}</b><span>${sign(Number(token.traits?.[t.id]) || 0)}</span></button>`).join('')}</div>
         <button type="button" class="pab-more ${this.optionsOpen ? 'active' : ''}" data-pab-options title="Opciones de la tirada" aria-expanded="${this.optionsOpen}">⋯</button>
       </div>
       ${trait && exp === null ? edges : ''}
@@ -118,7 +124,7 @@ export class PlayerActionBar {
       </div>
       ${this.targeting ? '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>' : ''}
       ${this.result ? this.resultRow() : ''}`);
-    this.place();
+    this.root.querySelector('[data-pab-sheet]')?.addEventListener('click', () => document.getElementById('open_sheet_btn')?.click());
     this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.tap({ kind: 'trait', id: b.dataset.pabTrait }); });
     this.root.querySelectorAll('[data-pab-exp]').forEach(b => { b.onclick = () => this.tap({ kind: 'exp', id: Number(b.dataset.pabExp) }); });
     this.root.querySelectorAll('[data-pab-weapon]').forEach(b => { b.onclick = () => (this.targeting?.weaponId === b.dataset.pabWeapon ? this.stopTargeting() : this.startTargeting(b.dataset.pabWeapon)); });
@@ -131,12 +137,15 @@ export class PlayerActionBar {
     this.root.querySelector('[data-pab-panel]')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } })));
   }
 
-  place() {
-    const parent = this.root.parentElement, quickbar = document.getElementById('token_quickbar_root');
-    if (!parent) return;
-    const box = parent.getBoundingClientRect(), bar = quickbar?.getClientRects().length ? quickbar.getBoundingClientRect() : null;
-    this.root.style.bottom = `${Math.round(bar ? box.bottom - bar.top + 8 : 20)}px`;
-    if (bar) this.root.style.left = `${Math.round(bar.left - box.left)}px`;
+  // Entering the player view opens Ficha; going back to the Keeper leaves it for Reparto.
+  syncTabs() {
+    const view = isPlayerView() ? 'player' : 'keeper';
+    document.body.classList.toggle('player-view', view === 'player');
+    if (view === this.view) return;
+    this.view = view;
+    const active = document.querySelector('.tab-nav-btn.active')?.dataset.tab;
+    if (view === 'player' && !PLAYER_TABS.includes(active)) document.querySelector('.tab-nav-btn[data-tab="sheet"]')?.click();
+    if (view === 'keeper' && active === 'sheet') document.querySelector('.tab-nav-btn[data-tab="roster"]')?.click();
   }
 
   tap(action) {
@@ -172,6 +181,7 @@ export class PlayerActionBar {
     const canvas = window.veilCanvas?.canvas || document.getElementById('tactical_canvas');
     if (!canvas) return;
     this.targeting = { weaponId };
+    if (document.getElementById('main_right_sidebar')?.classList.contains('open')) { this.reopenDrawer = true; document.getElementById('sidebar_close_btn')?.click(); }
     // Captured before the map's own handler, so the touch picks a target instead of panning.
     this.onPick = event => {
       const engine = window.veilCanvas, map = store.getActiveMap?.() || {};
@@ -242,6 +252,7 @@ export class PlayerActionBar {
       this.applyRoll('normal', 0);
       await dice.executeAttack();
       this.result = this.readResult(target.name); this.signature = ''; this.render();
+      if (this.reopenDrawer) { this.reopenDrawer = false; window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'sheet' } })); }
       // Bear Down can still raise the damage before it is applied: follow the panel.
       this.watchDamage();
     } catch (error) { notify(error.message, 'error'); }

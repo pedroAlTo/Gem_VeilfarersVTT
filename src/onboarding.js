@@ -12,7 +12,7 @@ export const GUIDES = {
     { id: 'character', title: 'Ten tu personaje', text: 'Pide al Keeper que te asigne un token o importa tu ficha desde SESIONES. Tu personaje aparece abajo, en tu mano de cartas y tus stats.', target: ['#network_modal_btn'] },
     { id: 'sheet', title: 'Abre tu ficha', text: 'Pulsa FICHA en la barra de tu token para ver recursos, condiciones, armas e inventario.', target: ['#open_sheet_btn', '#hud-toggle-btn'] },
     { id: 'move', title: 'Mueve tu token', text: 'Arrastra tu token por el mapa. El Keeper confirma el movimiento y tu visión se actualiza.', target: ['#tactical_canvas'] },
-    { id: 'roll', title: 'Haz una tirada', text: 'En la barra TIRAR, sobre tu personaje, toca un Trait y vuelve a tocarlo para tirar (o elige Ventaja, Desventaja o una experiencia). Para atacar, toca tu arma en ATACAR y luego el objetivo en el mapa.', target: ['#player_action_bar', '#dice_dock_btn'] },
+    { id: 'roll', title: 'Haz una tirada', text: 'En la pestaña FICHA del panel derecho, toca un Trait y vuelve a tocarlo para tirar (o elige Ventaja, Desventaja o una experiencia). Para atacar, toca tu arma en ATACAR y luego el objetivo en el mapa.', target: ['#player_action_bar', '.tab-nav-btn[data-tab="sheet"]'] },
     { id: 'card', title: 'Usa una carta', text: 'Pasa el ratón por tu mano de cartas y arrastra una al tablero (o haz clic) para usarla; se paga su coste y la mesa ve el efecto.', target: ['#card_hand_root'] },
     { id: 'chat', title: 'Escribe a la mesa', text: 'Abre CHAT (o pulsa Intro), escribe un mensaje a la mesa o susúrrale al Keeper.', target: ['.tab-nav-btn[data-tab="chat"]'] },
   ],
