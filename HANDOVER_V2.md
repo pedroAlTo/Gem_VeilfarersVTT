@@ -39,6 +39,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 18. **Bleeding y límite de Fear Ability, manuales** (17 nov 2026): el Stress por ronda de Bleeding y el límite de una Fear Ability por criatura y ciclo de Spotlight se aplican a mano en la mesa; no automatizarlos.
 19. **Competencia tecnológica** (17 nov 2026): el equipo se filtra primero por lo que el personaje puede usar (clase, nivel y Technology Access; casilla marcada por defecto, desmarcable). Usar algo fuera de la competencia **tira siempre con Desventaja**: arma, armadura y aumentos puestos, y el dron. En Failure with Fear al atacar se recomienda que la consecuencia sea del arma; lo mismo para armaduras, aumentos y dron.
 20. **Catálogo de Poderes** (17 nov 2026): todos los Poderes se ven en el cajón del mazo; cada personaje solo puede tomar los de su acceso (sus Dominios hasta su nivel).
+21. **Mazo siempre disponible** (17 nov 2026): el icono del mazo se ve siempre junto a las cartas (Keeper, Sleeping, ficha sin cartas, sin personaje) para poder consultar cualquier Poder; no ocultarlo.
 16. **Guía de primer uso** (17 nov 2026, aprobada por el usuario): lista de pasos por papel (jugador / Keeper) cuyos pasos se marcan **solo al hacer la acción real** en la mesa, nunca con un botón «Siguiente». Se puede minimizar, saltar pasos, cerrar y reabrir desde la ayuda.
 
 ## Pendiente para la revisión de reglas (erratas y desajustes)
