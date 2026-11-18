@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.26.1', date: '2026-11-18', title: 'V3 · Una luz encendida ilumina siempre su zona',
+    sections: [
+      { title: 'Luces', items: [
+        'Corregido: una luz encendida en una zona que el grupo aún no había visto no hacía nada (la niebla la tapaba). Ahora toda luz encendida ilumina su zona (las paredes la siguen cortando) y quita la niebla y la oscuridad de ella, la haya visto el grupo o no.',
+        'La intensidad decide cuánto: la mínima muestra la zona en penumbra; desde 1, se ve como de día. La luz es pareja en toda su área y solo se suaviza junto al borde (antes se desvanecía desde el centro).',
+        'Para ocultar una sala iluminada, apaga sus luces o déjala sin ellas.',
+      ] },
+    ],
+  },
+  {
     version: '2.26.0', date: '2026-11-18', title: 'V3 · La partida online viaja por Realtime Database',
     sections: [
       { title: 'Firebase', items: [

@@ -10,6 +10,10 @@ const ARC_STEPS = 60;
 const phaseOf = light => { const k = String(light.id ?? `${light.x},${light.y}`); let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0; return ((h >>> 0) % 1000) / 1000 * Math.PI * 2; };
 const hexRGB = h => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h)); const n = m ? parseInt(m[1], 16) : 0xffffff; return [n >> 16, (n >> 8) & 255, n & 255]; };
 const mixHex = (a, b, t) => { const x = hexRGB(a), y = hexRGB(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',')})`; };
+// How much a light clears the dark (darkness and fog), from its intensity: the dimmest light
+// (0.1) still shows its area in half-light; from intensity 1 it is as clear as day.
+export const lightStrength = intensity => 0.4 + 0.6 * Math.max(0, Math.min(1, ((Number(intensity) || 0.8) - 0.1) / 0.9));
+
 export function animateLight(light, time = 0) {
   let r = light.radius || 200, i = light.intensity ?? 0.8;
   const speed = light.pulseSpeed || 1.5, t = time * speed + phaseOf(light);
@@ -377,8 +381,10 @@ export class LightingEngine {
         light.x, light.y, 0,
         light.x, light.y, currentRadius
       );
-      grad.addColorStop(0, `rgba(0, 0, 0, ${currentIntensity})`);
-      grad.addColorStop(0.5, `rgba(0, 0, 0, ${currentIntensity * 0.75})`);
+      // Even across its area, softening only near the edge: a light lights its whole area.
+      const strength = light.noGlow ? 1 : lightStrength(currentIntensity);
+      grad.addColorStop(0, `rgba(0, 0, 0, ${strength})`);
+      grad.addColorStop(0.8, `rgba(0, 0, 0, ${strength})`);
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       lCtx.fillStyle = grad;

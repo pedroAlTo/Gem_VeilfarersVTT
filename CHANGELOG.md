@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.26.0**.
-Paquete: `VeilFarers_VTT_v2.26.0.zip`.
+Versión actual del VTT: **v2.26.1**.
+Paquete: `VeilFarers_VTT_v2.26.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.26.1] — 2026-11-18
+
+V3 · Una luz encendida ilumina siempre su zona
+
+### Luces
+
+- Corregido: una luz encendida en una zona que el grupo aún no había visto no hacía nada (la niebla la tapaba). Ahora toda luz encendida ilumina su zona (las paredes la siguen cortando) y quita la niebla y la oscuridad de ella, la haya visto el grupo o no.
+- La intensidad decide cuánto: la mínima muestra la zona en penumbra; desde 1, se ve como de día. La luz es pareja en toda su área y solo se suaviza junto al borde (antes se desvanecía desde el centro).
+- Para ocultar una sala iluminada, apaga sus luces o déjala sin ellas.
 
 ## [2.26.0] — 2026-11-18
 
