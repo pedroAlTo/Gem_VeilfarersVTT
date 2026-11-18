@@ -5,6 +5,32 @@ import { drawSoftened, fingerprint, wallValues } from './softMask.js';
 export const LIGHT_SOFTNESS = 8;
 const ARC_STEPS = 60;
 
+// A light's radius and intensity this frame, after its effect.
+export function animateLight(light, time = 0) {
+  let r = light.radius || 200, i = light.intensity ?? 0.8;
+  const speed = light.pulseSpeed || 1.5;
+  const effect = light.effect || (light.flicker ? 'flicker' : 'steady');
+  if (effect === 'pulse') {
+    const wave = Math.sin(time * speed * 2) * 0.12;
+    r *= 1 + wave; i = Math.max(0.2, Math.min(1, i * (1 + wave * 1.5)));
+  } else if (effect === 'flicker') {
+    const wave = Math.sin(time * speed * 5) * 0.08 + Math.sin(time * speed * 13) * 0.04;
+    r *= 1 + wave; i = Math.max(0.2, Math.min(1, i * (1 + wave * 2)));
+  } else if (effect === 'quantum') {
+    const wave = Math.sin(time * speed * 1.8) * 0.1 + Math.cos(time * speed * 3.4) * 0.05;
+    r *= 1 + wave; i = Math.max(0.3, Math.min(1, i * (1 + wave * 1.2)));
+  } else if (effect === 'siren' || effect === 'strobe') {
+    const effInt = light.effectIntensity ?? 1.0;
+    const wave = Math.sin(time * speed * 5) > 0 ? 0.35 * effInt : -0.3 * effInt;
+    r *= 1 + wave * 0.4; i = Math.max(0.05, Math.min(1.0, i + wave));
+  } else if (effect === 'spark') {
+    const isSpark = Math.random() < 0.12;
+    const wave = isSpark ? Math.random() * 0.5 : Math.sin(time * 2) * 0.05;
+    r *= 1 + wave; i = isSpark ? 1.0 : Math.max(0.2, i * 0.7);
+  }
+  return { shownRadius: r, shownIntensity: i };
+}
+
 export class LightingEngine {
   constructor() {
     this.lightCanvas = document.createElement('canvas');
@@ -279,6 +305,9 @@ export class LightingEngine {
       }
     }
 
+    // The light effects (pulse, flicker, quantum, siren / strobe, spark) change the radius and the
+    // intensity with time. Worked out once per frame and used by the lit area and by the glow.
+    const shaped = allLights.map(light => ({ ...light, ...animateLight(light, time) }));
     // Steady lights that have not moved draw the same mask as last frame: reuse it. Lights
     // that pulse, flicker or strobe change with time and are always redrawn.
     const animated = allLights.some(light => { const effect = light.effect || (light.flicker ? 'flicker' : 'steady'); return effect !== 'steady'; });
@@ -304,36 +333,8 @@ export class LightingEngine {
     // 2. Cut out light shapes from darkness using destination-out
     lCtx.globalCompositeOperation = 'destination-out';
 
-    for (const light of reuse ? [] : allLights) {
-      let currentRadius = light.radius || 200;
-      let currentIntensity = light.intensity ?? 0.8;
-      const speed = light.pulseSpeed || 1.5;
-      const effect = light.effect || (light.flicker ? 'flicker' : 'steady');
-
-      if (effect === 'pulse') {
-        const wave = Math.sin(time * speed * 2) * 0.12;
-        currentRadius *= (1 + wave);
-        currentIntensity = Math.max(0.2, Math.min(1, currentIntensity * (1 + wave * 1.5)));
-      } else if (effect === 'flicker') {
-        const wave = Math.sin(time * speed * 5) * 0.08 + (Math.sin(time * speed * 13) * 0.04);
-        currentRadius *= (1 + wave);
-        currentIntensity = Math.max(0.2, Math.min(1, currentIntensity * (1 + wave * 2)));
-      } else if (effect === 'quantum') {
-        const wave = Math.sin(time * speed * 1.8) * 0.1 + Math.cos(time * speed * 3.4) * 0.05;
-        currentRadius *= (1 + wave);
-        currentIntensity = Math.max(0.3, Math.min(1, currentIntensity * (1 + wave * 1.2)));
-      } else if (effect === 'siren' || effect === 'strobe') {
-        const effInt = light.effectIntensity ?? 1.0;
-        const wave = Math.sin(time * speed * 5) > 0 ? (0.35 * effInt) : (-0.3 * effInt);
-        currentRadius *= (1 + wave * 0.4);
-        currentIntensity = Math.max(0.05, Math.min(1.0, currentIntensity + wave));
-      } else if (effect === 'spark') {
-        const isSpark = Math.random() < 0.12;
-        const wave = isSpark ? (Math.random() * 0.5) : (Math.sin(time * 2) * 0.05);
-        currentRadius *= (1 + wave);
-        currentIntensity = isSpark ? 1.0 : Math.max(0.2, currentIntensity * 0.7);
-      }
-
+    for (const light of reuse ? [] : shaped) {
+      const currentRadius = light.shownRadius, currentIntensity = light.shownIntensity;
       const polygon = this.computeVisibilityPolygon(
         light.x,
         light.y,
@@ -428,7 +429,7 @@ export class LightingEngine {
 
     // Subtle colored glows around light centers
     ctx.globalCompositeOperation = 'screen';
-    for (const light of allLights) {
+    for (const light of shaped) {
       const effect = light.effect || 'steady';
       let activeColor = light.color || '#00f3ff';
       if (effect === 'siren') {
@@ -437,19 +438,20 @@ export class LightingEngine {
         activeColor = isPhase1 ? (light.color || '#ef4444') : (light.color2 || '#3b82f6');
       }
 
+      const glowRadius = light.shownRadius * 0.6;
       const grad = ctx.createRadialGradient(
         light.x, light.y, 0,
-        light.x, light.y, light.radius * 0.6
+        light.x, light.y, glowRadius
       );
       grad.addColorStop(0, activeColor);
       grad.addColorStop(1, 'transparent');
 
       ctx.save();
       const glowScale = effect === 'siren' ? Math.min(2.0, (light.effectIntensity ?? 1.0)) : 1.0;
-      ctx.globalAlpha = Math.min(1.0, (light.intensity || 0.8) * 0.35 * glowScale);
+      ctx.globalAlpha = Math.min(1.0, light.shownIntensity * 0.35 * glowScale);
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(light.x, light.y, light.radius * 0.6, 0, Math.PI * 2);
+      ctx.arc(light.x, light.y, glowRadius, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }

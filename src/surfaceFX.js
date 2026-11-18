@@ -20,6 +20,7 @@ export function traceWater(ctx, zone) {
   } else ctx.rect(zone.x, zone.y, zone.width, zone.height);
 }
 export function drawWaterSurface(ctx, zone, time, { viewport, quality = 'balanced', reducedMotion = false } = {}) {
+  if (zone?.kind === 'lava') return drawLavaSurface(ctx, zone, time, { viewport, quality, reducedMotion });
   const bounds = waterBounds(zone);
   if (!bounds) return false;
   const b = viewport ? {
@@ -444,4 +445,78 @@ export function renderWeatherFog(ctx, { map = {}, viewport, time = 0, quality = 
 
   ctx.restore();
   return true;
+}
+
+// Lava (V3): a dark molten crust split by glowing cracks that drift slowly, a few bright pools
+// and embers. Same shapes as water (box, polygon, freehand).
+function clipBounds(zone, viewport) {
+  const bounds = waterBounds(zone);
+  if (!bounds) return null;
+  const b = viewport ? { minX: Math.max(bounds.minX, viewport.minX), minY: Math.max(bounds.minY, viewport.minY), maxX: Math.min(bounds.maxX, viewport.maxX), maxY: Math.min(bounds.maxY, viewport.maxY) } : bounds;
+  return b.maxX > b.minX && b.maxY > b.minY ? { bounds, b } : null;
+}
+export function drawLavaSurface(ctx, zone, time, { viewport, quality = 'balanced', reducedMotion = false } = {}) {
+  const box = clipBounds(zone, viewport);
+  if (!box) return false;
+  const { bounds, b } = box, flow = reducedMotion ? 0 : time * (zone.flowSpeed ?? 1) * 0.35;
+  const width = b.maxX - b.minX, height = b.maxY - b.minY;
+  ctx.save();
+  traceWater(ctx, zone); ctx.clip();
+  const crust = ctx.createLinearGradient(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+  crust.addColorStop(0, 'rgba(70, 12, 6, 0.92)'); crust.addColorStop(0.5, 'rgba(110, 22, 8, 0.92)'); crust.addColorStop(1, 'rgba(58, 8, 6, 0.94)');
+  ctx.fillStyle = crust; ctx.fillRect(b.minX, b.minY, width, height);
+  ctx.globalCompositeOperation = 'lighter';
+  // Molten pools that swell and fade.
+  const pools = quality === 'eco' ? 4 : quality === 'ultra' ? 10 : 7;
+  for (let i = 0; i < pools; i++) {
+    const px = bounds.minX + ((i * 0.618 + 0.13) % 1) * (bounds.maxX - bounds.minX) + Math.sin(flow + i * 1.7) * 14;
+    const py = bounds.minY + ((i * 0.414 + 0.27) % 1) * (bounds.maxY - bounds.minY) + Math.cos(flow * 0.8 + i) * 10;
+    const r = 26 + (i % 3) * 14 + Math.sin(flow * 1.3 + i * 2.1) * 6;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0, 'rgba(255, 214, 102, 0.55)'); g.addColorStop(0.45, 'rgba(255, 112, 24, 0.32)'); g.addColorStop(1, 'rgba(255, 60, 10, 0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+  }
+  // Glowing cracks: a warped lattice drifting with the flow.
+  const columns = quality === 'eco' ? 5 : quality === 'ultra' ? 10 : 7;
+  const cell = Math.max(28, Math.max(width, height) / columns);
+  const warp = (x, y) => ({ x: x + Math.sin(x * 0.027 + y * 0.017 + flow) * cell * 0.25, y: y + Math.cos(x * 0.021 - y * 0.029 - flow * 0.8) * cell * 0.2 });
+  for (let row = -1; row <= Math.ceil(height / cell) + 1; row++) {
+    for (let col = -1; col <= Math.ceil(width / cell) + 1; col++) {
+      const cx = b.minX + col * cell + (row % 2) * cell * 0.5, cy = b.minY + row * cell * 0.86;
+      const pts = Array.from({ length: 6 }, (_, i) => warp(cx + Math.cos(i * TAU / 6) * cell * 0.6, cy + Math.sin(i * TAU / 6) * cell * 0.6));
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < 6; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath();
+      const heat = 0.35 + 0.3 * (1 + Math.sin(col * 2.3 + row * 1.9 + flow * 2.2)) / 2;
+      ctx.strokeStyle = `rgba(255, ${120 + Math.round(heat * 80)}, 40, ${heat})`; ctx.lineWidth = 2.2; ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 236, 160, ${heat * 0.45})`; ctx.lineWidth = 0.8; ctx.stroke();
+    }
+  }
+  // Embers rising from the surface.
+  if (!reducedMotion) {
+    const embers = quality === 'eco' ? 8 : 16;
+    for (let i = 0; i < embers; i++) {
+      const t = (time * 0.25 + i * 0.137) % 1;
+      const ex = bounds.minX + ((i * 0.381) % 1) * (bounds.maxX - bounds.minX) + Math.sin(time + i) * 6;
+      const ey = bounds.maxY - t * (bounds.maxY - bounds.minY);
+      ctx.fillStyle = `rgba(255, ${170 + (i % 4) * 20}, 60, ${0.8 * (1 - t)})`;
+      ctx.beginPath(); ctx.arc(ex, ey, 1.6 + (i % 3) * 0.6, 0, TAU); ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  traceWater(ctx, zone); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(30, 6, 4, 0.85)'; ctx.stroke();
+  ctx.restore();
+  return true;
+}
+// Lava lights itself: drawn again over the scene's darkness, softly, so it glows at night.
+export function drawLavaGlow(ctx, zone, time, darkness = 0) {
+  const bounds = waterBounds(zone);
+  if (!bounds || darkness <= 0.05) return;
+  ctx.save();
+  traceWater(ctx, zone); ctx.clip();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = Math.min(0.75, darkness * 0.8) * (0.85 + 0.15 * Math.sin(time * 1.4));
+  const cx = (bounds.minX + bounds.maxX) / 2, cy = (bounds.minY + bounds.maxY) / 2, r = Math.hypot(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, 'rgba(255, 140, 40, 0.9)'); g.addColorStop(1, 'rgba(200, 40, 10, 0.55)');
+  ctx.fillStyle = g; ctx.fillRect(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
+  ctx.restore();
 }

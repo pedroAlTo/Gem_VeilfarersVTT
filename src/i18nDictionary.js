@@ -1350,6 +1350,32 @@ export const PAIRS = [
   ["Shredding: −1 Armor Slot máximo del objetivo al aplicar el daño (hasta reparar la armadura en Downtime).", "Shredding: −1 maximum Armor Slot of the target when the damage is applied (until the armor is repaired in Downtime)."],
   // V3: 3D table dice (v2.23.0)
   ["Duración", "Duration"],
+  // V3: Clima, lights, lava (v2.24.0)
+  ["Clima", "Weather"],
+  ["CLIMA // DÍA Y NOCHE", "WEATHER // DAY AND NIGHT"],
+  ["ZONAS // AGUA O LAVA", "ZONES // WATER OR LAVA"],
+  ["☀️ Día", "☀️ Day"],
+  ["🌇 Ocaso", "🌇 Dusk"],
+  ["🌙 Noche", "🌙 Night"],
+  ["Oscuridad", "Darkness"],
+  ["Oscuridad de la escena", "Scene darkness"],
+  ["Con oscuridad bajo el 50 % es de día: los tokens ven todo lo que tienen a la vista. De noche ven su propia visión y lo que iluminan las luces.", "Below 50% darkness it is day: tokens see everything in their line of sight. At night they see their own vision and what the lights show."],
+  ["🌊 Agua", "🌊 Water"],
+  ["🌋 Lava", "🌋 Lava"],
+  ["✍️ Libre", "✍️ Freehand"],
+  ["Tipo", "Type"],
+  ["ZONA DE LAVA", "LAVA ZONE"],
+  ["Profundidad", "Depth"],
+  ["Arrastra para dibujar el contorno de la zona; al soltar se cierra. Esc cancela.", "Drag to draw the zone's outline; releasing closes it. Esc cancels."],
+  ["Las zonas nuevas son de agua", "New zones are water"],
+  ["Las zonas nuevas son de lava", "New zones are lava"],
+  ["Cambiar entre agua y lava", "Switch between water and lava"],
+  ["Dibujo libre: arrastra el contorno; al soltar se cierra", "Freehand: drag the outline; releasing closes it"],
+  ["Amanece: la oscuridad baja a 0 en 10 s", "Dawn: darkness falls to 0 over 10 s"],
+  ["Atardecer: oscuridad al 50 % en 10 s", "Dusk: darkness to 50% over 10 s"],
+  ["Anochece: oscuridad al 85 % en 10 s", "Nightfall: darkness to 85% over 10 s"],
+  ["[Keeper] Clima: día y noche, lluvia, niebla y zonas de agua o lava [U]", "[Keeper] Weather: day and night, rain, fog and water or lava zones [U]"],
+  ["No puedes atravesar muros opacos.", "You cannot pass through opaque walls."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1481,4 +1507,6 @@ export const PATTERNS = [
   ["{_x} · duración", "{_x} · duration"],
   ["Descanso corto · {_x}", "Short Rest · {_x}"],
   ["Descanso largo · {_x}", "Long Rest · {_x}"],
+  ["{_x} % · día", "{_x}% · day"],
+  ["{_x} % · noche", "{_x}% · night"],
 ];

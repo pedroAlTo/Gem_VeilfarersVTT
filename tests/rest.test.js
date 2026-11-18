@@ -65,3 +65,11 @@ test('rest rolls: the faces thrown by the player are used, and a move keeps its 
   assert.match(lines[0], /Tend Wounds 1d4 \[4\] \+ 1/);
   assert.match(lines[0], /Clear Stress 1d4 \[2\] \+ 1/);
 });
+
+test('animateLight: the effects change the radius and intensity over time (steady does not)', async () => {
+  const { animateLight } = await import('../src/lightingEngine.js');
+  const pulse = { radius: 200, intensity: 0.8, effect: 'pulse', pulseSpeed: 2 };
+  const a = animateLight(pulse, 0.2), b = animateLight(pulse, 0.6);
+  assert.notEqual(a.shownRadius, b.shownRadius);
+  assert.deepEqual(animateLight({ radius: 200, intensity: 0.8, effect: 'steady' }, 3), { shownRadius: 200, shownIntensity: 0.8 });
+});

@@ -79,6 +79,7 @@ class StateStore {
       // UI / Interaction
       activeTool: 'select', // 'select', 'measure', 'template', 'wall', 'light', 'water', 'fx', 'ping'
       waterDrawMode: 'box',
+      waterKind: 'water', // V3: the Clima tool draws water or lava zones
       activeFxType: 'lightning', // 'lightning', 'sparkle', 'explosion', 'radiant', 'void_rift', 'emp'
       templateShape: 'circle', // 'circle', 'cone', 'line', 'box'
       templateRadius: 4, // grid units
@@ -624,8 +625,10 @@ class StateStore {
       ...geometry,
       depth: zoneData.depth ?? 2, // 0 to 5
       color: zoneData.color || 'rgba(0, 243, 255, 0.45)',
-      flowSpeed: zoneData.flowSpeed ?? 1.0
+      flowSpeed: zoneData.flowSpeed ?? 1.0,
+      ...((zoneData.kind ?? this.state.waterKind) === 'lava' ? { kind: 'lava' } : {})
     };
+    if (newZone.kind === 'lava' && !zoneData.name) newZone.name = 'Lava';
     const waterZones = [...(map.waterZones || []), newZone];
     this.updateActiveMap({ waterZones });
     this.update({ selectedWaterId: newZone.id });

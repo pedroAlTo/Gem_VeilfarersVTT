@@ -1,10 +1,29 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.23.2**.
-Paquete: `VeilFarers_VTT_v2.23.2.zip`.
+Versión actual del VTT: **v2.24.0**.
+Paquete: `VeilFarers_VTT_v2.24.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.24.0] — 2026-11-18
+
+V3 · Luces que iluminan, Clima con día y noche, lava y flechas del teclado
+
+### Luces
+
+- La escena tiene oscuridad propia (0 % de día … 100 % de noche) y se ve siempre, también con niebla de guerra y en la Visión de Keeper (atenuada, para que el mapa se siga leyendo). Las luces del mapa y de los tokens la iluminan respetando paredes.
+- Como en Foundry: de día un token ve todo lo que tiene a la vista; de noche ve su propia visión y lo que iluminan las luces. Solo se explora lo que se ve: una luz que nadie tiene a la vista ya no destapa su zona a través de las paredes.
+- Corregido: las animaciones de las luces (pulso, parpadeo, cuántica, sirena, chispas) no se veían. Ahora cambian tanto la zona iluminada como el halo.
+
+### Clima (sustituye a Agua)
+
+- Día y noche: Día, Ocaso y Noche llevan la oscuridad a su valor en 10 s en todas las pantallas; el control Oscuridad la cambia al momento.
+- Lluvia y niebla, como antes. Zonas de agua o de lava, en caja, polígono o a mano alzada. La lava brilla de noche; en la ficha de la zona se cambia entre agua y lava.
+
+### Teclado
+
+- Las flechas mueven el token seleccionado una casilla, con las mismas reglas que al arrastrarlo: paredes, puertas cerradas y ventanas detienen a los jugadores, y moverse da el foco.
 
 ## [2.23.2] — 2026-11-18
 

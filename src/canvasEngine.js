@@ -5,7 +5,7 @@
 import { FreehandTool } from './freehand.js';
 import { MapClipboard } from './mapClipboard.js';
 import { LightingEngine } from './lightingEngine.js';
-import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
+import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog, drawLavaGlow } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
@@ -39,6 +39,20 @@ export const WATER_DEPTH_COLORS = [
   'rgba(30, 58, 138, 0.78)',   // 4: Chest
   'rgba(10, 15, 45, 0.92)'     // 5: Abyss
 ];
+
+// Ramer–Douglas–Peucker: a freehand outline with only the points that shape it.
+function simplifyPath(points, tolerance = 3) {
+  if (points.length < 3) return points.slice();
+  const dist = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy; if (!l) return Math.hypot(p.x - a.x, p.y - a.y); const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)); return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)); };
+  const keep = new Uint8Array(points.length); keep[0] = keep[points.length - 1] = 1;
+  const stack = [[0, points.length - 1]];
+  while (stack.length) {
+    const [i, j] = stack.pop(); let best = -1, at = -1;
+    for (let k = i + 1; k < j; k++) { const d = dist(points[k], points[i], points[j]); if (d > best) { best = d; at = k; } }
+    if (best > tolerance) { keep[at] = 1; stack.push([i, at], [at, j]); }
+  }
+  return points.filter((_, i) => keep[i]);
+}
 
 export class CanvasEngine {
   constructor(canvasElement) {
@@ -417,7 +431,7 @@ export class CanvasEngine {
 
   cancelWaterDrawing() {
     if (this.waterStart || this.waterPolyPoints?.length) this.preDragSnapshot = null;
-    this.waterStart = null; this.waterCurrent = null; this.waterPolyPoints = [];
+    this.waterStart = null; this.waterCurrent = null; this.waterPolyPoints = []; this.waterFreePoints = null;
     this.waterDraftChanged();
   }
 
@@ -646,6 +660,53 @@ export class CanvasEngine {
     if (t >= 1) { g.x = g.toX; g.y = g.toY; g.dur = 0; return token; }
     return { ...token, x: g.x, y: g.y };
   }
+  // One square in a direction for the selected token: walls, doors and windows stop a player as
+  // when dragging; the move is the player's active action (Spotlight) and reaches the table.
+  nudgeSelectedToken(dx, dy) {
+    const state = store.getState(), map = store.getActiveMap();
+    const tok = state.tokens.find(t => t.id === state.selectedTokenId);
+    if (!tok || !map || tok.mapId !== state.activeMapId || this.draggedToken) return false;
+    if (!['select', 'measure'].includes(state.activeTool || 'select')) return false;
+    if (state.userRole !== 'keeper' && !store.canEditToken(tok.id)) return false;
+    if (state.rest && state.userRole !== 'keeper') { notify('La partida está en pausa: el grupo está descansando.', 'error'); return true; }
+    const g = map.gridSize || 64, W = this.mapImage?.width || Infinity, H = this.mapImage?.height || Infinity;
+    const x = Math.max(0, Math.min(W, tok.x + dx * g)), y = Math.max(0, Math.min(H, tok.y + dy * g));
+    if (x === tok.x && y === tok.y) return true;
+    if (state.userRole !== 'keeper') {
+      const wall = (map.walls || []).find(w => {
+        const type = w.wallType || (w.isDoor ? 'door' : (w.isWindow ? 'window' : 'wall'));
+        return (type === 'wall' || type === 'window' || (type === 'door' && !w.isOpen)) && this.checkLineIntersection(tok.x, tok.y, x, y, w.x1, w.y1, w.x2, w.y2);
+      });
+      if (wall) {
+        const type = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
+        audio.playError();
+        notify(type === 'window' ? 'No puedes atravesar ventanas de cristal reforzado.' : type === 'door' ? 'La compuerta está cerrada.' : 'No puedes atravesar muros opacos.', 'error');
+        return true;
+      }
+    }
+    if (store.updateToken(tok.id, { x, y }) === false) return true;
+    if (store.sessionRole !== 'player' && state.userRole === 'player') grantSpotlight(store, tok.id);
+    if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId: tok.id, x, y });
+    return true;
+  }
+
+  // The scene's darkness now: 1 − its ambient light. When the Keeper changes it with a
+  // transition (Clima: Día / Atardecer / Noche), every screen slides to it over that time.
+  sceneDarkness(map, now = (typeof performance !== 'undefined' ? performance.now() : Date.now())) {
+    const target = Math.max(0, Math.min(1, 1 - (map?.ambientLight ?? 0.25)));
+    const d = this.darknessAnim;
+    if (!d || d.mapId !== map?.id) { this.darknessAnim = { mapId: map?.id, from: target, to: target, start: now, dur: 0 }; return target; }
+    if (d.to !== target) {
+      const shown = this.darknessAt(d, now);
+      Object.assign(d, { from: shown, to: target, start: now, dur: Math.max(0, Math.min(60000, Number(map.lightTransitionMs) || 0)) });
+    }
+    return this.darknessAt(d, now);
+  }
+  darknessAt(d, now) {
+    if (!d.dur) return d.to;
+    const t = Math.max(0, Math.min(1, (now - d.start) / d.dur)), ease = t * t * (3 - 2 * t);
+    return d.from + (d.to - d.from) * ease;
+  }
   visionTokens() {
     return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId);
   }
@@ -679,6 +740,9 @@ export class CanvasEngine {
         this.isSpacePressed = true;
         this.canvas.style.cursor = 'grab';
       }
+      // Arrow keys move the selected token one square (V3), with the same rules as dragging it.
+      const step = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+      if (step && !e.ctrlKey && !e.metaKey && !e.altKey && this.nudgeSelectedToken(step[0], step[1])) { e.preventDefault(); return; }
 
       // Delete key deletes active area template or selected wall/light/water zone
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -988,6 +1052,11 @@ export class CanvasEngine {
             if (last && Math.hypot(world.x-last.x,world.y-last.y) < 2/this.zoom) return;
             if (this.waterPolyPoints.length >= 512) { notify('Máximo 512 vértices. Cierra el polígono o quita el último con Retroceso.', 'error'); return; }
             this.waterPolyPoints.push({ x: Math.round(world.x), y: Math.round(world.y) });
+            this.waterDraftChanged();
+            return;
+          } else if (mode === 'free') {
+            // Freehand: the zone follows the pointer; releasing closes it.
+            this.waterFreePoints = [{ x: Math.round(world.x), y: Math.round(world.y) }];
             this.waterDraftChanged();
             return;
           } else {
@@ -1707,6 +1776,11 @@ export class CanvasEngine {
         this.waterCurrent = world;
         return;
       }
+      if (this.waterFreePoints?.length) {
+        const last = this.waterFreePoints.at(-1);
+        if (Math.hypot(world.x - last.x, world.y - last.y) >= 6 / this.zoom && this.waterFreePoints.length < 4000) this.waterFreePoints.push({ x: Math.round(world.x), y: Math.round(world.y) });
+        return;
+      }
 
       // Cursor Hover Hinting for Templates
       if (!this.isPanning && !this.draggedToken && !this.draggedTemplate && !this.draggedWall && !this.draggedLight && !this.draggedWater && !this.rulerStart && !this.wallStart && !this.waterStart && !this.isSpacePressed) {
@@ -2069,6 +2143,17 @@ export class CanvasEngine {
         this.wallCurrent = null;
       }
 
+      if (this.waterFreePoints?.length && e.button === 0) {
+        const points = simplifyPath(this.waterFreePoints, 3 / this.zoom).slice(0, 512);
+        this.waterFreePoints = null;
+        if (points.length >= 3 && this.canDrawWater()) {
+          try {
+            if (this.preDragSnapshot) { store._skipNextUndoSnapshot = true; undoManager.pushSnapshot(this.preDragSnapshot, 'Dibujar zona'); }
+            store.addWaterZone({ shape: 'polygon', points, depth: 2 });
+          } catch (error) { notify(error.message, 'error'); }
+        }
+        this.waterDraftChanged();
+      }
       if (this.waterStart && this.waterCurrent && this.canDrawWater() && store.state.waterDrawMode !== 'polygon' && e.button === 0) {
         const x1 = Math.min(this.waterStart.x, this.waterCurrent.x);
         const y1 = Math.min(this.waterStart.y, this.waterCurrent.y);
@@ -2665,31 +2750,27 @@ export class CanvasEngine {
       return p && (p.x !== tok.x || p.y !== tok.y) ? tok : drawnAt(tok);
     };
 
-    // A. Dynamic Lighting Pass (Ambient darkness, light fixtures, sirens)
-    if (state.layerVisibility.walls_lights !== false && !isKeeperGM) {
-      const fullMapId = `${state.campaignId}:${map.id}`;
-      const activeLights = (map.lights || []).filter(l => {
-        if (isKeeperGM || state.fogOfWar === false) return true;
-        return this.fog.isPointExplored(l.x, l.y, fullMapId);
-      });
+    // A. Lighting (Foundry-like): the scene's darkness (0 day … 1 night, animated when the Keeper
+    // changes it) covers the map, and every light cuts it with its lit area. Everyone sees it;
+    // the Keeper's GM vision sees it softened so the map stays readable.
+    const darkness = this.sceneDarkness(map, now);
+    if (state.layerVisibility.walls_lights !== false) {
       // A token's own light goes where the token is drawn: while it is dragged into place and
       // while it slides to a new place. (Vision and fog keep the confirmed position.)
       const lightingTokens = activeTokens.map(drawnAt);
-      // When Fog of War is enabled, Fog of War itself controls map darkness and explored attenuation (50%).
-      // Dynamic lighting only renders light fixtures and glows without covering the explored map with opaque darkness.
-      const ambientLightLevel = state.fogOfWar !== false ? 1.0 : (map.ambientLight ?? 0.25);
-
       this.lighting.renderLighting({
         ctx,
         mapWidth: this.mapImage.width,
         mapHeight: this.mapImage.height,
-        ambientLight: ambientLightLevel,
+        ambientLight: 1 - darkness * (isKeeperGM ? 0.55 : 1),
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
-        lights: activeLights,
+        lights: map.lights || [],
         tokens: lightingTokens,
         time: now * 0.001
       });
+      // Lava lights itself through the darkness.
+      if (state.layerVisibility.water !== false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
     }
 
     // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)
@@ -2725,7 +2806,13 @@ export class CanvasEngine {
         mapHeight: this.mapImage.height,
         mapId: fullMapId,
         walls: map.walls || [],
-        lights: map.lights || [],
+        // Every light that shows something at night: the map's and the tokens' own (where the
+        // table has them; a player's dragged token keeps its light at the start of the drag).
+        lights: [...(map.lights || []), ...activeTokens.filter(t => t.hasLight && t.lightRadius > 0 && !t.hidden).map(t => {
+          const at = this.draggedToken?.id === t.id && state.userRole === 'player' && this.draggedTokenOrigX != null ? { ...t, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : state.userRole === 'player' ? seenAt(t) : drawnAt(t);
+          return { x: at.x, y: at.y, radius: t.lightRadius, facingAngle: t.facingAngle, visionAngle: t.visionAngle ?? 90 };
+        })],
+        darkness,
         viewers,
         lightingEngine: this.lighting,
         exploredOpacity: state.fogExploredOpacity ?? 0.50,
@@ -2796,6 +2883,17 @@ export class CanvasEngine {
       ctx.restore();
     }
 
+    // Render In-Progress freehand zone
+    if (this.canDrawWater() && this.waterFreePoints?.length > 1) {
+      const lava = state.waterKind === 'lava';
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(this.waterFreePoints[0].x, this.waterFreePoints[0].y);
+      for (const p of this.waterFreePoints) ctx.lineTo(p.x, p.y);
+      ctx.closePath();
+      ctx.fillStyle = lava ? 'rgba(220, 60, 12, 0.4)' : 'rgba(2, 132, 199, 0.4)'; ctx.fill();
+      ctx.strokeStyle = lava ? '#fb923c' : '#38bdf8'; ctx.lineWidth = 2 / this.zoom; ctx.setLineDash([6 / this.zoom, 6 / this.zoom]); ctx.stroke();
+      ctx.restore();
+    }
     // Render In-Progress Water Zone
     if (this.canDrawWater() && this.waterStart && this.waterCurrent) {
       const x = Math.min(this.waterStart.x, this.waterCurrent.x);
@@ -2804,8 +2902,8 @@ export class CanvasEngine {
       const h = Math.abs(this.waterCurrent.y - this.waterStart.y);
 
       ctx.save();
-      ctx.fillStyle = 'rgba(2, 132, 199, 0.45)';
-      ctx.strokeStyle = '#38bdf8';
+      ctx.fillStyle = state.waterKind === 'lava' ? 'rgba(220, 60, 12, 0.45)' : 'rgba(2, 132, 199, 0.45)';
+      ctx.strokeStyle = state.waterKind === 'lava' ? '#fb923c' : '#38bdf8';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 6]);
       ctx.fillRect(x, y, w, h);
@@ -2925,7 +3023,7 @@ export class CanvasEngine {
       const isSelected = w.id === state.selectedWaterId;
       if (!drawWaterSurface(ctx, w, time, { viewport, quality: this.fx.quality,
         reducedMotion: this.reducedMotion?.matches })) continue;
-      if (rain) drawRainRipples(ctx, w, time, { viewport, quality: this.fx.quality, intensity,
+      if (rain && w.kind !== 'lava') drawRainRipples(ctx, w, time, { viewport, quality: this.fx.quality, intensity,
         reducedMotion: this.reducedMotion?.matches });
       if (!(isWaterLayer || isSelected)) continue;
       const depth = Math.max(0, Math.min(5, w.depth ?? 2));

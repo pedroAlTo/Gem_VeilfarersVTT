@@ -1,4 +1,4 @@
-import { sanitizeHTML } from './ui.js';
+import { sanitizeHTML, escapeHTML } from './ui.js';
 // src/inspectorHUD.js
 // Tactical Element Inspector for Editable Walls, Dynamic Lights, and Water Zones
 
@@ -451,8 +451,8 @@ export class ElementInspectorHUD {
       <div class="element-inspector glass-panel">
         <div class="inspector-header">
           <div class="insp-title-group">
-            <span class="insp-icon">🌊</span>
-            <span class="insp-title">AQUATIC HAZARD ZONE // [${zone.name.toUpperCase()}]</span>
+            <span class="insp-icon">${zone.kind === 'lava' ? '🌋' : '🌊'}</span>
+            <span class="insp-title">${zone.kind === 'lava' ? 'ZONA DE LAVA' : 'AQUATIC HAZARD ZONE'} // [${escapeHTML(zone.name.toUpperCase())}]</span>
           </div>
           <button class="insp-close-btn" id="insp_close">&times;</button>
         </div>
@@ -461,11 +461,11 @@ export class ElementInspectorHUD {
           <div class="insp-row">
             <div class="insp-col" style="flex: 2;">
               <label>Zone Label</label>
-              <input type="text" id="insp_water_name" class="hud-input hud-input-xs" value="${zone.name}" />
+              <input type="text" id="insp_water_name" class="hud-input hud-input-xs" value="${escapeHTML(zone.name)}" />
             </div>
 
             <div class="insp-col" style="flex: 3;">
-              <label>Water Depth: Level ${depth}</label>
+              <label>${zone.kind === 'lava' ? 'Profundidad' : 'Water Depth'}: Level ${depth}</label>
               <vf-select id="insp_water_depth" class="hud-select hud-select-xs">
                 ${WATER_DEPTH_NAMES.map((name, idx) => `
                   <option value="${idx}" ${idx === depth ? 'selected' : ''}>
@@ -473,6 +473,13 @@ export class ElementInspectorHUD {
                   </option>
                 `).join('')}
               </vf-select>
+            </div>
+
+            <div class="insp-col" style="flex: 2;">
+              <label>Tipo</label>
+              <button class="hud-btn hud-btn-xs hud-btn-secondary" id="insp_water_kind_toggle" title="Cambiar entre agua y lava">
+                ${zone.kind === 'lava' ? '🌋 LAVA' : '🌊 AGUA'}
+              </button>
             </div>
 
             <div class="insp-col" style="flex: 2;">
@@ -526,6 +533,11 @@ export class ElementInspectorHUD {
       audio.playPing();
     };
 
+    const kindBtn = this.container.querySelector('#insp_water_kind_toggle');
+    if (kindBtn) kindBtn.onclick = () => {
+      const lava = zone.kind !== 'lava';
+      store.updateWaterZone(zone.id, { kind: lava ? 'lava' : undefined, ...(lava && /water|aquatic|hazard|agua/i.test(zone.name) ? { name: 'Lava' } : !lava && zone.name === 'Lava' ? { name: 'Water Hazard' } : {}) });
+    };
     const shapeBtn = this.container.querySelector('#insp_water_shape_toggle');
     if (shapeBtn) {
       shapeBtn.onclick = () => {

@@ -1,6 +1,23 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.24.0', date: '2026-11-18', title: 'V3 · Luces que iluminan, Clima con día y noche, lava y flechas del teclado',
+    sections: [
+      { title: 'Luces', items: [
+        'La escena tiene oscuridad propia (0 % de día … 100 % de noche) y se ve siempre, también con niebla de guerra y en la Visión de Keeper (atenuada, para que el mapa se siga leyendo). Las luces del mapa y de los tokens la iluminan respetando paredes.',
+        'Como en Foundry: de día un token ve todo lo que tiene a la vista; de noche ve su propia visión y lo que iluminan las luces. Solo se explora lo que se ve: una luz que nadie tiene a la vista ya no destapa su zona a través de las paredes.',
+        'Corregido: las animaciones de las luces (pulso, parpadeo, cuántica, sirena, chispas) no se veían. Ahora cambian tanto la zona iluminada como el halo.',
+      ] },
+      { title: 'Clima (sustituye a Agua)', items: [
+        'Día y noche: Día, Ocaso y Noche llevan la oscuridad a su valor en 10 s en todas las pantallas; el control Oscuridad la cambia al momento.',
+        'Lluvia y niebla, como antes. Zonas de agua o de lava, en caja, polígono o a mano alzada. La lava brilla de noche; en la ficha de la zona se cambia entre agua y lava.',
+      ] },
+      { title: 'Teclado', items: [
+        'Las flechas mueven el token seleccionado una casilla, con las mismas reglas que al arrastrarlo: paredes, puertas cerradas y ventanas detienen a los jugadores, y moverse da el foco.',
+      ] },
+    ],
+  },
+  {
     version: '2.23.2', date: '2026-11-18', title: 'V3 · Dados 3D también para las propiedades del arma',
     sections: [
       { title: 'Dados 3D', items: [
