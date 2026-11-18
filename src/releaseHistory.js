@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.2', date: '2026-11-18', title: 'V3 · Las luces quitan la oscuridad, sin teñir el mapa',
+    sections: [
+      { title: 'Luces', items: [
+        'Revertido el baño de color de la v2.27.1: era exagerado. Una luz vuelve a quitar la oscuridad de su zona y deja ver el mapa tal como es.',
+        'Con la intensidad por defecto (0,9) la oscuridad desaparece del todo dentro de su zona (antes quedaba un 7 %); con intensidades bajas, penumbra.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.1', date: '2026-11-18', title: 'V3 · Las luces iluminan de verdad',
     sections: [
       { title: 'Luces', items: [

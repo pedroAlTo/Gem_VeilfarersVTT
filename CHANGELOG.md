@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.1**.
-Paquete: `VeilFarers_VTT_v2.27.1.zip`.
+Versión actual del VTT: **v2.27.2**.
+Paquete: `VeilFarers_VTT_v2.27.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.2] — 2026-11-18
+
+V3 · Las luces quitan la oscuridad, sin teñir el mapa
+
+### Luces
+
+- Revertido el baño de color de la v2.27.1: era exagerado. Una luz vuelve a quitar la oscuridad de su zona y deja ver el mapa tal como es.
+- Con la intensidad por defecto (0,9) la oscuridad desaparece del todo dentro de su zona (antes quedaba un 7 %); con intensidades bajas, penumbra.
 
 ## [2.27.1] — 2026-11-18
 
