@@ -16,7 +16,8 @@ import { normalizeConditions } from './conditions.js';
 import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
 import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
 import { isPartyToken } from './tokenPermissions.js';
-import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, armorCut, applyArmorCut, armorCutNotes } from './weaponFeatures.js';
+import { throwDice, facesRoller } from './tableDice.js';
+import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, extraDiceNeeded, armorCut, applyArmorCut, armorCutNotes } from './weaponFeatures.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
 import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
@@ -1342,7 +1343,11 @@ export class DiceRollerSidebar {
       const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '', bonus: props.bonus });
       if (!result) return { hit: false, band };
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
-      const heat = drone ? null : overheatCheck(weaponFeatures(weapon));
+      // Overheating: its d6 after the attack, thrown as a 3D die.
+      const heatFeatures = drone ? {} : weaponFeatures(weapon);
+      const heatFace = heatFeatures.overheating ? (await throwDice([{ qty: 1, sides: 6, role: 'Overheating' }], { label: `Overheating · ${weapon.name}`, actor: attacker,
+        describe: v => ({ total: v[0], outcome: v[0] <= 2 ? 'SE SOBRECALIENTA' : 'SIN PROBLEMA', modifiers: `d6 [${v[0]}]: 1–2 se sobrecalienta` }) }))[0] : null;
+      const heat = drone ? null : overheatCheck(heatFeatures, () => heatFace);
       if (heat?.overheated) void whisperToKeeper(rulesWhisperText({ attacker: attacker.name, target: target.name, weapon: weapon.name, notes: [heat.text] }));
       detail = `${checkMath(result)}.${props.notes.length ? ` Propiedades del arma: ${props.notes.join(', ')}.` : ''}${heat ? ` ${heat.text}` : ''}`;
       // Failure with Fear on an attack: the consequence is best taken from the weapon (or drone).
@@ -1475,7 +1480,7 @@ export class DiceRollerSidebar {
 
   // rolled: the faces read from the 3D dice. Without them (3D off, or a first call) the dice
   // are thrown on the table first and this runs again with what they show.
-  executeDamageCalc(rolled = null, { bearDown = 0, riders = [], extrasPinned = null } = {}) {
+  executeDamageCalc(rolled = null, { bearDown = 0, riders = [], extrasPinned = null, extraFaces = null } = {}) {
     const riderTotal = riders.reduce((n, r) => n + (Number(r.value) || 0), 0);
     const bossPhase = this.currentActor?.boss?.states[this.currentActor.boss.index];
     if (bossPhase?.canAttack === false) { notify('Este estado usa su procedimiento especial; no tiene un ataque de daño estándar.', 'error'); return; }
@@ -1535,10 +1540,10 @@ export class DiceRollerSidebar {
       if (dice > 0 && dice <= 40) {
         audio.playDiceRoll();
         const label = `${this.currentActor?.name || 'Daño'} · Daño${targetToken ? ` a ${targetToken.name}` : ''}`;
-        return this.roll3D(pools.map(p => ({ qty: p.count, sides: p.sides, theme: 'vfDamage', role: 'Damage' })), label).then(faces => this.executeDamageCalc(faces || [], { bearDown, riders, extrasPinned }));
+        return this.roll3D(pools.map(p => ({ qty: p.count, sides: p.sides, theme: 'vfDamage', role: 'Damage' })), label).then(faces => this.executeDamageCalc(faces || [], { bearDown, riders, extrasPinned, extraFaces }));
       }
     }
-    const faces = [...(rolled || [])];
+    const faces = [...(rolled || [])], thrownFaces = [...(rolled || [])];
     const damageOptions = {
       attackerName: this.currentActor?.name || 'Attacker',
       targetName: targetToken?.name || 'Target',
@@ -1566,7 +1571,17 @@ export class DiceRollerSidebar {
     // Weapon features on the damage: Burst Fire, Massive, Energy Surge add to it; Devastating
     // marks 1 more HP at the Severe Threshold. The severity is worked out again on the new total.
     const rollSides = dmgResult.pools ? dmgResult.pools.flatMap(p => Array(p.count * (damageOptions.isCritical ? 2 : 1)).fill(p.sides)) : dmgResult.rolls.map(() => diceSides);
-    const extras = extrasPinned || damageExtras(feats, dmgResult.rolls, rollSides.length === dmgResult.rolls.length ? rollSides : dmgResult.rolls.map(() => diceSides));
+    const extraSides = rollSides.length === dmgResult.rolls.length ? rollSides : dmgResult.rolls.map(() => diceSides);
+    // The weapon's extra dice (Burst Fire, Massive, Energy Surge) are thrown as 3D dice too, after
+    // the damage dice; the damage is then worked out again with the same faces.
+    if (!extrasPinned && !extraFaces && thrownFaces.length && this.can3D()) {
+      const extraGroups = extraDiceNeeded(feats, dmgResult.rolls, extraSides);
+      if (extraGroups.length) {
+        const label = `${this.currentActor?.name || 'Daño'} · ${[...new Set(extraGroups.map(g => g.role))].join(' · ')}`;
+        return this.roll3D(extraGroups.map(g => ({ ...g, theme: 'vfDamage' })), label).then(more => this.executeDamageCalc(thrownFaces, { bearDown, riders, extrasPinned, extraFaces: more || [] }));
+      }
+    }
+    const extras = extrasPinned || damageExtras(feats, dmgResult.rolls, extraSides, extraFaces?.length ? facesRoller(extraFaces) : undefined);
     if (extras.bonus) {
       const again = resolveDamage({ diceCount: 0, flatModifier: dmgResult.rawDamage + extras.bonus, targetMajorThreshold: major, targetSevereThreshold: severe, isDirectDamage: isDirect, damageType, targetReflective: reflectiveInput.checked, targetWarded: wardedInput.checked, useArmorSlot: false, currentArmorSlots: damageOptions.currentArmorSlots, mountRating: mr });
       dmgResult = { ...dmgResult, rawDamage: again.rawDamage, finalSeverity: again.finalSeverity, finalHpDamage: again.finalHpDamage, effectiveMajor: again.effectiveMajor, effectiveSevere: again.effectiveSevere };

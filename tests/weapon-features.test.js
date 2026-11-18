@@ -125,3 +125,15 @@ test('applyArmorCut / restoreArmorCut: the maximum drops, and each rest gives ba
   const both = restoreArmorCut(armor, { long: true, repairAll: true });
   assert.equal(both.max, 3); assert.deepEqual(both.cut, { long: 0, repairAll: 0, downtime: 1 });
 });
+
+test('extraDiceNeeded: the extra dice in the order damageExtras rolls them', async () => {
+  const { extraDiceNeeded, damageExtras } = await import('../src/weaponFeatures.js');
+  const { facesRoller } = await import('../src/tableDice.js');
+  const f = { burstFire: true, massive: true, energySurge: true };
+  const need = extraDiceNeeded(f, [8, 3, 8], [8, 8, 8]);
+  assert.deepEqual(need.map(g => `${g.role}:d${g.sides}`), ['Burst Fire:d8', 'Burst Fire:d8', 'Massive:d8', 'Energy Surge:d6']);
+  const out = damageExtras(f, [8, 3, 8], [8, 8, 8], facesRoller([2, 5, 7, 4]));
+  // Burst 2 + 5; Massive 7 replaces the 3 (+4); Energy Surge +4.
+  assert.equal(out.bonus, 2 + 5 + 4 + 4);
+  assert.deepEqual(extraDiceNeeded({}, [1], [6]), []);
+});

@@ -72,6 +72,16 @@ export function damageExtras(features = {}, rolls = [], sides = [], rollDie = s 
   return { bonus, notes };
 }
 
+// The extra dice damageExtras will roll, in the same order, so they can be thrown as 3D dice
+// first: one per Burst Fire die at its maximum, Massive's die, Energy Surge's d6.
+export function extraDiceNeeded(features = {}, rolls = [], sides = []) {
+  const out = [];
+  if (features.burstFire) rolls.forEach((r, i) => { if (r === sides[i] && sides[i] > 1) out.push({ qty: 1, sides: sides[i], role: 'Burst Fire' }); });
+  if (features.massive && rolls.length) out.push({ qty: 1, sides: sides[0] || 6, role: 'Massive' });
+  if (features.energySurge) out.push({ qty: 1, sides: 6, role: 'Energy Surge' });
+  return out;
+}
+
 // Devastating: when damage reaches the Severe Threshold, the hit marks 1 more HP.
 export const devastatingExtra = (features = {}, raw = 0, severe = Infinity) => (features.devastating && raw >= severe ? 1 : 0);
 

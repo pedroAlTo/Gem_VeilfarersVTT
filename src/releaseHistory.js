@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.23.2', date: '2026-11-18', title: 'V3 · Dados 3D también para las propiedades del arma',
+    sections: [
+      { title: 'Dados 3D', items: [
+        'Los dados extra de las propiedades del arma se lanzan en 3D después de los de daño: uno por cada dado al máximo con Burst Fire, el dado extra de Massive y el d6 de Energy Surge. El daño se recalcula con las caras que muestran.',
+        'El d6 de Overheating se lanza tras el ataque y muestra su tarjeta («se sobrecalienta» con 1–2).',
+      ] },
+    ],
+  },
+  {
     version: '2.23.1', date: '2026-11-18', title: 'V3 · «Aplicar daño» se ve a la primera',
     sections: [
       { title: 'Aplicar daño', items: [
