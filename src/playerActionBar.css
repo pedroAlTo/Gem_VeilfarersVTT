@@ -58,7 +58,7 @@
 body.pab-targeting #tactical_canvas { cursor: crosshair !important; }
 /* A player's right panel: Ficha, Nave, Dossiers, Registro and Chat. */
 .tab-nav-btn[data-tab="sheet"] { display: none !important; }
-body.player-view .tab-nav-btn[data-tab="sheet"] { display: flex !important; }
+body.player-view .tab-nav-btn[data-tab="sheet"] { display: flex !important; align-items: center; justify-content: center; text-align: center; }
 body.player-view .tab-nav-btn[data-tab="clocks"], body.player-view .tab-nav-btn[data-tab="roster"], body.player-view .tab-nav-btn[data-tab="scenes"] { display: none !important; }
 /* In player stance the layers panel is not needed and would sit on the action bar. */
 body.player-stance #layer_hud_container { display: none !important; }
@@ -94,3 +94,10 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-res.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .pab-res.sq { width: 8px; height: 8px; }
 .pab-res.on { background: #edd58a; box-shadow: 0 0 4px rgba(237,213,138,.55); }
+/* Advantage / Disadvantage on the marked target */
+.pab-attack-edges { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+/* The Keeper's aiming panel over the map */
+.keeper-attack-panel { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); z-index: 142; width: min(360px, calc(100% - 24px)); padding: 8px 10px 10px;
+  background: rgba(13,4,32,.96); border: 1px solid rgba(192,132,252,.55); border-top: 2px solid #fde68a; box-shadow: 0 12px 32px rgba(0,0,0,.55); color: #e5edf5; animation: pab-in .2s ease-out both; }
+.keeper-attack-panel header { position: relative; display: flex; align-items: center; gap: 4px; padding-right: 30px; margin-bottom: 8px; font: 600 13px/1.2 var(--font-hud); }
+.keeper-attack-panel header .pab-more { top: -2px; }

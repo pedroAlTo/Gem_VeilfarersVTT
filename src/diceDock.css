@@ -13,3 +13,7 @@
 /* The first-steps guide sits below the icon. */
 html body .guide-panel.in-map { top: 58px; }
 @media (max-width: 600px) { .dice-dock-panel { left: 8px; right: 8px; width: auto; top: 56px; } }
+/* The Keeper's screen, left of the dice: every Keeper roll is secret while it is up */
+.gm-screen-btn { right: 60px; }
+.gm-screen-btn[hidden] { display: none; }
+.gm-screen-btn.active { opacity: 1; color: #0d0420; background: #fde68a; border-color: #fde68a; box-shadow: 0 0 12px rgba(253,230,138,.45); }

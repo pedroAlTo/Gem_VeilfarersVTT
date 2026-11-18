@@ -1,10 +1,27 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.11**.
-Paquete: `VeilFarers_VTT_v2.17.11.zip`.
+Versión actual del VTT: **v2.17.12**.
+Paquete: `VeilFarers_VTT_v2.17.12.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.17.12] — 2026-11-18
+
+V3 · Atacar con Ventaja o Desventaja y pantalla del Keeper
+
+### Ataques
+
+- Al marcar el objetivo aparecen Desventaja y Ventaja: tocar una ataca con ella; el segundo toque en el objetivo ataca sin ventaja. Igual para el jugador (en la Ficha) y para el Keeper.
+- El Keeper apunta con un panel flotante sobre el mapa: quién ataca y con qué, el objetivo con su distancia y su tirada, Desventaja/Ventaja y cancelar.
+
+### Pantalla del Keeper
+
+- Nuevo icono de pantalla de Keeper junto al de los dados (solo para el Keeper). Levantada, todas sus tiradas son secretas: solo las ve él. Es el mismo interruptor que «Tirada secreta» del panel de dados y se recuerda entre sesiones en este navegador.
+
+### Detalles
+
+- El texto de la pestaña FICHA queda centrado como las demás.
 
 ## [2.17.11] — 2026-11-17
 

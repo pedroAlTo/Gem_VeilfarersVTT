@@ -1261,6 +1261,13 @@ export const PAIRS = [
   ["Este adversario no tiene ataque en su ficha: indica su daño para atacar.", "This adversary has no attack on its sheet: set its damage to attack."],
   ["Avisos de reglas de las armas: solo lectura.", "Weapon rule notices: read only."],
   ["Reglas · avisos de armas", "Rules · weapon notices"],
+  // Attack edge and Keeper screen (v2.17.12)
+  ["Pantalla del Keeper: tus tiradas son secretas.", "Keeper screen: your rolls are secret."],
+  ["Pantalla del Keeper retirada: tus tiradas las ve la mesa.", "Keeper screen down: the table sees your rolls."],
+  ["Pantalla del Keeper: tus tiradas son secretas (pulsa para retirarla)", "Keeper screen: your rolls are secret (click to lower it)"],
+  ["Pantalla del Keeper: pulsa para que tus tiradas sean secretas", "Keeper screen: click to make your rolls secret"],
+  ["Toca otra vez el objetivo para atacar sin ventaja", "Tap the target again to attack without advantage"],
+  ["Cancelar el ataque", "Cancel the attack"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

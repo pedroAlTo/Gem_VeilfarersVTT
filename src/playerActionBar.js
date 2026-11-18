@@ -178,6 +178,7 @@ export class PlayerActionBar {
     this.root.querySelectorAll('[data-pab-edge]').forEach(b => { b.onclick = () => this.tap({ kind: 'edge', id: b.dataset.pabEdge }); });
     this.root.querySelector('[data-pab-dc]')?.addEventListener('change', event => { const panel = document.getElementById('dice_dc_select'); if (panel) { panel.value = event.target.value; panel.dispatchEvent(new Event('change')); } this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-apply]')?.addEventListener('click', () => this.applyDamage());
+    this.root.querySelectorAll('[data-pab-attack-edge]').forEach(b => { b.onclick = () => this.confirmAttack(b.dataset.pabAttackEdge); });
     this.root.querySelector('[data-pab-shields]')?.addEventListener('click', () => document.querySelector('#dmg_mitigate_btn')?.click());
     this.root.querySelector('[data-pab-clear]')?.addEventListener('click', () => { this.result = null; this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-panel]')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } })));
@@ -189,7 +190,8 @@ export class PlayerActionBar {
       <div><span>Objetivo:</span> <b data-no-i18n>${e(t.name)}</b> · <span data-no-i18n>${e(t.band)} · ${e(t.meters.toFixed(1))} m</span>${t.blocked ? ' · <span>Línea de tiro bloqueada</span>' : ''}</div>
       ${t.allowed ? `<div class="pab-edge-tag ${edge[0]}"><b>${edge[1]}</b></div>` : ''}
       ${t.reasons.map(r => `<div class="pab-reason"><span>${e(r)}</span></div>`).join('')}
-      <div class="pab-confirm"><span>${t.allowed ? 'Toca otra vez el objetivo para atacar' : 'Fuera de alcance: elige otro objetivo'}</span> · <span>Esc para cancelar</span></div>
+      ${t.allowed ? `<div class="pab-buttons pab-attack-edges"><button type="button" class="pab-edge-btn dis" data-pab-attack-edge="dis">Desventaja</button><button type="button" class="pab-edge-btn adv" data-pab-attack-edge="adv">Ventaja</button></div>` : ''}
+      <div class="pab-confirm"><span>${t.allowed ? 'Toca otra vez el objetivo para atacar sin ventaja' : 'Fuera de alcance: elige otro objetivo'}</span> · <span>Esc para cancelar</span></div>
     </div>`;
   }
 
@@ -262,7 +264,25 @@ export class PlayerActionBar {
     this.keeperAttack = true; this.tokenId = tokenId; this.weapons = weapons;
     window.veilDiceDock?.close(); // the map must be free to pick the target; the result reopens it
     this.startTargeting(weapons[0].id);
-    notify(`${token.name}: toca el objetivo en el mapa y vuelve a tocarlo para atacar (Esc cancela).`);
+    this.keeperPanel();
+  }
+
+  // The Keeper's aiming panel, floating over the map: who attacks, the marked target with its
+  // distance and roll, and Disadvantage / Advantage (a second touch on the target attacks plainly).
+  keeperPanel() {
+    let box = document.getElementById('keeper_attack_panel');
+    if (!this.keeperAttack || !this.targeting) { box?.remove(); return; }
+    if (!box) {
+      box = document.createElement('section'); box.id = 'keeper_attack_panel'; box.className = 'keeper-attack-panel';
+      for (const type of ['pointerdown', 'mousedown', 'wheel', 'dblclick']) box.addEventListener(type, event => event.stopPropagation());
+      (document.getElementById('canvas_viewport_root') || document.body).append(box);
+    }
+    const attacker = store.state.tokens.find(t => t.id === this.tokenId), weapon = (this.weapons || []).find(w => w.id === this.targeting.weaponId);
+    const p = this.targeting.preview;
+    box.innerHTML = sanitizeHTML(`<header><b data-no-i18n>${e(attacker?.name || '')}</b> · <span data-no-i18n>${e(weapon?.name || '')}</span><button type="button" class="pab-more" data-kap-cancel aria-label="Cancelar el ataque">×</button></header>
+      ${p ? this.targetHint(p) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>'}`);
+    box.querySelector('[data-kap-cancel]').onclick = () => this.stopTargeting();
+    box.querySelectorAll('[data-pab-attack-edge]').forEach(b => { b.onclick = () => this.confirmAttack(b.dataset.pabAttackEdge); });
   }
 
   startTargeting(weaponId) {
@@ -285,9 +305,7 @@ export class PlayerActionBar {
       if (this.targeting.targetId !== target.id) { this.markTarget(target); return; }
       // Out of reach (a melee weapon at a distance): no attack, the sheet already says why.
       if (this.targeting.preview && !this.targeting.preview.allowed) { notify(this.targeting.preview.reasons[0] || 'Fuera de alcance.', 'error'); return; }
-      const chosen = this.targeting.weaponId;
-      this.stopTargeting(true, { keepMark: true });
-      this.attack(chosen, target);
+      this.confirmAttack('normal');
     };
     canvas.addEventListener('pointerdown', this.onPick, true);
     document.body.classList.add('pab-targeting');
@@ -312,10 +330,7 @@ export class PlayerActionBar {
       props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',
       pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
     targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed, edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
-    if (this.keeperAttack) {
-      const p = targeting.preview, edgeText = { adv: 'con Ventaja', dis: 'con Desventaja', normal: 'tirada normal' }[p.edge];
-      notify(`Objetivo: ${p.name} · ${p.band} · ${p.meters.toFixed(1)} m · ${p.allowed ? edgeText : 'fuera de alcance'}${p.reasons.length ? ` · ${p.reasons.join(' ')}` : ''} · ${p.allowed ? 'Toca otra vez para atacar.' : 'Elige otro objetivo.'}`);
-    }
+    if (this.keeperAttack) this.keeperPanel();
     this.signature = ''; this.render();
   }
 
@@ -326,6 +341,7 @@ export class PlayerActionBar {
     if (!this.targeting) return;
     if (this.targeting.targetId && !keepMark) window.veilCanvas?.setAttackTarget?.(null, null);
     if (!keepMark) this.keeperAttack = false;
+    document.getElementById('keeper_attack_panel')?.remove();
     this.targeting = null; document.body.classList.remove('pab-targeting');
     if (redraw) this.render();
   }
@@ -361,7 +377,17 @@ export class PlayerActionBar {
     setTimeout(() => { if (this.result) { this.result = this.readResult(this.result.targetName); this.render(); } }, 400);
   }
 
-  async attack(weaponId, target) {
+  // The marked target is attacked: a second touch on it (no edge), or Advantage/Disadvantage.
+  confirmAttack(edge = 'normal') {
+    const t = this.targeting, target = t && store.state.tokens.find(x => x.id === t.targetId);
+    if (!t || !target) return;
+    if (t.preview && !t.preview.allowed) { notify(t.preview.reasons[0] || 'Fuera de alcance.', 'error'); return; }
+    const chosen = t.weaponId;
+    this.stopTargeting(true, { keepMark: true });
+    this.attack(chosen, target, edge);
+  }
+
+  async attack(weaponId, target, edge = 'normal') {
     const dice = window.veilDiceRoller, token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!dice || !token) return;
     const dockWasOpen = !!window.veilDiceDock?.isOpen;
@@ -375,7 +401,7 @@ export class PlayerActionBar {
       const targetSelect = dice.container.querySelector('#dmg_target_select'), weaponSelect = dice.container.querySelector('#dmg_weapon_select');
       if (weaponSelect) weaponSelect.value = weaponId || '';
       if (targetSelect) { targetSelect.value = target.id; targetSelect.onchange?.(); }
-      this.applyRoll('normal', 0);
+      this.applyRoll(edge, 0);
       await dice.executeAttack();
       // The range and its penalty, said in the bar (the panel says it in its detail line).
       const weapon = (tokenInventory(token).weapons || []).find(w => w.id === weaponId) || null;

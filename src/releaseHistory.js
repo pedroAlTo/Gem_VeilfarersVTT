@@ -1,6 +1,21 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.12', date: '2026-11-18', title: 'V3 · Atacar con Ventaja o Desventaja y pantalla del Keeper',
+    sections: [
+      { title: 'Ataques', items: [
+        'Al marcar el objetivo aparecen Desventaja y Ventaja: tocar una ataca con ella; el segundo toque en el objetivo ataca sin ventaja. Igual para el jugador (en la Ficha) y para el Keeper.',
+        'El Keeper apunta con un panel flotante sobre el mapa: quién ataca y con qué, el objetivo con su distancia y su tirada, Desventaja/Ventaja y cancelar.',
+      ] },
+      { title: 'Pantalla del Keeper', items: [
+        'Nuevo icono de pantalla de Keeper junto al de los dados (solo para el Keeper). Levantada, todas sus tiradas son secretas: solo las ve él. Es el mismo interruptor que «Tirada secreta» del panel de dados y se recuerda entre sesiones en este navegador.',
+      ] },
+      { title: 'Detalles', items: [
+        'El texto de la pestaña FICHA queda centrado como las demás.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.11', date: '2026-11-17', title: 'V3 · El Keeper ataca con sus adversarios y recibe por susurro lo que tiene que resolver',
     sections: [
       { title: 'Keeper', items: [
