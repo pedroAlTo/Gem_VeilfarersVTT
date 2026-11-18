@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.18.2**.
-Paquete: `VeilFarers_VTT_v2.18.2.zip`.
+Versión actual del VTT: **v2.18.3**.
+Paquete: `VeilFarers_VTT_v2.18.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.18.3] — 2026-11-18
+
+V3 · El segundo toque en el objetivo ya ataca siempre
+
+### Corregido
+
+- Al tocar dos veces seguidas el objetivo, el navegador generaba además un doble clic en el mapa, que intentaba abrir la ficha de ese token y mostraba «Selecciona uno de tus tokens asignados». Mientras se apunta, y un momento después de atacar, el mapa ya no recibe esos clics.
+- Seleccionar un enemigo en el mapa ya no le quita la Ficha a tu personaje: si lo seleccionado no es un personaje jugador, la Ficha sigue con el que juegas.
+- En la máquina del Keeper (también en su vista de jugador) se pueden marcar como objetivo los tokens ocultos; un jugador nunca los ve ni los marca.
 
 ## [2.18.2] — 2026-11-18
 

@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.18.3', date: '2026-11-18', title: 'V3 · El segundo toque en el objetivo ya ataca siempre',
+    sections: [
+      { title: 'Corregido', items: [
+        'Al tocar dos veces seguidas el objetivo, el navegador generaba además un doble clic en el mapa, que intentaba abrir la ficha de ese token y mostraba «Selecciona uno de tus tokens asignados». Mientras se apunta, y un momento después de atacar, el mapa ya no recibe esos clics.',
+        'Seleccionar un enemigo en el mapa ya no le quita la Ficha a tu personaje: si lo seleccionado no es un personaje jugador, la Ficha sigue con el que juegas.',
+        'En la máquina del Keeper (también en su vista de jugador) se pueden marcar como objetivo los tokens ocultos; un jugador nunca los ve ni los marca.',
+      ] },
+    ],
+  },
+  {
     version: '2.18.2', date: '2026-11-18', title: 'V3 · Invitaciones sin ventanas encima y pruebas de login con emuladores',
     sections: [
       { title: 'Inicio de sesión', items: [

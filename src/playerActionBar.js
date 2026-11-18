@@ -26,16 +26,21 @@ export const isPlayerView = (state = store.state) => store.sessionRole === 'play
 export const PLAYER_TABS = ['sheet', 'ship', 'handouts', 'log', 'chat'];
 export function barOwner(state = store.state) {
   if (!isPlayerView(state)) return null;
-  const token = state.tokens.find(t => t.id === state.selectedTokenId) || state.tokens.find(t => t.id === state.claimedTokenId);
-  if (!token || token.isPlayer === false || token.actorType === 'drone') return null;
+  // The selected character if it is a player character; otherwise (an enemy selected on the map)
+  // the one being played, so the Ficha never loses it.
+  const playable = t => t && t.isPlayer !== false && t.actorType !== 'drone';
+  const selected = state.tokens.find(t => t.id === state.selectedTokenId);
+  const token = playable(selected) ? selected : state.tokens.find(t => t.id === state.claimedTokenId);
+  if (!playable(token)) return null;
   return store.sessionRole !== 'player' || store.canEditToken(token.id) ? token : null;
 }
 
 // The token under a point of the map canvas, among those the player can see and target.
-export function tokenAtPoint(tokens, world, gridSize, { exclude = '' } = {}) {
+// Hidden tokens only count on the Keeper's machine, which draws them (a player never gets them).
+export function tokenAtPoint(tokens, world, gridSize, { exclude = '', includeHidden = false } = {}) {
   for (let i = tokens.length - 1; i >= 0; i--) {
     const t = tokens[i];
-    if (!t || t.id === exclude || t.hidden) continue;
+    if (!t || t.id === exclude || (t.hidden && !includeHidden)) continue;
     const radius = ((t.size || 1) * gridSize) / 2;
     if (Math.hypot(world.x - t.x, world.y - t.y) <= radius + 4) return t;
   }
@@ -297,7 +302,7 @@ export class PlayerActionBar {
       if (!engine?.screenToWorld) return;
       const rect = canvas.getBoundingClientRect(), point = event.touches?.[0] || event;
       const world = engine.screenToWorld(point.clientX - rect.left, point.clientY - rect.top);
-      const target = tokenAtPoint(store.getTokensForActiveMap(), world, map.gridSize || 64, { exclude: this.tokenId });
+      const target = tokenAtPoint(store.getTokensForActiveMap(), world, map.gridSize || 64, { exclude: this.tokenId, includeHidden: store.sessionRole !== 'player' });
       if (!target) return;
       event.preventDefault(); event.stopImmediatePropagation();
       // First touch marks the target (the map draws the line and the distance); a second
@@ -308,6 +313,14 @@ export class PlayerActionBar {
       this.confirmAttack('normal');
     };
     canvas.addEventListener('pointerdown', this.onPick, true);
+    // Two quick touches on the target also make a double-click (and clicks) on the map, which
+    // would open that token's sheet ("Selecciona uno de tus tokens asignados") or select it. While
+    // aiming, and for a moment after the attack, the map does not get them.
+    if (!this.swallowInstalled) {
+      this.swallowInstalled = true;
+      const swallow = event => { if (this.targeting || performance.now() < (this.swallowUntil || 0)) { event.preventDefault(); event.stopImmediatePropagation(); } };
+      for (const type of ['dblclick', 'click', 'mousedown', 'mouseup', 'pointerup', 'contextmenu']) canvas.addEventListener(type, swallow, true);
+    }
     document.body.classList.add('pab-targeting');
     this.render();
   }
@@ -383,6 +396,7 @@ export class PlayerActionBar {
     if (!t || !target) return;
     if (t.preview && !t.preview.allowed) { notify(t.preview.reasons[0] || 'Fuera de alcance.', 'error'); return; }
     const chosen = t.weaponId;
+    this.swallowUntil = performance.now() + 700;
     this.stopTargeting(true, { keepMark: true });
     this.attack(chosen, target, edge);
   }
