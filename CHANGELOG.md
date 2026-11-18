@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.23.1**.
-Paquete: `VeilFarers_VTT_v2.23.1.zip`.
+Versión actual del VTT: **v2.23.2**.
+Paquete: `VeilFarers_VTT_v2.23.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.23.2] — 2026-11-18
+
+V3 · Dados 3D también para las propiedades del arma
+
+### Dados 3D
+
+- Los dados extra de las propiedades del arma se lanzan en 3D después de los de daño: uno por cada dado al máximo con Burst Fire, el dado extra de Massive y el d6 de Energy Surge. El daño se recalcula con las caras que muestran.
+- El d6 de Overheating se lanza tras el ataque y muestra su tarjeta («se sobrecalienta» con 1–2).
 
 ## [2.23.1] — 2026-11-18
 
