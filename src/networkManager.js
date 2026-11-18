@@ -388,6 +388,8 @@ export class NetworkManager {
           }
         : w
     );
+    // A secret light switch is the Keeper's: players never receive it.
+    if (Array.isArray(map.switches)) map.switches = map.switches.filter(sw => !sw.secret);
     const memberId = this.members.get(peerId)?.id || peerId;
     return {
       ...this.store.serializeCampaign(),
@@ -943,10 +945,33 @@ export class NetworkManager {
         (t) => t.id === tokenId && controlsToken(t, this.members.get(senderId)?.id || senderId)
       );
     // A rest pauses the table: nothing moves or acts until everyone has chosen their moves.
-    if (this.store.state.rest && (['TOKEN_UPDATE', 'TOKEN_MOVE', 'APPLY_DAMAGE'].includes(data.type) || (data.type === 'ACTION' && data.action?.type !== 'REST_CHOICE'))) {
+    if (this.store.state.rest && (['TOKEN_UPDATE', 'TOKEN_MOVE', 'APPLY_DAMAGE', 'MAP_INTERACT'].includes(data.type) || (data.type === 'ACTION' && data.action?.type !== 'REST_CHOICE'))) {
       const conn = this.connections.get(senderId), error = 'La partida está en pausa: el grupo está descansando.';
       if (data.type === 'ACTION') conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error }));
       else { conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', ...(Number.isSafeInteger(data.sequence) ? { sequence: data.sequence } : {}), error })); if (conn) this.syncPeer(conn); }
+      return;
+    }
+    // A player opens a door or uses a light switch: the table checks it (not secret, not locked,
+    // on the scene) and does it. (Doors used to change only on the player's screen.)
+    if (data.type === 'MAP_INTERACT') {
+      const map = this.store.getActiveMap(), id = String(data.id ?? '');
+      const before = this.store.tableActing; this.store.tableActing = true;
+      try {
+        if (data.kind === 'door') {
+          const wall = (map.walls || []).find(w => w.id === id && (w.isDoor || w.wallType === 'door'));
+          if (wall && !wall.isSecret && !wall.isLocked) {
+            this.store.updateWall(wall.id, { isOpen: !wall.isOpen });
+            this.store.addCombatLog?.({ type: 'SYSTEM', title: !wall.isOpen ? '🚪 COMPUERTA ABIERTA' : '🚪 COMPUERTA CERRADA', details: `La escotilla ha sido ${!wall.isOpen ? 'abierta' : 'cerrada'}.` });
+          }
+        } else if (data.kind === 'switch') {
+          const sw = (map.switches || []).find(x => x.id === id);
+          if (sw && !sw.secret && sw.usable) {
+            const result = this.store.toggleSwitch(sw.id);
+            if (result) this.store.addCombatLog?.({ type: 'SYSTEM', title: result.on ? '💡 LUCES ENCENDIDAS' : '🌑 LUCES APAGADAS', details: `${sw.label || 'Interruptor'}: ${result.count} luz${result.count === 1 ? '' : 'es'}.` });
+          }
+        }
+      } finally { this.store.tableActing = before; }
+      this.syncAll();
       return;
     }
     if (data.type === 'IMPORT_CHARACTER') {

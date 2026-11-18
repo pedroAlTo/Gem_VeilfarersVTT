@@ -5,7 +5,8 @@
 import { FreehandTool } from './freehand.js';
 import { MapClipboard } from './mapClipboard.js';
 import { LightingEngine } from './lightingEngine.js';
-import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog } from './surfaceFX.js';
+import { DAYLIGHT_BELOW } from './fogEngine.js';
+import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog, drawLavaGlow } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
@@ -39,6 +40,20 @@ export const WATER_DEPTH_COLORS = [
   'rgba(30, 58, 138, 0.78)',   // 4: Chest
   'rgba(10, 15, 45, 0.92)'     // 5: Abyss
 ];
+
+// Ramer–Douglas–Peucker: a freehand outline with only the points that shape it.
+function simplifyPath(points, tolerance = 3) {
+  if (points.length < 3) return points.slice();
+  const dist = (p, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy; if (!l) return Math.hypot(p.x - a.x, p.y - a.y); const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)); return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)); };
+  const keep = new Uint8Array(points.length); keep[0] = keep[points.length - 1] = 1;
+  const stack = [[0, points.length - 1]];
+  while (stack.length) {
+    const [i, j] = stack.pop(); let best = -1, at = -1;
+    for (let k = i + 1; k < j; k++) { const d = dist(points[k], points[i], points[j]); if (d > best) { best = d; at = k; } }
+    if (best > tolerance) { keep[at] = 1; stack.push([i, at], [at, j]); }
+  }
+  return points.filter((_, i) => keep[i]);
+}
 
 export class CanvasEngine {
   constructor(canvasElement) {
@@ -181,7 +196,7 @@ export class CanvasEngine {
     if (this.currentCampaignId !== campaignId) {
       this.templates = []; this.pings = []; this.activeTemplate = null;
       this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear(); this.fx.combat.clear();
-      for (const name of ['draggedToken', 'draggedWall', 'draggedLight', 'draggedEffect', 'draggedWater', 'draggedTemplate', 'preDragSnapshot']) this[name] = null;
+      for (const name of ['draggedToken', 'draggedWall', 'draggedLight', 'draggedSwitch', 'draggedEffect', 'draggedWater', 'draggedTemplate', 'preDragSnapshot']) this[name] = null;
     }
     this.currentCampaignId = campaignId;
     this.currentMapKey = key;
@@ -417,7 +432,7 @@ export class CanvasEngine {
 
   cancelWaterDrawing() {
     if (this.waterStart || this.waterPolyPoints?.length) this.preDragSnapshot = null;
-    this.waterStart = null; this.waterCurrent = null; this.waterPolyPoints = [];
+    this.waterStart = null; this.waterCurrent = null; this.waterPolyPoints = []; this.waterFreePoints = null;
     this.waterDraftChanged();
   }
 
@@ -646,6 +661,57 @@ export class CanvasEngine {
     if (t >= 1) { g.x = g.toX; g.y = g.toY; g.dur = 0; return token; }
     return { ...token, x: g.x, y: g.y };
   }
+  // One square in a direction for the selected token: walls, doors and windows stop a player as
+  // when dragging; the move is the player's active action (Spotlight) and reaches the table.
+  nudgeSelectedToken(dx, dy) {
+    const state = store.getState(), map = store.getActiveMap();
+    const tok = state.tokens.find(t => t.id === state.selectedTokenId);
+    if (!tok || !map || tok.mapId !== state.activeMapId || this.draggedToken) return false;
+    if (!['select', 'measure'].includes(state.activeTool || 'select')) return false;
+    if (state.userRole !== 'keeper' && !store.canEditToken(tok.id)) return false;
+    if (state.rest && state.userRole !== 'keeper') { notify('La partida está en pausa: el grupo está descansando.', 'error'); return true; }
+    const g = map.gridSize || 64, W = this.mapImage?.width || Infinity, H = this.mapImage?.height || Infinity;
+    const x = Math.max(0, Math.min(W, tok.x + dx * g)), y = Math.max(0, Math.min(H, tok.y + dy * g));
+    if (x === tok.x && y === tok.y) return true;
+    if (state.userRole !== 'keeper') {
+      const wall = (map.walls || []).find(w => {
+        const type = w.wallType || (w.isDoor ? 'door' : (w.isWindow ? 'window' : 'wall'));
+        return (type === 'wall' || type === 'window' || (type === 'door' && !w.isOpen)) && this.checkLineIntersection(tok.x, tok.y, x, y, w.x1, w.y1, w.x2, w.y2);
+      });
+      if (wall) {
+        const type = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
+        audio.playError();
+        notify(type === 'window' ? 'No puedes atravesar ventanas de cristal reforzado.' : type === 'door' ? 'La compuerta está cerrada.' : 'No puedes atravesar muros opacos.', 'error');
+        return true;
+      }
+    }
+    if (store.updateToken(tok.id, { x, y }) === false) return true;
+    if (store.sessionRole !== 'player' && state.userRole === 'player') grantSpotlight(store, tok.id);
+    if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId: tok.id, x, y });
+    return true;
+  }
+
+  // The scene's darkness now: 1 − its ambient light. When the Keeper changes it with a
+  // transition (Clima: Día / Atardecer / Noche), every screen slides to it over that time.
+  // A scene keeps its old look until the Keeper sets its darkness in Clima (`map.darkness`): with
+  // fog of war the fog alone shades it (no darkness), without fog its ambient light does.
+  sceneDarkness(map, now = (typeof performance !== 'undefined' ? performance.now() : Date.now()), fog = true) {
+    if (Number.isFinite(this.previewDarkness)) return Math.max(0, Math.min(1, this.previewDarkness));
+    const set = Number.isFinite(map?.darkness) ? map.darkness : fog ? 0 : 1 - (map?.ambientLight ?? 0.25);
+    const target = Math.max(0, Math.min(1, set));
+    const d = this.darknessAnim;
+    if (!d || d.mapId !== map?.id) { this.darknessAnim = { mapId: map?.id, from: target, to: target, start: now, dur: 0 }; return target; }
+    if (d.to !== target) {
+      const shown = this.darknessAt(d, now);
+      Object.assign(d, { from: shown, to: target, start: now, dur: Math.max(0, Math.min(60000, Number(map.lightTransitionMs) || 0)) });
+    }
+    return this.darknessAt(d, now);
+  }
+  darknessAt(d, now) {
+    if (!d.dur) return d.to;
+    const t = Math.max(0, Math.min(1, (now - d.start) / d.dur)), ease = t * t * (3 - 2 * t);
+    return d.from + (d.to - d.from) * ease;
+  }
   visionTokens() {
     return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId);
   }
@@ -679,6 +745,9 @@ export class CanvasEngine {
         this.isSpacePressed = true;
         this.canvas.style.cursor = 'grab';
       }
+      // Arrow keys move the selected token one square (V3), with the same rules as dragging it.
+      const step = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+      if (step && !e.ctrlKey && !e.metaKey && !e.altKey && this.nudgeSelectedToken(step[0], step[1])) { e.preventDefault(); return; }
 
       // Delete key deletes active area template or selected wall/light/water zone
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -748,7 +817,7 @@ export class CanvasEngine {
         this.rulerStart = null;
         this.wallStart = null;
         this.cancelWaterDrawing();
-        store.update({ selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null });
+        store.update({ selectedWallId: null, selectedLightId: null, selectedSwitchId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null });
       }
     });
 
@@ -990,6 +1059,11 @@ export class CanvasEngine {
             this.waterPolyPoints.push({ x: Math.round(world.x), y: Math.round(world.y) });
             this.waterDraftChanged();
             return;
+          } else if (mode === 'free') {
+            // Freehand: the zone follows the pointer; releasing closes it.
+            this.waterFreePoints = [{ x: Math.round(world.x), y: Math.round(world.y) }];
+            this.waterDraftChanged();
+            return;
           } else {
             this.waterStart = world;
             this.waterCurrent = world;
@@ -1068,7 +1142,7 @@ export class CanvasEngine {
             store.update({
               selectedTokenId: clickedToken.id,
               selectedWallId: null,
-              selectedLightId: null,
+              selectedLightId: null, selectedSwitchId: null,
               selectedWaterId: null,
               selectedEffectId: null,
               selectedTemplateId: null
@@ -1210,6 +1284,11 @@ export class CanvasEngine {
             return;
           }
 
+          // 2a. Light switches: a player uses a visible, usable one (the Keeper selects them below).
+          if (!isKeeper) {
+            const sw = this.switchAt(map, world, false);
+            if (sw) { this.useSwitch(sw); return; }
+          }
           // 2. Interactive Door Click Check (Available to ALL Players & Keeper)
           for (const wall of (map.walls || [])) {
             const isDoor = wall.isDoor || wall.wallType === 'door';
@@ -1233,8 +1312,9 @@ export class CanvasEngine {
                   return;
                 }
 
-                // Unlocked or Keeper: Toggle door
+                // Unlocked or Keeper: Toggle door (a connected player asks the table: it opens it)
                 const newOpen = !wall.isOpen;
+                if (store.sessionRole === 'player') { network.sendToHost?.({ type: 'MAP_INTERACT', kind: 'door', id: wall.id }); audio.playClockTick(); return; }
                 store.updateWall(wall.id, { isOpen: newOpen });
                 network.broadcast({ type: 'WALL_UPDATE', wallId: wall.id, data: { isOpen: newOpen } });
                 audio.playClockTick();
@@ -1265,17 +1345,17 @@ export class CanvasEngine {
 
                 if (dA <= 18) {
                   this.activeTemplate = null;
-                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
+                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedSwitchId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
                   this.draggedEffect = { effect: eff, handle: 'pointA' };
                   return;
                 } else if (dB <= 18) {
                   this.activeTemplate = null;
-                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
+                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedSwitchId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
                   this.draggedEffect = { effect: eff, handle: 'pointB' };
                   return;
                 } else if (dLine <= 16) {
                   this.activeTemplate = null;
-                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
+                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedSwitchId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
                   this.draggedEffect = { effect: eff, handle: 'center', startX: world.x, startY: world.y, origX: eff.x, origY: eff.y, origX2: eff.x2, origY2: eff.y2 };
                   return;
                 }
@@ -1296,7 +1376,7 @@ export class CanvasEngine {
                 }
                 if (clickedVertexIndex >= 0) {
                   this.activeTemplate = null;
-                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
+                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedSwitchId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
                   this.draggedEffect = { effect: eff, handle: 'polyVertex', vertexIndex: clickedVertexIndex };
                   return;
                 }
@@ -1304,7 +1384,7 @@ export class CanvasEngine {
                 const inside = this.pointInPolygon(world.x, world.y, eff.points);
                 if (distCenter <= 24 || inside) {
                   this.activeTemplate = null;
-                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
+                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedSwitchId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
                   this.draggedEffect = { effect: eff, handle: 'center', startX: world.x, startY: world.y, origX: eff.x, origY: eff.y, origPoints: eff.points.map(p => ({ ...p })) };
                   return;
                 }
@@ -1314,18 +1394,26 @@ export class CanvasEngine {
                 const distHandle = Math.hypot(world.x - (eff.x + eff.radius), world.y - eff.y);
                 if (distHandle <= 18) {
                   this.activeTemplate = null;
-                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
+                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedSwitchId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
                   this.draggedEffect = { effect: eff, handle: 'radius', startX: world.x, origRadius: eff.radius };
                   return;
                 } else if (distCenter <= Math.max(26, eff.radius || 120)) {
                   this.activeTemplate = null;
-                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
+                  store.update({ selectedEffectId: eff.id, selectedLightId: null, selectedSwitchId: null, selectedWallId: null, selectedWaterId: null, selectedTemplateId: null });
                   this.draggedEffect = { effect: eff, handle: 'center', startX: world.x, startY: world.y, origX: eff.x, origY: eff.y };
                   return;
                 }
               }
             }
 
+            // Light switches: select and drag (double click switches them).
+            const sw = this.switchAt(map, world, true);
+            if (sw) {
+              this.activeTemplate = null;
+              store.update({ selectedSwitchId: sw.id, selectedLightId: null, selectedWallId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
+              this.draggedSwitch = { sw: { ...sw }, dx: world.x - sw.x, dy: world.y - sw.y };
+              return;
+            }
             // Check Light selection / handles
             for (const light of (map.lights || [])) {
               const distCenter = Math.hypot(world.x - light.x, world.y - light.y);
@@ -1333,12 +1421,12 @@ export class CanvasEngine {
 
               if (distHandle <= 16) {
                 this.activeTemplate = null;
-                store.update({ selectedLightId: light.id, selectedWallId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
+                store.update({ selectedLightId: light.id, selectedSwitchId: null, selectedWallId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
                 this.draggedLight = { light, handle: 'radius', startX: world.x, origRadius: light.radius };
                 return;
               } else if (distCenter <= 24) {
                 this.activeTemplate = null;
-                store.update({ selectedLightId: light.id, selectedWallId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
+                store.update({ selectedLightId: light.id, selectedSwitchId: null, selectedWallId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
                 this.draggedLight = { light, handle: 'center', startX: world.x, startY: world.y, origX: light.x, origY: light.y };
                 return;
               }
@@ -1360,7 +1448,7 @@ export class CanvasEngine {
               this.activeTemplate = null;
               store.update({
                 selectedWallId: clickedWallPoints[0].wall.id,
-                selectedLightId: null,
+                selectedLightId: null, selectedSwitchId: null,
                 selectedEffectId: null,
                 selectedWaterId: null,
                 selectedTemplateId: null
@@ -1392,7 +1480,7 @@ export class CanvasEngine {
 
               if (distMid <= 16 || distSeg <= 12) {
                 this.activeTemplate = null;
-                store.update({ selectedWallId: wall.id, selectedLightId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
+                store.update({ selectedWallId: wall.id, selectedLightId: null, selectedSwitchId: null, selectedEffectId: null, selectedWaterId: null, selectedTemplateId: null });
                 this.draggedWall = {
                   wall,
                   handle: 'mid',
@@ -1417,14 +1505,14 @@ export class CanvasEngine {
                   const pt = zone.points[vIdx];
                   if (Math.hypot(world.x - pt.x, world.y - pt.y) <= 14) {
                     this.activeTemplate = null;
-                    store.update({ selectedWaterId: zone.id, selectedWallId: null, selectedLightId: null, selectedEffectId: null, selectedTemplateId: null });
+                    store.update({ selectedWaterId: zone.id, selectedWallId: null, selectedLightId: null, selectedSwitchId: null, selectedEffectId: null, selectedTemplateId: null });
                     this.draggedWater = { zone, handle: 'polyVertex', vertexIndex: vIdx };
                     return;
                   }
                 }
                 if (this.pointInPolygon(world.x, world.y, zone.points)) {
                   this.activeTemplate = null;
-                  store.update({ selectedWaterId: zone.id, selectedWallId: null, selectedLightId: null, selectedEffectId: null, selectedTemplateId: null });
+                  store.update({ selectedWaterId: zone.id, selectedWallId: null, selectedLightId: null, selectedSwitchId: null, selectedEffectId: null, selectedTemplateId: null });
                   this.draggedWater = { zone, handle: 'polyCenter', startX: world.x, startY: world.y, origPoints: zone.points.map(p => ({ ...p })) };
                   return;
                 }
@@ -1436,12 +1524,12 @@ export class CanvasEngine {
 
                 if (distHandle <= 16) {
                   this.activeTemplate = null;
-                  store.update({ selectedWaterId: zone.id, selectedWallId: null, selectedLightId: null, selectedEffectId: null, selectedTemplateId: null });
+                  store.update({ selectedWaterId: zone.id, selectedWallId: null, selectedLightId: null, selectedSwitchId: null, selectedEffectId: null, selectedTemplateId: null });
                   this.draggedWater = { zone, handle: 'se', startX: world.x, startY: world.y, origW: zone.width, origH: zone.height };
                   return;
                 } else if (inside) {
                   this.activeTemplate = null;
-                  store.update({ selectedWaterId: zone.id, selectedWallId: null, selectedLightId: null, selectedEffectId: null, selectedTemplateId: null });
+                  store.update({ selectedWaterId: zone.id, selectedWallId: null, selectedLightId: null, selectedSwitchId: null, selectedEffectId: null, selectedTemplateId: null });
                   this.draggedWater = { zone, handle: 'center', startX: world.x, startY: world.y, origX: zone.x, origY: zone.y };
                   return;
                 }
@@ -1452,7 +1540,7 @@ export class CanvasEngine {
           if (state.activeTool === 'select' && this.freehand.select(world)) { this.activeTemplate = null; return; }
           // 4. Clicked background -> clear selections & initiate Stage Pan (Move Tool)
           this.activeTemplate = null;
-          store.update({ selectedTokenId: null, selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null, targetTokenId: null });
+          store.update({ selectedTokenId: null, selectedWallId: null, selectedLightId: null, selectedSwitchId: null, selectedWaterId: null, selectedEffectId: null, selectedTemplateId: null, targetTokenId: null });
           window.dispatchEvent(new CustomEvent('veil:template_deselected'));
           if (state.activeTool === 'select') {
             this.isPanning = true;
@@ -1655,6 +1743,10 @@ export class CanvasEngine {
         return;
       }
 
+      if (this.draggedSwitch) {
+        this.draggedSwitch.sw.x = Math.round(world.x - this.draggedSwitch.dx); this.draggedSwitch.sw.y = Math.round(world.y - this.draggedSwitch.dy);
+        return;
+      }
       if (this.draggedLight) {
         const dl = this.draggedLight;
         if (dl.handle === 'center') {
@@ -1705,6 +1797,11 @@ export class CanvasEngine {
 
       if (this.waterStart) {
         this.waterCurrent = world;
+        return;
+      }
+      if (this.waterFreePoints?.length) {
+        const last = this.waterFreePoints.at(-1);
+        if (Math.hypot(world.x - last.x, world.y - last.y) >= 6 / this.zoom && this.waterFreePoints.length < 4000) this.waterFreePoints.push({ x: Math.round(world.x), y: Math.round(world.y) });
         return;
       }
 
@@ -1974,6 +2071,11 @@ export class CanvasEngine {
         this.draggedWall = null;
       }
 
+      if (this.draggedSwitch) {
+        const { sw } = this.draggedSwitch; this.draggedSwitch = null;
+        const before = (store.getActiveMap().switches || []).find(x => x.id === sw.id);
+        if (before && (before.x !== sw.x || before.y !== sw.y)) store.updateSwitch(sw.id, { x: sw.x, y: sw.y });
+      }
       if (this.draggedLight) {
         if (this.preDragSnapshot) {
           store._skipNextUndoSnapshot = true;
@@ -2069,6 +2171,17 @@ export class CanvasEngine {
         this.wallCurrent = null;
       }
 
+      if (this.waterFreePoints?.length && e.button === 0) {
+        const points = simplifyPath(this.waterFreePoints, 3 / this.zoom).slice(0, 512);
+        this.waterFreePoints = null;
+        if (points.length >= 3 && this.canDrawWater()) {
+          try {
+            if (this.preDragSnapshot) { store._skipNextUndoSnapshot = true; undoManager.pushSnapshot(this.preDragSnapshot, 'Dibujar zona'); }
+            store.addWaterZone({ shape: 'polygon', points, depth: 2 });
+          } catch (error) { notify(error.message, 'error'); }
+        }
+        this.waterDraftChanged();
+      }
       if (this.waterStart && this.waterCurrent && this.canDrawWater() && store.state.waterDrawMode !== 'polygon' && e.button === 0) {
         const x1 = Math.min(this.waterStart.x, this.waterCurrent.x);
         const y1 = Math.min(this.waterStart.y, this.waterCurrent.y);
@@ -2296,6 +2409,8 @@ export class CanvasEngine {
       }
     }
 
+    // 0a. SWITCHES: the Keeper switches them with a double click.
+    if (isKeeper) { const sw = this.switchAt(map, world, true); if (sw) { this.useSwitch(sw); return; } }
     // 0b. DOORS: Double click toggles door open/closed
     for (const wall of (map.walls || [])) {
       const isDoor = wall.isDoor || wall.wallType === 'door';
@@ -2314,6 +2429,7 @@ export class CanvasEngine {
             return;
           }
           const newOpen = !wall.isOpen;
+          if (store.sessionRole === 'player') { network.sendToHost?.({ type: 'MAP_INTERACT', kind: 'door', id: wall.id }); audio.playClockTick(); return; }
           store.updateWall(wall.id, { isOpen: newOpen });
           network.broadcast({ type: 'WALL_UPDATE', wallId: wall.id, data: { isOpen: newOpen } });
           audio.playClockTick();
@@ -2665,55 +2781,57 @@ export class CanvasEngine {
       return p && (p.x !== tok.x || p.y !== tok.y) ? tok : drawnAt(tok);
     };
 
-    // A. Dynamic Lighting Pass (Ambient darkness, light fixtures, sirens)
-    if (state.layerVisibility.walls_lights !== false && !isKeeperGM) {
-      const fullMapId = `${state.campaignId}:${map.id}`;
-      const activeLights = (map.lights || []).filter(l => {
-        if (isKeeperGM || state.fogOfWar === false) return true;
-        return this.fog.isPointExplored(l.x, l.y, fullMapId);
-      });
+    // A. Lighting (Foundry-like): the scene's darkness (0 day … 1 night, animated when the Keeper
+    // changes it) covers the map, and every light cuts it with its lit area. Everyone sees it;
+    // the Keeper's GM vision sees it softened so the map stays readable.
+    // Who sees on this screen: the party (a player's tokens follow confirmed places; while the
+    // player drags, the vision stays at the start of the drag).
+    let viewers = [];
+    if (state.userRole === 'player') {
+      viewers = activeTokens.filter(isPartyToken);
+      if (viewers.length === 0) {
+        const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
+        if (claimed) viewers = [claimed];
+      }
+      // Vision follows the token as it slides; while the player drags, it stays at the origin
+      // so the player cannot scan ahead into undiscovered areas.
+      viewers = viewers.map(v => this.draggedToken?.id === v.id ? (this.draggedTokenOrigX != null ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v) : seenAt(v));
+    } else {
+      // Keeper mode: use player tokens to stamp exploration and show visibility
+      viewers = activeTokens.filter(isPartyToken);
+      if (viewers.length === 0 && state.selectedTokenId) {
+        const sel = activeTokens.find(t => t.id === state.selectedTokenId);
+        if (sel) viewers = [sel];
+      }
+      viewers = viewers.map(drawnAt);
+    }
+
+    const darkness = this.sceneDarkness(map, now, state.fogOfWar !== false);
+    // With fog of war, what the characters see is lit for this screen: their sight clears the
+    // scene's darkness, as before, even without a light of their own.
+    const sightLights = state.fogOfWar !== false ? viewers.filter(v => !v.hidden).map(v => ({ x: v.x, y: v.y, radius: v.visionRange || (v.hasLight ? v.lightRadius : 360), facingAngle: v.facingAngle ?? 0, visionAngle: v.visionAngle ?? 90 })) : [];
+    if (state.layerVisibility.walls_lights !== false) {
       // A token's own light goes where the token is drawn: while it is dragged into place and
       // while it slides to a new place. (Vision and fog keep the confirmed position.)
       const lightingTokens = activeTokens.map(drawnAt);
-      // When Fog of War is enabled, Fog of War itself controls map darkness and explored attenuation (50%).
-      // Dynamic lighting only renders light fixtures and glows without covering the explored map with opaque darkness.
-      const ambientLightLevel = state.fogOfWar !== false ? 1.0 : (map.ambientLight ?? 0.25);
-
       this.lighting.renderLighting({
         ctx,
         mapWidth: this.mapImage.width,
         mapHeight: this.mapImage.height,
-        ambientLight: ambientLightLevel,
+        ambientLight: 1 - darkness * (isKeeperGM ? 0.55 : 1),
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
-        lights: activeLights,
+        lights: (map.lights || []).filter(l => !l.off),
         tokens: lightingTokens,
+        sights: sightLights,
         time: now * 0.001
       });
+      // Lava lights itself through the darkness.
+      if (state.layerVisibility.water !== false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
     }
 
     // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)
     if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
-      let viewers = [];
-      if (state.userRole === 'player') {
-        viewers = activeTokens.filter(isPartyToken);
-        if (viewers.length === 0) {
-          const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
-          if (claimed) viewers = [claimed];
-        }
-        // Vision follows the token as it slides; while the player drags, it stays at the origin
-        // so the player cannot scan ahead into undiscovered areas.
-        viewers = viewers.map(v => this.draggedToken?.id === v.id ? (this.draggedTokenOrigX != null ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v) : seenAt(v));
-      } else {
-        // Keeper mode: use player tokens to stamp exploration and show visibility
-        viewers = activeTokens.filter(isPartyToken);
-        if (viewers.length === 0 && state.selectedTokenId) {
-          const sel = activeTokens.find(t => t.id === state.selectedTokenId);
-          if (sel) viewers = [sel];
-        }
-        viewers = viewers.map(drawnAt);
-      }
-
       const fullMapId = `${state.campaignId}:${map.id}`;
       if (!this.fog.isExplorationLoaded(fullMapId) && map.fogExplored) {
         this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
@@ -2725,7 +2843,15 @@ export class CanvasEngine {
         mapHeight: this.mapImage.height,
         mapId: fullMapId,
         walls: map.walls || [],
-        lights: map.lights || [],
+        // Every light that shows something at night: the map's and the tokens' own (where the
+        // table has them; a player's dragged token keeps its light at the start of the drag).
+        lights: [...(map.lights || []).filter(l => !l.off).map(l => ({ ...l, fixture: true })), ...activeTokens.filter(t => t.hasLight && t.lightRadius > 0 && !t.hidden).map(t => {
+          const at = this.draggedToken?.id === t.id && state.userRole === 'player' && this.draggedTokenOrigX != null ? { ...t, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : state.userRole === 'player' ? seenAt(t) : drawnAt(t);
+          return { x: at.x, y: at.y, radius: t.lightRadius, facingAngle: t.facingAngle, visionAngle: t.visionAngle ?? 90 };
+        })],
+        darkness,
+        // Day (whole line of sight) only when the Keeper set the scene's time in Clima.
+        daylight: Number.isFinite(map.darkness) && darkness < DAYLIGHT_BELOW,
         viewers,
         lightingEngine: this.lighting,
         exploredOpacity: state.fogExploredOpacity ?? 0.50,
@@ -2782,6 +2908,7 @@ export class CanvasEngine {
     if (isEditorMode) {
       this.renderLightMarkers(ctx, map.lights || []);
     }
+    this.renderSwitches(ctx, map, state.userRole === 'keeper');
 
     // Render In-Progress Wall
     if (this.wallStart && this.wallCurrent) {
@@ -2796,6 +2923,17 @@ export class CanvasEngine {
       ctx.restore();
     }
 
+    // Render In-Progress freehand zone
+    if (this.canDrawWater() && this.waterFreePoints?.length > 1) {
+      const lava = state.waterKind === 'lava';
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(this.waterFreePoints[0].x, this.waterFreePoints[0].y);
+      for (const p of this.waterFreePoints) ctx.lineTo(p.x, p.y);
+      ctx.closePath();
+      ctx.fillStyle = lava ? 'rgba(220, 60, 12, 0.4)' : 'rgba(2, 132, 199, 0.4)'; ctx.fill();
+      ctx.strokeStyle = lava ? '#fb923c' : '#38bdf8'; ctx.lineWidth = 2 / this.zoom; ctx.setLineDash([6 / this.zoom, 6 / this.zoom]); ctx.stroke();
+      ctx.restore();
+    }
     // Render In-Progress Water Zone
     if (this.canDrawWater() && this.waterStart && this.waterCurrent) {
       const x = Math.min(this.waterStart.x, this.waterCurrent.x);
@@ -2804,8 +2942,8 @@ export class CanvasEngine {
       const h = Math.abs(this.waterCurrent.y - this.waterStart.y);
 
       ctx.save();
-      ctx.fillStyle = 'rgba(2, 132, 199, 0.45)';
-      ctx.strokeStyle = '#38bdf8';
+      ctx.fillStyle = state.waterKind === 'lava' ? 'rgba(220, 60, 12, 0.45)' : 'rgba(2, 132, 199, 0.45)';
+      ctx.strokeStyle = state.waterKind === 'lava' ? '#fb923c' : '#38bdf8';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 6]);
       ctx.fillRect(x, y, w, h);
@@ -2925,7 +3063,7 @@ export class CanvasEngine {
       const isSelected = w.id === state.selectedWaterId;
       if (!drawWaterSurface(ctx, w, time, { viewport, quality: this.fx.quality,
         reducedMotion: this.reducedMotion?.matches })) continue;
-      if (rain) drawRainRipples(ctx, w, time, { viewport, quality: this.fx.quality, intensity,
+      if (rain && w.kind !== 'lava') drawRainRipples(ctx, w, time, { viewport, quality: this.fx.quality, intensity,
         reducedMotion: this.reducedMotion?.matches });
       if (!(isWaterLayer || isSelected)) continue;
       const depth = Math.max(0, Math.min(5, w.depth ?? 2));
@@ -3500,6 +3638,59 @@ export class CanvasEngine {
   }
 
   // --- Light Markers Rendering ---
+  // The switch under a point: the Keeper finds every one; a player only the visible ones they
+  // have discovered.
+  switchAt(map, world, keeper) {
+    const fullMapId = `${store.state.campaignId}:${map.id}`;
+    return (map.switches || []).find(sw => Math.hypot(world.x - sw.x, world.y - sw.y) <= 18
+      && (keeper || (!sw.secret && (store.state.fogOfWar === false || this.fog.isPointExplored(sw.x, sw.y, fullMapId))))) || null;
+  }
+  // Pressing a switch: a locked one only tells so; a connected player asks the table.
+  useSwitch(sw) {
+    const keeper = store.state.userRole === 'keeper' && store.sessionRole !== 'player';
+    if (!keeper && !sw.usable) {
+      audio.playError();
+      store.addCombatLog({ type: 'SYSTEM', title: '🔒 INTERRUPTOR BLOQUEADO', details: `${sw.label || 'El interruptor'} no responde. Solo el Keeper puede accionarlo.` });
+      return;
+    }
+    audio.playClockTick();
+    if (store.sessionRole === 'player') { network.sendToHost?.({ type: 'MAP_INTERACT', kind: 'switch', id: sw.id }); return; }
+    const before = store.tableActing; store.tableActing = true;
+    try {
+      const result = store.toggleSwitch(sw.id);
+      if (result) store.addCombatLog({ type: 'SYSTEM', title: result.on ? '💡 LUCES ENCENDIDAS' : '🌑 LUCES APAGADAS', details: `${sw.label || 'Interruptor'}: ${result.count} luz${result.count === 1 ? '' : 'es'}.` });
+    } finally { store.tableActing = before; }
+  }
+  renderSwitches(ctx, map, keeper) {
+    const state = store.getState(), list = map.switches || [];
+    if (!list.length) return;
+    const fullMapId = `${state.campaignId}:${map.id}`;
+    ctx.save();
+    for (const raw of list) {
+      const sw = this.draggedSwitch?.sw?.id === raw.id ? this.draggedSwitch.sw : raw;
+      if (!keeper && (sw.secret || (state.fogOfWar !== false && !this.fog.isPointExplored(sw.x, sw.y, fullMapId)))) continue;
+      const selected = keeper && state.selectedSwitchId === sw.id;
+      // The lights it controls, while selected.
+      if (selected) {
+        ctx.save(); ctx.strokeStyle = 'rgba(253, 230, 138, 0.6)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5 / this.zoom;
+        for (const l of (map.lights || []).filter(l => (sw.lightIds || []).includes(l.id))) { ctx.beginPath(); ctx.moveTo(sw.x, sw.y); ctx.lineTo(l.x, l.y); ctx.stroke(); }
+        ctx.restore();
+      }
+      ctx.save(); ctx.translate(sw.x, sw.y);
+      if (sw.secret) ctx.globalAlpha = 0.6;
+      ctx.fillStyle = 'rgba(13, 4, 32, 0.9)'; ctx.strokeStyle = sw.on ? '#fde68a' : '#64748b'; ctx.lineWidth = selected ? 3 : 1.8;
+      if (sw.secret) ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.roundRect(-10, -14, 20, 28, 5); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+      // The lever: up and glowing when on, down and grey when off.
+      ctx.fillStyle = sw.on ? '#fde68a' : '#475569'; if (sw.on) { ctx.shadowColor = '#fde68a'; ctx.shadowBlur = 10; }
+      ctx.beginPath(); ctx.roundRect(-5, sw.on ? -10 : 1, 10, 9, 2); ctx.fill(); ctx.shadowBlur = 0;
+      if (!sw.usable) { ctx.fillStyle = '#f87171'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🔒', 12, -12); }
+      if (keeper) { ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 10px "Rajdhani", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`${sw.label || 'Interruptor'}${sw.secret ? ' · SECRETO' : ''}`, 0, 26); }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   renderLightMarkers(ctx, lights) {
     const state = store.getState();
 
@@ -3508,8 +3699,9 @@ export class CanvasEngine {
       const isSelected = l.id === state.selectedLightId;
 
       ctx.save();
-      // Lightbulb Center Marker
-      ctx.fillStyle = l.color || '#00f3ff';
+      // Lightbulb Center Marker (grey and dashed when the light is off)
+      if (l.off) ctx.globalAlpha = 0.45;
+      ctx.fillStyle = l.off ? '#475569' : (l.color || '#00f3ff');
       ctx.shadowColor = l.color || '#00f3ff';
       ctx.shadowBlur = 10;
       ctx.beginPath();
@@ -3541,7 +3733,7 @@ export class CanvasEngine {
       ctx.fillStyle = '#e2e8f0';
       ctx.font = 'bold 10px "Rajdhani", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(l.label || 'Light', l.x, l.y - 14);
+      ctx.fillText(`${l.label || 'Light'}${l.off ? ' · OFF' : ''}`, l.x, l.y - 14);
 
       ctx.restore();
     }

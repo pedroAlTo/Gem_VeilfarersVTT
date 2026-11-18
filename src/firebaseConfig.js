@@ -26,6 +26,14 @@ export function useEmulators({ auth = null, firestore = null, authAPI = null, fi
   try { if (firestore && firestoreAPI && !firestore._veilEmulator) { firestoreAPI.connectFirestoreEmulator(firestore, ...EMULATOR_HOSTS.firestore); firestore._veilEmulator = true; } } catch (error) { console.warn('[Emulators] firestore:', error); }
 }
 
+// The one Realtime Database instance of the app (the live room channel and the older
+// integration modules share it), connected to the emulator in that mode.
+export function realtimeDatabase(app, api) {
+  const db = api.getDatabase(app);
+  if (USE_EMULATORS && !db._veilEmulator) { try { api.connectDatabaseEmulator(db, '127.0.0.1', 9000); } catch (error) { console.warn('[Emulators] database:', error); } db._veilEmulator = true; }
+  return db;
+}
+
 export function getFirebaseConfig() {
   if (USE_EMULATORS) return { apiKey: 'demo-key', authDomain: `${EMULATOR_PROJECT}.firebaseapp.com`, projectId: EMULATOR_PROJECT, storageBucket: '', messagingSenderId: '0', appId: '1:0:web:0', databaseURL: `http://127.0.0.1:9000?ns=${EMULATOR_PROJECT}` };
   return {

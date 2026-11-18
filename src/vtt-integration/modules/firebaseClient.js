@@ -1,9 +1,9 @@
 import { initializeApp, getApps } from 'firebase/app';
 import * as authAPI from 'firebase/auth';
 const { getAuth } = authAPI;
-import { getDatabase } from 'firebase/database';
+import * as databaseAPI from 'firebase/database';
 
-import { DEFAULT_FIREBASE_CONFIG, getFirebaseConfig, useEmulators } from '../../firebaseConfig.js';
+import { DEFAULT_FIREBASE_CONFIG, getFirebaseConfig, useEmulators, realtimeDatabase } from '../../firebaseConfig.js';
 export { DEFAULT_FIREBASE_CONFIG, getFirebaseConfig };
 
 let appInstance = null;
@@ -48,7 +48,7 @@ export function getFirebaseDatabaseInstance() {
   if (!app) return null;
   if (!dbInstance) {
     try {
-      dbInstance = getDatabase(app);
+      dbInstance = realtimeDatabase(app, databaseAPI);
     } catch (err) {
       console.warn('[Veilfarers Firebase] Error obteniendo getDatabase():', err);
     }

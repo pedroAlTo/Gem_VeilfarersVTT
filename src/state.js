@@ -72,6 +72,7 @@ class StateStore {
       selectedTokenId: 'tok_harker',
       selectedWallId: null,
       selectedLightId: null,
+      selectedSwitchId: null,
       selectedWaterId: null,
       selectedEffectId: null,
       selectedTemplateId: null,
@@ -79,6 +80,7 @@ class StateStore {
       // UI / Interaction
       activeTool: 'select', // 'select', 'measure', 'template', 'wall', 'light', 'water', 'fx', 'ping'
       waterDrawMode: 'box',
+      waterKind: 'water', // V3: the Clima tool draws water or lava zones
       activeFxType: 'lightning', // 'lightning', 'sparkle', 'explosion', 'radiant', 'void_rift', 'emp'
       templateShape: 'circle', // 'circle', 'cone', 'line', 'box'
       templateRadius: 4, // grid units
@@ -624,8 +626,10 @@ class StateStore {
       ...geometry,
       depth: zoneData.depth ?? 2, // 0 to 5
       color: zoneData.color || 'rgba(0, 243, 255, 0.45)',
-      flowSpeed: zoneData.flowSpeed ?? 1.0
+      flowSpeed: zoneData.flowSpeed ?? 1.0,
+      ...((zoneData.kind ?? this.state.waterKind) === 'lava' ? { kind: 'lava' } : {})
     };
+    if (newZone.kind === 'lava' && !zoneData.name) newZone.name = 'Lava';
     const waterZones = [...(map.waterZones || []), newZone];
     this.updateActiveMap({ waterZones });
     this.update({ selectedWaterId: newZone.id });
@@ -678,8 +682,46 @@ class StateStore {
     this._beforeTacticalMutation('Eliminar Luz');
     const map = this.getActiveMap();
     const lights = (map.lights || []).filter(l => l.id !== lightId);
-    this.updateActiveMap({ lights });
+    // A switch no longer controls a light that is gone.
+    const switches = (map.switches || []).map(sw => (sw.lightIds || []).includes(lightId) ? { ...sw, lightIds: sw.lightIds.filter(id => id !== lightId) } : sw);
+    this.updateActiveMap({ lights, ...(map.switches ? { switches } : {}) });
     if (this.state.selectedLightId === lightId) this.update({ selectedLightId: null });
+  }
+
+  // --- Light switches (V3): like doors, they turn a group of lights on and off. `usable`: a
+  // player may use it (otherwise it is locked); `secret`: only the Keeper sees it.
+  addSwitch(data = {}) {
+    if (this.sessionRole === 'player' || this.state.userRole !== 'keeper') return null;
+    this._beforeTacticalMutation('Añadir interruptor');
+    const map = this.getActiveMap();
+    const sw = { id: 'switch_' + newId(), x: Math.round(data.x ?? 300), y: Math.round(data.y ?? 300), label: String(data.label || 'Interruptor').slice(0, 60), on: data.on ?? true, lightIds: [...new Set(data.lightIds || [])], usable: data.usable ?? true, secret: !!data.secret };
+    this.updateActiveMap({ switches: [...(map.switches || []), sw] });
+    this.update({ selectedSwitchId: sw.id, selectedLightId: null });
+    return sw;
+  }
+  updateSwitch(switchId, partial) {
+    if (this.sessionRole === 'player' && !this.remoteApplying) return;
+    this._beforeTacticalMutation('Modificar interruptor', 'switch_' + switchId);
+    const map = this.getActiveMap();
+    this.updateActiveMap({ switches: (map.switches || []).map(sw => sw.id === switchId ? { ...sw, ...partial } : sw) });
+  }
+  deleteSwitch(switchId) {
+    this._beforeTacticalMutation('Eliminar interruptor');
+    const map = this.getActiveMap();
+    this.updateActiveMap({ switches: (map.switches || []).filter(sw => sw.id !== switchId) });
+    if (this.state.selectedSwitchId === switchId) this.update({ selectedSwitchId: null });
+  }
+  // Flips a switch and every light it controls (on → the lights light up; off → they go dark).
+  toggleSwitch(switchId) {
+    const map = this.getActiveMap(), sw = (map.switches || []).find(x => x.id === switchId);
+    if (!sw) return null;
+    const on = !sw.on, ids = new Set(sw.lightIds || []);
+    this._beforeTacticalMutation(on ? 'Encender luces' : 'Apagar luces');
+    this.updateActiveMap({
+      switches: map.switches.map(x => x.id === switchId ? { ...x, on } : x),
+      lights: (map.lights || []).map(l => ids.has(l.id) ? { ...l, off: !on } : l),
+    });
+    return { on, count: ids.size };
   }
 
   // --- Persistent Particle FX Emitter Elements ---
@@ -817,7 +859,7 @@ class StateStore {
     if (!map) throw new Error('Scene no longer exists.');
     if (mapId === this.state.activeMapId) return true;
     this._beforeTacticalMutation('Move party to ' + map.name);
-    this.update({ activeMapId: mapId, tokens: movePartyToScene(this.state.tokens, map), selectedWallId: null, selectedLightId: null, selectedWaterId: null, selectedEffectId: null });
+    this.update({ activeMapId: mapId, tokens: movePartyToScene(this.state.tokens, map), selectedWallId: null, selectedLightId: null, selectedSwitchId: null, selectedWaterId: null, selectedEffectId: null });
     this.validateSelections();
     return true;
   }

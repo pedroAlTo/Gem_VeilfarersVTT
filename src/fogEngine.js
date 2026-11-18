@@ -6,6 +6,9 @@ import { drawSoftened, visionFill, fingerprint, wallValues } from './softMask.js
 // Width, in map pixels, of the gradient that replaces every hard cut of the fog.
 export const FOG_SOFTNESS = 12;
 const MASK_CELL = 4; // map pixels per cell of the exploration mask
+// Below this scene darkness it is day: tokens see everything in their line of sight.
+export const DAYLIGHT_BELOW = 0.5;
+const tracePolygon = (c, poly) => { c.beginPath(); c.moveTo(poly[0].x, poly[0].y); for (let i = 1; i < poly.length; i++) c.lineTo(poly[i].x, poly[i].y); c.closePath(); };
 
 export class FogOfWarEngine {
   constructor() {
@@ -277,17 +280,21 @@ export class FogOfWarEngine {
     lightingEngine,
     exploredOpacity = 0.88,
     isKeeperGM = false,
-    stamp = true
+    stamp = true,
+    darkness = 0,
+    daylight = false
   }) {
     this.resize(mapWidth, mapHeight);
     const fCtx = this.fogCtx;
     const exploredCanvas = this.getExploredCanvas(mapId, mapWidth, mapHeight);
     const expCtx = exploredCanvas.getContext('2d');
+    // Daylight (the scene's darkness under half, Foundry's «global illumination»): a token sees
+    // everything in its line of sight. At night it sees its own vision and whatever a light shows.
 
     // Nothing the fog depends on has changed since the last frame: draw the same fog again.
-    const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp,
+    const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, daylight ? 1 : 0,
       ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.visionRange || 0, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
-      -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360]),
+      -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360, l.intensity ?? 0.8, l.fixture ? 1 : 0]),
       -2, ...wallValues(walls)]);
     if (key === this.fogKey && this.fogKeyVersion === this.exploredVersion) {
       ctx.save();
@@ -297,66 +304,66 @@ export class FogOfWarEngine {
       return this.lastVision;
     }
 
-    // 1. Calculate active real-time vision polygons for all viewing tokens
+    // 1. What each viewer sees: its line of sight (walls, facing), lit by daylight, by its own
+    // vision or by a light. Only what is seen is remembered as explored: a light the party has
+    // no line of sight to reveals nothing.
+    const sightRange = Math.hypot(mapWidth, mapHeight);
+    const lit = daylight ? [] : (lights || []).map(light => ({
+      poly: lightingEngine.computeVisibilityPolygon(light.x, light.y, light.radius || 200, walls, light.facingAngle ?? null, light.visionAngle ?? 360),
+      x: light.x, y: light.y, radius: light.radius || 200
+    })).filter(l => l.poly && l.poly.length >= 3);
     const currentVisionPolygons = [], visionShapes = [];
     for (const viewer of viewers) {
       if (viewer.hidden) continue;
-      const lx = viewer.x;
-      const ly = viewer.y;
-      const radius = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 360);
+      const own = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 360);
       const facingAngle = viewer.facingAngle ?? 0;
       const visionAngle = viewer.visionAngle ?? 90;
-
-      const poly = lightingEngine.computeVisibilityPolygon(
-        lx,
-        ly,
-        radius,
-        walls,
-        facingAngle,
-        visionAngle
-      );
-
-      if (poly && poly.length >= 3) {
-        currentVisionPolygons.push(poly);
-        visionShapes.push({ poly, x: lx, y: ly, radius });
-        // Stamp this newly discovered field into the persistent exploration memory only when confirmed
-        if (stamp) {
-          this.stampExploration(expCtx, poly);
-        }
-      }
+      const los = lightingEngine.computeVisibilityPolygon(viewer.x, viewer.y, daylight ? sightRange : Math.max(own, ...lit.map(l => Math.hypot(l.x - viewer.x, l.y - viewer.y) + l.radius), 1), walls, facingAngle, visionAngle);
+      if (!los || los.length < 3) continue;
+      currentVisionPolygons.push(los);
+      visionShapes.push({ los, x: viewer.x, y: viewer.y, own });
     }
-
-    // 1b. Calculate illumination for lights in VISITED areas
-    // Lights located in areas already explored by the user show through the shroud
-    const visitedLightPolygons = [];
-    if (lights && lights.length > 0) {
-      for (const light of lights) {
-        const lx = Math.round(light.x);
-        const ly = Math.round(light.y);
-        if (lx < 0 || ly < 0 || lx >= mapWidth || ly >= mapHeight) continue;
-
-        const isVisited = this.isPointExplored(lx, ly, mapId);
-
-        if (isVisited) {
-          const lRadius = light.radius || 200;
-          const lFacing = light.facingAngle ?? null;
-          const lAngle = light.visionAngle ?? 360;
-          const lPoly = lightingEngine.computeVisibilityPolygon(
-            lx,
-            ly,
-            lRadius,
-            walls,
-            lFacing,
-            lAngle
-          );
-          if (lPoly && lPoly.length >= 3) {
-            visitedLightPolygons.push({ poly: lPoly, intensity: light.intensity ?? 0.8 });
-            if (stamp) {
-              this.stampExploration(expCtx, lPoly);
-            }
-          }
+    // The seen area, painted with `paint` (fog: cut out; memory: white).
+    const paintSeen = (target, paint) => {
+      for (const { los, x, y, own } of visionShapes) {
+        target.save();
+        tracePolygon(target, los); target.clip();
+        if (daylight) { target.fillStyle = paint === 'cut' ? 'rgba(0, 0, 0, 1)' : '#ffffff'; target.fillRect(0, 0, mapWidth, mapHeight); }
+        else {
+          // Own vision fades towards the end of its range; a light shows its whole lit area.
+          target.fillStyle = paint === 'cut' ? visionFill(target, x, y, own) : '#ffffff';
+          target.beginPath(); target.arc(x, y, own, 0, Math.PI * 2); target.fill();
+          for (const l of lit) { tracePolygon(target, l.poly); target.fillStyle = paint === 'cut' ? 'rgba(0, 0, 0, 1)' : '#ffffff'; target.fill(); }
         }
+        target.restore();
       }
+    };
+    // Map lights that are on dissipate the fog of their whole lit area (walls still stop the
+    // light), as much as their intensity says: a dim lamp leaves a veil, a bright one clears it.
+    // Only a light the party has seen the spot of, or has in sight now: a lamp in an undiscovered
+    // room reveals nothing.
+    const inside = (poly, x, y) => { let hit = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) hit = !hit; } return hit; };
+    const dispel = (lights || []).filter(l => l.fixture).map(light => {
+      const known = this.isPointExplored(Math.round(light.x), Math.round(light.y), mapId) || visionShapes.some(v => inside(v.los, light.x, light.y));
+      if (!known) return null;
+      const poly = lightingEngine.computeVisibilityPolygon(light.x, light.y, light.radius || 200, walls, light.facingAngle ?? null, light.visionAngle ?? 360);
+      return poly && poly.length >= 3 ? { poly, x: light.x, y: light.y, radius: light.radius || 200, strength: Math.max(0.15, Math.min(1, light.intensity ?? 0.8)) } : null;
+    }).filter(Boolean);
+    const paintDispel = (target, cut) => {
+      for (const d of dispel) {
+        tracePolygon(target, d.poly);
+        if (cut) {
+          const g = target.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.radius);
+          g.addColorStop(0, `rgba(0, 0, 0, ${d.strength})`); g.addColorStop(0.7, `rgba(0, 0, 0, ${d.strength * 0.85})`); g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          target.fillStyle = g;
+        } else target.fillStyle = '#ffffff';
+        target.fill();
+      }
+    };
+    if (stamp && dispel.length) { this.exploredVersion++; paintDispel(expCtx, false); }
+    if (stamp && visionShapes.length) {
+      this.exploredVersion++;
+      paintSeen(expCtx, '#ffffff');
     }
 
     // 2. Prepare fog canvas
@@ -377,31 +384,10 @@ export class FogOfWarEngine {
     fCtx.fillStyle = `rgba(5, 8, 15, ${shroudAlpha})`;
     fCtx.fillRect(0, 0, mapWidth, mapHeight);
 
-    // 5. Cut out the CURRENT active vision polygons completely (0% fog in field of view)
+    // 5. Cut out what the viewers see right now (0% fog).
     fCtx.globalCompositeOperation = 'destination-out';
-    for (const { poly, x, y, radius } of visionShapes) {
-      fCtx.beginPath();
-      fCtx.moveTo(poly[0].x, poly[0].y);
-      for (let i = 1; i < poly.length; i++) {
-        fCtx.lineTo(poly[i].x, poly[i].y);
-      }
-      fCtx.closePath();
-      // Sight fades towards the end of its range instead of stopping at a line.
-      fCtx.fillStyle = visionFill(fCtx, x, y, radius);
-      fCtx.fill();
-    }
-
-    // Also cut out illumination from visited map lights so explored lit zones remain completely clear (no attenuation)
-    for (const { poly } of visitedLightPolygons) {
-      fCtx.beginPath();
-      fCtx.moveTo(poly[0].x, poly[0].y);
-      for (let i = 1; i < poly.length; i++) {
-        fCtx.lineTo(poly[i].x, poly[i].y);
-      }
-      fCtx.closePath();
-      fCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
-      fCtx.fill();
-    }
+    paintSeen(fCtx, 'cut');
+    paintDispel(fCtx, true);
 
     // Reset composite operation to normal
     fCtx.globalCompositeOperation = 'source-over';

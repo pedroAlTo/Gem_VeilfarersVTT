@@ -1,10 +1,75 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.23.2**.
-Paquete: `VeilFarers_VTT_v2.23.2.zip`.
+Versión actual del VTT: **v2.26.0**.
+Paquete: `VeilFarers_VTT_v2.26.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.26.0] — 2026-11-18
+
+V3 · La partida online viaja por Realtime Database
+
+### Firebase
+
+- Los mensajes de la partida online (movimientos, tiradas, estado) y la presencia de los jugadores viajan por Realtime Database, que cobra por datos transferidos y no por operación. Firestore se queda con las cuentas, las salas, los guardados y la presencia del Keeper.
+- En las pruebas, un minuto de partida en reposo pasa de 19 a 6 operaciones de Firestore, y cinco movimientos de 32–64 a 5–7. El jugador ya no escribe en Firestore mientras juega.
+- Si Realtime Database no está disponible (sin crear, sin reglas o bloqueada), la sala sigue funcionando por Firestore como antes, sin hacer nada.
+- Para activarlo hay que crear la base de datos y publicar sus reglas: FIREBASE_SETUP.md, «Realtime Database».
+
+## [2.25.0] — 2026-11-18
+
+V3 · Menos peticiones a Firebase, luces que disipan la niebla e interruptores
+
+### Firebase: menos peticiones
+
+- La partida online gasta mucho menos de la cuota de Firestore: en las pruebas, la mitad de escrituras en reposo y en cada movimiento o cambio de HP.
+- Cada mensaje lleva solo lo que ha cambiado: el token movido y sus campos, no todos los tokens con sus fichas y avatares; la imagen del mapa ya no se reenvía.
+- La campaña se guarda tras 3 s sin cambios (como mucho cada 15 s), no medio segundo después de cada cambio, y cada guardado reescribe solo el trozo que cambia. El latido de presencia pasa de 5 s a 10 s. El control de oscuridad se envía al soltarlo.
+- Si Firebase agota la cuota, la VTT lo dice en claro (y cuándo se renueva) y deja de reintentar.
+
+### Luces
+
+- Cada luz se puede encender y apagar desde su ficha. Una luz encendida disipa la niebla de guerra de su zona (las paredes la siguen cortando), más o menos según su intensidad, si el grupo ya ha visto ese punto o lo tiene a la vista.
+- Interruptores: «＋ Interruptor» en la ficha de una luz crea uno a su lado. Se mueve arrastrándolo; en su ficha se eligen las luces que controla, si es usable por los jugadores o está bloqueado, y si es visible o secreto. El Keeper lo acciona con doble clic o desde su ficha; un jugador, con un clic.
+- Nuevo efecto de luz: Estroboscopio.
+
+### Corregido
+
+- Un jugador conectado ya puede abrir y cerrar puertas: antes solo cambiaba en su pantalla y la mesa no se enteraba.
+
+## [2.24.1] — 2026-11-18
+
+V3 · La niebla vuelve a ser como antes; luces más vivas
+
+### Niebla y visión
+
+- Corregido: tras la v2.24.0 los personajes no iluminaban su zona: de noche lo que veían quedaba bajo la oscuridad de la escena si no llevaban luz propia. Ahora lo que ve cada personaje vuelve a verse claro.
+- Una escena se ve como siempre hasta que el Keeper elige su hora en Clima (Día, Ocaso, Noche o el control Oscuridad). Antes, todos los mapas pasaron a ser de noche sin que nadie lo eligiera, y con oscuridad 0 la visión no tenía límite de distancia.
+- Con Día elegido en Clima, los personajes ven todo lo que tienen a la vista; de noche, su propia visión y lo que iluminan las luces.
+
+### Animaciones de las luces
+
+- Cada luz tiene su propio ritmo (dos antorchas ya no parpadean a la vez). El parpadeo imita una llama irregular con alguna caída, el pulso respira de forma más visible, la luz cuántica tiembla, la sirena funde sus dos colores y el estroboscopio da destellos secos.
+
+## [2.24.0] — 2026-11-18
+
+V3 · Luces que iluminan, Clima con día y noche, lava y flechas del teclado
+
+### Luces
+
+- La escena tiene oscuridad propia (0 % de día … 100 % de noche) y se ve siempre, también con niebla de guerra y en la Visión de Keeper (atenuada, para que el mapa se siga leyendo). Las luces del mapa y de los tokens la iluminan respetando paredes.
+- Como en Foundry: de día un token ve todo lo que tiene a la vista; de noche ve su propia visión y lo que iluminan las luces. Solo se explora lo que se ve: una luz que nadie tiene a la vista ya no destapa su zona a través de las paredes.
+- Corregido: las animaciones de las luces (pulso, parpadeo, cuántica, sirena, chispas) no se veían. Ahora cambian tanto la zona iluminada como el halo.
+
+### Clima (sustituye a Agua)
+
+- Día y noche: Día, Ocaso y Noche llevan la oscuridad a su valor en 10 s en todas las pantallas; el control Oscuridad la cambia al momento.
+- Lluvia y niebla, como antes. Zonas de agua o de lava, en caja, polígono o a mano alzada. La lava brilla de noche; en la ficha de la zona se cambia entre agua y lava.
+
+### Teclado
+
+- Las flechas mueven el token seleccionado una casilla, con las mismas reglas que al arrastrarlo: paredes, puertas cerradas y ventanas detienen a los jugadores, y moverse da el foco.
 
 ## [2.23.2] — 2026-11-18
 

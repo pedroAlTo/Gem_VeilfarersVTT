@@ -5,7 +5,7 @@ import { sanitizeHTML } from './ui.js';
 import { every } from './backgroundTicker.js';
 
 const PERMANENT = [/ya no existe/i, /expulsado/i, /retirado tu acceso/i, /solo el propietario/i, /invitación no existe/i, /pega el código/i, /inicia sesión/i, /cuenta ha cambiado/i];
-export const isPermanentRoomError = error => error?.code === 'permission-denied' || error?.code === 'not-found' || PERMANENT.some(pattern => pattern.test(String(error?.message || '')));
+export const isPermanentRoomError = error => error?.code === 'permission-denied' || error?.code === 'not-found' || error?.code === 'resource-exhausted' || /quota exceeded/i.test(String(error?.message || '')) || PERMANENT.some(pattern => pattern.test(String(error?.message || '')));
 // 2 s, 4 s, 8 s, then every 15 s.
 export const retryDelay = attempt => Math.min(15000, 2000 * 2 ** Math.max(0, Math.min(attempt - 1, 3)));
 

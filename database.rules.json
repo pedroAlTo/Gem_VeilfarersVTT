@@ -1,0 +1,36 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "wires": {
+      "$wire": {
+        ".write": "auth != null && !newData.exists() && data.exists() && (data.child('meta/uid').val() === auth.uid || data.child('meta/keeper').val() === auth.uid)",
+        "meta": {
+          ".read": "auth != null && (data.child('uid').val() === auth.uid || data.child('keeper').val() === auth.uid)",
+          ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['uid', 'keeper', 'epoch']) && newData.child('keeper').isString() && newData.child('keeper').val().length <= 200 && newData.child('epoch').isString() && newData.child('epoch').val().length <= 100"
+        },
+        "seenAt": {
+          ".read": "auth != null && (root.child('wires/' + $wire + '/meta/uid').val() === auth.uid || root.child('wires/' + $wire + '/meta/keeper').val() === auth.uid)",
+          ".write": "auth != null && root.child('wires/' + $wire + '/meta/uid').val() === auth.uid",
+          ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+        },
+        "up": {
+          ".read": "auth != null && root.child('wires/' + $wire + '/meta/keeper').val() === auth.uid",
+          "$part": {
+            ".write": "auth != null && ((!data.exists() && root.child('wires/' + $wire + '/meta/uid').val() === auth.uid) || (!newData.exists() && root.child('wires/' + $wire + '/meta/keeper').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['seq', 'part', 'total', 'text', 'epoch']) && newData.child('seq').isNumber() && newData.child('part').isNumber() && newData.child('total').isNumber() && newData.child('total').val() >= 1 && newData.child('total').val() <= 1050 && newData.child('text').isString() && newData.child('text').val().length <= 240000 && newData.child('epoch').val() === root.child('wires/' + $wire + '/meta/epoch').val()"
+          }
+        },
+        "down": {
+          ".read": "auth != null && root.child('wires/' + $wire + '/meta/uid').val() === auth.uid",
+          "$part": {
+            ".write": "auth != null && ((!data.exists() && root.child('wires/' + $wire + '/meta/keeper').val() === auth.uid) || (!newData.exists() && root.child('wires/' + $wire + '/meta/uid').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['seq', 'part', 'total', 'text', 'epoch']) && newData.child('seq').isNumber() && newData.child('part').isNumber() && newData.child('total').isNumber() && newData.child('total').val() >= 1 && newData.child('total').val() <= 1050 && newData.child('text').isString() && newData.child('text').val().length <= 240000 && newData.child('epoch').val() === root.child('wires/' + $wire + '/meta/epoch').val()"
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}
