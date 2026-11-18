@@ -414,7 +414,7 @@ export class PlayerActionBar {
       ${(r.notes || []).length ? `<ul class="pab-notes">${r.notes.map(n => `<li>${e(n)}</li>`).join('')}</ul>` : ''}
       ${hit && !r.applied ? this.ridersHTML() : ''}
       ${this.resultRange ? `<div class="pab-range ${this.resultRange.penalty ? 'penalty' : ''}">Distancia: <span data-no-i18n>${e(this.resultRange.band)} · ${e(this.resultRange.meters.toFixed(1))} m</span>${this.resultRange.penalty ? ` · ${e(this.resultRange.penalty)}` : ''}</div>` : ''}
-      <div class="pab-result-actions">${hit && r.shields && !r.applied ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-shields>Escudos</button>' : ''}${hit && !r.applied ? `<button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-pab-apply ${r.canApply ? '' : 'disabled'}>Aplicar daño</button>` : ''}${r.applied ? '<span class="pab-applied">Daño aplicado</span>' : ''}<button type="button" class="pab-more" data-pab-clear aria-label="Quitar el resultado">×</button></div>
+      <div class="pab-result-actions">${hit && !r.applied ? `<button type="button" class="pab-apply-main" data-pab-apply ${r.canApply ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span>Aplicar daño</span>${r.loss ? `<b>${e(r.loss)}</b>` : ''}</button>` : ''}${hit && r.shields && !r.applied ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-shields>Escudos</button>' : ''}${r.applied ? '<span class="pab-applied">Daño aplicado</span>' : ''}<button type="button" class="pab-more" data-pab-clear aria-label="Quitar el resultado">×</button></div>
     </div>`;
   }
   // Effects that add damage to this attack (Combat Surge, The Held Line, Breaking Point).

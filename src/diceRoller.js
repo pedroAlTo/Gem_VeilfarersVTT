@@ -672,7 +672,7 @@ export class DiceRollerSidebar {
                 🛡️ Gastar escudos (Elegir cantidad)
               </button>
             </div>
-            <button class="hud-btn hud-btn-sm hud-btn-danger" id="apply_dmg_to_target_btn" style="width: 100%; margin-top: 8px;">
+            <button type="button" class="pab-apply-main" id="apply_dmg_to_target_btn" style="width: 100%; margin-top: 10px;">
               APPLY DAMAGE TO TARGET TOKEN
             </button>
           </div>

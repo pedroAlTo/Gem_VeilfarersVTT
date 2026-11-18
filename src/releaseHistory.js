@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.23.1', date: '2026-11-18', title: 'V3 · «Aplicar daño» se ve a la primera',
+    sections: [
+      { title: 'Aplicar daño', items: [
+        'En la Ficha, «Aplicar daño» es ahora el botón principal del resultado: ocupa la fila, es dorado, muestra los HP que hará perder (p. ej. «1 HP») y late suavemente mientras el daño está pendiente. «Escudos» queda a su lado, más pequeño.',
+        'El botón del panel de dados del Keeper tiene el mismo aspecto.',
+      ] },
+    ],
+  },
+  {
     version: '2.23.0', date: '2026-11-18', title: 'V3 · Dados 3D en todas las tiradas y el ataque termina al aplicar el daño',
     sections: [
       { title: 'Dados 3D', items: [

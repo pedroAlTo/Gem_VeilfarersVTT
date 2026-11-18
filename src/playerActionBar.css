@@ -124,3 +124,16 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-bear b { font: 600 12px/1 var(--font-mono); color: #edd58a; min-width: 26px; text-align: center; }
 .pab-step { all: unset; cursor: pointer; width: 20px; height: 20px; text-align: center; line-height: 18px; border: 1px solid var(--vx-line-strong); color: #e9d5ff; }
 .pab-step[disabled] { opacity: .35; cursor: not-allowed; }
+/* «Aplicar daño»: the step that closes the attack, impossible to miss. */
+.pab-apply-main { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 8px 14px;
+  border: 1px solid #fde68a; border-radius: 8px; cursor: pointer; font: 700 13px var(--font-ui, system-ui); letter-spacing: .06em; text-transform: uppercase;
+  color: #1b0b38; background: linear-gradient(180deg, #fde68a, #f2b84b); box-shadow: 0 0 0 0 rgba(253, 230, 138, .55), 0 4px 14px rgba(242, 184, 75, .3);
+  animation: pab-apply-pulse 1.8s ease-in-out infinite; transition: transform .12s, filter .12s; }
+.pab-apply-main svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.pab-apply-main b { padding: 1px 7px; border-radius: 999px; background: rgba(27, 11, 56, .16); font-size: 12px; letter-spacing: .02em; }
+.pab-apply-main:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.pab-apply-main:active:not(:disabled) { transform: translateY(0); }
+.pab-apply-main:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pab-apply-main:disabled { animation: none; opacity: .45; cursor: default; filter: grayscale(.4); }
+@keyframes pab-apply-pulse { 50% { box-shadow: 0 0 0 5px rgba(253, 230, 138, 0), 0 4px 18px rgba(242, 184, 75, .5); } }
+@media (prefers-reduced-motion: reduce) { .pab-apply-main { animation: none; } }

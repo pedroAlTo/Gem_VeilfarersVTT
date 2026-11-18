@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.23.0**.
-Paquete: `VeilFarers_VTT_v2.23.0.zip`.
+Versión actual del VTT: **v2.23.1**.
+Paquete: `VeilFarers_VTT_v2.23.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.23.1] — 2026-11-18
+
+V3 · «Aplicar daño» se ve a la primera
+
+### Aplicar daño
+
+- En la Ficha, «Aplicar daño» es ahora el botón principal del resultado: ocupa la fila, es dorado, muestra los HP que hará perder (p. ej. «1 HP») y late suavemente mientras el daño está pendiente. «Escudos» queda a su lado, más pequeño.
+- El botón del panel de dados del Keeper tiene el mismo aspecto.
 
 ## [2.23.0] — 2026-11-18
 
