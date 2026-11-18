@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.18.2', date: '2026-11-18', title: 'V3 · Invitaciones sin ventanas encima y pruebas de login con emuladores',
+    sections: [
+      { title: 'Inicio de sesión', items: [
+        'Corregido: al abrir un enlace de invitación sin haber iniciado sesión, la ventana de Sesiones salía encima de la pantalla de acceso y seguía allí después. Ahora el código espera en la casilla «Unirse» de la pantalla de inicio y, al iniciar sesión, entras directamente en la sala como jugador.',
+        'Comprobado de punta a punta con cuentas reales en los emuladores de Firebase: el Keeper crea una sala, un jugador entra con el código, otro con el enlace de invitación, el Keeper recarga y vuelve a su sala, y el inicio de sesión desde «Cuenta» cierra la ventana con «Sesión iniciada como…». En ningún paso queda una ventana encima de otra.',
+      ] },
+      { title: 'Desarrollo', items: [
+        'Nuevo `npm run dev:emulators`: la app entera contra los emuladores de Authentication y Firestore (proyecto ficticio, sin datos reales). Ver FIREBASE_SETUP.md.',
+      ] },
+    ],
+  },
+  {
     version: '2.18.1', date: '2026-11-18', title: 'V3 · Inicio de sesión sin ventanas superpuestas',
     sections: [
       { title: 'Inicio de sesión y salas', items: [

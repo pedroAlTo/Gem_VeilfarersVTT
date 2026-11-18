@@ -2,7 +2,7 @@ import { LOCAL_ONLY } from './runtimeMode.js';
 import { newId } from './persistence.js';
 import { exportNativeCharacter, parseCharacterJSON, characterKey } from './characterImport.js';
 import { noteEntry, gameEntry } from './accountModel.js';
-import { getFirebaseConfig } from './firebaseConfig.js';
+import { getFirebaseConfig, useEmulators } from './firebaseConfig.js';
 // The portal signs in with getFirebaseConfig(); the account and the rooms must use the very
 // same project, or a signed-in user would see no rooms. Outside the Vite build (tests, scripts)
 // there is no environment, and the cloud stays off unless it is configured explicitly.
@@ -67,6 +67,7 @@ export class CloudAccount {
       this.authAPI = auth; this.dbAPI = db; this.storageAPI = storage;
       this.app = app.getApps()[0] || app.initializeApp(cloudConfig);
       this.auth = auth.getAuth(this.app); this.db = db.getFirestore(this.app);
+      useEmulators({ auth: this.auth, authAPI: auth, firestore: this.db, firestoreAPI: db });
       if (storage) {
         try { this.storage = storage.getStorage(this.app); } catch { this.storage = null; }
       } else {

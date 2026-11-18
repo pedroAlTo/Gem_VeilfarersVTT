@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.18.1**.
-Paquete: `VeilFarers_VTT_v2.18.1.zip`.
+Versión actual del VTT: **v2.18.2**.
+Paquete: `VeilFarers_VTT_v2.18.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.18.2] — 2026-11-18
+
+V3 · Invitaciones sin ventanas encima y pruebas de login con emuladores
+
+### Inicio de sesión
+
+- Corregido: al abrir un enlace de invitación sin haber iniciado sesión, la ventana de Sesiones salía encima de la pantalla de acceso y seguía allí después. Ahora el código espera en la casilla «Unirse» de la pantalla de inicio y, al iniciar sesión, entras directamente en la sala como jugador.
+- Comprobado de punta a punta con cuentas reales en los emuladores de Firebase: el Keeper crea una sala, un jugador entra con el código, otro con el enlace de invitación, el Keeper recarga y vuelve a su sala, y el inicio de sesión desde «Cuenta» cierra la ventana con «Sesión iniciada como…». En ningún paso queda una ventana encima de otra.
+
+### Desarrollo
+
+- Nuevo `npm run dev:emulators`: la app entera contra los emuladores de Authentication y Firestore (proyecto ficticio, sin datos reales). Ver FIREBASE_SETUP.md.
 
 ## [2.18.1] — 2026-11-18
 

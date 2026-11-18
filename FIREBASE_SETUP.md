@@ -62,3 +62,13 @@ Use two different accounts and two browser profiles. Create an account, sign out
 ## Verificación sin producción
 
 Necesitas Node 24.12+ y Java 21+. Ejecuta `npm run test:rooms`. Firebase CLI descarga el emulador oficial en la primera ejecución y usa solamente el proyecto ficticio `demo-veilfarers-vtt`. El comando termina cerrando el emulador. Consulta también `PRUEBAS_LOCALES.md` para dos perfiles de navegador, cortes de red, revocaciones y copia de elementos.
+
+### La app entera contra los emuladores (v2.18.2)
+
+`npm run dev:emulators` arranca los emuladores de Authentication y Firestore (proyecto ficticio `demo-veilfarers-vtt`, con las reglas de `firestore.rules`) y la app en modo `emulators` (`.env.emulators` → `VITE_FIREBASE_EMULATORS=1`). En ese modo, y solo en desarrollo, la app se conecta a `127.0.0.1:9099` (Auth) y `127.0.0.1:8080` (Firestore): nunca toca el proyecto real ni necesita contraseñas reales. Crea cuentas de prueba desde la propia pantalla de acceso («Crear cuenta») o con la API del emulador:
+
+```bash
+curl -s -X POST "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key" -H 'Content-Type: application/json' -d '{"email":"keeper@test.dev","password":"secret123","displayName":"Keeper de prueba","returnSecureToken":true}'
+```
+
+Con dos navegadores (o dos perfiles) se prueban salas, invitaciones y reconexión de punta a punta. La compilación de producción ignora este modo.

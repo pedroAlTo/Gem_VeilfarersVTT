@@ -1,8 +1,9 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import * as authAPI from 'firebase/auth';
+const { getAuth } = authAPI;
 import { getDatabase } from 'firebase/database';
 
-import { DEFAULT_FIREBASE_CONFIG, getFirebaseConfig } from '../../firebaseConfig.js';
+import { DEFAULT_FIREBASE_CONFIG, getFirebaseConfig, useEmulators } from '../../firebaseConfig.js';
 export { DEFAULT_FIREBASE_CONFIG, getFirebaseConfig };
 
 let appInstance = null;
@@ -34,6 +35,7 @@ export function getFirebaseAuthInstance() {
   if (!authInstance) {
     try {
       authInstance = getAuth(app);
+      useEmulators({ auth: authInstance, authAPI });
     } catch (err) {
       console.warn('[Veilfarers Firebase] Error obteniendo getAuth():', err);
     }

@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.18.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.18.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.18.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.18.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.18.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.18.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.18.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.18.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -60,6 +60,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.18.1.zip**. Abre **AYUDA
 45. **(V3) Ventaja/Desventaja al atacar y pantalla del Keeper.** Marca un objetivo: pulsa Ventaja y el ataque lleva «+ d6». Como Keeper, pulsa el icono de pantalla (a la izquierda de los dados): queda amarillo y tus tiradas salen como «solo Keeper»; vuelve a pulsarlo para retirarlo. Como jugador, el icono no aparece.
 46. **(V3) 3 + 5 + resto.** Pulsa JUGADOR: la cabecera muestra Escena, Sala y Tokens con «⋯» (Cuenta, Sesiones, Ayuda, Tripulación, Copiar invitación y «Más…» con Códice, Inicio, Unirse, Audio). Herramientas: Mover, Medir, Dibujo y «⋯». Barra del personaje: Ficha, Estados, Equipo y «⋯» (Foco, Expandir, Reserva). Elige Ping desde «⋯»: se activa. Esc o tocar fuera cierra el menú. Vuelve a KEEPER: todo a la vista como antes.
 47. **(V3) Login sin ventanas encima.** Abre un enlace de invitación sin haber iniciado sesión: inicia sesión; la ventana de Sesiones aparece una sola vez y la dirección ya no lleva `roomInvite`. Inicia sesión desde Cuenta: se cierra y sale «Sesión iniciada» (no se abre el archivo personal). Recarga estando en una sala: vas directo a la mesa con «Volviendo a tu sala»; Cancelar te deja en la pantalla de inicio.
+48. **(V3) Invitación antes de iniciar sesión.** Abre el enlace de invitación sin sesión: solo se ve la pantalla de acceso, con el código ya escrito en «Unirse». Inicia sesión: entras directamente en la sala como jugador, sin ventana de Sesiones. Para probarlo sin el proyecto real: `npm run dev:emulators` (FIREBASE_SETUP.md).
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

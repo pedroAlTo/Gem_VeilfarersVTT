@@ -769,10 +769,14 @@ async function setupSessionPersistence() {
     let invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
     // An invitation link is used once: it opens the rooms window and leaves the address, so a
     // later sign-in or token refresh does not open it again.
+    // Without an account yet, the code waits in the home screen's «join» box (no window on top
+    // of the sign-in); once signed in, the person goes straight into the room.
+    const clearInvitation = () => { try { const url = new URL(location.href); url.searchParams.delete('roomInvite'); const hash = new URLSearchParams(url.hash.slice(1)); hash.delete('roomInvite'); url.hash = hash.toString(); history.replaceState(null, '', url); } catch {} };
     const useInvitation = () => {
+      if (!account.user) { const box = document.getElementById('vf-join-code-input'); if (box) box.value = invitation; return; }
       const code = invitation; invitation = '';
-      try { const url = new URL(location.href); url.searchParams.delete('roomInvite'); const hash = new URLSearchParams(url.hash.slice(1)); hash.delete('roomInvite'); url.hash = hash.toString(); history.replaceState(null, '', url); } catch {}
-      openSessionLobby(code);
+      clearInvitation();
+      if (window.veilLobby?.joinWithCode) window.veilLobby.joinWithCode(code); else openSessionLobby(code);
     };
     // Back to the room you were in: straight to the table (the home screen is hidden, Cancel
     // brings it back). Only when there is a room to go back to.
@@ -789,8 +793,8 @@ async function setupSessionPersistence() {
       if (!user || rooms.room) return;
       if (invitation) useInvitation(); else autoReturn();
     });
-    if (invitation) { useInvitation(); return; }
-    if (account.user) autoReturn();
+    if (invitation) useInvitation();
+    else if (account.user) autoReturn();
     import('./connectRetryUI.js').then(({ mountRoomConnectionBanner }) => import('./roomService.js').then(({ roomOnline }) => mountRoomConnectionBanner(rooms, store, { roomOnline }))).catch(() => {});
     return;
   }
