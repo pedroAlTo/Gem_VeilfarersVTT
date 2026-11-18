@@ -2,6 +2,7 @@
 // Evasion, and damage only on a hit. Pure rules; the dice panel drives it.
 import { TRAITS } from './rulesEngine.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
+import { hasTag } from './weaponTags.js';
 
 // Range bands of the table (user ruling, 15 Nov 2026): Melee up to 1 m or an adjacent square
 // (diagonals included), Very Close up to 5 m, Close up to 10 m, Far up to 25 m, Extreme beyond.
@@ -80,29 +81,17 @@ const nameAliases = value => {
   const parts = [raw, raw.replace(/\(.*?\)/g, ''), ...(raw.match(/\(([^)]*)\)/g) || []).map(x => x.slice(1, -1)), ...raw.replace(/\(.*?\)/g, '').split('/')];
   return [...new Set(parts.map(plainName).filter(Boolean))];
 };
-// When neither the sheet nor the catalog says, the kind of weapon does.
-const KIND_BANDS = [
-  [/sniper|francotirador|marksman|precision/, 'Extreme'],
-  [/shotgun|escopeta|flamer|lanzallamas/, 'Very Close'],
-  [/pistol|revolver|derringer|blaster|holdout|sidearm|\bsmg\b|subfusil|hand ?cannon/, 'Close'],
-  [/rifle|fusil|carbine|carabina|launcher|lanzador|lanzagranadas|cannon|canon\b|railgun|machine ?gun|ametralladora/, 'Far'],
-  [/knife|cuchill|blade|hoja|sword|espada|dagger|daga|\baxe\b|hacha|hammer|martillo|\bclub\b|porra|baton|whip|latigo|glaive|estoque|rapier|vibro|fist|puno|claw|garra|spear|lanza\b|machete|katana|mace|maza|staff|baston|cutter|cortador|unarmed|desarmado/, 'Melee'],
-];
-const bandFromKind = weapon => {
-  const text = plainName([weapon?.name, weapon?.type, weapon?.features].filter(Boolean).join(' '));
-  return KIND_BANDS.find(([pattern]) => pattern.test(text))?.[1] || '';
-};
 // The band a weapon reaches: its own Range text (or the Trait text, when the range was written
 // there); when the sheet left it blank, the range of
-// the catalog weapon with the same name; failing that, the kind of weapon its name says.
-// '' means it is not known.
+// the catalog weapon with the same name. '' means it is not known (the sheet should say it:
+// the attack then warns that no distance limit applies).
 export function weaponRangeBand(weapon) {
   // Some imported sheets write the range with the Trait ("Agility · Melee").
   const own = bandFromText(weapon?.range) || bandFromText(weapon?.trait);
   if (own || !weapon?.name) return own;
   const names = nameAliases(weapon.name);
   const match = names.length && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && nameAliases(item.name).some(alias => names.includes(alias)));
-  return (match && bandFromText(match.range)) || bandFromKind(weapon);
+  return (match && bandFromText(match.range)) || '';
 }
 
 // A short firearm is one whose maximum range is Close or less (user ruling, 17 Nov 2026): it
@@ -136,19 +125,17 @@ export function rangeCheck(weapon, band) {
   return { allowed: true, disadvantage: false, reach, band, reason: '' };
 }
 
-// Weapon properties that change the attack roll (Corebook ch. 13, weapon features):
+// Weapon properties that change the attack roll (Corebook ch. 13), read from the weapon's tags:
 // Reliable +1 always; Accurate +1 and Smart Scope +2 at Far or Very Far.
 export function weaponAttackBonus(weapon, band = '') {
-  const text = [weapon?.features, weapon?.name, weapon?.type].filter(Boolean).join(' ').toLowerCase();
-  const far = band === 'Far' || band === 'Extreme';
-  const parts = [];
-  if (/\breliable\b|\bfiable\b/.test(text)) parts.push(['Reliable', 1]);
-  if (/\baccurate\b|\bprecis[ao]\b/.test(text) && far) parts.push(['Accurate', 1]);
-  if (/smart\s*scope|mira\s*inteligente/.test(text) && far) parts.push(['Smart Scope', 2]);
+  const far = band === 'Far' || band === 'Extreme', parts = [];
+  if (weapon && hasTag(weapon, 'reliable')) parts.push(['Reliable', 1]);
+  if (weapon && far && hasTag(weapon, 'accurate')) parts.push(['Accurate', 1]);
+  if (weapon && far && hasTag(weapon, 'smart-scope')) parts.push(['Smart Scope', 2]);
   return { bonus: parts.reduce((sum, [, n]) => sum + n, 0), notes: parts.map(([name, n]) => `${name} +${n}`) };
 }
 // Reach (Corebook): a Melee weapon may attack at Very Close.
-const hasReach = weapon => /\breach\b|\balcance\s+extendido\b/i.test([weapon?.features, weapon?.name].filter(Boolean).join(' '));
+const hasReach = weapon => !!weapon && hasTag(weapon, 'reach');
 
 // The Trait a weapon attacks with, as a Trait id; '' when its text names none.
 export function weaponTraitId(weapon) {

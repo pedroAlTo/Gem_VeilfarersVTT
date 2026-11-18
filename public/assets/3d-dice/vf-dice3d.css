@@ -356,7 +356,7 @@
 .vf-results-stack{position:fixed;z-index:2147483001;left:50%;transform:translateX(-50%);bottom:max(34px,calc(env(safe-area-inset-bottom) + 30px));top:auto;right:auto;width:min(400px,calc(100vw - 24px));display:flex;flex-direction:column;justify-content:flex-end;gap:5px;overflow:hidden;pointer-events:none}
 .vf-results-stack .vf-result-card{position:relative;inset:auto;right:auto;top:auto;bottom:auto;width:auto;flex:0 0 auto;pointer-events:auto;cursor:pointer;
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:10px;row-gap:1px;align-items:center;padding:6px 10px;
-  border:1px solid rgba(192,132,252,.42);border-left:2px solid #f2b84b;border-radius:0;background:rgba(13,4,32,.94);box-shadow:0 6px 18px rgba(0,0,0,.4);
+  border:1px solid rgba(192,132,252,.42);border-left:2px solid #f2b84b;border-radius:0;background:rgba(13,4,32,.6);box-shadow:0 6px 18px rgba(0,0,0,.4);
   animation:vf-result-card-in .22s ease-out both;transition:opacity .3s ease,transform .3s ease}
 .vf-results-stack .vf-result-card:nth-last-child(n+4){display:none}
 .vf-results-stack .vf-result-card .vf-analysis-number-box{display:contents}

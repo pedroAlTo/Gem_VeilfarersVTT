@@ -1,4 +1,5 @@
 import { attackPresentation, weaponImpactType } from './combatFX.js';
+import { firstStrikeRider, throwExpression } from './damageRiders.js';
 import { guideEvent } from './onboarding.js';
 import { IMPACT_TYPES } from './encounterRules.js';
 import { dossierDialog } from './dossierUI.js';
@@ -14,7 +15,8 @@ import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
 import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
 import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
-import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck } from './weaponFeatures.js';
+import { isPartyToken } from './tokenPermissions.js';
+import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, armorCut, applyArmorCut, armorCutNotes } from './weaponFeatures.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
 import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
@@ -670,7 +672,7 @@ export class DiceRollerSidebar {
                 🛡️ Gastar escudos (Elegir cantidad)
               </button>
             </div>
-            <button class="hud-btn hud-btn-sm hud-btn-danger" id="apply_dmg_to_target_btn" style="width: 100%; margin-top: 8px;">
+            <button type="button" class="pab-apply-main" id="apply_dmg_to_target_btn" style="width: 100%; margin-top: 10px;">
               APPLY DAMAGE TO TARGET TOKEN
             </button>
           </div>
@@ -1040,7 +1042,15 @@ export class DiceRollerSidebar {
   async applyBearDownDamage(bonus) {
     const d = this.lastDamage;
     if (!d || d.applied) return null;
-    this.executeDamageCalc(d.faces.slice(), { bearDown: d.bonus + bonus });
+    this.executeDamageCalc(d.faces.slice(), { bearDown: d.bonus + bonus, riders: d.riders, extrasPinned: d.extras });
+    return this.lastDamage;
+  }
+  // An effect that adds damage to the attack just made (Combat Surge, Breaking Point…): the same
+  // dice, plus its roll. Each effect once per attack.
+  applyDamageRider(rider) {
+    const d = this.lastDamage;
+    if (!d || d.applied || d.riders.some(r => r.id === rider.id)) return null;
+    this.executeDamageCalc(d.faces.slice(), { bearDown: d.bonus, riders: [...d.riders, rider], extrasPinned: d.extras });
     return this.lastDamage;
   }
 
@@ -1174,6 +1184,8 @@ export class DiceRollerSidebar {
       result = await network.requestAction({
         type: 'CHECK',
         actorId: actor.id,
+        // An attack is an active action: the table gives the attacker the Spotlight.
+        ...(attack ? { attack: true } : {}),
         playerName,
         tokenName,
         visibility: this.rollVisibility(),
@@ -1372,6 +1384,16 @@ export class DiceRollerSidebar {
     // Let the table read the attack before the damage dice replace it.
     if (rolled3D) await new Promise(resolve => setTimeout(resolve, this.attackToDamagePause ?? 1600));
     this.featureWhisper = weapon ? { attacker: attacker.name, target: target.name, weapon: weapon.name } : null;
+    // Nirvana / Disciplined State: the first Melee attack of the state deals +2d6 by itself.
+    const strike = (attacker.isPlayer !== false && !drone) ? firstStrikeRider(attacker, weapon) : null;
+    if (strike) {
+      const r = await throwExpression(strike.dice, strike.label, attacker);
+      const clocks = (attacker.effectClocks || []).map(c => (c.id === strike.clockId ? { ...c, firstStrikeUsed: true } : c));
+      const before = store.tableActing; if (store.sessionRole !== 'player') store.tableActing = true;
+      try { store.updateToken(attacker.id, { effectClocks: clocks }); } finally { store.tableActing = before; }
+      await this.executeDamageCalc(null, { riders: [{ ...strike, value: r.total, faces: r.faces }] });
+      return { hit: true, critical, total, band };
+    }
     await this.executeDamageCalc();
     return { hit: true, critical, total, band };
   }
@@ -1453,7 +1475,8 @@ export class DiceRollerSidebar {
 
   // rolled: the faces read from the 3D dice. Without them (3D off, or a first call) the dice
   // are thrown on the table first and this runs again with what they show.
-  executeDamageCalc(rolled = null, { bearDown = 0 } = {}) {
+  executeDamageCalc(rolled = null, { bearDown = 0, riders = [], extrasPinned = null } = {}) {
+    const riderTotal = riders.reduce((n, r) => n + (Number(r.value) || 0), 0);
     const bossPhase = this.currentActor?.boss?.states[this.currentActor.boss.index];
     if (bossPhase?.canAttack === false) { notify('Este estado usa su procedimiento especial; no tiene un ataque de daño estándar.', 'error'); return; }
     const targetSelect = this.container.querySelector('#dmg_target_select');
@@ -1512,7 +1535,7 @@ export class DiceRollerSidebar {
       if (dice > 0 && dice <= 40) {
         audio.playDiceRoll();
         const label = `${this.currentActor?.name || 'Daño'} · Daño${targetToken ? ` a ${targetToken.name}` : ''}`;
-        return this.roll3D(pools.map(p => ({ qty: p.count, sides: p.sides, theme: 'vfDamage', role: 'Damage' })), label).then(faces => this.executeDamageCalc(faces || []));
+        return this.roll3D(pools.map(p => ({ qty: p.count, sides: p.sides, theme: 'vfDamage', role: 'Damage' })), label).then(faces => this.executeDamageCalc(faces || [], { bearDown, riders, extrasPinned }));
       }
     }
     const faces = [...(rolled || [])];
@@ -1521,7 +1544,8 @@ export class DiceRollerSidebar {
       targetName: targetToken?.name || 'Target',
       diceCount: diceCount + proficiency - 1,
       diceSides,
-      flatModifier: flatMod + honed + bearDown,
+      flatModifier: flatMod + honed + bearDown + riderTotal,
+      bonus: bearDown + riderTotal, // the formula path adds it too
       ...(faces.length ? { rollDie: sides => { const face = faces.shift(); return Number.isInteger(face) && face >= 1 && face <= sides ? face : Math.floor(Math.random() * sides) + 1; } } : {}),
       isCritical: isCritical && !keeperAttack,
       isKeeperCritical: isCritical && keeperAttack,
@@ -1542,7 +1566,7 @@ export class DiceRollerSidebar {
     // Weapon features on the damage: Burst Fire, Massive, Energy Surge add to it; Devastating
     // marks 1 more HP at the Severe Threshold. The severity is worked out again on the new total.
     const rollSides = dmgResult.pools ? dmgResult.pools.flatMap(p => Array(p.count * (damageOptions.isCritical ? 2 : 1)).fill(p.sides)) : dmgResult.rolls.map(() => diceSides);
-    const extras = damageExtras(feats, dmgResult.rolls, rollSides.length === dmgResult.rolls.length ? rollSides : dmgResult.rolls.map(() => diceSides));
+    const extras = extrasPinned || damageExtras(feats, dmgResult.rolls, rollSides.length === dmgResult.rolls.length ? rollSides : dmgResult.rolls.map(() => diceSides));
     if (extras.bonus) {
       const again = resolveDamage({ diceCount: 0, flatModifier: dmgResult.rawDamage + extras.bonus, targetMajorThreshold: major, targetSevereThreshold: severe, isDirectDamage: isDirect, damageType, targetReflective: reflectiveInput.checked, targetWarded: wardedInput.checked, useArmorSlot: false, currentArmorSlots: damageOptions.currentArmorSlots, mountRating: mr });
       dmgResult = { ...dmgResult, rawDamage: again.rawDamage, finalSeverity: again.finalSeverity, finalHpDamage: again.finalHpDamage, effectiveMajor: again.effectiveMajor, effectiveSevere: again.effectiveSevere };
@@ -1550,13 +1574,17 @@ export class DiceRollerSidebar {
     const devastating = isDirect ? 0 : devastatingExtra(feats, dmgResult.rawDamage, dmgResult.effectiveSevere);
     if (devastating) dmgResult = { ...dmgResult, finalHpDamage: dmgResult.finalHpDamage + devastating };
     const maxDie = dmgResult.rolls.some((r, i) => r === (rollSides[i] || diceSides));
-    const featureNotes = [...extras.notes, ...(devastating ? ['Devastating: alcanza el umbral Severe y marca 1 HP más.'] : []), ...(isDirect ? [] : armorSlotNotes(feats, { composite })),
+    // An enemy's maximum Armor Slots are cut at once by Armor Piercing, Disintegrating, Shredding.
+    const enemyArmor = !isDirect && !!targetToken && !isPartyToken(targetToken) && (targetToken.armor?.max || 0) > 0;
+    const plannedCut = enemyArmor ? armorCut(activeWeapon, { hit: true, damaged: dmgResult.finalHpDamage > 0, maxDie }, targetToken.armor.max) : null;
+    const featureNotes = [...riders.map(r => `${r.label}: +${r.value}${r.faces?.length ? ` (${r.dice} [${r.faces.join(', ')}])` : ''}.`), ...extras.notes, ...(devastating ? ['Devastating: alcanza el umbral Severe y marca 1 HP más.'] : []), ...(isDirect ? [] : armorSlotNotes(feats, { composite })),
       ...(feats.poison ? ['Poison: si pierde HP, el objetivo marca 1 Stress.'] : []), ...(feats.ignite ? ['Ignite: si pierde HP, el objetivo queda On Fire.'] : []),
-      ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true })];
+      ...armorCutNotes(plannedCut),
+      ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor })];
     this.lastFeatureNotes = featureNotes; // the player's Ficha shows them under the result
     // What the Keeper has to resolve by hand goes to the Keeper as a whisper, once per attack.
     if (this.featureWhisper) {
-      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true });
+      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor });
       const text = rulesWhisperText({ ...this.featureWhisper, notes: toResolve });
       this.featureWhisper = null;
       if (text) void whisperToKeeper(text);
@@ -1568,7 +1596,7 @@ export class DiceRollerSidebar {
         label: `Daño · ${damageOptions.attackerName}${targetToken ? ` → ${targetToken.name}` : ''}`, actorName: damageOptions.attackerName,
         playerName: store.state.userName || store.state.playerName || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador'),
         tokenName: damageOptions.attackerName, skill: bearDown ? `Daño · Bear Down +${bearDown}` : 'Daño',
-        modifiers: `${formula || `${damageOptions.diceCount}d${diceSides}`}${proficiency > 1 ? ` · Proficiency ${proficiency}` : ''}${honed ? ` · Honed Edge +${honed}` : ''}${damageOptions.isCritical ? ' · Crítico: dados dobles' : ''}${extras.bonus ? ` · Propiedades del arma +${extras.bonus}` : ''}${devastating ? ' · Devastating +1 HP' : ''}`,
+        modifiers: `${formula || `${damageOptions.diceCount}d${diceSides}`}${proficiency > 1 ? ` · Proficiency ${proficiency}` : ''}${honed ? ` · Honed Edge +${honed}` : ''}${damageOptions.isCritical ? ' · Crítico: dados dobles' : ''}${riders.length ? ` · ${riders.map(r => `${r.label} +${r.value}`).join(' · ')}` : ''}${extras.bonus ? ` · Propiedades del arma +${extras.bonus}` : ''}${devastating ? ' · Devastating +1 HP' : ''}`,
         value: dmgResult.rawDamage, total: dmgResult.rawDamage, outcome: `${dmgResult.rawDamage} · ${dmgResult.finalSeverity}`,
         rolls: dmgResult.rolls.map((value, i) => ({ value, sides: sidesOf[i] || diceSides, role: 'Damage' })), style: 'overlay'
       }, { rolled3D: true, secret: this.rollVisibility() === 'keeper' });
@@ -1625,7 +1653,7 @@ export class DiceRollerSidebar {
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
     let applied = false;
     // The damage stays open to Bear Down until it is applied: the same dice, plus the bonus.
-    const pending = { actorId: attackerId, faces: dmgResult.rolls.slice(), bonus: bearDown, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, applied: false };
+    const pending = { actorId: attackerId, faces: dmgResult.rolls.slice(), bonus: bearDown, riders, extras, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, applied: false };
     this.lastDamage = pending; this.lastRollKind = 'damage';
     applyBtn.disabled = !targetToken;
     applyBtn.textContent = targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
@@ -1674,6 +1702,9 @@ export class DiceRollerSidebar {
         const addCondition = bleed && canBleed(targetToken) ? 'Bleeding' : '';
         const addConditions = isDirect ? [] : hitConditions(feats, { hpLost });
         const withCondition = t => (addCondition || addConditions.length) ? { conditions: normalizeConditions([...(t.conditions || []), ...(addCondition ? [addCondition] : []), ...addConditions]) } : {};
+        // The cut to an enemy's maximum Armor Slots, on the armor left after this hit.
+        const cut = enemyArmor && !isPartyToken(targetToken) ? armorCut(activeWeapon, { hit: true, damaged: hpLost > 0, maxDie }, targetToken.armor?.max || 0) : null;
+        const armorAfter = t => (cut ? applyArmorCut({ ...t.armor, current: newArmor }, cut) : { ...t.armor, current: newArmor });
         const withStress = t => stressMark ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? (t.stress.current || 0) + stressMark, (t.stress.current || 0) + stressMark) } } : {};
 
         const damagePayload = {
@@ -1686,6 +1717,7 @@ export class DiceRollerSidebar {
           armorLoss: armorLost,
           spentShields,
           stressMark,
+          ...(cut ? { armorCut: cut } : {}),
           addCondition,
           addConditions,
           isDirect,
@@ -1693,7 +1725,7 @@ export class DiceRollerSidebar {
           rawDamage: dmgResult.rawDamage,
           kind: impactKind,
           secret,
-          logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
+          logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.${cut ? ` Armor Slots máximos −${cut.long + cut.repairAll + cut.downtime} (${armorAfter(targetToken).max}).` : ''}`
         };
 
         if (store.sessionRole === 'player') {
@@ -1706,7 +1738,7 @@ export class DiceRollerSidebar {
                 ...t,
                 hp: { ...t.hp, current: newHp },
                 pendingBrace: isDirect ? t.pendingBrace : false,
-                armor: { ...t.armor, current: newArmor },
+                armor: armorAfter(t),
                 ...withStress(t), ...withCondition(t)
               } : t)
             });
@@ -1721,7 +1753,7 @@ export class DiceRollerSidebar {
             store.updateToken(targetToken.id, {
               hp: { ...targetToken.hp, current: newHp },
               pendingBrace: isDirect ? targetToken.pendingBrace : false,
-              armor: { ...targetToken.armor, current: newArmor },
+              armor: armorAfter(targetToken),
               ...withStress(targetToken), ...withCondition(targetToken)
             });
           } finally { store.tableActing = before; }
@@ -1754,6 +1786,8 @@ export class DiceRollerSidebar {
           title: `DAMAGE APPLIED: ${targetToken.name}`,
           details: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
         });
+        // The attack is over: the Ficha closes it and the tokens are deselected.
+        window.dispatchEvent(new CustomEvent('veil:attack-done', { detail: { attackerId: attacker?.id || attackerId, targetId: targetToken.id } }));
       };
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;

@@ -74,3 +74,11 @@ test('the Ficha tab reads defense, resources and pending effects from the token'
   assert.equal(sleeper.armor, '—');
   assert.deepEqual(sleeper.others, []);
 });
+
+test('hidden tokens are targets only on the Keeper machine', async () => {
+  const { tokenAtPoint } = await import('../src/playerActionBar.js');
+  const tokens = [{ id: 'a', x: 0, y: 0, size: 1 }, { id: 'h', x: 200, y: 0, size: 2, hidden: true }];
+  assert.equal(tokenAtPoint(tokens, { x: 210, y: 10 }, 64), null, 'a player never targets what it cannot see');
+  assert.equal(tokenAtPoint(tokens, { x: 210, y: 10 }, 64, { includeHidden: true })?.id, 'h');
+  assert.equal(tokenAtPoint(tokens, { x: 5, y: 5 }, 64, { exclude: 'a' }), null, 'never the attacker');
+});

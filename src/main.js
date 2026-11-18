@@ -13,6 +13,7 @@ import './mobile.css';
 import './connect.css';
 import './playerActionBar.css';
 import './diceDock.css';
+import './groupMenu.css';
 import { startTranslation } from './i18n.js';
 import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';
@@ -100,7 +101,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.veilTokenHUD = new TokenHUD(quickbarContainer);
   // 4b. The card hand: the selected character's Loadout, beside its stats
   window.veilCardHand = new CardHand(quickbarContainer);
-  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(document.getElementById('tab_pane_sheet')); }).catch(error => console.warn('Action bar unavailable:', error));
+  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(document.getElementById('tab_pane_sheet')); import('./groupMenus.js').then(({ mountPlayerGroups }) => { window.veilGroupMenus = mountPlayerGroups(); }); import('./effectClockRuntime.js').then(({ startEffectClocks }) => startEffectClocks()); import('./restUI.js').then(({ mountRestUI }) => mountRestUI()); }).catch(error => console.warn('Action bar unavailable:', error));
   window.veilCardFeed = new CardFeed(quickbarContainer.parentElement);
 
   // 5. Initialize Tactical Layers HUD
@@ -765,14 +766,35 @@ async function setupSessionPersistence() {
     const { account } = await import('./cloudAccount.js');
     const { startGameRecording } = await import('./gameRecord.js');
     startGameRecording({ rooms, store, account });
-    const invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
+    let invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
+    // An invitation link is used once: it opens the rooms window and leaves the address, so a
+    // later sign-in or token refresh does not open it again.
+    // Without an account yet, the code waits in the home screen's «join» box (no window on top
+    // of the sign-in); once signed in, the person goes straight into the room.
+    const clearInvitation = () => { try { const url = new URL(location.href); url.searchParams.delete('roomInvite'); const hash = new URLSearchParams(url.hash.slice(1)); hash.delete('roomInvite'); url.hash = hash.toString(); history.replaceState(null, '', url); } catch {} };
+    const useInvitation = () => {
+      if (!account.user) { const box = document.getElementById('vf-join-code-input'); if (box) box.value = invitation; return; }
+      const code = invitation; invitation = '';
+      clearInvitation();
+      if (window.veilLobby?.joinWithCode) window.veilLobby.joinWithCode(code); else openSessionLobby(code);
+    };
+    // Back to the room you were in: straight to the table (the home screen is hidden, Cancel
+    // brings it back). Only when there is a room to go back to.
+    let returning = false;
+    const autoReturn = () => {
+      if (returning || rooms.room || rooms.entering || !rooms.rememberedRoom?.(account.user?.uid)) return;
+      returning = true;
+      window.veilLobby?.hideLobby?.();
+      import('./connectRetryUI.js').then(({ retryUntilConnected }) => retryUntilConnected(() => rooms.restore(), { label: 'Volviendo a tu sala', onCancel: () => window.veilLobby?.showHubScreen?.() }))
+        .catch(error => { notify(error.message, 'error'); window.veilLobby?.showHubScreen?.(); })
+        .finally(() => { returning = false; });
+    };
     account.subscribe(user => {
       if (!user || rooms.room) return;
-      if (invitation) openSessionLobby(invitation);
-      else import('./connectRetryUI.js').then(({ retryUntilConnected }) => retryUntilConnected(() => rooms.restore(), { label: 'Volviendo a tu sala' })).catch(error => notify(error.message, 'error'));
+      if (invitation) useInvitation(); else autoReturn();
     });
-    if (invitation) { openSessionLobby(invitation); return; }
-    if (account.user) import('./connectRetryUI.js').then(({ retryUntilConnected }) => retryUntilConnected(() => rooms.restore(), { label: 'Volviendo a tu sala' })).catch(error => { notify(error.message, 'error'); openSessionLobby(); });
+    if (invitation) useInvitation();
+    else if (account.user) autoReturn();
     import('./connectRetryUI.js').then(({ mountRoomConnectionBanner }) => import('./roomService.js').then(({ roomOnline }) => mountRoomConnectionBanner(rooms, store, { roomOnline }))).catch(() => {});
     return;
   }

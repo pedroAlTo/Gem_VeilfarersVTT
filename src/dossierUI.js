@@ -5,6 +5,40 @@ import { validateActor } from './validation.js';
 import { characterDetails, setAffiliation, setConnection, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
 import { mountEquipmentPanel } from './equipmentUI.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
+import { clockPieHTML, editClock, tickClocks, MAX_SEGMENTS } from './effectClocks.js';
+
+// Effect clocks (Path to Nirvana, Rapid Regeneration…): mark, unmark, resize or end them.
+function effectClocksEditorHTML(token) {
+  const list = token.effectClocks || [];
+  if (!list.length) return '';
+  return `<h4 class="dossier-label">Efectos con duración</h4>${list.map(c => `<div class="effect-clock-row" data-fx="${e(c.id)}">${clockPieHTML(c, 24)}<strong>${e(c.name)}</strong>
+    <span class="effect-clock-count">${c.filled} / ${c.segments}</span>
+    <button type="button" class="hud-btn hud-btn-xs" data-fx-act="unmark" aria-label="Desmarcar un segmento de ${e(c.name)}">−</button>
+    <button type="button" class="hud-btn hud-btn-xs" data-fx-act="mark" aria-label="Marcar un segmento de ${e(c.name)}">+</button>
+    <label class="effect-clock-size">Segmentos <input type="number" min="1" max="${MAX_SEGMENTS}" value="${c.segments}" data-fx-act="size"></label>
+    <button type="button" class="hud-btn hud-btn-xs hud-btn-danger" data-fx-act="end">Terminar</button></div>`).join('')}`;
+}
+function bindEffectClocksEditor(box, tokenId) {
+  if (!box) return;
+  const save = list => {
+    const before = store.tableActing; if (store.sessionRole !== 'player') store.tableActing = true;
+    try { if (store.updateToken(tokenId, { effectClocks: list }) === false) notify('No puedes cambiar los efectos de este personaje.', 'error'); } finally { store.tableActing = before; }
+  };
+  const current = () => store.state.tokens.find(t => t.id === tokenId)?.effectClocks || [];
+  box.addEventListener('click', event => {
+    const button = event.target.closest('[data-fx-act]'), row = event.target.closest('[data-fx]');
+    if (!button || !row || button.tagName === 'INPUT') return;
+    const id = row.dataset.fx, list = current(), clock = list.find(c => c.id === id);
+    if (!clock) return;
+    if (button.dataset.fxAct === 'end') save(list.filter(c => c.id !== id));
+    else if (button.dataset.fxAct === 'unmark') save(editClock(list, id, { filled: clock.filled - 1 }));
+    else if (button.dataset.fxAct === 'mark') save(tickClocks(list, { id }).list);
+  });
+  box.addEventListener('change', event => {
+    const input = event.target.closest('[data-fx-act="size"]'), row = event.target.closest('[data-fx]');
+    if (input && row) save(editClock(current(), row.dataset.fx, { segments: Number(input.value) }));
+  });
+}
 
 export function dossierDialog(title, body, className = '') {
   const previous = document.activeElement;
@@ -52,6 +86,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
     <form id="dossier_form">
       <div data-panel="stats">
         <div class="dossier-condition-summary"><button type="button" class="hud-btn" data-open-conditions>Condiciones</button><div class="condition-badges" data-condition-badges>${conditionBadges(token)}</div></div>
+        <div class="effect-clock-editor" data-effect-clocks>${effectClocksEditorHTML(token)}</div>
         <div class="dossier-identity">${field('Nombre', 'actorName', token.name)}${field(pc ? 'Clase' : 'Rol', pc ? 'characterClass' : 'roleTag', pc ? token.characterClass || '' : token.roleTag || '')}${pc ? field('Subclase', 'subclass', token.subclass || '') : ''}${field('Ancestry / especie', 'species', token.species || '')}${pc ? field('Comunidad', 'community', token.community || '') + stat('Nivel', 'level', token.level ?? 1, 1, 100) + stat('Proficiency', 'proficiency', token.proficiency ?? 1, 1, 100) : ''}${stat('Evasion', 'evasion', token.evasion ?? 10, 0, 100)}</div>
         <div class="dossier-resources">
           ${[['hp', 'HP · disponibles'], ['armor', 'Armor · disponibles'], ['stress', 'Stress · marcado']].map(([k, label]) => `<section class="dossier-resource ${k}"><h4>${label}</h4><div>${stat('Actual', `${k}_current`, token[k]?.current)}${stat('Máximo', `${k}_max`, token[k]?.max, k === 'hp' ? 1 : 0)}</div></section>`).join('')}
@@ -111,9 +146,15 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
   let storedView = ''; try { storedView = localStorage.getItem(SHEET_VIEW_KEY) || ''; } catch {}
   setView(storedView || (store.sessionRole === 'player' || store.state.userRole === 'player' ? 'basic' : 'full'));
   modal.querySelector('[data-open-conditions]').onclick = () => openConditions(token.id);
+  bindEffectClocksEditor(modal.querySelector('[data-effect-clocks]'), token.id);
   const unsubscribeConditions = store.subscribe((_, keys) => {
     if (!modal.isConnected) { unsubscribeConditions(); return; }
-    if (keys.includes('tokens')) modal.querySelector('[data-condition-badges]').innerHTML = conditionBadges(store.state.tokens.find(t => t.id === token.id) || token);
+    if (keys.includes('tokens')) {
+      const fresh = store.state.tokens.find(t => t.id === token.id) || token;
+      modal.querySelector('[data-condition-badges]').innerHTML = conditionBadges(fresh);
+      const box = modal.querySelector('[data-effect-clocks]'), html = effectClocksEditorHTML(fresh);
+      if (box && box.dataset.sig !== html) { box.dataset.sig = html; box.innerHTML = sanitizeHTML(html); }
+    }
   });
   const observer = new MutationObserver(() => { if (!modal.isConnected) { unsubscribeConditions(); observer.disconnect(); } }); observer.observe(document.body, { childList: true });
   const levelButton = modal.querySelector('#dossier_level_up');

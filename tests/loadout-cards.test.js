@@ -255,3 +255,49 @@ test('Bear Down spends the dice chosen and adds them all; a Sleeping hand holds 
   assert.equal(sleepingCommonCards(vell, { optionalEfforts: true }).length, 10, 'Second Wind and Seize the Moment only when the Keeper adopts them');
   assert.deepEqual(sleepingCommonCards({ ...vell, path: 'Awakened' }), []);
 });
+
+test('a card with a duration puts its clock on the player, or on the marked ally when it helps others', async () => {
+  const { performGameAction } = await import('../src/gameActions.js');
+  const { setCardData } = await import('../src/cardData.js');
+  setCardData(data);
+  const vanguard = { ...character({ cls: 'vanguard' }), id: 'tok_v', hope: 6, level: 5, mapId: 'm', stress: { current: 0, max: 6 } };
+  const ally = { ...character(), id: 'tok_a', name: 'Ally', hope: 2, mapId: 'm', stress: { current: 0, max: 6 } };
+  const store = { sessionRole: 'local', state: { userRole: 'keeper', campaignId: 'c', tokens: [vanguard, ally], fear: 0 },
+    updateToken(id, patch) { Object.assign(this.state.tokens.find(t => t.id === id), patch); return true; }, addFear() {}, addLog() {} };
+  const nirvana = characterCards(vanguard, data).find(c => /Nirvana/.test(c.name));
+  const out = performGameAction({ type: 'CARD_PLAY', actorId: 'tok_v', cardId: nirvana.id, targetId: 'tok_a' }, store);
+  assert.equal(vanguard.effectClocks[0].die, 'd6', 'Tier 2 (level 5): Integrity d6');
+  assert.equal(ally.effectClocks, undefined, 'a state on yourself never goes to the ally');
+  assert.match(out.notes.join(' '), /Integrity Die d6/);
+  // Rapid Regeneration helps others: with an ally marked, the clock goes to the ally.
+  const regenToken = { ...vanguard, id: 'tok_r', effectClocks: [], sourceCharacter: structuredClone(vanguard.sourceCharacter) };
+  const f = regenToken.sourceCharacter.document.fields; f.a_pwr_1_n = 'Rapid Regeneration'; f.a_pwr_1_d = ''; store.state.tokens.push(regenToken);
+  const regen = characterCards(regenToken, data).find(c => c.name === 'Rapid Regeneration');
+  performGameAction({ type: 'CARD_PLAY', actorId: 'tok_r', cardId: regen.id, targetId: 'tok_a' }, store);
+  assert.equal(ally.effectClocks[0].name, 'Rapid Regeneration'); assert.deepEqual(ally.effectClocks[0].perTick, { hp: 1 });
+  assert.deepEqual(regenToken.effectClocks, []);
+});
+
+test('finishing an active action gives the player the Spotlight; a Reaction or a plain roll does not', async () => {
+  const { performGameAction, grantSpotlight } = await import('../src/gameActions.js');
+  const { setCardData } = await import('../src/cardData.js');
+  setCardData(data);
+  const hero = { ...character(), id: 'tok_s', hope: 6, mapId: 'm', stress: { current: 0, max: 6 }, hasSpotlight: false };
+  const spot = [];
+  const store = { sessionRole: 'local', state: { userRole: 'keeper', campaignId: 'c', tokens: [hero], fear: 0 },
+    updateToken(id, patch) { Object.assign(this.state.tokens.find(t => t.id === id), patch); return true; }, addFear() {}, addLog() {},
+    setTokenSpotlight(id, on) { spot.push([id, on]); Object.assign(this.state.tokens.find(t => t.id === id), { hasSpotlight: on }); return true; } };
+  performGameAction({ type: 'CHECK', actorId: 'tok_s', options: { traitId: 'agility', dc: 10, forcedHope: 6, forcedFear: 2 } }, store);
+  assert.deepEqual(spot, [], 'a plain Trait roll is not an attack');
+  performGameAction({ type: 'CHECK', actorId: 'tok_s', attack: true, options: { traitId: 'agility', dc: 10, forcedHope: 6, forcedFear: 2 } }, store);
+  assert.deepEqual(spot, [['tok_s', true]], 'an attack gives the Spotlight');
+  hero.hasSpotlight = false; spot.length = 0;
+  const cards = characterCards(hero, data);
+  const reaction = cards.find(c => c.reaction && c.playable);
+  if (reaction) { performGameAction({ type: 'CARD_PLAY', actorId: 'tok_s', cardId: reaction.id }, store); assert.deepEqual(spot, [], 'a Reaction does not'); }
+  const active = cards.find(c => c.kind === 'power' && c.playable && !c.reaction && c.cost.hope <= 1);
+  performGameAction({ type: 'CARD_PLAY', actorId: 'tok_s', cardId: active.id }, store);
+  assert.deepEqual(spot, [['tok_s', true]], 'a Power used as an action does');
+  assert.equal(grantSpotlight(store, 'tok_s'), false, 'already in the Spotlight: nothing to do');
+  assert.equal(grantSpotlight(store, 'nope'), false);
+});

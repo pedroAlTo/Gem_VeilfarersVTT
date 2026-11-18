@@ -1,6 +1,170 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.23.1', date: '2026-11-18', title: 'V3 · «Aplicar daño» se ve a la primera',
+    sections: [
+      { title: 'Aplicar daño', items: [
+        'En la Ficha, «Aplicar daño» es ahora el botón principal del resultado: ocupa la fila, es dorado, muestra los HP que hará perder (p. ej. «1 HP») y late suavemente mientras el daño está pendiente. «Escudos» queda a su lado, más pequeño.',
+        'El botón del panel de dados del Keeper tiene el mismo aspecto.',
+      ] },
+    ],
+  },
+  {
+    version: '2.23.0', date: '2026-11-18', title: 'V3 · Dados 3D en todas las tiradas y el ataque termina al aplicar el daño',
+    sections: [
+      { title: 'Dados 3D', items: [
+        'Las tiradas que la mesa hacía por dentro ahora se lanzan como dados 3D en la pantalla de quien tira, y su resultado aparece para todos: los 1d4 del descanso corto (Tend Wounds, Clear Stress, Repair Armor), Bear Down, Combat Surge, The Held Line, el primer golpe de Nirvana, Breaking Point, la duración tirada de una carta (Rapid Regeneration…) y el dado de las cartas del Keeper.',
+        'La mesa aplica las caras que muestran los dados. En un descanso, cambiar la elección no vuelve a tirar un movimiento ya tirado.',
+      ] },
+      { title: 'Ataque', items: [
+        'Al aplicar el daño, el ataque termina: tras un instante para leer «Daño aplicado», se cierra el resultado de la Ficha, se quita la marca del objetivo y se deseleccionan los tokens.',
+      ] },
+    ],
+  },
+  {
+    version: '2.22.0', date: '2026-11-18', title: 'V3 · Descansos en mesa, armadura de enemigos al instante y tiradas más discretas',
+    sections: [
+      { title: 'Descansos', items: [
+        'El Keeper tiene dos botones en la esquina superior izquierda del mapa, junto al nombre de la escena: una luna creciente (descanso corto) y un sol amaneciendo (descanso largo).',
+        'Al pulsar uno, la partida se pausa para todos y cada personaje elige dos movimientos distintos del descanso (Corebook, cap. 9). El panel muestra quién ha elegido y quién falta; cuando elige el último, la mesa aplica todo y la partida continúa.',
+        'Descanso corto: Tend Wounds, Clear Stress, Repair Armor (1d4 + Tier) y Prepare (+1 Hope o +1 Resolve). Descanso largo: Recover, Decompress (también Long Bruise), Repair All Armor y Prepare (Hope a 2 o Resolve lleno); además termina Blinded, Poisoned y Weakened y devuelve los Armor Slots quitados por Armor Piercing.',
+        'Durante la pausa nadie puede mover ni actuar. El Keeper puede elegir por un jugador ausente, aplicar el descanso solo a quienes ya han elegido o cancelarlo.',
+      ] },
+      { title: 'Armadura de los enemigos', items: [
+        'Armor Piercing, Disintegrating y Shredding reducen al instante los Armor Slots máximos de un enemigo al aplicar el daño, en vez de quedar como recordatorio. Cada reducción recuerda cuándo vuelve: Armor Piercing en su próximo Long Rest, Disintegrating con Repair All Armor y Shredding al reparar en Downtime.',
+        'Contra personajes jugadores sigue siendo un recordatorio: el jugador elige y lo apunta en su ficha.',
+      ] },
+      { title: 'Tiradas', items: [
+        'La tarjeta de resultado tiene el fondo un 40 % transparente y desaparece antes (7 s; los dados 3D, a los 6 s). La tirada sigue en el registro.',
+      ] },
+    ],
+  },
+  {
+    version: '2.21.2', date: '2026-11-18', title: 'V3 · La zona iluminada ya no se adelanta al token',
+    sections: [
+      { title: 'Luz y visión del token', items: [
+        'Corregido: al mover un token, la zona que ilumina (su visión en la niebla de guerra) saltaba primero al destino y el token llegaba después. Ahora la visión avanza con el token mientras se desliza, igual que su halo.',
+        'Al arrastrar como jugador, la visión sigue quedándose en el punto de partida hasta soltar; y solo avanza hacia una posición que la mesa ya ha confirmado.',
+      ] },
+    ],
+  },
+  {
+    version: '2.21.1', date: '2026-11-18', title: 'V3 · La luz del token se mueve con él',
+    sections: [
+      { title: 'Luz de los tokens', items: [
+        'Al arrastrar un token para ajustar su posición, su luz propia va con él mientras lo mueves, y también mientras se desliza a su sitio (la animación que ven los demás).',
+        'La visión y la niebla de guerra del jugador siguen calculándose desde la posición confirmada: mover el token no deja ver zonas antes de soltarlo.',
+      ] },
+    ],
+  },
+  {
+    version: '2.21.0', date: '2026-11-18', title: 'V3 · Armas con tags, daño de Combat Surge y compañía, y Resolve en la Ficha',
+    sections: [
+      { title: 'Armas con tags', items: [
+        'Cada arma guarda sus propiedades como tags (Reliable, Armor Piercing 2, Paired +2, Reach…) y las reglas leen solo esos tags: ya no se buscan palabras en el nombre o la descripción. Las armas antiguas los obtienen de su lista de propiedades; las del catálogo y del creador llegan con ellos.',
+        'El editor de equipo tiene el campo «Tags (reglas)»; la lista de armas los muestra como etiquetas. La descripción sigue en «Propiedades».',
+        'El alcance sale del campo Alcance (o del catálogo): ya no se deduce del nombre del arma. La competencia de clase lee la familia del catálogo o del creador, y Massive / Heavy de sus tags.',
+      ] },
+      { title: 'Daño de efectos', items: [
+        'Tras un impacto, la Ficha ofrece los efectos que suman daño a ese ataque: Combat Surge (Soldier Awakened, 2 Hope, +1d6) y The Held Line (Soldier Sleeping, 1 Effort, +1d6), una vez por ataque; se paga con la carta como desde la mano.',
+        'Nirvana State / Disciplined State: el primer ataque cuerpo a cuerpo del estado suma +2d6 solo; Breaking Point termina el estado y suma +(Proficiency)d6.',
+        'El daño se recalcula con los mismos dados. Corregido: con una fórmula de daño escrita (p. ej. «d8+2») no se sumaba Bear Down; ahora sí, igual que estos efectos.',
+      ] },
+      { title: 'Resolve (Sleeping)', items: [
+        'En la Ficha, junto a las marcas de Resolve: Bear Down con el número de dados que quieras gastar; suma su total a tu última tirada o ataque (o al daño aún sin aplicar). Nunca cambia Hope/Fear ni hace crítico.',
+        'Prepare: «+1» en un descanso corto y «lleno» en un descanso largo, como el Corebook (Resolve no se recupera solo).',
+      ] },
+    ],
+  },
+  {
+    version: '2.20.1', date: '2026-11-18', title: 'V3 · El jugador que actúa toma el foco',
+    sections: [
+      { title: 'Foco automático', items: [
+        'Cuando un jugador termina una acción activa, la mesa le da el foco: al atacar (cuando se resuelve la tirada), al usar un Poder, un Resolve Move, un Uncanny Power o su rasgo de senda, y al mover su token por el mapa.',
+        'Si cancela la acción (Esc al apuntar, soltar el token en su sitio, un movimiento bloqueado), no hay foco. Las Reacciones y las tiradas normales de Trait tampoco lo dan.',
+        'Si ya tenía el foco no cambia nada, así que mover y luego atacar en el mismo turno no hace avanzar dos veces sus relojes de efecto.',
+      ] },
+    ],
+  },
+  {
+    version: '2.20.0', date: '2026-11-18', title: 'V3 · Poderes y rasgos al día con el Corebook 12.06, Integrity Die, duraciones de todo el mazo y cajón completo',
+    sections: [
+      { title: 'Textos al día con el Corebook 12.06', items: [
+        'Revisados contra el libro los 147 Poderes, los 18 rasgos de senda (Hope Feature y Effort Feature), los 42 Resolve Moves, los Gifts de Ancestry y los beneficios de Community. Actualizados los que habían cambiado: 113 Poderes (29 reescritos a fondo, p. ej. Compelling Argument, Drone Whisper, Solar Avatar), 12 rasgos de senda (Scrap Genius, Veil Surge, Reality Unfold, Vanishing Act, Path to Nirvana, The Refused Path…), 16 Resolve Moves (Field Improvisation, Hot-Wire, Uncanny Power…), 10 Gifts y las 7 Communities.',
+        'Uncanny Power vuelve a decir Resolve Die (no Effort Die), como el libro. Las cartas muestran la negrita y la cursiva del libro.',
+      ] },
+      { title: 'Path to Nirvana y Disciplined State (versión del Corebook)', items: [
+        'Al entrar en el estado se crea un Integrity Die a su cara más alta según el Tier: d4 (niveles 1-4), d6 (5-7) o d8 (8-10). Cada tirada con Fear lo baja 1 (nunca con dados iguales); a 0 el estado termina. También termina al cambiar de escena. Igual para el Awakened (Path to Nirvana) y el Sleeping (The Refused Path).',
+      ] },
+      { title: 'Duraciones de todo el mazo', items: [
+        'Revisadas las 234 cartas del juego: 58 crean un reloj de efecto al usarse: las que duran turnos o rondas, «hasta tu próximo Spotlight», «hasta el final de la escena» (termina al cambiar de escena o al tocar el reloj), los dados que fijan la duración (Rapid Regeneration, Nurturing Touch, con +1 HP por turno) y los Integrity Die.',
+        'No crean reloj las duraciones de condiciones sobre un objetivo ni las de ramas de fallo: dependen de la tirada.',
+        'Un efecto que puede ser para otro (Rapid Regeneration, Nurturing Touch…) va al aliado seleccionado o marcado en el mapa; si no hay ninguno, a quien juega la carta. Seleccionar a un aliado ya no le quita la mano de cartas al jugador.',
+      ] },
+      { title: 'Mazo', items: [
+        'El cajón del mazo tiene ahora Poderes, Ancestry, Community y Clases. Las clases se agrupan por Awakened y Sleeping y, dentro, por clase (Hope o Effort Feature, Class Feature y Resolve Moves). Todas se pueden abrir y leer, también como Keeper.',
+        'El botón del mazo se ve siempre, también mientras se cargan los datos de reglas.',
+      ] },
+    ],
+  },
+  {
+    version: '2.19.0', date: '2026-11-18', title: 'V3 · Relojes de efecto: Path to Nirvana, Rapid Regeneration y otros efectos con duración',
+    sections: [
+      { title: 'Relojes de efecto', items: [
+        'Al usar una carta cuyo texto fija una duración, el personaje recibe un reloj de efecto: Path to Nirvana («Spotlights equal to your Proficiency») crea un reloj de tantos segmentos como su Proficiency; Rapid Regeneration («Roll 1d4… number of additional turns») tira el d4 y crea un reloj de ese número. También se reconocen duraciones fijas («for 3 turns»).',
+        'Cada vez que el personaje gana el foco se marca un segmento; al completarse, el efecto termina con un aviso y una entrada en el registro. Rapid Regeneration cura +1 HP en cada uno de esos turnos.',
+        'El reloj se ve junto al token (a la izquierda; las condiciones van a la derecha) con los segmentos que quedan: tocarlo marca un segmento. En la Ficha del jugador aparece en «Efectos». En la ficha completa se edita: marcar, desmarcar, cambiar el número de segmentos o terminar el efecto.',
+        'Volver a usar el mismo efecto reinicia su reloj.',
+      ] },
+    ],
+  },
+  {
+    version: '2.18.3', date: '2026-11-18', title: 'V3 · El segundo toque en el objetivo ya ataca siempre',
+    sections: [
+      { title: 'Corregido', items: [
+        'Al tocar dos veces seguidas el objetivo, el navegador generaba además un doble clic en el mapa, que intentaba abrir la ficha de ese token y mostraba «Selecciona uno de tus tokens asignados». Mientras se apunta, y un momento después de atacar, el mapa ya no recibe esos clics.',
+        'Seleccionar un enemigo en el mapa ya no le quita la Ficha a tu personaje: si lo seleccionado no es un personaje jugador, la Ficha sigue con el que juegas.',
+        'En la máquina del Keeper (también en su vista de jugador) se pueden marcar como objetivo los tokens ocultos; un jugador nunca los ve ni los marca.',
+      ] },
+    ],
+  },
+  {
+    version: '2.18.2', date: '2026-11-18', title: 'V3 · Invitaciones sin ventanas encima y pruebas de login con emuladores',
+    sections: [
+      { title: 'Inicio de sesión', items: [
+        'Corregido: al abrir un enlace de invitación sin haber iniciado sesión, la ventana de Sesiones salía encima de la pantalla de acceso y seguía allí después. Ahora el código espera en la casilla «Unirse» de la pantalla de inicio y, al iniciar sesión, entras directamente en la sala como jugador.',
+        'Comprobado de punta a punta con cuentas reales en los emuladores de Firebase: el Keeper crea una sala, un jugador entra con el código, otro con el enlace de invitación, el Keeper recarga y vuelve a su sala, y el inicio de sesión desde «Cuenta» cierra la ventana con «Sesión iniciada como…». En ningún paso queda una ventana encima de otra.',
+      ] },
+      { title: 'Desarrollo', items: [
+        'Nuevo `npm run dev:emulators`: la app entera contra los emuladores de Authentication y Firestore (proyecto ficticio, sin datos reales). Ver FIREBASE_SETUP.md.',
+      ] },
+    ],
+  },
+  {
+    version: '2.18.1', date: '2026-11-18', title: 'V3 · Inicio de sesión sin ventanas superpuestas',
+    sections: [
+      { title: 'Inicio de sesión y salas', items: [
+        'Corregido: con un enlace de invitación, la ventana de Sesiones se abría al cargar y otra vez al confirmar la cuenta (y en cada renovación de la sesión). Ahora la invitación se usa una sola vez y se quita de la dirección.',
+        'La ventana de Sesiones ya no se apila: si ya está abierta, se trae al frente.',
+        'Tras iniciar sesión desde «Cuenta» ya no se abre el archivo personal encima: se cierra y avisa «Sesión iniciada». Si se inició sesión desde la ventana de salas, se vuelve a ella.',
+        'La vuelta automática a tu última sala va directa a la mesa (con «Volviendo a tu sala» y Cancelar), en lugar de cargar detrás de la pantalla de inicio. Cancelar devuelve a la pantalla de inicio.',
+      ] },
+    ],
+  },
+  {
+    version: '2.18.0', date: '2026-11-18', title: 'V3 · La regla 3 + 5 + resto en la vista del jugador',
+    sections: [
+      { title: 'Vista del jugador más limpia', items: [
+        'Nuevo componente común de menús (3 a la vista, 5 en «⋯» y el resto en «Más…»), aplicado de momento a la vista del jugador.',
+        'Cabecera: Escena, Sala y Tokens a la vista; en «⋯» Cuenta, Sesiones, Ayuda, Tripulación y Copiar invitación; en «Más…» Códice, Inicio, Unirse a una sala, Audio y el enlace de invitación.',
+        'Herramientas: Mover, Medir y Dibujo; en «⋯» Ping, Área, Efectos, Deshacer y Rejilla; en «Más…» Ajuste a la rejilla.',
+        'Barra del personaje: Ficha, Estados y Equipo; en «⋯» Foco, Expandir y Reserva. Las cifras y sus botones −/+ siguen a la vista.',
+        'Los atajos de teclado siguen funcionando. La vista del Keeper no cambia todavía.',
+        'Con esto el jugador pasa de unos 95 controles a la vista (diagnóstico) a 48.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.12', date: '2026-11-18', title: 'V3 · Atacar con Ventaja o Desventaja y pantalla del Keeper',
     sections: [
       { title: 'Ataques', items: [

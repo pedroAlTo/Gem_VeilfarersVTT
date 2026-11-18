@@ -1,3 +1,4 @@
+import { hasTag } from './weaponTags.js';
 // src/rulesEngine.js
 // Veilfarers Canon Rules Engine (Sacred System Bible Release 12.06)
 
@@ -196,8 +197,15 @@ export function checkMath(result) {
 // It never bypasses armor. Reflective armor cancels Energy; a Ward cancels Void and Neural.
 export const DAMAGE_TYPES = { physical: 'Physical', energy: 'Energy', void: 'Void', neural: 'Neural' };
 const PENETRATION = { physical: 0, energy: 2, void: 4, neural: 4 };
+// The type comes from the damage line ("d8+1 ene.") and, for a weapon, its tags (Energy;
+// Phasing deals Void), not from words in its description.
 export function damageTypeOf(source) {
-  const text = (source && typeof source === 'object' ? [source.damageType, source.damage, source.features, source.name].join(' ') : String(source ?? '')).toLowerCase();
+  if (source && typeof source === 'object') {
+    if (hasTag(source, 'phasing')) return 'void';
+    const own = damageTypeOf([source.damageType, source.damage].join(' '));
+    return own === 'physical' && hasTag(source, 'energy') ? 'energy' : own;
+  }
+  const text = String(source ?? '').toLowerCase();
   if (/\bneural\b/.test(text)) return 'neural';
   if (/\bvoid\b|\bphasing\b/.test(text)) return 'void';
   if (/\b(?:energy|ene)\b/.test(text)) return 'energy';
@@ -206,7 +214,8 @@ export function damageTypeOf(source) {
 // Weapon tags (Corebook ch. 10). Crushing: the hit ignores one Armor Slot, unless the target's
 // armor is Composite. Bleed: any hit applies Bleeding, whatever its tier.
 export function weaponTags(source) {
-  const text = source && typeof source === 'object' ? [source.features, source.name].join(' ') : String(source ?? '');
+  if (source && typeof source === 'object') return { crushing: hasTag(source, 'crushing'), bleed: hasTag(source, 'bleed') };
+  const text = String(source ?? '');
   return { crushing: /\bcrushing\b/i.test(text), bleed: /\bbleed(?:ing)?\b/i.test(text) };
 }
 export function usableArmorSlots(available, { crushing = false, composite = false } = {}) {

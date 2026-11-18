@@ -1,7 +1,7 @@
 {
   "name": "veilfarers-vtt",
   "private": true,
-  "version": "2.17.12",
+  "version": "2.23.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
     "release:notes": "node scripts/release-notes.mjs",
     "release:check": "node scripts/release-notes.mjs --check",
     "test:account": "firebase emulators:exec --only firestore --project demo-veilfarers-vtt \"node --test tests/account.integration.js\"",
+    "dev:emulators": "firebase emulators:exec --only auth,firestore --project demo-veilfarers-vtt \"vite --mode emulators\"",
     "test:rooms": "firebase emulators:exec --only firestore --project demo-veilfarers-vtt \"node --test tests/rooms.integration.js\""
   },
   "dependencies": {

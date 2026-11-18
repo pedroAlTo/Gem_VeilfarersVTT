@@ -26,6 +26,8 @@ export class RoomController {
   emit() { for (const fn of this.listeners) fn(this); }
   get isKeeper() { return !!this.room && this.room.ownerUid === this.service.uid; }
   remember(id) { try { if (id) localStorage.setItem(activeRoomKey(this.service.uid), id); else localStorage.removeItem(activeRoomKey(this.service.uid)); } catch {} }
+  // The room this account was in on this browser ('' if none). `uid` before the service is ready.
+  rememberedRoom(uid = this.service.uid) { try { return uid ? localStorage.getItem(activeRoomKey(uid)) || '' : ''; } catch { return ''; } }
   async restore() {
     if (this.room || this.entering) return;
     await this.service.ready();

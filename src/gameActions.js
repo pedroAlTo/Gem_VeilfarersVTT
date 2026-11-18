@@ -1,9 +1,12 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
+import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { rollAdversaryCheck } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
+import { validFaces, facesRoller } from './tableDice.js';
+import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
 import { handoffControl } from './drones.js';
 import { characterCards, playCard, recallPower, learnPower, costLabel, CARD_KINDS } from './loadoutCards.js';
@@ -12,12 +15,51 @@ const clamp = (n, max) => Math.max(0, Math.min(max, n));
 // The table that resolves an action (the Keeper's, local or hosting) applies it even while its
 // own screen previews the Player view, whose edit guard would otherwise drop the change silently.
 // tableActing lifts only that guard; saving and broadcasting work as usual.
+// A player who finishes an active action (an attack, a Power or Move played, a move on the map)
+// takes the Spotlight. Only the table gives it; a cancelled action never reaches here.
+// (User decision, 18 Nov 2026.)
+export function grantSpotlight(store, tokenId) {
+  const token = store.state.tokens.find(t => t.id === tokenId);
+  if (!token || token.isPlayer === false || token.actorType === 'drone' || token.hasSpotlight || typeof store.setTokenSpotlight !== 'function') return false;
+  const before = store.tableActing; store.tableActing = true;
+  try { return store.setTokenSpotlight(tokenId, true) !== false; } finally { store.tableActing = before; }
+}
+export const ACTIVE_CARD_KINDS = new Set(['power', 'archive', 'move', 'feature']);
+
 export function performGameAction(action, store = defaultStore) {
   const before = store.tableActing;
   store.tableActing = store.sessionRole !== 'player' || !!before;
   try { return resolveGameAction(action, store); } finally { store.tableActing = before; }
 }
 function resolveGameAction(action, store) {
+  // Rests: the Keeper starts or cancels one; each character chooses its two moves; the last
+  // choice applies the rest to everybody and play goes on.
+  if (action.type === 'REST_FINISH') {
+    if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') throw new Error('Solo el Keeper puede terminar el descanso.');
+    return finishRest(store);
+  }
+  if (action.type === 'REST_START' || action.type === 'REST_CANCEL') {
+    if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') throw new Error('Solo el Keeper puede empezar o cancelar un descanso.');
+    if (action.type === 'REST_CANCEL') {
+      const kind = store.state.rest?.kind;
+      if (!kind) return { rest: null };
+      store.update({ rest: null });
+      store.addLog({ sender: 'Keeper', type: 'REST', title: `${REST_NAMES[kind]} cancelado`, details: 'La partida continúa sin cambios.' });
+      return { rest: null };
+    }
+    if (store.state.rest) throw new Error('Ya hay un descanso en curso.');
+    const rest = newRest(action.kind, store.state.tokens, store.state.activeMapId);
+    store.update({ rest });
+    store.addLog({ sender: 'Keeper', type: 'REST', title: `${REST_NAMES[rest.kind]}: partida en pausa`, details: 'Cada personaje elige dos movimientos distintos del descanso.' });
+    return { rest };
+  }
+  if (action.type === 'REST_CHOICE') {
+    const rest = store.state.rest;
+    if (!rest || (action.restId && action.restId !== rest.id)) throw new Error('Ese descanso ya ha terminado.');
+    const next = chooseMoves(rest, String(action.actorId ?? ''), action.moves, action.rolls);
+    if (!restComplete(next, store.state.tokens)) { store.update({ rest: next }); return { rest: next }; }
+    return finishRest(store, next);
+  }
   const secret = action.visibility === 'keeper';
   if (secret && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) throw new Error('Solo el Keeper puede hacer tiradas secretas.');
   const standalone = secret && action.type === 'CHECK' && !action.actorId;
@@ -68,7 +110,22 @@ function resolveGameAction(action, store) {
     const card = characterCards(actor, data).find(c => c.id === action.cardId);
     if (!card) throw new Error('Esa carta ya no está en la mano de este personaje.');
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
-    apply(resources(result.token));
+    // A card whose text sets a duration starts an effect clock on the character (Path to
+    // Nirvana: Proficiency Spotlights; Rapid Regeneration: 1d4 turns).
+    const duration = result.failed ? null : cardDuration(card, actor, facesRoller(Array.isArray(action.durationFaces) ? action.durationFaces.slice(0, 4) : []));
+    // An effect that may help someone else goes to the ally the player marked (a player
+    // character on the same scene), otherwise to the one who plays the card.
+    const marked = action.targetId && action.targetId !== actor.id ? store.state.tokens.find(t => t.id === action.targetId) : null;
+    const holder = duration && marked && helpsOthers(card) && marked.isPlayer !== false && marked.actorType !== 'drone' && !marked.hidden && marked.mapId === actor.mapId ? marked : actor;
+    if (duration) {
+      const when = duration.tick === 'fear' ? '' : duration.scene && duration.tick === 'manual' ? ' Termina al acabar la escena.' : ` Avanza un segmento cada vez que ${holder.name} gana el foco.`;
+      result.notes.push(`Reloj «${duration.name}»${holder !== actor ? ` en ${holder.name}` : ''}: ${duration.note}${when}`);
+    }
+    const clock = duration ? newClock(duration, { source: actor.name }) : null;
+    apply({ ...resources(result.token), ...(clock && holder === actor ? { effectClocks: addClock(actor.effectClocks, clock) } : {}) });
+    if (clock && holder !== actor) store.updateToken(holder.id, { effectClocks: addClock(holder.effectClocks, clock) });
+    // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
+    if (ACTIVE_CARD_KINDS.has(card.kind) && !card.reaction) grantSpotlight(store, actor.id);
     if (result.fear) store.addFear(result.fear);
     const details = [result.summary, ...result.notes].join(' ');
     const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };
@@ -155,7 +212,16 @@ function resolveGameAction(action, store) {
     }
     if (player && result.isCritical)
       patch.stress = { ...actor.stress, current: Math.max(0, (actor.stress?.current || 0) - 1) };
+    // Integrity Die (Path to Nirvana, Disciplined State): each roll with Fear lowers it by 1, never
+    // on matching dice; at 0 the state ends.
+    let integrityEnded = [];
+    if (player && result.dominance === 'Fear' && !result.isCritical && actor.effectClocks?.some(c => c.tick === 'fear')) {
+      const ticked = tickClocks(actor.effectClocks, { kind: 'fear' });
+      patch.effectClocks = ticked.list; integrityEnded = ticked.expired;
+    }
     if (!standalone) store.updateToken(actor.id, patch);
+    if (action.attack && player) grantSpotlight(store, actor.id);
+    for (const c of integrityEnded) store.addLog({ sender: actor.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${actor.name}: el Integrity Die llega a 0 y «${c.name}» termina.` });
     if (result.fearGain) store.addFear(result.fearGain);
     const record = { id: newId(), actorId: actor.id, ...result, ...(secret ? { visibility: 'keeper' } : {}) };
     lastRoll.set(rollKey, record);
@@ -177,7 +243,7 @@ function resolveGameAction(action, store) {
     if (actor.path !== 'Sleeping' || (actor.resolve?.current || 0) < 1) throw new Error('No Resolve available.');
     const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
     const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
-      dice = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
+      dice = validFaces(action.faces, count, sides) ? action.faces.slice() : Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
       bonus = dice.reduce((n, v) => n + v, 0);
     store.updateToken(actor.id, { resolve: { ...actor.resolve, current: actor.resolve.current - count } });
     const log = {
@@ -196,7 +262,7 @@ function resolveGameAction(action, store) {
     // Bear Down spends any number of Resolve Dice and adds their total (Corebook ch. 7).
     const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
     const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
-      dice = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
+      dice = validFaces(action.faces, count, sides) ? action.faces.slice() : Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
       bonus = dice.reduce((n, v) => n + v, 0);
     store.updateToken(actor.id, {
       resolve: { ...actor.resolve, current: actor.resolve.current - count },
@@ -285,4 +351,15 @@ function resolveGameAction(action, store) {
     return { log };
   }
   throw new Error('Unsupported game action.');
+}
+
+// Everyone has chosen: apply every character's moves, log them, and end the pause.
+export function finishRest(store, rest = store.state.rest) {
+  if (!rest) return { rest: null };
+  const { patches, lines } = resolveRest(rest, store.state.tokens);
+  store._beforeTacticalMutation?.(REST_NAMES[rest.kind]);
+  store.update({ rest: null, tokens: store.state.tokens.map(t => (patches.has(t.id) ? { ...t, ...patches.get(t.id) } : t)) });
+  const log = { sender: 'Keeper', type: 'REST', title: `${REST_NAMES[rest.kind]} completado`, details: lines.join('\n') || 'Sin cambios.' };
+  store.addLog(log);
+  return { rest: null, done: true, lines };
 }
