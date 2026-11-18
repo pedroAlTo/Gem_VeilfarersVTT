@@ -5,6 +5,7 @@ import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine
 import { rollAdversaryCheck } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
+import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
 import { handoffControl } from './drones.js';
 import { characterCards, playCard, recallPower, learnPower, costLabel, CARD_KINDS } from './loadoutCards.js';
@@ -30,6 +31,34 @@ export function performGameAction(action, store = defaultStore) {
   try { return resolveGameAction(action, store); } finally { store.tableActing = before; }
 }
 function resolveGameAction(action, store) {
+  // Rests: the Keeper starts or cancels one; each character chooses its two moves; the last
+  // choice applies the rest to everybody and play goes on.
+  if (action.type === 'REST_FINISH') {
+    if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') throw new Error('Solo el Keeper puede terminar el descanso.');
+    return finishRest(store);
+  }
+  if (action.type === 'REST_START' || action.type === 'REST_CANCEL') {
+    if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') throw new Error('Solo el Keeper puede empezar o cancelar un descanso.');
+    if (action.type === 'REST_CANCEL') {
+      const kind = store.state.rest?.kind;
+      if (!kind) return { rest: null };
+      store.update({ rest: null });
+      store.addLog({ sender: 'Keeper', type: 'REST', title: `${REST_NAMES[kind]} cancelado`, details: 'La partida continúa sin cambios.' });
+      return { rest: null };
+    }
+    if (store.state.rest) throw new Error('Ya hay un descanso en curso.');
+    const rest = newRest(action.kind, store.state.tokens, store.state.activeMapId);
+    store.update({ rest });
+    store.addLog({ sender: 'Keeper', type: 'REST', title: `${REST_NAMES[rest.kind]}: partida en pausa`, details: 'Cada personaje elige dos movimientos distintos del descanso.' });
+    return { rest };
+  }
+  if (action.type === 'REST_CHOICE') {
+    const rest = store.state.rest;
+    if (!rest || (action.restId && action.restId !== rest.id)) throw new Error('Ese descanso ya ha terminado.');
+    const next = chooseMoves(rest, String(action.actorId ?? ''), action.moves);
+    if (!restComplete(next, store.state.tokens)) { store.update({ rest: next }); return { rest: next }; }
+    return finishRest(store, next);
+  }
   const secret = action.visibility === 'keeper';
   if (secret && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) throw new Error('Solo el Keeper puede hacer tiradas secretas.');
   const standalone = secret && action.type === 'CHECK' && !action.actorId;
@@ -321,4 +350,15 @@ function resolveGameAction(action, store) {
     return { log };
   }
   throw new Error('Unsupported game action.');
+}
+
+// Everyone has chosen: apply every character's moves, log them, and end the pause.
+export function finishRest(store, rest = store.state.rest) {
+  if (!rest) return { rest: null };
+  const { patches, lines } = resolveRest(rest, store.state.tokens);
+  store._beforeTacticalMutation?.(REST_NAMES[rest.kind]);
+  store.update({ rest: null, tokens: store.state.tokens.map(t => (patches.has(t.id) ? { ...t, ...patches.get(t.id) } : t)) });
+  const log = { sender: 'Keeper', type: 'REST', title: `${REST_NAMES[rest.kind]} completado`, details: lines.join('\n') || 'Sin cambios.' };
+  store.addLog(log);
+  return { rest: null, done: true, lines };
 }

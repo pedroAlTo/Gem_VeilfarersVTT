@@ -116,10 +116,56 @@ const REMINDERS = [
   ['dispersal-wave', () => 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.'],
   ['massive', () => 'Massive: quien lo empuña tiene −1 Evasion.'],
 ];
+// ctx.armorAuto: the table already cut the target's maximum Armor Slots (an enemy, see armorCut).
+const ARMOR_CUT_TAGS = ['armor-piercing', 'shredding', 'disintegrating'];
 export function featureReminders(weapon, ctx = {}) {
   if (!weapon || typeof weapon !== 'object') return [];
   const dc = featureDC(weapon);
-  return [...new Set(REMINDERS.filter(([id]) => hasTag(weapon, id)).map(([, say]) => say(dc, ctx, weapon)).filter(Boolean))];
+  return [...new Set(REMINDERS.filter(([id]) => hasTag(weapon, id) && !(ctx.armorAuto && ARMOR_CUT_TAGS.includes(id))).map(([, say]) => say(dc, ctx, weapon)).filter(Boolean))];
+}
+
+// Cuts to an enemy's maximum Armor Slots, applied at once (enemies rarely live to a second
+// round, so a reminder would come too late). Each cut keeps how it comes back:
+// - Armor Piercing (rating, default 1), on a hit: until its next Long Rest.
+// - Disintegrating, when a damage die rolls its maximum: −1 until Repair All Armor (for an NPC
+//   the Keeper chooses; on an armored enemy the table takes the Armor Slot).
+// - Shredding, when the hit deals damage: −1 until the armor is repaired in Downtime.
+// null when nothing is cut. PCs keep the reminders: the player chooses (Disintegrating) and the
+// cut is applied on their sheet.
+export function armorCut(weapon, ctx = {}, armorMax = 0) {
+  if (!weapon || !ctx.hit || !(armorMax > 0)) return null;
+  const cut = { long: 0, repairAll: 0, downtime: 0 };
+  if (hasTag(weapon, 'armor-piercing')) cut.long = Math.max(1, Math.min(5, tagValue(weapon, 'armor-piercing', 1)));
+  if (hasTag(weapon, 'disintegrating') && ctx.maxDie) cut.repairAll = 1;
+  if (hasTag(weapon, 'shredding') && ctx.damaged) cut.downtime = 1;
+  return cut.long + cut.repairAll + cut.downtime ? cut : null;
+}
+export const validArmorCut = c => !!c && typeof c === 'object' && ['long', 'repairAll', 'downtime'].every(k => Number.isInteger(c[k]) && c[k] >= 0 && c[k] <= 5) && c.long + c.repairAll + c.downtime >= 1;
+// The armor after the cut: its maximum drops (never below 0), the slots left fit the new maximum,
+// and `cut` remembers what each rest gives back.
+export function applyArmorCut(armor = {}, cut) {
+  const total = cut.long + cut.repairAll + cut.downtime;
+  const max = Math.max(0, (armor.max || 0) - total), before = armor.cut || {};
+  return { ...armor, max, current: Math.min(armor.current || 0, max), cut: { long: (before.long || 0) + cut.long, repairAll: (before.repairAll || 0) + cut.repairAll, downtime: (before.downtime || 0) + cut.downtime } };
+}
+// What a rest gives back: a Long Rest ends the Armor Piercing cuts; Repair All Armor also those
+// of Disintegrating. The Shredding ones wait for Downtime (the Keeper edits them by hand).
+export function restoreArmorCut(armor = {}, { long = false, repairAll = false } = {}) {
+  const c = armor.cut;
+  if (!c) return armor;
+  const back = (long ? c.long || 0 : 0) + (repairAll ? c.repairAll || 0 : 0);
+  if (!back) return armor;
+  const cut = { long: long ? 0 : c.long || 0, repairAll: repairAll ? 0 : c.repairAll || 0, downtime: c.downtime || 0 };
+  const { cut: _old, ...rest } = armor;
+  return { ...rest, max: (armor.max || 0) + back, ...(cut.long + cut.repairAll + cut.downtime ? { cut } : {}) };
+}
+export function armorCutNotes(cut) {
+  if (!cut) return [];
+  return [
+    ...(cut.long ? [`Armor Piercing: −${cut.long} Armor Slot${cut.long > 1 ? 's' : ''} máximo${cut.long > 1 ? 's' : ''} del objetivo al aplicar el daño (hasta su próximo Long Rest).`] : []),
+    ...(cut.repairAll ? ['Disintegrating: un dado salió al máximo; −1 Armor Slot máximo del objetivo al aplicar el daño (hasta Repair All Armor).'] : []),
+    ...(cut.downtime ? ['Shredding: −1 Armor Slot máximo del objetivo al aplicar el daño (hasta reparar la armadura en Downtime).'] : []),
+  ];
 }
 
 // Overheating: after each attack roll a d6; on 1–2 the weapon must cool down.

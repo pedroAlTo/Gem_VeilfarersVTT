@@ -1,8 +1,8 @@
-# VeilFarers VTT · v2.21.2
+# VeilFarers VTT · v2.22.0
 
 A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v2.21.2**. Download package: **VeilFarers_VTT_v2.21.2.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.22.0**. Download package: **VeilFarers_VTT_v2.22.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -34,6 +34,7 @@ Development happens on the `V2` branch. [HANDOVER_V2.md](HANDOVER_V2.md) records
 - **(V3) Weapon tags, damage riders and Resolve.** Weapons carry canonical tags the rules read (no word search); Combat Surge, The Held Line, the Nirvana first strike and Breaking Point add to an attack's damage; Sleeping characters use Bear Down and Prepare from the Sheet.
 - **(V3) Token light follows the token.** While a token is dragged into place, and while it slides there, its own light moves with it; vision and fog keep the confirmed position.
 - **(V3) Vision slides with the token.** The lit area in the Fog of War moves with a sliding token instead of jumping ahead of it.
+- **(V3) Rests and enemy armor.** The Keeper's crescent moon (Short Rest) and rising sun (Long Rest), top-left of the map, pause the table; each character chooses two different rest moves (Corebook ch. 9), the panel shows who is still choosing, and the last choice applies the rest. Armor Piercing, Disintegrating and Shredding cut an enemy's maximum Armor Slots at once. Roll result cards are 40% transparent and leave sooner.
 - **(V3) Corebook 12.06 texts.** Powers, Path features, Resolve Moves, Ancestry Gifts and Communities match the Corebook; Path to Nirvana and the Disciplined State use the Integrity Die. The deck also shows Ancestry, Community and class cards (Awakened / Sleeping, by class).
 - **(V3) Effect clocks.** Cards with a duration (Path to Nirvana, Rapid Regeneration…) put a clock beside the token; each Spotlight marks a segment, a touch marks one by hand, and the full sheet edits it.
 - **(V3) 3 + 5 + rest.** In the player's view, the header, map tools and character bar show three controls and a «⋯» menu (five more, then «More…» with the rest).

@@ -1,3 +1,4 @@
+import { validRest } from './rest.js';
 import { validateDroneState } from './drones.js';
 import { validEffectClocks } from './effectClocks.js';
 import { validateDrawing } from './freehand.js';
@@ -21,6 +22,7 @@ export const CAMPAIGN_KEYS = [
   'logs',
   'players',
   'chatMessages',
+  'rest',
 ];
 export const finite = (x, min = -1e6, max = 1e6) =>
   typeof x === 'number' && Number.isFinite(x) && x >= min && x <= max;
@@ -137,6 +139,7 @@ export function validateCampaign(data) {
         'Invalid system Integrity.'
       );
   } else throw new Error('Missing starship data.');
+  if (data.rest !== undefined) assert(validRest(data.rest), 'Invalid rest.');
   if (data.logs !== undefined) assert(Array.isArray(data.logs) && data.logs.length <= 150 && data.logs.every(x => x && typeof x === 'object'), 'Invalid session log.');
   return structuredClone({ ...data, chatMessages: validateChatHistory(data.chatMessages) });
 }

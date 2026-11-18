@@ -10,7 +10,8 @@ function hitConditionsPatch(t, data) {
   return asked.length ? { conditions: normalizeConditions([...(t.conditions || []), ...asked]) } : {};
 }
 import { validateDrawing, canAnnotate } from './freehand.js';
-import { controlsToken, isDrone } from './tokenPermissions.js';
+import { controlsToken, isDrone, isPartyToken } from './tokenPermissions.js';
+import { validArmorCut, applyArmorCut } from './weaponFeatures.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
@@ -941,6 +942,13 @@ export class NetworkManager {
       this.store.state.tokens.some(
         (t) => t.id === tokenId && controlsToken(t, this.members.get(senderId)?.id || senderId)
       );
+    // A rest pauses the table: nothing moves or acts until everyone has chosen their moves.
+    if (this.store.state.rest && (['TOKEN_UPDATE', 'TOKEN_MOVE', 'APPLY_DAMAGE'].includes(data.type) || (data.type === 'ACTION' && data.action?.type !== 'REST_CHOICE'))) {
+      const conn = this.connections.get(senderId), error = 'La partida está en pausa: el grupo está descansando.';
+      if (data.type === 'ACTION') conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error }));
+      else { conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', ...(Number.isSafeInteger(data.sequence) ? { sequence: data.sequence } : {}), error })); if (conn) this.syncPeer(conn); }
+      return;
+    }
     if (data.type === 'IMPORT_CHARACTER') {
       const conn = this.connections.get(senderId);
       try {
@@ -987,6 +995,9 @@ export class NetworkManager {
 
         newHp = Math.max(0, Math.min(target.hp?.max ?? newHp, newHp));
         newArmor = Math.max(0, Math.min(target.armor?.max ?? newArmor, newArmor));
+        // Armor Piercing / Disintegrating / Shredding cut an enemy's maximum Armor Slots at once
+        // (never a character's: the player applies those on the sheet).
+        const cut = data.armorCut != null && !isPartyToken(target) && validArmorCut(data.armorCut) ? data.armorCut : null;
 
         this.store._beforeTacticalMutation?.('Aplicar daño', 'tok_' + target.id);
         this.store.update({
@@ -995,7 +1006,7 @@ export class NetworkManager {
               return {
                 ...t,
                 hp: { ...t.hp, current: newHp },
-                armor: { ...t.armor, current: newArmor },
+                armor: cut ? applyArmorCut({ ...t.armor, current: newArmor }, cut) : { ...t.armor, current: newArmor },
                 // A hit may mark 1–3 Stress (Neural, Energy Surge, Poison); nothing else of the target can change.
                 ...(Number.isInteger(data.stressMark) && data.stressMark >= 1 && data.stressMark <= 3 && t.stress ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? (t.stress.current || 0) + data.stressMark, (t.stress.current || 0) + data.stressMark) } } : {}),
                 // A weapon may add Bleeding (to a target that can bleed) and On Fire (Ignite), and nothing else.
@@ -1091,7 +1102,7 @@ export class NetworkManager {
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
           // Card actions resolve here too: the table pays their costs (they were missing, so a
           // connected player's card was refused as "not assigned").
-          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN'].includes(data.action?.type)
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'REST_CHOICE'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
         const result = await this.performAction(data.action);

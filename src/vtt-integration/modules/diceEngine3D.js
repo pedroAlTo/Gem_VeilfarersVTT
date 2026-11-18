@@ -168,7 +168,7 @@ export class VeilfarersDiceEngine {
     this.clearTimer = setTimeout(() => {
       this.clearCanvas();
       this.hideBanner();
-    }, 12000);
+    }, 6000);
   }
 
   async throw3DDuality(hopeVal, fearVal, extraDice = []) {
@@ -330,8 +330,8 @@ export class VeilfarersDiceEngine {
     };
     if (closeBtn) closeBtn.onclick = dismiss;
 
-    // Auto dismiss after 8 seconds
-    const timer = setTimeout(dismiss, 8000);
+    // Auto dismiss after 6 seconds (the roll stays in the log)
+    const timer = setTimeout(dismiss, 6000);
     card.dataset.timer = String(timer);
 
     stack.prepend(card);

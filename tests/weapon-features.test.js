@@ -100,3 +100,28 @@ test('a damage formula adds Bear Down and the effects on top (they were lost wit
   const plus = resolveDamageExpression('d8+2', { rollDie: () => 3, targetMajorThreshold: 6, targetSevereThreshold: 12, bonus: 4 });
   assert.equal(base.rawDamage, 5); assert.equal(plus.rawDamage, 9);
 });
+
+// V3: Armor Piercing, Disintegrating and Shredding cut an enemy's maximum Armor Slots at once.
+import { armorCut, applyArmorCut, restoreArmorCut, validArmorCut } from '../src/weaponFeatures.js';
+test('armorCut: Armor Piercing (rating), Disintegrating on a max die, Shredding when damaged', () => {
+  const ap = { tags: ['armor-piercing:2'] }, sh = { tags: ['shredding'] }, dis = { tags: ['disintegrating'] };
+  assert.deepEqual(armorCut(ap, { hit: true }, 4), { long: 2, repairAll: 0, downtime: 0 });
+  assert.equal(armorCut(ap, { hit: true }, 0), null, 'nothing to cut without armor');
+  assert.equal(armorCut(sh, { hit: true, damaged: false }, 3), null);
+  assert.deepEqual(armorCut(sh, { hit: true, damaged: true }, 3), { long: 0, repairAll: 0, downtime: 1 });
+  assert.equal(armorCut(dis, { hit: true, maxDie: false }, 3), null);
+  assert.deepEqual(armorCut(dis, { hit: true, maxDie: true }, 3), { long: 0, repairAll: 1, downtime: 0 });
+  assert.ok(validArmorCut({ long: 2, repairAll: 0, downtime: 0 }));
+  assert.ok(!validArmorCut({ long: 0, repairAll: 0, downtime: 0 }));
+  assert.ok(!validArmorCut({ long: 9, repairAll: 0, downtime: 0 }));
+});
+test('applyArmorCut / restoreArmorCut: the maximum drops, and each rest gives back its part', () => {
+  let armor = applyArmorCut({ current: 3, max: 4 }, { long: 2, repairAll: 1, downtime: 0 });
+  assert.deepEqual([armor.max, armor.current], [1, 1]);
+  armor = applyArmorCut(armor, { long: 0, repairAll: 0, downtime: 1 });
+  assert.deepEqual([armor.max, armor.current], [0, 0]);
+  const long = restoreArmorCut(armor, { long: true });
+  assert.equal(long.max, 2); assert.deepEqual(long.cut, { long: 0, repairAll: 1, downtime: 1 });
+  const both = restoreArmorCut(armor, { long: true, repairAll: true });
+  assert.equal(both.max, 3); assert.deepEqual(both.cut, { long: 0, repairAll: 0, downtime: 1 });
+});

@@ -1,10 +1,30 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.21.2**.
-Paquete: `VeilFarers_VTT_v2.21.2.zip`.
+Versión actual del VTT: **v2.22.0**.
+Paquete: `VeilFarers_VTT_v2.22.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.22.0] — 2026-11-18
+
+V3 · Descansos en mesa, armadura de enemigos al instante y tiradas más discretas
+
+### Descansos
+
+- El Keeper tiene dos botones en la esquina superior izquierda del mapa, junto al nombre de la escena: una luna creciente (descanso corto) y un sol amaneciendo (descanso largo).
+- Al pulsar uno, la partida se pausa para todos y cada personaje elige dos movimientos distintos del descanso (Corebook, cap. 9). El panel muestra quién ha elegido y quién falta; cuando elige el último, la mesa aplica todo y la partida continúa.
+- Descanso corto: Tend Wounds, Clear Stress, Repair Armor (1d4 + Tier) y Prepare (+1 Hope o +1 Resolve). Descanso largo: Recover, Decompress (también Long Bruise), Repair All Armor y Prepare (Hope a 2 o Resolve lleno); además termina Blinded, Poisoned y Weakened y devuelve los Armor Slots quitados por Armor Piercing.
+- Durante la pausa nadie puede mover ni actuar. El Keeper puede elegir por un jugador ausente, aplicar el descanso solo a quienes ya han elegido o cancelarlo.
+
+### Armadura de los enemigos
+
+- Armor Piercing, Disintegrating y Shredding reducen al instante los Armor Slots máximos de un enemigo al aplicar el daño, en vez de quedar como recordatorio. Cada reducción recuerda cuándo vuelve: Armor Piercing en su próximo Long Rest, Disintegrating con Repair All Armor y Shredding al reparar en Downtime.
+- Contra personajes jugadores sigue siendo un recordatorio: el jugador elige y lo apunta en su ficha.
+
+### Tiradas
+
+- La tarjeta de resultado tiene el fondo un 40 % transparente y desaparece antes (7 s; los dados 3D, a los 6 s). La tirada sigue en el registro.
 
 ## [2.21.2] — 2026-11-18
 

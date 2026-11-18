@@ -84,6 +84,7 @@ class StateStore {
       templateRadius: 4, // grid units
       gmVision: true, // If true, Keeper sees all without fog/darkness
       fogOfWar: true, // If true, unexplored areas are completely dark, explored areas out of vision are shrouded
+      rest: null, // V3: a Short/Long Rest in progress pauses the table (rest.js)
       fogExploredOpacity: 0.50, // Darkness opacity for explored areas out of vision (50% default, adjustable)
       targetTokenId: null, // Selected target token for combat targeting & tactical LOS
       showGrid: true,
@@ -390,6 +391,8 @@ class StateStore {
   updateToken(tokenId, partial) {
     if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
     if (this.sessionRole === 'player' && !this.remoteApplying) {
+      // A rest pauses the table: the Keeper would refuse the change anyway.
+      if (this.state.rest) return false;
       if (this.canEditToken(tokenId)) return this.sendTokenPatch?.(tokenId, partial);
       return false;
     }

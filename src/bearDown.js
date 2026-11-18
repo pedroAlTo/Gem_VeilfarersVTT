@@ -26,10 +26,5 @@ export async function bearDown(token, count, dice = window.veilDiceRoller) {
   return { result, summary: `${rolled}: total ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}.` };
 }
 
-// Prepare (Corebook, rests): a Short Rest recovers 1 Resolve; a Long Rest fills the pool.
-export function prepareResolve(token, rest = 'short') {
-  const r = token?.resolve;
-  if (!r || token.path !== 'Sleeping') return null;
-  const current = rest === 'long' ? r.max : Math.min(r.max, (r.current || 0) + 1);
-  return current === r.current ? null : { resolve: { ...r, current } };
-}
+// Prepare (Corebook, rests) lives with the rests.
+export { prepareResolve } from './rest.js';

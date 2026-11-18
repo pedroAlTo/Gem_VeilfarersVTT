@@ -530,7 +530,7 @@ async function roll(groups, options={}){
     rollHasResult=flat.length>0;
     if (!flat.length) throw new Error('The 3D engine completed without readable die results.');
     markTrackingSettled(flat.map((_,index)=>index));
-    closeTimer=setTimeout(hide,12000);
+    closeTimer=setTimeout(hide,6000);
     return {raw:result, flat, values:flat.map(item=>item.value)};
   } finally { endCancellableRoll(token); }
 }
@@ -558,7 +558,7 @@ async function add(groups, options={}){
     lastFlat=lastFlat.concat(flat);
     const indices=flat.map((_,index)=>offset+index);
     markTrackingSettled(indices);
-    closeTimer=setTimeout(hide,12000);
+    closeTimer=setTimeout(hide,6000);
     return {raw:result, flat, values:flat.map(item=>item.value), offset};
   } finally { endCancellableRoll(token); }
 }
@@ -682,7 +682,7 @@ function scheduleSettledCues(data){
 }
 // One results panel for the whole table: every roll, local or from another player, adds a
 // golden card to this stack, in the order the results arrive. Nothing else announces a result.
-const RESULT_CARD_LIFE=20000, RESULT_CARD_LIMIT=6;
+const RESULT_CARD_LIFE=7000, RESULT_CARD_LIMIT=6;
 let lastCardKey='', lastCardAt=0;
 function resultStack(){
   let stack=document.getElementById('vf-results-stack');
@@ -826,7 +826,7 @@ function showResults(data){
   scheduleSettledCues({...(data||{}),rolls:Array.isArray(data && data.cueRolls)?data.cueRolls:(data && data.rolls)});
   scheduleResize();
   clearTimeout(closeTimer);
-  closeTimer=setTimeout(hide,9800);
+  closeTimer=setTimeout(hide,6000);
 }
 
 // The engine, physics, WASM and dice textures weigh several MB. They are warmed up once the

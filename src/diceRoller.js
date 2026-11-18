@@ -15,7 +15,8 @@ import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
 import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
 import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
-import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck } from './weaponFeatures.js';
+import { isPartyToken } from './tokenPermissions.js';
+import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, armorCut, applyArmorCut, armorCutNotes } from './weaponFeatures.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
 import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
@@ -1573,13 +1574,17 @@ export class DiceRollerSidebar {
     const devastating = isDirect ? 0 : devastatingExtra(feats, dmgResult.rawDamage, dmgResult.effectiveSevere);
     if (devastating) dmgResult = { ...dmgResult, finalHpDamage: dmgResult.finalHpDamage + devastating };
     const maxDie = dmgResult.rolls.some((r, i) => r === (rollSides[i] || diceSides));
+    // An enemy's maximum Armor Slots are cut at once by Armor Piercing, Disintegrating, Shredding.
+    const enemyArmor = !isDirect && !!targetToken && !isPartyToken(targetToken) && (targetToken.armor?.max || 0) > 0;
+    const plannedCut = enemyArmor ? armorCut(activeWeapon, { hit: true, damaged: dmgResult.finalHpDamage > 0, maxDie }, targetToken.armor.max) : null;
     const featureNotes = [...riders.map(r => `${r.label}: +${r.value}${r.faces?.length ? ` (${r.dice} [${r.faces.join(', ')}])` : ''}.`), ...extras.notes, ...(devastating ? ['Devastating: alcanza el umbral Severe y marca 1 HP más.'] : []), ...(isDirect ? [] : armorSlotNotes(feats, { composite })),
       ...(feats.poison ? ['Poison: si pierde HP, el objetivo marca 1 Stress.'] : []), ...(feats.ignite ? ['Ignite: si pierde HP, el objetivo queda On Fire.'] : []),
-      ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true })];
+      ...armorCutNotes(plannedCut),
+      ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor })];
     this.lastFeatureNotes = featureNotes; // the player's Ficha shows them under the result
     // What the Keeper has to resolve by hand goes to the Keeper as a whisper, once per attack.
     if (this.featureWhisper) {
-      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true });
+      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor });
       const text = rulesWhisperText({ ...this.featureWhisper, notes: toResolve });
       this.featureWhisper = null;
       if (text) void whisperToKeeper(text);
@@ -1697,6 +1702,9 @@ export class DiceRollerSidebar {
         const addCondition = bleed && canBleed(targetToken) ? 'Bleeding' : '';
         const addConditions = isDirect ? [] : hitConditions(feats, { hpLost });
         const withCondition = t => (addCondition || addConditions.length) ? { conditions: normalizeConditions([...(t.conditions || []), ...(addCondition ? [addCondition] : []), ...addConditions]) } : {};
+        // The cut to an enemy's maximum Armor Slots, on the armor left after this hit.
+        const cut = enemyArmor && !isPartyToken(targetToken) ? armorCut(activeWeapon, { hit: true, damaged: hpLost > 0, maxDie }, targetToken.armor?.max || 0) : null;
+        const armorAfter = t => (cut ? applyArmorCut({ ...t.armor, current: newArmor }, cut) : { ...t.armor, current: newArmor });
         const withStress = t => stressMark ? { stress: { ...t.stress, current: Math.min(t.stress.max ?? (t.stress.current || 0) + stressMark, (t.stress.current || 0) + stressMark) } } : {};
 
         const damagePayload = {
@@ -1709,6 +1717,7 @@ export class DiceRollerSidebar {
           armorLoss: armorLost,
           spentShields,
           stressMark,
+          ...(cut ? { armorCut: cut } : {}),
           addCondition,
           addConditions,
           isDirect,
@@ -1716,7 +1725,7 @@ export class DiceRollerSidebar {
           rawDamage: dmgResult.rawDamage,
           kind: impactKind,
           secret,
-          logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
+          logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.${cut ? ` Armor Slots máximos −${cut.long + cut.repairAll + cut.downtime} (${armorAfter(targetToken).max}).` : ''}`
         };
 
         if (store.sessionRole === 'player') {
@@ -1729,7 +1738,7 @@ export class DiceRollerSidebar {
                 ...t,
                 hp: { ...t.hp, current: newHp },
                 pendingBrace: isDirect ? t.pendingBrace : false,
-                armor: { ...t.armor, current: newArmor },
+                armor: armorAfter(t),
                 ...withStress(t), ...withCondition(t)
               } : t)
             });
@@ -1744,7 +1753,7 @@ export class DiceRollerSidebar {
             store.updateToken(targetToken.id, {
               hp: { ...targetToken.hp, current: newHp },
               pendingBrace: isDirect ? targetToken.pendingBrace : false,
-              armor: { ...targetToken.armor, current: newArmor },
+              armor: armorAfter(targetToken),
               ...withStress(targetToken), ...withCondition(targetToken)
             });
           } finally { store.tableActing = before; }

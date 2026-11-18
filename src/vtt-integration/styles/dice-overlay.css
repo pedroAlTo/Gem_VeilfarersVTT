@@ -102,7 +102,7 @@
 
 .vf-callout-card {
   pointer-events: auto;
-  background: rgba(13, 20, 36, 0.94);
+  background: rgba(13, 20, 36, 0.6);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(100, 116, 139, 0.4);
   border-radius: 8px;
