@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.1', date: '2026-11-18', title: 'V3 · Las luces iluminan de verdad',
+    sections: [
+      { title: 'Luces', items: [
+        'Una luz ya no solo quita la oscuridad: baña su zona con su color, cortada por las paredes y según su intensidad, para que una sala iluminada se vea iluminada también en mapas de imagen oscura (como el Bridge, que además empieza con la luz ambiental al 25 %).',
+        'El núcleo brillante alrededor de la luz es más pequeño y la zona entera queda iluminada.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.0', date: '2026-11-18', title: 'V3 · Niebla sincronizada, el Keeper decide el daño a NPC, paneles movibles y cartas con el título arriba',
     sections: [
       { title: 'Niebla de guerra', items: [

@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.0**.
-Paquete: `VeilFarers_VTT_v2.27.0.zip`.
+Versión actual del VTT: **v2.27.1**.
+Paquete: `VeilFarers_VTT_v2.27.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.1] — 2026-11-18
+
+V3 · Las luces iluminan de verdad
+
+### Luces
+
+- Una luz ya no solo quita la oscuridad: baña su zona con su color, cortada por las paredes y según su intensidad, para que una sala iluminada se vea iluminada también en mapas de imagen oscura (como el Bridge, que además empieza con la luz ambiental al 25 %).
+- El núcleo brillante alrededor de la luz es más pequeño y la zona entera queda iluminada.
 
 ## [2.27.0] — 2026-11-18
 

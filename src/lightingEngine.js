@@ -56,6 +56,20 @@ export class LightingEngine {
     this.lightCtx = this.lightCanvas.getContext('2d');
   }
 
+  // The area a light reaches (its base radius, walls in the way), cached until the light or the
+  // walls change.
+  lightArea(light, walls, wallsKey) {
+    this.areaCache ??= new Map();
+    const key = `${light.id}|${light.x}|${light.y}|${light.radius}|${light.facingAngle ?? ''}|${light.visionAngle ?? 360}|${wallsKey}`;
+    let poly = this.areaCache.get(key);
+    if (!poly) {
+      poly = this.computeVisibilityPolygon(light.x, light.y, (light.radius || 200) * 1.1, walls, light.facingAngle, light.visionAngle ?? 360) || [];
+      if (this.areaCache.size > 400) this.areaCache.clear();
+      this.areaCache.set(key, poly);
+    }
+    return poly;
+  }
+
   resize(width, height) {
     if (this.lightCanvas.width !== width || this.lightCanvas.height !== height) {
       this.lightCanvas.width = width;
@@ -452,6 +466,7 @@ export class LightingEngine {
     drawSoftened(ctx, this.lightCanvas, LIGHT_SOFTNESS, this.lightVersion);
 
     // Subtle colored glows around light centers
+    const wallsKey = fingerprint(wallValues(walls));
     ctx.globalCompositeOperation = 'screen';
     for (const light of shaped) {
       if (light.noGlow) continue;
@@ -463,16 +478,25 @@ export class LightingEngine {
         activeColor = mixHex(light.color || '#ef4444', light.color2 || '#3b82f6', mix);
       }
 
-      const glowRadius = light.shownRadius * 0.6;
-      const grad = ctx.createRadialGradient(
-        light.x, light.y, 0,
-        light.x, light.y, glowRadius
-      );
+      const glowScale = effect === 'siren' ? Math.min(2.0, (light.effectIntensity ?? 1.0)) : 1.0;
+      // The light lights its area: a wash of its colour over the whole lit area (walls stop it),
+      // as strong as its intensity, so a lit room looks lit even on a dark map; and a brighter
+      // core around the source.
+      const area = this.lightArea(light, walls, wallsKey);
+      if (area.length >= 3) {
+        const wash = ctx.createRadialGradient(light.x, light.y, 0, light.x, light.y, light.shownRadius);
+        wash.addColorStop(0, activeColor); wash.addColorStop(0.75, activeColor); wash.addColorStop(1, 'transparent');
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(area[0].x, area[0].y); for (let i = 1; i < area.length; i++) ctx.lineTo(area[i].x, area[i].y); ctx.closePath(); ctx.clip();
+        ctx.globalAlpha = Math.min(0.5, 0.26 * lightStrength(light.shownIntensity) * glowScale);
+        ctx.fillStyle = wash; ctx.fillRect(light.x - light.shownRadius, light.y - light.shownRadius, light.shownRadius * 2, light.shownRadius * 2);
+        ctx.restore();
+      }
+      const glowRadius = light.shownRadius * 0.45;
+      const grad = ctx.createRadialGradient(light.x, light.y, 0, light.x, light.y, glowRadius);
       grad.addColorStop(0, activeColor);
       grad.addColorStop(1, 'transparent');
-
       ctx.save();
-      const glowScale = effect === 'siren' ? Math.min(2.0, (light.effectIntensity ?? 1.0)) : 1.0;
       ctx.globalAlpha = Math.min(1.0, light.shownIntensity * 0.35 * glowScale);
       ctx.fillStyle = grad;
       ctx.beginPath();

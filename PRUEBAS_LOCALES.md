@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -82,6 +82,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.0.zip**. Abre **AYUDA
 67. **(V3) Niebla sincronizada.** Con dos perfiles, mueve un personaje a una zona nueva: la zona explorada aparece también en el otro perfil. «Reiniciar niebla» la borra en los dos.
 68. **(V3) Daño a NPC.** Un jugador conectado ataca a un adversario y pulsa «Aplicar daño»: al Keeper le sale la ventana. Cancelar no cambia nada (el jugador recibe el aviso); con 1 escudo pierde menos HP. Junto a Ventaja y Desventaja aparece Normal.
 69. **(V3) Paneles y cartas.** Arrastra el asa ⠿ de la mano y de la barra del personaje; recarga: siguen donde las dejaste; doble clic en el asa: vuelven. Como jugador, Área está a la vista y Medir en ⋯. Las cartas muestran nombre y coste arriba.
+70. **(V3) Luz en el Bridge.** En la escena Bridge (luz ambiental 25 %), coloca una luz en una sala: la sala se ve iluminada con el color de la luz, cortada por las paredes; a intensidad mínima en penumbra, al máximo bien clara.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

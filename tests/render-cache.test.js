@@ -61,9 +61,10 @@ test('steady lights are drawn once; animated lights at most thirty times a secon
   const frame = (lights, time) => lighting.renderLighting({ ctx: context(), mapWidth: 800, mapHeight: 600, ambientLight: 0.3, walls: [], lights, tokens: [], time });
   const lamp = { x: 200, y: 200, radius: 150, intensity: 0.8 };
   for (let i = 0; i < 30; i++) frame([lamp], i / 60);
-  assert.equal(polygons, 1, 'thirty frames of a steady light: one polygon');
-  frame([{ ...lamp, x: 210 }], 0.6); assert.equal(polygons, 2, 'the light moved');
+  // Two per light: the darkness mask and the area its colour lights (v2.27.1), both kept.
+  assert.equal(polygons, 2, 'thirty frames of a steady light: its two polygons, once');
+  frame([{ ...lamp, x: 210 }], 0.6); assert.equal(polygons, 4, 'the light moved');
   polygons = 0;
   for (let i = 0; i < 60; i++) frame([{ ...lamp, effect: 'pulse' }], 1 + i / 60);
-  assert.ok(polygons >= 28 && polygons <= 32, `one second of a pulsing light at 60 fps redraws about 30 times (${polygons})`);
+  assert.ok(polygons >= 28 && polygons <= 33, `one second of a pulsing light at 60 fps redraws about 30 times (${polygons})`);
 });
