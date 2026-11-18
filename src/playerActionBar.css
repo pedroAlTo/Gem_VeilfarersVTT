@@ -42,6 +42,7 @@
 .pab-edge-btn { justify-content: center; text-transform: uppercase; letter-spacing: .14em; font-size: 10px; min-height: 32px; }
 .pab-edge-btn.dis { box-shadow: inset 0 2px rgba(251,119,157,.6); }
 .pab-edge-btn.adv { box-shadow: inset 0 2px rgba(114,229,207,.6); }
+.pab-edge-btn.normal { box-shadow: inset 0 2px rgba(203,213,225,.55); }
 .pab-more { all: unset; cursor: pointer; position: absolute; top: -5px; right: 0; width: 24px; height: 20px; text-align: center; line-height: 18px; color: var(--text-dim); border: 1px solid var(--vx-line); font-size: 13px; }
 .pab-more.active, .pab-more:hover { color: #fff; border-color: var(--vx-light); }
 .pab-options { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -137,3 +138,13 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-apply-main:disabled { animation: none; opacity: .45; cursor: default; filter: grayscale(.4); }
 @keyframes pab-apply-pulse { 50% { box-shadow: 0 0 0 5px rgba(253, 230, 138, 0), 0 4px 18px rgba(242, 184, 75, .5); } }
 @media (prefers-reduced-motion: reduce) { .pab-apply-main { animation: none; } }
+/* The Keeper's damage window */
+.kdmg { display: flex; flex-direction: column; gap: 12px; }
+.kdmg-head { display: flex; gap: 12px; align-items: center; }
+.kdmg-head img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid var(--vx-light, #c084fc); }
+.kdmg-head strong { font-size: 15px; color: #fff; }
+.kdmg-head p { margin: 2px 0 0; }
+.kdmg-row { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+.kdmg-row input { flex: 1; }
+.kdmg-row b { min-width: 24px; text-align: center; font-size: 16px; color: #fde68a; }
+.kdmg-preview { margin: 0; padding: 8px 10px; border-left: 2px solid #fde68a; background: rgba(13, 4, 32, .55); color: #fde68a; font-size: 13px; }

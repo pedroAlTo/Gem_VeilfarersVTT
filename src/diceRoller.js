@@ -1681,10 +1681,8 @@ export class DiceRollerSidebar {
         return;
       }
 
-      const applyFinalDamage = (spentShields = 0) => {
-        applied = true; pending.applied = true;
-        applyBtn.disabled = true;
-        applyBtn.textContent = 'DAMAGE APPLIED';
+      // What this hit does with a number of shields spent (nothing is changed yet).
+      const planDamage = (spentShields = 0) => {
         const targetToken = store.state.tokens.find(t => t.id === targetId) || currentTarget;
 
         const currentDamage = resolveDamage({
@@ -1742,6 +1740,14 @@ export class DiceRollerSidebar {
           secret,
           logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.${cut ? ` Armor Slots máximos −${cut.long + cut.repairAll + cut.downtime} (${armorAfter(targetToken).max}).` : ''}`
         };
+        return { targetToken, attacker, currentDamage, newHp, newArmor, hpLost, spentShields, armorAfter, withStress, withCondition, damagePayload };
+      };
+
+      const applyFinalDamage = (spentShields = 0) => {
+        applied = true; pending.applied = true;
+        applyBtn.disabled = true;
+        applyBtn.textContent = 'DAMAGE APPLIED';
+        const { targetToken, attacker, currentDamage, newHp, hpLost, armorAfter, withStress, withCondition, damagePayload } = planDamage(spentShields);
 
         if (store.sessionRole === 'player') {
           network.broadcast?.(damagePayload);
@@ -1807,6 +1813,22 @@ export class DiceRollerSidebar {
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
       const currentArmorNow = usableSlots(currentTarget);
+      // Damage to an NPC or adversary is the Keeper's call: a window lets them choose its shields
+      // and apply or cancel it. A connected player's hit goes to the Keeper with every option.
+      if (!isPartyToken(currentTarget)) {
+        const maxShields = isDirect ? 0 : currentArmorNow;
+        const options = Array.from({ length: Math.min(maxShields, 10) + 1 }, (_, n) => planDamage(n).damagePayload);
+        const request = { attackerName: damageOptions.attackerName, targetId: currentTarget.id, targetName: currentTarget.name, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, options, secret };
+        if (store.sessionRole === 'player') {
+          applied = true; pending.applied = true; applyBtn.disabled = true; applyBtn.textContent = 'ENVIADO AL KEEPER';
+          network.sendToHost?.({ type: 'DAMAGE_REQUEST', request });
+          notify(`Daño a ${currentTarget.name}: el Keeper decide los escudos y lo aplica.`);
+          window.dispatchEvent(new CustomEvent('veil:attack-done', { detail: { attackerId, targetId: currentTarget.id } }));
+          return;
+        }
+        keeperDamageDialog(currentTarget, request, n => applyFinalDamage(n), { shields: spentShieldsChoice ?? (useArmor ? 1 : 0) });
+        return;
+      }
       let finalSpentShields = 0;
       if (!isDirect && currentArmorNow > 0) {
         if (spentShieldsChoice !== null && spentShieldsChoice !== undefined) {
@@ -1818,6 +1840,34 @@ export class DiceRollerSidebar {
       applyFinalDamage(finalSpentShields);
     };
   }
+}
+
+// The Keeper's window for damage to an NPC or adversary: how many shields it spends (each
+// option already worked out by the attacker) and Apply or Cancel. onApply(n) / onCancel().
+export function keeperDamageDialog(targetToken, request, onApply, { shields = 0, onCancel = () => {} } = {}) {
+  const options = Array.isArray(request?.options) && request.options.length ? request.options : null;
+  if (!options) return;
+  if (typeof document === 'undefined' || !document.body) { onApply(0); return; }
+  const max = options.length - 1, start = Math.max(0, Math.min(max, shields));
+  const describe = n => { const o = options[n]; return `Pierde ${o.hpLoss} HP · HP ${o.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}`; };
+  const modal = dossierDialog('⚔️ DAÑO A ' + targetToken.name, `
+    <div class="kdmg">
+      <div class="kdmg-head"><img src="${escapeHTML(targetToken.avatarUrl || '/assets/tokens/captain_harker.jpg')}" alt="" />
+        <div><strong>${escapeHTML(targetToken.name)}</strong><p class="dossier-muted">${escapeHTML(request.attackerName || 'Ataque')}: ${escapeHTML(String(request.raw))} de daño · ${escapeHTML(String(request.severity || ''))}</p></div></div>
+      ${max > 0 ? `<label class="dossier-field kdmg-shields"><span>Escudos a gastar (${max} disponible${max > 1 ? 's' : ''})</span>
+        <div class="kdmg-row"><input type="range" id="kdmg_shields" min="0" max="${max}" value="${start}" /><b id="kdmg_shields_val">${start}</b></div></label>` : '<p class="dossier-muted">Sin escudos disponibles para este impacto.</p>'}
+      <p class="kdmg-preview" id="kdmg_preview">${escapeHTML(describe(start))}</p>
+    </div>
+    <footer class="dossier-footer"><button class="hud-btn hud-btn-secondary" type="button" id="kdmg_cancel">Cancelar</button>
+      <button class="pab-apply-main" type="button" id="kdmg_apply">Aplicar daño</button></footer>`);
+  const slider = modal.querySelector('#kdmg_shields'), val = modal.querySelector('#kdmg_shields_val'), preview = modal.querySelector('#kdmg_preview');
+  const chosen = () => Math.max(0, Math.min(max, parseInt(slider?.value || '0', 10)));
+  if (slider) slider.oninput = () => { val.textContent = slider.value; preview.textContent = describe(chosen()); };
+  let done = false;
+  modal.querySelector('#kdmg_apply').onclick = () => { done = true; const n = chosen(); modal.remove(); onApply(n); };
+  modal.querySelector('#kdmg_cancel').onclick = () => { done = true; modal.remove(); onCancel(); };
+  // Closing the window another way also cancels.
+  new MutationObserver((_, obs) => { if (!modal.isConnected) { obs.disconnect(); if (!done) { done = true; onCancel(); } } }).observe(document.body, { childList: true });
 }
 
 export function promptShieldMitigation(targetToken, incomingRawDamage, usable, onConfirm) {

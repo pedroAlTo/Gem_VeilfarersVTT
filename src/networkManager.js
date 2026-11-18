@@ -426,16 +426,26 @@ export class NetworkManager {
   }
   syncPeer(conn) {
     if (conn.open) {
+      const state = this.snapshotFor(conn.peer);
+      // A player who receives something its screen cannot accept keeps the old state and stops
+      // seeing changes: tell the Keeper what is wrong instead of failing silently there.
+      try { validateCampaign(structuredClone(state)); this.invalidWarned = ''; }
+      catch (error) {
+        const text = `Los jugadores no pueden recibir el estado de la partida: ${error.message} Revisa ese elemento (o deshaz el último cambio).`;
+        if (this.invalidWarned !== text) { this.invalidWarned = text; notify(text, 'error'); console.warn('[Sala] estado no válido para los jugadores:', error); }
+      }
       conn.send(
         this.envelope({
           type: 'INITIAL_STATE',
           revision: ++this.revision,
           tokenPatchAck: this.tokenPatchAcks.get(conn.peer) || 0,
-          state: this.snapshotFor(conn.peer),
+          state,
         })
       );
+      // «Map loaded» only when the scene changes (it used to go with every sync: twice the messages).
       const activeMap = this.store.getActiveMap();
-      if (activeMap) {
+      if (activeMap && conn.lastMapStatus !== activeMap.id) {
+        conn.lastMapStatus = activeMap.id;
         conn.send(
           this.envelope({
             type: 'MAP_LOAD_STATUS',
@@ -913,6 +923,8 @@ export class NetworkManager {
           this.pending.delete(data.requestId);
           data.error ? p.reject(new Error(data.error)) : p.resolve(data.result);
         }
+      } else if (data.type === 'DAMAGE_DECIDED') {
+        notify(String(data.text || (data.applied ? 'El Keeper ha aplicado el daño.' : 'El Keeper ha cancelado el daño.')).slice(0, 300), data.applied ? 'info' : 'error');
       } else if (data.type === 'KICKED') {
         const reason = data.reason || 'Has sido expulsado de la sesión por el Director de Juego.';
         clearActiveSession();
@@ -945,10 +957,26 @@ export class NetworkManager {
         (t) => t.id === tokenId && controlsToken(t, this.members.get(senderId)?.id || senderId)
       );
     // A rest pauses the table: nothing moves or acts until everyone has chosen their moves.
-    if (this.store.state.rest && (['TOKEN_UPDATE', 'TOKEN_MOVE', 'APPLY_DAMAGE', 'MAP_INTERACT'].includes(data.type) || (data.type === 'ACTION' && data.action?.type !== 'REST_CHOICE'))) {
+    if (this.store.state.rest && (['TOKEN_UPDATE', 'TOKEN_MOVE', 'APPLY_DAMAGE', 'MAP_INTERACT', 'DAMAGE_REQUEST'].includes(data.type) || (data.type === 'ACTION' && data.action?.type !== 'REST_CHOICE'))) {
       const conn = this.connections.get(senderId), error = 'La partida está en pausa: el grupo está descansando.';
       if (data.type === 'ACTION') conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, error }));
       else { conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', ...(Number.isSafeInteger(data.sequence) ? { sequence: data.sequence } : {}), error })); if (conn) this.syncPeer(conn); }
+      return;
+    }
+    // A player's hit on an NPC or adversary: the Keeper decides its shields and applies it or
+    // cancels it, in a window. Each option was worked out by the attacker (one per shield count);
+    // the chosen one goes through the same checks as any damage.
+    if (data.type === 'DAMAGE_REQUEST') {
+      const conn = this.connections.get(senderId), req = data.request || {};
+      const options = Array.isArray(req.options) ? req.options.slice(0, 11) : [];
+      const target = this.store.state.tokens.find(t => t.id === req.targetId);
+      const valid = target && !isPartyToken(target) && options.length && options.every(o => o && o.type === 'APPLY_DAMAGE' && o.targetId === target.id && owns(o.attackerId));
+      if (!valid) { conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El daño no se pudo aplicar: el objetivo o el atacante ya no son válidos.' })); return; }
+      import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options }, n => {
+        const chosen = options[n];
+        this.handleIncomingMessage(this.envelope({ ...chosen, type: 'APPLY_DAMAGE' }), senderId);
+        conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: true, text: `Keeper: ${target.name} pierde ${chosen.hpLoss} HP${chosen.spentShields ? ` (${chosen.spentShields} escudo${chosen.spentShields > 1 ? 's' : ''})` : ''}.` }));
+      }, { onCancel: () => conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: `El Keeper ha cancelado el daño a ${target.name}.` })) }));
       return;
     }
     // A player opens a door or uses a light switch: the table checks it (not secret, not locked,

@@ -68,7 +68,7 @@ export function tapPick(pick, tap) {
     return { pick: { trait: cur.trait, exp: tap.id } };
   }
   if (!cur.trait) return { pick: cur };
-  if (tap.kind === 'edge') return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: tap.id === 'adv' ? 'adv' : 'dis' } };
+  if (tap.kind === 'edge') return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: ['adv', 'dis'].includes(tap.id) ? tap.id : 'normal' } };
   return { pick: cur };
 }
 // An Awakened character pays 1 Hope for an Experience; a Sleeping one pays nothing.
@@ -162,6 +162,7 @@ export class PlayerActionBar {
     this.edgeKey = edgeKey;
     const edges = `<div class="pab-row pab-edge-row${enterEdge}"><span class="pab-label"></span><div class="pab-buttons">
         <button type="button" class="pab-edge-btn dis" data-pab-edge="dis">Desventaja</button>
+        <button type="button" class="pab-edge-btn normal" data-pab-edge="normal">Normal</button>
         <button type="button" class="pab-edge-btn adv" data-pab-edge="adv">Ventaja</button></div></div>`;
     const hope = Number(token.hope) || 0;
     const expButtons = experiences.map((x, i) => `<button type="button" class="pab-exp ${exp === i ? 'selected' : ''}" data-pab-exp="${i}" ${canExp ? '' : 'disabled'} aria-pressed="${exp === i}" title="${canExp ? (cost ? 'Cuesta 1 Hope' : 'Sin coste (Sleeping)') : 'Necesitas 1 Hope'}"><b>${e(x.name)}</b><span data-no-i18n>${e(sign(experienceBonus(x)))}</span></button>`).join('');
@@ -220,7 +221,7 @@ export class PlayerActionBar {
       <div><span>Objetivo:</span> <b data-no-i18n>${e(t.name)}</b> · <span data-no-i18n>${e(t.band)} · ${e(t.meters.toFixed(1))} m</span>${t.blocked ? ' · <span>Línea de tiro bloqueada</span>' : ''}</div>
       ${t.allowed ? `<div class="pab-edge-tag ${edge[0]}"><b>${edge[1]}</b></div>` : ''}
       ${t.reasons.map(r => `<div class="pab-reason"><span>${e(r)}</span></div>`).join('')}
-      ${t.allowed ? `<div class="pab-buttons pab-attack-edges"><button type="button" class="pab-edge-btn dis" data-pab-attack-edge="dis">Desventaja</button><button type="button" class="pab-edge-btn adv" data-pab-attack-edge="adv">Ventaja</button></div>` : ''}
+      ${t.allowed ? `<div class="pab-buttons pab-attack-edges"><button type="button" class="pab-edge-btn dis" data-pab-attack-edge="dis">Desventaja</button><button type="button" class="pab-edge-btn normal" data-pab-attack-edge="normal">Normal</button><button type="button" class="pab-edge-btn adv" data-pab-attack-edge="adv">Ventaja</button></div>` : ''}
       <div class="pab-confirm"><span>${t.allowed ? 'Toca otra vez el objetivo para atacar sin ventaja' : 'Fuera de alcance: elige otro objetivo'}</span> · <span>Esc para cancelar</span></div>
     </div>`;
   }

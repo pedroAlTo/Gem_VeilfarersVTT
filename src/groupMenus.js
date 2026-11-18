@@ -21,8 +21,10 @@ export const PLAYER_GROUPS = [
   {
     name: 'Herramientas', root: '#main_left_toolbar', placement: 'right',
     items: [
-      { sel: '#tool_select', label: 'Mover' }, { sel: '#tool_measure', label: 'Medir' }, { sel: '#tool_draw', label: 'Dibujo' },
-      { sel: '#tool_ping', label: 'Ping' }, { sel: '#tool_template', label: 'Área' }, { sel: '#tool_fx', label: 'Efectos' },
+      // In sight: Mover, Área (the player's tool for powers and blasts) and Dibujo; Medir goes
+      // into the menu (a distance is also shown when aiming an attack).
+      { sel: '#tool_select', label: 'Mover' }, { sel: '#tool_template', label: 'Área' }, { sel: '#tool_draw', label: 'Dibujo' },
+      { sel: '#tool_measure', label: 'Medir' }, { sel: '#tool_ping', label: 'Ping' }, { sel: '#tool_fx', label: 'Efectos' },
       { sel: '#tool_undo', label: 'Deshacer' }, { sel: '#toggle_grid', label: 'Rejilla' },
       { sel: '#toggle_snap', label: 'Ajuste a la rejilla' },
     ],

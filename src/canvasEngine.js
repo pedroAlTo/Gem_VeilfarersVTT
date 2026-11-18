@@ -2833,8 +2833,18 @@ export class CanvasEngine {
     // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)
     if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
       const fullMapId = `${state.campaignId}:${map.id}`;
+      // The table's exploration reaches every screen: loaded the first time, then merged each time
+      // the Keeper saves more of it; a reset or a reveal (its own mark) applies to all.
+      this.fogApplied ??= new Map();
+      const applied = this.fogApplied.get(fullMapId), resetMark = map.fogResetAt || 0;
+      const fogData = typeof map.fogExplored === 'object' && map.fogExplored ? `${map.fogExplored.cols}x${map.fogExplored.rows}:${map.fogExplored.bits}` : map.fogExplored;
       if (!this.fog.isExplorationLoaded(fullMapId) && map.fogExplored) {
         this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
+        this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
+      } else if (!applied || applied.data !== fogData || applied.reset !== resetMark) {
+        if (applied && applied.reset !== resetMark && map.fogExplored === 'none') this.fog.resetExploration(fullMapId);
+        else if (map.fogExplored) this.fog.mergeExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
+        this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
       }
 
       this.fog.renderFogOfWar({

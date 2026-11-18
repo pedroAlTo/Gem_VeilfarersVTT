@@ -801,7 +801,7 @@ class StateStore {
     if (typeof window !== 'undefined' && window.veilCanvas?.fog) {
       window.veilCanvas.fog.resetExploration(`${this.state.campaignId}:${targetMapId}`);
     }
-    this.updateMap(targetMapId, { fogExplored: 'none' });
+    this.updateMap(targetMapId, { fogExplored: 'none', fogResetAt: Date.now() });
     this.update({ fogLastReset: Date.now() });
     if (typeof window !== 'undefined' && window.veilNetwork) {
       window.veilNetwork.broadcast({ type: 'FOG_SYNC', mapId: targetMapId, fogExplored: 'none' });
@@ -814,7 +814,7 @@ class StateStore {
     if (typeof window !== 'undefined' && window.veilCanvas?.fog && map) {
       window.veilCanvas.fog.revealAll(`${this.state.campaignId}:${targetMapId}`, window.veilCanvas.mapImage?.width || 2000, window.veilCanvas.mapImage?.height || 1200);
     }
-    this.updateMap(targetMapId, { fogExplored: 'all' });
+    this.updateMap(targetMapId, { fogExplored: 'all', fogResetAt: Date.now() });
     this.update({ fogLastReveal: Date.now() });
     if (typeof window !== 'undefined' && window.veilNetwork) {
       window.veilNetwork.broadcast({ type: 'FOG_SYNC', mapId: targetMapId, fogExplored: 'all' });

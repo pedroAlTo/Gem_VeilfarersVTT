@@ -1,6 +1,25 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.0', date: '2026-11-18', title: 'V3 · Niebla sincronizada, el Keeper decide el daño a NPC, paneles movibles y cartas con el título arriba',
+    sections: [
+      { title: 'Niebla de guerra', items: [
+        'Corregido: la exploración no llegaba a los jugadores. Su pantalla la cargaba solo la primera vez, y el aviso de niebla del Keeper no se enviaba. Ahora cada pantalla suma la exploración del Keeper cada vez que este la guarda; «Reiniciar niebla» y «Revelar todo» llegan a todos.',
+        'Si algo de la partida no puede llegar a los jugadores (un elemento no válido), el Keeper ve un aviso que dice qué es; antes los jugadores se quedaban con el estado viejo sin que nadie lo supiera.',
+        'Cada sincronización ya no lleva un segundo mensaje de «mapa cargado»: la mitad de mensajes.',
+      ] },
+      { title: 'Ataques', items: [
+        'Junto a Desventaja y Ventaja está el botón Normal, al tirar un Trait y al atacar.',
+        'El daño a un NPC o adversario lo decide el Keeper: se abre una ventana con el daño, los escudos que puede gastar (y lo que perdería con cada número) y Aplicar o Cancelar. Si ataca un jugador conectado, la ventana le sale al Keeper y el jugador recibe el resultado.',
+      ] },
+      { title: 'Pantalla', items: [
+        'La mano de cartas y la barra del personaje se pueden mover arrastrando su asa (⠿); el sitio se recuerda en este navegador y un doble clic en el asa la devuelve a su lugar.',
+        'Jugador: la herramienta Área queda a la vista y Medir pasa al menú ⋯.',
+        'Cartas: el nombre y el coste van arriba (se leen en la mano); la parte blanca de abajo queda para el texto.',
+      ] },
+    ],
+  },
+  {
     version: '2.26.1', date: '2026-11-18', title: 'V3 · Una luz encendida ilumina siempre su zona',
     sections: [
       { title: 'Luces', items: [

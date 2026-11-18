@@ -49,20 +49,20 @@ const badge = card => {
   return null;
 };
 
-// The card follows the supplied art: gold frame, the flag of its Domain or Class hanging in
-// the corner (with the level for Powers), the name band, and the rules on a light panel.
+// The card: gold frame; at the top its name and cost (what shows in the hand, where the lower
+// part is hidden); then the flag of its Domain or Class (with the level for Powers) and the
+// name band; and below, the rules on a white panel.
 export function cardFace(card, { large = false } = {}) {
   const art = card.art || { flag: '', band: '', layout: 'band' }, price = badge(card);
   const footLeft = card.domain ? `${card.domain} · LV ${card.level}` : CARD_KINDS[card.kind], footRight = card.kind === 'power' || card.kind === 'vault' ? `RC ${card.rc}` : '';
   return `
     <span class="vf-card-frame layout-${e(art.layout)}" style="--card-color:${e(card.color)}">
+      <span class="vf-card-head"><strong class="vf-card-title">${e(card.name)}</strong>${price ? `<span class="vf-card-badge ${price[0]}">${e(String(price[1]))}</span>` : ''}</span>
       <span class="vf-card-art">
         ${art.flag ? `<span class="vf-card-flag"><img src="${e(art.flag)}" alt="" draggable="false" />${card.level ? `<b>${card.level}</b>` : ''}</span>` : ''}
-        ${price ? `<span class="vf-card-badge ${price[0]}">${e(String(price[1]))}</span>` : ''}
         ${art.band ? `<img class="vf-card-band" src="${e(art.band)}" alt="" draggable="false" />` : ''}
       </span>
       <span class="vf-card-body">
-        <strong class="vf-card-title">${e(card.name)}</strong>
         <span class="vf-card-pills">${pills(card)}</span>
         <span class="vf-card-text">${e(large ? card.text : card.text.slice(0, 170) + (card.text.length > 170 ? '…' : ''))}</span>
         <span class="vf-card-foot"><em>${e(footLeft)}</em><em>${e(footRight)}</em></span>

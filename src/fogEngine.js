@@ -167,6 +167,25 @@ export class FogOfWarEngine {
     return { status: 'custom', cols, rows, cellSize, bits: b64 };
   }
 
+  // Adds the table's exploration (the Keeper's saved memory) to this screen's, without erasing
+  // what this screen has seen: every player ends up with the same explored map.
+  mergeExploration(mapId, mapWidth, mapHeight, fogExplored) {
+    if (!fogExplored || fogExplored === 'none') return;
+    if (fogExplored === 'all') { this.revealAll(mapId, mapWidth, mapHeight); return; }
+    if (!fogExplored.bits || !fogExplored.cols) return;
+    const canvas = this.getExploredCanvas(mapId, mapWidth, mapHeight), ctx = canvas.getContext('2d');
+    const cell = fogExplored.cellSize || 32, cols = fogExplored.cols, rows = fogExplored.rows;
+    let bytes;
+    if (typeof Buffer !== 'undefined') bytes = new Uint8Array(Buffer.from(fogExplored.bits, 'base64'));
+    else { const binary = globalThis.atob(fogExplored.bits); bytes = new Uint8Array(binary.length); for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i); }
+    ctx.fillStyle = '#ffffff';
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const index = r * cols + c;
+      if (bytes[index >> 3] & (1 << (index & 7))) ctx.fillRect(c * cell, r * cell, cell, cell);
+    }
+    this.exploredVersion++;
+  }
+
   /**
    * Hydrates exploration canvas from authoritative serialized exploration state
    */

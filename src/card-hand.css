@@ -118,3 +118,23 @@
 /* Deck: Powers, Ancestry, Community and class cards to read */
 .card-drawer-kinds { margin-top: 4px; }
 .card-drawer-group { margin: 6px 0 0; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: #fde68a; }
+/* V3: name and cost at the top of the card, the white lower part for the rules. */
+.vf-card-head { position: relative; z-index: 2; display: flex; align-items: center; gap: 4px; min-height: 17%; padding: 3px 5px; box-sizing: border-box; border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #120a18, color-mix(in srgb, var(--card-color) 55%, #12090f)); border-bottom: 1px solid rgba(251, 230, 174, .55); }
+.vf-card-head .vf-card-title { flex: 1; min-width: 0; text-align: left; color: #fde68a; font-size: 9px; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.vf-card-head .vf-card-badge { position: static; flex: 0 0 auto; width: 17px; min-width: 17px; height: 19px; aspect-ratio: auto; }
+.vf-card-art { flex-basis: 30%; border-radius: 0; }
+.vf-card-frame.layout-corner .vf-card-art { flex-basis: 26%; }
+.vf-card-large .vf-card-head { padding: 8px 12px; border-radius: 11px 11px 0 0; }
+.vf-card-large .vf-card-head .vf-card-title { font-size: 18px; }
+.vf-card-large .vf-card-head .vf-card-badge { width: 32px; min-width: 32px; height: 36px; }
+.vf-card-large .vf-card-art { border-radius: 0; }
+.vf-card-mini .vf-card-head { padding: 2px 4px; } .vf-card-mini .vf-card-head .vf-card-title { font-size: 7.5px; }
+/* V3: movable hand and character bar */
+.move-grip { all: unset; box-sizing: border-box; position: absolute; z-index: 5; top: -10px; left: -10px; width: 22px; height: 22px; display: grid; place-items: center; cursor: grab; pointer-events: auto;
+  border-radius: 6px; background: rgba(13, 4, 32, .92); border: 1px solid var(--vx-line-strong, #c084fc6b); color: #c4b5fd; font-size: 13px; line-height: 1; opacity: .55; transition: opacity .15s, background .15s; touch-action: none; }
+.move-grip:hover, .move-grip:focus-visible, .is-moving > .move-grip { opacity: 1; background: rgba(109, 40, 217, .6); color: #fde68a; }
+.move-grip:focus-visible { outline: 2px solid #fde68a; outline-offset: 2px; }
+.is-moving > .move-grip { cursor: grabbing; }
+.card-hand > .move-grip { top: auto; bottom: 168px; left: auto; right: -6px; }
+.is-moving { transition: none !important; }

@@ -1,8 +1,8 @@
-# VeilFarers VTT · v2.26.1
+# VeilFarers VTT · v2.27.0
 
 A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v2.26.1**. Download package: **VeilFarers_VTT_v2.26.1.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.27.0**. Download package: **VeilFarers_VTT_v2.27.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -39,6 +39,7 @@ Development happens on the `V2` branch. [HANDOVER_V2.md](HANDOVER_V2.md) records
 - **(V3) Lights, Weather and arrow keys.** Scene darkness (Foundry-like) is always drawn and lights really light it, with walls; by day tokens see their whole line of sight, at night their own vision plus lit areas, and only what is seen is explored. Light animations work. The Water tool became Weather: Day / Dusk / Night transitions over 10 s, a darkness slider, rain and fog, and water or lava zones drawn as box, polygon or freehand. Arrow keys move the selected token one square.
 - **(V3) Fewer Firebase requests; light switches.** Room messages carry only the changed items and fields, saves are grouped and rewrite only the changed piece, and the presence heartbeat is slower: about half the Firestore operations per action. Lights can be switched off, lit lights dissipate the fog by their intensity, and switches (usable or locked, visible or secret) turn groups of lights on and off. Connected players can open doors again.
 - **(V3) Live play on Realtime Database.** Room messages and player presence travel through Realtime Database (billed by data, not by operation); Firestore keeps accounts, rooms and saves. Without it, rooms fall back to Firestore. Setup: FIREBASE_SETUP.md.
+- **(V3) Fog sync, Keeper damage window, movable panels.** Explored fog reaches every player; damage to NPCs and adversaries opens a Keeper window (shields, apply or cancel); a Normal button sits next to Advantage/Disadvantage; the card hand and the character bar can be dragged; cards show name and cost at the top.
 - **(V3) Corebook 12.06 texts.** Powers, Path features, Resolve Moves, Ancestry Gifts and Communities match the Corebook; Path to Nirvana and the Disciplined State use the Integrity Die. The deck also shows Ancestry, Community and class cards (Awakened / Sleeping, by class).
 - **(V3) Effect clocks.** Cards with a duration (Path to Nirvana, Rapid Regeneration…) put a clock beside the token; each Spotlight marks a segment, a touch marks one by hand, and the full sheet edits it.
 - **(V3) 3 + 5 + rest.** In the player's view, the header, map tools and character bar show three controls and a «⋯» menu (five more, then «More…» with the rest).
