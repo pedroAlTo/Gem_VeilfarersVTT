@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.25.0**.
-Paquete: `VeilFarers_VTT_v2.25.0.zip`.
+Versión actual del VTT: **v2.26.0**.
+Paquete: `VeilFarers_VTT_v2.26.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.26.0] — 2026-11-18
+
+V3 · La partida online viaja por Realtime Database
+
+### Firebase
+
+- Los mensajes de la partida online (movimientos, tiradas, estado) y la presencia de los jugadores viajan por Realtime Database, que cobra por datos transferidos y no por operación. Firestore se queda con las cuentas, las salas, los guardados y la presencia del Keeper.
+- En las pruebas, un minuto de partida en reposo pasa de 19 a 6 operaciones de Firestore, y cinco movimientos de 32–64 a 5–7. El jugador ya no escribe en Firestore mientras juega.
+- Si Realtime Database no está disponible (sin crear, sin reglas o bloqueada), la sala sigue funcionando por Firestore como antes, sin hacer nada.
+- Para activarlo hay que crear la base de datos y publicar sus reglas: FIREBASE_SETUP.md, «Realtime Database».
 
 ## [2.25.0] — 2026-11-18
 

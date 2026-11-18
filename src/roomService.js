@@ -76,6 +76,8 @@ export class RoomService {
     await this.account.init();
     const changed = this.uid !== this.account.user.uid;
     this.uid = this.account.user.uid; this.api = this.account.dbAPI; this.db = this.account.db;
+    // Realtime Database for the live channel, when the project has one (null: Firestore only).
+    this.rtdb = (await this.account.realtime?.()) || null;
     if (changed || !this.clockCheckedAt || Date.now() - this.clockCheckedAt > 300000) await this.syncClock();
     return this;
   }

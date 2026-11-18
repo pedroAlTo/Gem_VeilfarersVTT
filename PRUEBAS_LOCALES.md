@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.25.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.25.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.25.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.25.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.26.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.26.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.26.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.26.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -78,6 +78,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.25.0.zip**. Abre **AYUDA
 63. **(V3) Flechas.** Selecciona tu token y pulsa las flechas: avanza una casilla por pulsación y toma el foco. Contra una pared no pasa y avisa.
 64. **(V3) Interruptores y niebla.** Keeper: en la ficha de una luz pulsa «＋ Interruptor» y muévelo. En su ficha marca otra luz. Como jugador con niebla, una lámpara encendida que ya habéis visto despeja su sala (más clara cuanto más intensa). Pulsa el interruptor: las luces se apagan en las dos pantallas. Márcalo Bloqueado: el jugador ya no puede. Márcalo Secreto: el jugador deja de verlo. Abre una puerta como jugador conectado: se abre también para el Keeper.
 65. **(V3) Consumo de Firebase.** Juega 10 minutos online y mira en la consola de Firebase → Firestore → Uso: debe ser bastante menor que antes con la misma actividad.
+66. **(V3) Realtime Database.** Tras crear la base de datos y publicar `database.rules.json`, juega con un jugador: en la consola, Realtime Database → Datos muestra `wires/…` mientras jugáis, y en Firestore → Uso las escrituras casi no se mueven. Para comprobar la alternativa, en el navegador del jugador ejecuta `localStorage.setItem("veil.wire","firestore")`, recarga y vuelve a entrar: la partida sigue funcionando por Firestore.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

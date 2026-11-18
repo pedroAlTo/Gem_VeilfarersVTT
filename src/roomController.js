@@ -6,7 +6,7 @@ import { CAMPAIGN_KEYS } from './validation.js';
 import { notify } from './ui.js';
 import { RoomService, roomOnline, roomError, ROOM_HEARTBEAT_MS, ROOM_LEASE_MS } from './roomService.js';
 import { every } from './backgroundTicker.js';
-import { RoomWire, createRoomWire } from './roomWire.js';
+import { RoomWire, createRoomWire, openRealtimeWire, realtimeWireFor, removeRealtimeWire } from './roomWire.js';
 
 export const activeRoomKey = uid => 'veil.room.active.' + uid;
 export const SAVE_QUIET_MS = 3000, SAVE_MAX_WAIT_MS = 15000;
@@ -198,13 +198,28 @@ export class RoomController {
   }
   updateWires() {
     if (!this.isKeeper) return;
-    const active = (this.wireRows || []).filter(w => !this.discardedWires.has(w.id) && w.seenAt && this.clock() - w.seenAt.toMillis() < ROOM_LEASE_MS && this.members.some(m => m.uid === w.uid && m.status === 'active'));
+    // A player's presence: its Firestore row when it connects, then its beats on Realtime Database.
+    const seen = w => Math.max(w.seenAt?.toMillis?.() || 0, this.wires.get(w.id)?.seenAt || 0);
+    const active = (this.wireRows || []).filter(w => !this.discardedWires.has(w.id) && seen(w) && this.clock() - seen(w) < ROOM_LEASE_MS && this.members.some(m => m.uid === w.uid && m.status === 'active'));
     // Multiple tabs may share an account; each has a separate ordered mailbox.
     // Ownership stays on the account, and the roster only lists it once.
     const ids = new Set(active.map(w => w.id));
     for (const id of this.wires.keys()) if (!ids.has(id)) this.dropWire(id);
-    for (const row of active) if (!this.wires.has(row.id)) {
+    this.probing ||= new Set();
+    for (const row of active) if (!this.wires.has(row.id) && !this.probing.has(row.id)) {
+      // First ask whether this wire lives on Realtime Database, then open it there or in Firestore.
+      this.probing.add(row.id);
+      const generation = this.generation;
+      realtimeWireFor(this.service, row.id).then(realtime => {
+        this.probing.delete(row.id);
+        if (generation === this.generation && this.isKeeper && !this.wires.has(row.id) && !this.discardedWires.has(row.id)) this.openKeeperWire(row, realtime);
+      });
+    }
+  }
+  openKeeperWire(row, realtime) {
+    {
       const wire = new RoomWire(this.service, this.room.id, row.id, 'keeper', {
+        realtime, epoch: this.epoch,
         beforeSend: async () => { if (!this.store.state.isConnected) throw new Error('Keeper desconectado.'); },
         onData: async data => { if (!this.leaving && this.store.state.isConnected && this.members.some(m => m.uid === row.uid && m.status === 'active')) await this.network.handleIncomingMessage(data, row.id); },
         onClose: error => { this.dropWire(row.id); this.lastError = roomError(error); this.emit(); }
@@ -217,7 +232,7 @@ export class RoomController {
   }
   dropWire(id) {
     this.discardedWires.add(id); this.wires.get(id)?.close(); this.wires.delete(id);
-    if (this.room && this.isKeeper) this.service.deleteWire(this.room.id, id).catch(() => {});
+    if (this.room && this.isKeeper) { this.service.deleteWire(this.room.id, id).catch(() => {}); removeRealtimeWire(this.service, id); }
     this.network.connections.delete(id); this.network.members.delete(id); this.network.tokenPatchAcks.delete(id);
     this.network.updatePeersList();
   }
@@ -226,10 +241,12 @@ export class RoomController {
     this.connecting = true; this.connectAttempts = (this.connectAttempts || 0) + 1; this.emit();
     const generation = this.generation, epoch = this.room.hostEpoch;
     try {
-      const id = await createRoomWire(this.service, this.room, this.service.account.user.displayName);
+      const id = newId(), realtime = await openRealtimeWire(this.service, this.room, id);
+      await createRoomWire(this.service, this.room, this.service.account.user.displayName, id);
       if (generation !== this.generation || !roomOnline(this.room, this.clock()) || this.room.hostEpoch !== epoch) return;
       this.network.lastRevision = -1; this.network.seen.clear(); this.network.tokenPatchSequence = 0; this.network.clearTokenPatches(true);
       const wire = new RoomWire(this.service, this.room.id, id, 'player', {
+        realtime: realtime ? this.service.rtdb : null, epoch,
         onData: async data => { if (generation === this.generation && roomOnline(this.room, this.clock()) && this.room.hostEpoch === epoch) { await this.network.handleIncomingMessage(data, this.room.ownerUid); if (data.type === 'INITIAL_STATE' && this.store.state.isConnected) { this.lastError = ''; this.connectAttempts = 0; this.store.update({ roomPaused: false }); this.emit(); } } },
         onClose: error => { this.pausePlayer(); this.lastError = error?.code === 'permission-denied' ? 'La conexión anterior ha caducado. Reconectando…' : roomError(error); this.retryAt = this.clock() + 3000; this.emit(); }
       });
@@ -277,6 +294,7 @@ export class RoomController {
     try {
       if (this.isKeeper) { if (this.saveFailed) await this.persist(); else await this.service.heartbeat(this.room.id, this.epoch); }
       else if (this.playerWireId && this.store.state.joiningSession && this.clock() - this.connectStarted > 30000) { this.pausePlayer(); this.retryAt = this.clock() + 2000; }
+      else if (this.playerWire?.realtime) await this.playerWire.beat();
       else if (this.playerWireId) await this.service.api.updateDoc(this.service.ref('rooms', this.room.id, 'wires', this.playerWireId), { seenAt: this.service.api.serverTimestamp() });
     } finally { this.beating = false; }
   }
@@ -312,7 +330,7 @@ export class RoomController {
     ++this.generation; this.stopHeartbeat?.(); this.stopPresence?.(); this.stopHeartbeat = this.stopPresence = null;
     this.unsubscribers.splice(0).forEach(fn => fn());
     this.playerWire?.close();
-    if (this.playerWireId) this.service.deleteWire(this.room.id, this.playerWireId).catch(() => {});
+    if (this.playerWireId) { this.service.deleteWire(this.room.id, this.playerWireId).catch(() => {}); removeRealtimeWire(this.service, this.playerWireId); }
     this.playerWire = null; this.playerWireId = null; this.playerEpoch = null;
     for (const wire of this.wires.values()) wire.close(); this.wires.clear();
     this.network.disconnect(); this.room = null; this.members = []; this.wireRows = []; this.epoch = ''; this.serverConfirmed = false;

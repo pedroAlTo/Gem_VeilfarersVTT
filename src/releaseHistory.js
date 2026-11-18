@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.26.0', date: '2026-11-18', title: 'V3 · La partida online viaja por Realtime Database',
+    sections: [
+      { title: 'Firebase', items: [
+        'Los mensajes de la partida online (movimientos, tiradas, estado) y la presencia de los jugadores viajan por Realtime Database, que cobra por datos transferidos y no por operación. Firestore se queda con las cuentas, las salas, los guardados y la presencia del Keeper.',
+        'En las pruebas, un minuto de partida en reposo pasa de 19 a 6 operaciones de Firestore, y cinco movimientos de 32–64 a 5–7. El jugador ya no escribe en Firestore mientras juega.',
+        'Si Realtime Database no está disponible (sin crear, sin reglas o bloqueada), la sala sigue funcionando por Firestore como antes, sin hacer nada.',
+        'Para activarlo hay que crear la base de datos y publicar sus reglas: FIREBASE_SETUP.md, «Realtime Database».',
+      ] },
+    ],
+  },
+  {
     version: '2.25.0', date: '2026-11-18', title: 'V3 · Menos peticiones a Firebase, luces que disipan la niebla e interruptores',
     sections: [
       { title: 'Firebase: menos peticiones', items: [

@@ -19,6 +19,21 @@ Desde v1.4.0 las salas online usan **Firebase Authentication + Firestore** para 
 - Las reglas de `firestore.rules` cambiaron por última vez en **v2.13.0** (registro por partida, `users/{uid}/games`). **Publicadas por el usuario el 17 nov 2026.** Si vuelven a cambiar, hay que publicarlas de nuevo (`firebase deploy --only firestore:rules` o pegarlas en la consola). Una regla sin publicar hace que el guardado se quede solo en el navegador; para este registro no se muestra aviso, porque se escribe solo mientras juegas.
 - El almacén compartido `character_vault` de Realtime Database dejó de usarse en v2.8.0. Sus datos no se han borrado.
 
+## Realtime Database: el canal de la partida en directo (v2.26.0)
+
+Desde la v2.26.0 los mensajes de la partida online (movimientos, tiradas, estado) viajan por **Realtime Database**, que cobra por datos transferidos y no por operación. Firestore se queda con cuentas, salas, guardados y la presencia del Keeper. Si Realtime Database no está disponible, la sala sigue funcionando por Firestore como antes, sin hacer nada.
+
+Para activarlo en el proyecto real:
+
+1. **Crea la base de datos** (plan Blaze): consola de Firebase → Compilación → Realtime Database → Crear base de datos. Elige la ubicación y empieza en **modo bloqueado**.
+2. **Comprueba la dirección.** La app usa `https://veilfarers-vtt-default-rtdb.firebaseio.com` (ubicación de EE. UU.). Si elegiste otra ubicación, la dirección es distinta (p. ej. `https://veilfarers-vtt-default-rtdb.europe-west1.firebasedatabase.app`): ponla en la variable `VITE_FIREBASE_DATABASE_URL` del despliegue (Netlify → Site configuration → Environment variables) y vuelve a desplegar.
+3. **Publica las reglas** de `database.rules.json`: en la consola, Realtime Database → Reglas → pega el contenido del archivo → Publicar. O con la CLI: `firebase deploy --only database`.
+4. **Comprueba:** entra en una sala con un jugador. En la consola de Realtime Database → Datos aparece `wires/…` mientras jugáis; en Firestore → Uso, las escrituras bajan mucho.
+
+Las reglas solo permiten el nodo `wires/{id}`: el identificador de cada canal es secreto (en Firestore solo lo pueden leer el Keeper y ese jugador); arriba escribe solo el jugador, abajo solo el Keeper, y cada mensaje lleva la conexión del Keeper (`epoch`) a la que pertenece. Los módulos antiguos de `vtt-integration` que intentaban usar otras rutas de Realtime Database siguen sin permiso (no se usaban).
+
+Emulador: `npm run dev:emulators` arranca también el de Realtime Database (puerto 9000).
+
 ## Using the features
 
 - **Sign in** in the top menu. Create an account, or use an existing Firebase account. “Keep me signed in” controls local versus browser-session authentication persistence. Password reset is an explicit user action.

@@ -2,7 +2,7 @@ import { LOCAL_ONLY } from './runtimeMode.js';
 import { newId } from './persistence.js';
 import { exportNativeCharacter, parseCharacterJSON, characterKey } from './characterImport.js';
 import { noteEntry, gameEntry } from './accountModel.js';
-import { getFirebaseConfig, useEmulators } from './firebaseConfig.js';
+import { getFirebaseConfig, useEmulators, realtimeDatabase } from './firebaseConfig.js';
 // The portal signs in with getFirebaseConfig(); the account and the rooms must use the very
 // same project, or a signed-in user would see no rooms. Outside the Vite build (tests, scripts)
 // there is no environment, and the cloud stays off unless it is configured explicitly.
@@ -89,6 +89,19 @@ export class CloudAccount {
       return this;
     })().catch(error => { this.loading = null; throw error; });
     return this.loading;
+  }
+  // Realtime Database (V3): the live channel of online play. It bills by data moved, not by
+  // operation, so play no longer spends the Firestore quota. Loaded on demand; null when the
+  // project has no database URL or the SDK cannot start (then play stays on Firestore).
+  async realtime() {
+    if (this.rtdbLoading) return this.rtdbLoading;
+    this.rtdbLoading = (async () => {
+      await this.init();
+      if (!cloudConfig?.databaseURL) return null;
+      const api = await import('firebase/database');
+      return { api, db: realtimeDatabase(this.app, api) };
+    })().catch(error => { console.warn('Realtime Database no disponible:', error); return null; });
+    return this.rtdbLoading;
   }
   async signIn(email, password, { create = false, name = '', remember = true } = {}) {
     await this.init();

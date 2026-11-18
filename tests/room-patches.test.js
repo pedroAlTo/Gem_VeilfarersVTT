@@ -53,3 +53,60 @@ test('splitCampaignText: pieces join into the same JSON, and a small change rewr
   assert.ok(b.filter(p => !known.has(p)).length <= 4, `rewritten pieces: ${b.filter(p => !known.has(p)).length} of ${b.length}`);
   assert.ok(splitCampaignText({ v: 'x'.repeat(59990) + '😀😀😀' }).every(p => !/[\uD800-\uDBFF]$/.test(p)));
 });
+
+// A tiny in-memory stand-in for the Realtime Database API the wire uses.
+function fakeRealtime() {
+  const tree = {}, childListeners = [], valueListeners = [];
+  const at = path => path.split('/').filter(Boolean);
+  const get = path => at(path).reduce((n, k) => (n && typeof n === 'object' ? n[k] : undefined), tree);
+  const put = (path, value) => {
+    const keys = at(path), last = keys.pop(); let node = tree;
+    for (const k of keys) node = node[k] ??= {};
+    const existed = node[last] !== undefined;
+    if (value === null) delete node[last]; else node[last] = structuredClone(value);
+    const parent = keys.join('/');
+    if (value !== null && !existed) for (const l of childListeners) if (l.path === parent) l.cb(snap(`${parent}/${last}`));
+    for (const l of valueListeners) if (l.path === path) l.cb(snap(path));
+  };
+  const snap = path => ({ key: at(path).at(-1), val: () => structuredClone(get(path) ?? null), exists: () => get(path) !== undefined });
+  const api = {
+    ref: (db, path) => ({ path }),
+    serverTimestamp: () => Date.now(),
+    set: async (ref, value) => put(ref.path, value),
+    update: async (ref, values) => { for (const [k, v] of Object.entries(values)) put(`${ref.path}/${k}`, v); },
+    remove: async ref => put(ref.path, null),
+    get: async ref => snap(ref.path),
+    onChildAdded: (ref, cb) => { const l = { path: ref.path, cb }; childListeners.push(l); for (const k of Object.keys(get(ref.path) || {})) cb(snap(`${ref.path}/${k}`)); return () => childListeners.splice(childListeners.indexOf(l), 1); },
+    onValue: (ref, cb) => { const l = { path: ref.path, cb }; valueListeners.push(l); cb(snap(ref.path)); return () => valueListeners.splice(valueListeners.indexOf(l), 1); },
+  };
+  return { api, db: {}, tree };
+}
+
+test('RoomWire over Realtime Database: ordered messages both ways, parts removed after reading, other epochs ignored', async () => {
+  const realtime = fakeRealtime();
+  const firestoreStub = { api: { onSnapshot: () => () => {} }, ref: () => ({}), col: () => ({}) };
+  const toKeeper = [], toPlayer = [];
+  const keeper = new RoomWire(firestoreStub, 'room', 'w1', 'keeper', { realtime, epoch: 'E1', onData: d => toKeeper.push(d), onClose: e => { throw e; } });
+  const player = new RoomWire(firestoreStub, 'room', 'w1', 'player', { realtime, epoch: 'E1', onData: d => toPlayer.push(d), onClose: e => { throw e; } });
+  const big = { type: 'INITIAL_STATE', state: { fear: 1, tokens: [{ id: 't', x: 1, sheet: 'S'.repeat(130000) }] } };
+  keeper.send(big);
+  player.send({ type: 'TOKEN_MOVE', tokenId: 't', x: 64 });
+  const until = async f => { for (let i = 0; i < 200 && !f(); i++) await new Promise(r => setTimeout(r, 5)); };
+  await until(() => toPlayer.length && toKeeper.length);
+  assert.deepEqual(toPlayer[0], big, 'a message in several parts arrives whole');
+  assert.deepEqual(toKeeper[0], { type: 'TOKEN_MOVE', tokenId: 't', x: 64 });
+  const moved = structuredClone(big); moved.state.tokens[0].x = 65;
+  keeper.send(moved);
+  await until(() => toPlayer.length === 2);
+  assert.equal(toPlayer[1].state.tokens[0].x, 65, 'the patch rebuilds the state');
+  await until(() => !Object.keys(realtime.tree.wires.w1.down || {}).length);
+  assert.deepEqual(realtime.tree.wires.w1.down || {}, {}, 'read parts are removed');
+  // A stale Keeper connection (another epoch) is not heard.
+  await realtime.api.set({ path: 'wires/w1/down/99_0' }, { seq: 3, part: 0, total: 1, text: JSON.stringify({ type: 'FORGED' }), epoch: 'OLD' });
+  await new Promise(r => setTimeout(r, 30));
+  assert.equal(toPlayer.length, 2);
+  // Presence: the player's beat reaches the Keeper's wire.
+  await player.beat(); await until(() => keeper.seenAt);
+  assert.ok(keeper.seenAt > 0);
+  keeper.close(); player.close();
+});
