@@ -350,11 +350,28 @@
 .vf-dice-tracker:after{content:"";position:absolute;inset:26%;border-radius:50%;opacity:0;background:rgba(2,6,15,.72);box-shadow:inset 0 0 24px rgba(0,0,0,.84);backdrop-filter:grayscale(1) brightness(.58);-webkit-backdrop-filter:grayscale(1) brightness(.58);transition:opacity .52s ease;pointer-events:none}
 .vf-dice-tracker.is-discarding:after{opacity:.48}.vf-dice-tracker.is-discarded:after{opacity:.72}
 
-/* The single results panel: golden cards stacked on the right, one per roll, oldest on top. */
-.vf-results-stack{position:fixed;z-index:2147483001;right:12px;top:max(118px,calc(env(safe-area-inset-top) + 106px));width:min(320px,calc(100vw - 24px));max-height:calc(100vh - 150px);display:flex;flex-direction:column;justify-content:flex-start;gap:8px;overflow:hidden;pointer-events:none}
-.vf-results-stack .vf-result-card{position:relative;inset:auto;right:auto;top:auto;bottom:auto;width:auto;flex:0 0 auto;pointer-events:auto;cursor:pointer;animation:vf-result-card-in .28s cubic-bezier(.16,1,.3,1) both;transition:opacity .3s ease,transform .3s ease}
-.vf-results-stack .vf-result-card.is-leaving{opacity:0;transform:translateX(24px)}
-.vf-results-stack .vf-result-card[data-secret]::before{content:'SOLO KEEPER';font:800 9px/1 system-ui;letter-spacing:.14em;color:#fca5a5}
-@keyframes vf-result-card-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
-@media(max-width:720px){.vf-results-stack{top:auto;bottom:max(42px,env(safe-area-inset-bottom));right:8px;width:min(250px,calc(100vw - 16px));justify-content:flex-end;max-height:60vh}}
+/* The single results panel (V3): small cards at the bottom centre of the table, above the status
+   bar, the newest at the bottom; only the last three are shown. One line per idea: total, who and
+   what, outcome; the Hope/Fear dice on the right. The full breakdown stays in the log and chat. */
+.vf-results-stack{position:fixed;z-index:2147483001;left:50%;transform:translateX(-50%);bottom:max(34px,calc(env(safe-area-inset-bottom) + 30px));top:auto;right:auto;width:min(400px,calc(100vw - 24px));display:flex;flex-direction:column;justify-content:flex-end;gap:5px;overflow:hidden;pointer-events:none}
+.vf-results-stack .vf-result-card{position:relative;inset:auto;right:auto;top:auto;bottom:auto;width:auto;flex:0 0 auto;pointer-events:auto;cursor:pointer;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:10px;row-gap:1px;align-items:center;padding:6px 10px;
+  border:1px solid rgba(192,132,252,.42);border-left:2px solid #f2b84b;border-radius:0;background:rgba(13,4,32,.94);box-shadow:0 6px 18px rgba(0,0,0,.4);
+  animation:vf-result-card-in .22s ease-out both;transition:opacity .3s ease,transform .3s ease}
+.vf-results-stack .vf-result-card:nth-last-child(n+4){display:none}
+.vf-results-stack .vf-result-card .vf-analysis-number-box{display:contents}
+.vf-results-stack .vf-result-card .vf-analysis-huge-total{grid-column:1;grid-row:1/5;font-size:24px;min-width:30px;text-align:center}
+.vf-results-stack .vf-result-card .vf-analysis-kicker{grid-column:2;font-size:8px;letter-spacing:.14em}
+.vf-results-stack .vf-result-card .vf-analysis-actor{grid-column:2;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vf-results-stack .vf-result-card .vf-analysis-outcome{grid-column:2;font-size:12px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vf-results-stack .vf-result-card .vf-analysis-duality{grid-column:3;grid-row:1/4;gap:5px;font-size:8px}
+.vf-results-stack .vf-result-card .vf-analysis-duality span b{font-size:13px}
+.vf-results-stack .vf-result-card .vf-analysis-damage{grid-column:3;grid-row:1/4;display:block;padding:0;border:0}
+.vf-results-stack .vf-result-card .vf-analysis-damage>small,.vf-results-stack .vf-result-card .vf-analysis-damage>div{display:none}
+.vf-results-stack .vf-result-card .vf-analysis-damage>strong{font-size:18px}
+.vf-results-stack .vf-result-card .vf-analysis-status{display:block;grid-column:2/4;grid-row:4;margin:2px 0 0;padding:2px 0 0;border-top:1px solid rgba(192,132,252,.18);font-size:9px;line-height:1.35;letter-spacing:.03em;color:#b9a9d6;white-space:normal;word-break:break-word}
+.vf-results-stack .vf-result-card.is-leaving{opacity:0;transform:translateY(10px)}
+.vf-results-stack .vf-result-card[data-secret]::before{content:'SOLO KEEPER';grid-column:1/-1;font:800 8px/1 system-ui;letter-spacing:.14em;color:#fca5a5;margin-bottom:2px}
+@keyframes vf-result-card-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(max-width:720px){.vf-results-stack{width:min(330px,calc(100vw - 16px));bottom:max(30px,env(safe-area-inset-bottom))}}
 @media(prefers-reduced-motion:reduce){.vf-results-stack .vf-result-card{animation:none;transition:none}}

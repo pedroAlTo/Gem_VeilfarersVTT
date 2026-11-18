@@ -20,6 +20,22 @@ export function tokenDistanceSquares(a, b, gridSize) {
   return Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0)) / (gridSize || 64);
 }
 
+// Distance between two tokens is measured base to base (user ruling, 17 Nov 2026): the gap
+// between the edges of their bases, so a large creature is in Melee when its base touches yours.
+export function tokenGapSquares(a, b, gridSize) {
+  const centre = tokenDistanceSquares(a, b, gridSize);
+  return Math.max(0, centre - ((Number(a?.size) || 1) + (Number(b?.size) || 1)) / 2);
+}
+// Bands for a gap between bases: touching (also diagonally) is Melee; then by whole metres of gap.
+export function gapBandFor(gapSquares, metersPerSquare = DEFAULT_METERS_PER_SQUARE) {
+  const meters = Math.round(gapSquares * metersPerSquare);
+  if (gapSquares <= 0.5 || meters <= 1) return 'Melee';
+  if (meters <= 5) return 'Very Close';
+  if (meters <= 10) return 'Close';
+  if (meters <= 25) return 'Far';
+  return 'Extreme';
+}
+
 // Walls and closed doors stop a shot; windows and open doors do not.
 function crosses(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y) {
   const d = (p2x - p1x) * (p4y - p3y) - (p2y - p1y) * (p4x - p3x);
@@ -39,42 +55,69 @@ export function lineBlockedByWall(a, b, walls = []) {
 // Everything the table needs to know about the gap between two tokens, in one place:
 // the lock line, the ruler and the attack all read it from here.
 export function distanceInfo(a, b, map = {}) {
-  const squares = tokenDistanceSquares(a, b, map.gridSize), metersPerSquare = map.gridScaleMeters || DEFAULT_METERS_PER_SQUARE;
-  return { squares, meters: squares * metersPerSquare, band: rangeBandFor(squares, metersPerSquare), blocked: lineBlockedByWall(a, b, map.walls || []) };
+  const squares = tokenGapSquares(a, b, map.gridSize), metersPerSquare = map.gridScaleMeters || DEFAULT_METERS_PER_SQUARE;
+  return { squares, meters: squares * metersPerSquare, band: gapBandFor(squares, metersPerSquare), blocked: lineBlockedByWall(a, b, map.walls || []) };
 }
 
+const bandFromMeters = meters => (meters <= 1 ? 'Melee' : meters <= 5 ? 'Very Close' : meters <= 10 ? 'Close' : meters <= 25 ? 'Far' : 'Extreme');
 const bandFromText = value => {
   const text = String(value ?? '').toLowerCase();
   if (/very\s*far|extreme|extremo|muy\s*lej/.test(text)) return 'Extreme';
-  if (/\bfar\b|lejos|largo/.test(text)) return 'Far';
+  if (/\bfar\b|lejos|lejan|largo|larga/.test(text)) return 'Far';
   if (/very\s*close|muy\s*cerca/.test(text)) return 'Very Close';
-  if (/\bclose\b|cerca|corto/.test(text)) return 'Close';
-  if (/melee|cuerpo|contact/.test(text)) return 'Melee';
+  if (/\bclose\b|cerca|corto|media|medio/.test(text)) return 'Close';
+  if (/melee|cuerpo|contact|adyacente|adjacent/.test(text)) return 'Melee';
+  // "15 m", "10m", "5 metros"
+  const meters = text.match(/(\d+(?:[.,]\d+)?)\s*(?:m\b|metros?)/);
+  if (meters) return bandFromMeters(Number(meters[1].replace(',', '.')));
   return '';
 };
-const plainName = value => String(value ?? '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9áéíóúüñ]+/g, ' ').trim();
-// The band a weapon reaches: its own Range text or, when the sheet left it blank, the range
-// of the catalog weapon with the same name. '' means it is not known.
+const plainName = value => String(value ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+// A catalog weapon answers to its whole name, to the part in brackets and to each side of
+// "English / Español": "Slug Pistol" finds "Pistola Cinética Militar (Slug Pistol)".
+const nameAliases = value => {
+  const raw = String(value ?? '');
+  const parts = [raw, raw.replace(/\(.*?\)/g, ''), ...(raw.match(/\(([^)]*)\)/g) || []).map(x => x.slice(1, -1)), ...raw.replace(/\(.*?\)/g, '').split('/')];
+  return [...new Set(parts.map(plainName).filter(Boolean))];
+};
+// When neither the sheet nor the catalog says, the kind of weapon does.
+const KIND_BANDS = [
+  [/sniper|francotirador|marksman|precision/, 'Extreme'],
+  [/shotgun|escopeta|flamer|lanzallamas/, 'Very Close'],
+  [/pistol|revolver|derringer|blaster|holdout|sidearm|\bsmg\b|subfusil|hand ?cannon/, 'Close'],
+  [/rifle|fusil|carbine|carabina|launcher|lanzador|lanzagranadas|cannon|canon\b|railgun|machine ?gun|ametralladora/, 'Far'],
+  [/knife|cuchill|blade|hoja|sword|espada|dagger|daga|\baxe\b|hacha|hammer|martillo|\bclub\b|porra|baton|whip|latigo|glaive|estoque|rapier|vibro|fist|puno|claw|garra|spear|lanza\b|machete|katana|mace|maza|staff|baston|cutter|cortador|unarmed|desarmado/, 'Melee'],
+];
+const bandFromKind = weapon => {
+  const text = plainName([weapon?.name, weapon?.type, weapon?.features].filter(Boolean).join(' '));
+  return KIND_BANDS.find(([pattern]) => pattern.test(text))?.[1] || '';
+};
+// The band a weapon reaches: its own Range text (or the Trait text, when the range was written
+// there); when the sheet left it blank, the range of
+// the catalog weapon with the same name; failing that, the kind of weapon its name says.
+// '' means it is not known.
 export function weaponRangeBand(weapon) {
-  const own = bandFromText(weapon?.range);
+  // Some imported sheets write the range with the Trait ("Agility · Melee").
+  const own = bandFromText(weapon?.range) || bandFromText(weapon?.trait);
   if (own || !weapon?.name) return own;
-  const name = plainName(weapon.name);
-  const match = name && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && plainName(item.name) === name);
-  return match ? bandFromText(match.range) : '';
+  const names = nameAliases(weapon.name);
+  const match = names.length && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && nameAliases(item.name).some(alias => names.includes(alias)));
+  return (match && bandFromText(match.range)) || bandFromKind(weapon);
 }
 
-// A short firearm (pistol, hand blaster, revolver...) can be fired point-blank without penalty
-// (Corebook ch. 10: "point-blank pistol range"). A weapon can also say so with `short: true`.
-const SHORT_WEAPON = /pistol|pistola|revolver|revólver|derringer|bl[aá]ster|holdout|sidearm|hand ?cannon/i;
-export function isShortWeapon(weapon) {
+// A short firearm is one whose maximum range is Close or less (user ruling, 17 Nov 2026): it
+// fires at Close and point-blank in Melee without penalty. A weapon can also say so with
+// `short: true` (or not, with `short: false`).
+export function isShortWeapon(weapon, reach = weaponRangeBand(weapon)) {
   if (!weapon) return false;
   if (typeof weapon.short === 'boolean') return weapon.short;
-  return SHORT_WEAPON.test([weapon.name, weapon.features, weapon.type].filter(Boolean).join(' '));
+  return reach === 'Very Close' || reach === 'Close';
 }
 
-// Table rule: a melee weapon only works at Melee; a ranged weapon fired beyond the band
-// it covers attacks with Disadvantage, and so does a long ranged weapon fired at a target in
-// Melee (user decision, 17 Nov 2026; short weapons such as pistols are exempt).
+// Table rule: a melee weapon only works at Melee (Reach: also Very Close); a ranged weapon fired
+// beyond the band it covers attacks with Disadvantage; a long ranged weapon (maximum range Far or
+// more) fired at a target in Melee attacks with Disadvantage. A firearm with a maximum range of
+// Close has no Disadvantage at Close or in Melee.
 export function rangeCheck(weapon, band) {
   // No weapon in hand is an unarmed strike: a Melee attack (Corebook ch. 10).
   if (!weapon) return band && band !== 'Melee'
@@ -83,15 +126,29 @@ export function rangeCheck(weapon, band) {
   const reach = weaponRangeBand(weapon);
   if (!reach || !band) return { allowed: true, disadvantage: false, reach, band, reason: '' };
   if (reach === 'Melee') {
-    return band === 'Melee'
+    return band === 'Melee' || (band === 'Very Close' && hasReach(weapon))
       ? { allowed: true, disadvantage: false, reach, band, reason: '' }
       : { allowed: false, disadvantage: false, reach, band, reason: `Arma cuerpo a cuerpo: el objetivo está a ${band}, fuera de Melee.` };
   }
   const beyond = RANGE_BANDS.indexOf(band) > RANGE_BANDS.indexOf(reach);
   if (beyond) return { allowed: true, disadvantage: true, reach, band, reason: `Objetivo a ${band}, más allá del alcance del arma (${reach}): Desventaja.` };
-  if (band === 'Melee' && !isShortWeapon(weapon)) return { allowed: true, disadvantage: true, reach, band, reason: 'Arma a distancia larga contra un objetivo en Melee: Desventaja (las armas cortas, como las pistolas, no la tienen).' };
+  if (band === 'Melee' && !isShortWeapon(weapon, reach)) return { allowed: true, disadvantage: true, reach, band, reason: `Arma de alcance ${reach} contra un objetivo en Melee: Desventaja (las armas de alcance máximo Close no la tienen).` };
   return { allowed: true, disadvantage: false, reach, band, reason: '' };
 }
+
+// Weapon properties that change the attack roll (Corebook ch. 13, weapon features):
+// Reliable +1 always; Accurate +1 and Smart Scope +2 at Far or Very Far.
+export function weaponAttackBonus(weapon, band = '') {
+  const text = [weapon?.features, weapon?.name, weapon?.type].filter(Boolean).join(' ').toLowerCase();
+  const far = band === 'Far' || band === 'Extreme';
+  const parts = [];
+  if (/\breliable\b|\bfiable\b/.test(text)) parts.push(['Reliable', 1]);
+  if (/\baccurate\b|\bprecis[ao]\b/.test(text) && far) parts.push(['Accurate', 1]);
+  if (/smart\s*scope|mira\s*inteligente/.test(text) && far) parts.push(['Smart Scope', 2]);
+  return { bonus: parts.reduce((sum, [, n]) => sum + n, 0), notes: parts.map(([name, n]) => `${name} +${n}`) };
+}
+// Reach (Corebook): a Melee weapon may attack at Very Close.
+const hasReach = weapon => /\breach\b|\balcance\s+extendido\b/i.test([weapon?.features, weapon?.name].filter(Boolean).join(' '));
 
 // The Trait a weapon attacks with, as a Trait id; '' when its text names none.
 export function weaponTraitId(weapon) {

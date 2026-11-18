@@ -1,6 +1,179 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.17.12', date: '2026-11-18', title: 'V3 · Atacar con Ventaja o Desventaja y pantalla del Keeper',
+    sections: [
+      { title: 'Ataques', items: [
+        'Al marcar el objetivo aparecen Desventaja y Ventaja: tocar una ataca con ella; el segundo toque en el objetivo ataca sin ventaja. Igual para el jugador (en la Ficha) y para el Keeper.',
+        'El Keeper apunta con un panel flotante sobre el mapa: quién ataca y con qué, el objetivo con su distancia y su tirada, Desventaja/Ventaja y cancelar.',
+      ] },
+      { title: 'Pantalla del Keeper', items: [
+        'Nuevo icono de pantalla de Keeper junto al de los dados (solo para el Keeper). Levantada, todas sus tiradas son secretas: solo las ve él. Es el mismo interruptor que «Tirada secreta» del panel de dados y se recuerda entre sesiones en este navegador.',
+      ] },
+      { title: 'Detalles', items: [
+        'El texto de la pestaña FICHA queda centrado como las demás.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.11', date: '2026-11-17', title: 'V3 · El Keeper ataca con sus adversarios y recibe por susurro lo que tiene que resolver',
+    sections: [
+      { title: 'Keeper', items: [
+        'Botón «⚔ ATACAR» en la barra inferior de los adversarios: toca el objetivo en el mapa (un aviso dice distancia, Ventaja/Desventaja y motivos) y vuelve a tocarlo para atacar. El panel de dados se abre con el resultado y «Aplicar daño».',
+      ] },
+      { title: 'Propiedades de arma en el chat', items: [
+        'Cuando un arma tiene una propiedad que hay que resolver a mano (por ejemplo, la porra de choque con Stunning: Strength Reaction Roll contra CD 10), se envía al Keeper como susurro en el chat: desde la máquina de un jugador, como un susurro normal; en la del Keeper, en el hilo «Reglas · avisos de armas», que solo ve él.',
+        'Overheating avisa también al Keeper cuando el arma se sobrecalienta.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.10', date: '2026-11-17', title: 'V3 · Resolve en marcas amarillas',
+    sections: [
+      { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [
+        'Resolve se muestra como pequeñas marcas amarillas, una por punto: triángulos si son dados d4 y cuadrados si se compró la mejora a d6. Encendidas si el punto está disponible, apagadas si se ha gastado.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.9', date: '2026-11-17', title: 'V3 · Distancias de peana a peana',
+    sections: [
+      { title: 'Distancias', items: [
+        'La distancia entre dos tokens se mide de peana a peana (el hueco entre sus bordes), no entre centros: una criatura grande está en Melee cuando su peana toca la tuya, también en diagonal.',
+        'Lo usan el ataque, la Ficha del jugador y la línea de objetivo del mapa. La regla de medir del mapa sigue midiendo entre los dos puntos que marcas.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.8', date: '2026-11-17', title: 'V3 · Tokens que se deslizan y distancias que se recalculan',
+    sections: [
+      { title: 'Movimiento', items: [
+        'Cuando un token cambia de sitio sin que lo arrastres tú (el movimiento de otro jugador, uno que confirma el Keeper, un deshacer), se desliza de un punto a otro en vez de aparecer de golpe. Los saltos muy largos (cambio de escena) no se animan.',
+        'Si el atacante o el objetivo marcado se mueve, la Ficha recalcula la distancia, la penalización y si el ataque va con Ventaja o Desventaja.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.7', date: '2026-11-17', title: 'V3 · Todas las propiedades de arma del Corebook, y modificadores en cada resultado',
+    sections: [
+      { title: 'Propiedades de arma (glosario del Corebook)', items: [
+        'Se aplican solas: Reliable, Accurate, Smart Scope (tirada de ataque); Reach (alcance); Crushing, Phasing, Cutting, Vibration, Shield Piercing (Armor Slots que puede gastar el objetivo); Burst Fire, Massive, Energy Surge (daño extra); Devastating (+1 HP al llegar al umbral Severe); Energy, Phasing (penetración); Poison y Energy Surge (Stress); Ignite (On Fire) y Bleed (Bleeding); Overheating (d6 tras cada ataque).',
+        'El resto sale como aviso tras el impacto, con lo que lo dispara, la tirada y la CD de característica del objeto (TT1 10, TT2 15, TT3 20, TT4 25): Stunning, Taser Charge, Entangling, Entrapping, Disorienting, Stagger, Continuous, Brittle, Armor Piercing, Shredding, Mind-Lock, Disintegrating, Unraveling, System Shock, Explosive, Automatic, Salvo Fire, Cleave, Quick, Reload, Suppressive, Probability Shift, Paired, Psionic y armas de área.',
+        'La Ficha del jugador lista los efectos bajo el resultado del ataque.',
+      ] },
+      { title: 'Resultados y daño', items: [
+        'Las tarjetas de resultado muestran siempre los modificadores de la tirada (dados, Trait, Ventaja/Desventaja, propiedades…), en todas las tiradas.',
+        'Corregido: en la vista de jugador de la mesa del Keeper, «Aplicar daño» no cambiaba el HP del objetivo.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.6', date: '2026-11-17', title: 'V3 · Armas de fuego de alcance Close sin Desventaja a Close ni en Melee',
+    sections: [
+      { title: 'Reglas de alcance', items: [
+        'Regla de la mesa: cualquier arma de fuego con alcance máximo Close (o Very Close) no tiene Desventaja a Close ni en Melee, se llame como se llame (pistola, escopeta recortada, subfusil…). Así se sabe qué armas de fuego se pueden usar en Melee/Close.',
+        'Un arma de alcance Far o más sigue teniendo Desventaja contra un objetivo en Melee, y pasarse del alcance del arma sigue dando Desventaja.',
+        'Se retira la Desventaja de las pistolas a Close añadida en v2.17.1.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.5', date: '2026-11-17', title: 'V3 · Alcance y propiedades de las armas en el ataque',
+    sections: [
+      { title: 'Reglas de las armas', items: [
+        'Corregido: en fichas importadas el alcance venía junto al Trait («Agility · Melee») y el ataque no lo veía, así que un arma cuerpo a cuerpo atacaba a cualquier distancia y sin Desventaja por rango. Ahora se lee también de ahí, y la Ficha muestra el alcance real de cada arma.',
+        'Si el objetivo está fuera de alcance (un arma cuerpo a cuerpo a distancia), el segundo toque no ataca: la Ficha ya dice por qué.',
+        'Propiedades de arma en la tirada de ataque (Corebook): Reliable +1 siempre; Accurate +1 y Smart Scope +2 a Far o más. Reach permite atacar a Very Close con un arma cuerpo a cuerpo.',
+        'Penetración: si la fórmula del panel no dice el tipo de daño, se usa el del arma (por ejemplo, «d6+1 ene.»: Energy, umbrales −2).',
+        'Al marcar el objetivo, la Ficha lista también las propiedades que se aplican y la penetración del daño.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.4', date: '2026-11-17', title: 'V3 · La Desventaja por alcance también con armas importadas',
+    sections: [
+      { title: 'Reglas de alcance', items: [
+        'Corregido: si el arma de una ficha importada no indicaba su alcance en un formato conocido, no se aplicaba ningún límite y no había Desventaja por distancia.',
+        'Ahora el alcance se lee también en español («Cercano», «Lejano», «Muy lejano», «Media») y en metros («15 m»); si la ficha no lo dice, se busca el arma del catálogo por su nombre en inglés o en español (por ejemplo, «Slug Pistol»); y si tampoco, se deduce del tipo de arma (pistola, rifle, francotirador, escopeta, cuchillo, espada…).',
+        'Si aun así no se sabe, la Ficha lo dice al marcar el objetivo: «El arma no indica su alcance: no se aplica límite de distancia».',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.3', date: '2026-11-17', title: 'V3 · El ataque dice si va con Ventaja o Desventaja y ya se ejecuta en la vista de jugador local',
+    sections: [
+      { title: 'Atacar desde la Ficha (rama V3, en pruebas)', items: [
+        'Al marcar el objetivo, la Ficha dice cómo será la tirada: «Con Desventaja», «Con Ventaja» o «Tirada normal», con cada motivo (alcance, arma fuera de competencia, Ventaja preparada).',
+        'Corregido: en la vista de jugador de la mesa del Keeper (sin sala), el segundo toque en el objetivo mostraba «Selecciona uno de tus tokens asignados» y no atacaba. Ahora el personaje seleccionado en esa vista es el que se juega.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.2', date: '2026-11-17', title: 'V3 · Experiencias siempre a la vista y ataque en dos toques',
+    sections: [
+      { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [
+        'Las experiencias se ven siempre en la ficha, bajo TIRAR. Se pueden elegir antes o después del Trait; si la ficha no tiene, lo dice.',
+        'Atacar: toca el arma y luego el objetivo en el mapa; el primer toque lo marca (línea y distancia en el mapa) y la ficha muestra la distancia y la penalización que tendría. Un segundo toque en el mismo objetivo ataca; tocar otro cambia la marca; Esc cancela.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.1', date: '2026-11-17', title: 'V3 · Ficha con defensa y recursos, resultados compactos y pistolas a Close',
+    sections: [
+      { title: 'Pestaña Ficha (rama V3, en pruebas)', items: [
+        'Muestra Evasión, Umbrales (Major / Severe), Escudos, la armadura equipada, HP, Stress y Hope (Awakened) o Effort y Resolve (Sleeping), y en «Otros» lo pendiente: Ventaja preparada, bonificador para la próxima tirada y condiciones.',
+        'Nuevo aspecto, igual que el panel de dados: líneas finas, celdas oscuras, etiquetas en mayúsculas y cian para lo seleccionado.',
+        'Desventaja y Ventaja aparecen al seleccionar un Trait, y las experiencias con él, siempre con una entrada suave; al elegir una experiencia, la fila baja debajo de ellas con la misma animación.',
+        'El resultado del ataque dice la distancia y, si la hay, la penalización por alcance y su motivo.',
+      ] },
+      { title: 'Resultados de las tiradas', items: [
+        'Las tarjetas de resultado son más pequeñas y salen abajo en el centro, sobre la barra de estado (la zona de comunicaciones), con un máximo de tres a la vista. El detalle completo sigue en el registro y en el chat.',
+      ] },
+      { title: 'Reglas', items: [
+        'Pistolas y armas cortas a Close o más lejos: Desventaja (Corebook, bandas de alcance: «Close: … Pistols take a penalty»). A Very Close y en Melee siguen sin penalización.',
+      ] },
+    ],
+  },
+  {
+    version: '2.17.0', date: '2026-11-17', title: 'V3 · La ficha del jugador en el panel derecho',
+    sections: [
+      { title: 'Panel derecho del jugador (rama V3, en pruebas)', items: [
+        'Para el jugador, el panel derecho tiene cinco pestañas: Ficha, Nave (por ahora), Dossiers, Registro y Chat. Relojes, Reparto y Escenas quedan para el Keeper; los relojes siguen viéndose sobre el mapa.',
+        'Nueva pestaña «Ficha» («Mi personaje»), que se abre sola al pasar a jugador: nombre, clase y Path, «Ficha completa», TIRAR (los seis Traits en dos filas), experiencias, Ventaja/Desventaja y ATACAR. Sin personaje asignado explica cómo conseguirlo.',
+        'TIRAR y ATACAR dejan de flotar sobre el mapa. En tablet, al elegir un arma el panel se cierra para tocar el objetivo y se vuelve a abrir con el resultado.',
+        'El contador de la cabecera del panel cuenta solo las pestañas visibles (por ejemplo «01 / 05»).',
+      ] },
+    ],
+  },
+  {
+    version: '2.16.1', date: '2026-11-17', title: 'V3 · Tirar en dos toques: Trait, ventaja y experiencias',
+    sections: [
+      { title: 'Barra del jugador (rama V3, en pruebas)', items: [
+        'Un toque en un Trait lo selecciona y muestra debajo Desventaja y Ventaja. Un segundo toque en el Trait tira sin ventaja; Ventaja o Desventaja tiran con ella.',
+        'Con un Trait seleccionado aparecen las experiencias del personaje. Al elegir una, Desventaja y Ventaja pasan debajo de las experiencias; un segundo toque en la experiencia tira Trait + experiencia, y Ventaja o Desventaja tiran con ella.',
+        'Awakened: las experiencias solo están disponibles con Hope; al elegir una se marca el Hope que se va a gastar (en la barra y en el contador HOPE del personaje). Sleeping: la experiencia se marca y no cuesta nada.',
+        'Esc o tocar otro Trait cambia o cancela la selección. En «⋯» quedan la DC y «Más opciones de tirada».',
+      ] },
+    ],
+  },
+  {
+    version: '2.16.0', date: '2026-11-17', title: 'V3 · Vista del jugador: barra Tirar y Atacar, y los dados en un icono',
+    sections: [
+      { title: 'Barra del jugador (rama V3, en pruebas)', items: [
+        'En postura de jugador, sobre la barra del personaje aparece la barra de acciones con lo que más se usa, a un toque.',
+        'TIRAR: los seis Traits con su valor («FIN +1»); un toque tira contra la DC. En «⋯»: Desventaja / Normal / Ventaja, la DC y más opciones.',
+        'ATACAR: un botón por arma (o «Desarmado»). Se toca el arma, luego el objetivo en el mapa (Esc cancela), y la mesa hace el resto: alcance, competencia, tirada y daño.',
+        'RESULTADO: el último ataque queda en la barra, con el daño y la severidad, «Escudos» para que el defensor gaste Armor y «Aplicar daño» (paso aparte, decisión 8). Bear Down actualiza el daño.',
+        'En postura de jugador se oculta el panel de capas, que no hace falta para jugar.',
+      ] },
+      { title: 'Dados en un icono', items: [
+        'Los dados pasan a un icono transparente en la esquina superior derecha del mapa; la pestaña «Dados» del panel lateral desaparece.',
+        'Para el jugador, el panel de dados solo da dados (d4 a d100). Tirar y atacar se hacen desde su barra.',
+        'Para el Keeper, el panel conserva por ahora Dualidad, Dados estándar y Daño; su vista se simplifica en la siguiente fase.',
+      ] },
+    ],
+  },
+  {
     version: '2.15.2', date: '2026-11-17', title: 'V2 · El icono del mazo siempre a la vista',
     sections: [
       { title: 'Mazo', items: [

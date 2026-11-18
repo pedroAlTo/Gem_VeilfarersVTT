@@ -68,6 +68,7 @@ export function initOrbitalUI() {
   sidebar.prepend(heading);
   const titles = {
     dice: 'Resolve an action',
+    sheet: 'My character',
     clocks: 'Mission clocks',
     ship: 'Ship systems',
     roster: 'Crew manifest',
@@ -76,11 +77,14 @@ export function initOrbitalUI() {
     log: 'Session chronicle',
     chat: 'Comunicaciones',
   };
-  [...document.querySelectorAll('.tab-nav-btn')].forEach((b, i) => {
+  [...document.querySelectorAll('.tab-nav-btn')].forEach(b => {
     b.addEventListener('click', () => {
       document.getElementById('orbital_panel_title').textContent =
         titles[b.dataset.tab] || b.textContent.trim();
-      document.getElementById('orbital_panel_index').textContent = `0${i + 1} / 08`;
+      // Counted among the tabs this seat sees (a player sees fewer).
+      const shown = [...document.querySelectorAll('.tab-nav-btn')].filter(t => t.getClientRects().length);
+      const at = Math.max(0, shown.indexOf(b)), pad = n => String(n).padStart(2, '0');
+      document.getElementById('orbital_panel_index').textContent = `${pad(at + 1)} / ${pad(shown.length || 1)}`;
     });
   });
   const viewport = document.getElementById('canvas_viewport_root'),

@@ -112,6 +112,7 @@ export class TokenHUD {
 
           <!-- Compact Action Controls -->
           <div class="tok-qb-actions">
+            ${isKeeper && !isPC && token.actorType !== 'drone' ? `<button class="hud-btn hud-btn-xs hud-btn-primary" id="quick_attack_btn" title="Ataque normal: toca el objetivo en el mapa y vuelve a tocarlo para atacar">⚔ ATACAR</button>` : ''}
             <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-amber' : ''}" id="quick_spotlight_btn" title="Alternar Foco / Borde dorado brillante con pulso">${token.hasSpotlight ? '✨ FOCO ON' : '✨ FOCO'}</button>
             <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
             <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
@@ -135,6 +136,7 @@ export class TokenHUD {
             <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
           </div>
+          ${isKeeper && !isPC && token.actorType !== 'drone' ? `<button class="hud-btn hud-btn-xs hud-btn-primary" id="quick_attack_btn" title="Ataque normal: toca el objetivo en el mapa y vuelve a tocarlo para atacar">⚔ ATACAR</button>` : ''}
           <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-amber' : ''}" id="quick_spotlight_btn" title="Alternar Foco / Borde dorado brillante con pulso">${token.hasSpotlight ? '✨ FOCO ON' : '✨ FOCO'}</button>
           <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Open Full Character Sheet">SHEET</button>
           <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
@@ -445,6 +447,8 @@ export class TokenHUD {
     }
 
     // Open Sheet
+    const attackBtn = this.container.querySelector('#quick_attack_btn');
+    if (attackBtn) attackBtn.onclick = () => window.veilActionBar?.startKeeperAttack?.(token.id);
     const sheetBtn = this.container.querySelector('#open_sheet_btn');
     if (sheetBtn) {
       sheetBtn.onclick = () => this.openCharacterSheetModal(token);

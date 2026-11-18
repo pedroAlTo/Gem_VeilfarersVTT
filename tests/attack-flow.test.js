@@ -2,7 +2,7 @@ import test, { beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { createActor } from '../src/actors.js';
-import { RANGE_BANDS, rangeBandFor, tokenDistanceSquares, weaponRangeBand, lineBlockedByWall, distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit } from '../src/attackFlow.js';
+import { RANGE_BANDS, rangeBandFor, tokenGapSquares, gapBandFor, tokenDistanceSquares, weaponRangeBand, lineBlockedByWall, distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from '../src/attackFlow.js';
 
 const dom = new JSDOM('<body></body>', { url: 'http://localhost/' });
 for (const key of ['window', 'document', 'HTMLElement', 'customElements', 'MutationObserver', 'localStorage', 'Event', 'CustomEvent', 'FormData']) globalThis[key] = dom.window[key];
@@ -52,6 +52,12 @@ test('a weapon whose sheet has no Range takes it from the catalog weapon of the 
   assert.equal(weaponRangeBand({ name: 'Pistola Cinética Militar', range: '' }), 'Close');
   assert.equal(weaponRangeBand({ name: 'Pistola Cinética Militar (Slug Pistol)' }), 'Close');
   assert.equal(weaponRangeBand({ name: 'Arma inventada', range: '' }), '');
+  // Imported sheets: Spanish words, metres, the English name of a catalog weapon, or its kind.
+  assert.deepEqual(['Lejano', 'Muy lejano', 'Cercano', 'Distancia media', '15 m', '4m', '40 metros'].map(range => weaponRangeBand({ range })), ['Far', 'Extreme', 'Close', 'Close', 'Far', 'Very Close', 'Extreme']);
+  assert.equal(weaponRangeBand({ name: 'Slug Pistol' }), 'Close');
+  assert.equal(weaponRangeBand({ name: 'Energy Dagger', trait: 'Agility · Melee', range: '' }), 'Melee', 'range written with the Trait');
+  assert.equal(rangeCheck({ name: 'Energy Dagger', trait: 'Agility · Melee', range: '' }, 'Extreme').allowed, false);
+  assert.deepEqual(['Sniper Rifle', 'Assault Rifle', 'Combat Shotgun', 'Combat Knife', 'Heavy Revolver'].map(name => weaponRangeBand({ name })), ['Extreme', 'Far', 'Very Close', 'Melee', 'Close']);
   assert.equal(weaponRangeBand({ name: 'Pistola Cinética Militar', range: 'Far' }), 'Far', 'its own Range wins');
 });
 
@@ -62,14 +68,14 @@ test('walls and closed doors block the line of fire; windows and open doors do n
   assert.equal(lineBlockedByWall(a, b, [{ ...across, wallType: 'door', isOpen: true }]), false);
   assert.equal(lineBlockedByWall(a, b, [{ ...across, wallType: 'door', isOpen: false }]), true);
   assert.equal(lineBlockedByWall(a, b, [{ x1: 100, y1: 20, x2: 100, y2: 90 }]), false, 'a wall beside the line');
-  assert.deepEqual(distanceInfo(a, { x: 1472, y: 0 }, { gridSize: 64, walls: [across] }), { squares: 23, meters: 46, band: 'Extreme', blocked: true });
+  assert.deepEqual(distanceInfo(a, { x: 1472, y: 0 }, { gridSize: 64, walls: [across] }), { squares: 22, meters: 44, band: 'Extreme', blocked: true });
 });
 
 test('a melee weapon only attacks at Melee; a ranged weapon beyond its band, or a long one at Melee, attacks with Disadvantage', () => {
   assert.equal(rangeCheck({ range: 'Melee' }, 'Melee').allowed, true);
   const tooFar = rangeCheck({ range: 'Melee' }, 'Very Close');
   assert.equal(tooFar.allowed, false); assert.match(tooFar.reason, /fuera de Melee/);
-  assert.deepEqual([rangeCheck({ range: 'Close' }, 'Close').disadvantage, rangeCheck({ range: 'Close' }, 'Melee').disadvantage, rangeCheck({ range: 'Close' }, 'Far').disadvantage, rangeCheck({ range: 'Close' }, 'Extreme').disadvantage], [false, true, true, true]);
+  assert.deepEqual([rangeCheck({ range: 'Close' }, 'Close').disadvantage, rangeCheck({ range: 'Close' }, 'Melee').disadvantage, rangeCheck({ range: 'Close' }, 'Far').disadvantage, rangeCheck({ range: 'Close' }, 'Extreme').disadvantage], [false, false, true, true]);
   // A long ranged weapon at Melee has Disadvantage; a short one (a pistol) does not.
   assert.match(rangeCheck({ name: 'Rifle de Asalto Automático', range: 'Far' }, 'Melee').reason, /objetivo en Melee: Desventaja/);
   assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Melee').disadvantage, false);
@@ -77,6 +83,14 @@ test('a melee weapon only attacks at Melee; a ranged weapon beyond its band, or 
   assert.equal(rangeCheck({ name: 'Arma rara', range: 'Close', short: true }, 'Melee').disadvantage, false, 'a weapon can be marked short');
   assert.equal(rangeCheck({ name: 'Pistola pesada', range: 'Close', short: false }, 'Melee').disadvantage, true, 'or explicitly not');
   assert.equal(rangeCheck({ range: 'Close' }, 'Far').allowed, true);
+  // User ruling: any firearm with a maximum range of Close has no Disadvantage at Close or Melee,
+  // whatever its name; a Far weapon does at Melee.
+  assert.equal(rangeCheck({ name: 'Pistola Cinética Militar (Slug Pistol)', range: 'Close' }, 'Close').disadvantage, false);
+  assert.equal(rangeCheck({ name: 'Escopeta recortada', range: 'Very Close' }, 'Melee').disadvantage, false);
+  assert.equal(rangeCheck({ name: 'Subfusil compacto', range: 'Close' }, 'Melee').disadvantage, false);
+  assert.equal(rangeCheck({ name: 'Pistola de largo alcance', range: 'Far' }, 'Melee').disadvantage, true, 'a long-range pistol is not short');
+  assert.match(rangeCheck({ name: 'Rifle de Asalto Automático', range: 'Far' }, 'Melee').reason, /alcance Far.*Desventaja/);
+  assert.equal(rangeCheck({ name: 'Rifle de Asalto Automático', range: 'Far' }, 'Close').disadvantage, false);
   // Without a weapon the attack is an unarmed strike: Melee only.
   assert.equal(rangeCheck(null, 'Melee').allowed, true);
   const unarmed = rangeCheck(null, 'Far');
@@ -164,7 +178,8 @@ test('a melee weapon cannot attack a target out of Melee: no roll, no damage', a
 });
 
 test('a ranged weapon beyond its range attacks with Disadvantage', async () => {
-  const { dice, q } = scene({ weapon: { trait: 'Finesse', range: 'Very Close', damage: '1d8' }, squares: 6 });
+  // Centres 7 squares apart: 6 squares (12 m) base to base.
+  const { dice, q } = scene({ weapon: { trait: 'Finesse', range: 'Very Close', damage: '1d8' }, squares: 7 });
   faces([[6, 12], [4, 12], [5, 6]]);
   const result = await dice.executeAttack();
   assert.equal(result.band, 'Far'); assert.equal(result.total, 8, '6 + 4 + 3 − d6 [5]'); assert.equal(result.hit, false);
@@ -188,7 +203,7 @@ test('the reported case: a Close pistol with no Range on the sheet, 23 squares a
   assert.equal(result.band, 'Extreme');
   assert.equal(result.total, 6, '6 + 4 + Agility 1 − d6 [5]');
   const detail = q('#atk_detail_text').textContent;
-  assert.match(detail, /objetivo a Extreme \(46\.0 m, 23\.0 casillas\) · alcance del arma Close/);
+  assert.match(detail, /objetivo a Extreme \(44\.0 m, 22\.0 casillas\) · alcance del arma Close/);
   assert.match(detail, /línea de tiro bloqueada/);
   assert.match(detail, /más allá del alcance del arma \(Close\): Desventaja/);
 });
@@ -203,7 +218,7 @@ function table3D(queue) {
 const with3D = (dice, run) => { dice.is3D = true; dice.attackToDamagePause = 0; return run().finally(() => { delete window.VFDice3D; }); };
 
 test('Disadvantage throws its d6 on the table, subtracts the face shown and reports it; the damage dice are thrown in 3D too', async () => {
-  const { dice, q } = scene({ weapon: { trait: 'Finesse', range: 'Close', damage: '1d8+1', damageMode: 'base' }, attacker: { proficiency: 2 }, squares: 6 });
+  const { dice, q } = scene({ weapon: { trait: 'Finesse', range: 'Close', damage: '1d8+1', damageMode: 'base' }, attacker: { proficiency: 2 }, squares: 7 }); // 6 squares (12 m) base to base: beyond Close
   const { thrown, shown } = table3D([9, 7, 4, /* damage */ 6, 3]);
   const result = await with3D(dice, () => dice.executeAttack());
   assert.deepEqual(thrown[0], ['1d12:Hope', '1d12:Fear', '1d6:Disadvantage']);
@@ -296,4 +311,26 @@ test('a roll is announced once: the golden card of the results stack, never a se
   assert.deepEqual(pushed.map(c => c.tokenName), ['Maren', 'Pirata']);
   assert.deepEqual(sent.filter(m => m.type === 'DICE_ROLL').map(m => m.result.tokenName), ['Maren'], 'a secret roll is not sent to the table');
   delete window.VFDice3D; void VeilfarersDiceEngine3D;
+});
+
+test('weapon properties that change the attack roll: Reliable, Accurate, Smart Scope; Reach', () => {
+  assert.deepEqual(weaponAttackBonus({ features: 'Reliable: +1 attack' }, 'Close'), { bonus: 1, notes: ['Reliable +1'] });
+  assert.deepEqual(weaponAttackBonus({ features: 'Accurate' }, 'Close').bonus, 0);
+  assert.deepEqual(weaponAttackBonus({ features: 'Accurate; Smart Scope' }, 'Far'), { bonus: 3, notes: ['Accurate +1', 'Smart Scope +2'] });
+  assert.deepEqual(weaponAttackBonus({ features: 'Lightweight: 0 Burden; Energy Tag: Energy dmg; Pen -2' }, 'Melee'), { bonus: 0, notes: [] });
+  assert.equal(weaponAttackBonus(null, 'Far').bonus, 0);
+  assert.equal(rangeCheck({ name: 'Vibro-lanza', range: 'Melee', features: 'Reach' }, 'Very Close').allowed, true);
+  assert.equal(rangeCheck({ name: 'Vibro-lanza', range: 'Melee', features: 'Reach' }, 'Close').allowed, false);
+});
+
+test('token distance is measured base to base', () => {
+  const g = 64;
+  // A size-2 creature whose base touches a size-1 token: Melee (centres 1.5 squares apart).
+  assert.equal(distanceInfo({ x: 0, y: 0, size: 1 }, { x: 96, y: 0, size: 2 }, { gridSize: g }).band, 'Melee');
+  // Centres 1.6 squares apart, as in the user's screenshot: still Melee base to base.
+  assert.equal(distanceInfo({ x: 0, y: 0, size: 1 }, { x: 102, y: 0, size: 2 }, { gridSize: g }).band, 'Melee');
+  assert.equal(tokenGapSquares({ x: 0, y: 0 }, { x: 64, y: 64 }, g).toFixed(2), '0.41', 'diagonal neighbours almost touch');
+  assert.equal(distanceInfo({ x: 0, y: 0 }, { x: 64, y: 64 }, { gridSize: g }).band, 'Melee');
+  assert.equal(distanceInfo({ x: 0, y: 0 }, { x: 128, y: 0 }, { gridSize: g }).band, 'Very Close', 'one empty square between bases: 2 m');
+  assert.deepEqual([0, 0.5, 1, 2.5, 3, 5, 5.5, 12.5, 13].map(s => gapBandFor(s, 2)), ['Melee', 'Melee', 'Very Close', 'Very Close', 'Close', 'Close', 'Far', 'Far', 'Extreme']);
 });

@@ -199,7 +199,7 @@ const PENETRATION = { physical: 0, energy: 2, void: 4, neural: 4 };
 export function damageTypeOf(source) {
   const text = (source && typeof source === 'object' ? [source.damageType, source.damage, source.features, source.name].join(' ') : String(source ?? '')).toLowerCase();
   if (/\bneural\b/.test(text)) return 'neural';
-  if (/\bvoid\b/.test(text)) return 'void';
+  if (/\bvoid\b|\bphasing\b/.test(text)) return 'void';
   if (/\b(?:energy|ene)\b/.test(text)) return 'energy';
   return 'physical';
 }

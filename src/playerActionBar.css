@@ -1,0 +1,103 @@
+/* Player character panel: the "Ficha" tab of the right panel (V3). Same look as the dice panel:
+   thin violet lines, dark translucent cells, mono labels, cyan for what is selected. */
+.player-action-bar { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 14px; color: var(--text-main, #e5edf5); }
+.pab-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--vx-line); background: rgba(42,11,92,.22); }
+.pab-head strong { display: block; font: 600 15px/1.15 var(--font-hud); color: #f3e8ff; letter-spacing: .03em; }
+.pab-head small { display: block; margin-top: 3px; font: 9px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
+.pab-empty { margin: 8px 0; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+.pab-label, .pab-cell span, .pab-armor span, .pab-others > span { font: 9px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); }
+.pab-label:empty { display: none; }
+/* Defense and resources */
+.pab-stats { display: flex; flex-direction: column; gap: 8px; }
+.pab-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.pab-cell { display: flex; flex-direction: column; gap: 5px; padding: 7px 8px; border: 1px solid var(--vx-line); background: rgba(13,4,32,.55); min-width: 0; }
+.pab-cell b { font: 600 16px/1 var(--font-hud); color: #f3e8ff; letter-spacing: .02em; white-space: nowrap; }
+.pab-armor { display: flex; align-items: baseline; gap: 8px; padding: 0 2px; min-width: 0; }
+.pab-armor b { font: 500 12px/1.3 var(--font-hud); color: #e9d5ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pab-gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; padding: 8px; border: 1px solid var(--vx-line); background: rgba(13,4,32,.4); }
+.pab-gauges .pab-resolve { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; padding: 5px 8px; }
+.pab-gauges .pab-resolve b { font-size: 13px; color: #edd58a; }
+.pab-others { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.pab-others > span { margin-right: 2px; }
+.pab-others i { font: normal 500 11px/1 var(--font-hud); padding: 4px 7px; border: 1px solid var(--vx-line-strong); color: #e9d5ff; background: rgba(42,11,92,.3); }
+/* Rolls */
+.pab-row { display: flex; flex-direction: column; gap: 6px; position: relative; }
+.pab-buttons { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.pab-traits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pab-trait, .pab-weapon, .pab-exp, .pab-edge-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: baseline; justify-content: space-between; gap: 6px;
+  padding: 9px 9px; min-height: 36px; border: 1px solid var(--vx-line); background: rgba(42,11,92,.3); color: #e5edf5;
+  font: 600 11px/1 var(--font-mono); letter-spacing: .06em; transition: border-color .15s, background .15s, box-shadow .15s; }
+.pab-trait span { font: 600 14px/1 var(--font-hud); color: var(--vx-light); }
+.pab-weapon { width: 100%; }
+.pab-weapon b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-hud); font-size: 13px; letter-spacing: .02em; }
+.pab-weapon span { font: 9px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); flex: none; }
+.pab-exp { min-height: 32px; padding: 7px 9px; font-family: var(--font-hud); font-size: 12px; letter-spacing: .02em; }
+.pab-exp b { font-weight: 600; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pab-exp span { color: #edd58a; font-weight: 700; }
+.pab-exp[disabled] { opacity: .4; cursor: not-allowed; }
+.pab-trait:hover, .pab-weapon:hover, .pab-exp:hover:not([disabled]), .pab-edge-btn:hover,
+.pab-trait:focus-visible, .pab-weapon:focus-visible, .pab-exp:focus-visible, .pab-edge-btn:focus-visible { border-color: var(--vx-light); background: rgba(109,40,217,.35); }
+.pab-trait.selected, .pab-exp.selected, .pab-weapon.active { border-color: rgba(0,243,255,.55); background: rgba(0,243,255,.07); box-shadow: inset 0 -2px #00f3ff; }
+.pab-edge-row .pab-buttons { display: grid; grid-template-columns: 1fr 1fr; }
+.pab-edge-btn { justify-content: center; text-transform: uppercase; letter-spacing: .14em; font-size: 10px; min-height: 32px; }
+.pab-edge-btn.dis { box-shadow: inset 0 2px rgba(251,119,157,.6); }
+.pab-edge-btn.adv { box-shadow: inset 0 2px rgba(114,229,207,.6); }
+.pab-more { all: unset; cursor: pointer; position: absolute; top: -5px; right: 0; width: 24px; height: 20px; text-align: center; line-height: 18px; color: var(--text-dim); border: 1px solid var(--vx-line); font-size: 13px; }
+.pab-more.active, .pab-more:hover { color: #fff; border-color: var(--vx-light); }
+.pab-options { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pab-dc { font: 9px/1 var(--font-mono); letter-spacing: .14em; color: var(--text-dim); }
+.pab-dc select { margin-left: 4px; background: #13072b; color: #f3e8ff; border: 1px solid var(--vx-line-strong); font: 600 11px/1 var(--font-mono); padding: 4px; }
+.pab-hint { margin: 0; font-size: 12px; line-height: 1.4; color: var(--text-dim); }
+.pab-hint:not(.pab-pick-hint) { color: #00f3ff; }
+.pab-tip { align-self: center; font-size: 11px; color: var(--text-dim); }
+.pab-hope-cost { align-self: center; font: 600 10px/1 var(--font-mono); letter-spacing: .08em; color: #edd58a; }
+/* Disadvantage/Advantage and the Experiences appear with a soft slide */
+.pab-enter { animation: pab-in .22s ease-out both; }
+@keyframes pab-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pab-enter { animation: none; } }
+body.pab-targeting #tactical_canvas { cursor: crosshair !important; }
+/* A player's right panel: Ficha, Nave, Dossiers, Registro and Chat. */
+.tab-nav-btn[data-tab="sheet"] { display: none !important; }
+body.player-view .tab-nav-btn[data-tab="sheet"] { display: flex !important; align-items: center; justify-content: center; text-align: center; }
+body.player-view .tab-nav-btn[data-tab="clocks"], body.player-view .tab-nav-btn[data-tab="roster"], body.player-view .tab-nav-btn[data-tab="scenes"] { display: none !important; }
+/* In player stance the layers panel is not needed and would sit on the action bar. */
+body.player-stance #layer_hud_container { display: none !important; }
+/* The last attack, with its damage and the step to apply it */
+.pab-result { border-top: 1px solid var(--vx-line); padding-top: 8px; }
+.pab-result-text { flex: 1; min-width: 0; font-size: 12px; color: #e9d5ff; }
+.pab-result.hit .pab-result-text b { color: #fde68a; }
+.pab-result.miss .pab-result-text b { color: #fca5a5; }
+.pab-result-actions { display: flex; gap: 6px; align-items: center; }
+.pab-applied { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #86efac; }
+/* A player's dice menu only gives dice. */
+body.player-stance #dice_dock_panel .dice-mode-subtabs, body.player-stance #dice_dock_panel #section_action_check, body.player-stance #dice_dock_panel #section_damage_calc,
+body.player-stance #dice_dock_panel .keeper-roll-switch, body.player-stance #dice_dock_panel [data-secret-help] { display: none !important; }
+body.player-stance #dice_dock_panel #section_standard_dice { display: block !important; }
+/* The Hope an Experience will spend, marked on the character bar */
+body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[aria-label="HOPE"]), body.pab-hope-pending .pab-gauges .telemetry-stat:has(.telemetry-track[aria-label="HOPE"]) { outline: 2px dashed #fde68a; outline-offset: 2px; animation: pab-hope 1s ease-in-out infinite alternate; }
+@keyframes pab-hope { from { outline-color: rgba(253,230,138,.35); } to { outline-color: #fde68a; } }
+.pab-range { font: 10px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--text-dim); }
+.pab-range.penalty { color: #fda4af; }
+.pab-hint.pab-target { display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid rgba(0,243,255,.35); background: rgba(0,243,255,.05); color: #c8f4ff; }
+.pab-hint.pab-target b { color: #f3e8ff; }
+.pab-edge-tag { align-self: flex-start; padding: 4px 8px; font: 700 10px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--vx-line-strong); }
+.pab-edge-tag b { font: inherit; }
+.pab-edge-tag.dis { border-color: rgba(251,119,157,.7); background: rgba(127,29,29,.3); } .pab-edge-tag.dis b { color: #fda4af; }
+.pab-edge-tag.adv { border-color: rgba(114,229,207,.7); background: rgba(20,83,45,.3); } .pab-edge-tag.adv b { color: #86efac; }
+.pab-reason { font-size: 11px; line-height: 1.35; color: var(--text-dim); }
+.pab-confirm { font-size: 11px; color: #00f3ff; }
+.pab-notes { margin: 2px 0 0; padding-left: 14px; font-size: 11px; line-height: 1.4; color: #e9d5ff; }
+.pab-notes li { margin: 1px 0; }
+/* Resolve: small yellow triangles (d4) or squares (d6), lit when available */
+.pab-res-row { display: inline-flex; gap: 4px; align-items: center; }
+.pab-res { display: inline-block; width: 9px; height: 9px; background: rgba(237,213,138,.18); }
+.pab-res.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.pab-res.sq { width: 8px; height: 8px; }
+.pab-res.on { background: #edd58a; box-shadow: 0 0 4px rgba(237,213,138,.55); }
+/* Advantage / Disadvantage on the marked target */
+.pab-attack-edges { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+/* The Keeper's aiming panel over the map */
+.keeper-attack-panel { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); z-index: 142; width: min(360px, calc(100% - 24px)); padding: 8px 10px 10px;
+  background: rgba(13,4,32,.96); border: 1px solid rgba(192,132,252,.55); border-top: 2px solid #fde68a; box-shadow: 0 12px 32px rgba(0,0,0,.55); color: #e5edf5; animation: pab-in .2s ease-out both; }
+.keeper-attack-panel header { position: relative; display: flex; align-items: center; gap: 4px; padding-right: 30px; margin-bottom: 8px; font: 600 13px/1.2 var(--font-hud); }
+.keeper-attack-panel header .pab-more { top: -2px; }
