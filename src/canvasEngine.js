@@ -2650,6 +2650,20 @@ export class CanvasEngine {
     // 3. LAYER: WALLS & LIGHTING & FOG OF WAR
     const isKeeperGM = state.userRole === 'keeper' && state.gmVision;
     const activeTokens = this.visionTokens();
+    // Where each token is drawn now (dragged, or sliding to its new place): its light and its
+    // vision go with it, so the lit area never runs ahead of the token.
+    const shownTokens = new Map(this.displayTokens().map(t => [t.id, t]));
+    const drawnAt = tok => {
+      const drawn = shownTokens.get(tok.id);
+      return drawn && (drawn.x !== tok.x || drawn.y !== tok.y) ? { ...tok, x: drawn.x, y: drawn.y } : tok;
+    };
+    // A player's vision only slides toward a place the table has confirmed (never toward a move
+    // still waiting for the Keeper, which could be refused).
+    const proposed = new Map(store.state.tokens.map(t => [t.id, t]));
+    const seenAt = tok => {
+      const p = proposed.get(tok.id);
+      return p && (p.x !== tok.x || p.y !== tok.y) ? tok : drawnAt(tok);
+    };
 
     // A. Dynamic Lighting Pass (Ambient darkness, light fixtures, sirens)
     if (state.layerVisibility.walls_lights !== false && !isKeeperGM) {
@@ -2660,11 +2674,7 @@ export class CanvasEngine {
       });
       // A token's own light goes where the token is drawn: while it is dragged into place and
       // while it slides to a new place. (Vision and fog keep the confirmed position.)
-      const shown = new Map(this.displayTokens().map(t => [t.id, t]));
-      const lightingTokens = activeTokens.map(tok => {
-        const drawn = shown.get(tok.id);
-        return drawn && (drawn.x !== tok.x || drawn.y !== tok.y) ? { ...tok, x: drawn.x, y: drawn.y } : tok;
-      });
+      const lightingTokens = activeTokens.map(drawnAt);
       // When Fog of War is enabled, Fog of War itself controls map darkness and explored attenuation (50%).
       // Dynamic lighting only renders light fixtures and glows without covering the explored map with opaque darkness.
       const ambientLightLevel = state.fogOfWar !== false ? 1.0 : (map.ambientLight ?? 0.25);
@@ -2691,10 +2701,9 @@ export class CanvasEngine {
           const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
           if (claimed) viewers = [claimed];
         }
-        // Anchor vision to origin position during drag so player cannot scan ahead into undiscovered areas
-        if (this.draggedToken && this.draggedTokenOrigX != null) {
-          viewers = viewers.map(v => v.id === this.draggedToken.id ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v);
-        }
+        // Vision follows the token as it slides; while the player drags, it stays at the origin
+        // so the player cannot scan ahead into undiscovered areas.
+        viewers = viewers.map(v => this.draggedToken?.id === v.id ? (this.draggedTokenOrigX != null ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v) : seenAt(v));
       } else {
         // Keeper mode: use player tokens to stamp exploration and show visibility
         viewers = activeTokens.filter(isPartyToken);
@@ -2702,6 +2711,7 @@ export class CanvasEngine {
           const sel = activeTokens.find(t => t.id === state.selectedTokenId);
           if (sel) viewers = [sel];
         }
+        viewers = viewers.map(drawnAt);
       }
 
       const fullMapId = `${state.campaignId}:${map.id}`;

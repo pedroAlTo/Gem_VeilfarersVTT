@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.21.2', date: '2026-11-18', title: 'V3 · La zona iluminada ya no se adelanta al token',
+    sections: [
+      { title: 'Luz y visión del token', items: [
+        'Corregido: al mover un token, la zona que ilumina (su visión en la niebla de guerra) saltaba primero al destino y el token llegaba después. Ahora la visión avanza con el token mientras se desliza, igual que su halo.',
+        'Al arrastrar como jugador, la visión sigue quedándose en el punto de partida hasta soltar; y solo avanza hacia una posición que la mesa ya ha confirmado.',
+      ] },
+    ],
+  },
+  {
     version: '2.21.1', date: '2026-11-18', title: 'V3 · La luz del token se mueve con él',
     sections: [
       { title: 'Luz de los tokens', items: [

@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.21.1**.
-Paquete: `VeilFarers_VTT_v2.21.1.zip`.
+Versión actual del VTT: **v2.21.2**.
+Paquete: `VeilFarers_VTT_v2.21.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.21.2] — 2026-11-18
+
+V3 · La zona iluminada ya no se adelanta al token
+
+### Luz y visión del token
+
+- Corregido: al mover un token, la zona que ilumina (su visión en la niebla de guerra) saltaba primero al destino y el token llegaba después. Ahora la visión avanza con el token mientras se desliza, igual que su halo.
+- Al arrastrar como jugador, la visión sigue quedándose en el punto de partida hasta soltar; y solo avanza hacia una posición que la mesa ya ha confirmado.
 
 ## [2.21.1] — 2026-11-18
 
