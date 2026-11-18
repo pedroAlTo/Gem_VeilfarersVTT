@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.20.1', date: '2026-11-18', title: 'V3 · El jugador que actúa toma el foco',
+    sections: [
+      { title: 'Foco automático', items: [
+        'Cuando un jugador termina una acción activa, la mesa le da el foco: al atacar (cuando se resuelve la tirada), al usar un Poder, un Resolve Move, un Uncanny Power o su rasgo de senda, y al mover su token por el mapa.',
+        'Si cancela la acción (Esc al apuntar, soltar el token en su sitio, un movimiento bloqueado), no hay foco. Las Reacciones y las tiradas normales de Trait tampoco lo dan.',
+        'Si ya tenía el foco no cambia nada, así que mover y luego atacar en el mismo turno no hace avanzar dos veces sus relojes de efecto.',
+      ] },
+    ],
+  },
+  {
     version: '2.20.0', date: '2026-11-18', title: 'V3 · Poderes y rasgos al día con el Corebook 12.06, Integrity Die, duraciones de todo el mazo y cajón completo',
     sections: [
       { title: 'Textos al día con el Corebook 12.06', items: [

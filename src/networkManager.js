@@ -1061,6 +1061,8 @@ export class NetworkManager {
               if (field !== 'current' && partial[k][field] !== token[k]?.[field]) throw new Error('Solo puedes cambiar el valor actual de ' + k + '.');
             partial[k] = { ...token[k], current: partial[k].current };
           }
+        // A player who moves their character takes the Spotlight (an active action).
+        if (('x' in partial || 'y' in partial) && (partial.x !== token.x || partial.y !== token.y) && token.isPlayer !== false && token.actorType !== 'drone' && !token.hasSpotlight) partial.hasSpotlight = true;
         if ('hasSpotlight' in partial) partial.spotlight = { ...token.spotlight, enabled: partial.hasSpotlight };
         const turnOnSpotlight = Boolean(partial.hasSpotlight);
         // Membership was checked above. Keeper's local Player-preview selection is irrelevant.

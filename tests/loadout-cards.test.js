@@ -277,3 +277,27 @@ test('a card with a duration puts its clock on the player, or on the marked ally
   assert.equal(ally.effectClocks[0].name, 'Rapid Regeneration'); assert.deepEqual(ally.effectClocks[0].perTick, { hp: 1 });
   assert.deepEqual(regenToken.effectClocks, []);
 });
+
+test('finishing an active action gives the player the Spotlight; a Reaction or a plain roll does not', async () => {
+  const { performGameAction, grantSpotlight } = await import('../src/gameActions.js');
+  const { setCardData } = await import('../src/cardData.js');
+  setCardData(data);
+  const hero = { ...character(), id: 'tok_s', hope: 6, mapId: 'm', stress: { current: 0, max: 6 }, hasSpotlight: false };
+  const spot = [];
+  const store = { sessionRole: 'local', state: { userRole: 'keeper', campaignId: 'c', tokens: [hero], fear: 0 },
+    updateToken(id, patch) { Object.assign(this.state.tokens.find(t => t.id === id), patch); return true; }, addFear() {}, addLog() {},
+    setTokenSpotlight(id, on) { spot.push([id, on]); Object.assign(this.state.tokens.find(t => t.id === id), { hasSpotlight: on }); return true; } };
+  performGameAction({ type: 'CHECK', actorId: 'tok_s', options: { traitId: 'agility', dc: 10, forcedHope: 6, forcedFear: 2 } }, store);
+  assert.deepEqual(spot, [], 'a plain Trait roll is not an attack');
+  performGameAction({ type: 'CHECK', actorId: 'tok_s', attack: true, options: { traitId: 'agility', dc: 10, forcedHope: 6, forcedFear: 2 } }, store);
+  assert.deepEqual(spot, [['tok_s', true]], 'an attack gives the Spotlight');
+  hero.hasSpotlight = false; spot.length = 0;
+  const cards = characterCards(hero, data);
+  const reaction = cards.find(c => c.reaction && c.playable);
+  if (reaction) { performGameAction({ type: 'CARD_PLAY', actorId: 'tok_s', cardId: reaction.id }, store); assert.deepEqual(spot, [], 'a Reaction does not'); }
+  const active = cards.find(c => c.kind === 'power' && c.playable && !c.reaction && c.cost.hope <= 1);
+  performGameAction({ type: 'CARD_PLAY', actorId: 'tok_s', cardId: active.id }, store);
+  assert.deepEqual(spot, [['tok_s', true]], 'a Power used as an action does');
+  assert.equal(grantSpotlight(store, 'tok_s'), false, 'already in the Spotlight: nothing to do');
+  assert.equal(grantSpotlight(store, 'nope'), false);
+});

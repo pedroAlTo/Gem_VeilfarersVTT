@@ -13,6 +13,17 @@ const clamp = (n, max) => Math.max(0, Math.min(max, n));
 // The table that resolves an action (the Keeper's, local or hosting) applies it even while its
 // own screen previews the Player view, whose edit guard would otherwise drop the change silently.
 // tableActing lifts only that guard; saving and broadcasting work as usual.
+// A player who finishes an active action (an attack, a Power or Move played, a move on the map)
+// takes the Spotlight. Only the table gives it; a cancelled action never reaches here.
+// (User decision, 18 Nov 2026.)
+export function grantSpotlight(store, tokenId) {
+  const token = store.state.tokens.find(t => t.id === tokenId);
+  if (!token || token.isPlayer === false || token.actorType === 'drone' || token.hasSpotlight || typeof store.setTokenSpotlight !== 'function') return false;
+  const before = store.tableActing; store.tableActing = true;
+  try { return store.setTokenSpotlight(tokenId, true) !== false; } finally { store.tableActing = before; }
+}
+export const ACTIVE_CARD_KINDS = new Set(['power', 'archive', 'move', 'feature']);
+
 export function performGameAction(action, store = defaultStore) {
   const before = store.tableActing;
   store.tableActing = store.sessionRole !== 'player' || !!before;
@@ -83,6 +94,8 @@ function resolveGameAction(action, store) {
     const clock = duration ? newClock(duration, { source: actor.name }) : null;
     apply({ ...resources(result.token), ...(clock && holder === actor ? { effectClocks: addClock(actor.effectClocks, clock) } : {}) });
     if (clock && holder !== actor) store.updateToken(holder.id, { effectClocks: addClock(holder.effectClocks, clock) });
+    // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
+    if (ACTIVE_CARD_KINDS.has(card.kind) && !card.reaction) grantSpotlight(store, actor.id);
     if (result.fear) store.addFear(result.fear);
     const details = [result.summary, ...result.notes].join(' ');
     const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };
@@ -177,6 +190,7 @@ function resolveGameAction(action, store) {
       patch.effectClocks = ticked.list; integrityEnded = ticked.expired;
     }
     if (!standalone) store.updateToken(actor.id, patch);
+    if (action.attack && player) grantSpotlight(store, actor.id);
     for (const c of integrityEnded) store.addLog({ sender: actor.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${actor.name}: el Integrity Die llega a 0 y «${c.name}» termina.` });
     if (result.fearGain) store.addFear(result.fearGain);
     const record = { id: newId(), actorId: actor.id, ...result, ...(secret ? { visibility: 'keeper' } : {}) };

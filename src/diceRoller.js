@@ -1174,6 +1174,8 @@ export class DiceRollerSidebar {
       result = await network.requestAction({
         type: 'CHECK',
         actorId: actor.id,
+        // An attack is an active action: the table gives the attacker the Spotlight.
+        ...(attack ? { attack: true } : {}),
         playerName,
         tokenName,
         visibility: this.rollVisibility(),

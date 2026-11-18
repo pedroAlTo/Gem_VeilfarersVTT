@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.20.0**.
-Paquete: `VeilFarers_VTT_v2.20.0.zip`.
+Versión actual del VTT: **v2.20.1**.
+Paquete: `VeilFarers_VTT_v2.20.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.20.1] — 2026-11-18
+
+V3 · El jugador que actúa toma el foco
+
+### Foco automático
+
+- Cuando un jugador termina una acción activa, la mesa le da el foco: al atacar (cuando se resuelve la tirada), al usar un Poder, un Resolve Move, un Uncanny Power o su rasgo de senda, y al mover su token por el mapa.
+- Si cancela la acción (Esc al apuntar, soltar el token en su sitio, un movimiento bloqueado), no hay foco. Las Reacciones y las tiradas normales de Trait tampoco lo dan.
+- Si ya tenía el foco no cambia nada, así que mover y luego atacar en el mismo turno no hace avanzar dos veces sus relojes de efecto.
 
 ## [2.20.0] — 2026-11-18
 

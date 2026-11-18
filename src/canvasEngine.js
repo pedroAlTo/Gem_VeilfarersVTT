@@ -20,6 +20,7 @@ import { notify, confirmAction } from './ui.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { rangeBandFor, gapBandFor, tokenGapSquares, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
 import { drawEffectClocks } from './effectClocks.js';
+import { grantSpotlight } from './gameActions.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -1880,8 +1881,12 @@ export class CanvasEngine {
           undoManager.pushSnapshot(this.preDragSnapshot, `Mover ${this.draggedToken.name || 'Operativo'}`);
         }
         const tokenId = this.draggedToken.id;
+        const moved = finalX !== this.draggedTokenOrigX || finalY !== this.draggedTokenOrigY;
         this.cancelTokenDrag();
         store.updateToken(tokenId, { x: finalX, y: finalY });
+        // The Keeper's own Player view: a move is the player's active action (a connected
+        // player's move gets it from the table when the patch arrives).
+        if (moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantSpotlight(store, tokenId);
         if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId, x: finalX, y: finalY });
       }
 
