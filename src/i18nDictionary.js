@@ -1268,6 +1268,25 @@ export const PAIRS = [
   ["Pantalla del Keeper: pulsa para que tus tiradas sean secretas", "Keeper screen: click to make your rolls secret"],
   ["Toca otra vez el objetivo para atacar sin ventaja", "Tap the target again to attack without advantage"],
   ["Cancelar el ataque", "Cancel the attack"],
+  // GroupMenu (v2.18.0)
+  ["Escena", "Scene"],
+  ["Sala", "Room"],
+  ["Cuenta", "Account"],
+  ["Sesiones", "Sessions"],
+  ["Ayuda", "Help"],
+  ["Copiar invitación", "Copy invitation"],
+  ["Códice", "Codex"],
+  ["Inicio", "Home"],
+  ["Unirse a una sala", "Join a room"],
+  ["Audio", "Audio"],
+  ["Copiar enlace de invitación", "Copy invitation link"],
+  ["Ping", "Ping"],
+  ["Ajuste a la rejilla", "Snap to grid"],
+  ["Estados", "Conditions"],
+  ["Foco (Spotlight)", "Spotlight"],
+  ["Reserva", "Reserve"],
+  ["Más…", "More…"],
+  ["Menos", "Less"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1373,4 +1392,6 @@ export const PATTERNS = [
   ["Overheating: d6 [{b}]: sin problema.", "Overheating: d6 [{b}]: no problem."],
   ["Overheating: d6 [{b}]: el arma se sobrecalienta; marca 1 Stress para enfriarla o gasta una Acción antes de volver a atacar.", "Overheating: d6 [{b}]: the weapon overheats; mark 1 Stress to cool it or spend an Action before attacking again."],
   ["{_a}: toca el objetivo en el mapa y vuelve a tocarlo para atacar (Esc cancela).", "{_a}: tap the target on the map and tap it again to attack (Esc cancels)."],
+  ["Más opciones · {_a}", "More options · {_a}"],
+  ["Más opciones de {_a}", "More options for {_a}"],
 ];

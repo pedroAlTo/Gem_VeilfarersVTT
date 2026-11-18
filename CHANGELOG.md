@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.17.12**.
-Paquete: `VeilFarers_VTT_v2.17.12.zip`.
+Versión actual del VTT: **v2.18.0**.
+Paquete: `VeilFarers_VTT_v2.18.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.18.0] — 2026-11-18
+
+V3 · La regla 3 + 5 + resto en la vista del jugador
+
+### Vista del jugador más limpia
+
+- Nuevo componente común de menús (3 a la vista, 5 en «⋯» y el resto en «Más…»), aplicado de momento a la vista del jugador.
+- Cabecera: Escena, Sala y Tokens a la vista; en «⋯» Cuenta, Sesiones, Ayuda, Tripulación y Copiar invitación; en «Más…» Códice, Inicio, Unirse a una sala, Audio y el enlace de invitación.
+- Herramientas: Mover, Medir y Dibujo; en «⋯» Ping, Área, Efectos, Deshacer y Rejilla; en «Más…» Ajuste a la rejilla.
+- Barra del personaje: Ficha, Estados y Equipo; en «⋯» Foco, Expandir y Reserva. Las cifras y sus botones −/+ siguen a la vista.
+- Los atajos de teclado siguen funcionando. La vista del Keeper no cambia todavía.
+- Con esto el jugador pasa de unos 95 controles a la vista (diagnóstico) a 48.
 
 ## [2.17.12] — 2026-11-18
 

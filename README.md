@@ -1,8 +1,8 @@
-# VeilFarers VTT · v2.17.12
+# VeilFarers VTT · v2.18.0
 
 A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v2.17.12**. Download package: **VeilFarers_VTT_v2.17.12.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.18.0**. Download package: **VeilFarers_VTT_v2.18.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -31,6 +31,7 @@ Development happens on the `V2` branch. [HANDOVER_V2.md](HANDOVER_V2.md) records
 - **First-use guide.** At the table, a short checklist for your role (player or Keeper) sits at the top right of the map. Steps tick themselves when you really do them (move your token, roll, play a card, spend Fear…); **Show me** highlights the control a step talks about. It can be minimised, skipped step by step, closed, and reopened or restarted from **Help → First steps** (*See the first steps again* / *Start from scratch*).
 - **Technology Access (v2.15.0).** Gear is filtered first by what the character can use (class, level, Technology Access; the box is ticked by default). Anything used outside that training rolls with Disadvantage (weapon, worn armor and augmentations, the drone). Failure with Fear on an attack suggests a consequence from the weapon. The deck drawer shows every Power, with *Only those I can access* ticked by default; Powers within reach can be added to the Vault.
 - **(V3) Player bar and dice icon.** In player stance an action bar sits above the character: ROLL (the six Traits, one touch) and ATTACK (one button per weapon, then the target on the map), with the attack result and *Apply damage*. The dice are a translucent icon in the top corner of the map; for players it only gives dice.
+- **(V3) 3 + 5 + rest.** In the player's view, the header, map tools and character bar show three controls and a «⋯» menu (five more, then «More…» with the rest).
 - **(V3) Rolling in two touches.** Tap a Trait to select it, tap it again to roll, or choose Advantage/Disadvantage. With a Trait selected, the character’s Experiences appear: Awakened ones need Hope and mark the Hope they will spend; Sleeping ones are free.
 - **(V3) Player sheet in the right panel.** For players the right panel has five tabs: Sheet, Ship, Dossiers, Log and Chat. ROLL, Experiences and ATTACK live in the Sheet tab instead of floating over the map. The tab also shows Evasion, Thresholds, Shields, armor, HP, Stress, Hope or Effort/Resolve and pending effects; roll results are small cards at the bottom centre. Firearms with a maximum range of Close have no Disadvantage at Close or in Melee. Experiences are always listed on the Sheet; an attack marks the target on the first tap and attacks on the second.
 - **Phones and tablets.** The table is designed for a computer or tablet. On a phone a one-time notice says so; the guide starts minimised and the layers panel and map clocks are hidden. On a tablet the layers panel moves to the top right of the map.

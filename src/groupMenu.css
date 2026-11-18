@@ -1,0 +1,19 @@
+/* GroupMenu: 3 in view + «⋯» with 5 + «Más…» with the rest */
+.gm-collapsed { display: none !important; }
+.gm-trigger { all: unset; box-sizing: border-box; cursor: pointer; display: inline-grid; place-items: center; min-width: 30px; height: 28px; padding: 0 6px;
+  color: #e9d5ff; border: 1px solid var(--vx-line-strong, rgba(192,132,252,.42)); background: rgba(42,11,92,.35); font: 700 16px/1 system-ui, sans-serif; letter-spacing: .05em; }
+.gm-trigger:hover, .gm-trigger:focus-visible, .gm-trigger.active { border-color: #fde68a; color: #fde68a; background: rgba(109,40,217,.4); }
+.left-toolbar .gm-trigger { width: 100%; height: 34px; margin-top: 4px; }
+.tok-qb-actions .gm-trigger { height: 24px; }
+.gm-popover { position: fixed; z-index: 2147483000; min-width: 190px; max-width: min(300px, calc(100vw - 16px)); max-height: calc(100vh - 16px); overflow: auto; display: flex; flex-direction: column; padding: 4px;
+  background: rgba(13,4,32,.98); border: 1px solid rgba(192,132,252,.55); border-top: 2px solid #fde68a; box-shadow: 0 14px 36px rgba(0,0,0,.6); animation: gm-in .14s ease-out both; }
+@keyframes gm-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.gm-item { all: unset; box-sizing: border-box; cursor: pointer; padding: 9px 12px; color: #e5edf5; font: 600 12px/1.2 var(--font-mono, ui-monospace, monospace); letter-spacing: .06em; text-transform: uppercase; }
+.gm-item:hover, .gm-item:focus-visible { background: rgba(109,40,217,.45); color: #fff; }
+.gm-item.active { box-shadow: inset 2px 0 #00f3ff; }
+.gm-item[disabled] { opacity: .4; cursor: not-allowed; }
+.gm-more { color: #fde68a; border-top: 1px solid rgba(192,132,252,.25); margin-top: 2px; }
+.gm-level2 { display: flex; flex-direction: column; border-left: 2px solid rgba(253,230,138,.35); margin-left: 6px; }
+@media (prefers-reduced-motion: reduce) { .gm-popover { animation: none; } }
+/* Player's map tools: three tools and «⋯»; the dividers between hidden groups go too */
+body.player-view #main_left_toolbar .toolbar-divider { display: none; }

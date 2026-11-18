@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.18.0', date: '2026-11-18', title: 'V3 · La regla 3 + 5 + resto en la vista del jugador',
+    sections: [
+      { title: 'Vista del jugador más limpia', items: [
+        'Nuevo componente común de menús (3 a la vista, 5 en «⋯» y el resto en «Más…»), aplicado de momento a la vista del jugador.',
+        'Cabecera: Escena, Sala y Tokens a la vista; en «⋯» Cuenta, Sesiones, Ayuda, Tripulación y Copiar invitación; en «Más…» Códice, Inicio, Unirse a una sala, Audio y el enlace de invitación.',
+        'Herramientas: Mover, Medir y Dibujo; en «⋯» Ping, Área, Efectos, Deshacer y Rejilla; en «Más…» Ajuste a la rejilla.',
+        'Barra del personaje: Ficha, Estados y Equipo; en «⋯» Foco, Expandir y Reserva. Las cifras y sus botones −/+ siguen a la vista.',
+        'Los atajos de teclado siguen funcionando. La vista del Keeper no cambia todavía.',
+        'Con esto el jugador pasa de unos 95 controles a la vista (diagnóstico) a 48.',
+      ] },
+    ],
+  },
+  {
     version: '2.17.12', date: '2026-11-18', title: 'V3 · Atacar con Ventaja o Desventaja y pantalla del Keeper',
     sections: [
       { title: 'Ataques', items: [

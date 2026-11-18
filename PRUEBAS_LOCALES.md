@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.12.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.17.12**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.17.12** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.17.12.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.18.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.18.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.18.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.18.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -58,6 +58,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.17.12.zip**. Abre **AYUD
 43. **(V3) Resolve.** Con un PJ Sleeping (Resolve 2/4, d4): la Ficha muestra 4 triángulos amarillos, 2 encendidos. Con dados d6: cuadrados.
 44. **(V3) Ataque del Keeper y avisos de reglas.** Como Keeper, selecciona un adversario con un arma Stunning (p. ej. Shock Baton, TT1) junto a un PJ: en su barra inferior pulsa ⚔ ATACAR, toca el PJ (aviso con distancia y tirada) y vuelve a tocarlo. El panel de dados muestra el resultado; si impacta, el chat muestra un aviso «Reglas»: Stunning, Strength Reaction Roll contra CD 10. Con un jugador conectado que ataque con esa arma, el Keeper lo recibe como susurro de ese jugador.
 45. **(V3) Ventaja/Desventaja al atacar y pantalla del Keeper.** Marca un objetivo: pulsa Ventaja y el ataque lleva «+ d6». Como Keeper, pulsa el icono de pantalla (a la izquierda de los dados): queda amarillo y tus tiradas salen como «solo Keeper»; vuelve a pulsarlo para retirarlo. Como jugador, el icono no aparece.
+46. **(V3) 3 + 5 + resto.** Pulsa JUGADOR: la cabecera muestra Escena, Sala y Tokens con «⋯» (Cuenta, Sesiones, Ayuda, Tripulación, Copiar invitación y «Más…» con Códice, Inicio, Unirse, Audio). Herramientas: Mover, Medir, Dibujo y «⋯». Barra del personaje: Ficha, Estados, Equipo y «⋯» (Foco, Expandir, Reserva). Elige Ping desde «⋯»: se activa. Esc o tocar fuera cierra el menú. Vuelve a KEEPER: todo a la vista como antes.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 
