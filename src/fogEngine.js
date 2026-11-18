@@ -294,7 +294,7 @@ export class FogOfWarEngine {
     // Nothing the fog depends on has changed since the last frame: draw the same fog again.
     const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, daylight ? 1 : 0,
       ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.visionRange || 0, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
-      -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360]),
+      -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360, l.intensity ?? 0.8, l.fixture ? 1 : 0]),
       -2, ...wallValues(walls)]);
     if (key === this.fogKey && this.fogKeyVersion === this.exploredVersion) {
       ctx.save();
@@ -338,6 +338,29 @@ export class FogOfWarEngine {
         target.restore();
       }
     };
+    // Map lights that are on dissipate the fog of their whole lit area (walls still stop the
+    // light), as much as their intensity says: a dim lamp leaves a veil, a bright one clears it.
+    // Only a light the party has seen the spot of, or has in sight now: a lamp in an undiscovered
+    // room reveals nothing.
+    const inside = (poly, x, y) => { let hit = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) hit = !hit; } return hit; };
+    const dispel = (lights || []).filter(l => l.fixture).map(light => {
+      const known = this.isPointExplored(Math.round(light.x), Math.round(light.y), mapId) || visionShapes.some(v => inside(v.los, light.x, light.y));
+      if (!known) return null;
+      const poly = lightingEngine.computeVisibilityPolygon(light.x, light.y, light.radius || 200, walls, light.facingAngle ?? null, light.visionAngle ?? 360);
+      return poly && poly.length >= 3 ? { poly, x: light.x, y: light.y, radius: light.radius || 200, strength: Math.max(0.15, Math.min(1, light.intensity ?? 0.8)) } : null;
+    }).filter(Boolean);
+    const paintDispel = (target, cut) => {
+      for (const d of dispel) {
+        tracePolygon(target, d.poly);
+        if (cut) {
+          const g = target.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.radius);
+          g.addColorStop(0, `rgba(0, 0, 0, ${d.strength})`); g.addColorStop(0.7, `rgba(0, 0, 0, ${d.strength * 0.85})`); g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          target.fillStyle = g;
+        } else target.fillStyle = '#ffffff';
+        target.fill();
+      }
+    };
+    if (stamp && dispel.length) { this.exploredVersion++; paintDispel(expCtx, false); }
     if (stamp && visionShapes.length) {
       this.exploredVersion++;
       paintSeen(expCtx, '#ffffff');
@@ -364,6 +387,7 @@ export class FogOfWarEngine {
     // 5. Cut out what the viewers see right now (0% fog).
     fCtx.globalCompositeOperation = 'destination-out';
     paintSeen(fCtx, 'cut');
+    paintDispel(fCtx, true);
 
     // Reset composite operation to normal
     fCtx.globalCompositeOperation = 'source-over';

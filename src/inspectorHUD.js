@@ -22,7 +22,7 @@ export class ElementInspectorHUD {
       }
 
       if (
-        keys.includes('selectedLightId') ||
+        keys.includes('selectedLightId') || keys.includes('selectedSwitchId') ||
         keys.includes('selectedWallId') ||
         keys.includes('selectedWaterId') ||
         keys.includes('selectedEffectId') ||
@@ -70,6 +70,14 @@ export class ElementInspectorHUD {
       return;
     }
 
+    if (state.selectedSwitchId) {
+      const sw = (map.switches || []).find(x => x.id === state.selectedSwitchId);
+      if (sw) {
+        this.renderSwitchInspector(sw, map);
+        this.container.classList.remove('hidden');
+        return;
+      }
+    }
     if (state.selectedLightId) {
       const light = (map.lights || []).find(l => l.id === state.selectedLightId);
       if (light) {
@@ -107,7 +115,7 @@ export class ElementInspectorHUD {
         <div class="inspector-header">
           <div class="insp-title-group">
             <span class="insp-icon">💡</span>
-            <span class="insp-title">LIGHT SOURCE // [${(light.label || 'Tactical Light').toUpperCase()}]</span>
+            <span class="insp-title">LIGHT SOURCE // [${escapeHTML((light.label || 'Tactical Light').toUpperCase())}]</span>
           </div>
           <button class="insp-close-btn" id="insp_close">&times;</button>
         </div>
@@ -116,7 +124,7 @@ export class ElementInspectorHUD {
           <div class="insp-row">
             <div class="insp-col">
               <label>Name</label>
-              <input type="text" id="insp_light_name" class="hud-input hud-input-xs" value="${light.label || 'Light'}" />
+              <input type="text" id="insp_light_name" class="hud-input hud-input-xs" value="${escapeHTML(light.label || 'Light')}" />
             </div>
             <div class="insp-col" style="max-width: 60px;">
               <label>Color</label>
@@ -142,10 +150,26 @@ export class ElementInspectorHUD {
                 <option value="siren" ${light.effect === 'siren' ? 'selected' : ''}>Siren / Dual Alert (2 Colores)</option>
                 <option value="quantum" ${light.effect === 'quantum' ? 'selected' : ''}>Quantum Flux (Pearl Resin)</option>
                 <option value="spark" ${light.effect === 'spark' ? 'selected' : ''}>Electric Spark (Arc Discharge)</option>
+                <option value="strobe" ${light.effect === 'strobe' ? 'selected' : ''}>Strobe (Destellos)</option>
               </vf-select>
             </div>
             <div class="insp-col insp-actions" style="max-width: 90px; justify-content: flex-end;">
               <button class="hud-btn hud-btn-xs hud-btn-danger" id="insp_delete_btn">DELETE</button>
+            </div>
+          </div>
+
+          <div class="insp-row" style="margin-top: 8px;">
+            <div class="insp-col">
+              <label>Estado</label>
+              <button class="hud-btn hud-btn-xs ${light.off ? 'hud-btn-secondary' : 'hud-btn-primary active'}" id="insp_light_power" aria-pressed="${!light.off}">${light.off ? '🌑 APAGADA' : '💡 ENCENDIDA'}</button>
+            </div>
+            <div class="insp-col" style="flex: 2;">
+              <label>Interruptor</label>
+              <span class="insp-switch-names">${escapeHTML(((store.getActiveMap()?.switches || []).filter(sw => (sw.lightIds || []).includes(light.id)).map(sw => sw.label || 'Interruptor').join(', ')) || 'Ninguno')}</span>
+            </div>
+            <div class="insp-col" style="max-width: 150px;">
+              <label>&nbsp;</label>
+              <button class="hud-btn hud-btn-xs hud-btn-secondary" id="insp_light_add_switch" title="Crea un interruptor junto a esta luz que la enciende y apaga; luego puedes moverlo y añadirle más luces">＋ INTERRUPTOR</button>
             </div>
           </div>
 
@@ -220,6 +244,73 @@ export class ElementInspectorHUD {
       store.deleteLight(light.id);
       audio.playLaserShot();
     };
+    this.container.querySelector('#insp_light_power').onclick = () => store.updateLight(light.id, { off: !light.off });
+    this.container.querySelector('#insp_light_add_switch').onclick = () => {
+      store.addSwitch({ x: light.x + 48, y: light.y, label: `Interruptor · ${light.label || 'Luz'}`, on: !light.off, lightIds: [light.id] });
+      audio.playClockTick();
+    };
+  }
+
+  // A light switch: its name, on or off, whether players may use it (or it is locked), whether
+  // they see it (or it is secret), and the lights it controls.
+  renderSwitchInspector(sw, map) {
+    const lights = map.lights || [], ids = new Set(sw.lightIds || []);
+    this.container.innerHTML = sanitizeHTML(`
+      <div class="element-inspector glass-panel">
+        <div class="inspector-header">
+          <div class="insp-title-group">
+            <span class="insp-icon">🎚️</span>
+            <span class="insp-title">INTERRUPTOR // [${escapeHTML((sw.label || 'Interruptor').toUpperCase())}]</span>
+          </div>
+          <button class="insp-close-btn" id="insp_close">&times;</button>
+        </div>
+        <div class="inspector-body">
+          <div class="insp-row">
+            <div class="insp-col" style="flex: 2;">
+              <label>Nombre</label>
+              <input type="text" id="insp_switch_name" class="hud-input hud-input-xs" value="${escapeHTML(sw.label || 'Interruptor')}" maxlength="60" />
+            </div>
+            <div class="insp-col">
+              <label>Luces</label>
+              <button class="hud-btn hud-btn-xs ${sw.on ? 'hud-btn-primary active' : 'hud-btn-secondary'}" id="insp_switch_power" aria-pressed="${!!sw.on}">${sw.on ? '💡 ENCENDIDAS' : '🌑 APAGADAS'}</button>
+            </div>
+            <div class="insp-col">
+              <label>Uso</label>
+              <button class="hud-btn hud-btn-xs hud-btn-secondary" id="insp_switch_usable" aria-pressed="${!!sw.usable}" title="Usable: los jugadores pueden accionarlo. Bloqueado: solo el Keeper.">${sw.usable ? '🖐️ USABLE' : '🔒 BLOQUEADO'}</button>
+            </div>
+            <div class="insp-col">
+              <label>Visibilidad</label>
+              <button class="hud-btn hud-btn-xs hud-btn-secondary" id="insp_switch_secret" aria-pressed="${!!sw.secret}" title="Visible: los jugadores lo ven. Secreto: solo el Keeper.">${sw.secret ? '👁️‍🗨️ SECRETO' : '👁️ VISIBLE'}</button>
+            </div>
+            <div class="insp-col insp-actions" style="max-width: 90px; justify-content: flex-end;">
+              <button class="hud-btn hud-btn-xs hud-btn-danger" id="insp_switch_delete">DELETE</button>
+            </div>
+          </div>
+          <div class="insp-row" style="margin-top: 8px;">
+            <div class="insp-col" style="flex: 1;">
+              <label>Luces que controla (${ids.size})</label>
+              <div class="insp-switch-lights">${lights.length ? lights.map(l => `<label class="insp-check"><input type="checkbox" data-switch-light="${escapeHTML(l.id)}" ${ids.has(l.id) ? 'checked' : ''} /> ${escapeHTML(l.label || 'Luz')}${l.off ? ' · off' : ''}</label>`).join('') : '<span class="dossier-muted">No hay luces en la escena.</span>'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+    const q = sel => this.container.querySelector(sel);
+    q('#insp_close').onclick = () => store.update({ selectedSwitchId: null });
+    q('#insp_switch_name').onchange = e => store.updateSwitch(sw.id, { label: e.target.value.trim().slice(0, 60) || 'Interruptor' });
+    q('#insp_switch_power').onclick = () => { store.toggleSwitch(sw.id); audio.playClockTick(); };
+    q('#insp_switch_usable').onclick = () => store.updateSwitch(sw.id, { usable: !sw.usable });
+    q('#insp_switch_secret').onclick = () => store.updateSwitch(sw.id, { secret: !sw.secret });
+    q('#insp_switch_delete').onclick = () => { store.deleteSwitch(sw.id); audio.playLaserShot(); };
+    this.container.querySelectorAll('[data-switch-light]').forEach(box => {
+      box.onchange = () => {
+        const next = new Set(sw.lightIds || []);
+        if (box.checked) next.add(box.dataset.switchLight); else next.delete(box.dataset.switchLight);
+        store.updateSwitch(sw.id, { lightIds: [...next] });
+        // A light joins the switch in the switch's state.
+        if (box.checked) store.updateLight(box.dataset.switchLight, { off: !sw.on });
+      };
+    });
   }
 
   renderWallInspector(wall) {

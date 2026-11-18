@@ -2,12 +2,35 @@ import { account } from './cloudAccount.js';
 import { newId } from './persistence.js';
 import { arcEntries } from './accountModel.js';
 
+// The Keeper's lease lasts 20 s (firestore.rules `live()` says the same) and is renewed every
+// 10 s (it used to be every 5 s: 720 writes an hour per seat). A tab that closes releases it.
 export const ROOM_LEASE_MS = 20000;
-export const ROOM_HEARTBEAT_MS = 5000;
+export const ROOM_HEARTBEAT_MS = 10000;
 export const ROOM_PART_SIZE = 60000;
 export function roomOnline(room, now = Date.now()) {
   return !!room?.hostEpoch && !!room.hostSeenAt && now - room.hostSeenAt.toMillis() < ROOM_LEASE_MS;
 }
+// Saves are cut where the content says (a rolling hash), not every 60 000 characters: a small
+// change (a token moved, an HP marked) then rewrites only the piece around it, not every piece
+// after it. The pieces still join into the same JSON text, so older saves load as before.
+const CDC_MIN = 4096, CDC_MASK = 0x3fff, CDC_WINDOW = 48;
+export function splitCampaignText(value) {
+  const text = JSON.stringify(value);
+  if (text.length > 60 * 1024 * 1024) throw new Error('La campaña supera 60 MB. Usa imágenes alojadas para los mapas.');
+  const parts = []; let start = 0, h = 0;
+  const pow = (() => { let p = 1; for (let i = 0; i < CDC_WINDOW; i++) p = Math.imul(p, 31); return p; })();
+  for (let i = 0; i < text.length; i++) {
+    h = (Math.imul(h, 31) + text.charCodeAt(i)) | 0;
+    if (i - start >= CDC_WINDOW) h = (h - Math.imul(pow, text.charCodeAt(i - CDC_WINDOW))) | 0;
+    const len = i + 1 - start;
+    let cut = (len >= CDC_MIN && (h & CDC_MASK) === CDC_MASK) || len >= ROOM_PART_SIZE;
+    if (cut && /[\uD800-\uDBFF]/.test(text[i])) cut = false; // never between the halves of an emoji
+    if (cut) { parts.push(text.slice(start, i + 1)); start = i + 1; h = 0; }
+  }
+  if (start < text.length || !parts.length) parts.push(text.slice(start));
+  return parts;
+}
+
 export function splitRoomData(value) {
   const text = JSON.stringify(value);
   if (text.length > 60 * 1024 * 1024) throw new Error('La campaña supera 60 MB. Usa imágenes alojadas para los mapas.');
@@ -19,7 +42,10 @@ export function splitRoomData(value) {
   }
   return parts;
 }
+// Firestore's free daily quota is used up: retrying only spends more.
+export const isQuotaError = error => error?.code === 'resource-exhausted' || /quota exceeded/i.test(String(error?.message || ''));
 export function roomError(error) {
+  if (isQuotaError(error)) return 'Firebase ha agotado la cuota gratuita de hoy. Se renueva a las 0:00 de la hora del Pacífico (las 9:00 en la España peninsular). Mientras tanto puedes jugar en local.';
   return error?.code === 'permission-denied'
     ? 'No se pudo acceder a la sala. Comprueba tu cuenta y que el administrador haya publicado las reglas de salas de Firestore (FIREBASE_SETUP.md).'
     : error?.message || 'No se pudo conectar con la sala.';
@@ -207,7 +233,7 @@ export class RoomService {
     });
   }
   async saveCampaign(id, campaign, epoch) {
-    const parts = splitRoomData(campaign), saveId = newId(), a = this.api;
+    const parts = splitCampaignText(campaign), saveId = newId(), a = this.api;
     const hashes = await Promise.all(parts.map(async text => {
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
       return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');

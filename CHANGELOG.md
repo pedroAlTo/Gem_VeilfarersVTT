@@ -1,10 +1,31 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.24.1**.
-Paquete: `VeilFarers_VTT_v2.24.1.zip`.
+Versión actual del VTT: **v2.25.0**.
+Paquete: `VeilFarers_VTT_v2.25.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.25.0] — 2026-11-18
+
+V3 · Menos peticiones a Firebase, luces que disipan la niebla e interruptores
+
+### Firebase: menos peticiones
+
+- La partida online gasta mucho menos de la cuota de Firestore: en las pruebas, la mitad de escrituras en reposo y en cada movimiento o cambio de HP.
+- Cada mensaje lleva solo lo que ha cambiado: el token movido y sus campos, no todos los tokens con sus fichas y avatares; la imagen del mapa ya no se reenvía.
+- La campaña se guarda tras 3 s sin cambios (como mucho cada 15 s), no medio segundo después de cada cambio, y cada guardado reescribe solo el trozo que cambia. El latido de presencia pasa de 5 s a 10 s. El control de oscuridad se envía al soltarlo.
+- Si Firebase agota la cuota, la VTT lo dice en claro (y cuándo se renueva) y deja de reintentar.
+
+### Luces
+
+- Cada luz se puede encender y apagar desde su ficha. Una luz encendida disipa la niebla de guerra de su zona (las paredes la siguen cortando), más o menos según su intensidad, si el grupo ya ha visto ese punto o lo tiene a la vista.
+- Interruptores: «＋ Interruptor» en la ficha de una luz crea uno a su lado. Se mueve arrastrándolo; en su ficha se eligen las luces que controla, si es usable por los jugadores o está bloqueado, y si es visible o secreto. El Keeper lo acciona con doble clic o desde su ficha; un jugador, con un clic.
+- Nuevo efecto de luz: Estroboscopio.
+
+### Corregido
+
+- Un jugador conectado ya puede abrir y cerrar puertas: antes solo cambiaba en su pantalla y la mesa no se enteraba.
 
 ## [2.24.1] — 2026-11-18
 

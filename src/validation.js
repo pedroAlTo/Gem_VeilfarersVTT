@@ -82,7 +82,7 @@ export function validateCampaign(data) {
       typeof m.name === 'string' && typeof m.imageUrl === 'string' && finite(m.gridSize, 1, 1000),
       'Invalid map name, image or grid.'
     );
-    for (const k of ['walls', 'lights', 'effects', 'waterZones']) {
+    for (const k of ['walls', 'lights', 'effects', 'waterZones', 'switches']) {
       assert(
         m[k] === undefined ||
           (Array.isArray(m[k]) &&
@@ -98,6 +98,8 @@ export function validateCampaign(data) {
       );
     for (const l of m.lights || [])
       assert(finite(l.x) && finite(l.y) && finite(l.radius, 0, 100000), 'Invalid light.');
+    for (const sw of m.switches || [])
+      assert(typeof sw.id === 'string' && sw.id.length <= 200 && finite(sw.x) && finite(sw.y) && Array.isArray(sw.lightIds) && sw.lightIds.length <= 500 && sw.lightIds.every(id => typeof id === 'string'), 'Invalid light switch.');
   }
   for (const t of data.tokens) {
     validateActor(t);

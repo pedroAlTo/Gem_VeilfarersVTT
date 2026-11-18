@@ -2966,3 +2966,7 @@ body, html {
 .weather-darkness span { display: flex; justify-content: space-between; }
 .weather-darkness b { color: #fde68a; font-weight: 600; }
 .weather-note { margin-top: 4px; }
+/* V3: light switch inspector */
+.insp-switch-lights { display: flex; flex-wrap: wrap; gap: 4px 12px; max-height: 96px; overflow: auto; }
+.insp-check { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #cbd5e1; cursor: pointer; }
+.insp-switch-names { font-size: 11px; color: #fde68a; padding-top: 5px; }

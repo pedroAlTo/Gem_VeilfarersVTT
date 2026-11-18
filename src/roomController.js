@@ -9,6 +9,7 @@ import { every } from './backgroundTicker.js';
 import { RoomWire, createRoomWire } from './roomWire.js';
 
 export const activeRoomKey = uid => 'veil.room.active.' + uid;
+export const SAVE_QUIET_MS = 3000, SAVE_MAX_WAIT_MS = 15000;
 export class RoomController {
   constructor({ service = new RoomService(), stateStore = store, networkManager = network, clock } = {}) {
     Object.assign(this, { service, store: stateStore, network: networkManager, clock: clock || (() => service.now()) });
@@ -16,12 +17,19 @@ export class RoomController {
     this.persistQueue = Promise.resolve(); this.lastSaved = ''; this.lastError = ''; this.discardedWires = new Set();
     this.network.roomController = this;
     this.unsubscribeStore = this.store.subscribe((_s, keys) => {
-      if (this.isKeeper && this.room && !this.leaving && keys.some(k => CAMPAIGN_KEYS.includes(k))) {
-        clearTimeout(this.saveTimer);
-        this.saveTimer = setTimeout(() => this.persist().catch(error => this.fail(error)), 500);
-      }
+      if (this.isKeeper && this.room && !this.leaving && keys.some(k => CAMPAIGN_KEYS.includes(k))) this.schedulePersist();
     });
   }
+  // The campaign is saved after 3 s without changes, and at least every 15 s while play goes on
+  // (it used to be saved 0.5 s after every change and before every message: several writes per
+  // token moved). Leaving the room or closing the tab saves what is pending.
+  schedulePersist() {
+    clearTimeout(this.saveTimer);
+    const now = Date.now(); this.firstPending ??= now;
+    const wait = Math.max(0, Math.min(SAVE_QUIET_MS, this.firstPending + SAVE_MAX_WAIT_MS - now));
+    this.saveTimer = setTimeout(() => { this.saveTimer = null; this.firstPending = null; this.persist().catch(error => this.fail(error)); }, wait);
+  }
+  flushPersist() { if (this.saveTimer) { clearTimeout(this.saveTimer); this.saveTimer = null; this.firstPending = null; return this.persist(); } return Promise.resolve(); }
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { for (const fn of this.listeners) fn(this); }
   get isKeeper() { return !!this.room && this.room.ownerUid === this.service.uid; }
@@ -197,7 +205,7 @@ export class RoomController {
     for (const id of this.wires.keys()) if (!ids.has(id)) this.dropWire(id);
     for (const row of active) if (!this.wires.has(row.id)) {
       const wire = new RoomWire(this.service, this.room.id, row.id, 'keeper', {
-        beforeSend: async () => { await this.persist(); if (!this.store.state.isConnected) throw new Error('Keeper desconectado.'); },
+        beforeSend: async () => { if (!this.store.state.isConnected) throw new Error('Keeper desconectado.'); },
         onData: async data => { if (!this.leaving && this.store.state.isConnected && this.members.some(m => m.uid === row.uid && m.status === 'active')) await this.network.handleIncomingMessage(data, row.id); },
         onClose: error => { this.dropWire(row.id); this.lastError = roomError(error); this.emit(); }
       });
@@ -327,7 +335,7 @@ if (typeof window !== 'undefined') {
   document.addEventListener?.('visibilitychange', () => { if (document.visibilityState === 'visible') rooms.wake(); });
 }
 if (typeof window !== 'undefined') window.addEventListener('pagehide', () => {
-  if (rooms.isKeeper) rooms.service.release(rooms.room.id, rooms.epoch).catch(() => {});
+  if (rooms.isKeeper) { const id = rooms.room.id, epoch = rooms.epoch; rooms.flushPersist().catch(() => {}).finally(() => rooms.service.release(id, epoch).catch(() => {})); }
 });
 
 if (typeof window !== 'undefined') window.addEventListener('pageshow', event => {

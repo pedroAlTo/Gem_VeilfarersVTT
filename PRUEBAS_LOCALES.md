@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.24.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.24.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.24.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.24.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.25.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.25.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.25.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.25.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -76,6 +76,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.24.1.zip**. Abre **AYUDA
 61. **(V3) Dados 3D y fin del ataque.** Con los dados 3D activos, en un descanso corto elige Tend Wounds + Clear Stress: ruedan dos d4 y el registro final usa esas caras. Prueba también Bear Down, Combat Surge y un arma con Energy Surge u Overheating: sus d6 ruedan tras el daño. Ataca y aplica el daño: en un segundo el resultado se cierra y no queda ningún token seleccionado ni marcado.
 62. **(V3) Luces y Clima.** Sin tocar Clima, la niebla y la visión se ven como antes de la v2.24.0. Keeper: abre Clima (🌦️, U). Pulsa Día y luego Noche: la oscuridad cae poco a poco en 10 s en las dos pantallas. Coloca una luz con efecto Pulso en una sala: late e ilumina respetando las paredes. Como jugador con niebla, de noche tu zona de visión se ve clara aunque tu personaje no lleve luz, y además ves las zonas iluminadas que tienes a la vista; de día, toda tu línea de visión. Dos antorchas con Parpadeo no van al mismo ritmo. Dibuja una zona de lava a mano alzada: brilla de noche; en su ficha puedes cambiarla a agua.
 63. **(V3) Flechas.** Selecciona tu token y pulsa las flechas: avanza una casilla por pulsación y toma el foco. Contra una pared no pasa y avisa.
+64. **(V3) Interruptores y niebla.** Keeper: en la ficha de una luz pulsa «＋ Interruptor» y muévelo. En su ficha marca otra luz. Como jugador con niebla, una lámpara encendida que ya habéis visto despeja su sala (más clara cuanto más intensa). Pulsa el interruptor: las luces se apagan en las dos pantallas. Márcalo Bloqueado: el jugador ya no puede. Márcalo Secreto: el jugador deja de verlo. Abre una puerta como jugador conectado: se abre también para el Keeper.
+65. **(V3) Consumo de Firebase.** Juega 10 minutos online y mira en la consola de Firebase → Firestore → Uso: debe ser bastante menor que antes con la misma actividad.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

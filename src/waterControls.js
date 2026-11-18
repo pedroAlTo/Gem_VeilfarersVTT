@@ -19,7 +19,12 @@ export function initWaterControls() {
   const timeButtons=[...panel.querySelectorAll('[data-weather-time]')];
   const darknessInput=panel.querySelector('#weather_darkness'), darknessValue=panel.querySelector('#weather_darkness_value');
   for (const button of timeButtons) button.onclick=()=>store.updateActiveMap({darkness:Number(button.dataset.weatherTime), lightTransitionMs:10000});
-  if (darknessInput) darknessInput.oninput=()=>store.updateActiveMap({darkness:Number(darknessInput.value), lightTransitionMs:0});
+  // Dragging previews on this screen; releasing saves it and sends it to the table (one write,
+  // not one per step).
+  if (darknessInput) {
+    darknessInput.oninput=()=>{ if (window.veilCanvas) window.veilCanvas.previewDarkness=Number(darknessInput.value); if (darknessValue) darknessValue.textContent=`${Math.round(Number(darknessInput.value)*100)} %`; };
+    darknessInput.onchange=()=>{ store.updateActiveMap({darkness:Number(darknessInput.value), lightTransitionMs:0}); if (window.veilCanvas) window.veilCanvas.previewDarkness=null; };
+  }
   if (rainBtn) {
     rainBtn.onclick = () => {
       const next = !(store.getActiveMap()?.showRain || store.state.showRain);

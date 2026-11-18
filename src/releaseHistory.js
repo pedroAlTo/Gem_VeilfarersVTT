@@ -1,6 +1,25 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.25.0', date: '2026-11-18', title: 'V3 · Menos peticiones a Firebase, luces que disipan la niebla e interruptores',
+    sections: [
+      { title: 'Firebase: menos peticiones', items: [
+        'La partida online gasta mucho menos de la cuota de Firestore: en las pruebas, la mitad de escrituras en reposo y en cada movimiento o cambio de HP.',
+        'Cada mensaje lleva solo lo que ha cambiado: el token movido y sus campos, no todos los tokens con sus fichas y avatares; la imagen del mapa ya no se reenvía.',
+        'La campaña se guarda tras 3 s sin cambios (como mucho cada 15 s), no medio segundo después de cada cambio, y cada guardado reescribe solo el trozo que cambia. El latido de presencia pasa de 5 s a 10 s. El control de oscuridad se envía al soltarlo.',
+        'Si Firebase agota la cuota, la VTT lo dice en claro (y cuándo se renueva) y deja de reintentar.',
+      ] },
+      { title: 'Luces', items: [
+        'Cada luz se puede encender y apagar desde su ficha. Una luz encendida disipa la niebla de guerra de su zona (las paredes la siguen cortando), más o menos según su intensidad, si el grupo ya ha visto ese punto o lo tiene a la vista.',
+        'Interruptores: «＋ Interruptor» en la ficha de una luz crea uno a su lado. Se mueve arrastrándolo; en su ficha se eligen las luces que controla, si es usable por los jugadores o está bloqueado, y si es visible o secreto. El Keeper lo acciona con doble clic o desde su ficha; un jugador, con un clic.',
+        'Nuevo efecto de luz: Estroboscopio.',
+      ] },
+      { title: 'Corregido', items: [
+        'Un jugador conectado ya puede abrir y cerrar puertas: antes solo cambiaba en su pantalla y la mesa no se enteraba.',
+      ] },
+    ],
+  },
+  {
     version: '2.24.1', date: '2026-11-18', title: 'V3 · La niebla vuelve a ser como antes; luces más vivas',
     sections: [
       { title: 'Niebla y visión', items: [
