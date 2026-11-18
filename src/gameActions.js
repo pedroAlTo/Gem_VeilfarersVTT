@@ -1,6 +1,6 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
-import { cardDuration, newClock, addClock } from './effectClocks.js';
+import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { rollAdversaryCheck } from './attackFlow.js';
 import { finite } from './validation.js';
@@ -72,8 +72,17 @@ function resolveGameAction(action, store) {
     // A card whose text sets a duration starts an effect clock on the character (Path to
     // Nirvana: Proficiency Spotlights; Rapid Regeneration: 1d4 turns).
     const duration = result.failed ? null : cardDuration(card, actor);
-    if (duration) result.notes.push(`Reloj «${duration.name}»: ${duration.note} Avanza un segmento cada vez que ${actor.name} gana el foco.`);
-    apply({ ...resources(result.token), ...(duration ? { effectClocks: addClock(actor.effectClocks, newClock(duration, { source: actor.name })) } : {}) });
+    // An effect that may help someone else goes to the ally the player marked (a player
+    // character on the same scene), otherwise to the one who plays the card.
+    const marked = action.targetId && action.targetId !== actor.id ? store.state.tokens.find(t => t.id === action.targetId) : null;
+    const holder = duration && marked && helpsOthers(card) && marked.isPlayer !== false && marked.actorType !== 'drone' && !marked.hidden && marked.mapId === actor.mapId ? marked : actor;
+    if (duration) {
+      const when = duration.tick === 'fear' ? '' : duration.scene && duration.tick === 'manual' ? ' Termina al acabar la escena.' : ` Avanza un segmento cada vez que ${holder.name} gana el foco.`;
+      result.notes.push(`Reloj «${duration.name}»${holder !== actor ? ` en ${holder.name}` : ''}: ${duration.note}${when}`);
+    }
+    const clock = duration ? newClock(duration, { source: actor.name }) : null;
+    apply({ ...resources(result.token), ...(clock && holder === actor ? { effectClocks: addClock(actor.effectClocks, clock) } : {}) });
+    if (clock && holder !== actor) store.updateToken(holder.id, { effectClocks: addClock(holder.effectClocks, clock) });
     if (result.fear) store.addFear(result.fear);
     const details = [result.summary, ...result.notes].join(' ');
     const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };
@@ -160,7 +169,15 @@ function resolveGameAction(action, store) {
     }
     if (player && result.isCritical)
       patch.stress = { ...actor.stress, current: Math.max(0, (actor.stress?.current || 0) - 1) };
+    // Integrity Die (Path to Nirvana, Disciplined State): each roll with Fear lowers it by 1, never
+    // on matching dice; at 0 the state ends.
+    let integrityEnded = [];
+    if (player && result.dominance === 'Fear' && !result.isCritical && actor.effectClocks?.some(c => c.tick === 'fear')) {
+      const ticked = tickClocks(actor.effectClocks, { kind: 'fear' });
+      patch.effectClocks = ticked.list; integrityEnded = ticked.expired;
+    }
     if (!standalone) store.updateToken(actor.id, patch);
+    for (const c of integrityEnded) store.addLog({ sender: actor.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${actor.name}: el Integrity Die llega a 0 y «${c.name}» termina.` });
     if (result.fearGain) store.addFear(result.fearGain);
     const record = { id: newId(), actorId: actor.id, ...result, ...(secret ? { visibility: 'keeper' } : {}) };
     lastRoll.set(rollKey, record);

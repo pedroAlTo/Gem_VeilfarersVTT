@@ -29,9 +29,27 @@ export function advanceClocks(tokenId, selector) {
   return result;
 }
 
+// Effects that last until the end of the scene (the Integrity Die states) end when the table
+// moves to another scene.
+export function endSceneEffects() {
+  if (!isTable()) return 0;
+  let ended = 0;
+  const before = store.tableActing; store.tableActing = true;
+  try {
+    for (const token of store.state.tokens) {
+      const gone = (token.effectClocks || []).filter(c => c.scene);
+      if (!gone.length) continue;
+      store.updateToken(token.id, { effectClocks: token.effectClocks.filter(c => !c.scene) });
+      for (const c of gone) { ended++; store.addLog({ sender: token.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${token.name}: «${c.name}» termina al acabar la escena.` }); }
+    }
+  } finally { store.tableActing = before; }
+  return ended;
+}
+
 export function startEffectClocks() {
-  let last = new Map();
+  let last = new Map(), scene = store.state.activeMapId;
   store.subscribe((state, keys) => {
+    if (state.activeMapId !== scene) { const was = scene; scene = state.activeMapId; if (was) queueMicrotask(endSceneEffects); }
     if (Array.isArray(keys) && !keys.includes('tokens')) return;
     const now = new Map(state.tokens.map(t => [t.id, !!t.hasSpotlight]));
     if (isTable()) for (const t of state.tokens) {

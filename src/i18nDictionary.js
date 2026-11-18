@@ -1295,6 +1295,11 @@ export const PAIRS = [
   ["Terminar", "End"],
   ["Ese reloj es de un personaje que no controlas.", "That clock belongs to a character you do not control."],
   ["No puedes cambiar los efectos de este personaje.", "You cannot change this character’s effects."],
+  // v2.20.0
+  ["Clases", "Classes"],
+  ["Carta de consulta del mazo: se juega desde la mano del personaje que la tiene.", "Reference card of the deck: it is played from the hand of the character who has it."],
+  ["Dura hasta tu próximo Spotlight.", "Lasts until your next Spotlight."],
+  ["Dura hasta el final de la escena (toca el reloj para terminarlo antes).", "Lasts until the end of the scene (touch the clock to end it earlier)."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1407,4 +1412,7 @@ export const PATTERNS = [
   ["«{_a}» ({_b}): quedan {c} de {d}.", "«{_a}» ({_b}): {c} of {d} left."],
   ["Reloj «{_a}»: {_b} Avanza un segmento cada vez que {_c} gana el foco.", "Clock «{_a}»: {_b} One segment is marked each time {_c} gains the Spotlight."],
   ["Fin de {_a}", "End of {_a}"],
+  ["Integrity Die d{b} (Tier {c}): baja 1 cada vez que tiras con Fear (nunca con dados iguales). Termina a 0 o al acabar la escena.", "Integrity Die d{b} (Tier {c}): lowered by 1 on each roll with Fear (never on matching dice). Ends at 0 or at the end of the scene."],
+  ["Dura {b} turno.", "Lasts {b} turn."],
+  ["Dura {b} turnos.", "Lasts {b} turns."],
 ];

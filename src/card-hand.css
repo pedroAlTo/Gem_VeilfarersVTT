@@ -115,3 +115,6 @@
 .card-drawer-learn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; font-size: 12px; color: #e9d5ff; }
 /* The drawer scrolls as a whole: its rows keep their height instead of squeezing the cards. */
 .card-drawer > * { flex-shrink: 0; }
+/* Deck: Powers, Ancestry, Community and class cards to read */
+.card-drawer-kinds { margin-top: 4px; }
+.card-drawer-group { margin: 6px 0 0; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: #fde68a; }

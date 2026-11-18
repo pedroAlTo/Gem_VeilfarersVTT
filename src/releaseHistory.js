@@ -1,6 +1,27 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.20.0', date: '2026-11-18', title: 'V3 · Poderes y rasgos al día con el Corebook 12.06, Integrity Die, duraciones de todo el mazo y cajón completo',
+    sections: [
+      { title: 'Textos al día con el Corebook 12.06', items: [
+        'Revisados contra el libro los 147 Poderes, los 18 rasgos de senda (Hope Feature y Effort Feature), los 42 Resolve Moves, los Gifts de Ancestry y los beneficios de Community. Actualizados los que habían cambiado: 113 Poderes (29 reescritos a fondo, p. ej. Compelling Argument, Drone Whisper, Solar Avatar), 12 rasgos de senda (Scrap Genius, Veil Surge, Reality Unfold, Vanishing Act, Path to Nirvana, The Refused Path…), 16 Resolve Moves (Field Improvisation, Hot-Wire, Uncanny Power…), 10 Gifts y las 7 Communities.',
+        'Uncanny Power vuelve a decir Resolve Die (no Effort Die), como el libro. Las cartas muestran la negrita y la cursiva del libro.',
+      ] },
+      { title: 'Path to Nirvana y Disciplined State (versión del Corebook)', items: [
+        'Al entrar en el estado se crea un Integrity Die a su cara más alta según el Tier: d4 (niveles 1-4), d6 (5-7) o d8 (8-10). Cada tirada con Fear lo baja 1 (nunca con dados iguales); a 0 el estado termina. También termina al cambiar de escena. Igual para el Awakened (Path to Nirvana) y el Sleeping (The Refused Path).',
+      ] },
+      { title: 'Duraciones de todo el mazo', items: [
+        'Revisadas las 234 cartas del juego: 58 crean un reloj de efecto al usarse: las que duran turnos o rondas, «hasta tu próximo Spotlight», «hasta el final de la escena» (termina al cambiar de escena o al tocar el reloj), los dados que fijan la duración (Rapid Regeneration, Nurturing Touch, con +1 HP por turno) y los Integrity Die.',
+        'No crean reloj las duraciones de condiciones sobre un objetivo ni las de ramas de fallo: dependen de la tirada.',
+        'Un efecto que puede ser para otro (Rapid Regeneration, Nurturing Touch…) va al aliado seleccionado o marcado en el mapa; si no hay ninguno, a quien juega la carta. Seleccionar a un aliado ya no le quita la mano de cartas al jugador.',
+      ] },
+      { title: 'Mazo', items: [
+        'El cajón del mazo tiene ahora Poderes, Ancestry, Community y Clases. Las clases se agrupan por Awakened y Sleeping y, dentro, por clase (Hope o Effort Feature, Class Feature y Resolve Moves). Todas se pueden abrir y leer, también como Keeper.',
+        'El botón del mazo se ve siempre, también mientras se cargan los datos de reglas.',
+      ] },
+    ],
+  },
+  {
     version: '2.19.0', date: '2026-11-18', title: 'V3 · Relojes de efecto: Path to Nirvana, Rapid Regeneration y otros efectos con duración',
     sections: [
       { title: 'Relojes de efecto', items: [

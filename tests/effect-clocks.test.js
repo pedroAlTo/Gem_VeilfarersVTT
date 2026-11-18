@@ -33,3 +33,40 @@ test('clocks travel in token patches only when valid', () => {
   assert.equal(validTokenPatch({ effectClocks: [{ ...ok[0], segments: 99 }] }), false);
   assert.equal(clockSlots({ effectClocks: ok }, 32, 1)[0].dx < -32, true, 'drawn to the left of the token');
 });
+
+test('Integrity Die (Corebook 12.06): highest face by Tier, lowered by rolls with Fear, ends with the scene', async () => {
+  const { tierOf } = await import('../src/effectClocks.js');
+  const classes = (await import('../src/creator/data/classes.json', { with: { type: 'json' } })).default;
+  const vanguard = classes.find(c => c.id === 'vanguard');
+  const nirvana = { name: 'Path to Nirvana', text: vanguard.hopeFeature.text };
+  const disciplined = { name: 'The Refused Path', text: vanguard.sleepingRules.effortFeature.text };
+  assert.deepEqual([1, 4, 5, 7, 8, 10].map(tierOf), [1, 1, 2, 2, 3, 3]);
+  for (const card of [nirvana, disciplined]) {
+    assert.deepEqual([1, 5, 9].map(level => cardDuration(card, { level })?.segments), [4, 6, 8]);
+    const d = cardDuration(card, { level: 5 });
+    assert.equal(d.tick, 'fear'); assert.equal(d.scene, true); assert.equal(d.die, 'd6');
+  }
+  const clock = newClock(cardDuration(nirvana, { level: 1 }), { id: 'i' });
+  assert.equal(validEffectClocks([clock]), true);
+  let r = tickClocks([clock], { kind: 'fear' });
+  assert.equal(r.list[0].segments - r.list[0].filled, 3, 'd4 → 3 after a roll with Fear');
+  assert.equal(tickClocks([clock], { kind: 'spotlight' }).ticked.length, 0, 'the Spotlight does not lower it');
+});
+
+test('the table lowers the Integrity Die on a roll with Fear, never on matching dice', async () => {
+  const { performGameAction } = await import('../src/gameActions.js');
+  const clock = newClock({ name: 'Path to Nirvana', segments: 4, tick: 'fear', scene: true, die: 'd4' }, { id: 'i' });
+  const hero = { id: 'h', name: 'Kaia', isPlayer: true, path: 'Awakened', hope: 2, traits: { agility: 1, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 }, stress: { current: 0, max: 6 }, hp: { current: 6, max: 6 }, effectClocks: [clock] };
+  const logs = [];
+  const store = { sessionRole: 'local', state: { userRole: 'keeper', campaignId: 'fx', tokens: [hero], fear: 0 }, updateToken(id, patch) { Object.assign(hero, patch); }, addFear() {}, addLog(l) { logs.push(l); } };
+  performGameAction({ type: 'CHECK', actorId: 'h', options: { traitId: 'agility', dc: 10, forcedHope: 3, forcedFear: 8 } }, store);
+  assert.equal(hero.effectClocks[0].segments - hero.effectClocks[0].filled, 3, 'with Fear: 4 → 3');
+  performGameAction({ type: 'CHECK', actorId: 'h', options: { traitId: 'agility', dc: 10, forcedHope: 9, forcedFear: 2 } }, store);
+  assert.equal(hero.effectClocks[0].filled, 1, 'with Hope: unchanged');
+  performGameAction({ type: 'CHECK', actorId: 'h', options: { traitId: 'agility', dc: 10, forcedHope: 5, forcedFear: 5 } }, store);
+  assert.equal(hero.effectClocks[0].filled, 1, 'matching dice: unchanged');
+  hero.effectClocks = [{ ...hero.effectClocks[0], filled: 3 }];
+  performGameAction({ type: 'CHECK', actorId: 'h', options: { traitId: 'agility', dc: 10, forcedHope: 1, forcedFear: 7 } }, store);
+  assert.deepEqual(hero.effectClocks, [], 'at 0 the state ends');
+  assert.ok(logs.some(l => /Fin de Path to Nirvana/.test(l.title)));
+});

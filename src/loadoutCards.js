@@ -48,13 +48,15 @@ const inText = (list, ...texts) => {
 export const classOf = (token, data) => byName(data.classes, token?.characterClass) || inText(data.classes, token?.characterClass, token?.roleTag);
 export const ancestryOf = (token, data) => byName(data.ancestries, token?.species) || inText(data.ancestries, token?.species, token?.roleTag);
 // An ancestry Gift is "used" when its text gives it a moment, a price or a limit.
-export const usableGift = gift => /\bonce per\b|\bmay (?:choose to )?(?:mark|spend)\b|\bcan (?:mark|spend|use your)\b/i.test(text(gift?.text));
+// (Corebook 12.06 also writes some as a procedure with its own roll: Nurturing Touch "roll 1d4 once".)
+export const usableGift = gift => /\bonce per\b|\bmay (?:choose to )?(?:mark|spend)\b|\bcan (?:mark|spend|use your)\b|\broll \d*d\d+ once\b/i.test(text(gift?.text));
 export const giftLimit = gift => { const match = text(gift?.text).match(/once per ((?:game )?session|long rest|short rest|rest|scene)/i); return match ? `1 / ${match[1].replace(/^game /i, '')}` : ''; };
 // What a Gift asks you to mark or spend. "Path resources" are Hope for the Awakened and
 // Effort for the Sleeping. Amounts it gives back ("clear 1 Stress") are not a price.
 export function giftCost(gift, sleeping = false) {
   const cost = { hope: 0, stress: 0, effort: 0, resolve: 0, hp: 0, open: false };
-  for (const match of text(gift?.text).matchAll(/(?:mark|spend)s?\s+(\d+)\s+(Stress|Hope|Effort|path resources?)/gi)) {
+  // Bold markup (**2 path resources**) does not change the price.
+  for (const match of text(gift?.text).replace(/\*+/g, '').matchAll(/(?:mark|spend)s?\s+(\d+)\s+(Stress|Hope|Effort|path resources?)/gi)) {
     const amount = Number(match[1]), what = lower(match[2]);
     const key = what === 'stress' ? 'stress' : what === 'hope' ? 'hope' : what === 'effort' ? 'effort' : sleeping ? 'effort' : 'hope';
     cost[key] = Math.max(cost[key], amount);
@@ -136,6 +138,23 @@ export function characterCards(token, data, options = {}) {
   // Bear Down and the Common Efforts come after the character's own cards.
   if (sleeping) cards.push(...sleepingCommonCards(token, options));
   return cards;
+}
+
+// The deck's reference catalog besides the Powers (user request, 18 Nov 2026): every Ancestry
+// Gift, every Community benefit and the class cards, Awakened and Sleeping, grouped by class.
+// Read-only cards (they are consulted, not played from here).
+export function catalogGroups(data) {
+  const read = card => ({ zone: 'catalog', roll: null, rollText: '', rc: 0, playable: false, ...card });
+  const ancestry = (data.ancestries || []).map(a => ({ group: a.name, cards: (a.gifts || []).map(g => read({ id: `cat:ancestry:${a.id}:${slug(g.name)}`, kind: 'ancestry', name: g.name, subtitle: `Ancestry · ${a.name}`, color: a.color || '#94a3b8', art: cornerArt('ancestry'), costText: usableGift(g) ? costLabel(giftCost(g)) : 'Pasivo', cost: giftCost(g), text: text(g.text), limit: giftLimit(g) })) }));
+  const community = (data.communities || []).filter(c => c.feature).map(c => ({ group: c.name, cards: [read({ id: `cat:community:${c.id}`, kind: 'community', name: c.feature.name, subtitle: `Background · ${c.name}`, color: c.color || '#94a3b8', art: cornerArt('community'), costText: '—', cost: parseCost(''), text: text(c.feature.text) })] }));
+  const feature = (cls, f, label, path) => f && read({ id: `cat:${path}:${cls.id}:${slug(f.name)}`, kind: 'feature', name: f.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${label}`, color: cls.color || '#c084fc', art: classArt(cls), costText: (f.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(f.name), text: text(f.text) });
+  const awakened = (data.classes || []).map(cls => ({ group: cls.name, cards: [feature(cls, cls.hopeFeature, 'Hope Feature', 'aw'), feature(cls, cls.classFeature, 'Class Feature', 'aw')].filter(Boolean) }));
+  const sleeping = (data.classes || []).filter(c => c.sleepingRules).map(cls => {
+    const r = cls.sleepingRules;
+    const moves = (data.resolveMoves || []).filter(m => lower(m.class) === lower(cls.name)).map(m => read({ id: `cat:move:${slug(m.class)}:${slug(m.name)}`, kind: 'move', name: m.name, subtitle: ['Resolve Move', m.subclass || m.class].filter(Boolean).join(' · '), color: cls.color || '#fb923c', art: classArt(cls), costText: m.cost, cost: parseCost(m.cost, 'move'), text: text(m.text) }));
+    return { group: cls.name, cards: [feature(cls, r.effortFeature, 'Effort Feature', 'sl'), feature(cls, r.classFeature, 'Class Feature', 'sl'), ...moves].filter(Boolean) };
+  });
+  return { ancestry, community, awakened, sleeping };
 }
 
 const need = (have, cost, label) => { if (cost > have) throw new Error(`No hay ${label} suficiente: hacen falta ${cost} y quedan ${have}.`); };

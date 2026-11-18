@@ -6,37 +6,68 @@
 // beside the token marks one segment by hand; the full sheet edits it.
 export const MAX_CLOCKS = 6, MAX_SEGMENTS = 20;
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(n) || 0)));
+// Corebook: Tier 1 (Levels 1-4), Tier 2 (Levels 5-7), Tier 3 (Levels 8-10).
+export const tierOf = level => { const l = Number(level) || 1; return l <= 4 ? 1 : l <= 7 ? 2 : 3; };
 const rollDie = sides => Math.floor(Math.random() * sides) + 1;
 const words = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4 };
 const num = v => words[String(v).toLowerCase()] ?? Number(v);
 
 // The duration a card's text sets, or null. `token` gives the Proficiency.
+// Sentences of a card that set a duration for the one who plays it or the allies it helps:
+// not the branches of a failed roll, and not a condition put on a target or an enemy (those
+// depend on the roll and belong to the target's own conditions).
+const OTHER_SUBJECT = /^(?:on (?:a )?(?:failure|success)[^:,]*[:,]\s*)?(?:the target|targets|each affected target|they|it|enemies|adversaries|a creature|the revived ally)\b/i;
+export function durationSentences(text) {
+  return String(text ?? '').replace(/\*+/g, '').split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean)
+    .filter(x => !/^(?:-\s*)?(?:on (?:a )?failure|failure)\b/i.test(x) && !/\bon (?:a )?failure\b/i.test(x.slice(0, 40)) && !OTHER_SUBJECT.test(x.replace(/^(?:-\s*)?(?:success|on (?:a )?success(?: with (?:hope|fear))?)\s*:\s*/i, '')));
+}
+// Whether the card's effect may land on someone else (then a marked ally receives the clock).
+export const helpsOthers = card => /\byou or an ally\b|\ban ally\b|\banother creature\b|\bthe target recovers\b|\ballies\b/i.test(String(card?.text ?? ''));
+
+// The duration a card's text sets, or null. `token` gives the level and the Proficiency.
 export function cardDuration(card, token = {}, roll = rollDie) {
-  const text = String(card?.text ?? '');
+  const text = String(card?.text ?? '').replace(/\*+/g, '');
   const base = { name: String(card?.name ?? 'Efecto').slice(0, 80), tick: 'spotlight' };
-  // At the start of each turn the target recovers N HP (Rapid Regeneration).
-  const heal = text.match(/start of (?:the target's|your|their) turn,?\s*(?:they|you) (?:recover|heal|regain) \+?(\d+) HP/i);
+  // Healing on each of the target's turns (Rapid Regeneration, Nurturing Touch).
+  const heal = text.match(/start of (?:the target's|your|their|each of that target's)[^.]*?(?:recover|heal|regain|clears?) \+?(\d+) HP/i);
   const perTick = heal ? { hp: Number(heal[1]) } : null;
+  // Integrity Die (Corebook 12.06: Path to Nirvana, Disciplined State): its highest face by Tier
+  // (d4 Tier 1, d6 Tier 2, d8 Tier 3); each roll with Fear lowers it by 1; ends at 0 or at the
+  // end of the scene.
+  if (/Integrity Die/i.test(text) && /highest face by Tier/i.test(text)) {
+    const tier = tierOf(token.level), face = [4, 6, 8][tier - 1];
+    return { ...base, segments: face, tick: 'fear', scene: true, die: `d${face}`, note: `Integrity Die d${face} (Tier ${tier}): baja 1 cada vez que tiras con Fear (nunca con dados iguales). Termina a 0 o al acabar la escena.`, perTick: null };
+  }
   if (/Spotlights? equal to (?:your )?Proficiency/i.test(text)) {
     const p = clamp(token.proficiency ?? 1, 1, MAX_SEGMENTS);
     return { ...base, segments: p, note: `Dura ${p} Spotlight${p > 1 ? 's' : ''} (Proficiency ${p}).`, perTick };
   }
-  const rolled = text.match(/Roll (\d*)d(\d+)[^.]*?number of (?:additional )?(?:turns|Spotlights|rounds)/i);
+  // A die sets it: "Roll 1d4: the result is the number of additional turns", "roll 1d4 once …
+  // each of that target's next that many Spotlights".
+  const rolled = text.match(/roll (\d*)d(\d+)\b[^.]*?(?:number of (?:additional )?(?:turns|Spotlights|rounds)|\. [^.]*next that many Spotlights)/i)
+    || text.match(/roll (\d*)d(\d+) once\.[^.]*next that many Spotlights/i);
   if (rolled) {
     const n = clamp(rolled[1] || 1, 1, 4), sides = clamp(rolled[2], 2, 20);
     const faces = Array.from({ length: n }, () => roll(sides)), total = clamp(faces.reduce((a, b) => a + b, 0), 1, MAX_SEGMENTS);
-    return { ...base, segments: total, faces, note: `${n}d${sides} [${faces.join(', ')}]: dura ${total} turno${total > 1 ? 's' : ''} más.`, perTick };
+    return { ...base, segments: total, faces, note: `${n}d${sides} [${faces.join(', ')}]: dura ${total} turno${total > 1 ? 's' : ''}.`, perTick };
   }
-  const fixed = text.match(/(?:lasts?|for) (\d+|one|two|three|four|five|six) (?:more |additional )?(?:Spotlights|turns|rounds)/i);
-  if (fixed) {
-    const n = clamp(num(fixed[1]), 1, MAX_SEGMENTS);
+  const own = durationSentences(text).join(' ');
+  const rounds = own.match(/(?:lasts?|lasting|for) (\d+|one|two|three|four|five|six) (?:more |additional )?(?:Spotlights|turns|rounds?)\b/i);
+  if (rounds) {
+    const n = clamp(num(rounds[1]), 1, MAX_SEGMENTS);
     return { ...base, segments: n, note: `Dura ${n} turno${n > 1 ? 's' : ''}.`, perTick };
+  }
+  if (/\b(?:until|for|on) (?:the (?:start|end) of )?your next Spotlight\b/i.test(own)) {
+    return { ...base, segments: 1, note: 'Dura hasta tu próximo Spotlight.', perTick };
+  }
+  if (/\b(?:until the end of the scene|for the (?:rest of the )?scene|for one scene|until the scene ends)\b/i.test(own)) {
+    return { ...base, segments: 1, tick: 'manual', scene: true, note: 'Dura hasta el final de la escena (toca el reloj para terminarlo antes).', perTick: null };
   }
   return null;
 }
 
 export function newClock(duration, { id = `fx_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, source = '' } = {}) {
-  return { id, name: duration.name, segments: clamp(duration.segments, 1, MAX_SEGMENTS), filled: 0, tick: duration.tick || 'spotlight', ...(duration.perTick ? { perTick: duration.perTick } : {}), ...(source ? { source: String(source).slice(0, 80) } : {}) };
+  return { id, name: duration.name, segments: clamp(duration.segments, 1, MAX_SEGMENTS), filled: 0, tick: duration.tick || 'spotlight', ...(duration.perTick ? { perTick: duration.perTick } : {}), ...(duration.scene ? { scene: true } : {}), ...(duration.die ? { die: duration.die } : {}), ...(source ? { source: String(source).slice(0, 80) } : {}) };
 }
 
 // Starting the same effect again restarts its clock.
@@ -70,7 +101,8 @@ export function validEffectClocks(v) {
     && typeof c.id === 'string' && c.id.length <= 60 && typeof c.name === 'string' && c.name.length <= 80
     && Number.isInteger(c.segments) && c.segments >= 1 && c.segments <= MAX_SEGMENTS
     && Number.isInteger(c.filled) && c.filled >= 0 && c.filled <= c.segments
-    && ['spotlight', 'manual'].includes(c.tick)
+    && ['spotlight', 'fear', 'manual'].includes(c.tick)
+    && (c.scene === undefined || typeof c.scene === 'boolean') && (c.die === undefined || /^d(4|6|8|10|12)$/.test(c.die))
     && (c.perTick === undefined || (c.perTick && typeof c.perTick === 'object' && Number.isInteger(c.perTick.hp ?? 0) && (c.perTick.hp ?? 0) >= 0 && (c.perTick.hp ?? 0) <= 20))
     && (c.source === undefined || (typeof c.source === 'string' && c.source.length <= 80)));
 }
