@@ -148,3 +148,5 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .kdmg-row input { flex: 1; }
 .kdmg-row b { min-width: 24px; text-align: center; font-size: 16px; color: #fde68a; }
 .kdmg-preview { margin: 0; padding: 8px 10px; border-left: 2px solid #fde68a; background: rgba(13, 4, 32, .55); color: #fde68a; font-size: 13px; }
+.pab-buttons.pab-edge-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; flex-wrap: nowrap; }
+.pab-edge-three .pab-edge-btn { min-width: 0; padding-left: 4px; padding-right: 4px; letter-spacing: .08em; }

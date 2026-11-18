@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.2**.
-Paquete: `VeilFarers_VTT_v2.27.2.zip`.
+Versión actual del VTT: **v2.27.3**.
+Paquete: `VeilFarers_VTT_v2.27.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.3] — 2026-11-18
+
+V3 · Intensidad y teñido de las luces; barra y mazo se arrastran; Normal, Ventaja, Desventaja
+
+### Luces
+
+- La intensidad de una luz es la cantidad de oscuridad (y de niebla) que elimina en su zona: 30 % quita el 30 %, 100 % la quita entera.
+- Nuevo control «Teñido» en la ficha de la luz: cuánto colorea su zona con su color (0 % solo quita la oscuridad; 30 % por defecto). El color tiñe el mapa, no lo tapa.
+
+### Pantalla
+
+- La barra del personaje y el icono del mazo completo se arrastran pulsando sobre ellos (sin asa). Un toque sin mover sigue siendo un clic; Alt + doble clic los devuelve a su sitio.
+- Normal, Ventaja y Desventaja van en la misma línea y en ese orden.
 
 ## [2.27.2] — 2026-11-18
 

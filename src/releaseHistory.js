@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.3', date: '2026-11-18', title: 'V3 · Intensidad y teñido de las luces; barra y mazo se arrastran; Normal, Ventaja, Desventaja',
+    sections: [
+      { title: 'Luces', items: [
+        'La intensidad de una luz es la cantidad de oscuridad (y de niebla) que elimina en su zona: 30 % quita el 30 %, 100 % la quita entera.',
+        'Nuevo control «Teñido» en la ficha de la luz: cuánto colorea su zona con su color (0 % solo quita la oscuridad; 30 % por defecto). El color tiñe el mapa, no lo tapa.',
+      ] },
+      { title: 'Pantalla', items: [
+        'La barra del personaje y el icono del mazo completo se arrastran pulsando sobre ellos (sin asa). Un toque sin mover sigue siendo un clic; Alt + doble clic los devuelve a su sitio.',
+        'Normal, Ventaja y Desventaja van en la misma línea y en ese orden.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.2', date: '2026-11-18', title: 'V3 · Las luces quitan la oscuridad, sin teñir el mapa',
     sections: [
       { title: 'Luces', items: [

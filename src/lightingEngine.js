@@ -10,10 +10,11 @@ const ARC_STEPS = 60;
 const phaseOf = light => { const k = String(light.id ?? `${light.x},${light.y}`); let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0; return ((h >>> 0) % 1000) / 1000 * Math.PI * 2; };
 const hexRGB = h => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h)); const n = m ? parseInt(m[1], 16) : 0xffffff; return [n >> 16, (n >> 8) & 255, n & 255]; };
 const mixHex = (a, b, t) => { const x = hexRGB(a), y = hexRGB(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',')})`; };
-// How much a light clears the dark (darkness and fog), from its intensity: the dimmest light
-// (0.1) still shows its area in half-light; from intensity 0.8 (the default lights are 0.9) the
-// darkness is gone from its area and the map shows as it is.
-export const lightStrength = intensity => 0.4 + 0.6 * Math.max(0, Math.min(1, ((Number(intensity) || 0.8) - 0.1) / 0.7));
+// How much a light clears the dark (darkness and fog): its intensity is that amount. 0.3 takes
+// away 30 % of the darkness of its area; from 1 it takes all of it.
+export const lightStrength = intensity => Math.max(0.05, Math.min(1, Number.isFinite(Number(intensity)) ? Number(intensity) : 0.8));
+// How much a light tints its area with its colour (the light's «Teñido», 0 – 1; 0.3 by default).
+export const lightTint = light => Math.max(0, Math.min(1, Number.isFinite(Number(light?.tint)) ? Number(light.tint) : 0.3));
 
 export function animateLight(light, time = 0) {
   let r = light.radius || 200, i = light.intensity ?? 0.8;
@@ -55,6 +56,20 @@ export class LightingEngine {
   constructor() {
     this.lightCanvas = document.createElement('canvas');
     this.lightCtx = this.lightCanvas.getContext('2d');
+  }
+
+  // The area a light reaches (its base radius, walls in the way), kept until the light or the
+  // walls change.
+  lightArea(light, walls, wallsKey) {
+    this.areaCache ??= new Map();
+    const key = `${light.id}|${light.x}|${light.y}|${light.radius}|${light.facingAngle ?? ''}|${light.visionAngle ?? 360}|${wallsKey}`;
+    let poly = this.areaCache.get(key);
+    if (!poly) {
+      poly = this.computeVisibilityPolygon(light.x, light.y, (light.radius || 200) * 1.1, walls, light.facingAngle, light.visionAngle ?? 360) || [];
+      if (this.areaCache.size > 400) this.areaCache.clear();
+      this.areaCache.set(key, poly);
+    }
+    return poly;
   }
 
   resize(width, height) {
@@ -453,6 +468,7 @@ export class LightingEngine {
     drawSoftened(ctx, this.lightCanvas, LIGHT_SOFTNESS, this.lightVersion);
 
     // Subtle colored glows around light centers
+    const wallsKey = fingerprint(wallValues(walls));
     ctx.globalCompositeOperation = 'screen';
     for (const light of shaped) {
       if (light.noGlow) continue;
@@ -464,6 +480,22 @@ export class LightingEngine {
         activeColor = mixHex(light.color || '#ef4444', light.color2 || '#3b82f6', mix);
       }
 
+      const glowScale = effect === 'siren' ? Math.min(2.0, (light.effectIntensity ?? 1.0)) : 1.0;
+      const tint = lightTint(light);
+      if (tint <= 0) continue; // «Teñido» 0: the light only takes the darkness away
+      // The tint: the light's colour over its whole area (walls stop it), blended so it colours
+      // the map instead of painting over it; as strong as the light's «Teñido».
+      const area = this.lightArea(light, walls, wallsKey);
+      if (area.length >= 3) {
+        const wash = ctx.createRadialGradient(light.x, light.y, 0, light.x, light.y, light.shownRadius);
+        wash.addColorStop(0, activeColor); wash.addColorStop(0.8, activeColor); wash.addColorStop(1, 'transparent');
+        ctx.save();
+        ctx.globalCompositeOperation = 'soft-light';
+        ctx.beginPath(); ctx.moveTo(area[0].x, area[0].y); for (let i = 1; i < area.length; i++) ctx.lineTo(area[i].x, area[i].y); ctx.closePath(); ctx.clip();
+        ctx.globalAlpha = Math.min(1, tint * glowScale);
+        ctx.fillStyle = wash; ctx.fillRect(light.x - light.shownRadius, light.y - light.shownRadius, light.shownRadius * 2, light.shownRadius * 2);
+        ctx.restore();
+      }
       const glowRadius = light.shownRadius * 0.6;
       const grad = ctx.createRadialGradient(
         light.x, light.y, 0,
@@ -473,8 +505,7 @@ export class LightingEngine {
       grad.addColorStop(1, 'transparent');
 
       ctx.save();
-      const glowScale = effect === 'siren' ? Math.min(2.0, (light.effectIntensity ?? 1.0)) : 1.0;
-      ctx.globalAlpha = Math.min(1.0, light.shownIntensity * 0.35 * glowScale);
+      ctx.globalAlpha = Math.min(1.0, light.shownIntensity * 0.35 * glowScale * Math.min(1, tint / 0.3));
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(light.x, light.y, glowRadius, 0, Math.PI * 2);

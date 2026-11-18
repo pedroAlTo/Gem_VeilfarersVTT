@@ -1408,6 +1408,9 @@ export const PAIRS = [
   ["El daño no se pudo aplicar: el objetivo o el atacante ya no son válidos.", "The damage could not be applied: the target or the attacker is no longer valid."],
   ["El Keeper ha aplicado el daño.", "The Keeper applied the damage."],
   ["El Keeper ha cancelado el daño.", "The Keeper cancelled the damage."],
+  // V3: light tint (v2.27.3)
+  ["Cuánta oscuridad elimina en su zona", "How much darkness it removes in its area"],
+  ["Cuánto tiñe su zona con su color", "How much it tints its area with its colour"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1549,4 +1552,6 @@ export const PATTERNS = [
   ["Escudos a gastar ({_x} disponible)", "Shields to spend ({_x} available)"],
   ["Arrastra para mover {_x} · doble clic: volver a su sitio", "Drag to move {_x} · double click: back to its place"],
   ["Los jugadores no pueden recibir el estado de la partida: {_x}", "Players cannot receive the game state: {_x}"],
+  ["Intensidad ({_x}% de oscuridad eliminada)", "Intensity ({_x}% of darkness removed)"],
+  ["Teñido ({_x}%)", "Tint ({_x}%)"],
 ];
