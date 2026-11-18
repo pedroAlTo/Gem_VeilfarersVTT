@@ -102,7 +102,7 @@ export function validEffectClocks(v) {
     && Number.isInteger(c.segments) && c.segments >= 1 && c.segments <= MAX_SEGMENTS
     && Number.isInteger(c.filled) && c.filled >= 0 && c.filled <= c.segments
     && ['spotlight', 'fear', 'manual'].includes(c.tick)
-    && (c.scene === undefined || typeof c.scene === 'boolean') && (c.die === undefined || /^d(4|6|8|10|12)$/.test(c.die))
+    && (c.scene === undefined || typeof c.scene === 'boolean') && (c.firstStrikeUsed === undefined || typeof c.firstStrikeUsed === 'boolean') && (c.die === undefined || /^d(4|6|8|10|12)$/.test(c.die))
     && (c.perTick === undefined || (c.perTick && typeof c.perTick === 'object' && Number.isInteger(c.perTick.hp ?? 0) && (c.perTick.hp ?? 0) >= 0 && (c.perTick.hp ?? 0) <= 20))
     && (c.source === undefined || (typeof c.source === 'string' && c.source.length <= 80)));
 }

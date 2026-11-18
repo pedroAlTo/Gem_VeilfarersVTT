@@ -70,3 +70,17 @@ test('the table lowers the Integrity Die on a roll with Fear, never on matching 
   assert.deepEqual(hero.effectClocks, [], 'at 0 the state ends');
   assert.ok(logs.some(l => /Fin de Path to Nirvana/.test(l.title)));
 });
+
+test('Resolve: Bear Down has something to add to only after a roll; Prepare refills it on a rest', async () => {
+  const { bearDownTarget, prepareResolve } = await import('../src/bearDown.js');
+  const dice = { lastRollKind: 'check', lastResult: { actorId: 's' }, pendingDamageFor: id => (id === 'd' ? {} : null) };
+  assert.equal(bearDownTarget('s', dice), 'check');
+  assert.equal(bearDownTarget('x', dice), '', 'another character rolled');
+  assert.equal(bearDownTarget('d', dice), 'damage', 'an open damage roll comes first');
+  assert.equal(bearDownTarget('s', null), '');
+  const sleeper = { path: 'Sleeping', resolve: { current: 1, max: 4, dieType: 'd4' } };
+  assert.deepEqual(prepareResolve(sleeper, 'short').resolve, { current: 2, max: 4, dieType: 'd4' });
+  assert.deepEqual(prepareResolve(sleeper, 'long').resolve.current, 4);
+  assert.equal(prepareResolve({ ...sleeper, resolve: { current: 4, max: 4 } }, 'short'), null, 'already full');
+  assert.equal(prepareResolve({ path: 'Awakened', resolve: { current: 0, max: 0 } }, 'long'), null);
+});

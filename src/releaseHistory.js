@@ -1,6 +1,25 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.21.0', date: '2026-11-18', title: 'V3 · Armas con tags, daño de Combat Surge y compañía, y Resolve en la Ficha',
+    sections: [
+      { title: 'Armas con tags', items: [
+        'Cada arma guarda sus propiedades como tags (Reliable, Armor Piercing 2, Paired +2, Reach…) y las reglas leen solo esos tags: ya no se buscan palabras en el nombre o la descripción. Las armas antiguas los obtienen de su lista de propiedades; las del catálogo y del creador llegan con ellos.',
+        'El editor de equipo tiene el campo «Tags (reglas)»; la lista de armas los muestra como etiquetas. La descripción sigue en «Propiedades».',
+        'El alcance sale del campo Alcance (o del catálogo): ya no se deduce del nombre del arma. La competencia de clase lee la familia del catálogo o del creador, y Massive / Heavy de sus tags.',
+      ] },
+      { title: 'Daño de efectos', items: [
+        'Tras un impacto, la Ficha ofrece los efectos que suman daño a ese ataque: Combat Surge (Soldier Awakened, 2 Hope, +1d6) y The Held Line (Soldier Sleeping, 1 Effort, +1d6), una vez por ataque; se paga con la carta como desde la mano.',
+        'Nirvana State / Disciplined State: el primer ataque cuerpo a cuerpo del estado suma +2d6 solo; Breaking Point termina el estado y suma +(Proficiency)d6.',
+        'El daño se recalcula con los mismos dados. Corregido: con una fórmula de daño escrita (p. ej. «d8+2») no se sumaba Bear Down; ahora sí, igual que estos efectos.',
+      ] },
+      { title: 'Resolve (Sleeping)', items: [
+        'En la Ficha, junto a las marcas de Resolve: Bear Down con el número de dados que quieras gastar; suma su total a tu última tirada o ataque (o al daño aún sin aplicar). Nunca cambia Hope/Fear ni hace crítico.',
+        'Prepare: «+1» en un descanso corto y «lleno» en un descanso largo, como el Corebook (Resolve no se recupera solo).',
+      ] },
+    ],
+  },
+  {
     version: '2.20.1', date: '2026-11-18', title: 'V3 · El jugador que actúa toma el foco',
     sections: [
       { title: 'Foco automático', items: [

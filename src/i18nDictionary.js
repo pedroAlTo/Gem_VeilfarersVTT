@@ -1300,6 +1300,17 @@ export const PAIRS = [
   ["Carta de consulta del mazo: se juega desde la mano del personaje que la tiene.", "Reference card of the deck: it is played from the hand of the character who has it."],
   ["Dura hasta tu próximo Spotlight.", "Lasts until your next Spotlight."],
   ["Dura hasta el final de la escena (toca el reloj para terminarlo antes).", "Lasts until the end of the scene (touch the clock to end it earlier)."],
+  // v2.21.0
+  ["Tags (reglas)", "Tags (rules)"],
+  ["Propiedades (descripción)", "Properties (description)"],
+  ["Un dado menos", "One die fewer"],
+  ["Un dado más", "One die more"],
+  ["Suma los dados al daño que aún no se ha aplicado", "Adds the dice to the damage not yet applied"],
+  ["Suma los dados al total de tu última tirada (no cambia Hope/Fear ni hace crítico)", "Adds the dice to your last roll total (never changes Hope/Fear or makes a critical)"],
+  ["Tira primero; Bear Down se usa antes de narrar el resultado", "Roll first; Bear Down is used before the outcome is narrated"],
+  ["Descanso corto con Prepare: recupera 1 Resolve", "Short Rest with Prepare: recover 1 Resolve"],
+  ["Descanso largo con Prepare: Resolve al máximo", "Long Rest with Prepare: Resolve to its maximum"],
+  ["Prepare · lleno", "Prepare · full"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1415,4 +1426,6 @@ export const PATTERNS = [
   ["Integrity Die d{b} (Tier {c}): baja 1 cada vez que tiras con Fear (nunca con dados iguales). Termina a 0 o al acabar la escena.", "Integrity Die d{b} (Tier {c}): lowered by 1 on each roll with Fear (never on matching dice). Ends at 0 or at the end of the scene."],
   ["Dura {b} turno.", "Lasts {b} turn."],
   ["Dura {b} turnos.", "Lasts {b} turns."],
+  ["Prepare (descanso largo): Resolve {b}/{c}.", "Prepare (long rest): Resolve {b}/{c}."],
+  ["Prepare (descanso corto): Resolve {b}/{c}.", "Prepare (short rest): Resolve {b}/{c}."],
 ];

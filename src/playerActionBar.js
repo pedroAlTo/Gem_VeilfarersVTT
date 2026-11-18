@@ -18,6 +18,11 @@ import { normalizeConditions, conditionDefinition } from './conditions.js';
 import { distanceInfo, rangeCheck, netEdge, weaponRangeBand, weaponAttackBonus } from './attackFlow.js';
 import { damageTypeOf, penetrationFor } from './rulesEngine.js';
 import { clockPieHTML } from './effectClocks.js';
+import { availableRiders, rollExpression } from './damageRiders.js';
+import { bearDown, bearDownTarget, prepareResolve } from './bearDown.js';
+import { cardData } from './cardData.js';
+import { characterCards } from './loadoutCards.js';
+import { network } from './networkManager.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -100,6 +105,8 @@ export class PlayerActionBar {
     parent.append(this.root);
     this.signature = ''; this.targeting = null; this.pick = EMPTY_PICK; this.optionsOpen = false; this.view = null;
     store.subscribe(() => this.render());
+    // A roll's result arrives after the state changes it caused: redraw so Bear Down can be used.
+    window.addEventListener('veil:guide', event => { if (event.detail?.event === 'roll') { this.signature = ''; this.render(); } });
     window.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (this.targeting) this.stopTargeting(); else if (this.pick.trait || this.pick.exp !== null) { this.pick = EMPTY_PICK; this.render(); } });
     this.render();
   }
@@ -133,7 +140,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -187,6 +194,10 @@ export class PlayerActionBar {
     this.root.querySelector('[data-pab-apply]')?.addEventListener('click', () => this.applyDamage());
     this.root.querySelectorAll('[data-pab-attack-edge]').forEach(b => { b.onclick = () => this.confirmAttack(b.dataset.pabAttackEdge); });
     this.root.querySelector('[data-pab-shields]')?.addEventListener('click', () => document.querySelector('#dmg_mitigate_btn')?.click());
+    this.root.querySelectorAll('[data-pab-rider]').forEach(b => { b.onclick = () => this.useRider(b.dataset.pabRider); });
+    this.root.querySelectorAll('[data-pab-bear-step]').forEach(b => { b.onclick = () => { this.bearCount = Math.max(1, (this.bearCount || 1) + Number(b.dataset.pabBearStep)); this.signature = ''; this.render(); }; });
+    this.root.querySelector('[data-pab-bear]')?.addEventListener('click', () => this.useBearDown());
+    this.root.querySelectorAll('[data-pab-prepare]').forEach(b => { b.onclick = () => this.prepare(b.dataset.pabPrepare); });
     this.root.querySelector('[data-pab-clear]')?.addEventListener('click', () => { this.result = null; this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-panel]')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } })));
   }
@@ -206,8 +217,13 @@ export class PlayerActionBar {
   // lit while the point is available, dim once it is spent.
   resolveHTML(r) {
     const shape = String(r.die).toLowerCase() === 'd4' ? 'tri' : 'sq';
+    const target = bearDownTarget(this.tokenId), n = Math.max(1, Math.min(Number(r.current) || 1, this.bearCount || 1));
+    const controls = `<div class="pab-resolve-actions">
+      <span class="pab-bear"><button type="button" class="pab-step" data-pab-bear-step="-1" aria-label="Un dado menos" ${n <= 1 ? 'disabled' : ''}>−</button><b data-no-i18n>${n}${e(r.die)}</b><button type="button" class="pab-step" data-pab-bear-step="1" aria-label="Un dado más" ${n >= (r.current || 0) ? 'disabled' : ''}>+</button>
+      <button type="button" class="hud-btn hud-btn-xs" data-pab-bear ${target && r.current > 0 ? '' : 'disabled'} title="${target === 'damage' ? 'Suma los dados al daño que aún no se ha aplicado' : target ? 'Suma los dados al total de tu última tirada (no cambia Hope/Fear ni hace crítico)' : 'Tira primero; Bear Down se usa antes de narrar el resultado'}">Bear Down${target === 'damage' ? ' · daño' : ''}</button></span>
+      <span class="pab-prepare"><button type="button" class="hud-btn hud-btn-xs" data-pab-prepare="short" ${r.current >= r.max ? 'disabled' : ''} title="Descanso corto con Prepare: recupera 1 Resolve">Prepare +1</button><button type="button" class="hud-btn hud-btn-xs" data-pab-prepare="long" ${r.current >= r.max ? 'disabled' : ''} title="Descanso largo con Prepare: Resolve al máximo">Prepare · lleno</button></span></div>`;
     const pips = Array.from({ length: Math.max(0, Number(r.max) || 0) }, (_, i) => `<i class="pab-res ${shape} ${i < (Number(r.current) || 0) ? 'on' : ''}"></i>`).join('');
-    return `<div class="pab-cell pab-resolve" title="Resolve ${e(r.current)} / ${e(r.max)} (${e(r.die)})"><span>Resolve ${e(r.die)}</span><span class="pab-res-row" role="meter" aria-label="Resolve" aria-valuemin="0" aria-valuemax="${e(r.max)}" aria-valuenow="${e(r.current)}">${pips || '<b data-no-i18n>0</b>'}</span></div>`;
+    return `<div class="pab-cell pab-resolve" title="Resolve ${e(r.current)} / ${e(r.max)} (${e(r.die)})"><span>Resolve ${e(r.die)}</span><span class="pab-res-row" role="meter" aria-label="Resolve" aria-valuemin="0" aria-valuemax="${e(r.max)}" aria-valuenow="${e(r.current)}">${pips || '<b data-no-i18n>0</b>'}</span>${controls}</div>`;
   }
 
   statsHTML(st) {
@@ -384,9 +400,50 @@ export class PlayerActionBar {
       <span class="pab-label">Resultado</span>
       <div class="pab-result-text"><b>${e(r.outcome || '—')}</b> <span>${e(r.targetName)}</span>${hit ? ` · <span>${e(r.raw)} de daño · ${e(r.severity)} · ${e(r.loss)}</span>` : ''}</div>
       ${(r.notes || []).length ? `<ul class="pab-notes">${r.notes.map(n => `<li>${e(n)}</li>`).join('')}</ul>` : ''}
+      ${hit && !r.applied ? this.ridersHTML() : ''}
       ${this.resultRange ? `<div class="pab-range ${this.resultRange.penalty ? 'penalty' : ''}">Distancia: <span data-no-i18n>${e(this.resultRange.band)} · ${e(this.resultRange.meters.toFixed(1))} m</span>${this.resultRange.penalty ? ` · ${e(this.resultRange.penalty)}` : ''}</div>` : ''}
       <div class="pab-result-actions">${hit && r.shields && !r.applied ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-shields>Escudos</button>' : ''}${hit && !r.applied ? `<button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-pab-apply ${r.canApply ? '' : 'disabled'}>Aplicar daño</button>` : ''}${r.applied ? '<span class="pab-applied">Daño aplicado</span>' : ''}<button type="button" class="pab-more" data-pab-clear aria-label="Quitar el resultado">×</button></div>
     </div>`;
+  }
+  // Effects that add damage to this attack (Combat Surge, The Held Line, Breaking Point).
+  riders() {
+    const dice = window.veilDiceRoller, d = dice?.lastDamage, token = store.state.tokens.find(t => t.id === this.tokenId), data = cardData();
+    if (!d || d.applied || d.actorId !== this.tokenId || !token || !data) return [];
+    return availableRiders(token, characterCards(token, data), (d.riders || []).map(x => x.id));
+  }
+  ridersHTML() {
+    const list = this.riders();
+    return list.length ? `<div class="pab-riders">${list.map(r => `<button type="button" class="hud-btn hud-btn-xs" data-pab-rider="${e(r.id)}" ${r.enough ? '' : 'disabled'} title="${e(r.label)}: +${e(r.dice)} al daño de este ataque (${e(r.cost)})">${e(r.label)} · <span data-no-i18n>+${e(r.dice)}</span> · ${e(r.cost)}</button>`).join('')}</div>` : '';
+  }
+  async useBearDown() {
+    const token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!token?.resolve?.current) return;
+    try {
+      const { summary } = await bearDown(token, Math.min(token.resolve.current, this.bearCount || 1));
+      notify(summary); this.bearCount = 1;
+      setTimeout(() => { if (this.result) this.result = this.readResult(this.result.targetName); this.signature = ''; this.render(); }, 300);
+    } catch (error) { notify(error.message, 'error'); }
+  }
+  prepare(rest) {
+    const token = store.state.tokens.find(t => t.id === this.tokenId), patch = prepareResolve(token, rest);
+    if (!patch) return;
+    const before = store.tableActing; if (store.sessionRole !== 'player') store.tableActing = true;
+    try { store.updateToken(token.id, patch); } finally { store.tableActing = before; }
+    notify(`Prepare (${rest === 'long' ? 'descanso largo' : 'descanso corto'}): Resolve ${patch.resolve.current}/${patch.resolve.max}.`);
+  }
+  async useRider(id) {
+    const rider = this.riders().find(r => r.id === id), dice = window.veilDiceRoller, token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!rider || !dice || !token) return;
+    try {
+      // The table pays the card (Hope / Effort) as when it is played from the hand.
+      if (rider.kind === 'card') await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: rider.cardId, playerName: store.state.userName || '', tokenName: token.name });
+      // Breaking Point ends the state.
+      if (rider.kind === 'state') store.updateToken(token.id, { effectClocks: (token.effectClocks || []).filter(c => c.id !== rider.clockId) });
+      const roll = rollExpression(rider.dice);
+      dice.applyDamageRider({ id: rider.id, label: rider.label, dice: rider.dice, value: roll.total, faces: roll.faces });
+      notify(`${rider.label}: +${roll.total} (${rider.dice} [${roll.faces.join(', ')}]).`);
+      setTimeout(() => { if (this.result) { this.result = this.readResult(this.result.targetName); this.signature = ''; this.render(); } }, 300);
+    } catch (error) { notify(error.message, 'error'); }
   }
   applyDamage() {
     document.getElementById('apply_dmg_to_target_btn')?.click();

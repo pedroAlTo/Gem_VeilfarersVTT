@@ -57,7 +57,8 @@ test('a weapon whose sheet has no Range takes it from the catalog weapon of the 
   assert.equal(weaponRangeBand({ name: 'Slug Pistol' }), 'Close');
   assert.equal(weaponRangeBand({ name: 'Energy Dagger', trait: 'Agility · Melee', range: '' }), 'Melee', 'range written with the Trait');
   assert.equal(rangeCheck({ name: 'Energy Dagger', trait: 'Agility · Melee', range: '' }, 'Extreme').allowed, false);
-  assert.deepEqual(['Sniper Rifle', 'Assault Rifle', 'Combat Shotgun', 'Combat Knife', 'Heavy Revolver'].map(name => weaponRangeBand({ name })), ['Extreme', 'Far', 'Very Close', 'Melee', 'Close']);
+  // The range is never guessed from words in the name (user decision: tags and fields, not word search).
+  assert.deepEqual(['Sniper Rifle', 'Assault Rifle', 'Combat Shotgun', 'Combat Knife', 'Heavy Revolver'].map(name => weaponRangeBand({ name })), ['', '', '', '', '']);
   assert.equal(weaponRangeBand({ name: 'Pistola Cinética Militar', range: 'Far' }), 'Far', 'its own Range wins');
 });
 

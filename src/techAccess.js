@@ -3,6 +3,7 @@
 // and reaches Military (TT2) at level 2 and Experimental (TT3) at level 5 (each class table
 // says so); the "+1 Technology Access Level" advancement raises it. Table rule (user decision,
 // 17 Nov 2026): using anything outside that competence rolls with Disadvantage, always.
+import { tagsFromFeatures, hasTag } from './weaponTags.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { classOf } from './loadoutCards.js';
 import { DRONE_GRADES } from './drones.js';
@@ -40,18 +41,17 @@ const AUGMENT_TYPE = {
 };
 const familyFrom = (table, id) => Object.entries(table).find(([, ids]) => ids.includes(id))?.[0] || '';
 
-// A weapon or armor without a catalog id: read its family from its words.
+// A weapon or armor without a catalog id: its own fields say its family (a `family` field, or a
+// Melee range), never words in its name (user decision: tags and fields, not word search).
+const WEAPON_FAMILIES = ['Melee', 'Pistols', 'Rifles', 'Heavy Weapons'];
 function guessWeaponFamily(item) {
-  const words = lower([item.name, item.features].join(' '));
+  if (WEAPON_FAMILIES.includes(item.family)) return item.family;
   if (lower(item.range) === 'melee') return 'Melee';
-  if (/pistol|bl[aá]ster|revolver|revólver|derringer/.test(words)) return 'Pistols';
-  if (/ametralladora|machine gun|lanzacohetes|rocket|cañ[oó]n|cannon|railgun|heavy|pesad|massive/.test(words)) return 'Heavy Weapons';
-  if (/rifle|carabina|carbine|fusil|sniper|francotirador/.test(words)) return 'Rifles';
   return '';
 }
 function guessArmorWeight(item) {
-  const words = lower([item.name, item.features, item.use].join(' '));
-  if (/very heavy|\bheavy\b|pesad|massive/.test(words)) return 'Heavy';
+  const tags = tagsFromFeatures(item.features);
+  if (tags.some(t => ['heavy', 'very-heavy', 'massive'].includes(t.split(':')[0]))) return 'Heavy';
   const slots = Number(item.armorSlots);
   if (slots >= 7) return 'Heavy';
   if (slots >= 5) return 'Medium';
@@ -116,9 +116,9 @@ export function competence(item, token, data, access = characterAccess(token, da
   const out = reason => ({ ok: false, reason, profile });
   if (profile.rank > access.rank) return out(`${TIER_NAMES[profile.rank] || `Tier ${profile.rank}`}: tu Technology Access es ${access.tierName}.`);
   if (profile.kind === 'weapon' && profile.family && access.weapons !== 'all' && !access.weapons.includes(profile.family)) return out(`${access.className} no está entrenado en ${profile.family}.`);
-  if (profile.kind === 'weapon' && access.noMassive && /massive/i.test(profile.features)) return out(`${access.className} no está entrenado en armas Massive.`);
+  if (profile.kind === 'weapon' && access.noMassive && (hasTag(item, 'massive') || tagsFromFeatures(profile.features).includes('massive'))) return out(`${access.className} no está entrenado en armas Massive.`);
   if (profile.kind === 'armor' && profile.family && access.armor !== 'all' && !access.armor.includes(profile.family)) return out(`${access.className} no está entrenado en armadura ${profile.family}.`);
-  if (profile.kind === 'armor' && access.noHeavyArmor && /heavy/i.test(profile.features)) return out(`${access.className} no está entrenado en armaduras Heavy.`);
+  if (profile.kind === 'armor' && access.noHeavyArmor && tagsFromFeatures(profile.features).some(t => ['heavy', 'very-heavy'].includes(t.split(':')[0]))) return out(`${access.className} no está entrenado en armaduras Heavy.`);
   if (profile.kind === 'augment' && profile.family && access.augments !== 'all' && !access.augments.includes(profile.family)) return out(`${access.className} no está entrenado en aumentos ${profile.family}.`);
   return { ok: true, reason: '', profile };
 }

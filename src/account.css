@@ -24,3 +24,6 @@
 .equip-outside { display: inline-block; margin: 0 4px; padding: 1px 6px; font: 700 9px/1.4 'Chakra Petch', system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #fecaca; background: rgba(127,29,29,.45); border: 1px solid rgba(248,113,113,.5); }
 .equip-mine { margin-top: 6px; }
 .equip-access { font-size: 11px; margin: 2px 0 6px; }
+/* Weapon tags (the rules read these) */
+.equip-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0; }
+.equip-tags i { font: normal 600 10px/1 var(--font-mono, monospace); letter-spacing: .06em; padding: 3px 6px; border: 1px solid rgba(253,230,138,.45); color: #fde68a; background: rgba(42,11,92,.3); }

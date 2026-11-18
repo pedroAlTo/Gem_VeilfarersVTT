@@ -1,8 +1,8 @@
-# VeilFarers VTT · v2.20.1
+# VeilFarers VTT · v2.21.0
 
 A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v2.20.1**. Download package: **VeilFarers_VTT_v2.20.1.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.21.0**. Download package: **VeilFarers_VTT_v2.21.0.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 
@@ -31,6 +31,7 @@ Development happens on the `V2` branch. [HANDOVER_V2.md](HANDOVER_V2.md) records
 - **First-use guide.** At the table, a short checklist for your role (player or Keeper) sits at the top right of the map. Steps tick themselves when you really do them (move your token, roll, play a card, spend Fear…); **Show me** highlights the control a step talks about. It can be minimised, skipped step by step, closed, and reopened or restarted from **Help → First steps** (*See the first steps again* / *Start from scratch*).
 - **Technology Access (v2.15.0).** Gear is filtered first by what the character can use (class, level, Technology Access; the box is ticked by default). Anything used outside that training rolls with Disadvantage (weapon, worn armor and augmentations, the drone). Failure with Fear on an attack suggests a consequence from the weapon. The deck drawer shows every Power, with *Only those I can access* ticked by default; Powers within reach can be added to the Vault.
 - **(V3) Player bar and dice icon.** In player stance an action bar sits above the character: ROLL (the six Traits, one touch) and ATTACK (one button per weapon, then the target on the map), with the attack result and *Apply damage*. The dice are a translucent icon in the top corner of the map; for players it only gives dice.
+- **(V3) Weapon tags, damage riders and Resolve.** Weapons carry canonical tags the rules read (no word search); Combat Surge, The Held Line, the Nirvana first strike and Breaking Point add to an attack's damage; Sleeping characters use Bear Down and Prepare from the Sheet.
 - **(V3) Corebook 12.06 texts.** Powers, Path features, Resolve Moves, Ancestry Gifts and Communities match the Corebook; Path to Nirvana and the Disciplined State use the Integrity Die. The deck also shows Ancestry, Community and class cards (Awakened / Sleeping, by class).
 - **(V3) Effect clocks.** Cards with a duration (Path to Nirvana, Rapid Regeneration…) put a clock beside the token; each Spotlight marks a segment, a touch marks one by hand, and the full sheet edits it.
 - **(V3) 3 + 5 + rest.** In the player's view, the header, map tools and character bar show three controls and a «⋯» menu (five more, then «More…» with the rest).

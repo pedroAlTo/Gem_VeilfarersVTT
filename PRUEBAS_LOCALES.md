@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.20.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.20.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.20.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.20.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.21.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.21.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.21.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.21.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -67,6 +67,9 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.20.1.zip**. Abre **AYUDA
 52. **(V3) Efecto para un aliado.** Selecciona en el mapa a un compañero y juega Rapid Regeneration: el reloj (d4 turnos, +1 HP por foco) aparece en el compañero, y tu mano de cartas sigue a la vista.
 53. **(V3) Mazo completo.** Abre el mazo: Poderes, Ancestry, Community y Clases; en Clases, Awakened/Sleeping y cada clase con sus cartas. Toca una: se abre para leerla (también como Keeper).
 54. **(V3) Foco automático.** En una sala con un jugador: el jugador mueve su token → en la mesa del Keeper el foco pasa a ese personaje. Quita el foco; el jugador ataca a un objetivo → toma el foco al resolverse. Quita el foco; el jugador toca su arma y pulsa Esc → nadie toma el foco. Una Reacción o una tirada normal de Trait no dan el foco.
+55. **(V3) Tags de armas.** Edita un arma: «Tags (reglas)» = «Reliable, Reach». Ataca: «Reliable +1» en el detalle; con Reach ataca a Very Close. Cambia el nombre a «Rifle de francotirador» sin tags de alcance ni campo Alcance: ya no se deduce nada del nombre.
+56. **(V3) Combat Surge y estado.** Un Soldier Awakened (Hope ≥ 2) impacta: en la Ficha sale «Combat Surge · +1d6 · 2 Hope»; púlsalo: paga 2 Hope y el daño sube. Un Vanguard en Path to Nirvana impacta cuerpo a cuerpo: «primer golpe +2d6» se suma solo; «Breaking Point · +Pd6» termina el estado y suma.
+57. **(V3) Resolve.** Un Sleeping con Resolve tira un Trait: Bear Down se activa; elige 2 dados y púlsalo: el total sube y gasta 2 Resolve. «Prepare · lleno» devuelve el Resolve al máximo.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

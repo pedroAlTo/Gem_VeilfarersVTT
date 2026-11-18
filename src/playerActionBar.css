@@ -115,3 +115,12 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .effect-clock-count { font: 12px/1 var(--font-mono, monospace); color: #fde68a; }
 .effect-clock-size { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
 .effect-clock-size input { width: 52px; }
+.pab-riders { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
+.pab-riders .hud-btn { border-color: rgba(253,230,138,.55); color: #fde68a; }
+/* Resolve: Bear Down after a roll, Prepare on a rest */
+.pab-gauges .pab-resolve { flex-wrap: wrap; row-gap: 6px; }
+.pab-resolve-actions { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
+.pab-bear, .pab-prepare { display: inline-flex; align-items: center; gap: 4px; }
+.pab-bear b { font: 600 12px/1 var(--font-mono); color: #edd58a; min-width: 26px; text-align: center; }
+.pab-step { all: unset; cursor: pointer; width: 20px; height: 20px; text-align: center; line-height: 18px; border: 1px solid var(--vx-line-strong); color: #e9d5ff; }
+.pab-step[disabled] { opacity: .35; cursor: not-allowed; }

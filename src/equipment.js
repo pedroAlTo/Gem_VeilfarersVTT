@@ -1,14 +1,17 @@
 import { resolveDamage } from './rulesEngine.js';
+import { tagsFromFeatures, parseTagInput, validTags } from './weaponTags.js';
 
 const text = value => value == null ? '' : String(value);
 export function tokenInventory(token) {
-  if (token.inventory) return structuredClone(token.inventory);
+  // Every weapon carries its tags (older ones get them from their Features list).
+  const tagged = inventory => ({ ...inventory, weapons: (inventory.weapons || []).map(w => (Array.isArray(w.tags) ? w : { ...w, tags: tagsFromFeatures(w.features) })) });
+  if (token.inventory) return tagged(structuredClone(token.inventory));
   const f = token.sourceCharacter?.document?.fields || {};
   const weapons = ['wpri', 'wsec'].filter(p => f[p + '_name']).map(p => {
     const final = (token.path === 'Awakened' && f[p + '_dmg_final_aw']) || f[p + '_dmg_final'];
-    return { id: p, name: text(f[p + '_name']), damage: text(final || f[p + '_dmg']), damageMode: final ? 'final' : 'base', trait: text(f[p + '_trait']), range: text(f[p + '_range']), features: text(f[p + '_feat']), tier: text(f[p + '_tier']) };
+    return { id: p, name: text(f[p + '_name']), damage: text(final || f[p + '_dmg']), damageMode: final ? 'final' : 'base', trait: text(f[p + '_trait']), range: text(f[p + '_range']), features: text(f[p + '_feat']), tier: text(f[p + '_tier']), tags: tagsFromFeatures(f[p + '_tags'] || f[p + '_feat']) };
   });
-  if (!weapons.length && token.isPlayer === false && token.damageExpression) weapons.push({ id: 'main-attack', name: 'Ataque del adversario', damage: token.damageExpression, damageMode: 'final', trait: 'Attack ' + (token.attackModifier ?? 0), range: token.attackRange || '', features: '', tier: '' });
+  if (!weapons.length && token.isPlayer === false && token.damageExpression) weapons.push({ id: 'main-attack', name: 'Ataque del adversario', damage: token.damageExpression, damageMode: 'final', trait: 'Attack ' + (token.attackModifier ?? 0), range: token.attackRange || '', features: '', tier: '', tags: [] });
   const items = Object.keys(f).filter(k => /^eq_\d+_name$/.test(k) && text(f[k]).trim()).sort((a,b) => a.localeCompare(b, undefined, { numeric: true })).map(k => ({ id: k, name: text(f[k]), tier: text(f[k.replace('_name', '_tier')]), quantity: text(f[k.replace('_name', '_qty')]) || '1', use: text(f[k.replace('_name', '_use')]) }));
   for (const [key, name] of [['kit_class', 'Kit de clase'], ['kit_personal', 'Kit personal']]) if (f[key]) items.push({ id: key, name, quantity: '1', tier: '', use: text(f[key]) });
   return { weapons, items };
@@ -21,7 +24,10 @@ export function validateInventory(value) {
     const ids = new Set();
     for (const row of list) {
       const lengths = weapon ? { id:100, name:200, damage:1000, damageMode:5, trait:150, range:150, features:10000, tier:100 } : { id:100, name:200, quantity:20, tier:100, use:10000 };
-      if (!row || typeof row !== 'object' || Object.keys(row).some(k => !(k in lengths))) fail();
+      // Tags: a canonical list (the editor may hand them as "Reliable, Armor Piercing 2").
+      if (weapon && row && typeof row.tags === 'string') row.tags = parseTagInput(row.tags);
+      if (weapon && row && 'tags' in row && !validTags(row.tags)) fail();
+      if (!row || typeof row !== 'object' || Object.keys(row).some(k => !(k in lengths) && !(weapon && k === 'tags'))) fail();
       for (const [key, max] of Object.entries(lengths)) if (typeof row[key] !== 'string' || row[key].length > max) fail();
       if (!row.id.trim() || ids.has(row.id) || !row.name.trim()) fail(); ids.add(row.id);
       if (weapon ? !['base', 'final'].includes(row.damageMode) : !/^\d{1,6}$/.test(row.quantity)) fail();
@@ -79,7 +85,8 @@ export function resolveDamageExpression(expression, options = {}) {
     const part = resolveDamage({ ...options, diceCount: pool.count, diceSides: pool.sides, flatModifier: 0, mountRating: 1 });
     rolls.push(...part.rolls); diceTotal += part.rawDamage;
   }
-  const flatModifier = parsed.flat + honed;
+  // `bonus`: what is added to this damage besides the formula (Bear Down, Combat Surge…).
+  const flatModifier = parsed.flat + honed + (Number.isInteger(options.bonus) ? options.bonus : 0);
   const result = resolveDamage({ ...options, diceCount: 0, flatModifier: diceTotal + flatModifier, mountRating: 1 });
   return { ...result, rolls, flatModifier, formula: expression, pools };
 }

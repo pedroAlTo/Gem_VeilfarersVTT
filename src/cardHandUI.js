@@ -6,6 +6,7 @@ import { network } from './networkManager.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
 import { cardData, loadCardData } from './cardData.js';
+import { bearDown } from './bearDown.js';
 import { characterCards, keeperCards, costLabel, CARD_KINDS, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups } from './loadoutCards.js';
 
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
@@ -275,16 +276,7 @@ export class CardHand {
       if (card.kind === 'beardown') {
         // After a damage roll that is still open, Bear Down adds to the damage; otherwise to the
         // latest check or attack.
-        const damage = window.veilDiceRoller?.pendingDamageFor?.(token.id);
-        const result = await network.requestAction({ type: 'RESOLVE', actorId: token.id, count: Math.max(1, Number(resolveSpent) || 1), visibility: window.veilDiceRoller?.rollVisibility() || 'table', ...(damage ? { target: 'damage' } : {}) });
-        const rolled = `Bear Down ${result.bearDown.count}${token.resolve?.dieType || 'd4'} [${result.bearDown.dice.join(', ')}] = +${result.bearDown.bonus}`;
-        if (damage) {
-          const updated = await window.veilDiceRoller.applyBearDownDamage(result.bearDown.bonus);
-          summary = `${rolled} al daño: ${updated?.raw ?? '?'} (${updated?.severity ?? ''}).`;
-        } else {
-          await window.veilDiceRoller?.applyBearDown(result);
-          summary = `${rolled}: total ${result.total} vs DC ${result.dc}. ${result.outcomeTitle}.`;
-        }
+        ({ summary } = await bearDown(token, resolveSpent));
       } else {
         const result = await network.requestAction({ type: 'EFFORT', actorId: token.id, move: card.move, burnout });
         summary = `${card.name} · ${result?.log?.details || ''}`.trim();

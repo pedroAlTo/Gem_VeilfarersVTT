@@ -2,6 +2,7 @@
 // Canonical Equipment, Augmentations, Weapons, Alien Species Gear & Drone Modules Catalog
 // Direct extraction from Veilfarers Corebook 12.06 and Rust & Steel.
 
+import { tagsFromFeatures } from './weaponTags.js';
 import { newId } from './persistence.js';
 
 export const EQUIPMENT_SOURCES = [
@@ -1543,6 +1544,7 @@ export function equipCatalogItem(inventory, catalogItem) {
       trait: catalogItem.trait || 'Agility',
       range: catalogItem.range || 'Close',
       features: catalogItem.features || '',
+      tags: Array.isArray(catalogItem.tags) ? catalogItem.tags : tagsFromFeatures(catalogItem.features),
       tier: catalogItem.tier || 'Tier 1'
     });
   } else {
