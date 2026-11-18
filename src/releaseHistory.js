@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.19.0', date: '2026-11-18', title: 'V3 · Relojes de efecto: Path to Nirvana, Rapid Regeneration y otros efectos con duración',
+    sections: [
+      { title: 'Relojes de efecto', items: [
+        'Al usar una carta cuyo texto fija una duración, el personaje recibe un reloj de efecto: Path to Nirvana («Spotlights equal to your Proficiency») crea un reloj de tantos segmentos como su Proficiency; Rapid Regeneration («Roll 1d4… number of additional turns») tira el d4 y crea un reloj de ese número. También se reconocen duraciones fijas («for 3 turns»).',
+        'Cada vez que el personaje gana el foco se marca un segmento; al completarse, el efecto termina con un aviso y una entrada en el registro. Rapid Regeneration cura +1 HP en cada uno de esos turnos.',
+        'El reloj se ve junto al token (a la izquierda; las condiciones van a la derecha) con los segmentos que quedan: tocarlo marca un segmento. En la Ficha del jugador aparece en «Efectos». En la ficha completa se edita: marcar, desmarcar, cambiar el número de segmentos o terminar el efecto.',
+        'Volver a usar el mismo efecto reinicia su reloj.',
+      ] },
+    ],
+  },
+  {
     version: '2.18.3', date: '2026-11-18', title: 'V3 · El segundo toque en el objetivo ya ataca siempre',
     sections: [
       { title: 'Corregido', items: [

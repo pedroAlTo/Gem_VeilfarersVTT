@@ -1,5 +1,6 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
+import { cardDuration, newClock, addClock } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { rollAdversaryCheck } from './attackFlow.js';
 import { finite } from './validation.js';
@@ -68,7 +69,11 @@ function resolveGameAction(action, store) {
     const card = characterCards(actor, data).find(c => c.id === action.cardId);
     if (!card) throw new Error('Esa carta ya no está en la mano de este personaje.');
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
-    apply(resources(result.token));
+    // A card whose text sets a duration starts an effect clock on the character (Path to
+    // Nirvana: Proficiency Spotlights; Rapid Regeneration: 1d4 turns).
+    const duration = result.failed ? null : cardDuration(card, actor);
+    if (duration) result.notes.push(`Reloj «${duration.name}»: ${duration.note} Avanza un segmento cada vez que ${actor.name} gana el foco.`);
+    apply({ ...resources(result.token), ...(duration ? { effectClocks: addClock(actor.effectClocks, newClock(duration, { source: actor.name })) } : {}) });
     if (result.fear) store.addFear(result.fear);
     const details = [result.summary, ...result.notes].join(' ');
     const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };

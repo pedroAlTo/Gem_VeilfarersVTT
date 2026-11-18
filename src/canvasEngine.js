@@ -19,6 +19,7 @@ import { pointInWater } from './waterGeometry.js';
 import { notify, confirmAction } from './ui.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { rangeBandFor, gapBandFor, tokenGapSquares, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
+import { drawEffectClocks } from './effectClocks.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -3840,6 +3841,7 @@ export class CanvasEngine {
       // Vitals & Nameplate
       this.renderTokenVitals(ctx, tok, radius);
       drawTokenConditions(ctx, tok, radius, this.zoom);
+      drawEffectClocks(ctx, tok, radius, this.zoom);
       if (this.cursorWorld) {
         const hoveredCond = getHoveredCondition(tok, this.cursorWorld, radius, this.zoom);
         if (hoveredCond) {

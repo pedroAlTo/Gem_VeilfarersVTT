@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.18.3.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.18.3**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.18.3** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.18.3.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.19.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.19.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.19.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.19.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -62,6 +62,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.18.3.zip**. Abre **AYUDA
 47. **(V3) Login sin ventanas encima.** Abre un enlace de invitación sin haber iniciado sesión: inicia sesión; la ventana de Sesiones aparece una sola vez y la dirección ya no lleva `roomInvite`. Inicia sesión desde Cuenta: se cierra y sale «Sesión iniciada» (no se abre el archivo personal). Recarga estando en una sala: vas directo a la mesa con «Volviendo a tu sala»; Cancelar te deja en la pantalla de inicio.
 48. **(V3) Invitación antes de iniciar sesión.** Abre el enlace de invitación sin sesión: solo se ve la pantalla de acceso, con el código ya escrito en «Unirse». Inicia sesión: entras directamente en la sala como jugador, sin ventana de Sesiones. Para probarlo sin el proyecto real: `npm run dev:emulators` (FIREBASE_SETUP.md).
 49. **(V3) Doble toque rápido al atacar.** En una sala, como Keeper en vista de jugador o como jugador: toca tu arma y luego el objetivo dos veces muy seguidas. El ataque se hace y no aparece «Selecciona uno de tus tokens asignados». Selecciona un enemigo en el mapa: la Ficha sigue mostrando tu personaje.
+50. **(V3) Relojes de efecto.** Con una Vanguard Awakened (Proficiency 2, Hope ≥ 3) usa la carta Path to Nirvana: se pagan 3 Hope y junto al token aparece un reloj de 2 segmentos. Dale el foco: queda 1. Toca el reloj del token: termina con el aviso «Path to Nirvana termina…». Con Rapid Regeneration el reloj dura lo que salga en el d4 y cada foco cura +1 HP. En la Ficha se ve en «Efectos»; en la ficha completa se marca, desmarca, cambia de tamaño o se termina.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

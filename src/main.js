@@ -101,7 +101,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.veilTokenHUD = new TokenHUD(quickbarContainer);
   // 4b. The card hand: the selected character's Loadout, beside its stats
   window.veilCardHand = new CardHand(quickbarContainer);
-  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(document.getElementById('tab_pane_sheet')); import('./groupMenus.js').then(({ mountPlayerGroups }) => { window.veilGroupMenus = mountPlayerGroups(); }); }).catch(error => console.warn('Action bar unavailable:', error));
+  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(document.getElementById('tab_pane_sheet')); import('./groupMenus.js').then(({ mountPlayerGroups }) => { window.veilGroupMenus = mountPlayerGroups(); }); import('./effectClockRuntime.js').then(({ startEffectClocks }) => startEffectClocks()); }).catch(error => console.warn('Action bar unavailable:', error));
   window.veilCardFeed = new CardFeed(quickbarContainer.parentElement);
 
   // 5. Initialize Tactical Layers HUD

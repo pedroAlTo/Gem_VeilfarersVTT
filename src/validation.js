@@ -1,4 +1,5 @@
 import { validateDroneState } from './drones.js';
+import { validEffectClocks } from './effectClocks.js';
 import { validateDrawing } from './freehand.js';
 import { validateEnvironment, validateBoss } from './encounterRules.js';
 import { validateInventory } from './equipment.js';
@@ -160,6 +161,7 @@ export function validTokenPatch(p) {
           'conditions',
           'inventory',
           'hasSpotlight',
+          'effectClocks',
         ].includes(k)
     )
   )
@@ -178,6 +180,7 @@ export function validTokenPatch(p) {
   )
     return false;
   if ('inventory' in p) { try { validateInventory(p.inventory); } catch { return false; } }
+  if ('effectClocks' in p && !validEffectClocks(p.effectClocks)) return false;
   if (
     'effortTrack' in p &&
     (!Array.isArray(p.effortTrack) ||

@@ -1289,6 +1289,12 @@ export const PAIRS = [
   ["Menos", "Less"],
   // Simpler sign-in (v2.18.1)
   ["Sesión iniciada.", "Signed in."],
+  // Effect clocks (v2.19.0)
+  ["Efectos con duración", "Effects with a duration"],
+  ["Segmentos", "Segments"],
+  ["Terminar", "End"],
+  ["Ese reloj es de un personaje que no controlas.", "That clock belongs to a character you do not control."],
+  ["No puedes cambiar los efectos de este personaje.", "You cannot change this character’s effects."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1397,4 +1403,8 @@ export const PATTERNS = [
   ["Más opciones · {_a}", "More options · {_a}"],
   ["Más opciones de {_a}", "More options for {_a}"],
   ["Sesión iniciada como {_a}.", "Signed in as {_a}."],
+  ["«{_a}» termina para {_b}.", "«{_a}» ends for {_b}."],
+  ["«{_a}» ({_b}): quedan {c} de {d}.", "«{_a}» ({_b}): {c} of {d} left."],
+  ["Reloj «{_a}»: {_b} Avanza un segmento cada vez que {_c} gana el foco.", "Clock «{_a}»: {_b} One segment is marked each time {_c} gains the Spotlight."],
+  ["Fin de {_a}", "End of {_a}"],
 ];

@@ -17,6 +17,7 @@ import { statGaugeHTML } from './tokenVitals.js';
 import { normalizeConditions, conditionDefinition } from './conditions.js';
 import { distanceInfo, rangeCheck, netEdge, weaponRangeBand, weaponAttackBonus } from './attackFlow.js';
 import { damageTypeOf, penetrationFor } from './rulesEngine.js';
+import { clockPieHTML } from './effectClocks.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -87,6 +88,7 @@ export function sheetStats(token, armorName = '') {
     path: sleeping ? { label: 'EFFORT', current: token.effort ?? 0, max: token.effortMax ?? 6 } : { label: 'HOPE', current: token.hope ?? 0, max: token.hopeMax ?? 6 },
     resolve: sleeping ? { current: token.resolve?.current ?? 0, max: token.resolve?.max ?? 0, die: token.resolve?.dieType || 'd4' } : null,
     others,
+    effects: (token.effectClocks || []).map(c => ({ id: c.id, name: c.name, segments: c.segments, filled: c.filled })),
   };
 }
 
@@ -215,6 +217,7 @@ export class PlayerActionBar {
       <div class="pab-armor"><span>Armadura</span><b>${e(st.armor)}</b></div>
       <div class="pab-gauges">${statGaugeHTML('HP', st.hp.current, st.hp.max, 'hp')}${statGaugeHTML('STRESS', st.stress.current, st.stress.max, 'stress')}${statGaugeHTML(st.path.label, st.path.current, st.path.max, 'path')}
         ${st.resolve ? this.resolveHTML(st.resolve) : ''}</div>
+      ${st.effects.length ? `<div class="pab-effects"><span>Efectos</span>${st.effects.map(c => `<i title="${e(c.name)}: ${c.filled} de ${c.segments} segmentos marcados">${clockPieHTML(c, 18)}<b data-no-i18n>${e(c.name)}</b><small>${c.segments - c.filled}/${c.segments}</small></i>`).join('')}</div>` : ''}
       ${st.others.length ? `<div class="pab-others"><span>Otros</span>${st.others.map(o => `<i>${e(o)}</i>`).join('')}</div>` : ''}
     </div>`;
   }

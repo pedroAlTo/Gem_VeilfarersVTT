@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.18.3**.
-Paquete: `VeilFarers_VTT_v2.18.3.zip`.
+Versión actual del VTT: **v2.19.0**.
+Paquete: `VeilFarers_VTT_v2.19.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.19.0] — 2026-11-18
+
+V3 · Relojes de efecto: Path to Nirvana, Rapid Regeneration y otros efectos con duración
+
+### Relojes de efecto
+
+- Al usar una carta cuyo texto fija una duración, el personaje recibe un reloj de efecto: Path to Nirvana («Spotlights equal to your Proficiency») crea un reloj de tantos segmentos como su Proficiency; Rapid Regeneration («Roll 1d4… number of additional turns») tira el d4 y crea un reloj de ese número. También se reconocen duraciones fijas («for 3 turns»).
+- Cada vez que el personaje gana el foco se marca un segmento; al completarse, el efecto termina con un aviso y una entrada en el registro. Rapid Regeneration cura +1 HP en cada uno de esos turnos.
+- El reloj se ve junto al token (a la izquierda; las condiciones van a la derecha) con los segmentos que quedan: tocarlo marca un segmento. En la Ficha del jugador aparece en «Efectos». En la ficha completa se edita: marcar, desmarcar, cambiar el número de segmentos o terminar el efecto.
+- Volver a usar el mismo efecto reinicia su reloj.
 
 ## [2.18.3] — 2026-11-18
 
