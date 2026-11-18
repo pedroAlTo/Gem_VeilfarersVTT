@@ -53,3 +53,15 @@ test('Long Rest: full HP / Stress / Armor; Decompress ends Long Bruise; Prepare 
   assert.deepEqual(patches.get('e').armor.cut, { long: 0, repairAll: 0, downtime: 1 });
   assert.match(lines[0], /Recover \+ Decompress/);
 });
+
+test('rest rolls: the faces thrown by the player are used, and a move keeps its first roll', () => {
+  let rest = newRest('short', [pc('a')], 'm1', 'r');
+  rest = chooseMoves(rest, 'a', ['tend', 'prepare'], { tend: 4 });
+  rest = chooseMoves(rest, 'a', ['tend', 'clear'], { tend: 1, clear: 2 });
+  assert.deepEqual(rest.rolls.a, { tend: 4, clear: 2 }, 'changing the choice does not roll Tend Wounds again');
+  assert.ok(validRest(rest));
+  assert.ok(!validRest({ ...rest, rolls: { a: { tend: 9 } } }), 'a d4 shows 1–4');
+  const { lines } = resolveRest(rest, [pc('a')], () => 1);
+  assert.match(lines[0], /Tend Wounds 1d4 \[4\] \+ 1/);
+  assert.match(lines[0], /Clear Stress 1d4 \[2\] \+ 1/);
+});

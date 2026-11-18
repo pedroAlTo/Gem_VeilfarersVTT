@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.22.0**.
-Paquete: `VeilFarers_VTT_v2.22.0.zip`.
+Versión actual del VTT: **v2.23.0**.
+Paquete: `VeilFarers_VTT_v2.23.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.23.0] — 2026-11-18
+
+V3 · Dados 3D en todas las tiradas y el ataque termina al aplicar el daño
+
+### Dados 3D
+
+- Las tiradas que la mesa hacía por dentro ahora se lanzan como dados 3D en la pantalla de quien tira, y su resultado aparece para todos: los 1d4 del descanso corto (Tend Wounds, Clear Stress, Repair Armor), Bear Down, Combat Surge, The Held Line, el primer golpe de Nirvana, Breaking Point, la duración tirada de una carta (Rapid Regeneration…) y el dado de las cartas del Keeper.
+- La mesa aplica las caras que muestran los dados. En un descanso, cambiar la elección no vuelve a tirar un movimiento ya tirado.
+
+### Ataque
+
+- Al aplicar el daño, el ataque termina: tras un instante para leer «Daño aplicado», se cierra el resultado de la Ficha, se quita la marca del objetivo y se deseleccionan los tokens.
 
 ## [2.22.0] — 2026-11-18
 

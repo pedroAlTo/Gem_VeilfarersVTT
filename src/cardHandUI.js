@@ -7,6 +7,8 @@ import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
 import { cardData, loadCardData } from './cardData.js';
 import { bearDown } from './bearDown.js';
+import { throwDice } from './tableDice.js';
+import { durationDice } from './effectClocks.js';
 import { characterCards, keeperCards, costLabel, CARD_KINDS, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups } from './loadoutCards.js';
 
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
@@ -253,7 +255,11 @@ export class CardHand {
       // (the marked target, or the ally selected on the map: touch your companion, then play).
       const picked = [store.state.targetTokenId, store.state.selectedTokenId].find(id => id && id !== token.id && store.state.tokens.some(t => t.id === id && t.isPlayer !== false));
       const targetId = picked || undefined;
-      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, resolveSpent, playerName, tokenName: token.name, ...(targetId ? { targetId } : {}) });
+      // A duration set by a die (Rapid Regeneration: 1d4 turns) is thrown here, as 3D dice.
+      const dd = durationDice(card);
+      const durationFaces = dd ? await throwDice([{ qty: dd.qty, sides: dd.sides, role: 'Duración' }], { label: `${card.name} · duración`, actor: token,
+        describe: v => ({ outcome: `${v.reduce((a, b) => a + b, 0)} turnos`, modifiers: `${dd.qty}d${dd.sides} [${v.join(', ')}]` }) }) : null;
+      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, resolveSpent, playerName, tokenName: token.name, ...(targetId ? { targetId } : {}), ...(durationFaces ? { durationFaces } : {}) });
       const detail = [result.summary, ...(result.notes || [])].join(' ');
       window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: result.failed ? 'NO SE MANIFIESTA' : result.outcomeTitle, modifiers: detail, details: detail });
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
@@ -292,7 +298,7 @@ export class CardHand {
 
   // The Keeper plays at their own table: Fear is spent there and the table is told, unless the
   // dice panel is set to secret rolls, in which case only the Keeper's log keeps it.
-  playKeeper(card, point = null) {
+  async playKeeper(card, point = null) {
     if (!keeperView()) return false;
     const fear = store.state.fear || 0, cost = card.cost.fear || 0;
     if (fear < cost) { notify(`No hay Fear suficiente: hacen falta ${cost} y quedan ${fear}.`, 'error'); return false; }
@@ -303,7 +309,8 @@ export class CardHand {
       if (store.updateToken(target.id, { hasSpotlight: true, spotlight: { ...(target.spotlight || {}), enabled: true } }) === false) return false;
     } else if (cost && !store.spendFear(cost, card.actorName ? `${card.actorName}: ${card.name}` : card.name)) { notify('No se pudo gastar el Fear.', 'error'); return false; }
     network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
-    const roll = card.die ? Math.floor(Math.random() * card.die) + 1 : null;
+    const secretRoll = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
+    const roll = card.die ? (await throwDice([{ qty: 1, sides: card.die, role: card.name }], { label: card.name, actor: { name: 'Keeper' }, secret: secretRoll }))[0] : null;
     const who = card.actorName || (card.spotlight && target?.isPlayer === false ? target.name : 'Keeper');
     const summary = `${who} · ${card.name}${cost ? ` · ${cost} Fear (quedan ${store.state.fear})` : ''}${roll ? ` · d${card.die} [${roll}]` : ''}`;
     const secret = window.veilDiceRoller?.rollVisibility?.() === 'keeper';

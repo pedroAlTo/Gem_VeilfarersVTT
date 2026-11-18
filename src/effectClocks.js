@@ -24,6 +24,20 @@ export function durationSentences(text) {
 // Whether the card's effect may land on someone else (then a marked ally receives the clock).
 export const helpsOthers = card => /\byou or an ally\b|\ban ally\b|\banother creature\b|\bthe target recovers\b|\ballies\b/i.test(String(card?.text ?? ''));
 
+// A duration set by a die («Roll 1d4: the result is the number of additional turns»): the match
+// (count, sides), or null. The one who plays the card throws it (durationDice).
+function durationRoll(text) {
+  return text.match(/roll (\d*)d(\d+)\b[^.]*?(?:number of (?:additional )?(?:turns|Spotlights|rounds)|\. [^.]*next that many Spotlights)/i)
+    || text.match(/roll (\d*)d(\d+) once\.[^.]*next that many Spotlights/i);
+}
+export function durationDice(card) {
+  const text = String(card?.text ?? '').replace(/\*+/g, '');
+  if (/Integrity Die/i.test(text) && /highest face by Tier/i.test(text)) return null;
+  if (/Spotlights? equal to (?:your )?Proficiency/i.test(text)) return null;
+  const m = durationRoll(text);
+  return m ? { qty: clamp(m[1] || 1, 1, 4), sides: clamp(m[2], 2, 20) } : null;
+}
+
 // The duration a card's text sets, or null. `token` gives the level and the Proficiency.
 export function cardDuration(card, token = {}, roll = rollDie) {
   const text = String(card?.text ?? '').replace(/\*+/g, '');
@@ -44,8 +58,7 @@ export function cardDuration(card, token = {}, roll = rollDie) {
   }
   // A die sets it: "Roll 1d4: the result is the number of additional turns", "roll 1d4 once …
   // each of that target's next that many Spotlights".
-  const rolled = text.match(/roll (\d*)d(\d+)\b[^.]*?(?:number of (?:additional )?(?:turns|Spotlights|rounds)|\. [^.]*next that many Spotlights)/i)
-    || text.match(/roll (\d*)d(\d+) once\.[^.]*next that many Spotlights/i);
+  const rolled = durationRoll(text);
   if (rolled) {
     const n = clamp(rolled[1] || 1, 1, 4), sides = clamp(rolled[2], 2, 20);
     const faces = Array.from({ length: n }, () => roll(sides)), total = clamp(faces.reduce((a, b) => a + b, 0), 1, MAX_SEGMENTS);

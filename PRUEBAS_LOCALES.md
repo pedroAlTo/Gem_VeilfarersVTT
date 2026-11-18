@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.22.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.22.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.22.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.22.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.23.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.23.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.23.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.23.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -73,6 +73,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.22.0.zip**. Abre **AYUDA
 58. **(V3) Luz que sigue al token.** Dale luz a un token y arrástralo: el halo va con él mientras lo mueves y al soltarlo; el otro perfil lo ve deslizarse con la luz, y con niebla la zona iluminada avanza con el token (no salta antes al destino). Como jugador con niebla, la zona visible no cambia hasta soltar.
 59. **(V3) Descanso.** Keeper: pulsa la luna (arriba a la izquierda). Los dos perfiles ven la partida en pausa; el jugador no puede mover su token. El Keeper elige por los personajes sin jugador; el jugador ve «✓» en ellos y «Faltan: …» con el suyo. El jugador elige dos movimientos y confirma: se aplica a todos y el panel se cierra. Repite con el sol (largo): HP, Stress y armadura llenos según lo elegido. Prueba también «Cancelar descanso» y «Aplicar ya».
 60. **(V3) Armadura de enemigos.** Ataca a un adversario con armadura usando un arma con el tag `armor-piercing:2`: el resultado avisa del recorte; al aplicar el daño, sus Armor Slots máximos bajan 2. Tras un descanso largo, vuelven. Contra un personaje jugador sigue siendo solo un recordatorio.
+61. **(V3) Dados 3D y fin del ataque.** Con los dados 3D activos, en un descanso corto elige Tend Wounds + Clear Stress: ruedan dos d4 y el registro final usa esas caras. Prueba también Bear Down y Combat Surge. Ataca y aplica el daño: en un segundo el resultado se cierra y no queda ningún token seleccionado ni marcado.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

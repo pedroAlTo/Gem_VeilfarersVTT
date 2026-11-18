@@ -5,6 +5,7 @@ import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine
 import { rollAdversaryCheck } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
+import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
 import { handoffControl } from './drones.js';
@@ -55,7 +56,7 @@ function resolveGameAction(action, store) {
   if (action.type === 'REST_CHOICE') {
     const rest = store.state.rest;
     if (!rest || (action.restId && action.restId !== rest.id)) throw new Error('Ese descanso ya ha terminado.');
-    const next = chooseMoves(rest, String(action.actorId ?? ''), action.moves);
+    const next = chooseMoves(rest, String(action.actorId ?? ''), action.moves, action.rolls);
     if (!restComplete(next, store.state.tokens)) { store.update({ rest: next }); return { rest: next }; }
     return finishRest(store, next);
   }
@@ -111,7 +112,7 @@ function resolveGameAction(action, store) {
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
     // A card whose text sets a duration starts an effect clock on the character (Path to
     // Nirvana: Proficiency Spotlights; Rapid Regeneration: 1d4 turns).
-    const duration = result.failed ? null : cardDuration(card, actor);
+    const duration = result.failed ? null : cardDuration(card, actor, facesRoller(Array.isArray(action.durationFaces) ? action.durationFaces.slice(0, 4) : []));
     // An effect that may help someone else goes to the ally the player marked (a player
     // character on the same scene), otherwise to the one who plays the card.
     const marked = action.targetId && action.targetId !== actor.id ? store.state.tokens.find(t => t.id === action.targetId) : null;
@@ -242,7 +243,7 @@ function resolveGameAction(action, store) {
     if (actor.path !== 'Sleeping' || (actor.resolve?.current || 0) < 1) throw new Error('No Resolve available.');
     const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
     const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
-      dice = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
+      dice = validFaces(action.faces, count, sides) ? action.faces.slice() : Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
       bonus = dice.reduce((n, v) => n + v, 0);
     store.updateToken(actor.id, { resolve: { ...actor.resolve, current: actor.resolve.current - count } });
     const log = {
@@ -261,7 +262,7 @@ function resolveGameAction(action, store) {
     // Bear Down spends any number of Resolve Dice and adds their total (Corebook ch. 7).
     const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
     const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
-      dice = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
+      dice = validFaces(action.faces, count, sides) ? action.faces.slice() : Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides)),
       bonus = dice.reduce((n, v) => n + v, 0);
     store.updateToken(actor.id, {
       resolve: { ...actor.resolve, current: actor.resolve.current - count },

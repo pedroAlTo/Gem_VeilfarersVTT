@@ -48,18 +48,28 @@ export function validRest(r) {
     && typeof r.mapId === 'string' && Array.isArray(r.participants) && r.participants.length >= 1 && r.participants.length <= 40
     && r.participants.every(id => typeof id === 'string' && id.length <= 200)
     && r.choices && typeof r.choices === 'object' && !Array.isArray(r.choices)
-    && Object.entries(r.choices).every(([id, moves]) => r.participants.includes(id) && validMoves(r.kind, moves));
+    && Object.entries(r.choices).every(([id, moves]) => r.participants.includes(id) && validMoves(r.kind, moves))
+    && (r.rolls === undefined || (r.rolls && typeof r.rolls === 'object' && Object.entries(r.rolls).every(([id, rolls]) => r.participants.includes(id) && validRolls(rolls))));
 }
+
+// The Short Rest moves that roll 1d4 (+ Tier). The one who chooses throws the dice.
+export const ROLLED_MOVES = ['tend', 'clear', 'repair'];
+export const rolledMoves = (kind, moves) => (kind === 'short' ? (moves || []).filter(m => ROLLED_MOVES.includes(m)) : []);
+const validRolls = rolls => rolls == null || (typeof rolls === 'object' && !Array.isArray(rolls) && Object.entries(rolls).every(([m, v]) => ROLLED_MOVES.includes(m) && Number.isInteger(v) && v >= 1 && v <= 4));
 
 // Two different moves of that rest.
 export const validMoves = (kind, moves) => Array.isArray(moves) && moves.length === 2 && moves[0] !== moves[1]
   && moves.every(m => REST_MOVES[kind]?.some(x => x.id === m));
 
-export function chooseMoves(rest, tokenId, moves) {
+// `rolls`: the d4 faces the player threw for the moves that roll ({ tend: 3 }). A move rolled
+// once keeps its first face: changing the choice does not roll it again.
+export function chooseMoves(rest, tokenId, moves, rolls = null) {
   if (!rest) throw new Error('No hay ningún descanso en curso.');
   if (!rest.participants.includes(tokenId)) throw new Error('Este personaje no participa en el descanso.');
   if (!validMoves(rest.kind, moves)) throw new Error('Elige dos movimientos distintos del descanso.');
-  return { ...rest, choices: { ...rest.choices, [tokenId]: moves.slice() } };
+  const before = rest.rolls?.[tokenId] || {}, kept = { ...before };
+  if (validRolls(rolls)) for (const m of rolledMoves(rest.kind, moves)) if (kept[m] == null && rolls?.[m] != null) kept[m] = rolls[m];
+  return { ...rest, choices: { ...rest.choices, [tokenId]: moves.slice() }, ...(Object.keys(kept).length ? { rolls: { ...(rest.rolls || {}), [tokenId]: kept } } : {}) };
 }
 export const restPending = (rest, tokens = []) => (rest?.participants || []).filter(id => !rest.choices?.[id] && tokens.some(t => t.id === id));
 export const restComplete = (rest, tokens = []) => !!rest && restPending(rest, tokens).length === 0;
@@ -68,14 +78,17 @@ const rollD4 = () => Math.floor(Math.random() * 4) + 1;
 const moveName = (kind, id) => REST_MOVES[kind].find(m => m.id === id)?.name || id;
 
 // One character's two moves → the patch for its token and what happened, in words.
+// roll(move) gives the d4 of a move that rolls.
 export function restPatch(token, kind, moves, roll = rollD4) {
   const tier = tierOf(token.level);
   const patch = {}, said = [];
-  const amount = () => { const d = roll(); return { d, n: d + tier }; };
+  let current = '';
+  const amount = () => { const d = roll(current); return { d, n: d + tier }; };
   let armor = token.armor ? { ...token.armor } : null;
   // A Long Rest ends the cuts that last «until the next Long Rest» (Armor Piercing).
   if (kind === 'long' && armor?.cut) armor = restoreArmorCut(armor, { long: true, repairAll: moves.includes('repairAll') });
   for (const move of moves) {
+    current = move;
     if (move === 'tend' && token.hp) {
       const { d, n } = amount(), current = Math.min(token.hp.max, token.hp.current + n);
       patch.hp = { ...token.hp, current }; said.push(`Tend Wounds 1d4 [${d}] + ${tier}: +${current - token.hp.current} HP (${current}/${token.hp.max})`);
@@ -122,7 +135,8 @@ export function resolveRest(rest, tokens, roll = rollD4) {
   for (const id of rest.participants) {
     const token = tokens.find(t => t.id === id), moves = rest.choices[id];
     if (!token || !moves) continue;
-    const { patch, summary } = restPatch(token, rest.kind, moves, roll);
+    const thrown = rest.rolls?.[id] || {};
+    const { patch, summary } = restPatch(token, rest.kind, moves, move => thrown[move] ?? roll(move));
     patches.set(id, patch); lines.push(summary);
   }
   if (rest.kind === 'long') {

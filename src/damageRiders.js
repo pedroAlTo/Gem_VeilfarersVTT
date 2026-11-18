@@ -6,6 +6,7 @@
 //   attack against an enemy during the state deals +2d6 (applied by itself); Breaking Point ends
 //   the state for a closing strike of +(Proficiency)d6, added once, never doubled on a Critical.
 import { weaponRangeBand } from './attackFlow.js';
+import { throwDice } from './tableDice.js';
 
 const lower = v => String(v ?? '').trim().toLowerCase();
 export const CARD_RIDERS = [
@@ -19,6 +20,15 @@ export function rollExpression(expr, roll = sides => Math.floor(Math.random() * 
   const m = String(expr).match(/^(\d+)d(\d+)$/i);
   if (!m) return { total: 0, faces: [] };
   const faces = Array.from({ length: Math.min(20, Number(m[1])) }, () => roll(Number(m[2])));
+  return { total: faces.reduce((a, b) => a + b, 0), faces };
+}
+
+// The same, thrown as 3D dice (the result card shows it to the table).
+export async function throwExpression(expr, label, actor = null) {
+  const m = String(expr).match(/^(\d+)d(\d+)$/i);
+  if (!m) return { total: 0, faces: [] };
+  const faces = await throwDice([{ qty: Math.min(20, Number(m[1])), sides: Number(m[2]), role: 'Damage' }], { label, actor,
+    describe: v => ({ outcome: `+${v.reduce((a, b) => a + b, 0)} daño`, modifiers: `${expr} [${v.join(', ')}]` }) });
   return { total: faces.reduce((a, b) => a + b, 0), faces };
 }
 

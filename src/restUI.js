@@ -5,7 +5,9 @@
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { notify, sanitizeHTML, escapeHTML as e } from './ui.js';
-import { REST_MOVES, REST_NAMES, restPending } from './rest.js';
+import { REST_MOVES, REST_NAMES, restPending, rolledMoves } from './rest.js';
+import { throwDice } from './tableDice.js';
+import { tierOf } from './effectClocks.js';
 import './restUI.css';
 
 export const MOON_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.5 3.2a8.6 8.6 0 1 0 5.3 13.4A7.2 7.2 0 0 1 15.5 3.2z"/></svg>';
@@ -62,6 +64,26 @@ function overlayHTML(rest) {
     </footer></div>`;
 }
 
+// The moves that roll (Tend Wounds, Clear Stress, Repair Armor) throw their 1d4 here, as 3D dice;
+// a move already rolled in this rest keeps its face.
+async function confirmChoice(rest, id, moves) {
+  if (busy) return;
+  const token = store.state.tokens.find(x => x.id === id);
+  const toRoll = rolledMoves(rest.kind, moves).filter(m => rest.rolls?.[id]?.[m] == null);
+  let rolls = null;
+  if (toRoll.length && token) {
+    const tier = tierOf(token.level), names = toRoll.map(m => REST_MOVES[rest.kind].find(x => x.id === m)?.name || m);
+    busy = true; // while the dice roll, a second click does nothing
+    let faces;
+    try { faces = await throwDice(toRoll.map((m, i) => ({ qty: 1, sides: 4, role: names[i] })), {
+      label: `${REST_NAMES[rest.kind]} · ${token.name}`, actor: token, secret: false,
+      describe: values => ({ total: values.reduce((a, b) => a + b, 0) + tier * values.length, outcome: names.map((n, i) => `${n} ${values[i] + tier}`).join(' · '), modifiers: names.map((n, i) => `${n}: 1d4 [${values[i]}] + Tier ${tier}`).join(' · ') }),
+    }); } finally { busy = false; }
+    rolls = Object.fromEntries(toRoll.map((m, i) => [m, faces[i]]));
+  }
+  return send({ type: 'REST_CHOICE', actorId: id, restId: rest.id, moves, ...(rolls ? { rolls } : {}), tokenName: token?.name || '' });
+}
+
 let controls = null, overlay = null;
 function paint() {
   const rest = store.state.rest;
@@ -106,7 +128,7 @@ export function mountRestUI() {
     if (t.dataset.restConfirm) {
       const id = t.dataset.restConfirm, moves = picks.get(id) || [];
       picks.delete(id); expanded.delete(id);
-      return send({ type: 'REST_CHOICE', actorId: id, restId: rest.id, moves, tokenName: store.state.tokens.find(x => x.id === id)?.name || '' });
+      return confirmChoice(rest, id, moves);
     }
     if (t.matches('[data-rest-cancel]')) return send({ type: 'REST_CANCEL' });
     if (t.matches('[data-rest-finish]')) return send({ type: 'REST_FINISH' });

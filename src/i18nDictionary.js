@@ -1348,6 +1348,8 @@ export const PAIRS = [
   // V3: armor cuts (v2.22.0)
   ["Disintegrating: un dado salió al máximo; −1 Armor Slot máximo del objetivo al aplicar el daño (hasta Repair All Armor).", "Disintegrating: a die rolled its maximum; −1 maximum Armor Slot of the target when the damage is applied (until Repair All Armor)."],
   ["Shredding: −1 Armor Slot máximo del objetivo al aplicar el daño (hasta reparar la armadura en Downtime).", "Shredding: −1 maximum Armor Slot of the target when the damage is applied (until the armor is repaired in Downtime)."],
+  // V3: 3D table dice (v2.23.0)
+  ["Duración", "Duration"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1474,4 +1476,9 @@ export const PATTERNS = [
   ["Descanso largo cancelado", "Long Rest cancelled"],
   ["Armor Piercing: −{_x} Armor Slot máximo del objetivo al aplicar el daño (hasta su próximo Long Rest).", "Armor Piercing: −{_x} maximum Armor Slot of the target when the damage is applied (until its next Long Rest)."],
   ["Armor Piercing: −{_x} Armor Slots máximos del objetivo al aplicar el daño (hasta su próximo Long Rest).", "Armor Piercing: −{_x} maximum Armor Slots of the target when the damage is applied (until its next Long Rest)."],
+  ["{_x} turnos", "{_x} turns"],
+  ["+{_x} daño", "+{_x} damage"],
+  ["{_x} · duración", "{_x} · duration"],
+  ["Descanso corto · {_x}", "Short Rest · {_x}"],
+  ["Descanso largo · {_x}", "Long Rest · {_x}"],
 ];

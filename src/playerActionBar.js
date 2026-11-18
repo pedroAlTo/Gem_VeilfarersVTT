@@ -18,7 +18,7 @@ import { normalizeConditions, conditionDefinition } from './conditions.js';
 import { distanceInfo, rangeCheck, netEdge, weaponRangeBand, weaponAttackBonus } from './attackFlow.js';
 import { damageTypeOf, penetrationFor } from './rulesEngine.js';
 import { clockPieHTML } from './effectClocks.js';
-import { availableRiders, rollExpression } from './damageRiders.js';
+import { availableRiders, throwExpression } from './damageRiders.js';
 import { bearDown, bearDownTarget, prepareResolve } from './bearDown.js';
 import { cardData } from './cardData.js';
 import { characterCards } from './loadoutCards.js';
@@ -107,6 +107,18 @@ export class PlayerActionBar {
     store.subscribe(() => this.render());
     // A roll's result arrives after the state changes it caused: redraw so Bear Down can be used.
     window.addEventListener('veil:guide', event => { if (event.detail?.event === 'roll') { this.signature = ''; this.render(); } });
+    // Damage applied ends the attack: after a moment to read «Daño aplicado», the result, the
+    // marked target and the selection are cleared.
+    window.addEventListener('veil:attack-done', () => {
+      clearTimeout(this.doneTimer);
+      this.doneTimer = setTimeout(() => {
+        if (this.targeting) return; // a new attack has already started
+        this.keeperAttack = false; this.result = null; this.signature = '';
+        window.veilCanvas?.setAttackTarget?.(null, null);
+        store.update({ selectedTokenId: null, targetTokenId: null });
+        this.render();
+      }, 1200);
+    });
     window.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (this.targeting) this.stopTargeting(); else if (this.pick.trait || this.pick.exp !== null) { this.pick = EMPTY_PICK; this.render(); } });
     this.render();
   }
@@ -439,7 +451,7 @@ export class PlayerActionBar {
       if (rider.kind === 'card') await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: rider.cardId, playerName: store.state.userName || '', tokenName: token.name });
       // Breaking Point ends the state.
       if (rider.kind === 'state') store.updateToken(token.id, { effectClocks: (token.effectClocks || []).filter(c => c.id !== rider.clockId) });
-      const roll = rollExpression(rider.dice);
+      const roll = await throwExpression(rider.dice, rider.label, token);
       dice.applyDamageRider({ id: rider.id, label: rider.label, dice: rider.dice, value: roll.total, faces: roll.faces });
       notify(`${rider.label}: +${roll.total} (${rider.dice} [${roll.faces.join(', ')}]).`);
       setTimeout(() => { if (this.result) { this.result = this.readResult(this.result.targetName); this.signature = ''; this.render(); } }, 300);

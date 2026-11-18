@@ -84,3 +84,13 @@ test('Resolve: Bear Down has something to add to only after a roll; Prepare refi
   assert.equal(prepareResolve({ ...sleeper, resolve: { current: 4, max: 4 } }, 'short'), null, 'already full');
   assert.equal(prepareResolve({ path: 'Awakened', resolve: { current: 0, max: 0 } }, 'long'), null);
 });
+
+test('durationDice: only a duration set by a die is thrown by the player', async () => {
+  const { durationDice, cardDuration } = await import('../src/effectClocks.js');
+  const { facesRoller, validFaces } = await import('../src/tableDice.js');
+  assert.deepEqual(durationDice({ text: 'Roll 1d4: the result is the number of additional turns.' }), { qty: 1, sides: 4 });
+  assert.equal(durationDice({ text: 'Lasts a number of Spotlights equal to your Proficiency.' }), null);
+  const d = cardDuration({ name: 'X', text: 'Roll 1d4: the result is the number of additional turns.' }, {}, facesRoller([3]));
+  assert.equal(d.segments, 3);
+  assert.ok(validFaces([1, 4], 2, 4)); assert.ok(!validFaces([5], 1, 4)); assert.ok(!validFaces([1], 2, 4));
+});

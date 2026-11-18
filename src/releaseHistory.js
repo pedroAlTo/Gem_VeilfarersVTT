@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.23.0', date: '2026-11-18', title: 'V3 · Dados 3D en todas las tiradas y el ataque termina al aplicar el daño',
+    sections: [
+      { title: 'Dados 3D', items: [
+        'Las tiradas que la mesa hacía por dentro ahora se lanzan como dados 3D en la pantalla de quien tira, y su resultado aparece para todos: los 1d4 del descanso corto (Tend Wounds, Clear Stress, Repair Armor), Bear Down, Combat Surge, The Held Line, el primer golpe de Nirvana, Breaking Point, la duración tirada de una carta (Rapid Regeneration…) y el dado de las cartas del Keeper.',
+        'La mesa aplica las caras que muestran los dados. En un descanso, cambiar la elección no vuelve a tirar un movimiento ya tirado.',
+      ] },
+      { title: 'Ataque', items: [
+        'Al aplicar el daño, el ataque termina: tras un instante para leer «Daño aplicado», se cierra el resultado de la Ficha, se quita la marca del objetivo y se deseleccionan los tokens.',
+      ] },
+    ],
+  },
+  {
     version: '2.22.0', date: '2026-11-18', title: 'V3 · Descansos en mesa, armadura de enemigos al instante y tiradas más discretas',
     sections: [
       { title: 'Descansos', items: [

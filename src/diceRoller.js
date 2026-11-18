@@ -1,5 +1,5 @@
 import { attackPresentation, weaponImpactType } from './combatFX.js';
-import { firstStrikeRider, rollExpression } from './damageRiders.js';
+import { firstStrikeRider, throwExpression } from './damageRiders.js';
 import { guideEvent } from './onboarding.js';
 import { IMPACT_TYPES } from './encounterRules.js';
 import { dossierDialog } from './dossierUI.js';
@@ -1387,7 +1387,7 @@ export class DiceRollerSidebar {
     // Nirvana / Disciplined State: the first Melee attack of the state deals +2d6 by itself.
     const strike = (attacker.isPlayer !== false && !drone) ? firstStrikeRider(attacker, weapon) : null;
     if (strike) {
-      const r = rollExpression(strike.dice);
+      const r = await throwExpression(strike.dice, strike.label, attacker);
       const clocks = (attacker.effectClocks || []).map(c => (c.id === strike.clockId ? { ...c, firstStrikeUsed: true } : c));
       const before = store.tableActing; if (store.sessionRole !== 'player') store.tableActing = true;
       try { store.updateToken(attacker.id, { effectClocks: clocks }); } finally { store.tableActing = before; }
@@ -1786,6 +1786,8 @@ export class DiceRollerSidebar {
           title: `DAMAGE APPLIED: ${targetToken.name}`,
           details: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
         });
+        // The attack is over: the Ficha closes it and the tokens are deselected.
+        window.dispatchEvent(new CustomEvent('veil:attack-done', { detail: { attackerId: attacker?.id || attackerId, targetId: targetToken.id } }));
       };
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
