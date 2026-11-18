@@ -5,6 +5,7 @@
 import { FreehandTool } from './freehand.js';
 import { MapClipboard } from './mapClipboard.js';
 import { LightingEngine } from './lightingEngine.js';
+import { DAYLIGHT_BELOW } from './fogEngine.js';
 import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog, drawLavaGlow } from './surfaceFX.js';
 import { drawTokenGauge } from './tokenVitals.js';
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
@@ -692,8 +693,11 @@ export class CanvasEngine {
 
   // The scene's darkness now: 1 − its ambient light. When the Keeper changes it with a
   // transition (Clima: Día / Atardecer / Noche), every screen slides to it over that time.
-  sceneDarkness(map, now = (typeof performance !== 'undefined' ? performance.now() : Date.now())) {
-    const target = Math.max(0, Math.min(1, 1 - (map?.ambientLight ?? 0.25)));
+  // A scene keeps its old look until the Keeper sets its darkness in Clima (`map.darkness`): with
+  // fog of war the fog alone shades it (no darkness), without fog its ambient light does.
+  sceneDarkness(map, now = (typeof performance !== 'undefined' ? performance.now() : Date.now()), fog = true) {
+    const set = Number.isFinite(map?.darkness) ? map.darkness : fog ? 0 : 1 - (map?.ambientLight ?? 0.25);
+    const target = Math.max(0, Math.min(1, set));
     const d = this.darknessAnim;
     if (!d || d.mapId !== map?.id) { this.darknessAnim = { mapId: map?.id, from: target, to: target, start: now, dur: 0 }; return target; }
     if (d.to !== target) {
@@ -2753,7 +2757,32 @@ export class CanvasEngine {
     // A. Lighting (Foundry-like): the scene's darkness (0 day … 1 night, animated when the Keeper
     // changes it) covers the map, and every light cuts it with its lit area. Everyone sees it;
     // the Keeper's GM vision sees it softened so the map stays readable.
-    const darkness = this.sceneDarkness(map, now);
+    // Who sees on this screen: the party (a player's tokens follow confirmed places; while the
+    // player drags, the vision stays at the start of the drag).
+    let viewers = [];
+    if (state.userRole === 'player') {
+      viewers = activeTokens.filter(isPartyToken);
+      if (viewers.length === 0) {
+        const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
+        if (claimed) viewers = [claimed];
+      }
+      // Vision follows the token as it slides; while the player drags, it stays at the origin
+      // so the player cannot scan ahead into undiscovered areas.
+      viewers = viewers.map(v => this.draggedToken?.id === v.id ? (this.draggedTokenOrigX != null ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v) : seenAt(v));
+    } else {
+      // Keeper mode: use player tokens to stamp exploration and show visibility
+      viewers = activeTokens.filter(isPartyToken);
+      if (viewers.length === 0 && state.selectedTokenId) {
+        const sel = activeTokens.find(t => t.id === state.selectedTokenId);
+        if (sel) viewers = [sel];
+      }
+      viewers = viewers.map(drawnAt);
+    }
+
+    const darkness = this.sceneDarkness(map, now, state.fogOfWar !== false);
+    // With fog of war, what the characters see is lit for this screen: their sight clears the
+    // scene's darkness, as before, even without a light of their own.
+    const sightLights = state.fogOfWar !== false ? viewers.filter(v => !v.hidden).map(v => ({ x: v.x, y: v.y, radius: v.visionRange || (v.hasLight ? v.lightRadius : 360), facingAngle: v.facingAngle ?? 0, visionAngle: v.visionAngle ?? 90 })) : [];
     if (state.layerVisibility.walls_lights !== false) {
       // A token's own light goes where the token is drawn: while it is dragged into place and
       // while it slides to a new place. (Vision and fog keep the confirmed position.)
@@ -2767,6 +2796,7 @@ export class CanvasEngine {
         walls: map.walls || [],
         lights: map.lights || [],
         tokens: lightingTokens,
+        sights: sightLights,
         time: now * 0.001
       });
       // Lava lights itself through the darkness.
@@ -2775,26 +2805,6 @@ export class CanvasEngine {
 
     // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)
     if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
-      let viewers = [];
-      if (state.userRole === 'player') {
-        viewers = activeTokens.filter(isPartyToken);
-        if (viewers.length === 0) {
-          const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
-          if (claimed) viewers = [claimed];
-        }
-        // Vision follows the token as it slides; while the player drags, it stays at the origin
-        // so the player cannot scan ahead into undiscovered areas.
-        viewers = viewers.map(v => this.draggedToken?.id === v.id ? (this.draggedTokenOrigX != null ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v) : seenAt(v));
-      } else {
-        // Keeper mode: use player tokens to stamp exploration and show visibility
-        viewers = activeTokens.filter(isPartyToken);
-        if (viewers.length === 0 && state.selectedTokenId) {
-          const sel = activeTokens.find(t => t.id === state.selectedTokenId);
-          if (sel) viewers = [sel];
-        }
-        viewers = viewers.map(drawnAt);
-      }
-
       const fullMapId = `${state.campaignId}:${map.id}`;
       if (!this.fog.isExplorationLoaded(fullMapId) && map.fogExplored) {
         this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
@@ -2813,6 +2823,8 @@ export class CanvasEngine {
           return { x: at.x, y: at.y, radius: t.lightRadius, facingAngle: t.facingAngle, visionAngle: t.visionAngle ?? 90 };
         })],
         darkness,
+        // Day (whole line of sight) only when the Keeper set the scene's time in Clima.
+        daylight: Number.isFinite(map.darkness) && darkness < DAYLIGHT_BELOW,
         viewers,
         lightingEngine: this.lighting,
         exploredOpacity: state.fogExploredOpacity ?? 0.50,

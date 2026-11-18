@@ -5,27 +5,42 @@ import { drawSoftened, fingerprint, wallValues } from './softMask.js';
 export const LIGHT_SOFTNESS = 8;
 const ARC_STEPS = 60;
 
-// A light's radius and intensity this frame, after its effect.
+// A light's radius and intensity this frame, after its effect. Each light has its own phase (from
+// its id), so two torches never flicker in step.
+const phaseOf = light => { const k = String(light.id ?? `${light.x},${light.y}`); let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0; return ((h >>> 0) % 1000) / 1000 * Math.PI * 2; };
+const hexRGB = h => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h)); const n = m ? parseInt(m[1], 16) : 0xffffff; return [n >> 16, (n >> 8) & 255, n & 255]; };
+const mixHex = (a, b, t) => { const x = hexRGB(a), y = hexRGB(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',')})`; };
 export function animateLight(light, time = 0) {
   let r = light.radius || 200, i = light.intensity ?? 0.8;
-  const speed = light.pulseSpeed || 1.5;
+  const speed = light.pulseSpeed || 1.5, t = time * speed + phaseOf(light);
   const effect = light.effect || (light.flicker ? 'flicker' : 'steady');
   if (effect === 'pulse') {
-    const wave = Math.sin(time * speed * 2) * 0.12;
-    r *= 1 + wave; i = Math.max(0.2, Math.min(1, i * (1 + wave * 1.5)));
+    // Breathing: slow, smooth and clearly visible.
+    const wave = Math.sin(t * 1.6);
+    r *= 1 + wave * 0.16; i = Math.max(0.15, Math.min(1, i * (1 + wave * 0.32)));
   } else if (effect === 'flicker') {
-    const wave = Math.sin(time * speed * 5) * 0.08 + Math.sin(time * speed * 13) * 0.04;
-    r *= 1 + wave; i = Math.max(0.2, Math.min(1, i * (1 + wave * 2)));
+    // Torch: several unrelated frequencies make an irregular flame; now and then a dip.
+    const n = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 13.1 + 1.3) * 0.3 + Math.sin(t * 23.7 + 2.1) * 0.2;
+    const dip = Math.sin(t * 0.9) > 0.93 ? -0.25 : 0;
+    r *= 1 + n * 0.06 + dip * 0.2; i = Math.max(0.2, Math.min(1, i * (1 + n * 0.22 + dip)));
   } else if (effect === 'quantum') {
-    const wave = Math.sin(time * speed * 1.8) * 0.1 + Math.cos(time * speed * 3.4) * 0.05;
-    r *= 1 + wave; i = Math.max(0.3, Math.min(1, i * (1 + wave * 1.2)));
-  } else if (effect === 'siren' || effect === 'strobe') {
+    // Quantum: a shimmer that beats between two close frequencies.
+    const wave = Math.sin(t * 2.1) * Math.sin(t * 2.37);
+    r *= 1 + wave * 0.14; i = Math.max(0.3, Math.min(1, i * (1 + wave * 0.3)));
+  } else if (effect === 'siren') {
+    // Siren: the two colours sweep into each other; the light swells on each half.
+    const wave = Math.abs(Math.sin(t * 2.5));
     const effInt = light.effectIntensity ?? 1.0;
-    const wave = Math.sin(time * speed * 5) > 0 ? 0.35 * effInt : -0.3 * effInt;
-    r *= 1 + wave * 0.4; i = Math.max(0.05, Math.min(1.0, i + wave));
+    r *= 1 + wave * 0.12 * effInt; i = Math.max(0.2, Math.min(1, i * (0.65 + wave * 0.45 * effInt)));
+  } else if (effect === 'strobe') {
+    // Strobe: short dry flashes.
+    const on = (t * 2.2) % 1 < 0.12;
+    const effInt = light.effectIntensity ?? 1.0;
+    r *= on ? 1 + 0.08 * effInt : 0.92; i = on ? 1 : Math.max(0.05, i * (1 - 0.8 * effInt));
   } else if (effect === 'spark') {
+    // Sparks: a faint glow with random bursts.
     const isSpark = Math.random() < 0.12;
-    const wave = isSpark ? Math.random() * 0.5 : Math.sin(time * 2) * 0.05;
+    const wave = isSpark ? Math.random() * 0.5 : Math.sin(t * 2) * 0.05;
     r *= 1 + wave; i = isSpark ? 1.0 : Math.max(0.2, i * 0.7);
   }
   return { shownRadius: r, shownIntensity: i };
@@ -247,6 +262,7 @@ export class LightingEngine {
     walls = [],
     lights = [],
     tokens = [],
+    sights = [],
     time = 0
   }) {
     this.resize(mapWidth, mapHeight);
@@ -257,6 +273,8 @@ export class LightingEngine {
 
     // Collect all active light sources (station lights + token vision lights)
     const allLights = [...lights];
+    // What the characters see on this screen clears the darkness too (no glow of its own).
+    for (const sight of sights) allLights.push({ ...sight, id: 'sight', intensity: 1, effect: 'steady', noGlow: true });
     for (const tok of tokens) {
       if (tok.hasLight && tok.lightRadius > 0 && !tok.hidden) {
         allLights.push({
@@ -430,12 +448,13 @@ export class LightingEngine {
     // Subtle colored glows around light centers
     ctx.globalCompositeOperation = 'screen';
     for (const light of shaped) {
+      if (light.noGlow) continue;
       const effect = light.effect || 'steady';
       let activeColor = light.color || '#00f3ff';
       if (effect === 'siren') {
-        const speed = light.speed || 1.0;
-        const isPhase1 = Math.sin(time * speed * 5) > 0;
-        activeColor = isPhase1 ? (light.color || '#ef4444') : (light.color2 || '#3b82f6');
+        // The two colours sweep into each other instead of switching hard.
+        const mix = (Math.sin(time * (light.pulseSpeed || 1.5) * 2.5 + phaseOf(light)) + 1) / 2;
+        activeColor = mixHex(light.color || '#ef4444', light.color2 || '#3b82f6', mix);
       }
 
       const glowRadius = light.shownRadius * 0.6;

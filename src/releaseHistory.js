@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.24.1', date: '2026-11-18', title: 'V3 · La niebla vuelve a ser como antes; luces más vivas',
+    sections: [
+      { title: 'Niebla y visión', items: [
+        'Corregido: tras la v2.24.0 los personajes no iluminaban su zona: de noche lo que veían quedaba bajo la oscuridad de la escena si no llevaban luz propia. Ahora lo que ve cada personaje vuelve a verse claro.',
+        'Una escena se ve como siempre hasta que el Keeper elige su hora en Clima (Día, Ocaso, Noche o el control Oscuridad). Antes, todos los mapas pasaron a ser de noche sin que nadie lo eligiera, y con oscuridad 0 la visión no tenía límite de distancia.',
+        'Con Día elegido en Clima, los personajes ven todo lo que tienen a la vista; de noche, su propia visión y lo que iluminan las luces.',
+      ] },
+      { title: 'Animaciones de las luces', items: [
+        'Cada luz tiene su propio ritmo (dos antorchas ya no parpadean a la vez). El parpadeo imita una llama irregular con alguna caída, el pulso respira de forma más visible, la luz cuántica tiembla, la sirena funde sus dos colores y el estroboscopio da destellos secos.',
+      ] },
+    ],
+  },
+  {
     version: '2.24.0', date: '2026-11-18', title: 'V3 · Luces que iluminan, Clima con día y noche, lava y flechas del teclado',
     sections: [
       { title: 'Luces', items: [

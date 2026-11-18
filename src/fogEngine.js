@@ -281,7 +281,8 @@ export class FogOfWarEngine {
     exploredOpacity = 0.88,
     isKeeperGM = false,
     stamp = true,
-    darkness = 0
+    darkness = 0,
+    daylight = false
   }) {
     this.resize(mapWidth, mapHeight);
     const fCtx = this.fogCtx;
@@ -289,7 +290,6 @@ export class FogOfWarEngine {
     const expCtx = exploredCanvas.getContext('2d');
     // Daylight (the scene's darkness under half, Foundry's «global illumination»): a token sees
     // everything in its line of sight. At night it sees its own vision and whatever a light shows.
-    const daylight = darkness < DAYLIGHT_BELOW;
 
     // Nothing the fog depends on has changed since the last frame: draw the same fog again.
     const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, daylight ? 1 : 0,
