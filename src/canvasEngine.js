@@ -2658,11 +2658,12 @@ export class CanvasEngine {
         if (isKeeperGM || state.fogOfWar === false) return true;
         return this.fog.isPointExplored(l.x, l.y, fullMapId);
       });
+      // A token's own light goes where the token is drawn: while it is dragged into place and
+      // while it slides to a new place. (Vision and fog keep the confirmed position.)
+      const shown = new Map(this.displayTokens().map(t => [t.id, t]));
       const lightingTokens = activeTokens.map(tok => {
-        if (this.draggedToken && tok.id === this.draggedToken.id && this.draggedTokenOrigX != null && state.userRole === 'player') {
-          return { ...tok, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY };
-        }
-        return tok;
+        const drawn = shown.get(tok.id);
+        return drawn && (drawn.x !== tok.x || drawn.y !== tok.y) ? { ...tok, x: drawn.x, y: drawn.y } : tok;
       });
       // When Fog of War is enabled, Fog of War itself controls map darkness and explored attenuation (50%).
       // Dynamic lighting only renders light fixtures and glows without covering the explored map with opaque darkness.

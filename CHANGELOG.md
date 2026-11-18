@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.21.0**.
-Paquete: `VeilFarers_VTT_v2.21.0.zip`.
+Versión actual del VTT: **v2.21.1**.
+Paquete: `VeilFarers_VTT_v2.21.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.21.1] — 2026-11-18
+
+V3 · La luz del token se mueve con él
+
+### Luz de los tokens
+
+- Al arrastrar un token para ajustar su posición, su luz propia va con él mientras lo mueves, y también mientras se desliza a su sitio (la animación que ven los demás).
+- La visión y la niebla de guerra del jugador siguen calculándose desde la posición confirmada: mover el token no deja ver zonas antes de soltarlo.
 
 ## [2.21.0] — 2026-11-18
 

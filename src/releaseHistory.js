@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.21.1', date: '2026-11-18', title: 'V3 · La luz del token se mueve con él',
+    sections: [
+      { title: 'Luz de los tokens', items: [
+        'Al arrastrar un token para ajustar su posición, su luz propia va con él mientras lo mueves, y también mientras se desliza a su sitio (la animación que ven los demás).',
+        'La visión y la niebla de guerra del jugador siguen calculándose desde la posición confirmada: mover el token no deja ver zonas antes de soltarlo.',
+      ] },
+    ],
+  },
+  {
     version: '2.21.0', date: '2026-11-18', title: 'V3 · Armas con tags, daño de Combat Surge y compañía, y Resolve en la Ficha',
     sections: [
       { title: 'Armas con tags', items: [
