@@ -766,14 +766,31 @@ async function setupSessionPersistence() {
     const { account } = await import('./cloudAccount.js');
     const { startGameRecording } = await import('./gameRecord.js');
     startGameRecording({ rooms, store, account });
-    const invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
+    let invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
+    // An invitation link is used once: it opens the rooms window and leaves the address, so a
+    // later sign-in or token refresh does not open it again.
+    const useInvitation = () => {
+      const code = invitation; invitation = '';
+      try { const url = new URL(location.href); url.searchParams.delete('roomInvite'); const hash = new URLSearchParams(url.hash.slice(1)); hash.delete('roomInvite'); url.hash = hash.toString(); history.replaceState(null, '', url); } catch {}
+      openSessionLobby(code);
+    };
+    // Back to the room you were in: straight to the table (the home screen is hidden, Cancel
+    // brings it back). Only when there is a room to go back to.
+    let returning = false;
+    const autoReturn = () => {
+      if (returning || rooms.room || rooms.entering || !rooms.rememberedRoom?.(account.user?.uid)) return;
+      returning = true;
+      window.veilLobby?.hideLobby?.();
+      import('./connectRetryUI.js').then(({ retryUntilConnected }) => retryUntilConnected(() => rooms.restore(), { label: 'Volviendo a tu sala', onCancel: () => window.veilLobby?.showHubScreen?.() }))
+        .catch(error => { notify(error.message, 'error'); window.veilLobby?.showHubScreen?.(); })
+        .finally(() => { returning = false; });
+    };
     account.subscribe(user => {
       if (!user || rooms.room) return;
-      if (invitation) openSessionLobby(invitation);
-      else import('./connectRetryUI.js').then(({ retryUntilConnected }) => retryUntilConnected(() => rooms.restore(), { label: 'Volviendo a tu sala' })).catch(error => notify(error.message, 'error'));
+      if (invitation) useInvitation(); else autoReturn();
     });
-    if (invitation) { openSessionLobby(invitation); return; }
-    if (account.user) import('./connectRetryUI.js').then(({ retryUntilConnected }) => retryUntilConnected(() => rooms.restore(), { label: 'Volviendo a tu sala' })).catch(error => { notify(error.message, 'error'); openSessionLobby(); });
+    if (invitation) { useInvitation(); return; }
+    if (account.user) autoReturn();
     import('./connectRetryUI.js').then(({ mountRoomConnectionBanner }) => import('./roomService.js').then(({ roomOnline }) => mountRoomConnectionBanner(rooms, store, { roomOnline }))).catch(() => {});
     return;
   }

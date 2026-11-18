@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.18.0**.
-Paquete: `VeilFarers_VTT_v2.18.0.zip`.
+Versión actual del VTT: **v2.18.1**.
+Paquete: `VeilFarers_VTT_v2.18.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.18.1] — 2026-11-18
+
+V3 · Inicio de sesión sin ventanas superpuestas
+
+### Inicio de sesión y salas
+
+- Corregido: con un enlace de invitación, la ventana de Sesiones se abría al cargar y otra vez al confirmar la cuenta (y en cada renovación de la sesión). Ahora la invitación se usa una sola vez y se quita de la dirección.
+- La ventana de Sesiones ya no se apila: si ya está abierta, se trae al frente.
+- Tras iniciar sesión desde «Cuenta» ya no se abre el archivo personal encima: se cierra y avisa «Sesión iniciada». Si se inició sesión desde la ventana de salas, se vuelve a ella.
+- La vuelta automática a tu última sala va directa a la mesa (con «Volviendo a tu sala» y Cancelar), en lugar de cargar detrás de la pantalla de inicio. Cancelar devuelve a la pantalla de inicio.
 
 ## [2.18.0] — 2026-11-18
 

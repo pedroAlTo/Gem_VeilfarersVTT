@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.18.1', date: '2026-11-18', title: 'V3 · Inicio de sesión sin ventanas superpuestas',
+    sections: [
+      { title: 'Inicio de sesión y salas', items: [
+        'Corregido: con un enlace de invitación, la ventana de Sesiones se abría al cargar y otra vez al confirmar la cuenta (y en cada renovación de la sesión). Ahora la invitación se usa una sola vez y se quita de la dirección.',
+        'La ventana de Sesiones ya no se apila: si ya está abierta, se trae al frente.',
+        'Tras iniciar sesión desde «Cuenta» ya no se abre el archivo personal encima: se cierra y avisa «Sesión iniciada». Si se inició sesión desde la ventana de salas, se vuelve a ella.',
+        'La vuelta automática a tu última sala va directa a la mesa (con «Volviendo a tu sala» y Cancelar), en lugar de cargar detrás de la pantalla de inicio. Cancelar devuelve a la pantalla de inicio.',
+      ] },
+    ],
+  },
+  {
     version: '2.18.0', date: '2026-11-18', title: 'V3 · La regla 3 + 5 + resto en la vista del jugador',
     sections: [
       { title: 'Vista del jugador más limpia', items: [

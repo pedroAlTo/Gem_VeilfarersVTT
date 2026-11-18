@@ -1287,6 +1287,8 @@ export const PAIRS = [
   ["Reserva", "Reserve"],
   ["Más…", "More…"],
   ["Menos", "Less"],
+  // Simpler sign-in (v2.18.1)
+  ["Sesión iniciada.", "Signed in."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1394,4 +1396,5 @@ export const PATTERNS = [
   ["{_a}: toca el objetivo en el mapa y vuelve a tocarlo para atacar (Esc cancela).", "{_a}: tap the target on the map and tap it again to attack (Esc cancels)."],
   ["Más opciones · {_a}", "More options · {_a}"],
   ["Más opciones de {_a}", "More options for {_a}"],
+  ["Sesión iniciada como {_a}.", "Signed in as {_a}."],
 ];

@@ -52,6 +52,14 @@ export async function useCharacter(token) {
   } else store.importActors([{ token }]);
 }
 // options.tab opens the signed-in screen on 'games', 'characters' or 'preferences'.
+// After signing in, one screen only: back to what the person was doing (options.then), or the
+// table with a notice. The account archive is not opened on top of it.
+function signedIn(modal, options = {}) {
+  modal.remove();
+  if (typeof options.then === 'function') { options.then(); return; }
+  notify(`Sesión iniciada${account.user?.displayName ? ` como ${account.user.displayName}` : ''}.`);
+}
+
 export function openAccount(options = {}) {
   if (!options || typeof options !== 'object' || (typeof Event !== 'undefined' && options instanceof Event)) options = {};
   const signed = !!account.user;
@@ -227,10 +235,7 @@ export function openAccount(options = {}) {
 
     modal.querySelector('#btn_google_signin')?.addEventListener('click', () => run(async () => {
       const user = await account.signInWithGoogle({ useRedirect: false, remember: modal.querySelector('[name=remember]').checked });
-      if (user) {
-        modal.remove();
-        openAccount();
-      }
+      if (user) signedIn(modal, options);
     }));
 
     modal.querySelector('#btn_google_redirect')?.addEventListener('click', () => run(async () => {
@@ -248,8 +253,7 @@ export function openAccount(options = {}) {
           name: values.get('name') || '',
           remember: values.has('remember')
         });
-        modal.remove();
-        openAccount();
+        signedIn(modal, options);
       });
     };
     modal.querySelector('#account_reset').onclick = () => run(async () => {

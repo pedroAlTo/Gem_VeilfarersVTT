@@ -11,6 +11,9 @@ import { escapeHTML as e, sanitizeHTML, confirmAction, notify } from './ui.js';
 import { isDrone, controlsToken } from './tokenPermissions.js';
 
 export function openRoomLobby(prefill = '') {
+  // One rooms window at a time: a second call brings the open one forward.
+  const open = document.querySelector('.rooms-backdrop');
+  if (open) { open.querySelector('input[name="code"], input, button')?.focus(); return open; }
   const modal = dossierDialog('SESIONES', '<p>Leyendo tus salas…</p>', 'rooms-backdrop');
   mountSessionNavigation(modal, 'live');
   const body = modal.querySelector('.dossier-body'); let cached = [], busy = false;
@@ -50,7 +53,7 @@ export function openRoomLobby(prefill = '') {
       <form data-room-join class="session-card"><h3>Entrar con invitación</h3><label class="dossier-field">Código o enlace<input class="hud-input" name="invitation" required placeholder="ej. NAV-33F44" value="${e(prefill)}"></label><button class="hud-btn hud-btn-primary">Aceptar invitación y entrar</button></form>
       `}<p class="dossier-error" role="alert" data-room-error></p><button class="hud-btn" data-room-refresh>Actualizar salas</button>`);
     const bind = (selector, fn) => { const b = body.querySelector(selector); if (b) b.onclick = fn; };
-    bind('[data-room-login]', () => { modal.remove(); openAccount(); });
+    bind('[data-room-login]', () => { modal.remove(); openAccount({ then: () => openRoomLobby(prefill) }); });
     bind('[data-room-refresh]', () => run(refresh));
     bind('[data-room-archive]', () => openAccount({ tab: 'characters' }));
     bind('[data-room-notes]', () => { const roomId = rooms.room?.id; modal.remove(); openAccount({ tab: 'games', roomId }); });
