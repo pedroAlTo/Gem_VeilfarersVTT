@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.6.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.6**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.6** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.6.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.7.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.7**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.7** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.7.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -86,6 +86,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.6.zip**. Abre **AYUDA
 71. **(V3) Niebla explorada.** Con la niebla de guerra activada, lleva un personaje a una sala y sácalo: la sala queda atenuada (según «Atenuación explorada»; 50 % por defecto), no negra. Pon el Clima de noche: lo explorado sigue igual de visible y las luces siguen despejando su zona.
 72. **(V3) Foco y daño.** Como jugador, Foco va el primero en la barra, en dorado; en la Ficha, «Tomar foco» ocupa el sitio de «Ficha completa». Púlsalo: ambos se iluminan. Ataca a un adversario y al personaje de otro jugador: al Keeper le aparece la ventana de escudos (Aplicar o Cancelar); el jugador recibe su decisión.
 73. **(V3) Common Effort.** Con un Sleeping, usa Cover the Angle (también con Burnout), Brace y Bear Down: se aplican sin error y la tarjeta de resultado muestra «COMMON EFFORT» o «RESOLVE MOVE».
+74. **(V3) Visión de los enemigos.** Con la niebla activada, un personaje mira a un adversario visible y luego se gira; el Keeper mueve al adversario. El jugador ve solo el fantasma «ÚLTIMA POS.» donde lo vio, no al adversario. Al volver a mirar ese sitio, el fantasma desaparece. Seleccionar al adversario no destapa la niebla. Apaga una luz: los enemigos de su zona dejan de verse.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

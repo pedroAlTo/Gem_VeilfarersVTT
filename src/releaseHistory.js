@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.7', date: '2026-11-19', title: 'V3 · Los jugadores no ven por los ojos de los enemigos',
+    sections: [
+      { title: 'Niebla y visión', items: [
+        'Solo los personajes del grupo (y los tokens que controla el jugador) muestran el mapa a los jugadores. Seleccionar un enemigo para atacarlo ya no puede hacer que su visión cuente como la del jugador.',
+        'Si el Keeper, sin el grupo en la escena, selecciona un NPC para ver lo que ve, esa vista queda en su pantalla: no se guarda como explorado ni se envía a los jugadores.',
+        'Un enemigo que entra en la niebla deja de verse: los jugadores solo ven un fantasma en la última posición donde lo vieron («ÚLTIMA POS.»), que desaparece cuando vuelven a mirar ese sitio y está vacío.',
+        'Una luz apagada ya no deja ver a los enemigos que hay en su zona.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.6', date: '2026-11-19', title: 'V3 · Las cartas de Common Effort ya se pueden usar',
     sections: [
       { title: 'Cartas', items: [

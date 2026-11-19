@@ -41,6 +41,10 @@ export const WATER_DEPTH_COLORS = [
   'rgba(10, 15, 45, 0.92)'     // 5: Abyss
 ];
 
+// Whose eyes may show the map: a party token, or one this screen controls. Never an enemy's
+// (players do not share what adversaries and NPCs see; v2.27.7).
+const sharesSight = token => !!token && (isPartyToken(token) || (store.sessionRole === 'player' && token.ownerId !== 'keeper' && !!store.canEditToken?.(token.id)));
+
 // Ramer–Douglas–Peucker: a freehand outline with only the points that shape it.
 function simplifyPath(points, tolerance = 3) {
   if (points.length < 3) return points.slice();
@@ -2786,11 +2790,12 @@ export class CanvasEngine {
     // the Keeper's GM vision sees it softened so the map stays readable.
     // Who sees on this screen: the party (a player's tokens follow confirmed places; while the
     // player drags, the vision stays at the start of the drag).
-    let viewers = [];
+    let viewers = [], previewOnly = false;
     if (state.userRole === 'player') {
+      // Only the party's eyes: an enemy the player selects (to attack it) never sees for them.
       viewers = activeTokens.filter(isPartyToken);
       if (viewers.length === 0) {
-        const claimed = activeTokens.find(t => t.id === state.claimedTokenId || t.id === state.selectedTokenId);
+        const claimed = activeTokens.find(t => (t.id === state.claimedTokenId || t.id === state.selectedTokenId) && sharesSight(t));
         if (claimed) viewers = [claimed];
       }
       // Vision follows the token as it slides; while the player drags, it stays at the origin
@@ -2799,9 +2804,11 @@ export class CanvasEngine {
     } else {
       // Keeper mode: use player tokens to stamp exploration and show visibility
       viewers = activeTokens.filter(isPartyToken);
+      // Without the party on the scene, the Keeper previews the selected token's sight; an
+      // enemy's sight is never remembered as explored (that memory is sent to the players).
       if (viewers.length === 0 && state.selectedTokenId) {
         const sel = activeTokens.find(t => t.id === state.selectedTokenId);
-        if (sel) viewers = [sel];
+        if (sel) { viewers = [sel]; previewOnly = !sharesSight(sel); }
       }
       viewers = viewers.map(drawnAt);
     }
@@ -2870,7 +2877,7 @@ export class CanvasEngine {
         lightingEngine: this.lighting,
         exploredOpacity: state.fogExploredOpacity ?? 0.50,
         isKeeperGM: isKeeperGM,
-        stamp: !this.draggedToken
+        stamp: !this.draggedToken && !previewOnly
       });
 
       // Authoritative Keeper exploration persistence debounced sync
@@ -3292,9 +3299,11 @@ export class CanvasEngine {
     if (state.userRole === 'keeper' && state.gmVision) return true;
 
     // 3. Find viewing tokens: all friendly player characters
+    // Enemies do not share their sight: only the party's eyes count (a player who selects an
+    // enemy does not see what it sees; the Keeper's preview of a selected NPC stays on his screen).
     let viewers = allTokens.filter(isPartyToken);
     if (viewers.length === 0) {
-      const sel = allTokens.find(t => t.id === state.selectedTokenId || t.id === state.claimedTokenId);
+      const sel = allTokens.find(t => (t.id === state.selectedTokenId || t.id === state.claimedTokenId) && (state.userRole !== 'player' || sharesSight(t)));
       if (sel) viewers = [sel];
     }
     if (viewers.length === 0) return false;
@@ -3351,7 +3360,7 @@ export class CanvasEngine {
     // 5. Test if targetTok is inside the illuminated radius of any EXPLORED light source
     const fullMapId = `${state.campaignId}:${map.id}`;
     for (const light of (map.lights || [])) {
-      if (light.enabled === false) continue;
+      if (light.enabled === false || light.off) continue; // a light that is off shows nobody
       if (!this.fog.isPointExplored(light.x, light.y, fullMapId)) continue;
 
       const lx = light.x;
