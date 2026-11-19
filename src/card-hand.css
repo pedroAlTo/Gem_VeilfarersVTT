@@ -118,3 +118,18 @@
 /* Deck: Powers, Ancestry, Community and class cards to read */
 .card-drawer-kinds { margin-top: 4px; }
 .card-drawer-group { margin: 6px 0 0; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: #fde68a; }
+/* V3: name and cost at the top of the card, the white lower part for the rules. */
+.vf-card-head { position: relative; z-index: 2; display: flex; align-items: center; gap: 4px; min-height: 17%; padding: 3px 5px; box-sizing: border-box; border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #120a18, color-mix(in srgb, var(--card-color) 55%, #12090f)); border-bottom: 1px solid rgba(251, 230, 174, .55); }
+.vf-card-head .vf-card-title { flex: 1; min-width: 0; text-align: left; color: #fde68a; font-size: 9px; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.vf-card-head .vf-card-badge { position: static; flex: 0 0 auto; width: 17px; min-width: 17px; height: 19px; aspect-ratio: auto; }
+.vf-card-art { flex-basis: 30%; border-radius: 0; }
+.vf-card-frame.layout-corner .vf-card-art { flex-basis: 26%; }
+.vf-card-large .vf-card-head { padding: 8px 12px; border-radius: 11px 11px 0 0; }
+.vf-card-large .vf-card-head .vf-card-title { font-size: 18px; }
+.vf-card-large .vf-card-head .vf-card-badge { width: 32px; min-width: 32px; height: 36px; }
+.vf-card-large .vf-card-art { border-radius: 0; }
+.vf-card-mini .vf-card-head { padding: 2px 4px; } .vf-card-mini .vf-card-head .vf-card-title { font-size: 7.5px; }
+/* V3: the character bar and the deck icon move by dragging them */
+.token-quickbar-container.is-moving, .card-deck.is-moving { cursor: grabbing; transition: none !important; opacity: .92; }
+.card-deck.is-moved { z-index: 3; }

@@ -23,6 +23,7 @@ import { bearDown, bearDownTarget, prepareResolve } from './bearDown.js';
 import { cardData } from './cardData.js';
 import { characterCards } from './loadoutCards.js';
 import { network } from './networkManager.js';
+import { toggleSpotlight } from './spotlight.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -68,7 +69,7 @@ export function tapPick(pick, tap) {
     return { pick: { trait: cur.trait, exp: tap.id } };
   }
   if (!cur.trait) return { pick: cur };
-  if (tap.kind === 'edge') return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: tap.id === 'adv' ? 'adv' : 'dis' } };
+  if (tap.kind === 'edge') return { pick: EMPTY_PICK, roll: { trait: cur.trait, exp: cur.exp, edge: ['adv', 'dis'].includes(tap.id) ? tap.id : 'normal' } };
   return { pick: cur };
 }
 // An Awakened character pays 1 Hope for an Experience; a Sleeping one pays nothing.
@@ -152,7 +153,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -160,9 +161,10 @@ export class PlayerActionBar {
     const traitName = TRAITS.find(t => t.id === trait)?.name || '';
     const edgeKey = !trait ? '' : exp === null ? 'trait' : 'exp', enterEdge = edgeKey && edgeKey !== this.edgeKey ? ' pab-enter' : '';
     this.edgeKey = edgeKey;
-    const edges = `<div class="pab-row pab-edge-row${enterEdge}"><span class="pab-label"></span><div class="pab-buttons">
-        <button type="button" class="pab-edge-btn dis" data-pab-edge="dis">Desventaja</button>
-        <button type="button" class="pab-edge-btn adv" data-pab-edge="adv">Ventaja</button></div></div>`;
+    const edges = `<div class="pab-row pab-edge-row${enterEdge}"><span class="pab-label"></span><div class="pab-buttons pab-edge-three">
+        <button type="button" class="pab-edge-btn normal" data-pab-edge="normal">Normal</button>
+        <button type="button" class="pab-edge-btn adv" data-pab-edge="adv">Ventaja</button>
+        <button type="button" class="pab-edge-btn dis" data-pab-edge="dis">Desventaja</button></div></div>`;
     const hope = Number(token.hope) || 0;
     const expButtons = experiences.map((x, i) => `<button type="button" class="pab-exp ${exp === i ? 'selected' : ''}" data-pab-exp="${i}" ${canExp ? '' : 'disabled'} aria-pressed="${exp === i}" title="${canExp ? (cost ? 'Cuesta 1 Hope' : 'Sin coste (Sleeping)') : 'Necesitas 1 Hope'}"><b>${e(x.name)}</b><span data-no-i18n>${e(sign(experienceBonus(x)))}</span></button>`).join('');
     const expNote = !experiences.length ? '<span class="pab-tip">La ficha no tiene experiencias.</span>'
@@ -173,7 +175,7 @@ export class PlayerActionBar {
     const subtitle = [token.characterClass, token.path].filter(Boolean).join(' · ');
     this.root.innerHTML = sanitizeHTML(`
       <header class="pab-head"><div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
-        <button type="button" class="hud-btn hud-btn-xs" data-pab-sheet>Ficha completa</button></header>
+        <button type="button" class="pab-focus ${token.hasSpotlight ? 'is-on' : ''}" data-pab-focus aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tienes el foco · pulsa para quitarlo' : 'Tomar el foco'}" ${store.canEditToken(token.id) ? '' : 'disabled'}>✨ ${token.hasSpotlight ? 'Con el foco' : 'Tomar foco'}</button></header>
       ${this.statsHTML(stats)}
       <div class="pab-row">
         <span class="pab-label">Tirar</span>
@@ -196,7 +198,7 @@ export class PlayerActionBar {
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
       ${this.result ? this.resultRow() : ''}`);
-    this.root.querySelector('[data-pab-sheet]')?.addEventListener('click', () => document.getElementById('open_sheet_btn')?.click());
+    this.root.querySelector('[data-pab-focus]')?.addEventListener('click', () => { if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } });
     this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.tap({ kind: 'trait', id: b.dataset.pabTrait }); });
     this.root.querySelectorAll('[data-pab-exp]').forEach(b => { b.onclick = () => this.tap({ kind: 'exp', id: Number(b.dataset.pabExp) }); });
     this.root.querySelectorAll('[data-pab-weapon]').forEach(b => { b.onclick = () => (this.targeting?.weaponId === b.dataset.pabWeapon ? this.stopTargeting() : this.startTargeting(b.dataset.pabWeapon)); });
@@ -220,7 +222,7 @@ export class PlayerActionBar {
       <div><span>Objetivo:</span> <b data-no-i18n>${e(t.name)}</b> · <span data-no-i18n>${e(t.band)} · ${e(t.meters.toFixed(1))} m</span>${t.blocked ? ' · <span>Línea de tiro bloqueada</span>' : ''}</div>
       ${t.allowed ? `<div class="pab-edge-tag ${edge[0]}"><b>${edge[1]}</b></div>` : ''}
       ${t.reasons.map(r => `<div class="pab-reason"><span>${e(r)}</span></div>`).join('')}
-      ${t.allowed ? `<div class="pab-buttons pab-attack-edges"><button type="button" class="pab-edge-btn dis" data-pab-attack-edge="dis">Desventaja</button><button type="button" class="pab-edge-btn adv" data-pab-attack-edge="adv">Ventaja</button></div>` : ''}
+      ${t.allowed ? `<div class="pab-buttons pab-attack-edges pab-edge-three"><button type="button" class="pab-edge-btn normal" data-pab-attack-edge="normal">Normal</button><button type="button" class="pab-edge-btn adv" data-pab-attack-edge="adv">Ventaja</button><button type="button" class="pab-edge-btn dis" data-pab-attack-edge="dis">Desventaja</button></div>` : ''}
       <div class="pab-confirm"><span>${t.allowed ? 'Toca otra vez el objetivo para atacar sin ventaja' : 'Fuera de alcance: elige otro objetivo'}</span> · <span>Esc para cancelar</span></div>
     </div>`;
   }

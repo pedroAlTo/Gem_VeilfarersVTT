@@ -21,8 +21,10 @@ export const PLAYER_GROUPS = [
   {
     name: 'Herramientas', root: '#main_left_toolbar', placement: 'right',
     items: [
-      { sel: '#tool_select', label: 'Mover' }, { sel: '#tool_measure', label: 'Medir' }, { sel: '#tool_draw', label: 'Dibujo' },
-      { sel: '#tool_ping', label: 'Ping' }, { sel: '#tool_template', label: 'Área' }, { sel: '#tool_fx', label: 'Efectos' },
+      // In sight: Mover, Área (the player's tool for powers and blasts) and Dibujo; Medir goes
+      // into the menu (a distance is also shown when aiming an attack).
+      { sel: '#tool_select', label: 'Mover' }, { sel: '#tool_template', label: 'Área' }, { sel: '#tool_draw', label: 'Dibujo' },
+      { sel: '#tool_measure', label: 'Medir' }, { sel: '#tool_ping', label: 'Ping' }, { sel: '#tool_fx', label: 'Efectos' },
       { sel: '#tool_undo', label: 'Deshacer' }, { sel: '#toggle_grid', label: 'Rejilla' },
       { sel: '#toggle_snap', label: 'Ajuste a la rejilla' },
     ],
@@ -30,8 +32,9 @@ export const PLAYER_GROUPS = [
   {
     name: 'Personaje', root: '#token_quickbar_root', anchor: '.tok-qb-actions', placement: 'above',
     items: [
-      { sel: '#open_sheet_btn', label: 'Ficha completa' }, { sel: '#open_conditions_btn', label: 'Estados' }, { sel: '#open_equipment_btn', label: 'Equipo' },
-      { sel: '#quick_spotlight_btn', label: 'Foco (Spotlight)' }, { sel: '#toggle_expand_btn' }, { sel: '#quick_reserve_btn', label: 'Reserva' },
+      // Foco stays in view, first (the user's decision, v2.27.5); Equipo goes into ⋯.
+      { sel: '#quick_spotlight_btn', label: 'Foco (Spotlight)' }, { sel: '#open_sheet_btn', label: 'Ficha completa' }, { sel: '#open_conditions_btn', label: 'Estados' },
+      { sel: '#open_equipment_btn', label: 'Equipo' }, { sel: '#toggle_expand_btn' }, { sel: '#quick_reserve_btn', label: 'Reserva' },
     ],
   },
 ];

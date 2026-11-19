@@ -2818,7 +2818,11 @@ export class CanvasEngine {
         ctx,
         mapWidth: this.mapImage.width,
         mapHeight: this.mapImage.height,
-        ambientLight: 1 - darkness * (isKeeperGM ? 0.55 : 1),
+        // With fog of war the fog alone shades the map (as up to v2.23): visited areas keep their
+        // explored veil and no scene darkness is laid on top of them. The scene's darkness (Clima
+        // or the scene's ambient light) is drawn only without fog; with fog, night limits what each
+        // character sees instead.
+        ambientLight: state.fogOfWar !== false ? 1 : 1 - darkness * (isKeeperGM ? 0.55 : 1),
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
         lights: (map.lights || []).filter(l => !l.off),
@@ -2827,14 +2831,24 @@ export class CanvasEngine {
         time: now * 0.001
       });
       // Lava lights itself through the darkness.
-      if (state.layerVisibility.water !== false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
+      if (state.layerVisibility.water !== false && state.fogOfWar === false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
     }
 
     // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)
     if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
       const fullMapId = `${state.campaignId}:${map.id}`;
+      // The table's exploration reaches every screen: loaded the first time, then merged each time
+      // the Keeper saves more of it; a reset or a reveal (its own mark) applies to all.
+      this.fogApplied ??= new Map();
+      const applied = this.fogApplied.get(fullMapId), resetMark = map.fogResetAt || 0;
+      const fogData = typeof map.fogExplored === 'object' && map.fogExplored ? `${map.fogExplored.cols}x${map.fogExplored.rows}:${map.fogExplored.bits}` : map.fogExplored;
       if (!this.fog.isExplorationLoaded(fullMapId) && map.fogExplored) {
         this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
+        this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
+      } else if (!applied || applied.data !== fogData || applied.reset !== resetMark) {
+        if (applied && applied.reset !== resetMark && map.fogExplored === 'none') this.fog.resetExploration(fullMapId);
+        else if (map.fogExplored) this.fog.mergeExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
+        this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
       }
 
       this.fog.renderFogOfWar({

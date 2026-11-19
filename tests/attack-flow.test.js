@@ -129,7 +129,7 @@ test('an adversary that misses rolls no damage; one that hits gets its damage wo
   assert.equal(hit.hit, true); assert.equal(q('#atk_outcome_val').textContent, 'IMPACTO');
   assert.equal(q('#damage_result_display').style.display, 'block'); assert.equal(q('#dmg_raw_val').textContent, '6');
   assert.equal(live(t.id).hp.current, 6, 'nothing is applied until the Keeper applies it');
-  q('#apply_dmg_to_target_btn').click();
+  q('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   assert.equal(live(t.id).hp.current, 5);
   assert.ok(store.state.logs.some(l => /Ataque · Attacker/.test(l.title) && /d20 \[15\]/.test(l.details)));
 });

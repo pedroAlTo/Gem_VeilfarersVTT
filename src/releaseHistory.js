@@ -1,6 +1,88 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.5', date: '2026-11-19', title: 'V3 · Foco a la vista y el Keeper decide todo el daño',
+    sections: [
+      { title: 'Foco', items: [
+        'El botón Foco de la barra del personaje es dorado, va el primero y queda siempre a la vista; se ilumina («Con foco») mientras el personaje lo tiene. Equipo pasa al menú «⋯».',
+        'En la Ficha del jugador, «Tomar foco» sustituye a «Ficha completa» (la ficha completa sigue en el botón FICHA de la barra) y se ilumina mientras tienes el foco.',
+      ] },
+      { title: 'Daño', items: [
+        'Aplicar daño a un adversario, a un NPC o al personaje de otro jugador lo decide siempre el Keeper: le aparece una ventana para elegir cuántos escudos se gastan y aplicar o cancelar el daño. Solo el daño a tu propio personaje lo aplicas tú.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.4', date: '2026-11-19', title: 'V3 · La niebla de guerra vuelve a dejar ver lo explorado',
+    sections: [
+      { title: 'Niebla de guerra', items: [
+        'Arreglado: con la niebla de guerra activada, una zona que un personaje ya ha visitado vuelve a verse atenuada (según «Atenuación explorada»), no negra del todo. Desde la v2.24 la oscuridad de la escena se sumaba encima de lo explorado.',
+        'Como hasta la v2.23, con la niebla activada es la niebla la que sombrea el mapa; la oscuridad del Clima solo se dibuja con la niebla desactivada. Las luces siguen despejando la niebla de su zona y tiñéndola.',
+        'Las luces despejan la niebla una vez por cambio, no en cada fotograma.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.3', date: '2026-11-18', title: 'V3 · Intensidad y teñido de las luces; barra y mazo se arrastran; Normal, Ventaja, Desventaja',
+    sections: [
+      { title: 'Luces', items: [
+        'La intensidad de una luz es la cantidad de oscuridad (y de niebla) que elimina en su zona: 30 % quita el 30 %, 100 % la quita entera.',
+        'Nuevo control «Teñido» en la ficha de la luz: cuánto colorea su zona con su color (0 % solo quita la oscuridad; 30 % por defecto). El color tiñe el mapa, no lo tapa.',
+      ] },
+      { title: 'Pantalla', items: [
+        'La barra del personaje y el icono del mazo completo se arrastran pulsando sobre ellos (sin asa). Un toque sin mover sigue siendo un clic; Alt + doble clic los devuelve a su sitio.',
+        'Normal, Ventaja y Desventaja van en la misma línea y en ese orden.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.2', date: '2026-11-18', title: 'V3 · Las luces quitan la oscuridad, sin teñir el mapa',
+    sections: [
+      { title: 'Luces', items: [
+        'Revertido el baño de color de la v2.27.1: era exagerado. Una luz vuelve a quitar la oscuridad de su zona y deja ver el mapa tal como es.',
+        'Con la intensidad por defecto (0,9) la oscuridad desaparece del todo dentro de su zona (antes quedaba un 7 %); con intensidades bajas, penumbra.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.1', date: '2026-11-18', title: 'V3 · Las luces iluminan de verdad',
+    sections: [
+      { title: 'Luces', items: [
+        'Una luz ya no solo quita la oscuridad: baña su zona con su color, cortada por las paredes y según su intensidad, para que una sala iluminada se vea iluminada también en mapas de imagen oscura (como el Bridge, que además empieza con la luz ambiental al 25 %).',
+        'El núcleo brillante alrededor de la luz es más pequeño y la zona entera queda iluminada.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.0', date: '2026-11-18', title: 'V3 · Niebla sincronizada, el Keeper decide el daño a NPC, paneles movibles y cartas con el título arriba',
+    sections: [
+      { title: 'Niebla de guerra', items: [
+        'Corregido: la exploración no llegaba a los jugadores. Su pantalla la cargaba solo la primera vez, y el aviso de niebla del Keeper no se enviaba. Ahora cada pantalla suma la exploración del Keeper cada vez que este la guarda; «Reiniciar niebla» y «Revelar todo» llegan a todos.',
+        'Si algo de la partida no puede llegar a los jugadores (un elemento no válido), el Keeper ve un aviso que dice qué es; antes los jugadores se quedaban con el estado viejo sin que nadie lo supiera.',
+        'Cada sincronización ya no lleva un segundo mensaje de «mapa cargado»: la mitad de mensajes.',
+      ] },
+      { title: 'Ataques', items: [
+        'Junto a Desventaja y Ventaja está el botón Normal, al tirar un Trait y al atacar.',
+        'El daño a un NPC o adversario lo decide el Keeper: se abre una ventana con el daño, los escudos que puede gastar (y lo que perdería con cada número) y Aplicar o Cancelar. Si ataca un jugador conectado, la ventana le sale al Keeper y el jugador recibe el resultado.',
+      ] },
+      { title: 'Pantalla', items: [
+        'La mano de cartas y la barra del personaje se pueden mover arrastrando su asa (⠿); el sitio se recuerda en este navegador y un doble clic en el asa la devuelve a su lugar.',
+        'Jugador: la herramienta Área queda a la vista y Medir pasa al menú ⋯.',
+        'Cartas: el nombre y el coste van arriba (se leen en la mano); la parte blanca de abajo queda para el texto.',
+      ] },
+    ],
+  },
+  {
+    version: '2.26.1', date: '2026-11-18', title: 'V3 · Una luz encendida ilumina siempre su zona',
+    sections: [
+      { title: 'Luces', items: [
+        'Corregido: una luz encendida en una zona que el grupo aún no había visto no hacía nada (la niebla la tapaba). Ahora toda luz encendida ilumina su zona (las paredes la siguen cortando) y quita la niebla y la oscuridad de ella, la haya visto el grupo o no.',
+        'La intensidad decide cuánto: la mínima muestra la zona en penumbra; desde 1, se ve como de día. La luz es pareja en toda su área y solo se suaviza junto al borde (antes se desvanecía desde el centro).',
+        'Para ocultar una sala iluminada, apaga sus luces o déjala sin ellas.',
+      ] },
+    ],
+  },
+  {
     version: '2.26.0', date: '2026-11-18', title: 'V3 · La partida online viaja por Realtime Database',
     sections: [
       { title: 'Firebase', items: [

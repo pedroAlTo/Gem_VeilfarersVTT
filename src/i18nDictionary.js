@@ -1402,6 +1402,23 @@ export const PAIRS = [
   ["🌑 LUCES APAGADAS", "🌑 LIGHTS OFF"],
   ["sin ajustar", "not set"],
   ["Firebase ha agotado la cuota gratuita de hoy. Se renueva a las 0:00 de la hora del Pacífico (las 9:00 en la España peninsular). Mientras tanto puedes jugar en local.", "Firebase has used up today's free quota. It renews at 0:00 Pacific time. Meanwhile you can play locally."],
+  // V3: Keeper damage window, movable panels (v2.27.0)
+  ["ENVIADO AL KEEPER", "SENT TO THE KEEPER"],
+  ["Sin escudos disponibles para este impacto.", "No shields available for this hit."],
+  ["El daño no se pudo aplicar: el objetivo o el atacante ya no son válidos.", "The damage could not be applied: the target or the attacker is no longer valid."],
+  ["El Keeper ha aplicado el daño.", "The Keeper applied the damage."],
+  ["El Keeper ha cancelado el daño.", "The Keeper cancelled the damage."],
+  // V3: light tint (v2.27.3)
+  ["Cuánta oscuridad elimina en su zona", "How much darkness it removes in its area"],
+  ["Cuánto tiñe su zona con su color", "How much it tints its area with its colour"],
+  // V3 · Foco (v2.27.5)
+  ["✨ CON FOCO", "✨ IN SPOTLIGHT"],
+  ["Con el foco", "In the spotlight"],
+  ["Tomar foco", "Take spotlight"],
+  ["Tomar el foco", "Take the spotlight"],
+  ["Tiene el foco · pulsa para quitarlo", "Has the spotlight · press to remove it"],
+  ["Tienes el foco · pulsa para quitarlo", "You have the spotlight · press to remove it"],
+  ["✨ Tienes el foco.", "✨ You have the spotlight."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1537,4 +1554,12 @@ export const PATTERNS = [
   ["{_x} % · noche", "{_x}% · night"],
   ["Luces que controla ({_x})", "Lights it controls ({_x})"],
   ["{_x} no responde. Solo el Keeper puede accionarlo.", "{_x} does not respond. Only the Keeper can use it."],
+  ["Daño a {_x}: el Keeper decide los escudos y lo aplica.", "Damage to {_x}: the Keeper chooses the shields and applies it."],
+  ["El Keeper ha cancelado el daño a {_x}.", "The Keeper cancelled the damage to {_x}."],
+  ["Escudos a gastar ({_x} disponibles)", "Shields to spend ({_x} available)"],
+  ["Escudos a gastar ({_x} disponible)", "Shields to spend ({_x} available)"],
+  ["Arrastra para mover {_x} · doble clic: volver a su sitio", "Drag to move {_x} · double click: back to its place"],
+  ["Los jugadores no pueden recibir el estado de la partida: {_x}", "Players cannot receive the game state: {_x}"],
+  ["Intensidad ({_x}% de oscuridad eliminada)", "Intensity ({_x}% of darkness removed)"],
+  ["Teñido ({_x}%)", "Tint ({_x}%)"],
 ];

@@ -138,8 +138,12 @@ export class ElementInspectorHUD {
 
           <div class="insp-row" style="margin-top: 8px;">
             <div class="insp-col">
-              <label>Intensity (${((light.intensity ?? 0.9) * 100).toFixed(0)}%)</label>
-              <input type="range" id="insp_light_intensity" min="0.1" max="1.5" step="0.05" value="${light.intensity ?? 0.9}" class="hud-slider" />
+              <label title="Cuánta oscuridad elimina en su zona">Intensidad (${Math.min(100, (light.intensity ?? 0.9) * 100).toFixed(0)}% de oscuridad eliminada)</label>
+              <input type="range" id="insp_light_intensity" min="0.05" max="1" step="0.05" value="${Math.min(1, light.intensity ?? 0.9)}" class="hud-slider" />
+            </div>
+            <div class="insp-col">
+              <label title="Cuánto tiñe su zona con su color">Teñido (${Math.round((light.tint ?? 0.3) * 100)}%)</label>
+              <input type="range" id="insp_light_tint" min="0" max="1" step="0.05" value="${light.tint ?? 0.3}" class="hud-slider" />
             </div>
             <div class="insp-col">
               <label>Dynamic FX Effect</label>
@@ -235,6 +239,7 @@ export class ElementInspectorHUD {
       const val = parseFloat(e.target.value);
       store.updateLight(light.id, { intensity: val });
     };
+    this.container.querySelector('#insp_light_tint').oninput = (e) => store.updateLight(light.id, { tint: parseFloat(e.target.value) });
 
     this.container.querySelector('#insp_light_effect').onchange = (e) => {
       store.updateLight(light.id, { effect: e.target.value });

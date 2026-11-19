@@ -154,9 +154,9 @@ test('damage applies against current HP and only once', () => {
   Math.random = () => 0;
   ui.executeDamageCalc();
   store.updateToken(actor().id, { hp: { ...actor().hp, current: 5 } });
-  el.querySelector('#apply_dmg_to_target_btn').click();
+  el.querySelector('#apply_dmg_to_target_btn').click(); document.querySelector('#kdmg_apply')?.click();
   assert.equal(actor().hp.current, 4);
-  el.querySelector('#apply_dmg_to_target_btn').click();
+  el.querySelector('#apply_dmg_to_target_btn').click(); document.querySelector('#kdmg_apply')?.click();
   assert.equal(actor().hp.current, 4);
   el.remove();
 });
@@ -490,7 +490,7 @@ test('armor changed after preview cannot give a free mitigation', () => {
   ui.executeDamageCalc();
   const hp = actor().hp.current;
   store.updateToken(actor().id, { armor: { ...actor().armor, current: 0 } });
-  el.querySelector('#apply_dmg_to_target_btn').click();
+  el.querySelector('#apply_dmg_to_target_btn').click(); document.querySelector('#kdmg_apply')?.click();
   assert.equal(actor().hp.current, hp - 1);
   ui.executeDamageCalc();
   assert.equal(el.querySelector('#apply_dmg_to_target_btn').disabled, false);

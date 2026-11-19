@@ -69,8 +69,8 @@ test('damage preview is silent; applied FX use actual lost HP and real Armor exp
   const {node,dice,target}=damagePanel();const effects=[],sent=[];window.veilCanvas={triggerAttackFX:p=>effects.push(p)};network.broadcast=msg=>sent.push(msg);
   node.querySelector('#dmg_use_armor').checked=true; // the defender chooses to mark an Armor Slot
   dice.executeDamageCalc();assert.equal(effects.length,0);assert.equal(sent.filter(m=>m.type==='ATTACK_FX').length,0);
-  node.querySelector('#apply_dmg_to_target_btn').click();assert.equal(effects.length,1);assert.equal(effects[0].hpLost,1);assert.equal(effects[0].shield,true);assert.equal(effects[0].kind,'plasma');assert.equal(store.state.tokens.find(t=>t.id===target.id).armor.current,0);
-  node.querySelector('#apply_dmg_to_target_btn').click();assert.equal(effects.length,1);
+  node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();assert.equal(effects.length,1);assert.equal(effects[0].hpLost,1);assert.equal(effects[0].shield,true);assert.equal(effects[0].kind,'plasma');assert.equal(store.state.tokens.find(t=>t.id===target.id).armor.current,0);
+  node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();assert.equal(effects.length,1);
 });
 test('a hit below the Major Threshold marks 1 HP; Armor is never spent unless the defender chooses to (Corebook ch. 10)', () => {
   const {node,dice,target}=damagePanel();window.veilCanvas={triggerAttackFX:()=>{}};network.broadcast=()=>{};
@@ -84,7 +84,7 @@ test('a hit below the Major Threshold marks 1 HP; Armor is never spent unless th
   assert.equal(node.querySelector('#dmg_severity_val').textContent,'Minor');
   assert.equal(node.querySelector('#dmg_hp_loss_val').textContent,'1 HP');
   assert.match(node.querySelector('#dmg_detail_text').textContent,/Major \(10\) & Severe \(16\)\. No armor slot used/);
-  node.querySelector('#apply_dmg_to_target_btn').click();
+  node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   const after=store.state.tokens.find(t=>t.id===target.id);
   assert.equal(after.hp.current,5);assert.equal(after.armor.current,3);
 });
@@ -112,7 +112,7 @@ test('the damage panel reads the weapon type and the target armor: an Energy rif
   dice.executeDamageCalc();
   assert.equal(node.querySelector('#dmg_severity_val').textContent,'Major');assert.equal(node.querySelector('#dmg_hp_loss_val').textContent,'2 HP');
   assert.match(node.querySelector('#dmg_detail_text').textContent,/Energy · Penetración −2: umbrales 10\/16 → 8\/14/);
-  node.querySelector('#apply_dmg_to_target_btn').click();
+  node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   assert.equal(store.state.tokens.find(t=>t.id===target.id).hp.current,4,'applied with the same lowered thresholds');
   // Same hit against Reflective armor: found on the target, no Penetration.
   node.remove();store.listeners.clear();
@@ -125,7 +125,7 @@ test('the damage panel reads the weapon type and the target armor: an Energy rif
   // Neural, chosen by hand: 1 HP and 1 Stress.
   second.node.querySelector('#dmg_damage_type').value='neural';second.node.querySelector('#dmg_formula').value='3';
   store.updateToken(second.target.id,{stress:{current:0,max:6}});
-  second.dice.executeDamageCalc();second.node.querySelector('#apply_dmg_to_target_btn').click();
+  second.dice.executeDamageCalc();second.node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   const after=store.state.tokens.find(t=>t.id===second.target.id);
   assert.equal(after.stress.current,1);assert.equal(after.hp.current,5);
 });
@@ -145,7 +145,7 @@ test('a Crushing hit against a single Armor Slot cannot be soaked; with Composit
   assert.equal(node.querySelector('#dmg_hp_loss_val').textContent,'1 HP','the only slot is ignored');
   assert.match(node.querySelector('#dmg_detail_text').textContent,/Crushing: ignora 1 Armor Slot/);
   assert.equal(node.querySelector('#dmg_shield_mitigation_row').style.display,'none');
-  node.querySelector('#apply_dmg_to_target_btn').click();
+  node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   let after=store.state.tokens.find(t=>t.id===target.id);
   assert.equal(after.hp.current,5);assert.equal(after.armor.current,1,'an ignored slot is not spent');
   // Composite armor: the same hit can be soaked.
@@ -157,7 +157,7 @@ test('a Crushing hit against a single Armor Slot cannot be soaked; with Composit
   assert.equal(second.node.querySelector('#dmg_target_composite').checked,true);
   assert.equal(second.node.querySelector('#dmg_hp_loss_val').textContent,'0 HP');
   assert.match(second.node.querySelector('#dmg_detail_text').textContent,/Crushing anulado por armadura Composite/);
-  second.node.querySelector('#apply_dmg_to_target_btn').click();
+  second.node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   after=store.state.tokens.find(t=>t.id===second.target.id);
   assert.equal(after.hp.current,6);assert.equal(after.armor.current,0);
 });
@@ -167,7 +167,7 @@ test('a Bleed weapon leaves the target Bleeding on any hit, once, and never a Sy
   node.querySelector('#dmg_formula').value='3';node.querySelector('#dmg_weapon_bleed').checked=true;node.querySelector('#dmg_use_armor').checked=true;
   dice.executeDamageCalc();
   assert.match(node.querySelector('#dmg_detail_text').textContent,/Bleed: el objetivo queda Bleeding/);
-  node.querySelector('#apply_dmg_to_target_btn').click();
+  node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   let after=store.state.tokens.find(t=>t.id===target.id);
   assert.equal(after.hp.current,6,'soaked to 0 HP');assert.deepEqual(after.conditions,['Bleeding'],'still a hit: Bleeding, not duplicated');
   node.remove();store.listeners.clear();
@@ -176,17 +176,17 @@ test('a Bleed weapon leaves the target Bleeding on any hit, once, and never a Sy
   second.node.querySelector('#dmg_formula').value='3';second.node.querySelector('#dmg_weapon_bleed').checked=true;
   second.dice.executeDamageCalc();
   assert.match(second.node.querySelector('#dmg_detail_text').textContent,/no sangra/);
-  second.node.querySelector('#apply_dmg_to_target_btn').click();
+  second.node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   after=store.state.tokens.find(t=>t.id===second.target.id);
   assert.equal(after.hp.current,5);assert.deepEqual(after.conditions||[],[]);
 });
 test('Armor exhausted between preview and apply does not produce a shield; secret impact is not broadcast', () => {
   const {node,dice,target}=damagePanel({secret:true});const effects=[],sent=[];window.veilCanvas={triggerAttackFX:p=>effects.push(p)};network.broadcast=msg=>sent.push(msg);
-  dice.executeDamageCalc();store.updateToken(target.id,{armor:{current:0,max:1}});node.querySelector('#apply_dmg_to_target_btn').click();
+  dice.executeDamageCalc();store.updateToken(target.id,{armor:{current:0,max:1}});node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();
   assert.equal(effects[0].shield,false);assert.equal(sent.filter(m=>m.type==='ATTACK_FX'||m.type==='SPECIAL_FX').length,0);
 });
 test('direct damage bypass suppresses shield feedback and changing scene invalidates a stale application', () => {
   const {node,dice}=damagePanel({direct:true});const effects=[];window.veilCanvas={triggerAttackFX:p=>effects.push(p)};
-  dice.executeDamageCalc();node.querySelector('#apply_dmg_to_target_btn').click();assert.equal(effects[0].shield,false);
-  node.remove();store.listeners.clear();const second=damagePanel();second.dice.executeDamageCalc();store.state.activeMapId=store.state.maps.find(m=>m.id!==store.state.activeMapId).id;second.node.querySelector('#apply_dmg_to_target_btn').click();assert.equal(effects.length,1);
+  dice.executeDamageCalc();node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();assert.equal(effects[0].shield,false);
+  node.remove();store.listeners.clear();const second=damagePanel();second.dice.executeDamageCalc();store.state.activeMapId=store.state.maps.find(m=>m.id!==store.state.activeMapId).id;second.node.querySelector('#apply_dmg_to_target_btn').click();document.querySelector('#kdmg_apply')?.click();assert.equal(effects.length,1);
 });

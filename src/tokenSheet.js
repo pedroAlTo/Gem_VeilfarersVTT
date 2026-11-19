@@ -10,6 +10,7 @@ import { notify, confirmAction, sanitizeHTML, escapeHTML } from './ui.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
+import { toggleSpotlight } from './spotlight.js';
 import { TRAITS, SUBTRAITS } from './rulesEngine.js';
 
 export function isHorrorToken(token) {
@@ -113,7 +114,7 @@ export class TokenHUD {
           <!-- Compact Action Controls -->
           <div class="tok-qb-actions">
             ${isKeeper && !isPC && token.actorType !== 'drone' ? `<button class="hud-btn hud-btn-xs hud-btn-primary" id="quick_attack_btn" title="Ataque normal: toca el objetivo en el mapa y vuelve a tocarlo para atacar">⚔ ATACAR</button>` : ''}
-            <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-amber' : ''}" id="quick_spotlight_btn" title="Alternar Foco / Borde dorado brillante con pulso">${token.hasSpotlight ? '✨ FOCO ON' : '✨ FOCO'}</button>
+            <button class="hud-btn hud-btn-xs qb-focus-btn ${token.hasSpotlight ? 'is-on' : ''}" id="quick_spotlight_btn" aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tiene el foco · pulsa para quitarlo' : 'Tomar el foco'}">${token.hasSpotlight ? '✨ CON FOCO' : '✨ FOCO'}</button>
             <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
             <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
             <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>
@@ -137,7 +138,7 @@ export class TokenHUD {
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
           </div>
           ${isKeeper && !isPC && token.actorType !== 'drone' ? `<button class="hud-btn hud-btn-xs hud-btn-primary" id="quick_attack_btn" title="Ataque normal: toca el objetivo en el mapa y vuelve a tocarlo para atacar">⚔ ATACAR</button>` : ''}
-          <button class="hud-btn hud-btn-xs ${token.hasSpotlight ? 'hud-btn-amber' : ''}" id="quick_spotlight_btn" title="Alternar Foco / Borde dorado brillante con pulso">${token.hasSpotlight ? '✨ FOCO ON' : '✨ FOCO'}</button>
+          <button class="hud-btn hud-btn-xs qb-focus-btn ${token.hasSpotlight ? 'is-on' : ''}" id="quick_spotlight_btn" aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tiene el foco · pulsa para quitarlo' : 'Tomar el foco'}">${token.hasSpotlight ? '✨ CON FOCO' : '✨ FOCO'}</button>
           <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Open Full Character Sheet">SHEET</button>
           <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
           <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
@@ -373,20 +374,7 @@ export class TokenHUD {
     // Quick Spotlight Toggle
     const spotlightBtn = this.container.querySelector('#quick_spotlight_btn');
     if (spotlightBtn) {
-      spotlightBtn.onclick = () => {
-        const curTok = store.state.tokens.find(t => t.id === token.id);
-        if (!curTok || !store.canEditToken(curTok.id)) return;
-        const newSpotlight = !curTok.hasSpotlight;
-        const ok = store.setTokenSpotlight(curTok.id, newSpotlight);
-        if (ok) {
-          if (store.sessionRole !== 'player') {
-            network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { hasSpotlight: newSpotlight, spotlight: { ...(curTok.spotlight || {}), enabled: newSpotlight } } });
-            network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
-          }
-          notify(newSpotlight ? '✨ Borde dorado brillante activado con pulso.' : '✨ Foco desactivado.');
-          this.render();
-        }
-      };
+      spotlightBtn.onclick = () => { if (toggleSpotlight(token.id)) this.render(); };
     }
 
     // Direct Quick Stat Steppers (HP, Armor/Shields, Stress, Hope/Effort)
