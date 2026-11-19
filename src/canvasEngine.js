@@ -2795,6 +2795,9 @@ export class CanvasEngine {
     // the Keeper's GM vision sees it softened so the map stays readable.
     // Who sees on this screen: the party (a player's tokens follow confirmed places; while the
     // player drags, the vision stays at the start of the drag).
+    // A token's own light (a flashlight) shows on a player's screen only while the party sees that
+    // token: an enemy out of sight does not give itself away with its light cone (v2.27.9).
+    const lightShown = t => state.userRole !== 'player' || this.isTokenVisibleToPlayers(t, activeTokens, map);
     let viewers = [], previewOnly = false;
     if (state.userRole === 'player') {
       // Only the party's eyes: an enemy the player selects (to attack it) never sees for them.
@@ -2825,7 +2828,7 @@ export class CanvasEngine {
     if (state.layerVisibility.walls_lights !== false) {
       // A token's own light goes where the token is drawn: while it is dragged into place and
       // while it slides to a new place. (Vision and fog keep the confirmed position.)
-      const lightingTokens = activeTokens.map(drawnAt);
+      const lightingTokens = activeTokens.filter(lightShown).map(drawnAt);
       this.lighting.renderLighting({
         ctx,
         mapWidth: this.mapImage.width,
@@ -2871,7 +2874,7 @@ export class CanvasEngine {
         walls: map.walls || [],
         // Every light that shows something at night: the map's and the tokens' own (where the
         // table has them; a player's dragged token keeps its light at the start of the drag).
-        lights: [...(map.lights || []).filter(l => !l.off).map(l => ({ ...l, fixture: true })), ...activeTokens.filter(t => t.hasLight && t.lightRadius > 0 && !t.hidden).map(t => {
+        lights: [...(map.lights || []).filter(l => !l.off).map(l => ({ ...l, fixture: true })), ...activeTokens.filter(t => t.hasLight && t.lightRadius > 0 && !t.hidden && lightShown(t)).map(t => {
           const at = this.draggedToken?.id === t.id && state.userRole === 'player' && this.draggedTokenOrigX != null ? { ...t, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : state.userRole === 'player' ? seenAt(t) : drawnAt(t);
           return { x: at.x, y: at.y, radius: t.lightRadius, facingAngle: t.facingAngle, visionAngle: t.visionAngle ?? 90 };
         })],

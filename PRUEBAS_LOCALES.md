@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.8.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.8**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.8** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.8.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.9.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.9**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.9** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.9.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -88,6 +88,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.8.zip**. Abre **AYUDA
 73. **(V3) Common Effort.** Con un Sleeping, usa Cover the Angle (también con Burnout), Brace y Bear Down: se aplican sin error y la tarjeta de resultado muestra «COMMON EFFORT» o «RESOLVE MOVE».
 74. **(V3) Visión de los enemigos.** Con la niebla activada, un personaje mira a un adversario visible y luego se gira; el Keeper mueve al adversario. El jugador ve solo el fantasma «ÚLTIMA POS.» donde lo vio, no al adversario. Al volver a mirar ese sitio, el fantasma desaparece. Seleccionar al adversario no destapa la niebla. Apaga una luz: los enemigos de su zona dejan de verse.
 75. **(V3) Enemigo con dueño.** En una sala online, asigna un adversario a un jugador (o déjalo con controlador). Ese jugador y los demás no ven su cono de visión ni la zona que mira, y solo lo ven cuando un personaje del grupo lo mira. Una luz sobre el adversario no lo muestra si nadie del grupo lo mira.
+76. **(V3) Linterna del enemigo.** Da luz propia a un adversario (con ángulo, p. ej. 60°) y ponlo en una zona explorada fuera de la vista del grupo. El jugador no ve su cono de luz, solo el fantasma «ÚLTIMA POS.». Cuando un personaje lo mira, se ve el adversario con su luz.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

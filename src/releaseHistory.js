@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.9', date: '2026-11-19', title: 'V3 · La linterna de un enemigo oculto no lo delata',
+    sections: [
+      { title: 'Niebla y visión', items: [
+        'Arreglado: la luz propia de un enemigo (su linterna, con su cono) se dibujaba en la pantalla de los jugadores aunque no lo vieran, y delataba dónde estaba y hacia dónde miraba. Ahora la luz de un token solo se ve mientras el grupo ve a ese token; fuera de la vista queda solo el fantasma «ÚLTIMA POS.».',
+      ] },
+    ],
+  },
+  {
     version: '2.27.8', date: '2026-11-19', title: 'V3 · Un enemigo con dueño asignado sigue siendo un enemigo',
     sections: [
       { title: 'Niebla y visión', items: [
