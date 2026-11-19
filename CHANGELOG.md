@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.5**.
-Paquete: `VeilFarers_VTT_v2.27.5.zip`.
+Versión actual del VTT: **v2.27.6**.
+Paquete: `VeilFarers_VTT_v2.27.6.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.6] — 2026-11-19
+
+V3 · Las cartas de Common Effort ya se pueden usar
+
+### Cartas
+
+- Arreglado el error «Cannot read properties of undefined (reading 'toUpperCase')» al usar algunas cartas: los Common Effort (Cover the Angle, Brace, Steady Hands…), Bear Down y las cartas de Fear y de adversarios no tenían nombre de tipo. Ahora todas lo tienen y una carta de tipo desconocido se muestra como «Carta».
 
 ## [2.27.5] — 2026-11-19
 

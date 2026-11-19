@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.6', date: '2026-11-19', title: 'V3 · Las cartas de Common Effort ya se pueden usar',
+    sections: [
+      { title: 'Cartas', items: [
+        'Arreglado el error «Cannot read properties of undefined (reading \'toUpperCase\')» al usar algunas cartas: los Common Effort (Cover the Angle, Brace, Steady Hands…), Bear Down y las cartas de Fear y de adversarios no tenían nombre de tipo. Ahora todas lo tienen y una carta de tipo desconocido se muestra como «Carta».',
+      ] },
+    ],
+  },
+  {
     version: '2.27.5', date: '2026-11-19', title: 'V3 · Foco a la vista y el Keeper decide todo el daño',
     sections: [
       { title: 'Foco', items: [

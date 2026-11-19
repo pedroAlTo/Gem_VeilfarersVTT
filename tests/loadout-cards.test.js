@@ -256,6 +256,14 @@ test('Bear Down spends the dice chosen and adds them all; a Sleeping hand holds 
   assert.deepEqual(sleepingCommonCards({ ...vell, path: 'Awakened' }), []);
 });
 
+test('every card kind has a name, so using a Common Effort or Bear Down never breaks (v2.27.6)', async () => {
+  const { sleepingCommonCards, keeperCards, CARD_KINDS, cardKindName } = await import('../src/loadoutCards.js');
+  const vell = { id: 'tok_v', name: 'Vell', isPlayer: true, path: 'Sleeping', effort: 0, hope: 0, resolve: { current: 1, max: 1, dieType: 'd4' }, stress: { current: 0, max: 6 }, hp: { current: 6, max: 6 } };
+  const kinds = new Set([...sleepingCommonCards(vell, { optionalEfforts: true }), ...(keeperCards?.({ fear: 3, tokens: [] }) || [])].map(c => c.kind));
+  for (const kind of kinds) assert.ok(CARD_KINDS[kind], `kind ${kind} has a name`);
+  assert.equal(cardKindName('desconocido'), 'Carta');
+});
+
 test('a card with a duration puts its clock on the player, or on the marked ally when it helps others', async () => {
   const { performGameAction } = await import('../src/gameActions.js');
   const { setCardData } = await import('../src/cardData.js');
