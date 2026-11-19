@@ -15,6 +15,6 @@ test('the player groups follow the proposal: three in view first', async () => {
   const first = name => PLAYER_GROUPS.find(g => g.name === name).items.filter(i => !i.hideOnly).slice(0, 3).map(i => i.sel);
   // User decision (v2.26.2): Área in sight, Medir in the menu.
   assert.deepEqual(first('Herramientas'), ['#tool_select', '#tool_template', '#tool_draw']);
-  assert.deepEqual(first('Personaje'), ['#open_sheet_btn', '#open_conditions_btn', '#open_equipment_btn']);
+  assert.deepEqual(first('Personaje'), ['#quick_spotlight_btn', '#open_sheet_btn', '#open_conditions_btn']);
   assert.deepEqual(first('Cabecera'), ['#quick_scene_select', '#session_state', '#session_my_tokens']);
 });

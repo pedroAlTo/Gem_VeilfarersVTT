@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.4**.
-Paquete: `VeilFarers_VTT_v2.27.4.zip`.
+Versión actual del VTT: **v2.27.5**.
+Paquete: `VeilFarers_VTT_v2.27.5.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.5] — 2026-11-19
+
+V3 · Foco a la vista y el Keeper decide todo el daño
+
+### Foco
+
+- El botón Foco de la barra del personaje es dorado, va el primero y queda siempre a la vista; se ilumina («Con foco») mientras el personaje lo tiene. Equipo pasa al menú «⋯».
+- En la Ficha del jugador, «Tomar foco» sustituye a «Ficha completa» (la ficha completa sigue en el botón FICHA de la barra) y se ilumina mientras tienes el foco.
+
+### Daño
+
+- Aplicar daño a un adversario, a un NPC o al personaje de otro jugador lo decide siempre el Keeper: le aparece una ventana para elegir cuántos escudos se gastan y aplicar o cancelar el daño. Solo el daño a tu propio personaje lo aplicas tú.
 
 ## [2.27.4] — 2026-11-19
 

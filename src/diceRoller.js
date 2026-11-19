@@ -1813,9 +1813,12 @@ export class DiceRollerSidebar {
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
       const currentArmorNow = usableSlots(currentTarget);
-      // Damage to an NPC or adversary is the Keeper's call: a window lets them choose its shields
-      // and apply or cancel it. A connected player's hit goes to the Keeper with every option.
-      if (!isPartyToken(currentTarget)) {
+      // Damage is the Keeper's call (v2.27.5: to an NPC, an adversary or another player's
+      // character): a window lets them choose its shields and apply or cancel it. A connected
+      // player's hit goes to the Keeper with every option; only a hit on their own character
+      // is applied by the player.
+      const keeperDecides = store.sessionRole !== 'player' || !store.canEditToken(currentTarget.id);
+      if (keeperDecides) {
         const maxShields = isDirect ? 0 : currentArmorNow;
         const options = Array.from({ length: Math.min(maxShields, 10) + 1 }, (_, n) => planDamage(n).damagePayload);
         const request = { attackerName: damageOptions.attackerName, targetId: currentTarget.id, targetName: currentTarget.name, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, options, secret };

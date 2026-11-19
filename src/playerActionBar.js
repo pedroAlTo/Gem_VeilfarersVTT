@@ -23,6 +23,7 @@ import { bearDown, bearDownTarget, prepareResolve } from './bearDown.js';
 import { cardData } from './cardData.js';
 import { characterCards } from './loadoutCards.js';
 import { network } from './networkManager.js';
+import { toggleSpotlight } from './spotlight.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -152,7 +153,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -174,7 +175,7 @@ export class PlayerActionBar {
     const subtitle = [token.characterClass, token.path].filter(Boolean).join(' · ');
     this.root.innerHTML = sanitizeHTML(`
       <header class="pab-head"><div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
-        <button type="button" class="hud-btn hud-btn-xs" data-pab-sheet>Ficha completa</button></header>
+        <button type="button" class="pab-focus ${token.hasSpotlight ? 'is-on' : ''}" data-pab-focus aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tienes el foco · pulsa para quitarlo' : 'Tomar el foco'}" ${store.canEditToken(token.id) ? '' : 'disabled'}>✨ ${token.hasSpotlight ? 'Con el foco' : 'Tomar foco'}</button></header>
       ${this.statsHTML(stats)}
       <div class="pab-row">
         <span class="pab-label">Tirar</span>
@@ -197,7 +198,7 @@ export class PlayerActionBar {
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
       ${this.result ? this.resultRow() : ''}`);
-    this.root.querySelector('[data-pab-sheet]')?.addEventListener('click', () => document.getElementById('open_sheet_btn')?.click());
+    this.root.querySelector('[data-pab-focus]')?.addEventListener('click', () => { if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } });
     this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.tap({ kind: 'trait', id: b.dataset.pabTrait }); });
     this.root.querySelectorAll('[data-pab-exp]').forEach(b => { b.onclick = () => this.tap({ kind: 'exp', id: Number(b.dataset.pabExp) }); });
     this.root.querySelectorAll('[data-pab-weapon]').forEach(b => { b.onclick = () => (this.targeting?.weaponId === b.dataset.pabWeapon ? this.stopTargeting() : this.startTargeting(b.dataset.pabWeapon)); });

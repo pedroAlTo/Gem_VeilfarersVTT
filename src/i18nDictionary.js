@@ -1411,6 +1411,14 @@ export const PAIRS = [
   // V3: light tint (v2.27.3)
   ["Cuánta oscuridad elimina en su zona", "How much darkness it removes in its area"],
   ["Cuánto tiñe su zona con su color", "How much it tints its area with its colour"],
+  // V3 · Foco (v2.27.5)
+  ["✨ CON FOCO", "✨ IN SPOTLIGHT"],
+  ["Con el foco", "In the spotlight"],
+  ["Tomar foco", "Take spotlight"],
+  ["Tomar el foco", "Take the spotlight"],
+  ["Tiene el foco · pulsa para quitarlo", "Has the spotlight · press to remove it"],
+  ["Tienes el foco · pulsa para quitarlo", "You have the spotlight · press to remove it"],
+  ["✨ Tienes el foco.", "✨ You have the spotlight."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.5', date: '2026-11-19', title: 'V3 · Foco a la vista y el Keeper decide todo el daño',
+    sections: [
+      { title: 'Foco', items: [
+        'El botón Foco de la barra del personaje es dorado, va el primero y queda siempre a la vista; se ilumina («Con foco») mientras el personaje lo tiene. Equipo pasa al menú «⋯».',
+        'En la Ficha del jugador, «Tomar foco» sustituye a «Ficha completa» (la ficha completa sigue en el botón FICHA de la barra) y se ilumina mientras tienes el foco.',
+      ] },
+      { title: 'Daño', items: [
+        'Aplicar daño a un adversario, a un NPC o al personaje de otro jugador lo decide siempre el Keeper: le aparece una ventana para elegir cuántos escudos se gastan y aplicar o cancelar el daño. Solo el daño a tu propio personaje lo aplicas tú.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.4', date: '2026-11-19', title: 'V3 · La niebla de guerra vuelve a dejar ver lo explorado',
     sections: [
       { title: 'Niebla de guerra', items: [

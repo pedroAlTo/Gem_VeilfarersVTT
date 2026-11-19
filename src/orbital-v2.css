@@ -160,3 +160,7 @@ body {background:radial-gradient(ellipse at 72% 4%,#21132f66,transparent 55%),#0
   .layer-hud-container{bottom:172px;left:10px}.fear-title{display:inline;font-size:7px;letter-spacing:.09em}
   .orbital-map-heading h1{font-size:15px;letter-spacing:.03em}
 }
+
+/* Foco in the character bar (v2.27.5): gold and in view; lit while the token has the spotlight. */
+#token_quickbar_root .qb-focus-btn { border-color: #d8a74a !important; background: rgba(120, 72, 8, .45) !important; color: #ffd98a !important; font-weight: 700 !important; }
+#token_quickbar_root .qb-focus-btn.is-on { background: linear-gradient(180deg, #ffd56a, #e0a12a) !important; border-color: #fff1b8 !important; color: #2a1600 !important; box-shadow: 0 0 12px rgba(255, 196, 70, .75); }

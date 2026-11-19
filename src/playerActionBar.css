@@ -150,3 +150,9 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .kdmg-preview { margin: 0; padding: 8px 10px; border-left: 2px solid #fde68a; background: rgba(13, 4, 32, .55); color: #fde68a; font-size: 13px; }
 .pab-buttons.pab-edge-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; flex-wrap: nowrap; }
 .pab-edge-three .pab-edge-btn { min-width: 0; padding-left: 4px; padding-right: 4px; letter-spacing: .08em; }
+
+/* Tomar foco (v2.27.5): in place of «Ficha completa»; lit gold while this character has the spotlight. */
+.pab-focus { flex-shrink: 0; padding: 6px 12px; border: 1px solid #d8a74a; border-radius: 4px; background: rgba(120, 72, 8, .35); color: #ffd98a; font: 700 11px/1 var(--font-hud); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: background .15s, box-shadow .15s; }
+.pab-focus:hover:not(:disabled) { background: rgba(180, 110, 16, .55); }
+.pab-focus.is-on { background: linear-gradient(180deg, #ffd56a, #e0a12a); border-color: #fff1b8; color: #2a1600; box-shadow: 0 0 14px rgba(255, 196, 70, .75), inset 0 0 6px rgba(255, 255, 255, .5); }
+.pab-focus:disabled { opacity: .5; cursor: default; }

@@ -32,8 +32,9 @@ export const PLAYER_GROUPS = [
   {
     name: 'Personaje', root: '#token_quickbar_root', anchor: '.tok-qb-actions', placement: 'above',
     items: [
-      { sel: '#open_sheet_btn', label: 'Ficha completa' }, { sel: '#open_conditions_btn', label: 'Estados' }, { sel: '#open_equipment_btn', label: 'Equipo' },
-      { sel: '#quick_spotlight_btn', label: 'Foco (Spotlight)' }, { sel: '#toggle_expand_btn' }, { sel: '#quick_reserve_btn', label: 'Reserva' },
+      // Foco stays in view, first (the user's decision, v2.27.5); Equipo goes into ⋯.
+      { sel: '#quick_spotlight_btn', label: 'Foco (Spotlight)' }, { sel: '#open_sheet_btn', label: 'Ficha completa' }, { sel: '#open_conditions_btn', label: 'Estados' },
+      { sel: '#open_equipment_btn', label: 'Equipo' }, { sel: '#toggle_expand_btn' }, { sel: '#quick_reserve_btn', label: 'Reserva' },
     ],
   },
 ];

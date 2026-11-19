@@ -963,14 +963,14 @@ export class NetworkManager {
       else { conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', ...(Number.isSafeInteger(data.sequence) ? { sequence: data.sequence } : {}), error })); if (conn) this.syncPeer(conn); }
       return;
     }
-    // A player's hit on an NPC or adversary: the Keeper decides its shields and applies it or
+    // A player's hit on an NPC, an adversary or another player's character: the Keeper decides its shields and applies it or
     // cancels it, in a window. Each option was worked out by the attacker (one per shield count);
     // the chosen one goes through the same checks as any damage.
     if (data.type === 'DAMAGE_REQUEST') {
       const conn = this.connections.get(senderId), req = data.request || {};
       const options = Array.isArray(req.options) ? req.options.slice(0, 11) : [];
       const target = this.store.state.tokens.find(t => t.id === req.targetId);
-      const valid = target && !isPartyToken(target) && options.length && options.every(o => o && o.type === 'APPLY_DAMAGE' && o.targetId === target.id && owns(o.attackerId));
+      const valid = target && options.length && options.every(o => o && o.type === 'APPLY_DAMAGE' && o.targetId === target.id && owns(o.attackerId));
       if (!valid) { conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El daño no se pudo aplicar: el objetivo o el atacante ya no son válidos.' })); return; }
       import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options }, n => {
         const chosen = options[n];
