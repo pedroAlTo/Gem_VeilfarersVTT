@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.7**.
-Paquete: `VeilFarers_VTT_v2.27.7.zip`.
+Versión actual del VTT: **v2.27.8**.
+Paquete: `VeilFarers_VTT_v2.27.8.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.8] — 2026-11-19
+
+V3 · Un enemigo con dueño asignado sigue siendo un enemigo
+
+### Niebla y visión
+
+- Arreglado: un adversario (o un token con nombre oculto, «?????») al que se le había asignado un dueño o un controlador contaba como del grupo. Los jugadores veían por sus ojos (su cono de visión destapaba la niebla) y lo veían siempre. Ahora nunca presta su visión y solo se ve cuando un personaje del grupo lo ve.
+- Una luz deja ver a un enemigo más allá del alcance de la vista solo si algún personaje del grupo lo está mirando sin paredes de por medio: una sala iluminada a tu espalda o tras un muro no muestra quién hay dentro.
 
 ## [2.27.7] — 2026-11-19
 

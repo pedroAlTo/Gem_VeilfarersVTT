@@ -43,7 +43,12 @@ export const WATER_DEPTH_COLORS = [
 
 // Whose eyes may show the map: a party token, or one this screen controls. Never an enemy's
 // (players do not share what adversaries and NPCs see; v2.27.7).
-const sharesSight = token => !!token && (isPartyToken(token) || (store.sessionRole === 'player' && token.ownerId !== 'keeper' && !!store.canEditToken?.(token.id)));
+// An adversary or a masked token («?????») is an enemy even when someone was given control of it:
+// it never lends its eyes to the players, and they see it only when the party does (v2.27.8).
+const isEnemyToken = t => !!t && !t.isPlayer && (t.actorType === 'adversary' || !!t.hideName || /horror|stalker|abomination|threat|alien|beast|monster|parasite|spawn|unknown/i.test(`${t.name || ''} ${t.roleTag || ''} ${t.species || ''}`));
+// The party's eyes: party tokens that are not enemies.
+const partyEyes = t => isPartyToken(t) && !isEnemyToken(t);
+const sharesSight = token => !!token && !isEnemyToken(token) && (isPartyToken(token) || (store.sessionRole === 'player' && token.ownerId !== 'keeper' && !!store.canEditToken?.(token.id)));
 
 // Ramer–Douglas–Peucker: a freehand outline with only the points that shape it.
 function simplifyPath(points, tolerance = 3) {
@@ -2793,7 +2798,7 @@ export class CanvasEngine {
     let viewers = [], previewOnly = false;
     if (state.userRole === 'player') {
       // Only the party's eyes: an enemy the player selects (to attack it) never sees for them.
-      viewers = activeTokens.filter(isPartyToken);
+      viewers = activeTokens.filter(partyEyes);
       if (viewers.length === 0) {
         const claimed = activeTokens.find(t => (t.id === state.claimedTokenId || t.id === state.selectedTokenId) && sharesSight(t));
         if (claimed) viewers = [claimed];
@@ -2803,7 +2808,7 @@ export class CanvasEngine {
       viewers = viewers.map(v => this.draggedToken?.id === v.id ? (this.draggedTokenOrigX != null ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v) : seenAt(v));
     } else {
       // Keeper mode: use player tokens to stamp exploration and show visibility
-      viewers = activeTokens.filter(isPartyToken);
+      viewers = activeTokens.filter(partyEyes);
       // Without the party on the scene, the Keeper previews the selected token's sight; an
       // enemy's sight is never remembered as explored (that memory is sent to the players).
       if (viewers.length === 0 && state.selectedTokenId) {
@@ -3293,7 +3298,7 @@ export class CanvasEngine {
     const state = store.getState();
     if (store.sessionRole === 'player') allTokens = this.visionTokens();
     // 1. Friendly player tokens are always visible to players
-    if (isPartyToken(targetTok)) return true;
+    if (partyEyes(targetTok)) return true;
 
     // 2. If Keeper has GM Vision active, all tokens are visible to Keeper
     if (state.userRole === 'keeper' && state.gmVision) return true;
@@ -3301,7 +3306,7 @@ export class CanvasEngine {
     // 3. Find viewing tokens: all friendly player characters
     // Enemies do not share their sight: only the party's eyes count (a player who selects an
     // enemy does not see what it sees; the Keeper's preview of a selected NPC stays on his screen).
-    let viewers = allTokens.filter(isPartyToken);
+    let viewers = allTokens.filter(partyEyes);
     if (viewers.length === 0) {
       const sel = allTokens.find(t => (t.id === state.selectedTokenId || t.id === state.claimedTokenId) && (state.userRole !== 'player' || sharesSight(t)));
       if (sel) viewers = [sel];
@@ -3357,7 +3362,24 @@ export class CanvasEngine {
       }
     }
 
-    // 5. Test if targetTok is inside the illuminated radius of any EXPLORED light source
+    // 5. A light lets the party see an enemy beyond their own vision range, but only one that a
+    // character is looking at with nothing in between (v2.27.8): a lit room behind a wall, or
+    // behind their back, shows the room, never who is in it.
+    const blocked = (ax, ay, bx, by) => (map.walls || []).some(wall => {
+      const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
+      if (wallType === 'window' || (wallType === 'door' && wall.isOpen)) return false;
+      return this.checkLineIntersection(ax, ay, bx, by, wall.x1, wall.y1, wall.x2, wall.y2);
+    });
+    const facing = (v, x, y) => {
+      const vAngle = v.visionAngle ?? 90;
+      if (vAngle >= 360) return true;
+      let diff = Math.atan2(y - v.y, x - v.x) - (v.facingAngle ?? 0);
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      return Math.abs(diff) <= (vAngle * Math.PI) / 360;
+    };
+    const watched = viewers.some(v => !v.hidden && facing(v, targetTok.x, targetTok.y) && !blocked(v.x, v.y, targetTok.x, targetTok.y));
+    if (!watched) return false;
     const fullMapId = `${state.campaignId}:${map.id}`;
     for (const light of (map.lights || [])) {
       if (light.enabled === false || light.off) continue; // a light that is off shows nobody
@@ -3404,7 +3426,7 @@ export class CanvasEngine {
   // --- Check if a point is within active vision/light of any player token ---
   isPointInPlayerVision(x, y, allTokens, map) {
     if (store.sessionRole === 'player') allTokens = this.visionTokens();
-    let viewers = allTokens.filter(isPartyToken);
+    let viewers = allTokens.filter(partyEyes);
     for (const viewer of viewers) {
       if (viewer.hidden) continue;
       const vx = viewer.x;
