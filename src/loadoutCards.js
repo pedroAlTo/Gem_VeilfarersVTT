@@ -17,7 +17,9 @@ const CLASS_ART = ['diplomat', 'engineer', 'explorer', 'mystic', 'pilot', 'schol
 export const domainArt = domain => DOMAIN_COLORS[domain] ? { flag: `${CARD_ART}domain-${lower(domain)}-flag.png`, band: `${CARD_ART}domain-${lower(domain)}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' };
 export const classArt = cls => { const id = lower(cls?.id || cls?.name); return CLASS_ART.includes(id) ? { flag: `${CARD_ART}class-${id}-flag.png`, band: `${CARD_ART}class-${id}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' }; };
 export const cornerArt = kind => ({ flag: '', band: `${CARD_ART}${kind}-band.png`, layout: 'corner' });
-export const CARD_KINDS = { power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background' };
+export const CARD_KINDS = { power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background', effort: 'Common Effort', beardown: 'Resolve Move', fear: 'Fear', adversary: 'Adversario' };
+// A card's kind in words, never undefined (a kind without a name falls back to «Carta»).
+export const cardKindName = kind => CARD_KINDS[kind] || 'Carta';
 
 // "2 Hope + 1 Stress", "spend 1", "THE READING (2 EFFORT)"… as numbers. `open` marks a cost
 // the card leaves to the player (Variable, "spend and roll 1+", upkeep): it is paid by hand.

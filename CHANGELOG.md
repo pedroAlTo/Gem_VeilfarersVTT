@@ -1,10 +1,46 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.5**.
-Paquete: `VeilFarers_VTT_v2.27.5.zip`.
+Versión actual del VTT: **v2.27.9**.
+Paquete: `VeilFarers_VTT_v2.27.9.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.9] — 2026-11-19
+
+V3 · La linterna de un enemigo oculto no lo delata
+
+### Niebla y visión
+
+- Arreglado: la luz propia de un enemigo (su linterna, con su cono) se dibujaba en la pantalla de los jugadores aunque no lo vieran, y delataba dónde estaba y hacia dónde miraba. Ahora la luz de un token solo se ve mientras el grupo ve a ese token; fuera de la vista queda solo el fantasma «ÚLTIMA POS.».
+
+## [2.27.8] — 2026-11-19
+
+V3 · Un enemigo con dueño asignado sigue siendo un enemigo
+
+### Niebla y visión
+
+- Arreglado: un adversario (o un token con nombre oculto, «?????») al que se le había asignado un dueño o un controlador contaba como del grupo. Los jugadores veían por sus ojos (su cono de visión destapaba la niebla) y lo veían siempre. Ahora nunca presta su visión y solo se ve cuando un personaje del grupo lo ve.
+- Una luz deja ver a un enemigo más allá del alcance de la vista solo si algún personaje del grupo lo está mirando sin paredes de por medio: una sala iluminada a tu espalda o tras un muro no muestra quién hay dentro.
+
+## [2.27.7] — 2026-11-19
+
+V3 · Los jugadores no ven por los ojos de los enemigos
+
+### Niebla y visión
+
+- Solo los personajes del grupo (y los tokens que controla el jugador) muestran el mapa a los jugadores. Seleccionar un enemigo para atacarlo ya no puede hacer que su visión cuente como la del jugador.
+- Si el Keeper, sin el grupo en la escena, selecciona un NPC para ver lo que ve, esa vista queda en su pantalla: no se guarda como explorado ni se envía a los jugadores.
+- Un enemigo que entra en la niebla deja de verse: los jugadores solo ven un fantasma en la última posición donde lo vieron («ÚLTIMA POS.»), que desaparece cuando vuelven a mirar ese sitio y está vacío.
+- Una luz apagada ya no deja ver a los enemigos que hay en su zona.
+
+## [2.27.6] — 2026-11-19
+
+V3 · Las cartas de Common Effort ya se pueden usar
+
+### Cartas
+
+- Arreglado el error «Cannot read properties of undefined (reading 'toUpperCase')» al usar algunas cartas: los Common Effort (Cover the Angle, Brace, Steady Hands…), Bear Down y las cartas de Fear y de adversarios no tenían nombre de tipo. Ahora todas lo tienen y una carta de tipo desconocido se muestra como «Carta».
 
 ## [2.27.5] — 2026-11-19
 

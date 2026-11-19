@@ -9,7 +9,7 @@ import { cardData, loadCardData } from './cardData.js';
 import { bearDown } from './bearDown.js';
 import { throwDice } from './tableDice.js';
 import { durationDice } from './effectClocks.js';
-import { characterCards, keeperCards, costLabel, CARD_KINDS, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups } from './loadoutCards.js';
+import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups } from './loadoutCards.js';
 
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
 const keeperView = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
@@ -54,7 +54,7 @@ const badge = card => {
 // name band; and below, the rules on a white panel.
 export function cardFace(card, { large = false } = {}) {
   const art = card.art || { flag: '', band: '', layout: 'band' }, price = badge(card);
-  const footLeft = card.domain ? `${card.domain} · LV ${card.level}` : CARD_KINDS[card.kind], footRight = card.kind === 'power' || card.kind === 'vault' ? `RC ${card.rc}` : '';
+  const footLeft = card.domain ? `${card.domain} · LV ${card.level}` : cardKindName(card.kind), footRight = card.kind === 'power' || card.kind === 'vault' ? `RC ${card.rc}` : '';
   return `
     <span class="vf-card-frame layout-${e(art.layout)}" style="--card-color:${e(card.color)}">
       <span class="vf-card-head"><strong class="vf-card-title">${e(card.name)}</strong>${price ? `<span class="vf-card-badge ${price[0]}">${e(String(price[1]))}</span>` : ''}</span>
@@ -265,7 +265,7 @@ export class CardHand {
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
       // Who used it, what it cost and what it does, for the whole table.
       const effect = card.text.replace(/\s+/g, ' ').trim();
-      const line = `🂠 ${playerName} (${token.name}) usa ${card.name} [${CARD_KINDS[card.kind]}] — ${detail} Efecto: ${effect}`;
+      const line = `🂠 ${playerName} (${token.name}) usa ${card.name} [${cardKindName(card.kind)}] — ${detail} Efecto: ${effect}`;
       network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
       if (result.roll && !result.failed) { window.veilDiceRoller?.prepareCheck?.({ tokenId: token.id, ...result.roll }); notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`); }
       guideEvent('card');
@@ -287,7 +287,7 @@ export class CardHand {
         const result = await network.requestAction({ type: 'EFFORT', actorId: token.id, move: card.move, burnout });
         summary = `${card.name} · ${result?.log?.details || ''}`.trim();
       }
-      window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: CARD_KINDS[card.kind].toUpperCase(), modifiers: summary, details: summary });
+      window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: cardKindName(card.kind).toUpperCase(), modifiers: summary, details: summary });
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
       const line = `🂠 ${playerName} (${token.name}) usa ${card.name} — ${summary} Efecto: ${card.text}`;
       network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
@@ -314,7 +314,7 @@ export class CardHand {
     const who = card.actorName || (card.spotlight && target?.isPlayer === false ? target.name : 'Keeper');
     const summary = `${who} · ${card.name}${cost ? ` · ${cost} Fear (quedan ${store.state.fear})` : ''}${roll ? ` · d${card.die} [${roll}]` : ''}`;
     const secret = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
-    window.veilDiceEngine?.showCallout?.({ playerName: 'Keeper', tokenName: who, label: card.name, skill: card.name, outcome: cost ? `${cost} FEAR` : CARD_KINDS[card.kind].toUpperCase(), modifiers: summary, details: summary, visibility: secret ? 'keeper' : 'table' });
+    window.veilDiceEngine?.showCallout?.({ playerName: 'Keeper', tokenName: who, label: card.name, skill: card.name, outcome: cost ? `${cost} FEAR` : cardKindName(card.kind).toUpperCase(), modifiers: summary, details: summary, visibility: secret ? 'keeper' : 'table' });
     if (!cost) store.addLog({ sender: 'Keeper', type: 'KEEPER_MOVE', title: card.name, details: summary, ...(secret ? { visibility: 'keeper' } : {}) });
     if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); if (!secret) network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
     if (!secret) {

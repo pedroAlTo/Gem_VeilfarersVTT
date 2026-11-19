@@ -9,7 +9,7 @@ import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
 import { handoffControl } from './drones.js';
-import { characterCards, playCard, recallPower, learnPower, costLabel, CARD_KINDS } from './loadoutCards.js';
+import { characterCards, playCard, recallPower, learnPower, costLabel, CARD_KINDS, cardKindName } from './loadoutCards.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
 // The table that resolves an action (the Keeper's, local or hosting) applies it even while its
@@ -132,7 +132,7 @@ function resolveGameAction(action, store) {
     store.addLog(log);
     // The Keeper's table shows the card that was just used.
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('veil:card-played', { detail: { card, actorId: actor.id, actorName: actor.name, playerName: String(action.playerName ?? '').slice(0, 80), summary: result.summary, notes: result.notes, failed: !!result.failed, at: Date.now() } }));
-    return { id: newId(), actorId: actor.id, log, outcomeTitle: `${CARD_KINDS[card.kind]} · ${costLabel(result.paid)}`.toUpperCase(), card: { id: card.id, name: card.name, kind: card.kind, color: card.color }, roll: result.roll, failed: !!result.failed, notes: result.notes, summary: result.summary, fear: result.fear };
+    return { id: newId(), actorId: actor.id, log, outcomeTitle: `${cardKindName(card.kind)} · ${costLabel(result.paid)}`.toUpperCase(), card: { id: card.id, name: card.name, kind: card.kind, color: card.color }, roll: result.roll, failed: !!result.failed, notes: result.notes, summary: result.summary, fear: result.fear };
   }
   if (action.type === 'CHECK') {
     const o = action.options || {};
