@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.4', date: '2026-11-19', title: 'V3 · La niebla de guerra vuelve a dejar ver lo explorado',
+    sections: [
+      { title: 'Niebla de guerra', items: [
+        'Arreglado: con la niebla de guerra activada, una zona que un personaje ya ha visitado vuelve a verse atenuada (según «Atenuación explorada»), no negra del todo. Desde la v2.24 la oscuridad de la escena se sumaba encima de lo explorado.',
+        'Como hasta la v2.23, con la niebla activada es la niebla la que sombrea el mapa; la oscuridad del Clima solo se dibuja con la niebla desactivada. Las luces siguen despejando la niebla de su zona y tiñéndola.',
+        'Las luces despejan la niebla una vez por cambio, no en cada fotograma.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.3', date: '2026-11-18', title: 'V3 · Intensidad y teñido de las luces; barra y mazo se arrastran; Normal, Ventaja, Desventaja',
     sections: [
       { title: 'Luces', items: [

@@ -97,6 +97,7 @@ export class FogOfWarEngine {
    * Resets exploration for a map (returns all areas to 100% darkness)
    */
   resetExploration(mapId) {
+    this.dispelStamped = null;
     const canvas = this.exploredCanvases.get(mapId);
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -377,7 +378,10 @@ export class FogOfWarEngine {
         target.fill();
       }
     };
-    if (stamp && dispel.length) { this.exploredVersion++; paintDispel(expCtx, false); }
+    // A lit area is remembered once (stamping it again every frame would only force the fog to be
+    // worked out again each frame).
+    const dispelKey = dispel.map(d => `${Math.round(d.x)},${Math.round(d.y)},${Math.round(d.radius)},${d.poly.length}`).join('|') + '#' + mapId;
+    if (stamp && dispel.length && dispelKey !== this.dispelStamped) { this.dispelStamped = dispelKey; this.exploredVersion++; paintDispel(expCtx, false); }
     if (stamp && visionShapes.length) {
       this.exploredVersion++;
       paintSeen(expCtx, '#ffffff');

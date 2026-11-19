@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.3.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.3**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.3** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.3.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.4.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.4**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.4** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.4.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -83,6 +83,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.3.zip**. Abre **AYUDA
 68. **(V3) Daño a NPC.** Un jugador conectado ataca a un adversario y pulsa «Aplicar daño»: al Keeper le sale la ventana. Cancelar no cambia nada (el jugador recibe el aviso); con 1 escudo pierde menos HP. Junto a Ventaja y Desventaja aparece Normal.
 69. **(V3) Paneles y cartas.** Arrastra la barra del personaje y el icono del mazo pulsando sobre ellos; recarga: siguen donde los dejaste; Alt + doble clic: vuelven. Un clic sin mover en el mazo lo abre. Como jugador, Área está a la vista y Medir en ⋯. Las cartas muestran nombre y coste arriba.
 70. **(V3) Luz en el Bridge.** En la escena Bridge (luz ambiental 25 %), coloca una luz en una sala: la intensidad es la oscuridad que quita (30 % → penumbra, 100 % → se ve tal cual) y «Teñido» colorea la zona con el color de la luz (0 % sin color).
+71. **(V3) Niebla explorada.** Con la niebla de guerra activada, lleva un personaje a una sala y sácalo: la sala queda atenuada (según «Atenuación explorada»; 50 % por defecto), no negra. Pon el Clima de noche: lo explorado sigue igual de visible y las luces siguen despejando su zona.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

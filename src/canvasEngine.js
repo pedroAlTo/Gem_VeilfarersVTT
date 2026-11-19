@@ -2818,7 +2818,11 @@ export class CanvasEngine {
         ctx,
         mapWidth: this.mapImage.width,
         mapHeight: this.mapImage.height,
-        ambientLight: 1 - darkness * (isKeeperGM ? 0.55 : 1),
+        // With fog of war the fog alone shades the map (as up to v2.23): visited areas keep their
+        // explored veil and no scene darkness is laid on top of them. The scene's darkness (Clima
+        // or the scene's ambient light) is drawn only without fog; with fog, night limits what each
+        // character sees instead.
+        ambientLight: state.fogOfWar !== false ? 1 : 1 - darkness * (isKeeperGM ? 0.55 : 1),
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
         lights: (map.lights || []).filter(l => !l.off),
@@ -2827,7 +2831,7 @@ export class CanvasEngine {
         time: now * 0.001
       });
       // Lava lights itself through the darkness.
-      if (state.layerVisibility.water !== false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
+      if (state.layerVisibility.water !== false && state.fogOfWar === false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
     }
 
     // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)

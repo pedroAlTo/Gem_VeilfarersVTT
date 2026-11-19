@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.3**.
-Paquete: `VeilFarers_VTT_v2.27.3.zip`.
+Versión actual del VTT: **v2.27.4**.
+Paquete: `VeilFarers_VTT_v2.27.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.4] — 2026-11-19
+
+V3 · La niebla de guerra vuelve a dejar ver lo explorado
+
+### Niebla de guerra
+
+- Arreglado: con la niebla de guerra activada, una zona que un personaje ya ha visitado vuelve a verse atenuada (según «Atenuación explorada»), no negra del todo. Desde la v2.24 la oscuridad de la escena se sumaba encima de lo explorado.
+- Como hasta la v2.23, con la niebla activada es la niebla la que sombrea el mapa; la oscuridad del Clima solo se dibuja con la niebla desactivada. Las luces siguen despejando la niebla de su zona y tiñéndola.
+- Las luces despejan la niebla una vez por cambio, no en cada fotograma.
 
 ## [2.27.3] — 2026-11-18
 
