@@ -43,7 +43,8 @@ test('catalog preserves printed combat values, full abilities and book provenanc
   assert.match(broker.damage, /surgical tools.*arm-cannon/);
   assert.match(broker.text, /Physical Description/); assert.match(broker.text, /Relationship Hooks/);
   assert.deepEqual(broker.traits, { agility: 2, strength: 3, finesse: 2, instinct: 1, presence: 0, knowledge: 4 });
-  for (const entry of catalog) { assert.ok(entry.book && entry.section && entry.line > 0 && entry.text.length > 30); }
+  for (const entry of catalog) { assert.ok(entry.book && entry.section && entry.line > 0 && entry.text.length > 30);
+    assert.ok(entry.description.length > 25 && !entry.description.includes('**'), entry.name); }
   const plugin = adversaryLibraryPlugin(); const watched = [];
   const source = plugin.load.call({ addWatchFile: file => watched.push(file) }, plugin.resolveId('virtual:veil-adversaries'));
   assert.deepEqual(JSON.parse(source.slice('export default '.length)), catalog); assert.equal(watched.length, 3);
@@ -178,4 +179,25 @@ test('the dice panel adds Bear Down to the open damage roll with the same dice',
     assert.equal(q('#dmg_raw_val').textContent, '8');
     assert.equal(panel.pendingDamageFor(target.id), null, 'only the roller can Bear Down on it');
   });
+});
+
+
+test('enemy dossiers show editable book descriptions, recover legacy profiles and keep masked contacts anonymous', async () => {
+  const { openDossier } = await import('../src/dossierUI.js');
+  const { adversaryDescription } = await import('../src/adversaryDescription.js');
+  const a = deployAdversary(profile('ROGUE SYNTHETIC'), { hidden: false });
+  assert.match(a.description, /protocol droid/);
+  assert.equal(adversaryDescription({ featureNotes: a.featureNotes }), a.description);
+  assert.match(profile('SCRAP DRONE').description, /^Automated maintenance/);
+  assert.match(profile('MAMA K (INFORMATION BROKER)').description, /^Mama K is a kindly grandmother/);
+  assert.equal(adversaryDescription({ featureNotes: 'Private GM plan for tomorrow.' }), '');
+  const modal = openDossier(a, () => {});
+  const box = modal.querySelector('[name=description]');
+  assert.equal(box.value, a.description); box.value = 'A damaged protocol droid.';
+  modal.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === a.id);
+  assert.equal(saved.description, box.value);
+  const n = new NetworkManager();
+  assert.equal(n.snapshotFor('guest').tokens.find(t => t.id === a.id).description, undefined);
+  n.disconnect();
 });

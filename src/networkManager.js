@@ -12,9 +12,10 @@ function hitConditionsPatch(t, data) {
 import { validateDrawing, canAnnotate } from './freehand.js';
 import { controlsToken, isDrone, isPartyToken } from './tokenPermissions.js';
 import { validArmorCut, applyArmorCut } from './weaponFeatures.js';
+import { characterKey } from './characterImport.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
-import { damageProtection } from './damageProtection.js';
+import { sameDamageDefenses } from './damageProtection.js';
 import { requireActive, LIFE_STATES, canChooseBlaze } from './combatState.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
 import { notify } from './ui.js';
@@ -417,7 +418,7 @@ export class NetworkManager {
             copy.name = 'Unknown contact';
             copy.roleTag = 'Unidentified';
             copy.species = '';
-            delete copy.sourceCharacter; delete copy.featureNotes;
+            delete copy.sourceCharacter; delete copy.featureNotes; delete copy.description;
           }
           return copy;
         }),
@@ -646,7 +647,8 @@ export class NetworkManager {
     if (safe.actorType !== 'player' && safe.isPlayer !== true) throw new Error('Import a player character. The Keeper creates drones and NPCs.');
     safe.actorType = 'player'; safe.isPlayer = true;
     const created = createActor(safe, this.store.state.activeMapId);
-    const existing = this.store.state.tokens.find(t => !isDrone(t) && t.ownerId === playerId);
+    const owned = this.store.state.tokens.filter(t => t.isPlayer !== false && (!t.actorType || t.actorType === 'player') && controlsToken(t, playerId));
+    const existing = owned.find(t => characterKey(t) === characterKey(created)) || (owned.length === 1 ? owned[0] : null);
     const actor = existing ? replaceActorSheet(existing, created) : { ...created, ownerId: playerId };
     const tokens = existing ? this.store.state.tokens.map(t => t.id === actor.id ? actor : t) : [...this.store.state.tokens, actor];
     validateCampaign({ ...this.store.serializeCampaign(), tokens });
@@ -1050,9 +1052,8 @@ export class NetworkManager {
         const currentArmor = Number.isFinite(target.armor?.current) ? target.armor.current : 0;
 
         if (data.defense) {
-          const { types, applied, hp, armor } = data.defense;
-          if (!Array.isArray(types) || types.length > 32 || types.some(t => typeof t !== 'string' || t.length > 32) ||
-              applied !== damageProtection(target, new Set(types)) || hp !== currentHp || armor !== currentArmor)
+          const { hp, armor } = data.defense;
+          if (!sameDamageDefenses(target, data.defense) || hp !== currentHp || armor !== currentArmor)
             throw new Error('Las defensas o las heridas del objetivo han cambiado. Vuelve a calcular el impacto.');
         }
 
@@ -1143,19 +1144,12 @@ export class NetworkManager {
         if (('x' in partial && partial.x !== token.x) || ('y' in partial && partial.y !== token.y)) requireActive(token);
         // A player who moves their character takes the Spotlight (an active action).
         if (('x' in partial || 'y' in partial) && (partial.x !== token.x || partial.y !== token.y) && token.isPlayer !== false && token.actorType !== 'drone' && !token.hasSpotlight) partial.hasSpotlight = true;
-        if ('hasSpotlight' in partial) partial.spotlight = { ...token.spotlight, enabled: partial.hasSpotlight };
-        const turnOnSpotlight = Boolean(partial.hasSpotlight);
-        // Membership was checked above. Keeper's local Player-preview selection is irrelevant.
-        this.store._beforeTacticalMutation?.('Cambio de jugador', 'tok_' + token.id);
-        this.store.update({
-          tokens: this.store.state.tokens.map(t => {
-            if (t.id === token.id) return { ...t, ...partial };
-            if (turnOnSpotlight && (t.hasSpotlight || t.spotlight?.enabled)) {
-              return { ...t, hasSpotlight: false, spotlight: { ...(t.spotlight || {}), enabled: false } };
-            }
-            return t;
-          })
-        });
+        // The host applies the same round and Fear rules as the Keeper's own sheet.
+        const before = this.store.tableActing;
+        this.store.tableActing = true;
+        try {
+          if (!this.store.updateToken(token.id, partial)) throw new Error('Cambio rechazado. Revisa el foco de la ronda y el Fear disponible.');
+        } finally { this.store.tableActing = before; }
       } catch (error) {
         conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', sequence: data.sequence, error: error.message }));
       } finally {

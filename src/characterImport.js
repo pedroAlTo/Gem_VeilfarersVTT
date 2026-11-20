@@ -1,5 +1,5 @@
 import { tokenInventory } from './equipment.js';
-import { defaultTokenAvatar } from './tokenAvatars.js';
+import { actorPortrait, customTokenPortrait } from './tokenAvatars.js';
 // Character Sheet 2.80 exports use final Traits/thresholds and separate resource tracks.
 // Keep the original document intact, including fields that this VTT cannot automate.
 export const TRAIT_IDS = ['agility', 'strength', 'finesse', 'knowledge', 'instinct', 'presence'];
@@ -23,9 +23,7 @@ export function parseCharacterJSON(input) {
     if (!text(token.name).trim() || !object(token.hp) || !object(token.stress) || !object(token.armor)) throw new Error('El actor VTT debe incluir nombre, HP, Armor y Stress.');
     // Native exports are portable actors, never a tactical ID or a campaign snapshot.
     for (const k of ['id', 'mapId', 'x', 'y', 'ownerId', 'controllerIds', 'scenePositions']) delete token[k];
-    if (!token.avatarUrl || token.avatarUrl === '/assets/tokens/captain_harker.jpg') {
-      token.avatarUrl = defaultTokenAvatar(token.species, token.pronouns, token.name, token.characterClass || token.roleTag);
-    }
+    token.avatarUrl = actorPortrait(token);
     return { token, missing: [], warnings: [], format: 'VTT Actor 1' };
   }
   const app = text(doc.app).trim();
@@ -95,9 +93,9 @@ export function parseCharacterJSON(input) {
   const token = {
     name: text(f.name).trim(), actorType: 'player', isPlayer: true, path,
     characterClass: text(f.class), subclass: text(f.subclass), subclassRank: text(f.subclass_rank),
-    species: text(f.ancestry), community: text(f.community), pronouns: text(f.pron),
+    species: text(f.ancestry), community: text(f.community), pronouns: text(f.pron ?? f.pronouns), gender: text(f.gender),
     roleTag: [f.class, f.subclass].filter(Boolean).join(' · '),
-    avatarUrl: defaultTokenAvatar(f.ancestry, f.pron, f.name, f.class || f.subclass),
+    avatarUrl: text(f.avatarUrl || doc.avatarUrl), portraitOverride: f.portrait_override === true, tokenArchetype: text(f.token_archetype),
     level: number(f.level, 'Nivel', 1, 100), proficiency: number(f.prof, 'Proficiency', 1, 100),
     evasion: number(f.evasion, 'Evasion', 0, 100),
     traits: Object.fromEntries(TRAIT_IDS.map(k => [k, number(f[`tr_${k}`], k, -100, 100)])),
@@ -110,6 +108,7 @@ export function parseCharacterJSON(input) {
     recoveryAnchor: text(f.s_anchor),
     sourceCharacter: { format: 'character-sheet', document: doc, initializedResources: [] },
   };
+  token.avatarUrl = actorPortrait(token);
   if (missing.length) warnings.push('El archivo no incluye todos los recursos actuales. Revisa los valores iniciales antes de importar.');
   if (isSheet && !/^2\.8\d(?:\b|-)/.test(text(doc.version))) {
     warnings.push(`Versión ${text(doc.version) || 'sin indicar'}: se han leído los campos reconocidos; revisa la ficha.`);
@@ -196,6 +195,14 @@ export function exportSystemCharacter(token) {
   const doc = structuredClone(token.sourceCharacter.document), f = doc.fields;
   doc.tracks ||= {}; doc.tracks.max ||= {}; doc.tracks.current ||= {};
   Object.assign(f, { name: token.name, level: String(token.level), prof: String(token.proficiency), chosen_path: token.path, ancestry: token.species || '', community: token.community || '', class: token.characterClass || '', subclass: token.subclass || '', evasion: String(token.evasion), thr_major: String(token.hp.majorThreshold), thr_severe: String(token.hp.severeThreshold) });
+  f.pron = token.pronouns ?? f.pron ?? '';
+  if (token.gender != null || f.gender != null) f.gender = token.gender || '';
+  if (token.tokenArchetype || f.token_archetype) f.token_archetype = token.tokenArchetype || '';
+  if (customTokenPortrait(token) || f.avatarUrl || doc.avatarUrl) {
+    f.avatarUrl = customTokenPortrait(token);
+    f.portrait_override = token.portraitOverride === true;
+    delete doc.avatarUrl;
+  }
   for (const key of TRAIT_IDS) f[`tr_${key}`] = String(token.traits[key]);
   for (const [key, source] of [['hp', 'hp'], ['stress', 'stress'], ['armor_slots', 'armor'], ['s_resolve', 'resolve']]) {
     doc.tracks.max[key] = token[source].max;

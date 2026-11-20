@@ -1,3 +1,5 @@
+import { adversaryDescription } from './adversaryDescription.js';
+import { actorPortrait } from './tokenAvatars.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { guideEvent } from './onboarding.js';
 import { store } from './state.js';
@@ -81,13 +83,14 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
   const d = characterDetails(token), imported = !!token.sourceCharacter;
   const hasBackground = pc;
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
-    <div class="dossier-hero"><div class="dossier-seal"><span>${pc ? 'LVL' : 'NPC'}</span><strong>${pc ? e(token.level ?? 1) : '◇'}</strong></div><div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
+    <div class="dossier-hero"><img class="dossier-portrait" src="${e(actorPortrait(token))}" alt=""><div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}${pc ? ' · Nivel ' + e(token.level ?? 1) : ''}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
     <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn sheet-full" data-tab="source">JSON original</button>' : ''}<span class="dossier-view" role="group" aria-label="Detalle de la ficha"><button type="button" class="hud-btn" data-view="basic" title="Lo que se usa durante la partida">Básica</button><button type="button" class="hud-btn" data-view="full" title="Todos los campos, máximos y exportación">Completa</button></span><button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="font-weight:600;">💾 Guardar ficha</button></nav>
     <form id="dossier_form">
       <div data-panel="stats">
+        ${!pc && token.actorType !== 'drone' ? '<label class="dossier-field"><span>Descripción</span><textarea class="hud-input" name="description" rows="3" maxlength="10000">' + e(adversaryDescription(token)) + '</textarea></label>' : ''}
         <div class="dossier-condition-summary"><button type="button" class="hud-btn" data-open-conditions>Condiciones</button><div class="condition-badges" data-condition-badges>${conditionBadges(token)}</div></div>
         <div class="effect-clock-editor" data-effect-clocks>${effectClocksEditorHTML(token)}</div>
-        <div class="dossier-identity">${field('Nombre', 'actorName', token.name)}${field(pc ? 'Clase' : 'Rol', pc ? 'characterClass' : 'roleTag', pc ? token.characterClass || '' : token.roleTag || '')}${pc ? field('Subclase', 'subclass', token.subclass || '') : ''}${field('Ancestry / especie', 'species', token.species || '')}${pc ? field('Comunidad', 'community', token.community || '') + stat('Nivel', 'level', token.level ?? 1, 1, 100) + stat('Proficiency', 'proficiency', token.proficiency ?? 1, 1, 100) : ''}${stat('Evasion', 'evasion', token.evasion ?? 10, 0, 100)}</div>
+        <div class="dossier-identity">${field('Nombre', 'actorName', token.name)}${field(pc ? 'Clase' : 'Rol', pc ? 'characterClass' : 'roleTag', pc ? token.characterClass || '' : token.roleTag || '')}${pc ? field('Subclase', 'subclass', token.subclass || '') : ''}${field('Ancestry / especie', 'species', token.species || '')}${pc ? field('Pronombres / género', 'portraitPronouns', token.gender || token.pronouns || '') + field('Comunidad', 'community', token.community || '') + stat('Nivel', 'level', token.level ?? 1, 1, 100) + stat('Proficiency', 'proficiency', token.proficiency ?? 1, 1, 100) : ''}${stat('Evasion', 'evasion', token.evasion ?? 10, 0, 100)}</div>
         <div class="dossier-resources">
           ${[['hp', 'HP · disponibles'], ['armor', 'Armor · disponibles'], ['stress', 'Stress · marcado']].map(([k, label]) => `<section class="dossier-resource ${k}"><h4>${label}</h4><div>${stat('Actual', `${k}_current`, token[k]?.current)}${stat('Máximo', `${k}_max`, token[k]?.max, k === 'hp' ? 1 : 0)}</div></section>`).join('')}
           ${pc ? `<section class="dossier-resource path"><h4>${e(token.path || 'Awakened')}</h4><div>${token.path === 'Sleeping' ? stat('Effort', 'effort', token.effort, 0, token.effortMax ?? 6) + stat('Resolve', 'resolve_current', token.resolve?.current, 0, token.resolve?.max ?? 2) : stat('Hope', 'hope', token.hope, 0, token.hopeMax ?? 6)}</div></section>` : ''}
@@ -203,7 +206,11 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
     const form = modal.querySelector('form');
     if (!form.reportValidity()) throw new Error('Revisa los campos de la ficha.');
     const data = Object.fromEntries(new FormData(form)), updated = structuredClone(current);
-    for (const key of ['name', 'species', 'characterClass', 'subclass', 'community', 'roleTag', 'damageExpression', 'attackRange', 'featureNotes', 'recoveryAnchor']) if (key in data) updated[key] = data[key].trim();
+    for (const key of ['name', 'species', 'characterClass', 'subclass', 'community', 'roleTag', 'damageExpression', 'attackRange', 'featureNotes', 'description', 'recoveryAnchor']) if (key in data) updated[key] = data[key].trim();
+    if (pc && 'portraitPronouns' in data && data.portraitPronouns.trim() !== (current.gender || current.pronouns || '')) {
+      updated.pronouns = data.portraitPronouns.trim();
+      updated.gender = '';
+    }
     if ('actorName' in data) updated.name = data.actorName.trim();
     if (!updated.name) throw new Error('El nombre no puede estar vacío.');
     for (const key of ['level', 'proficiency', 'evasion', 'hope', 'effort', 'honedEdgeBonus', 'attackModifier']) if (key in data) updated[key] = Number(data[key]);

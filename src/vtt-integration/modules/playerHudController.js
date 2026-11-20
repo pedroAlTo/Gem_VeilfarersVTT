@@ -1,3 +1,4 @@
+import { actorPortrait } from '../../tokenAvatars.js';
 import { ref, onValue, update } from "firebase/database";
 import { getFirebaseDatabaseInstance } from "./firebaseClient.js";
 
@@ -46,7 +47,7 @@ export class PlayerHudController {
 
     if (nameEl) nameEl.textContent = staticData.name || 'Viajero';
     if (subEl) subEl.textContent = `${staticData.species || 'Especie'} • ${staticData.background || 'Explorador'}`;
-    if (avatarEl && staticData.avatarUrl) avatarEl.src = staticData.avatarUrl;
+    if (avatarEl) avatarEl.src = actorPortrait(staticData);
   }
 
   renderResources(staticData = {}, dynamicState = {}) {

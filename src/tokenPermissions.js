@@ -1,3 +1,4 @@
+import { actorPortrait } from './tokenAvatars.js';
 import { droneControllerLimit } from './drones.js';
 export const isDrone = token => token?.actorType === 'drone';
 export const controlsToken = (token, playerId) => !!playerId && playerId !== 'keeper' && !token?.hidden &&
@@ -17,8 +18,9 @@ export function assignControls(tokens, tokenId, playerIds, knownPlayers) {
     if (token.id === tokenId) {
       return {
         ...token,
+        avatarUrl: actorPortrait(token),
         ownerId: isDrone(token) ? '' : (ids[0] || ''),
-        controllerIds: isDrone(token) ? ids : (ids.length ? ids : (token.controllerIds || []))
+        controllerIds: ids
       };
     }
     // Un jugador puede estar asignado a varios tokens: NUNCA se desasignan sus otros tokens

@@ -206,6 +206,7 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
 
   const f = {
     character_id: characterId, name: clean(state.name), pron: clean(state.pronouns), level: String(level), prof: '1', chosen_path: sleeping ? 'Sleeping' : 'Awakened',
+    ...(state.tokenArchetype ? { token_archetype: state.tokenArchetype } : {}),
     ancestry: anc.name, ancestry_gift: ancestryText, ancestry_note: '', ailuran_variant: strain ? strain.name : '',
     community: com.name, community_gift: communityText, community_note: '', community_advantages: '',
     affiliation: aff.name, aff_standing: independent ? '' : '+1 Good Standing', aff_reputation: independent ? '' : 'Unknown (0)', aff_tokens: independent ? '1 Favor por sesión (Independent Favor Pool)' : '', aff_notes: [affiliationNotes, appearance].filter(Boolean).join('\n\n'), aff_faction_notes: '',

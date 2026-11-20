@@ -284,3 +284,40 @@ test('naval panel needs a selected crew member before it requests a roll', () =>
   assert.equal(calls, 0);
   assert.equal(store.state.starship.pearls, 2);
 });
+
+
+test('the same enemy cannot retake the Spotlight in a round through its sheet or controls', () => {
+  const foe = character('Foe', { isPlayer: false, actorType: 'adversary' });
+  store.state.fear = 1;
+  assert.equal(store.updateToken(foe.id, { spotlight: { enabled: true } }), true);
+  assert.equal(store.state.fear, 0);
+  assert.equal(store.setTokenSpotlight(foe.id, true), true, 'repeating an active marker is idempotent');
+  assert.equal(store.setTokenSpotlight(foe.id, false), true);
+  assert.equal(store.setTokenSpotlight(foe.id, true), false);
+  store.state.fear = 3;
+  assert.equal(store.updateToken(foe.id, { hasSpotlight: true }), false);
+  assert.equal(store.state.fear, 3); assert.equal(get(foe).hasSpotlight, false);
+  nextSpotlightRound(store);
+  assert.equal(store.setTokenSpotlight(foe.id, true), true);
+  assert.equal(store.state.fear, 2);
+});
+
+for (const shields of [0, 1]) {
+  test('Rogue Synthetic retains its Physical hit against Shock immunity with ' + shields + ' shields', async () => {
+    const entry = loadAdversaries().find(e => e.name === 'ROGUE SYNTHETIC');
+    const enemy = deployAdversary(entry, { hidden: false });
+    const target = character('Target', { hp: { current: 6, max: 6, majorThreshold: 6, severeThreshold: 12 },
+      armor: { current: 2, max: 2 }, conditions: ['Immunity: Shock'] });
+    const { dice, el } = atTable(enemy, target);
+    assert.match(el.querySelector('#dmg_formula').value, /Phys.*Shock/);
+    await dice.executeDamageCalc([8, 4]);
+    assert.equal(dice.lastDamage.raw, 13);
+    assert.equal(el.querySelector('#dmg_hp_loss_val').textContent, '2 HP');
+    el.querySelector('#apply_dmg_to_target_btn').click();
+    const slider = document.querySelector('#kdmg_shields');
+    assert.ok(slider); slider.value = String(shields); slider.oninput();
+    document.querySelector('#kdmg_apply').click();
+    assert.equal(get(target).hp.current, 4 + shields);
+    assert.equal(get(target).armor.current, 2 - shields);
+  });
+}

@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.11', date: '2026-11-20', title: 'Retratos de los personajes y descripciones del bestiario',
+    sections: [
+      { title: 'Personajes y adversarios', items: [
+        'Al importar o asignar un personaje, el mapa y las fichas muestran su retrato de ascendencia con la insignia de su clase. Se recuperan 46 ilustraciones ya dibujadas y el creador conserva la variante elegida al exportar el JSON.',
+        'Las 57 entradas del bestiario incluyen la descripción del libro. El Keeper puede editarla en las fichas desplegadas. Los contactos sin identificar conservan su identidad oculta.',
+      ] },
+      { title: 'Reglas en mesa', items: [
+        'La regla de mesa del VTT para el Spotlight cobra 1 Fear por adversario y bloquea un segundo foco en la misma ronda, también desde sus ajustes o desde un jugador que lo controla.',
+        'Las defensas se aplican a su parte del daño mixto antes de comparar el resultado con los umbrales. En descanso largo, Prepare devuelve la Hope del Awakened a 2.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.10', date: '2026-11-20', title: 'Combate, bestiario y navegación según el Corebook 12.06',
     sections: [
       { title: 'En la mesa', items: [

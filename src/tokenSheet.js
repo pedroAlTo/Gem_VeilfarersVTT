@@ -1,3 +1,5 @@
+import { actorPortrait } from './tokenAvatars.js';
+import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
 import { validateActor } from './validation.js';
@@ -82,7 +84,7 @@ export class TokenHUD {
         <div class="token-quickbar glass-panel tok-qb-compact">
           <!-- Token Avatar & Name -->
           <div class="tok-qb-avatar-group">
-            <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" class="tok-qb-avatar" />
+            <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" />
             <div class="tok-qb-meta">
               <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
               <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
@@ -132,7 +134,7 @@ export class TokenHUD {
       <div class="token-quickbar glass-panel tok-qb-expanded">
         <!-- Token Header / Avatar -->
         <div class="tok-qb-avatar-group">
-          <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" class="tok-qb-avatar" />
+          <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" />
           <div class="tok-qb-meta">
             <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
@@ -147,6 +149,7 @@ export class TokenHUD {
 
         <div class="tok-qb-divider"></div>
 
+        ${!isPC && !isMasked && token.actorType !== 'drone' && adversaryDescription(token) ? '<details class="token-description"><summary>Descripción</summary><p>' + escapeHTML(adversaryDescription(token)) + '</p></details>' : ''}
         <!-- HP & Thresholds -->
         <div class="tok-qb-stat-group">
           ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
@@ -608,7 +611,7 @@ export class TokenHUD {
             <!-- Left Column: Portrait & Identity -->
             <div class="sheet-col-left">
               <div class="sheet-avatar-frame">
-                <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" id="sheet_avatar_preview" class="sheet-avatar-img" />
+                <img src="${escapeHTML(actorPortrait(token))}" id="sheet_avatar_preview" class="sheet-avatar-img" />
               </div>
 
               <div class="form-group" style="margin-top: 10px;">
@@ -1144,7 +1147,8 @@ export class TokenHUD {
         isPlayer: actorTypeVal === 'player',
         hideName: modal.querySelector('#sheet_hide_name')?.checked ?? false,
         species: modal.querySelector('#sheet_species')?.value.trim() || token.species,
-        avatarUrl: avatarUrlInput.value || token.avatarUrl,
+        avatarUrl: avatarUrlInput.value.trim(),
+        portraitOverride: avatarUrlInput.value.trim() === token.avatarUrl ? token.portraitOverride === true : !!avatarUrlInput.value.trim(),
         path: pathSelect.value,
         size: parseInt(modal.querySelector('#sheet_size').value, 10),
         hp: {
@@ -1205,18 +1209,7 @@ export class TokenHUD {
       };
 
       try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
-      if (updated.hasSpotlight && !token.hasSpotlight) {
-        const isAdversary = (updated.actorType === 'adversary' || !updated.isPlayer) && updated.actorType !== 'drone';
-        if (isAdversary && (store.state.userRole === 'keeper' || store.sessionRole !== 'player')) {
-          if ((store.state.fear ?? 0) < 1) {
-            notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
-            return;
-          }
-          store.spendFear(1, `Foco en adversario: ${updated.name}`);
-          network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
-        }
-      }
-      store.updateToken(token.id, updated);
+      if (!store.updateToken(token.id, updated)) return;
       if (store.sessionRole !== 'player') {
         network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
         network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });

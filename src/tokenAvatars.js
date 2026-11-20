@@ -16,6 +16,20 @@ export const ANCESTRY_IDS = [
   'synthetic',
 ];
 
+export const TOKEN_CLASSES = ['diplomat', 'engineer', 'explorer', 'mystic', 'pilot', 'scholar', 'scoundrel', 'soldier', 'vanguard'];
+export const PORTRAIT_GENDERS = ['m', 'f', 'n'];
+const classAliases = {
+  diplomático: 'diplomat', diplomática: 'diplomat', ingeniero: 'engineer', ingeniera: 'engineer',
+  explorador: 'explorer', exploradora: 'explorer', místico: 'mystic', mística: 'mystic',
+  piloto: 'pilot', erudito: 'scholar', erudita: 'scholar', pícaro: 'scoundrel', pícara: 'scoundrel',
+  soldado: 'soldier', vanguardia: 'vanguard',
+};
+const archetypeClasses = { warrior: 'soldier', mystic: 'mystic', scoundrel: 'scoundrel', engineer: 'engineer' };
+
+export function classPortraitPath(ancestry, cls, gender) {
+  return '/assets/tokens/classes/' + ancestry + '-' + cls + '-' + gender + '.svg';
+}
+
 export const ARCHETYPES = ['warrior', 'mystic', 'scoundrel', 'engineer'];
 
 export const ARCHETYPE_META = Object.freeze({
@@ -112,7 +126,9 @@ export function detectGender(pronouns = '', name = '') {
     return 'm';
   }
 
-  // Common feminine or masculine name cues if pronouns are empty/neutral
+  if (/^(n|nb)$/.test(p) || /\b(they|them|elle|elles|non[- ]?binary|neutral|neutro|no binari[oa])\b/.test(p)) return 'n';
+
+  // Name cues for older sheets that did not record pronouns.
   const n = String(name || '').trim().toLowerCase();
   if (/\b(lucy|jarana|jaraña|vea|maren|sarah|elena|maria|kira|valeria|anya|chloe|zoe|eva|clara)\b/i.test(n)) {
     return 'f';
@@ -129,7 +145,7 @@ export function detectGender(pronouns = '', name = '') {
     return 'm';
   }
 
-  return 'm';
+  return 'n';
 }
 
 export function detectArchetype(roleOrClass = '') {
@@ -157,8 +173,7 @@ export function detectArchetype(roleOrClass = '') {
 export function getArchetypeTokenAvatar(species, archetype, gender = 'm') {
   const ancestry = normalizeAncestryId(species);
   const arch = ARCHETYPES.includes(archetype) ? archetype : 'warrior';
-  const g = ['m', 'f'].includes(gender) ? gender : 'm';
-  return `/assets/tokens/${ancestry}_${arch}_${g}.jpg`;
+  return classPortraitPath(ancestry, archetypeClasses[arch], PORTRAIT_GENDERS.includes(gender) ? gender : 'm');
 }
 
 export function listAncestryArchetypeTokens(species, pronouns, name) {
@@ -175,9 +190,53 @@ export function defaultTokenAvatar(species, pronouns, name, roleOrClass = '') {
   const ancestry = normalizeAncestryId(species);
   const gender = detectGender(pronouns, name);
   if (roleOrClass) {
-    const arch = detectArchetype(roleOrClass);
-    return getArchetypeTokenAvatar(ancestry, arch, gender);
+    const words = String(roleOrClass).toLowerCase().match(/[\p{L}]+/gu) || [];
+    const cls = words.map(w => classAliases[w] || w).find(w => TOKEN_CLASSES.includes(w));
+    return cls ? classPortraitPath(ancestry, cls, gender) : getArchetypeTokenAvatar(ancestry, detectArchetype(roleOrClass), gender);
   }
-  const pair = ANCESTRY_TOKEN_AVATARS[ancestry] || ANCESTRY_TOKEN_AVATARS.human;
-  return pair[gender] || pair.m;
+  return gender === 'n' ? '/assets/tokens/' + ancestry + '_n.jpg' : ANCESTRY_TOKEN_AVATARS[ancestry][gender];
+}
+
+const TOKEN_DIR = '/assets/tokens/';
+const MARKER = TOKEN_DIR + 'adversary-marker.svg';
+const techInsignia = '/assets/cards/domain-tech-flag.png';
+const bestiaryArt = new Map([
+  ['rogue synthetic', TOKEN_DIR + 'synthetic_n.jpg'],
+  ['volkov enforcer', classPortraitPath('kryx', 'soldier', 'n')],
+  ['the biomancer', TOKEN_DIR + 'kryllian_n.jpg'],
+  ['the ascended', TOKEN_DIR + 'celestiari_n.jpg'],
+  ['the whispering monk (precursor expert)', TOKEN_DIR + 'rift_spinner_n.jpg'],
+  ['scrap drone', techInsignia], ['security drone model-v', techInsignia], ['precursor drone', techInsignia],
+]);
+const namedPortraits = [
+  [/^(?:(?:capt\.?|captain)\s+)?(?:jonathan\s+)?harker$/i, 'captain_harker.jpg'], [/\bvea kaelen\b/i, 'pilot_vea.jpg'],
+  [/\bhe[- ]?09\b/i, 'engineer_he09.jpg'], [/^void (?:horror )?stalker$/i, 'void_stalker.jpg'],
+];
+const legacyPortrait = new RegExp('^/assets/tokens/(?:' + ANCESTRY_IDS.join('|') + ')(?:_(?:' + ARCHETYPES.join('|') + '))?_[mfn]\\.jpg$');
+
+export function customTokenPortrait(token) {
+  const url = token?.avatarUrl;
+  if (!url || typeof url !== 'string' || url === MARKER || url === TOKEN_DIR + 'synthetic_infiltrator_echo.jpg') return '';
+  if (token.portraitOverride === true) return url;
+  if (namedPortraits.some(([, file]) => url === TOKEN_DIR + file)) return '';
+  return url.startsWith(TOKEN_DIR + 'classes/') || legacyPortrait.test(url) ? '' : url;
+}
+
+export function actorPortrait(token = {}) {
+  const custom = customTokenPortrait(token);
+  if (custom) return custom;
+  const named = namedPortraits.find(([pattern]) => pattern.test(token.name || ''));
+  if (named && (token.avatarUrl === TOKEN_DIR + named[1] || (!token.species && !token.characterClass))) return TOKEN_DIR + named[1];
+  if (token.actorType === 'drone') return techInsignia;
+  if (token.isPlayer === false || token.actorType === 'adversary') {
+    const art = bestiaryArt.get(String(token.name || '').trim().toLowerCase());
+    if (art) return art;
+  }
+  const fields = token.sourceCharacter?.document?.fields || {};
+  const species = token.species || token.ancestry || fields.ancestry;
+  if (!species && (token.isPlayer === false || ['adversary', 'npc'].includes(token.actorType))) return MARKER;
+  const pronouns = token.gender || token.pronouns || token.pron || (token.pronouns == null ? fields.gender || fields.pron || fields.pronouns : '');
+  const style = token.tokenArchetype || fields.token_archetype;
+  if (ARCHETYPES.includes(style)) return getArchetypeTokenAvatar(species, style, detectGender(pronouns, token.name));
+  return defaultTokenAvatar(species, pronouns, token.name, token.characterClass || token.class || fields.class || token.roleTag);
 }

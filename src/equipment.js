@@ -1,5 +1,6 @@
 import { adversaryWeapons } from './adversaryWeapons.js';
-import { resolveDamage } from './rulesEngine.js';
+import { damageNames } from './damageProtection.js';
+import { damageTypeOf, resolveDamage } from './rulesEngine.js';
 import { tagsFromFeatures, parseTagInput, validTags } from './weaponTags.js';
 
 const text = value => value == null ? '' : String(value);
@@ -39,21 +40,45 @@ export function validateInventory(value) {
 
 // Accept only arithmetic we actually implement. Alternatives, keep-highest,
 // rerolls and feature procedures remain explicit instead of being discarded.
-export function parseDamageExpression(expression) {
-  const error = () => { throw new Error('Usa dados y modificadores (ej.: 2d8+1 o 1d8+1+1d4). Elige una alternativa y resuelve las propiedades especiales según su texto.'); };
-  if (typeof expression !== 'string' || expression.length > 1000) return error();
-  const clean = expression.toLowerCase().replaceAll('−', '-').replace(/\b(?:physical|phys|energy|ene|shock|fire|cold|psychic|void|neural|kinetic|sonic|acid)\b\.?/g, '').replace(/\s/g, '');
-  const terms = [...clean.matchAll(/([+-]?)(?:(\d*)d(\d+)|(\d+))/g)];
-  if (!terms.length || terms.map(m => m[0]).join('') !== clean || terms.slice(1).some(m => !m[1])) return error();
-  const pools = []; let flat = 0;
-  for (const match of terms) {
-    if (match[3]) {
-      const count = Number(match[2] || 1), sides = Number(match[3]);
-      if (match[1] === '-' || !Number.isInteger(count) || count < 1 || count > 100 || ![4,6,8,10,12,20].includes(sides)) return error();
-      pools.push({ count, sides });
-    } else flat += Number(match[4]) * (match[1] === '-' ? -1 : 1);
+const names = [...damageNames, 'phys', 'ene', 'psychic'].join('|');
+const damageTerm = new RegExp('([+-]?)\\s*(?:(\\d*)d(\\d+)|(\\d+))\\s*((?:(?:' + names + ')\\b\\.?\\s*)*)', 'iy');
+function damageExpressionGroups(expression) {
+  const invalid = () => { throw new Error('Usa dados y modificadores (ej.: 2d8+1 o 1d8+1 Phys + 1d4 Shock). Elige una alternativa y resuelve sus propiedades según el texto.'); };
+  if (typeof expression !== 'string' || expression.length > 1000) invalid();
+  const input = expression.replaceAll('−', '-').trim();
+  const groups = [];
+  let current = { pools: [], flat: 0, labels: [] }, cursor = 0;
+  while (cursor < input.length) {
+    damageTerm.lastIndex = cursor;
+    const t = damageTerm.exec(input);
+    if (!t || (cursor && !t[1])) invalid();
+    cursor = damageTerm.lastIndex;
+    if (t[3]) {
+      const count = Number(t[2] || 1), sides = Number(t[3]);
+      if (t[1] === '-' || count < 1 || count > 100 || ![4, 6, 8, 10, 12, 20].includes(sides)) invalid();
+      current.pools.push({ count, sides });
+    } else current.flat += Number(t[4]) * (t[1] === '-' ? -1 : 1);
+    if (t[5].trim()) {
+      current.labels = t[5].toLowerCase().match(/[a-z]+/g);
+      groups.push(current);
+      current = { pools: [], flat: 0, labels: [] };
+    }
   }
-  if (pools.length > 12 || pools.reduce((n,p) => n+p.count, 0) > 100 || Math.abs(flat) > 10000 || (!pools.length && flat < 1)) return error();
+  if (!groups.length) groups.push(current);
+  else {
+    const last = groups[groups.length - 1];
+    last.pools.push(...current.pools);
+    last.flat += current.flat;
+  }
+  const pools = groups.flatMap(g => g.pools);
+  const flat = groups.reduce((n, g) => n + g.flat, 0);
+  if (pools.length > 12 || pools.reduce((n, p) => n + p.count, 0) > 100 ||
+      groups.length > 100 || groups.some(g => Math.abs(g.flat) > 10000) || Math.abs(flat) > 10000 || (!pools.length && flat < 1)) invalid();
+  return { pools, flat, groups };
+}
+
+export function parseDamageExpression(expression) {
+  const { pools, flat } = damageExpressionGroups(expression);
   return { pools, flat };
 }
 
@@ -76,20 +101,32 @@ export function damageDicePools(formula, { proficiency = 1, diceCount = 1, diceS
 }
 
 export function resolveDamageExpression(expression, options = {}) {
-  const parsed = parseDamageExpression(expression);
+  const parsed = damageExpressionGroups(expression);
   const proficiency = options.proficiency ?? 1, honed = options.honed ?? 0;
   if (!Number.isInteger(proficiency) || proficiency < 1 || proficiency > 10 || !Number.isInteger(honed) || honed < 0 || honed > 9) throw new Error('Revisa Proficiency y Honed Edge.');
-  const pools = parsed.pools.map((p, i) => ({ ...p, count: p.count + (i === 0 ? proficiency - 1 : 0) }));
-  if (pools.reduce((n,p) => n+p.count, 0) > 100) throw new Error('Máximo 100 dados antes del Critical.');
-  const rolls = []; let diceTotal = 0;
-  for (const pool of pools) {
-    const part = resolveDamage({ ...options, diceCount: pool.count, diceSides: pool.sides, flatModifier: 0, mountRating: 1 });
-    rolls.push(...part.rolls); diceTotal += part.rawDamage;
-  }
-  // `bonus`: what is added to this damage besides the formula (Bear Down, Combat Surge…).
-  const flatModifier = parsed.flat + honed + (Number.isInteger(options.bonus) ? options.bonus : 0);
-  const result = resolveDamage({ ...options, diceCount: 0, flatModifier: diceTotal + flatModifier, mountRating: 1 });
-  return { ...result, rolls, flatModifier, formula: expression, pools };
+  const extra = honed + (Number.isInteger(options.bonus) ? options.bonus : 0);
+  const pools = [], rolls = [];
+  if (parsed.pools.reduce((n, p) => n + p.count, 0) + proficiency - 1 > 100) throw new Error('Máximo 100 dados antes del Critical.');
+  const components = parsed.groups.map(({ pools: dice, flat, labels }, i) => {
+    let amount = flat + (i === 0 ? extra : 0);
+    for (const pool of dice) {
+      const count = pool.count + (!pools.length ? proficiency - 1 : 0);
+      pools.push({ ...pool, count });
+      const rolled = resolveDamage({ diceCount: count, diceSides: pool.sides, flatModifier: 0,
+        rollDie: options.rollDie, isCritical: options.isCritical, isKeeperCritical: options.isKeeperCritical });
+      rolls.push(...rolled.rolls);
+      amount += rolled.baseDiceTotal;
+    }
+    const primary = (i === 0 && options.typeOverride) || (labels.length ? damageTypeOf(labels.join(' ')) : options.damageType || 'physical');
+    const types = new Set([primary]);
+    for (const label of labels) if (!['phys', 'ene', 'physical', 'energy', 'neural', 'void'].includes(label)) types.add(label);
+    if (parsed.groups.length === 1) {
+      for (const tag of options.types || []) if (!['physical', 'energy', 'neural', 'void'].includes(tag)) types.add(tag);
+    } else if (i === 0 && options.deliveryTag) types.add(options.deliveryTag.toLowerCase());
+    return { amount: amount * (options.mountRating ?? 1), types: [...types] };
+  });
+  const result = resolveDamage({ ...options, diceCount: 0, components });
+  return { ...result, rolls, baseDiceTotal: rolls.reduce((n, face) => n + face, 0), flatModifier: parsed.flat + extra, formula: expression, pools };
 }
 
 // What the target has against Penetration (Corebook ch. 10): Reflective armor cancels

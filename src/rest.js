@@ -115,7 +115,7 @@ export function restPatch(token, kind, moves, roll = rollD4) {
         if (p) patch.resolve = p.resolve;
         said.push(`Prepare: Resolve ${(p?.resolve || token.resolve)?.current ?? 0}/${token.resolve?.max ?? 0}`);
       } else {
-        const hope = kind === 'long' ? Math.max(token.hope || 0, HOPE_START) : Math.min(token.hopeMax ?? 6, (token.hope || 0) + 1);
+        const hope = kind === 'long' ? Math.min(token.hopeMax ?? 6, HOPE_START) : Math.min(token.hopeMax ?? 6, (token.hope || 0) + 1);
         patch.hope = hope; said.push(`Prepare: Hope ${hope}`);
       }
     }

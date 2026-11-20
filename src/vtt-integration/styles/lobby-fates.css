@@ -560,7 +560,7 @@
 }
 #vf-lobby-gateway .vault-char-card:hover { background: rgba(109, 40, 217, 0.12); transform: none; }
 #vf-lobby-gateway .vault-char-card.selected { border-left-color: var(--fx-accent); background: rgba(109, 40, 217, 0.2); }
-#vf-lobby-gateway .vault-card-avatar { display: none; }
+#vf-lobby-gateway .vault-card-avatar { display: block; flex: none; object-fit: cover; border-radius: 50%; }
 #vf-lobby-gateway .vault-card-header-row h4 { font-family: var(--fx-sans); font-size: 15px; font-weight: 600; letter-spacing: 0.06em; color: #fff; }
 #vf-lobby-gateway .vault-card-status,
 #vf-lobby-gateway .vault-char-card.selected .vault-card-status {

@@ -26,11 +26,12 @@ export function deployAdversary(entry, { hidden = true } = {}) {
   const token = store.addToken({
     actorType: 'adversary', isPlayer: false, hidden, name: entry.name, roleTag: label(entry),
     x: Math.max(0, Math.min(map.width || Infinity, center.x)), y: Math.max(0, Math.min(map.height || Infinity, center.y)),
-    avatarUrl: '/assets/tokens/adversary-marker.svg', hasLight: false,
+    hasLight: false,
     hp: { current: entry.hp, max: entry.hp, majorThreshold: entry.major, severeThreshold: entry.severe },
     stress: { current: 0, max: entry.stress ?? 0 }, armor: { current: entry.armor ?? 0, max: entry.armor ?? 0 },
     evasion: entry.evasion, attackModifier: entry.attack, damageExpression: entry.damage,
     ...(entry.traits ? { traits: entry.traits } : {}),
+    description: entry.description,
     featureNotes: [entry.book + ' 12.06 · ' + entry.section, entry.name, entry.text].join('\n\n'),
   });
   if (!token) throw new Error('No se pudo colocar el token en la escena.');

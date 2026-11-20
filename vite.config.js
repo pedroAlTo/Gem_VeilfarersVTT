@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite';
 import { adversaryLibraryPlugin } from './scripts/adversary-library.mjs';
 import { encounterLibraryPlugin } from './scripts/encounter-library.mjs';
+import { tokenPortraitsPlugin } from './scripts/token-portraits.mjs';
 import { lanSessions } from './scripts/lan-sessions.mjs';
 
 export default defineConfig({
-  plugins: [lanSessions(), adversaryLibraryPlugin(), encounterLibraryPlugin()],
+  plugins: [lanSessions(), tokenPortraitsPlugin(), adversaryLibraryPlugin(), encounterLibraryPlugin()],
   resolve: {
     alias: {
       peerjs: 'peerjs/dist/bundler.cjs',

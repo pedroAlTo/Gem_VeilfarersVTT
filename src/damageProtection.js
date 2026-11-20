@@ -27,3 +27,32 @@ export function damageProtection(token, types) {
   }
   return resistant ? 'resistant' : '';
 }
+
+
+// Fold repeated amounts of the same type before rounding resistance for this hit.
+export function mitigateComponents(components, target, fallback = '') {
+  const grouped = new Map();
+  for (const { amount, types } of components) {
+    const key = [...types].sort().join('|');
+    if (grouped.has(key)) grouped.get(key).amount += amount;
+    else grouped.set(key, { amount, types: [...types] });
+  }
+  const groups = [...grouped.values()].map(group => {
+    const applied = target ? damageProtection(target, new Set(group.types)) : fallback;
+    const effective = applied === 'immune' ? 0 : applied === 'resistant' ? Math.floor(group.amount / 2) : group.amount;
+    return { ...group, applied, effective };
+  });
+  const effectiveDamage = groups.reduce((sum, g) => sum + g.effective, 0);
+  const statuses = new Set(groups.map(g => g.applied));
+  const protection = statuses.size === 1 ? groups[0].applied : 'partial';
+  return { groups, effectiveDamage, protection, fullyProtected: !!protection && groups.every(g => g.effective <= 0) };
+}
+
+// A player may have rolled before the Keeper changed one of the defences.
+export function sameDamageDefenses(target, defense) {
+  const groups = defense.groups ?? [defense]; // Accept single-type hits from older clients.
+  return Array.isArray(groups) && groups.length > 0 && groups.length <= 100 && groups.every(g =>
+    Array.isArray(g?.types) && g.types.length > 0 && g.types.length <= 32 &&
+    g.types.every(t => typeof t === 'string' && t.length <= 32) &&
+    g.applied === damageProtection(target, new Set(g.types)));
+}

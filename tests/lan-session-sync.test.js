@@ -77,6 +77,10 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     const tokenId = keeper.state.getTokensForActiveMap().find(token => token.isPlayer).id;
     keeper.manager.assignToken(keeper.state.state.connectedPeers[0].id, tokenId);
     await until(() => pilot.state.canEditToken(tokenId), 'assignment reaches player');
+    const assigned = pilot.state.state.tokens.find(t => t.id === tokenId);
+    await pilot.manager.importCharacter({ ...assigned, name: 'Kryx Pilot', species: 'Kryx', pronouns: 'ella', characterClass: 'Pilot', avatarUrl: '/assets/tokens/captain_harker.jpg' });
+    const pilotPortrait = '/assets/tokens/classes/kryx-pilot-f.svg';
+    await until(() => [keeper, pilot].every(endpoint => endpoint.state.state.tokens.find(t => t.id === tokenId)?.avatarUrl === pilotPortrait), 'imported portrait reaches the map for both roles');
     const water = keeper.state.addWaterZone({name:'Polygon lake',shape:'polygon',points:[{x:0,y:0},{x:180,y:0},{x:80,y:140}],depth:2});
     await until(() => pilot.state.getActiveMap().waterZones?.some(w => w.id === water.id), 'water geometry reaches player');
     assert.deepEqual(pilot.state.getActiveMap().waterZones.find(w => w.id === water.id).points,water.points);

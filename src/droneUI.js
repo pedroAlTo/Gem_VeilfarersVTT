@@ -159,7 +159,7 @@ export function openDroneConsole(tokenId = null) {
       } else {
         const canvas = window.veilCanvas, center = canvas?.screenToWorld?.(canvas.displayWidth / 2, canvas.displayHeight / 2) || { x: 500, y: 500 };
         const member = store.state.memberId || store.state.peerId || 'keeper';
-        const created = store.addToken({ ...data, name, avatarUrl: '/assets/tokens/synthetic_infiltrator_echo.jpg', visionAngle: 90, fov: 90, facingAngle: 0, ownerId: '', controllerIds: member !== 'keeper' ? [member] : [], ...center });
+        const created = store.addToken({ ...data, name, visionAngle: 90, fov: 90, facingAngle: 0, ownerId: '', controllerIds: member !== 'keeper' ? [member] : [], ...center });
         if (!created) throw new Error('No se pudo crear el dron.');
         store.update({ selectedTokenId: created.id });
         network.broadcast?.({ type: 'TOKEN_ADD', token: created });

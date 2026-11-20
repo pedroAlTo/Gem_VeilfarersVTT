@@ -1,3 +1,4 @@
+import { profileDescription } from '../src/adversaryDescription.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -56,6 +57,7 @@ export function loadAdversaries(watch = () => {}) {
           }
           entry.deployable = [entry.hp, entry.evasion, entry.attack, entry.major, entry.severe].every(Number.isFinite) && entry.hp > 0 && !!entry.damage;
           entry.text = body.join('\n').trim();
+          entry.description = profileDescription(entry.text);
           entries.push(entry);
           entry = null;
         }

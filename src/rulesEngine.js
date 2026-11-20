@@ -1,3 +1,4 @@
+import { mitigateComponents } from './damageProtection.js';
 import { hasTag } from './weaponTags.js';
 // src/rulesEngine.js
 // Veilfarers Canon Rules Engine (Sacred System Bible Release 12.06)
@@ -202,8 +203,8 @@ export function damageTypeOf(source) {
   const primary = text.match(/\b(physical|phys|energy|ene|void|neural)\b/)?.[1];
   if (primary) return ({ phys: 'physical', ene: 'energy' })[primary] || primary;
   if (/\bphasing\b/.test(text)) return 'void';
-  if (/\bpsionic\b/.test(text)) return 'neural';
-  if (/\b(?:plasma|laser|arc|thermal|fire|cold|sonic|radiant|radiation|lightning|corrosive|acid)\b/.test(text)) return 'energy';
+  if (/\b(?:psionic|psychic)\b/.test(text)) return 'neural';
+  if (/\b(?:plasma|laser|arc|thermal|fire|cold|sonic|radiant|radiation|lightning|corrosive|acid|shock)\b/.test(text)) return 'energy';
   return 'physical';
 }
 // Weapon tags (Corebook ch. 10). Crushing: the hit ignores one Armor Slot, unless the target's
@@ -240,10 +241,11 @@ export function resolveDamage({
   targetMajorThreshold = 6,
   targetSevereThreshold = 12,
   useArmorSlot = false, // the defender MAY mark an Armor Slot; it is never automatic
-  damageType = 'physical',
+  damageType: primaryType = 'physical',
   targetReflective = false,
   targetWarded = false,
-  protection = '',
+  protection: fallbackProtection = '',
+  components, targetToken, types = [primaryType],
   currentArmorSlots = 2,
   mountRating = 1, // 1 for person, 2 for Tier 2/3 ship, 3 for Tier 4/5 ship
   // One die at a time. The dice panel passes the faces read from the 3D dice here.
@@ -274,21 +276,22 @@ export function resolveDamage({
     }
   }
 
-  const rawDamage = (baseDiceTotal + flatModifier) * mountRating;
-
-  const effectiveDamage = protection === 'immune' ? 0 : protection === 'resistant' ? Math.floor(rawDamage / 2) : rawDamage;
-  const fullyProtected = !!protection && effectiveDamage === 0;
+  const damageParts = components ?? [{ amount: (baseDiceTotal + flatModifier) * mountRating, types: [...types] }];
+  const rawDamage = damageParts.reduce((sum, part) => sum + part.amount, 0);
+  const { groups, effectiveDamage, protection, fullyProtected } = mitigateComponents(damageParts, targetToken, fallbackProtection);
+  const surviving = groups.filter(group => group.effective > 0);
+  const damageType = (surviving[0] || groups[0]).types[0] || primaryType;
   const penetration = isDirectDamage ? 0 : penetrationFor(damageType, { reflective: targetReflective, warded: targetWarded });
   const effectiveMajor = Math.max(1, targetMajorThreshold - penetration);
   const effectiveSevere = Math.max(effectiveMajor, targetSevereThreshold - penetration);
   // A Neural hit also frays the mind: 1 Stress on top of its HP.
-  const stressMarked = damageType === 'neural' && !isDirectDamage && !fullyProtected ? 1 : 0;
+  const stressMarked = !isDirectDamage && !fullyProtected && (surviving.some(g => g.types[0] === 'neural') || (!components && damageType === 'neural')) ? 1 : 0;
 
   let baseSeverity = 'Minor';
   let rawHpDamage = 1;
 
   if (fullyProtected) {
-    baseSeverity = protection === 'immune' ? 'Immune' : 'Resisted';
+    baseSeverity = groups.every(g => g.applied === 'immune') ? 'Immune' : 'Resisted';
     rawHpDamage = 0;
   } else if (isDirectDamage) {
     baseSeverity = 'Direct HP';
@@ -335,6 +338,8 @@ export function resolveDamage({
     flatModifier,
     mountRating,
     rawDamage,
+    components: damageParts,
+    groups,
     effectiveDamage,
     protection,
     fullyProtected,

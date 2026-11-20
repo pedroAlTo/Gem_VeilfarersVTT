@@ -2,6 +2,7 @@
 // Centralized reactive state store for VeilVTT with Layers, Water, Handouts, and Sleeping Moves
 
 import { activeCampaignId, readCampaign, writeCampaign, selectCampaign, newId, listCampaigns } from './persistence.js';
+import { actorPortrait } from './tokenAvatars.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { controlsToken, assignControls, movePartyToScene } from './tokenPermissions.js';
 import { CAMPAIGN_KEYS, validateCampaign } from './validation.js';
@@ -349,54 +350,11 @@ class StateStore {
   getControlledTokens() { return this.getTokensForActiveMap().filter(token => this.canEditToken(token.id)); }
 
   setTokenSpotlight(tokenId, active = true) {
-    const target = this.state.tokens.find(t => t.id === tokenId);
-    if (!target) return false;
-    if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
-
-    if (active && !target.hasSpotlight && target.roundSpotlight !== roundKey(this.getActiveMap())) {
-      const isAdversary = (target.actorType === 'adversary' || target.isPlayer === false) && target.actorType !== 'drone';
-      if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
-        if ((this.state.fear ?? 0) < 1) {
-          notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
-          return false;
-        }
-        this.spendFear(1, `Foco en adversario: ${target.name}`);
-        if (typeof window !== 'undefined' && window.network?.broadcast) {
-          window.network.broadcast({ type: 'FEAR_UPDATE', fear: this.state.fear });
-        }
-      }
-    }
-
-    if (this.sessionRole === 'player' && !this.remoteApplying) {
-      return this.updateToken(tokenId, { hasSpotlight: Boolean(active) });
-    }
-
-    this._beforeTacticalMutation(active ? `Activar foco en ${target.name}` : `Desactivar foco en ${target.name}`);
-    const spotConfig = target.spotlight || { radius: 140, color: '#fbbf24', intensity: 0.85 };
-    const tokens = this.state.tokens.map(t => {
-      if (t.id === tokenId) {
-        return {
-          ...t,
-          hasSpotlight: Boolean(active),
-          spotlight: { ...(t.spotlight || spotConfig), enabled: Boolean(active) }
-        };
-      }
-      // El foco sólo lo puede tener un token a la vez: al activarse en uno, se apaga en los demás
-      if (active && (t.hasSpotlight || t.spotlight?.enabled)) {
-        return {
-          ...t,
-          hasSpotlight: false,
-          spotlight: { ...(t.spotlight || {}), enabled: false }
-        };
-      }
-      return t;
-    });
-
-    this.update({ tokens });
-    return true;
+    return this.updateToken(tokenId, { hasSpotlight: Boolean(active) });
   }
 
   updateToken(tokenId, partial) {
+    if (this.sessionBusy) return false;
     if (this.state.userRole === 'player' && !this.tableActing && !this.remoteApplying && ('x' in partial || 'y' in partial)) {
       const actor = this.state.tokens.find(t => t.id === tokenId);
       if (lifeStage(actor) && (('x' in partial && partial.x !== actor.x) || ('y' in partial && partial.y !== actor.y))) return false;
@@ -408,22 +366,31 @@ class StateStore {
       if (this.canEditToken(tokenId)) return this.sendTokenPatch?.(tokenId, partial);
       return false;
     }
-    this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
-    const turningOnSpotlight = Boolean(partial.hasSpotlight || partial.spotlight?.enabled);
-    const targetToken = this.state.tokens.find(t => t.id === tokenId);
-    if (turningOnSpotlight && targetToken && !targetToken.hasSpotlight && !targetToken.spotlight?.enabled && targetToken.roundSpotlight !== roundKey(this.getActiveMap())) {
-      const isAdversary = (targetToken.actorType === 'adversary' || targetToken.isPlayer === false) && targetToken.actorType !== 'drone';
-      if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
-        if ((this.state.fear ?? 0) < 1) {
-          notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
-          return false;
-        }
-        this.spendFear(1, `Foco en adversario: ${targetToken.name}`);
-        if (typeof window !== 'undefined' && window.network?.broadcast) {
-          window.network.broadcast({ type: 'FEAR_UPDATE', fear: this.state.fear });
-        }
-      }
+    const target = this.state.tokens.find(t => t.id === tokenId);
+    if (!target) return false;
+    if (['avatarUrl', 'species', 'name', 'pronouns', 'gender', 'tokenArchetype', 'characterClass', 'roleTag', 'actorType'].some(key => key in partial)) {
+      partial = { ...partial, avatarUrl: actorPortrait({ ...target, ...partial }) };
     }
+    const setsSpotlight = 'hasSpotlight' in partial || partial.spotlight?.enabled != null;
+    const turningOnSpotlight = setsSpotlight && Boolean(partial.hasSpotlight ?? partial.spotlight.enabled);
+    if (setsSpotlight) {
+      partial = { ...partial, hasSpotlight: turningOnSpotlight, spotlight: {
+        ...(target.spotlight || { radius: 140, color: '#fbbf24', intensity: 0.85 }), ...partial.spotlight, enabled: turningOnSpotlight
+      } };
+    }
+    const adversary = (target.actorType === 'adversary' || target.isPlayer === false) && target.actorType !== 'drone';
+    if (!this.remoteApplying && turningOnSpotlight && !target.hasSpotlight && !target.spotlight?.enabled && adversary) {
+      if (target.roundSpotlight === roundKey(this.getActiveMap())) {
+        notify('Este adversario ya tuvo el foco en esta ronda.', 'error');
+        return false;
+      }
+      if ((this.state.fear ?? 0) < 1) {
+        notify('Se requiere 1 Fear para dar el foco a un adversario.', 'error');
+        return false;
+      }
+      this.spendFear(1, 'Foco en adversario: ' + target.name);
+    }
+    this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
     const tokens = this.state.tokens.map(t => {
       if (t.id === tokenId) {
         return { ...t, ...partial };
@@ -1150,6 +1117,7 @@ class StateStore {
     const base = structuredClone(this.initialCampaign);
     const legacyArcs = [{ id: 'arc_main', name: 'Arco 1: Operaciones Activas', description: '', sceneIds: (input.maps || base.maps).map(m => m.id), tokenIds: [], images: [] }];
     const data = validateCampaign({ ...base, ...input, arcs: input.arcs ?? legacyArcs, logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
+    data.tokens = data.tokens.map(token => ({ ...token, avatarUrl: actorPortrait(token) }));
     if (!data.maps.some(m => m.id === data.activeMapId)) data.activeMapId = data.maps[0].id;
     if (data.fogExploredOpacity === undefined || data.fogExploredOpacity === 0.88) {
       data.fogExploredOpacity = 0.50;

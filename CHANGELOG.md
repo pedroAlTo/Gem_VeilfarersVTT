@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.10**.
-Paquete: `VeilFarers_VTT_v2.27.10.zip`.
+Versión actual del VTT: **v2.27.11**.
+Paquete: `VeilFarers_VTT_v2.27.11.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.11] — 2026-11-20
+
+Retratos de los personajes y descripciones del bestiario
+
+### Personajes y adversarios
+
+- Al importar o asignar un personaje, el mapa y las fichas muestran su retrato de ascendencia con la insignia de su clase. Se recuperan 46 ilustraciones ya dibujadas y el creador conserva la variante elegida al exportar el JSON.
+- Las 57 entradas del bestiario incluyen la descripción del libro. El Keeper puede editarla en las fichas desplegadas. Los contactos sin identificar conservan su identidad oculta.
+
+### Reglas en mesa
+
+- La regla de mesa del VTT para el Spotlight cobra 1 Fear por adversario y bloquea un segundo foco en la misma ronda, también desde sus ajustes o desde un jugador que lo controla.
+- Las defensas se aplican a su parte del daño mixto antes de comparar el resultado con los umbrales. En descanso largo, Prepare devuelve la Hope del Awakened a 2.
 
 ## [2.27.10] — 2026-11-20
 

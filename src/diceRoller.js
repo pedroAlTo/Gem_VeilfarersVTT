@@ -1,3 +1,4 @@
+import { actorPortrait } from './tokenAvatars.js';
 import { attackPresentation, weaponImpactType } from './combatFX.js';
 import { firstStrikeRider, throwExpression } from './damageRiders.js';
 import { guideEvent } from './onboarding.js';
@@ -14,7 +15,7 @@ import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
 import { proceduralAttack } from './adversaryWeapons.js';
-import { damageNames, hitTypes, damageProtection } from './damageProtection.js';
+import { damageNames, hitTypes } from './damageProtection.js';
 import { checkEdge, requireActive, lifeStage } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponTraitId, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
 import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
@@ -1550,7 +1551,6 @@ export class DiceRollerSidebar {
     const autoType = typedFormula ? formulaType : weaponType;
     const damageType = chosenType && chosenType !== 'auto' ? chosenType : autoType;
     const types = hitTypes(damageType, activeWeapon, formula, tag);
-    const protection = damageProtection(targetToken, types);
     feats = { ...weaponFeatures(activeWeapon), crushing, bleed }; // the two boxes follow the weapon and can be changed by hand
     if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
     // A drone is fired by a player character: its Critical doubles the dice like any player's.
@@ -1584,8 +1584,8 @@ export class DiceRollerSidebar {
       currentArmorSlots: targetToken ? usableSlots(targetToken) : 2,
       mountRating: mr,
       proficiency, honed,
-      damageType,
-      protection,
+      damageType, types, targetToken, deliveryTag: tag,
+      typeOverride: chosenType && chosenType !== 'auto' ? chosenType : '',
       targetReflective: reflectiveInput.checked,
       targetWarded: wardedInput.checked,
     };
@@ -1607,8 +1607,9 @@ export class DiceRollerSidebar {
     }
     const extras = extrasPinned || damageExtras(feats, dmgResult.rolls, extraSides, extraFaces?.length ? facesRoller(extraFaces) : undefined);
     if (extras.bonus) {
-      const again = resolveDamage({ diceCount: 0, flatModifier: dmgResult.rawDamage + extras.bonus, protection, targetMajorThreshold: major, targetSevereThreshold: severe, isDirectDamage: isDirect, damageType, targetReflective: reflectiveInput.checked, targetWarded: wardedInput.checked, useArmorSlot: false, currentArmorSlots: damageOptions.currentArmorSlots, mountRating: mr });
-      dmgResult = { ...dmgResult, rawDamage: again.rawDamage, effectiveDamage: again.effectiveDamage, fullyProtected: again.fullyProtected, finalSeverity: again.finalSeverity, finalHpDamage: again.finalHpDamage, effectiveMajor: again.effectiveMajor, effectiveSevere: again.effectiveSevere };
+      const components = dmgResult.components.map((part, i) => i ? part : { ...part, amount: part.amount + extras.bonus * mr });
+      const again = resolveDamage({ ...damageOptions, diceCount: 0, components });
+      dmgResult = { ...dmgResult, ...again, rolls: dmgResult.rolls, flatModifier: dmgResult.flatModifier, baseDiceTotal: dmgResult.baseDiceTotal };
     }
     const devastating = isDirect ? 0 : devastatingExtra(feats, dmgResult.effectiveDamage, dmgResult.effectiveSevere);
     if (devastating) dmgResult = { ...dmgResult, finalHpDamage: dmgResult.finalHpDamage + devastating };
@@ -1651,7 +1652,8 @@ export class DiceRollerSidebar {
       (dmgResult.penetration
         ? `${DAMAGE_TYPES[dmgResult.damageType]} · Penetración −${dmgResult.penetration}: umbrales ${major}/${severe} → ${dmgResult.effectiveMajor}/${dmgResult.effectiveSevere} para este impacto. `
         : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
-      (protection ? dmgResult.rawDamage + ' → ' + dmgResult.effectiveDamage + (protection === 'immune' ? ' (inmunidad). ' : ' (resistencia). ') : '') +
+      (dmgResult.protection ? dmgResult.groups.map(g => g.types.join('/') + ' ' + g.amount + ' → ' + g.effective +
+        (g.applied === 'immune' ? ' (inmunidad)' : g.applied === 'resistant' ? ' (resistencia)' : '')).join(' + ') + '. ' : '') +
       (dmgResult.stressMarked ? 'Neural: +1 Stress. ' : '') +
       (featureNotes.length ? featureNotes.join(' ') + ' ' : '') +
       (bleed && !dmgResult.fullyProtected ? (targetToken && !canBleed(targetToken) ? 'Bleed: el objetivo no sangra (inmune). ' : 'Bleed: el objetivo queda Bleeding. ') : '') +
@@ -1718,7 +1720,8 @@ export class DiceRollerSidebar {
 
         const currentDamage = resolveDamage({
           diceCount: 0,
-          flatModifier: dmgResult.rawDamage,
+          components: dmgResult.components,
+          targetToken,
           targetMajorThreshold: targetToken.hp.majorThreshold ?? major,
           targetSevereThreshold: targetToken.hp.severeThreshold ?? severe,
           isDirectDamage: isDirect,
@@ -1726,8 +1729,7 @@ export class DiceRollerSidebar {
           currentArmorSlots: usableSlots(targetToken),
           damageType: dmgResult.damageType,
           targetReflective: damageOptions.targetReflective,
-          targetWarded: damageOptions.targetWarded,
-          protection: damageProtection(targetToken, types)
+          targetWarded: damageOptions.targetWarded
         });
 
         if (currentDamage.fullyProtected) spentShields = 0;
@@ -1769,7 +1771,7 @@ export class DiceRollerSidebar {
           isDirect,
           isCritical,
           rawDamage: dmgResult.rawDamage,
-          defense: { types: [...types], applied: damageProtection(targetToken, types), hp: targetToken.hp.current, armor: currentArmor },
+          defense: { groups: currentDamage.groups.map(({ types, applied }) => ({ types, applied })), hp: targetToken.hp.current, armor: currentArmor },
           kind: impactKind,
           secret,
           logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.${cut ? ` Armor Slots máximos −${cut.long + cut.repairAll + cut.downtime} (${armorAfter(targetToken).max}).` : ''}`
@@ -1847,7 +1849,7 @@ export class DiceRollerSidebar {
       };
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
-      const currentArmorNow = damageProtection(currentTarget, types) === 'immune' ? 0 : usableSlots(currentTarget);
+      const currentArmorNow = planDamage(0).currentDamage.fullyProtected ? 0 : usableSlots(currentTarget);
       // Damage is the Keeper's call (v2.27.5: to an NPC, an adversary or another player's
       // character): a window lets them choose its shields and apply or cancel it. A connected
       // player's hit goes to the Keeper with every option; only a hit on their own character
@@ -1890,7 +1892,7 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
   const describe = n => { const o = options[n]; return `Pierde ${o.hpLoss} HP · HP ${o.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}`; };
   const modal = dossierDialog('⚔️ DAÑO A ' + targetToken.name, `
     <div class="kdmg">
-      <div class="kdmg-head"><img src="${escapeHTML(targetToken.avatarUrl || '/assets/tokens/captain_harker.jpg')}" alt="" />
+      <div class="kdmg-head"><img src="${escapeHTML(actorPortrait(targetToken))}" alt="" />
         <div><strong>${escapeHTML(targetToken.name)}</strong><p class="dossier-muted">${escapeHTML(request.attackerName || 'Ataque')}: ${escapeHTML(String(request.raw))} de daño · ${escapeHTML(String(request.severity || ''))}</p></div></div>
       ${max > 0 ? `<label class="dossier-field kdmg-shields"><span>Escudos a gastar (${max} disponible${max > 1 ? 's' : ''})</span>
         <div class="kdmg-row"><input type="range" id="kdmg_shields" min="0" max="${max}" value="${start}" /><b id="kdmg_shields_val">${start}</b></div></label>` : '<p class="dossier-muted">Sin escudos disponibles para este impacto.</p>'}
@@ -1923,7 +1925,7 @@ export function promptShieldMitigation(targetToken, incomingRawDamage, usable, o
 
   const modal = dossierDialog('🛡️ MITIGACIÓN CON ESCUDOS · ' + targetToken.name, `
     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
-      <img src="${escapeHTML(targetToken.avatarUrl || '/assets/tokens/captain_harker.jpg')}" style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid #00f3ff; object-fit: cover;" alt="" />
+      <img src="${escapeHTML(actorPortrait(targetToken))}" style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid #00f3ff; object-fit: cover;" alt="" />
       <div>
         <h3 style="margin: 0; color: #fff; font-size: 15px;">${escapeHTML(targetToken.name)}</h3>
         <p class="dossier-muted" style="margin: 2px 0 0;">¡Impacto entrante de ${incomingRawDamage} de daño!</p>
