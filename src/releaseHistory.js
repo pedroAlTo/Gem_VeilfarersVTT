@@ -1,6 +1,21 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.10', date: '2026-11-20', title: 'Combate, bestiario y navegación según el Corebook 12.06',
+    sections: [
+      { title: 'En la mesa', items: [
+        'A 0 HP, la ficha sigue el progreso de Dying y Final. Un aliado adyacente puede estabilizar. Blaze of Glory requiere la elección del jugador y la confirmación de que ha resuelto su último acto.',
+        'Overwhelmed y Vulnerable se aplican en la tirada y se cancelan cuando coinciden. Las resistencias y las inmunidades activas se aplican antes de los umbrales de daño.',
+        'Rapid Regeneration cura al activarse y al empezar cada Spotlight elegible. El Keeper dispone de Nueva ronda para abrir el siguiente ciclo.',
+      ] },
+      { title: 'Herramientas del Keeper y de la tripulación', items: [
+        'El bestiario ofrece las armas y variantes impresas de cada adversario. Los perfiles narrativos remiten a su procedimiento. La cabecera de Fear usa los mismos movimientos y costes que la mano del Keeper.',
+        'El salto FTL separa el cálculo de ruta de la iniciación por el piloto. La solución queda guardada y se consume una Pearl al entrar en tránsito.',
+        'El Códice en español e inglés recoge las reglas de Effort, Recovery Anchor, heridas, Stress y Long Bruise del Corebook 12.06.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.9', date: '2026-11-19', title: 'V3 · La linterna de un enemigo oculto no lo delata',
     sections: [
       { title: 'Niebla y visión', items: [

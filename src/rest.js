@@ -94,7 +94,7 @@ export function restPatch(token, kind, moves, roll = rollD4) {
       patch.hp = { ...token.hp, current }; said.push(`Tend Wounds 1d4 [${d}] + ${tier}: +${current - token.hp.current} HP (${current}/${token.hp.max})`);
     }
     if (move === 'clear' && token.stress) {
-      const { d, n } = amount(), current = Math.max(0, (token.stress.current || 0) - n);
+      const { d, n } = amount(), current = Math.max(token.conditions?.includes('Long Bruise') ? 1 : 0, (token.stress.current || 0) - n);
       patch.stress = { ...token.stress, current }; said.push(`Clear Stress 1d4 [${d}] + ${tier}: −${(token.stress.current || 0) - current} Stress (${current}/${token.stress.max})`);
     }
     if (move === 'repair' && armor) {

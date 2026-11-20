@@ -1,10 +1,11 @@
-import { sanitizeHTML, notify } from './ui.js';
+import { sanitizeHTML, escapeHTML as esc, notify } from './ui.js';
 // src/starshipManager.js
 // Starship Naval Combat HUD & Tactical Station (Veilfarers Canon 12.06 Chapter 17)
 
 import { store } from './state.js';
 import { network } from './networkManager.js';
-import { rollVeilfarersCheck } from './rulesEngine.js';
+import { nextSpotlightRound, roundKey } from './combatState.js';
+import { shipWithChanges } from './starshipJump.js';
 import { audio } from './audioEngine.js';
 
 export class StarshipManager {
@@ -161,9 +162,10 @@ export class StarshipManager {
             <span style="font-family: var(--font-hud); font-size: 10px; font-weight: 700; color: #c084fc;">QUANTUM PEARLS</span>
             <span style="font-family: var(--font-mono); font-size: 13px; font-weight: 900; color: #e9d5ff;">✦ ${ship.pearls} REMAINING</span>
           </div>
-          <button class="hud-btn hud-btn-xs" id="ftl_jump_btn" style="width: 100%; background: linear-gradient(135deg, #7e22ce, #3b82f6); color: #fff; font-weight: 700; padding: 6px;">
-            BURN PEARL & EMERGENCY FTL JUMP
-          </button>
+          ${ship.jump ? '<p>' + esc(ship.jump.destination) + ' · ' + (ship.jump.phase === 'transit' ? 'En tránsito' : 'Solución lista') + '</p>' :
+            '<label>Destino FTL <input id="ftl_destination" class="hud-input" maxlength="120"></label><label class="hud-checkbox-label"><input type="checkbox" id="ftl_under_fire"> Bajo fuego · DC 15</label>'}
+          ${ship.jump?.phase !== 'transit' ? '<button class="hud-btn" id="ftl_jump_btn">' + (ship.jump ? 'Iniciar salto · Instinct DC 10' : 'Calcular ruta · Knowledge') + '</button>' : ''}
+          ${ship.jump && isKeeper ? '<button class="hud-btn" id="ftl_clear">' + (ship.jump.phase === 'transit' ? 'Finalizar tránsito' : 'Descartar solución') + '</button>' : ''}
         </div>
 
         <!-- Pilot Maneuvers -->
@@ -206,7 +208,7 @@ export class StarshipManager {
     `);
 
     this.attachEvents(ship);
-    if(store.sessionRole==='player')this.container.querySelectorAll('button:not(.maneuver-btn),input,vf-select').forEach(el=>el.disabled=true);
+    if(store.sessionRole==='player')this.container.querySelectorAll('button:not(.maneuver-btn):not(#ftl_jump_btn),input:not(#ftl_destination):not(#ftl_under_fire),vf-select').forEach(el=>el.disabled=true);
   }
 
   attachEvents(ship) {
@@ -264,6 +266,8 @@ export class StarshipManager {
     const regenBtn = this.container.querySelector('#regen_shields_btn');
     if (regenBtn) {
       regenBtn.onclick = () => {
+        if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') return;
+        nextSpotlightRound(store);
         const nextArcs = {
           fore: Math.min(ship.shieldArcs.maxPerArc, ship.shieldArcs.fore + 2),
           aft: Math.min(ship.shieldArcs.maxPerArc, ship.shieldArcs.aft + 2),
@@ -315,25 +319,21 @@ export class StarshipManager {
       };
     }
 
-    // FTL Jump
-    const ftlBtn = this.container.querySelector('#ftl_jump_btn');
-    if (ftlBtn) {
-      ftlBtn.onclick = () => {
-        if (ship.pearls <= 0) {
-          notify('No Quantum Pearls remaining! Jumping into the raw Veil without a Pearl is lethal.');
-          return;
-        }
-        const nextPearls = ship.pearls - 1;
-        this.updateShip({ pearls: nextPearls });
-        store.addLog({
-          sender: ship.name,
-          type: 'FTL_JUMP',
-          title: `✦ QUANTUM PEARL BURNED // EMERGENCY FTL JUMP`,
-          details: `Pearl consumed in drive core. Space-time folded, emergency jump engaged. Remaining Pearls: ${nextPearls}.`
-        });
-        audio.playLaserShot();
-      };
-    }
+    const jumpBtn = this.container.querySelector('#ftl_jump_btn');
+    if (jumpBtn) jumpBtn.onclick = async () => {
+      const actor = store.getSelectedToken();
+      if (!actor || !store.canEditToken(actor.id)) { notify('Selecciona el tripulante que actúa en este Spotlight.', 'error'); return; }
+      jumpBtn.disabled = true;
+      try {
+        const result = await network.requestAction({ type: 'FTL', actorId: actor.id, turn: roundKey(store.getActiveMap()), step: ship.jump ? 'initiate' : 'calculate',
+          solutionId: ship.jump?.id, destination: this.container.querySelector('#ftl_destination')?.value,
+          underFire: !!this.container.querySelector('#ftl_under_fire')?.checked });
+        window.veilDiceRoller?.showResult(result);
+        notify(result.jumpOutcome);
+      } catch (e) { notify(e.message, 'error'); } finally { if (jumpBtn.isConnected) jumpBtn.disabled = false; }
+    };
+    const clear = this.container.querySelector('#ftl_clear');
+    if (clear) clear.onclick = () => this.updateShip({ jump: null });
 
     // Use the same canonical check and the selected pilot's real Instinct.
     this.container.querySelectorAll('.maneuver-btn').forEach(btn=>{
@@ -377,8 +377,8 @@ export class StarshipManager {
 
   updateShip(partial) {
     if(store.sessionRole==='player'){notify('Ship systems are managed by the Keeper.');return;}
-    const cur=store.state.starship,updated={...cur,...partial};
-    if(cur.heat<=cur.heatCap&&updated.heat>updated.heatCap){updated.systems=Object.fromEntries(Object.entries(updated.systems||{}).map(([key,value])=>[key,Math.max(0,value-1)]));updated.visible=true;updated.heatCheckPending=true;notify('Heat cap exceeded: every system loses 1 Integrity. Select the pilot and resolve Instinct DC 15.','error');}
+    const cur = store.state.starship, updated = shipWithChanges(cur, partial);
+    if (!cur.heatCheckPending && updated.heatCheckPending) notify('Heat cap exceeded: every system loses 1 Integrity. Select the pilot and resolve Instinct DC 15.', 'error');
     store._beforeTacticalMutation('Update starship');store.update({starship:updated});network.broadcast({type:'STARSHIP_UPDATE',starship:updated});
   }
 }

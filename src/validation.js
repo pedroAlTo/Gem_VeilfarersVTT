@@ -72,6 +72,7 @@ export function validateCampaign(data) {
     }
   }
   for (const m of data.maps) {
+    if (m.spotlightRound !== undefined) assert(Number.isSafeInteger(m.spotlightRound) && m.spotlightRound >= 1, 'Invalid Spotlight round.');
     validateEnvironment(m.environment);
     if (m.drawings !== undefined) {
       assert(Array.isArray(m.drawings) && m.drawings.length <= 500, 'Invalid drawings.');
@@ -103,6 +104,9 @@ export function validateCampaign(data) {
   }
   for (const t of data.tokens) {
     validateActor(t);
+    if (t.blazeChoice != null) assert(typeof t.blazeChoice === 'string' && t.blazeChoice.length <= 60, 'Invalid Death Move.');
+    if (t.lifeProgress !== undefined) assert(Number.isInteger(t.lifeProgress) && finite(t.lifeProgress, 0, 1), 'Invalid life progress.');
+    for (const stamp of [t.roundSpotlight, t.lifeRollRound, t.ftlRound]) if (stamp != null) assert(typeof stamp === 'string' && stamp.length <= 220, 'Invalid Spotlight round.');
     assert(t.mapId === 'reserve' || t.inReserve || data.maps.some(m => m.id === t.mapId), 'Token refers to an unknown map.');
   }
   for (const c of data.clocks)
@@ -135,6 +139,9 @@ export function validateCampaign(data) {
         ),
       'Invalid shield arcs.'
     );
+    if (s.jump != null) assert(['ready', 'transit'].includes(s.jump.phase) && typeof s.jump.id === 'string' && s.jump.id.length <= 200 &&
+      typeof s.jump.destination === 'string' && s.jump.destination.length > 0 && s.jump.destination.length <= 120 &&
+      typeof s.jump.mapId === 'string' && s.jump.mapId.length <= 200, 'Invalid FTL solution.');
     if (s.systems)
       assert(
         Object.values(s.systems).every((n) => Number.isInteger(n) && finite(n, 0, 3)),

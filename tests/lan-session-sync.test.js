@@ -155,6 +155,20 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     assert.ok(!wire.includes(hidden.id)); assert.ok(!wire.includes(secret.id));
     assert.ok(pilot.received.filter(packet => packet.type === 'INITIAL_STATE').every(packet => packet.state.logs.every(entry => entry.visibility !== 'keeper')));
     assert.equal(stranger.packets(), 0, 'rejected sockets receive no campaign packets');
+    // The same canonical life state reaches the assigned player and the other observers.
+    const life = { type: 'LIFE_TURN', actorId: tokenId, blaze: 'A perfect final act', confirmed: true };
+    keeper.state.updateToken(tokenId, { hp: { ...restored.hp, current: 0 } });
+    keeper.state.setTokenSpotlight(tokenId, true);
+    keeper.manager.syncAll();
+    const hasState = (client, condition) => client.state.state.tokens.find(t => t.id === tokenId)?.conditions.includes(condition);
+    await until(() => hasState(pilot, 'Dying'), 'Dying reaches the player');
+    await assert.rejects(pilot.manager.requestAction({ type: 'CHECK', actorId: tokenId, options }), /Dying/);
+    await assert.rejects(keeper.manager.requestAction(life), /jugador asignado/);
+    await assert.rejects(engineer.manager.requestAction(life), /assigned/);
+    await pilot.manager.requestAction(life);
+    await until(() => hasState(engineer, 'Last Act'), 'the crew sees the declared final act');
+    await pilot.manager.requestAction({ type: 'LIFE_TURN', actorId: tokenId, finish: true });
+    await until(() => hasState(pilot, 'Dead') && hasState(engineer, 'Dead'), 'the authoritative resolution reaches both players');
     keeper.manager.disconnect();
     await until(() => !pilot.state.state.isConnected, 'losing the Keeper marks the replica disconnected');
     assert.equal(pilot.state.canEditToken(tokenId), false);

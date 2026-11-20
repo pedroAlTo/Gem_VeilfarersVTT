@@ -1,10 +1,26 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.9**.
-Paquete: `VeilFarers_VTT_v2.27.9.zip`.
+Versión actual del VTT: **v2.27.10**.
+Paquete: `VeilFarers_VTT_v2.27.10.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.10] — 2026-11-20
+
+Combate, bestiario y navegación según el Corebook 12.06
+
+### En la mesa
+
+- A 0 HP, la ficha sigue el progreso de Dying y Final. Un aliado adyacente puede estabilizar. Blaze of Glory requiere la elección del jugador y la confirmación de que ha resuelto su último acto.
+- Overwhelmed y Vulnerable se aplican en la tirada y se cancelan cuando coinciden. Las resistencias y las inmunidades activas se aplican antes de los umbrales de daño.
+- Rapid Regeneration cura al activarse y al empezar cada Spotlight elegible. El Keeper dispone de Nueva ronda para abrir el siguiente ciclo.
+
+### Herramientas del Keeper y de la tripulación
+
+- El bestiario ofrece las armas y variantes impresas de cada adversario. Los perfiles narrativos remiten a su procedimiento. La cabecera de Fear usa los mismos movimientos y costes que la mano del Keeper.
+- El salto FTL separa el cálculo de ruta de la iniciación por el piloto. La solución queda guardada y se consume una Pearl al entrar en tránsito.
+- El Códice en español e inglés recoge las reglas de Effort, Recovery Anchor, heridas, Stress y Long Bruise del Corebook 12.06.
 
 ## [2.27.9] — 2026-11-19
 

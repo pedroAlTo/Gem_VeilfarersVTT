@@ -1989,11 +1989,11 @@ export class CanvasEngine {
         const tokenId = this.draggedToken.id;
         const moved = finalX !== this.draggedTokenOrigX || finalY !== this.draggedTokenOrigY;
         this.cancelTokenDrag();
-        store.updateToken(tokenId, { x: finalX, y: finalY });
+        const accepted = store.updateToken(tokenId, { x: finalX, y: finalY }) !== false;
         // The Keeper's own Player view: a move is the player's active action (a connected
         // player's move gets it from the table when the patch arrives).
-        if (moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantSpotlight(store, tokenId);
-        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId, x: finalX, y: finalY });
+        if (accepted && moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantSpotlight(store, tokenId);
+        if (accepted && store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId, x: finalX, y: finalY });
       }
 
       if (this.draggedWall) {

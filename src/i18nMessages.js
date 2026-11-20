@@ -5,6 +5,23 @@
 // Rule terms (Fear, Hope, Stress, Armor, Effort, Resolve, Loadout, Vault, Trait...) stay in English.
 
 export const MESSAGE_PAIRS = [
+  ['Ver estado del personaje', 'View character state'],
+  ['La ronda ha cambiado. Revisa el Spotlight actual.', 'The round has changed. Check the current Spotlight.'],
+  ['Nueva ronda', 'New round'],
+  ['Cerrar la ronda cuando hayan actuado sus participantes', 'End the round once its participants have acted'],
+  ['Progreso · 1d12', 'Progress · 1d12'],
+  ['Estabilizar a un aliado adyacente', 'Stabilize an adjacent ally'],
+  ['Marcar el último acto como resuelto', 'Mark the final act as resolved'],
+  ['El jugador asignado elige su último acto.', 'The assigned player chooses their final act.'],
+  ['Confirmar último acto', 'Confirm final act'],
+  ['Esta elección sustituye la tirada de progreso y el personaje muere al resolver su último acto.', 'This choice replaces the progress roll. The character dies after their final act resolves.'],
+  ['Solución lista', 'Solution ready'], ['En tránsito', 'In transit'],
+  ['Destino FTL', 'FTL destination'], ['Bajo fuego · DC 15', 'Under fire · DC 15'],
+  ['Calcular ruta · Knowledge', 'Calculate route · Knowledge'], ['Iniciar salto · Instinct DC 10', 'Initiate jump · Instinct DC 10'],
+  ['Descartar solución', 'Discard solution'], ['Finalizar tránsito', 'End transit'],
+  ['Resistencias e inmunidades activas', 'Active resistances and immunities'],
+  ['Añadir defensa', 'Add defense'], ['Tipo o etiqueta', 'Type or tag'], ['Etiqueta de daño', 'Damage tag'],
+  ['Procedimiento de la ficha', 'Use the procedure on the sheet'],
   // Account and preferences
   ['La nota necesita una partida.', 'The note needs a game.'],
   ['El registro necesita una partida.', 'The game record needs a game.'],

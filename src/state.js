@@ -6,6 +6,7 @@ import { createActor, replaceActorSheet } from './actors.js';
 import { controlsToken, assignControls, movePartyToScene } from './tokenPermissions.js';
 import { CAMPAIGN_KEYS, validateCampaign } from './validation.js';
 import { confirmAction, notify } from './ui.js';
+import { combatTransition, lifeStage, roundKey } from './combatState.js';
 import { waterGeometry } from './waterGeometry.js';
 
 import { INITIAL_MAPS, INITIAL_TOKENS, INITIAL_CLOCKS, INITIAL_HANDOUTS } from './defaultData.js';
@@ -160,6 +161,11 @@ class StateStore {
     if (this.sessionRole === 'player' && !this.remoteApplying) {
       if (Object.keys(partialState).some(k=>CAMPAIGN_KEYS.includes(k))) return false;
       if (partialState.userRole === 'keeper') return false;
+    }
+    if (partialState.tokens && !this.undoManager?.isRestoring && !partialState.campaignId && !partialState.activeMapId && !this.remoteApplying && this.sessionRole !== 'player') {
+      const previous = new Map(this.state.tokens.map(t => [t.id, t]));
+      const map = this.getActiveMap();
+      partialState = { ...partialState, tokens: partialState.tokens.map(t => combatTransition(previous.get(t.id), t, map)) };
     }
     Object.assign(this.state, partialState);
     this.notify(Object.keys(partialState));
@@ -347,7 +353,7 @@ class StateStore {
     if (!target) return false;
     if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
 
-    if (active) {
+    if (active && !target.hasSpotlight && target.roundSpotlight !== roundKey(this.getActiveMap())) {
       const isAdversary = (target.actorType === 'adversary' || target.isPlayer === false) && target.actorType !== 'drone';
       if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
         if ((this.state.fear ?? 0) < 1) {
@@ -391,6 +397,10 @@ class StateStore {
   }
 
   updateToken(tokenId, partial) {
+    if (this.state.userRole === 'player' && !this.tableActing && !this.remoteApplying && ('x' in partial || 'y' in partial)) {
+      const actor = this.state.tokens.find(t => t.id === tokenId);
+      if (lifeStage(actor) && (('x' in partial && partial.x !== actor.x) || ('y' in partial && partial.y !== actor.y))) return false;
+    }
     if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
     if (this.sessionRole === 'player' && !this.remoteApplying) {
       // A rest pauses the table: the Keeper would refuse the change anyway.
@@ -401,7 +411,7 @@ class StateStore {
     this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
     const turningOnSpotlight = Boolean(partial.hasSpotlight || partial.spotlight?.enabled);
     const targetToken = this.state.tokens.find(t => t.id === tokenId);
-    if (turningOnSpotlight && targetToken && !targetToken.hasSpotlight && !targetToken.spotlight?.enabled) {
+    if (turningOnSpotlight && targetToken && !targetToken.hasSpotlight && !targetToken.spotlight?.enabled && targetToken.roundSpotlight !== roundKey(this.getActiveMap())) {
       const isAdversary = (targetToken.actorType === 'adversary' || targetToken.isPlayer === false) && targetToken.actorType !== 'drone';
       if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
         if ((this.state.fear ?? 0) < 1) {

@@ -47,15 +47,21 @@ export function endSceneEffects() {
 }
 
 export function startEffectClocks() {
-  let last = new Map(), scene = store.state.activeMapId;
+  let last = new Map(store.state.tokens.map(t => [t.id, t])), scene = store.state.activeMapId;
   store.subscribe((state, keys) => {
     if (state.activeMapId !== scene) { const was = scene; scene = state.activeMapId; if (was) queueMicrotask(endSceneEffects); }
     if (Array.isArray(keys) && !keys.includes('tokens')) return;
-    const now = new Map(state.tokens.map(t => [t.id, !!t.hasSpotlight]));
-    if (isTable()) for (const t of state.tokens) {
-      if (t.hasSpotlight && last.has(t.id) && !last.get(t.id) && t.effectClocks?.some(c => c.tick === 'spotlight')) queueMicrotask(() => advanceClocks(t.id, { kind: 'spotlight' }));
+    for (const token of state.tokens) {
+      const previous = last.get(token.id);
+      if (!isTable() || !previous || previous.roundSpotlight === token.roundSpotlight || !token.hasSpotlight) continue;
+      for (const clock of previous.effectClocks || []) {
+        if (clock.tick !== 'spotlight') continue;
+        const left = clock.segments - clock.filled - 1;
+        const details = left ? `${clock.name} · ${left} / ${clock.segments} pendientes.` : `Fin de ${clock.name}.`;
+        queueMicrotask(() => { if (!left) notify(details); store.addLog({ sender: token.name, type: 'EFFECT', title: clock.name, details }); });
+      }
     }
-    last = now;
+    last = new Map(state.tokens.map(t => [t.id, t]));
   });
   // A touch on a clock beside a token marks one segment (not while aiming an attack).
   const attach = () => {

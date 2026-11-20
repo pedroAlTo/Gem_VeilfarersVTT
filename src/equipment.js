@@ -1,3 +1,4 @@
+import { adversaryWeapons } from './adversaryWeapons.js';
 import { resolveDamage } from './rulesEngine.js';
 import { tagsFromFeatures, parseTagInput, validTags } from './weaponTags.js';
 
@@ -11,7 +12,7 @@ export function tokenInventory(token) {
     const final = (token.path === 'Awakened' && f[p + '_dmg_final_aw']) || f[p + '_dmg_final'];
     return { id: p, name: text(f[p + '_name']), damage: text(final || f[p + '_dmg']), damageMode: final ? 'final' : 'base', trait: text(f[p + '_trait']), range: text(f[p + '_range']), features: text(f[p + '_feat']), tier: text(f[p + '_tier']), tags: tagsFromFeatures(f[p + '_tags'] || f[p + '_feat']) };
   });
-  if (!weapons.length && token.isPlayer === false && token.damageExpression) weapons.push({ id: 'main-attack', name: 'Ataque del adversario', damage: token.damageExpression, damageMode: 'final', trait: 'Attack ' + (token.attackModifier ?? 0), range: token.attackRange || '', features: '', tier: '', tags: [] });
+  if (!weapons.length && token.isPlayer === false && token.damageExpression) weapons.push(...adversaryWeapons(token));
   const items = Object.keys(f).filter(k => /^eq_\d+_name$/.test(k) && text(f[k]).trim()).sort((a,b) => a.localeCompare(b, undefined, { numeric: true })).map(k => ({ id: k, name: text(f[k]), tier: text(f[k.replace('_name', '_tier')]), quantity: text(f[k.replace('_name', '_qty')]) || '1', use: text(f[k.replace('_name', '_use')]) }));
   for (const [key, name] of [['kit_class', 'Kit de clase'], ['kit_personal', 'Kit personal']]) if (f[key]) items.push({ id: key, name, quantity: '1', tier: '', use: text(f[key]) });
   return { weapons, items };

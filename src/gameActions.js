@@ -2,9 +2,12 @@ import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
 import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
-import { rollAdversaryCheck } from './attackFlow.js';
+import { rollAdversaryCheck, distanceInfo } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
+import { isPartyToken } from './tokenPermissions.js';
+import { resolveJump } from './starshipJump.js';
+import { checkEdge, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES } from './combatState.js';
 import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
@@ -69,10 +72,51 @@ function resolveGameAction(action, store) {
   if (action.type === 'CONDITION') {
     if (typeof action.name !== 'string' || !action.name.trim() || action.name.length > 100 || typeof action.active !== 'boolean') throw new Error('Condición inválida.');
     const name = normalizeConditions([action.name])[0], current = normalizeConditions(actor.conditions);
+    if (actor.isPlayer !== false && LIFE_STATES.includes(name)) throw new Error('Utiliza los controles de progreso y estabilización.');
     const conditions = action.active ? normalizeConditions([...current, name]) : current.filter(c => c !== name);
     if (conditions.length > 30) throw new Error('Máximo 30 condiciones por token.');
     store.updateToken(actor.id, { conditions });
     return { actorId: actor.id, conditions };
+  }
+  if (action.type === 'FTL') return resolveJump(store, actor, action, resolveGameAction);
+  if (action.type === 'LIFE_TURN') {
+    const stage = lifeStage(actor), map = store.getActiveMap();
+    if (action.finish === true) {
+      if (stage !== 'Last Act' || !BLAZE_CHOICES.includes(actor.blazeChoice)) throw new Error('No hay un último acto por resolver.');
+      store.updateToken(actor.id, lifePatch(actor, 'Dead'));
+      const log = { sender: actor.name, type: 'LIFE', title: 'Blaze of Glory', details: actor.blazeChoice + ' · Acto resuelto. Muerte definitiva.' };
+      store.addLog(log); return { actorId: actor.id, log };
+    }
+    if (!['Dying', 'Final'].includes(stage) || actor.mapId !== map.id || !actor.hasSpotlight) throw new Error('Se necesita el Spotlight del personaje en Dying o Final.');
+    const turn = roundKey(map);
+    if (action.turn != null && action.turn !== turn) throw new Error('La ronda ha cambiado. Revisa el Spotlight actual.');
+    if (actor.lifeRollRound === turn) throw new Error('Este Spotlight ya está resuelto.');
+    let patch, details;
+    if (action.blaze != null) {
+      if (action.confirmed !== true || !BLAZE_CHOICES.includes(action.blaze)) throw new Error('Confirma la elección del jugador para Blaze of Glory.');
+      patch = { ...lifePatch(actor, 'Last Act'), blazeChoice: action.blaze };
+      details = 'Blaze of Glory · ' + action.blaze + '. Resuelve el último acto elegido por el jugador. El personaje muere al finalizarlo.';
+    } else {
+      const face = validFaces([action.face], 1, 12) ? action.face : 1 + Math.floor(Math.random() * 12);
+      const progress = (actor.lifeProgress || 0) + Number(face >= 8);
+      patch = progress === 2 ? lifePatch(actor, stage === 'Dying' ? 'Final' : 'Dead') : { conditions: [...new Set([...(actor.conditions || []), stage])], lifeProgress: progress };
+      details = stage + ' · d12 [' + face + '] · ' + progress + '/2';
+    }
+    store.updateToken(actor.id, { ...patch, lifeRollRound: turn });
+    const log = { sender: actor.name, type: 'LIFE', title: stage, details };
+    store.addLog(log); return { actorId: actor.id, log };
+  }
+  if (['CHECK', 'CARD_PLAY', 'RESOLVE', 'EFFORT', 'STABILIZE'].includes(action.type)) requireActive(actor);
+  if (action.type === 'STABILIZE') {
+    const target = store.state.tokens.find(t => t.id === action.targetId);
+    const stage = lifeStage(target);
+    if (!['Dying', 'Final'].includes(stage) || target.mapId !== actor.mapId || target.mapId !== store.state.activeMapId ||
+        distanceInfo(actor, target, store.getActiveMap()).band !== 'Melee') throw new Error('Selecciona un aliado adyacente en Dying o Final.');
+    if (!['knowledge', 'finesse'].includes(action.traitId)) throw new Error('Elige Knowledge o Finesse.');
+    const result = resolveGameAction({ type: 'CHECK', actorId: actor.id, options: { traitId: action.traitId, subtraitId: action.traitId === 'knowledge' ? 'medicine' : '', dc: stage === 'Final' ? 20 : 15 } }, store);
+    if (result.isCritical || result.total >= result.dc) store.updateToken(target.id, lifePatch(target, 'Stabilized'));
+    grantSpotlight(store, actor.id);
+    return result;
   }
   // Neural Network Control: a registered crew member takes the drone in hand.
   if (action.type === 'DRONE_HANDOFF') {
@@ -116,14 +160,27 @@ function resolveGameAction(action, store) {
     // An effect that may help someone else goes to the ally the player marked (a player
     // character on the same scene), otherwise to the one who plays the card.
     const marked = action.targetId && action.targetId !== actor.id ? store.state.tokens.find(t => t.id === action.targetId) : null;
-    const holder = duration && marked && helpsOthers(card) && marked.isPlayer !== false && marked.actorType !== 'drone' && !marked.hidden && marked.mapId === actor.mapId ? marked : actor;
+    const holder = duration && marked && helpsOthers(card) && (marked.isPlayer !== false || isPartyToken(marked)) && marked.actorType !== 'drone' && !marked.hidden && marked.mapId === actor.mapId ? marked : actor;
+    if (card.name === 'Rapid Regeneration' && duration) {
+      if ((action.targetId && holder.id !== action.targetId) || !['Melee', 'Very Close'].includes(distanceInfo(actor, holder, store.getActiveMap?.()).band))
+        throw new Error('Rapid Regeneration requiere un aliado a alcance Very Close o al propio personaje.');
+      if (!canReceiveHealing(holder)) throw new Error('Estabiliza al personaje antes de aplicar curación ordinaria.');
+    }
     if (duration) {
       const when = duration.tick === 'fear' ? '' : duration.scene && duration.tick === 'manual' ? ' Termina al acabar la escena.' : ` Avanza un segmento cada vez que ${holder.name} gana el foco.`;
       result.notes.push(`Reloj «${duration.name}»${holder !== actor ? ` en ${holder.name}` : ''}: ${duration.note}${when}`);
     }
     const clock = duration ? newClock(duration, { source: actor.name }) : null;
-    apply({ ...resources(result.token), ...(clock && holder === actor ? { effectClocks: addClock(actor.effectClocks, clock) } : {}) });
-    if (clock && holder !== actor) store.updateToken(holder.id, { effectClocks: addClock(holder.effectClocks, clock) });
+    let immediate = {};
+    if (card.name === 'Rapid Regeneration' && duration) {
+      const recipient = holder === actor ? result.token : holder;
+      const surge = duration.faces?.[0] === 4;
+      immediate = { hp: { ...recipient.hp, current: Math.min(recipient.hp.max, recipient.hp.current + 1) },
+        ...(surge ? { stress: { ...recipient.stress, current: Math.max(0, recipient.stress.current - 1) } } : {}) };
+      result.notes.push(holder.name + ': recupera 1 HP' + (surge ? ' y limpia 1 Stress (Surge).' : '.'));
+    }
+    apply({ ...resources(result.token), ...(holder === actor ? immediate : {}), ...(clock && holder === actor ? { effectClocks: addClock(actor.effectClocks, clock) } : {}) });
+    if (clock && holder !== actor) store.updateToken(holder.id, { ...immediate, effectClocks: addClock(holder.effectClocks, clock) });
     // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
     if (ACTIVE_CARD_KINDS.has(card.kind) && !card.reaction) grantSpotlight(store, actor.id);
     if (result.fear) store.addFear(result.fear);
@@ -153,14 +210,17 @@ function resolveGameAction(action, store) {
     if (exp && !sleeping && (actor.hope || 0) < 1) throw new Error('An Experience costs 1 Hope.');
     if (resolve && (!sleeping || (actor.resolve?.current || 0) < resolve))
       throw new Error('Resolve requires a Sleeping character with available Resolve.');
+    const target = action.attack && action.targetId ? store.state.tokens.find(t => t.id === action.targetId && t.mapId === actor.mapId) : null;
+    if (action.attack && action.targetId && !target) throw new Error('El objetivo ya no está en esta escena.');
+    const edge = checkEdge(actor, target, o.hasAdvantage, o.hasDisadvantage);
     const keeperRoll = !player;
     const result = keeperRoll ? rollAdversaryCheck({
       actorName: actor.name,
       modifier: (actor.attackModifier ?? 0) + (o.customMod || 0) + (actor.pendingCheckBonus || 0),
       traitMod: actor.attackModifier ?? 0,
       dc: o.dc,
-      hasAdvantage: !!o.hasAdvantage || !!actor.pendingAdvantage,
-      hasDisadvantage: !!o.hasDisadvantage,
+      hasAdvantage: edge.advantage,
+      hasDisadvantage: edge.disadvantage,
       forcedD20: o.forcedD20 ?? null,
       forcedD6: o.forcedAdv ?? null,
     }) : rollVeilfarersCheck({
@@ -171,8 +231,8 @@ function resolveGameAction(action, store) {
       subtraitName: o.subtraitId || '',
       subtraitMod: player ? actor.subtraits?.[o.subtraitId] || 0 : 0,
       dc: o.dc,
-      hasAdvantage: !!o.hasAdvantage || !!actor.pendingAdvantage,
-      hasDisadvantage: !!o.hasDisadvantage,
+      hasAdvantage: edge.advantage,
+      hasDisadvantage: edge.disadvantage,
       useResolve: !!resolve,
       resolveDieType: actor.resolve?.dieType || 'd4',
       experienceMod: exp,

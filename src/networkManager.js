@@ -14,6 +14,8 @@ import { controlsToken, isDrone, isPartyToken } from './tokenPermissions.js';
 import { validArmorCut, applyArmorCut } from './weaponFeatures.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
+import { damageProtection } from './damageProtection.js';
+import { requireActive, LIFE_STATES, canChooseBlaze } from './combatState.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
 import { notify } from './ui.js';
 import { TABLE, KEEPER, chatRequest, validateChatEntry, chatVisibleTo, chatHistoryFor, appendChat } from './chat.js';
@@ -803,7 +805,10 @@ export class NetworkManager {
       this.sendToHost({ type: 'ACTION', requestId, action });
     });
   }
-  async performAction(action) {
+  async performAction(action, memberId = this.store.memberId || this.store.peerId) {
+    if (this.store.sessionRole === 'host' && action?.type === 'LIFE_TURN' && action.blaze != null &&
+        !canChooseBlaze(this.store.state.tokens.find(t => t.id === action.actorId), memberId))
+      throw new Error('El jugador asignado elige su último acto.');
     const { performGameAction } = await import('./gameActions.js');
     // Card rules data is fetched on demand; the table resolving a card makes sure it is there.
     if (['CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN'].includes(action?.type)) await (await import('./cardData.js')).loadCardData();
@@ -1040,8 +1045,16 @@ export class NetworkManager {
           throw new Error('El token atacante no está asignado a ti.');
         }
 
+        requireActive(this.store.state.tokens.find(t => t.id === attackerId));
         const currentHp = Number.isFinite(target.hp?.current) ? target.hp.current : 0;
         const currentArmor = Number.isFinite(target.armor?.current) ? target.armor.current : 0;
+
+        if (data.defense) {
+          const { types, applied, hp, armor } = data.defense;
+          if (!Array.isArray(types) || types.length > 32 || types.some(t => typeof t !== 'string' || t.length > 32) ||
+              applied !== damageProtection(target, new Set(types)) || hp !== currentHp || armor !== currentArmor)
+            throw new Error('Las defensas o las heridas del objetivo han cambiado. Vuelve a calcular el impacto.');
+        }
 
         let newHp = data.newHp != null ? Number(data.newHp) : (data.hpLoss != null ? Math.max(0, currentHp - Number(data.hpLoss)) : currentHp);
         let newArmor = data.newArmor != null ? Number(data.newArmor) : (data.armorLoss != null ? Math.max(0, currentArmor - Number(data.armorLoss)) : currentArmor);
@@ -1125,6 +1138,9 @@ export class NetworkManager {
               if (field !== 'current' && partial[k][field] !== token[k]?.[field]) throw new Error('Solo puedes cambiar el valor actual de ' + k + '.');
             partial[k] = { ...token[k], current: partial[k].current };
           }
+        if (partial.conditions && token.isPlayer !== false && LIFE_STATES.some(stage => partial.conditions.includes(stage) !== !!token.conditions?.includes(stage)))
+          throw new Error('Utiliza los controles de progreso y estabilización.');
+        if (('x' in partial && partial.x !== token.x) || ('y' in partial && partial.y !== token.y)) requireActive(token);
         // A player who moves their character takes the Spotlight (an active action).
         if (('x' in partial || 'y' in partial) && (partial.x !== token.x || partial.y !== token.y) && token.isPlayer !== false && token.actorType !== 'drone' && !token.hasSpotlight) partial.hasSpotlight = true;
         if ('hasSpotlight' in partial) partial.spotlight = { ...token.spotlight, enabled: partial.hasSpotlight };
@@ -1155,10 +1171,10 @@ export class NetworkManager {
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
           // Card actions resolve here too: the table pays their costs (they were missing, so a
           // connected player's card was refused as "not assigned").
-          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'REST_CHOICE'].includes(data.action?.type)
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
-        const result = await this.performAction(data.action);
+        const result = await this.performAction(data.action, this.members.get(senderId)?.id || senderId);
         this.syncAll();
         conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, result }));
       } catch (e) {

@@ -2,6 +2,9 @@ import { store } from './state.js';
 import { network } from './networkManager.js';
 import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as esc } from './ui.js';
+import { LIFE_STATES } from './combatState.js';
+import { renderLifeControls } from './lifeControls.js';
+import { damageNames } from './damageProtection.js';
 import { CONDITIONS, CAMPAIGN_STATES, CONDITION_SOURCE, conditionDefinition, conditionIcon, normalizeConditions } from './conditions.js';
 
 export function conditionBadges(token) {
@@ -23,6 +26,11 @@ export function openConditions(tokenId) {
     <h4 class="dossier-label" style="margin: 12px 0 4px 0; color: #fbbf24;">💀 ESTADOS DE PERSONAJE Y CAMPAÑA</h4>
     <div class="condition-picker">${CAMPAIGN_STATES.map(c => `<button type="button" class="condition-choice" data-condition="${esc(c.name)}" title="${esc(c.label)} (${esc(c.name)}): ${esc(c.rule)}" aria-pressed="false" style="border-color: rgba(251, 191, 36, 0.3);">${conditionIcon(c.name)}<span style="color: #fde68a;">${esc(c.label)}<small>${esc(c.name)}</small></span></button>`).join('')}</div>
 
+    <div data-life-controls></div>
+    <details><summary>Resistencias e inmunidades activas</summary>
+      <label>Defensa <vf-select data-defense-kind><option value="Resistance">Resistencia</option><option value="Immunity">Inmunidad</option></vf-select></label>
+      <label>Tipo o etiqueta <vf-select data-defense-type>${damageNames.map(n => '<option>' + n + '</option>').join('')}</vf-select></label>
+      <button type="button" class="hud-btn" data-add-defense>Añadir defensa</button></details>
     <article class="condition-rule" aria-live="polite" style="margin-top: 10px;"><strong data-rule-title>Selecciona una condición o estado para consultar su regla.</strong><p data-rule></p><small>${esc(CONDITION_SOURCE)}</small></article>
     <h4 class="dossier-label">Otros marcadores</h4><div class="condition-custom-list" data-custom-list></div>
     <form class="condition-custom"><label class="dossier-field">Marcador propio<input class="hud-input" data-custom maxlength="100" placeholder="Ej.: Herido · efecto de la escena"></label><button class="hud-btn" type="submit">Añadir</button></form>
@@ -53,16 +61,18 @@ export function openConditions(tokenId) {
   function refresh() {
     const editable = !!token() && store.canEditToken(tokenId);
     const active = normalizeConditions(token()?.conditions);
+    renderLifeControls(modal.querySelector('[data-life-controls]'), token(), store, network, error);
+    modal.querySelector('[data-add-defense]').disabled = !editable;
     modal.querySelectorAll('[data-condition]').forEach(button => {
       button.setAttribute('aria-pressed', String(active.includes(button.dataset.condition)));
       button.setAttribute('aria-disabled', String(!editable));
-      button.disabled = pending.has(button.dataset.condition);
+      button.disabled = pending.has(button.dataset.condition) || (token()?.isPlayer !== false && LIFE_STATES.includes(button.dataset.condition));
     });
     modal.querySelector('[data-custom]').disabled = !editable;
     modal.querySelector('button[type=submit]').disabled = !editable;
     modal.querySelector('[data-permission]').textContent = editable ? (store.sessionRole === 'player' ? 'Los cambios se confirman al recibir la respuesta del Keeper.' : 'Los cambios se guardan al pulsar cada condición.') : 'Consulta: este token no está bajo tu control.';
     const list = modal.querySelector('[data-custom-list]'); list.replaceChildren();
-    active.filter(c => !conditionDefinition(c)).forEach(name => {
+    active.filter(c => !conditionDefinition(c) && !LIFE_STATES.includes(c)).forEach(name => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'hud-btn';
       button.textContent = name + (editable ? ' ×' : ''); button.onclick = () => editable ? apply(name) : explain(name); list.append(button);
     });
@@ -71,8 +81,9 @@ export function openConditions(tokenId) {
     button.onclick = () => store.canEditToken(tokenId) ? apply(button.dataset.condition) : explain(button.dataset.condition);
     button.onfocus = button.onpointerenter = () => explain(button.dataset.condition);
   });
+  modal.querySelector('[data-add-defense]').onclick = () => apply(modal.querySelector('[data-defense-kind]').value + ': ' + modal.querySelector('[data-defense-type]').value, false);
   modal.querySelector('form').onsubmit = async event => { event.preventDefault(); const input = modal.querySelector('[data-custom]'); if (await apply(input.value, false)) input.value = ''; };
-  const unsubscribe = store.subscribe((_, keys) => { if (!modal.isConnected) { unsubscribe(); return; } if (keys.some(k => ['tokens', 'userRole', 'isConnected', 'claimedTokenId'].includes(k))) refresh(); });
+  const unsubscribe = store.subscribe((_, keys) => { if (!modal.isConnected) { unsubscribe(); return; } if (keys.some(k => ['tokens', 'maps', 'userRole', 'isConnected', 'claimedTokenId'].includes(k))) refresh(); });
   const observer = new MutationObserver(() => { if (!modal.isConnected) { unsubscribe(); observer.disconnect(); } }); observer.observe(document.body, { childList: true });
   refresh(); return modal;
 }
