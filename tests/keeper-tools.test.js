@@ -93,6 +93,38 @@ test('library search, book/tier filters and deployment operate from the actual c
   assert.equal(store.state.tokens.filter(t => t.name.includes('GRANDFATHER')).length, 0);
 });
 
+test('the book shows the portrait of a reference-only creature and the same art on a deployed profile', async () => {
+  const modal = await openAdversaryLibrary(catalog);
+  const search = modal.querySelector('[data-search]');
+  const show = name => { search.value = name; search.dispatchEvent(new Event('input')); };
+  show('Void Mite Cluster');
+  const refArt = modal.querySelector('[data-detail] img').getAttribute('src');
+  assert.equal(modal.querySelector('[data-detail] a').getAttribute('href'), refArt);
+  assert.equal(modal.querySelector('[data-deploy]').disabled, true);
+  show('Security Drone Model-V');
+  const securityArt = modal.querySelector('[data-detail] img').getAttribute('src');
+  assert.notEqual(securityArt, refArt);
+  modal.querySelector('[data-deploy]').click();
+  assert.equal(store.getSelectedToken().avatarUrl, securityArt);
+});
+
+test('the Keeper can pick a Refuge portrait, preview it and keep it when the token is renamed', async () => {
+  const { TokenHUD } = await import('../src/tokenSheet.js');
+  const token = deployAdversary(profile('SECURITY DRONE MODEL-V'));
+  new TokenHUD(mount()).openTokenSettingsModal(token);
+  const picker = document.querySelector('#sheet_bestiary_art');
+  const queen = [...picker.querySelectorAll('option')].find(option => option.textContent === 'Weaver Queen');
+  assert.equal(picker.querySelectorAll('option[value]:not([value=""])').length, 13);
+  picker.value = queen.value; picker.dispatchEvent(new Event('change'));
+  assert.equal(document.querySelector('#sheet_avatar_preview').getAttribute('src'), queen.value);
+  document.querySelector('#sheet_name').value = 'Hunger Weaver';
+  document.querySelector('#sheet_save_btn').click();
+  const saved = store.state.tokens.find(t => t.id === token.id);
+  assert.equal(saved.name, 'Hunger Weaver');
+  assert.equal(saved.avatarUrl, queen.value);
+  assert.equal(saved.portraitOverride, true);
+});
+
 test('secret Keeper checks persist locally and never broadcast dice or enter player snapshots', async () => {
   const n = new NetworkManager(); store.state.isHosting = true; store.sessionRole = 'host';
   const sent = []; n.connections.set('guest', { open: true, send: data => sent.push(data) });

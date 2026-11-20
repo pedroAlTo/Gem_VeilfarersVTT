@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.12', date: '2026-11-20', title: 'Bestiario ilustrado de Tier 1',
+    sections: [
+      { title: 'Retratos en fichas y mapa', items: [
+        'Trece ilustraciones cubren ocho adversarios del bestiario, tres jefes del Keeper y los dos adversarios principales de Hearts in the Void. Los dos perfiles de la plaga de ratas de Charon comparten retrato.',
+        'La biblioteca muestra la ilustración al abrir un perfil de Tier 1. Los tokens reconocen el nombre del adversario y el Keeper puede elegir cualquiera de los trece retratos en los ajustes del token.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.11', date: '2026-11-20', title: 'Retratos de los personajes y descripciones del bestiario',
     sections: [
       { title: 'Personajes y adversarios', items: [

@@ -1,6 +1,7 @@
 import { dossierDialog } from './dossierUI.js';
 import { store } from './state.js';
 import { escapeHTML as esc, notify } from './ui.js';
+import { tierOnePortrait } from './bestiaryPortraits.js';
 
 const keeper = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
 const label = entry => [entry.tier && 'Tier ' + entry.tier, entry.role].filter(Boolean).join(' · ');
@@ -64,8 +65,10 @@ export async function openAdversaryLibrary(catalog) {
     detail.scrollTop = 0;
     if (!entry) { detail.textContent = 'Prueba con otro nombre, libro o tier.'; return; }
     const stats = [['HP',entry.hp], ['Evasion',entry.evasion], ['Ataque',entry.attack == null ? null : (entry.attack >= 0 ? '+' : '') + entry.attack], ['Major / Severe',entry.major != null && entry.severe != null ? entry.major + ' / ' + entry.severe : null], ['Stress',entry.stress], ['Armor',entry.armor]];
-    detail.innerHTML = `<span class="dossier-eyebrow">${esc(entry.book)} · 12.06</span><h3>${esc(entry.name)}</h3><p>${esc(label(entry))}</p>
-      <p class="dossier-muted">${esc(entry.section)} · línea ${entry.line}</p>
+    const portrait = tierOnePortrait(entry.name);
+    detail.innerHTML = `<div class="bestiary-heading"><div><span class="dossier-eyebrow">${esc(entry.book)} · 12.06</span><h3>${esc(entry.name)}</h3><p>${esc(label(entry))}</p>
+      <p class="dossier-muted">${esc(entry.section)} · línea ${entry.line}</p></div>
+      ${portrait ? `<a href="${portrait}" target="_blank" rel="noopener" aria-label="Ver ilustración de ${esc(entry.name)}"><img src="${portrait}" width="96" height="96" alt=""></a>` : ''}</div>
       <div class="bestiary-stats">${stats.filter(([,v]) => v != null).map(([k,v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join('')}</div>
       ${entry.damage ? `<p><strong>Daño</strong> ${esc(entry.damage)}</p>` : ''}
       ${!entry.deployable ? '<p class="import-warning">Ficha de consulta. Usa el procedimiento impreso: este perfil no tiene todos los valores numéricos del token estándar.</p>' : ''}

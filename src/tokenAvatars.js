@@ -1,3 +1,5 @@
+import { isTierOnePortrait, tierOnePortrait } from './bestiaryPortraits.js';
+
 /**
  * Token Avatar Resolver for Veilfarers VTT.
  * Maps character ancestries, archetypes (warrior, mystic, scoundrel, engineer)
@@ -206,7 +208,7 @@ const bestiaryArt = new Map([
   ['the biomancer', TOKEN_DIR + 'kryllian_n.jpg'],
   ['the ascended', TOKEN_DIR + 'celestiari_n.jpg'],
   ['the whispering monk (precursor expert)', TOKEN_DIR + 'rift_spinner_n.jpg'],
-  ['scrap drone', techInsignia], ['security drone model-v', techInsignia], ['precursor drone', techInsignia],
+  ['precursor drone', techInsignia],
 ]);
 const namedPortraits = [
   [/^(?:(?:capt\.?|captain)\s+)?(?:jonathan\s+)?harker$/i, 'captain_harker.jpg'], [/\bvea kaelen\b/i, 'pilot_vea.jpg'],
@@ -218,6 +220,8 @@ export function customTokenPortrait(token) {
   const url = token?.avatarUrl;
   if (!url || typeof url !== 'string' || url === MARKER || url === TOKEN_DIR + 'synthetic_infiltrator_echo.jpg') return '';
   if (token.portraitOverride === true) return url;
+  if (isTierOnePortrait(url)) return '';
+  if (url === techInsignia && (token.isPlayer === false || token.actorType === 'adversary') && tierOnePortrait(token.name)) return '';
   if (namedPortraits.some(([, file]) => url === TOKEN_DIR + file)) return '';
   return url.startsWith(TOKEN_DIR + 'classes/') || legacyPortrait.test(url) ? '' : url;
 }
@@ -229,8 +233,9 @@ export function actorPortrait(token = {}) {
   if (named && (token.avatarUrl === TOKEN_DIR + named[1] || (!token.species && !token.characterClass))) return TOKEN_DIR + named[1];
   if (token.actorType === 'drone') return techInsignia;
   if (token.isPlayer === false || token.actorType === 'adversary') {
-    const art = bestiaryArt.get(String(token.name || '').trim().toLowerCase());
+    const art = tierOnePortrait(token.name) || bestiaryArt.get(String(token.name || '').trim().toLowerCase());
     if (art) return art;
+    if (isTierOnePortrait(token.avatarUrl)) return token.avatarUrl;
   }
   const fields = token.sourceCharacter?.document?.fields || {};
   const species = token.species || token.ancestry || fields.ancestry;

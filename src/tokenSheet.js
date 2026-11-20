@@ -1,4 +1,5 @@
 import { actorPortrait } from './tokenAvatars.js';
+import { TIER_ONE_PORTRAITS } from './bestiaryPortraits.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
@@ -615,7 +616,12 @@ export class TokenHUD {
               </div>
 
               <div class="form-group" style="margin-top: 10px;">
-                <label>Avatar URL or File</label>
+                ${token.actorType === 'adversary' || token.isPlayer === false ? `<label for="sheet_bestiary_art">Ilustración del bestiario</label>
+                <vf-select id="sheet_bestiary_art" class="hud-select">
+                  <option value="">Elegir un retrato de Tier 1…</option>
+                  ${TIER_ONE_PORTRAITS.map(p => `<option value="${p.url}">${escapeHTML(p.name)}</option>`).join('')}
+                </vf-select>` : ''}
+                <label for="sheet_avatar_url">Avatar URL or File</label>
                 <input type="text" id="sheet_avatar_url" class="hud-input" value="${escapeHTML(token.avatarUrl || '')}" />
                 <input type="file" id="sheet_avatar_file" accept="image/*" class="hud-file-input" style="margin-top: 6px;" />
               </div>
@@ -1064,6 +1070,15 @@ export class TokenHUD {
     const fileInput = modal.querySelector('#sheet_avatar_file');
     const avatarPreview = modal.querySelector('#sheet_avatar_preview');
     const avatarUrlInput = modal.querySelector('#sheet_avatar_url');
+    const bestiarySelect = modal.querySelector('#sheet_bestiary_art');
+    let chosenIllustration = '';
+    bestiarySelect?.addEventListener('change', () => {
+      if (!bestiarySelect.value) return;
+      chosenIllustration = bestiarySelect.value;
+      avatarUrlInput.value = chosenIllustration;
+      avatarPreview.src = chosenIllustration;
+      bestiarySelect.value = '';
+    });
 
     fileInput.onchange = async (e) => {
       const file = e.target.files[0];
@@ -1140,6 +1155,7 @@ export class TokenHUD {
       });
 
       const actorTypeVal = modal.querySelector('#sheet_actor_type')?.value || 'player';
+      const avatarUrl = avatarUrlInput.value.trim();
       const updated = {
         name: modal.querySelector('#sheet_name').value.trim() || token.name,
         roleTag: modal.querySelector('#sheet_role').value.trim(),
@@ -1147,8 +1163,8 @@ export class TokenHUD {
         isPlayer: actorTypeVal === 'player',
         hideName: modal.querySelector('#sheet_hide_name')?.checked ?? false,
         species: modal.querySelector('#sheet_species')?.value.trim() || token.species,
-        avatarUrl: avatarUrlInput.value.trim(),
-        portraitOverride: avatarUrlInput.value.trim() === token.avatarUrl ? token.portraitOverride === true : !!avatarUrlInput.value.trim(),
+        avatarUrl,
+        portraitOverride: !!avatarUrl && (avatarUrl === chosenIllustration || avatarUrl !== token.avatarUrl || token.portraitOverride === true),
         path: pathSelect.value,
         size: parseInt(modal.querySelector('#sheet_size').value, 10),
         hp: {

@@ -16,6 +16,44 @@ import {
 } from '../src/tokenAvatars.js';
 import { createActor, replaceActorSheet } from '../src/actors.js';
 import { parseCharacterJSON } from '../src/characterImport.js';
+import { TIER_ONE_PORTRAITS, tierOnePortrait } from '../src/bestiaryPortraits.js';
+import { loadAdversaries } from '../scripts/adversary-library.mjs';
+import { loadEncounters } from '../scripts/encounter-library.mjs';
+
+test('Tier 1 book profiles, phased bosses and both Refuge creatures have distinct usable artwork', () => {
+  const names = [
+    ...loadAdversaries().filter(profile => profile.tier === 1).map(profile => profile.name),
+    ...loadEncounters().bosses.filter(profile => ['keeper-boss-1', 'keeper-boss-2', 'keeper-boss-3'].includes(profile.id)).map(profile => profile.name),
+    'Hunger Weaver', 'Weaver Queen',
+  ];
+  assert.equal(names.length, 14);
+  const urls = names.map(name => {
+    const url = tierOnePortrait(name);
+    assert.ok(url, name);
+    assert.equal(createActor({ actorType: 'adversary', name }, 'refuge').avatarUrl, url);
+    const bytes = fs.readFileSync(new URL('../public' + url, import.meta.url));
+    assert.equal(bytes.toString('ascii', 0, 4), 'RIFF');
+    assert.equal(bytes.toString('ascii', 8, 12), 'WEBP');
+    return url;
+  });
+  assert.deepEqual(new Set(urls), new Set(TIER_ONE_PORTRAITS.map(p => p.url)));
+  assert.equal(new Set(urls).size, 13);
+  assert.equal(tierOnePortrait('Skitter-Rat Swarm'), tierOnePortrait('Charon Skitter-Rat Swarm'));
+});
+
+test('saved enemy tokens upgrade generic art and keep a chosen or renamed portrait', () => {
+  const security = { name: 'Security Drone Model-V', isPlayer: false, actorType: 'adversary' };
+  const oldArt = '/assets/cards/domain-tech-flag.png';
+  const securityArt = tierOnePortrait(security.name);
+  const ratArt = tierOnePortrait('Skitter-Rat Swarm');
+  assert.equal(actorPortrait({ ...security, avatarUrl: oldArt }), securityArt);
+  assert.equal(actorPortrait({ ...security, avatarUrl: oldArt, portraitOverride: true }), oldArt);
+  assert.equal(actorPortrait({ ...security, avatarUrl: ratArt }), securityArt);
+  assert.equal(actorPortrait({ ...security, avatarUrl: ratArt, portraitOverride: true }), ratArt);
+  assert.equal(actorPortrait({ ...security, name: 'Dock security', avatarUrl: securityArt }), securityArt);
+  assert.equal(actorPortrait({ ...security, avatarUrl: '/portraits/my-drone.webp' }), '/portraits/my-drone.webp');
+  assert.equal(actorPortrait({ ...security, actorType: 'drone' }), oldArt);
+});
 
 test('ARCHETYPES covers the four canon requested tipologías', () => {
   assert.deepEqual(ARCHETYPES, ['warrior', 'mystic', 'scoundrel', 'engineer']);
