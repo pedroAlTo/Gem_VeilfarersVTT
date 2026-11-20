@@ -57,44 +57,16 @@ export const ARCHETYPE_META = Object.freeze({
   },
 });
 
-export const ANCESTRY_TOKEN_AVATARS = Object.freeze({
-  ailuran: {
-    m: '/assets/tokens/ailuran_m.jpg',
-    f: '/assets/tokens/ailuran_f.jpg',
-  },
-  bloomstrider: {
-    m: '/assets/tokens/bloomstrider_m.jpg',
-    f: '/assets/tokens/bloomstrider_f.jpg',
-  },
-  celestiari: {
-    m: '/assets/tokens/celestiari_m.jpg',
-    f: '/assets/tokens/celestiari_f.jpg',
-  },
-  ethereal: {
-    m: '/assets/tokens/ethereal_m.jpg',
-    f: '/assets/tokens/ethereal_f.jpg',
-  },
-  human: {
-    m: '/assets/tokens/human_m.jpg',
-    f: '/assets/tokens/human_f.jpg',
-  },
-  kryllian: {
-    m: '/assets/tokens/kryllian_m.jpg',
-    f: '/assets/tokens/kryllian_f.jpg',
-  },
-  kryx: {
-    m: '/assets/tokens/kryx_m.jpg',
-    f: '/assets/tokens/kryx_f.jpg',
-  },
-  rift_spinner: {
-    m: '/assets/tokens/rift_spinner_m.jpg',
-    f: '/assets/tokens/rift_spinner_f.jpg',
-  },
-  synthetic: {
-    m: '/assets/tokens/synthetic_m.jpg',
-    f: '/assets/tokens/synthetic_f.jpg',
-  },
-});
+const fieldClasses = new Set(['soldier', 'vanguard', 'scoundrel', 'explorer']);
+
+export function crewPortraitPath(ancestry, gender, cls) {
+  const variant = gender === 'n' ? 'n' : gender + (fieldClasses.has(cls) ? '-field' : '-station');
+  return '/assets/tokens/crew/' + ancestry + '-' + variant + '.webp';
+}
+
+export const ANCESTRY_TOKEN_AVATARS = Object.freeze(Object.fromEntries(
+  ANCESTRY_IDS.map(id => [id, Object.fromEntries(PORTRAIT_GENDERS.map(gender => [gender, crewPortraitPath(id, gender)]))])
+));
 
 export function normalizeAncestryId(species = '') {
   const s = String(species || '')
@@ -196,7 +168,7 @@ export function defaultTokenAvatar(species, pronouns, name, roleOrClass = '') {
     const cls = words.map(w => classAliases[w] || w).find(w => TOKEN_CLASSES.includes(w));
     return cls ? classPortraitPath(ancestry, cls, gender) : getArchetypeTokenAvatar(ancestry, detectArchetype(roleOrClass), gender);
   }
-  return gender === 'n' ? '/assets/tokens/' + ancestry + '_n.jpg' : ANCESTRY_TOKEN_AVATARS[ancestry][gender];
+  return ANCESTRY_TOKEN_AVATARS[ancestry][gender];
 }
 
 const TOKEN_DIR = '/assets/tokens/';
@@ -223,7 +195,7 @@ export function customTokenPortrait(token) {
   if (isTierOnePortrait(url)) return '';
   if (url === techInsignia && (token.isPlayer === false || token.actorType === 'adversary') && tierOnePortrait(token.name)) return '';
   if (namedPortraits.some(([, file]) => url === TOKEN_DIR + file)) return '';
-  return url.startsWith(TOKEN_DIR + 'classes/') || legacyPortrait.test(url) ? '' : url;
+  return url.startsWith(TOKEN_DIR + 'classes/') || url.startsWith(TOKEN_DIR + 'crew/') || legacyPortrait.test(url) ? '' : url;
 }
 
 export function actorPortrait(token = {}) {

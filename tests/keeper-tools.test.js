@@ -30,9 +30,9 @@ const mount = () => { const node = document.createElement('div'); document.body.
 
 test('catalog preserves printed combat values, full abilities and book provenance', () => {
   assert.equal(catalog.length, 57); assert.equal(new Set(catalog.map(x => x.id)).size, 57);
-  assert.equal(catalog.filter(x => x.deployable).length, 42);
+  assert.equal(catalog.filter(x => x.placement !== 'narrative').length, 48);
   const swarm = profile('CHARON SKITTER-RAT SWARM');
-  assert.deepEqual([swarm.hp, swarm.evasion, swarm.attack, swarm.major, swarm.severe, swarm.stress], [6, 11, 2, 6, 12, null]);
+  assert.deepEqual([swarm.hp, swarm.evasion, swarm.attack, swarm.major, swarm.severe, swarm.stress], [6, 11, 2, 6, 12, 0]);
   assert.equal(swarm.damage, '1d8 (Horde) / 1d4 (Depleted)');
   const synthetic = profile('ROGUE SYNTHETIC');
   assert.deepEqual([synthetic.hp, synthetic.stress, synthetic.evasion, synthetic.attack, synthetic.major, synthetic.severe], [12, 6, 13, 3, 10, 18]);
@@ -47,14 +47,43 @@ test('catalog preserves printed combat values, full abilities and book provenanc
     assert.ok(entry.description.length > 25 && !entry.description.includes('**'), entry.name); }
   const plugin = adversaryLibraryPlugin(); const watched = [];
   const source = plugin.load.call({ addWatchFile: file => watched.push(file) }, plugin.resolveId('virtual:veil-adversaries'));
-  assert.deepEqual(JSON.parse(source.slice('export default '.length)), catalog); assert.equal(watched.length, 3);
+  assert.deepEqual(JSON.parse(source.slice('export default '.length)), catalog); assert.equal(watched.length, 4);
 });
 
-test('incomplete and narrative-only encounters stay reference-only instead of acquiring invented stats', () => {
-  for (const name of ['VOID MITE CLUSTER', 'THE GRANDFATHER LEVIATHAN', "THE EMPEROR'S SHADOW"]) {
-    const entry = profile(name); assert.ok(entry, name); assert.equal(entry.deployable, false, name);
-    assert.throws(() => deployAdversary(entry), /procedimiento/);
+test('all 57 profiles can be placed and retained in a saved campaign', async () => {
+  const { validateCampaign } = await import('../src/validation.js');
+  for (const entry of catalog) {
+    const token = deployAdversary(entry);
+    assert.equal(token.hp.max, entry.hp ?? 0, entry.name);
+    assert.ok(token.featureNotes.includes(entry.text), entry.name);
+    if (entry.placement === 'narrative') assert.equal(token.bestiaryMode, 'narrative', entry.name);
   }
+  const saved = JSON.parse(JSON.stringify(store.serializeCampaign()));
+  assert.doesNotThrow(() => validateCampaign(saved));
+  assert.equal(saved.tokens.filter(t => t.bestiaryMode === 'narrative').length, 9);
+  assert.equal(catalog.filter(e => e.proposalReason).length, 44);
+  const mites = profile('VOID MITE CLUSTER');
+  assert.deepEqual(mites.provisional, { major: 5, severe: 10, armor: 0, stress: 2 });
+  assert.deepEqual([mites.hp, mites.evasion, mites.attack, mites.damage], [8, 13, 3, '1d6 Void']);
+  assert.deepEqual(profile('CINDER-MITE').provisional, { severe: 9, armor: 1 });
+  assert.equal(profile('NEON JELLY').armor, 0);
+  assert.equal(profile('FERRO-BEAST').armor, 4);
+  assert.equal(profile('VANKO THE VILE (AUGMENTATION SPECIALIST)').provisional, undefined);
+});
+
+test('the Keeper can fill missing legacy tracks on the selected original token once', async () => {
+  const entry = profile('FERRO-BEAST');
+  const token = deployAdversary(entry);
+  const note = token.featureNotes.split('\n\nPropuesta del VTT')[0];
+  store.updateToken(token.id, { name: 'El Guardián', featureNotes: note, armor: { current: 0, max: 0 }, hp: { ...token.hp, current: 2 } });
+  const modal = await openAdversaryLibrary([entry]);
+  const apply = modal.querySelector('[data-apply-tracks]');
+  assert.match(apply.textContent, /El Guardián.*Armor 4/);
+  apply.click();
+  assert.deepEqual(store.getSelectedToken().armor, { max: 4, current: 4 });
+  assert.equal(store.getSelectedToken().hp.current, 2);
+  assert.equal(modal.querySelector('[data-apply-tracks]'), null);
+  assert.ok(store.getSelectedToken().featureNotes.startsWith(note));
 });
 
 test('deployment makes independent hidden tokens in the active scene with the complete source notes', () => {
@@ -86,25 +115,34 @@ test('library search, book/tier filters and deployment operate from the actual c
   const reference = await openAdversaryLibrary(catalog);
   reference.querySelector('[data-search]').value = 'GRANDFATHER LEVIATHAN';
   reference.querySelector('[data-search]').dispatchEvent(new Event('input'));
-  assert.equal(reference.querySelector('[data-deploy]').disabled, true);
-  assert.match(reference.querySelector('[data-detail]').textContent, /Ficha de consulta/);
+  assert.equal(reference.querySelector('[data-deploy]').disabled, false);
+  assert.equal(reference.querySelector('[data-deploy-boss]').disabled, true);
+  assert.match(reference.querySelector('[data-deploy]').textContent, /marcador/);
   store.sessionRole = 'player'; assert.equal(await openAdversaryLibrary(catalog), undefined);
   reference.querySelector('[data-deploy]').disabled = false; reference.querySelector('[data-deploy]').click();
   assert.equal(store.state.tokens.filter(t => t.name.includes('GRANDFATHER')).length, 0);
 });
 
-test('the book shows the portrait of a reference-only creature and the same art on a deployed profile', async () => {
+test('the illustrated Void Mite can be placed with identified, editable provisional values', async () => {
   const modal = await openAdversaryLibrary(catalog);
   const search = modal.querySelector('[data-search]');
   const show = name => { search.value = name; search.dispatchEvent(new Event('input')); };
   show('Void Mite Cluster');
   const refArt = modal.querySelector('[data-detail] img').getAttribute('src');
   assert.equal(modal.querySelector('[data-detail] a').getAttribute('href'), refArt);
-  assert.equal(modal.querySelector('[data-deploy]').disabled, true);
-  show('Security Drone Model-V');
-  const securityArt = modal.querySelector('[data-detail] img').getAttribute('src');
-  assert.notEqual(securityArt, refArt);
+  assert.equal(modal.querySelector('[data-deploy]').disabled, false);
+  assert.match(modal.querySelector('[data-detail] details').textContent, /Major 5 · Severe 10/);
   modal.querySelector('[data-deploy]').click();
+  const deployed = store.getSelectedToken();
+  assert.equal(deployed.avatarUrl, refArt);
+  assert.equal(deployed.hp.majorThreshold, 5);
+  assert.match(deployed.featureNotes, /Propuesta del VTT/);
+  const other = await openAdversaryLibrary(catalog);
+  other.querySelector('[data-search]').value = 'Security Drone Model-V';
+  other.querySelector('[data-search]').dispatchEvent(new Event('input'));
+  const securityArt = other.querySelector('[data-detail] img').getAttribute('src');
+  assert.notEqual(securityArt, refArt);
+  other.querySelector('[data-deploy]').click();
   assert.equal(store.getSelectedToken().avatarUrl, securityArt);
 });
 

@@ -1,3 +1,4 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
@@ -79,7 +80,24 @@ function powerCard(power) {
 }
 export function openDossier(token, openSettings, initialTab = 'stats') {
   guideEvent('sheet');
+  if (isEncounterMarker(token)) {
+    if (!store.canEditToken(token.id)) return;
+    const marker = dossierDialog('Ficha de encuentro', `
+      <div class="dossier-hero"><img class="dossier-portrait" src="${e(actorPortrait(token))}" alt=""><div>
+      <span class="dossier-eyebrow">Encuentro por objetivos</span><h2>${e(token.name)}</h2><p>${e(token.roleTag || '')}</p></div></div>
+      <p>${e(adversaryDescription(token))}</p><div class="bestiary-source" style="white-space:pre-wrap">${e(token.featureNotes || '')}</div>
+      ${store.sessionRole !== 'player' && store.state.userRole === 'keeper' ? '<label><input type="checkbox" data-hidden> Oculto para los jugadores</label>' : ''}`);
+    const hidden = marker.querySelector('[data-hidden]');
+    if (hidden) {
+      hidden.checked = !!token.hidden;
+      hidden.onchange = () => store.updateToken(token.id, { hidden: hidden.checked });
+    }
+    return marker;
+  }
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
+  const threshold = (label, key) => token.bestiaryMode === 'minion'
+    ? field(label, key, token.hp[key] ?? '', 'number', 'min="1" max="10000" placeholder="—"')
+    : stat(label, key, token.hp[key]);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
   const hasBackground = pc;
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
@@ -95,7 +113,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
           ${[['hp', 'HP · disponibles'], ['armor', 'Armor · disponibles'], ['stress', 'Stress · marcado']].map(([k, label]) => `<section class="dossier-resource ${k}"><h4>${label}</h4><div>${stat('Actual', `${k}_current`, token[k]?.current)}${stat('Máximo', `${k}_max`, token[k]?.max, k === 'hp' ? 1 : 0)}</div></section>`).join('')}
           ${pc ? `<section class="dossier-resource path"><h4>${e(token.path || 'Awakened')}</h4><div>${token.path === 'Sleeping' ? stat('Effort', 'effort', token.effort, 0, token.effortMax ?? 6) + stat('Resolve', 'resolve_current', token.resolve?.current, 0, token.resolve?.max ?? 2) : stat('Hope', 'hope', token.hope, 0, token.hopeMax ?? 6)}</div></section>` : ''}
         </div>
-        <div class="dossier-thresholds"><span>UMBRALES FINALES<br><small>Incluyen los ajustes de la ficha</small></span>${stat('Major', 'majorThreshold', token.hp.majorThreshold)}${stat('Severe', 'severeThreshold', token.hp.severeThreshold)}</div>
+        <div class="dossier-thresholds"><span>UMBRALES FINALES<br><small>Incluyen los ajustes de la ficha</small></span>${threshold('Major', 'majorThreshold')}${threshold('Severe', 'severeThreshold')}</div>
         ${pc ? `<h4 class="dossier-label">TRAITS · VALORES FINALES</h4><div class="dossier-traits">${TRAIT_IDS.map(k => stat(k, `trait_${k}`, token.traits?.[k], -100, 100)).join('')}</div>${token.path === 'Sleeping' ? `<div class="dossier-identity">${stat('Resolve máximo', 'resolve_max', token.resolve?.max, 0, 100)}${field('Dado Resolve', 'resolve_die', token.resolve?.dieType || 'd4', 'text', 'pattern="d[46]" required')}${stat('Honed Edge', 'honedEdgeBonus', token.honedEdgeBonus, 0, 100)}${field('Recovery Anchor', 'recoveryAnchor', token.recoveryAnchor || '')}</div>` : ''}` : `<h4 class="dossier-label">BLOQUE DE COMBATE</h4><div class="dossier-identity">${stat('Modificador de ataque', 'attackModifier', token.attackModifier, -100, 100)}${field('Daño (expresión completa)', 'damageExpression', token.damageExpression || '', 'text', 'placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"')}${field('Alcance', 'attackRange', token.attackRange || '')}</div><p class="dossier-muted">Las expresiones y habilidades se muestran como referencia; los efectos especiales se resuelven según su texto.</p>`}
         <label class="dossier-field"><span>${pc ? 'Notas y habilidades de la sesión' : 'Notas y habilidades del adversario'}</span><textarea class="hud-input" name="featureNotes" rows="2">${e(token.featureNotes || '')}</textarea></label>
       </div>
@@ -215,7 +233,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
     if (!updated.name) throw new Error('El nombre no puede estar vacío.');
     for (const key of ['level', 'proficiency', 'evasion', 'hope', 'effort', 'honedEdgeBonus', 'attackModifier']) if (key in data) updated[key] = Number(data[key]);
     for (const key of ['hp', 'armor', 'stress']) updated[key] = { ...current[key], current: Number(data[`${key}_current`]), max: Number(data[`${key}_max`]) };
-    for (const key of ['majorThreshold', 'severeThreshold']) updated.hp[key] = Number(data[key]);
+    for (const key of ['majorThreshold', 'severeThreshold']) updated.hp[key] = data[key] === '' ? null : Number(data[key]);
     if (pc) {
       updated.roleTag = [updated.characterClass, updated.subclass].filter(Boolean).join(' · ');
       updated.traits = Object.fromEntries(TRAIT_IDS.map(k => [k, Number(data[`trait_${k}`])]));

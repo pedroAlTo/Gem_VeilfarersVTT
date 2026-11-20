@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.13', date: '2026-11-20', title: 'Bestiario en mesa y retratos de la tripulación',
+    sections: [
+      { title: 'Adversarios y encuentros', items: [
+        'El Keeper puede colocar los 57 perfiles. Hay 48 adversarios de combate y nueve encuentros por objetivos con un marcador que abre el procedimiento del libro.',
+        'La biblioteca identifica los valores provisionales de 44 fichas y explica sus defensas según la criatura. En una ficha ya desplegada, el Keeper puede recuperar las pistas vacías desde la biblioteca. El registro editorial está en docs/bestiario-pendientes-core.md.',
+        'Los esbirros sin umbrales reciben 1 HP por impacto ordinario que cause daño. Los ataques de Void Leech y Neon Jelly permiten marcar el Stress impreso directamente al objetivo.',
+      ] },
+      { title: 'Retratos de personajes', items: [
+        '45 retratos de las nueve ascendencias parten de las ilustraciones del paquete editorial. Las nueve insignias de clase dan identidad a las 243 combinaciones de ascendencia, clase y género. Harker, Vea y HE-09 tienen retratos propios renovados.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.12', date: '2026-11-20', title: 'Bestiario ilustrado de Tier 1',
     sections: [
       { title: 'Retratos en fichas y mapa', items: [

@@ -1,3 +1,4 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
 import { validRest } from './rest.js';
 import { validateDroneState } from './drones.js';
 import { validEffectClocks } from './effectClocks.js';
@@ -208,7 +209,9 @@ export function validateActor(t) {
     assert(t && typeof t === 'object', 'Invalid actor.');
     assert(typeof t.name === 'string' && finite(t.x) && finite(t.y), 'Invalid token data.');
     resource(t.hp, 'HP');
-    assert(t.hp.max >= 1, 'HP maximum must be positive.');
+    if (t.bestiaryMode != null) assert(['partial', 'minion', 'narrative'].includes(t.bestiaryMode) && t.actorType === 'adversary', 'Invalid bestiary profile.');
+    if (isEncounterMarker(t)) assert(t.hp.max === 0 && t.hp.current === 0, 'Encounter markers have no HP pool.');
+    else assert(t.hp.max >= 1, 'HP maximum must be positive.');
     for (const key of ['armor', 'stress', 'resolve'])
       if (t[key] !== undefined) resource(t[key], key);
     for (const key of ['hope', 'effort'])

@@ -1,3 +1,4 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
 import { LanPeer } from './lanPeer.js';
 import { requireNetworkMode, LAN_SESSIONS } from './runtimeMode.js';
 // Keeper-authoritative replication. No cross-room BroadcastChannel.
@@ -1038,6 +1039,7 @@ export class NetworkManager {
         const targetId = data.targetId || data.tokenId;
         const target = this.store.state.tokens.find(t => t.id === targetId);
         if (!target) throw new Error('Objetivo no encontrado.');
+        if (isEncounterMarker(target) || isEncounterMarker(this.store.state.tokens.find(t => t.id === attackerId))) throw new Error('Este encuentro se resuelve según su ficha.');
         if (target.mapId !== this.store.state.activeMapId) throw new Error('El objetivo no está en la escena actual.');
 
         // Validar que el emisor controla el token atacante o es dueño del objetivo

@@ -2,7 +2,11 @@
 const pool = /^(?:\d*d(?:4|6|8|10|12|20)(?!\d)|\d+)(?:\s*[+-]\s*(?:\d*d(?:4|6|8|10|12|20)(?!\d)|\d+))*/i;
 const namedTypes = /\b(physical|phys|energy|void|neural|kinetic|impact|acid|shock|explosive)\b/i;
 const baseType = value => ({ phys: 'Physical', kinetic: 'Physical', impact: 'Physical', acid: 'Energy', shock: 'Energy' }[value.toLowerCase()] || value);
-export const proceduralAttack = token => /^(?:narrative|infection)$/i.test(token?.damageExpression?.trim() || '');
+export const fixedStressAttack = token => {
+  const amount = /^(\d+)\s+Stress(?:\s*\([^)]*\))?$/i.exec(token?.damageExpression?.trim() || '')?.[1];
+  return amount && +amount >= 1 && +amount <= 3 ? Number(amount) : 0;
+};
+export const proceduralAttack = token => !!fixedStressAttack(token) || /^(?:narrative|infection)$/i.test(token?.damageExpression?.trim() || '');
 
 function attackRows(token) {
   const source = token.damageExpression.trim();

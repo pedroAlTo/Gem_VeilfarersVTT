@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.12**.
-Paquete: `VeilFarers_VTT_v2.27.12.zip`.
+Versión actual del VTT: **v2.27.13**.
+Paquete: `VeilFarers_VTT_v2.27.13.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.13] — 2026-11-20
+
+Bestiario en mesa y retratos de la tripulación
+
+### Adversarios y encuentros
+
+- El Keeper puede colocar los 57 perfiles. Hay 48 adversarios de combate y nueve encuentros por objetivos con un marcador que abre el procedimiento del libro.
+- La biblioteca identifica los valores provisionales de 44 fichas y explica sus defensas según la criatura. En una ficha ya desplegada, el Keeper puede recuperar las pistas vacías desde la biblioteca. El registro editorial está en docs/bestiario-pendientes-core.md.
+- Los esbirros sin umbrales reciben 1 HP por impacto ordinario que cause daño. Los ataques de Void Leech y Neon Jelly permiten marcar el Stress impreso directamente al objetivo.
+
+### Retratos de personajes
+
+- 45 retratos de las nueve ascendencias parten de las ilustraciones del paquete editorial. Las nueve insignias de clase dan identidad a las 243 combinaciones de ascendencia, clase y género. Harker, Vea y HE-09 tienen retratos propios renovados.
 
 ## [2.27.12] — 2026-11-20
 

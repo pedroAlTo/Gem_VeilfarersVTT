@@ -1,3 +1,4 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
 // src/canvasEngine.js
 // High-Resolution Tactical Canvas Engine with Water Depths (0-5), Editable Walls & Lights,
 // Drag-Resizable Templates, Expanded Particle FX, and Multi-Layer Support
@@ -3890,7 +3891,7 @@ export class CanvasEngine {
 
       // Avatar & Defeated / Dead Token representation (HP <= 0)
       const bossPending = tok.boss ? !tok.boss.defeated && (tok.boss.index < tok.boss.states.length - 1 || tok.boss.states[tok.boss.index].defeat === 'objective') : tok.bossStatus?.pending;
-      const isDead = tok.boss?.defeated || tok.bossStatus?.defeated || (typeof tok.hp?.current === 'number' && tok.hp.current <= 0 && !bossPending);
+      const isDead = tok.boss?.defeated || tok.bossStatus?.defeated || (!isEncounterMarker(tok) && typeof tok.hp?.current === 'number' && tok.hp.current <= 0 && !bossPending);
 
       ctx.save();
       ctx.beginPath();
@@ -4513,6 +4514,7 @@ export class CanvasEngine {
   }
 
   renderTokenVitals(ctx, tok, radius) {
+    if (isEncounterMarker(tok)) return;
     ctx.save();
     const cfg = tok.displayConfig || {};
     const gaugeScale = Math.max(1, Math.min(2, 0.9 / this.zoom));

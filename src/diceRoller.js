@@ -1,3 +1,4 @@
+import { isEncounterMarker, perHitMinion } from './bestiaryProfiles.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { attackPresentation, weaponImpactType } from './combatFX.js';
 import { firstStrikeRider, throwExpression } from './damageRiders.js';
@@ -14,7 +15,7 @@ import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
-import { proceduralAttack } from './adversaryWeapons.js';
+import { proceduralAttack, fixedStressAttack } from './adversaryWeapons.js';
 import { damageNames, hitTypes } from './damageProtection.js';
 import { checkEdge, requireActive, lifeStage } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponTraitId, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
@@ -172,7 +173,7 @@ export class DiceRollerSidebar {
     if (!select) return;
     const weapons = token ? (tokenInventory(token).weapons || []) : [];
     if (!weapons.length) {
-      select.innerHTML = proceduralAttack(token) ? '<option value="">Procedimiento de la ficha</option>' : '<option value="">Ataque básico (sin armas) · 1d4</option>';
+      select.innerHTML = fixedStressAttack(token) ? '<option value="">Ataque · ' + escapeHTML(token.damageExpression) + '</option>' : proceduralAttack(token) ? '<option value="">Procedimiento de la ficha</option>' : '<option value="">Ataque básico (sin armas) · 1d4</option>';
       select.onchange = null;
       return;
     }
@@ -899,7 +900,7 @@ export class DiceRollerSidebar {
   populateDamageTargets() {
     const select = this.container.querySelector('#dmg_target_select');
     if (!select) return;
-    const tokens = store.getTokensForActiveMap();
+    const tokens = store.getTokensForActiveMap().filter(token => !isEncounterMarker(token));
     const previous = select.value;
     select.innerHTML = sanitizeHTML('<option value="">Sin objetivo · calcular</option>' + tokens.map(t => `
       <option value="${escapeHTML(t.id)}">${escapeHTML(t.name)} (HP ${t.hp.current}/${t.hp.max})</option>
@@ -911,8 +912,8 @@ export class DiceRollerSidebar {
       if (tok) {
         const maj = this.container.querySelector('#dmg_major_thresh');
         const sev = this.container.querySelector('#dmg_severe_thresh');
-        if (maj) maj.value = tok.hp.majorThreshold;
-        if (sev) sev.value = tok.hp.severeThreshold;
+        if (maj) maj.value = tok.hp.majorThreshold ?? '';
+        if (sev) sev.value = tok.hp.severeThreshold ?? '';
       }
       const attackerId = this.currentActor?.id || store.getState().selectedTokenId;
       if (window.veilCanvas) {
@@ -1323,7 +1324,8 @@ export class DiceRollerSidebar {
     requireActive(attacker);
     if (!target) throw new Error('Elige un objetivo para atacar.');
     if (target.id === attacker.id) throw new Error('Un token no puede atacarse a sí mismo.');
-    if (proceduralAttack(attacker) && !tokenInventory(attacker).weapons.length) throw new Error('Este adversario se resuelve mediante las habilidades y objetivos de su ficha.');
+    if (isEncounterMarker(attacker) || isEncounterMarker(target)) throw new Error('Este encuentro se resuelve según su ficha.');
+    if (proceduralAttack(attacker) && !fixedStressAttack(attacker) && !tokenInventory(attacker).weapons.length) throw new Error('Este adversario se resuelve mediante las habilidades y objetivos de su ficha.');
     const bossPhase = attacker.boss?.states?.[attacker.boss.index];
     if (bossPhase?.canAttack === false) throw new Error('Este estado usa su procedimiento especial; no tiene un ataque estándar.');
     const weapon = (tokenInventory(attacker).weapons || []).find(w => w.id === q('#dmg_weapon_select').value) || null;
@@ -1494,17 +1496,57 @@ export class DiceRollerSidebar {
 
   }
 
+  showStressDamage(attacker, target) {
+    const q = selector => this.container.querySelector(selector);
+    const amount = fixedStressAttack(attacker);
+    const mapId = store.state.activeMapId;
+    const secret = this.rollVisibility() === 'keeper';
+    this.lastDamage = null;
+    q('#damage_result_display').style.display = 'block';
+    q('#dmg_shield_mitigation_row').style.display = 'none';
+    q('#dmg_raw_val').textContent = amount;
+    q('#dmg_severity_val').textContent = 'Stress';
+    q('#dmg_hp_loss_val').textContent = '0 HP';
+    q('#dmg_detail_text').textContent = (secret ? 'SOLO KEEPER · ' : '') + attacker.damageExpression;
+    const apply = q('#apply_dmg_to_target_btn');
+    apply.disabled = !target?.stress?.max;
+    apply.textContent = apply.disabled ? 'Elige un objetivo con pista de Stress' : 'Marcar ' + amount + ' Stress';
+    apply.onclick = () => {
+      if (apply.disabled || store.sessionBusy || store.state.rest || !store.canEditToken(attacker.id) || store.state.activeMapId !== mapId) return;
+      if ((this.currentActor || store.getSelectedToken())?.id !== attacker.id) return;
+      const current = store.state.tokens.find(t => t.id === target?.id && t.mapId === mapId);
+      if (!current?.stress || q('#dmg_target_select').value !== current.id || isEncounterMarker(current)) return;
+      apply.disabled = true;
+      if (store.sessionRole === 'player') {
+        network.broadcast({ type: 'APPLY_DAMAGE', attackerId: attacker.id, targetId: current.id, hpLoss: 0, armorLoss: 0, stressMark: amount, isDirect: true, secret });
+      } else {
+        const before = store.tableActing; store.tableActing = true;
+        try {
+          store.updateToken(current.id, { stress: { ...current.stress, current: Math.min(current.stress.max, current.stress.current + amount) } });
+        } finally { store.tableActing = before; }
+        store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'DAMAGE', sender: 'Keeper', title: attacker.name, details: current.name + ' · ' + attacker.damageExpression });
+      }
+      apply.textContent = store.sessionRole === 'player' ? 'Enviado al Keeper' : 'Stress aplicado';
+    };
+  }
+
   // rolled: the faces read from the 3D dice. Without them (3D off, or a first call) the dice
   // are thrown on the table first and this runs again with what they show.
   executeDamageCalc(rolled = null, { bearDown = 0, riders = [], extrasPinned = null, extraFaces = null } = {}) {
     if (lifeStage(this.currentActor)) { notify('Este personaje no puede infligir daño ordinario.', 'error'); return; }
     const riderTotal = riders.reduce((n, r) => n + (Number(r.value) || 0), 0);
-    if (proceduralAttack(this.currentActor) && !tokenInventory(this.currentActor).weapons.length) { notify('Usa el procedimiento impreso en la ficha del adversario.', 'error'); return; }
     const bossPhase = this.currentActor?.boss?.states[this.currentActor.boss.index];
     if (bossPhase?.canAttack === false) { notify('Este estado usa su procedimiento especial; no tiene un ataque de daño estándar.', 'error'); return; }
     const targetSelect = this.container.querySelector('#dmg_target_select');
     const targetId = targetSelect.value;
     const targetToken = store.getState().tokens.find(t => t.id === targetId);
+    const actor = this.currentActor || store.getSelectedToken();
+    if (isEncounterMarker(actor) || isEncounterMarker(targetToken)) { notify('Este encuentro se resuelve según su ficha.'); return; }
+    if (proceduralAttack(actor) && !tokenInventory(actor).weapons.length) {
+      if (fixedStressAttack(actor)) return this.showStressDamage(actor, targetToken);
+      notify('Usa el procedimiento impreso en la ficha del adversario.'); return;
+    }
+    const perHit = perHitMinion(targetToken);
 
     const diceCount = parseInt(this.container.querySelector('#dmg_dice_count').value, 10);
     const diceSides = parseInt(this.container.querySelector('#dmg_dice_sides').value, 10);
@@ -1512,8 +1554,8 @@ export class DiceRollerSidebar {
     // With a target, its own thresholds decide the hit: the preview must match what is applied.
     const majorInput = this.container.querySelector('#dmg_major_thresh'), severeInput = this.container.querySelector('#dmg_severe_thresh');
     if (targetToken?.hp) {
-      if (Number.isFinite(targetToken.hp.majorThreshold)) majorInput.value = targetToken.hp.majorThreshold;
-      if (Number.isFinite(targetToken.hp.severeThreshold)) severeInput.value = targetToken.hp.severeThreshold;
+      majorInput.value = targetToken.hp.majorThreshold ?? '';
+      severeInput.value = targetToken.hp.severeThreshold ?? '';
     }
     const major = parseInt(majorInput.value, 10);
     const severe = parseInt(severeInput.value, 10);
@@ -1552,7 +1594,7 @@ export class DiceRollerSidebar {
     const damageType = chosenType && chosenType !== 'auto' ? chosenType : autoType;
     const types = hitTypes(damageType, activeWeapon, formula, tag);
     feats = { ...weaponFeatures(activeWeapon), crushing, bleed }; // the two boxes follow the weapon and can be changed by hand
-    if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
+    if ((!isDirect && !perHit && (![major, severe].every(Number.isFinite) || major < 1 || severe < major)) || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
     // A drone is fired by a player character: its Critical doubles the dice like any player's.
     const keeperAttack = this.currentActor?.isPlayer === false && !isDroneToken(this.currentActor);
     if (!rolled && this.can3D()) {
@@ -1611,7 +1653,7 @@ export class DiceRollerSidebar {
       const again = resolveDamage({ ...damageOptions, diceCount: 0, components });
       dmgResult = { ...dmgResult, ...again, rolls: dmgResult.rolls, flatModifier: dmgResult.flatModifier, baseDiceTotal: dmgResult.baseDiceTotal };
     }
-    const devastating = isDirect ? 0 : devastatingExtra(feats, dmgResult.effectiveDamage, dmgResult.effectiveSevere);
+    const devastating = isDirect || perHit ? 0 : devastatingExtra(feats, dmgResult.effectiveDamage, dmgResult.effectiveSevere);
     if (devastating) dmgResult = { ...dmgResult, finalHpDamage: dmgResult.finalHpDamage + devastating };
     const maxDie = dmgResult.rolls.some((r, i) => r === (rollSides[i] || diceSides));
     // An enemy's maximum Armor Slots are cut at once by Armor Piercing, Disintegrating, Shredding.
@@ -1651,13 +1693,13 @@ export class DiceRollerSidebar {
     const detailText = (bearDown ? `Bear Down +${bearDown} · ` : '') + (formula ? formula + ' · ' : '') + `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
       (dmgResult.penetration
         ? `${DAMAGE_TYPES[dmgResult.damageType]} · Penetración −${dmgResult.penetration}: umbrales ${major}/${severe} → ${dmgResult.effectiveMajor}/${dmgResult.effectiveSevere} para este impacto. `
-        : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
+        : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && !perHit && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
       (dmgResult.protection ? dmgResult.groups.map(g => g.types.join('/') + ' ' + g.amount + ' → ' + g.effective +
         (g.applied === 'immune' ? ' (inmunidad)' : g.applied === 'resistant' ? ' (resistencia)' : '')).join(' + ') + '. ' : '') +
       (dmgResult.stressMarked ? 'Neural: +1 Stress. ' : '') +
       (featureNotes.length ? featureNotes.join(' ') + ' ' : '') +
       (bleed && !dmgResult.fullyProtected ? (targetToken && !canBleed(targetToken) ? 'Bleed: el objetivo no sangra (inmune). ' : 'Bleed: el objetivo queda Bleeding. ') : '') +
-      `Compared to Major (${dmgResult.effectiveMajor}) & Severe (${dmgResult.effectiveSevere}). ` +
+      (isDirect ? '' : perHit ? 'Sin umbrales: 1 HP por impacto que cause daño. ' : `Compared to Major (${dmgResult.effectiveMajor}) & Severe (${dmgResult.effectiveSevere}). `) +
       (dmgResult.armorSlotSpent ? '1 Armor Slot spent to lower severity step.' : 'No armor slot used.');
     const secret = this.rollVisibility() === 'keeper';
     this.secretDamage = secret;
@@ -1734,7 +1776,7 @@ export class DiceRollerSidebar {
 
         if (currentDamage.fullyProtected) spentShields = 0;
         // Each shield spent absorbs damage/reduces severity
-        const mitigatedHpDamage = Math.max(0, (currentDamage.finalHpDamage || 0) + (isDirect ? 0 : devastatingExtra(feats, currentDamage.effectiveDamage, currentDamage.effectiveSevere)) - (spentShields > 0 ? (spentShields - 1) : 0));
+        const mitigatedHpDamage = Math.max(0, (currentDamage.finalHpDamage || 0) + (isDirect || perHitMinion(targetToken) ? 0 : devastatingExtra(feats, currentDamage.effectiveDamage, currentDamage.effectiveSevere)) - (spentShields > 0 ? (spentShields - 1) : 0));
         const finalHpDamage = targetToken.pendingBrace && !isDirect ? Math.max(0, mitigatedHpDamage - 1) : mitigatedHpDamage;
 
         const currentArmor = targetToken.armor?.current || 0;

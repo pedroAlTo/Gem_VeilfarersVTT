@@ -1,3 +1,4 @@
+import { perHitMinion } from './bestiaryProfiles.js';
 import { mitigateComponents } from './damageProtection.js';
 import { hasTag } from './weaponTags.js';
 // src/rulesEngine.js
@@ -281,9 +282,10 @@ export function resolveDamage({
   const { groups, effectiveDamage, protection, fullyProtected } = mitigateComponents(damageParts, targetToken, fallbackProtection);
   const surviving = groups.filter(group => group.effective > 0);
   const damageType = (surviving[0] || groups[0]).types[0] || primaryType;
-  const penetration = isDirectDamage ? 0 : penetrationFor(damageType, { reflective: targetReflective, warded: targetWarded });
-  const effectiveMajor = Math.max(1, targetMajorThreshold - penetration);
-  const effectiveSevere = Math.max(effectiveMajor, targetSevereThreshold - penetration);
+  const perHit = perHitMinion(targetToken);
+  const penetration = (isDirectDamage || perHit) ? 0 : penetrationFor(damageType, { reflective: targetReflective, warded: targetWarded });
+  const effectiveMajor = perHit ? null : Math.max(1, targetMajorThreshold - penetration);
+  const effectiveSevere = perHit ? null : Math.max(effectiveMajor, targetSevereThreshold - penetration);
   // A Neural hit also frays the mind: 1 Stress on top of its HP.
   const stressMarked = !isDirectDamage && !fullyProtected && (surviving.some(g => g.types[0] === 'neural') || (!components && damageType === 'neural')) ? 1 : 0;
 
@@ -296,6 +298,8 @@ export function resolveDamage({
   } else if (isDirectDamage) {
     baseSeverity = 'Direct HP';
     rawHpDamage = effectiveDamage;
+  } else if (perHit) {
+    rawHpDamage = effectiveDamage > 0 ? 1 : 0;
   } else {
     if (effectiveDamage < effectiveMajor) {
       baseSeverity = 'Minor';

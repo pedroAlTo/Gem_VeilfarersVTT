@@ -1,4 +1,5 @@
 import { profileDescription } from '../src/adversaryDescription.js';
+import { placementMode } from '../src/bestiaryProfiles.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -11,7 +12,31 @@ const numberAfter = (text, label) => {
   const match = text.match(new RegExp('(?:^|\\s)' + label + ':?\\s*([+-]?\\d+)\\b', 'i'));
   return match ? Number(match[1]) : null;
 };
+
+// The editorial ledger is the single source for unprinted values. Published figures take precedence.
+function readProposals(watch) {
+  const file = fileURLToPath(new URL('../docs/bestiario-pendientes-core.md', import.meta.url));
+  watch(file);
+  const proposals = new Map();
+  for (const row of readFileSync(file, 'utf8').split('\n').filter(row => /^\| (AS|KC) \|/.test(row))) {
+    const [book, name, major, severe, armor, stress, reason] = row.slice(1, -1).split('|').map(cell => cell.trim());
+    const stats = {};
+    for (const [key, value] of Object.entries({ major, severe, armor, stress })) {
+      if (value === '—') continue;
+      if (!/^\d+$/.test(value)) throw new Error('Invalid editorial value for ' + name + ' / ' + key);
+      stats[key] = Number(value);
+    }
+    const id = (book === 'AS' ? 'VeilFarers_Alien_Species/' : 'VeilFarers_Keepers_Companion/') + name;
+    if (proposals.has(id) || !reason) throw new Error('Invalid editorial row for ' + id);
+    proposals.set(id, { stats, reason });
+  }
+  return proposals;
+}
 function readStats(book, lines) {
+  if (book === 'Alien Species') {
+    const row = lines.find(line => /^\*\*Evasion\*\*\s*\d/i.test(line)) || '';
+    return row.replace(/\s+(?=\*\*(?:HP|Attack|Damage|Stress|Thresholds|Armor Slots)\*\*)/gi, ' | ').replaceAll('*', '');
+  }
   const plain = lines.map(line => line.replaceAll('*', '').trim());
   if (book === 'Rust & Steel') {
     const start = plain.findIndex(line => /^Stats \(Tier /.test(line));
@@ -22,6 +47,7 @@ function readStats(book, lines) {
 }
 export function loadAdversaries(watch = () => {}) {
   const entries = [];
+  const proposals = readProposals(watch);
   for (const [book, prefix, section, first, last] of books) {
     const file = fileURLToPath(new URL('../System/' + prefix + '_12_06_Corrections_FULL_SOURCE.md', import.meta.url));
     watch(file);
@@ -44,18 +70,32 @@ export function loadAdversaries(watch = () => {}) {
           entry.role ||= profile.replace(/^\d+\s*/, '');
           entry.hp = numberAfter(stats, 'HP');
           entry.stress = numberAfter(stats, 'Stress');
+          if (/\bStress\s*[-—–](?=\s*[|·]|$)/i.test(stats)) entry.stress = 0;
           entry.armor = numberAfter(stats, 'Armor Slots');
           entry.evasion = numberAfter(stats.replaceAll('|', ' '), 'Evasion');
           entry.attack = numberAfter(stats, 'Attack');
           entry.major = numberAfter(stats, 'Major');
           entry.severe = numberAfter(stats, 'Severe');
-          entry.damage = (/(?:Damage|Weapons):?\s+(.+?)(?=\s+(?:Stress|Thresholds)\b|\s*[·|]|$)/i.exec(stats)?.[1] || '').trim();
+          entry.damage = (/(?:Damage|Weapons):?\s+([^·|]+)/i.exec(stats)?.[1] || '').trim();
           const traitLine = body.find(line => /^- \*\*Traits:/.test(line));
           if (traitLine) {
             const traits = Object.fromEntries(['Agility', 'Strength', 'Finesse', 'Instinct', 'Presence', 'Knowledge'].map(name => [name.toLowerCase(), numberAfter(traitLine.replaceAll('*', ''), name)]));
             if (Object.values(traits).every(Number.isFinite)) entry.traits = traits;
           }
-          entry.deployable = [entry.hp, entry.evasion, entry.attack, entry.major, entry.severe].every(Number.isFinite) && entry.hp > 0 && !!entry.damage;
+          const proposal = proposals.get(entry.id);
+          if (proposal) {
+            entry.provisional = {};
+            for (const [key, value] of Object.entries(proposal.stats)) {
+              if (entry[key] != null) continue;
+              entry[key] = value;
+              entry.provisional[key] = value;
+            }
+            if (Object.keys(entry.provisional).length) entry.proposalReason = proposal.reason;
+            proposals.delete(entry.id);
+          }
+          entry.perHit = /\bminion\b/i.test(entry.role) && entry.major == null && entry.severe == null &&
+            (/\bThresholds\s+None\b/i.test(stats) || entry.hp === 1);
+          entry.placement = placementMode(entry);
           entry.text = body.join('\n').trim();
           entry.description = profileDescription(entry.text);
           entries.push(entry);
@@ -68,6 +108,7 @@ export function loadAdversaries(watch = () => {}) {
       }
     }
   }
+  if (proposals.size) throw new Error('Unknown adversary in editorial ledger: ' + [...proposals.keys()].join(', '));
   return entries;
 }
 export function adversaryLibraryPlugin() {

@@ -1,12 +1,12 @@
 // The map canvas and the roster both load ordinary, self-contained image URLs.
 // Bake only existing ancestry portraits and editorial class insignia into the build.
 import { readFileSync } from 'node:fs';
-import { ANCESTRY_IDS, PORTRAIT_GENDERS, TOKEN_CLASSES, classPortraitPath, detectArchetype } from '../src/tokenAvatars.js';
+import { ANCESTRY_IDS, PORTRAIT_GENDERS, TOKEN_CLASSES, classPortraitPath, crewPortraitPath } from '../src/tokenAvatars.js';
 
 const sources = new Map();
 for (const ancestry of ANCESTRY_IDS) for (const gender of PORTRAIT_GENDERS) {
   for (const cls of TOKEN_CLASSES) {
-    const image = gender === 'n' ? ancestry + '_n.jpg' : ancestry + '_' + detectArchetype(cls) + '_' + gender + '.jpg';
+    const image = crewPortraitPath(ancestry, gender, cls);
     sources.set(classPortraitPath(ancestry, cls, gender), { image, cls });
   }
 }
@@ -18,11 +18,11 @@ export function tokenPortraitsPlugin() {
     return encoded.get(path);
   }
   function render({ image, cls }) {
-    const portrait = asset('../public/assets/tokens/' + image);
+    const portrait = asset('../public' + image);
     const badge = asset('../public/assets/cards/class-' + cls + '-flag.png');
-    return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512" viewBox="0 0 512 512">' +
-      '<image width="512" height="512" xlink:href="data:image/jpeg;base64,' + portrait + '"/>' +
-      '<image x="320" y="320" width="73" height="142" xlink:href="data:image/png;base64,' + badge + '"/></svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="768" height="768" viewBox="0 0 768 768">' +
+      '<image width="768" height="768" xlink:href="data:image/webp;base64,' + portrait + '"/>' +
+      '<image x="498" y="495" width="84" height="160" xlink:href="data:image/png;base64,' + badge + '"/></svg>';
   }
   return {
     name: 'veil-token-portraits',

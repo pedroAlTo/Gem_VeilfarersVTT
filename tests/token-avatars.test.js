@@ -209,15 +209,19 @@ test('all ancestry, class and gender combinations resolve to standalone build im
   const { tokenPortraitsPlugin } = await import('../scripts/token-portraits.mjs');
   const images = new Map();
   tokenPortraitsPlugin().generateBundle.call({ emitFile: asset => images.set('/' + asset.fileName, asset.source) });
-  const seen = new Set();
+  const seen = new Set(), paintings = new Set();
   for (const species of ANCESTRY_IDS) for (const cls of TOKEN_CLASSES) for (const gender of PORTRAIT_GENDERS) {
     const pronouns = { m: 'he/him', f: 'she/her', n: 'they/them' }[gender];
     const url = defaultTokenAvatar(species, pronouns, '', cls);
     seen.add(url);
-    assert.match(images.get(url), /data:image\/(?:jpeg|webp);base64,/);
+    assert.match(images.get(url), /viewBox="0 0 768 768"/);
+    const encoded = /data:image\/webp;base64,([^"]+)/.exec(images.get(url))?.[1];
+    assert.ok(encoded, url);
+    paintings.add(encoded);
     assert.match(images.get(url), /data:image\/png;base64,/);
   }
   assert.equal(seen.size, 243);
+  assert.equal(paintings.size, 45);
   assert.notEqual(images.get(defaultTokenAvatar('Human', 'ella', '', 'Soldier')), images.get(defaultTokenAvatar('Human', 'ella', '', 'Vanguard')));
 });
 

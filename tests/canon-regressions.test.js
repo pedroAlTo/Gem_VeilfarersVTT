@@ -172,9 +172,9 @@ test('Codex updates in both languages, with two Effort segments and the correct 
   codex.close(); setLanguage('es');
 });
 
-test('all 42 deployable profiles carry rollable published attacks or an explicit narrative procedure', () => {
-  const deployed = loadAdversaries().filter(e => e.deployable);
-  assert.equal(deployed.length, 42);
+test('all 48 combat profiles carry their printed attack or special procedure', () => {
+  const deployed = loadAdversaries().filter(e => e.placement !== 'narrative');
+  assert.equal(deployed.length, 48);
   const narrative = [], notable = {};
   for (const entry of deployed) {
     const token = deployAdversary(entry, { hidden: false });
@@ -184,13 +184,43 @@ test('all 42 deployable profiles carry rollable published attacks or an explicit
     for (const w of weapons) assert.doesNotThrow(() => parseDamageExpression(w.damage), entry.name + ': ' + w.damage);
     notable[entry.name] = weapons;
   }
-  assert.deepEqual(narrative.sort(), ['THE ASCENDED', 'THE SWARM-LORD']);
+  assert.deepEqual(narrative.sort(), ['NEON JELLY', 'THE ASCENDED', 'THE SWARM-LORD', 'VOID LEECH']);
   assert.deepEqual(notable['CHARON SKITTER-RAT SWARM'].map(w => w.damage), ['1d8', '1d4']);
   const vanko = Object.entries(notable).find(([k]) => k.startsWith('VANKO'))[1];
   assert.deepEqual(vanko.map(w => w.damage), ['1d8 Physical', '2d6 Energy']);
   assert.match(vanko[0].features, /Incapacitated/);
   assert.equal(notable['BIOMANCER ABOMINATION'].length, 3);
   assert.equal(notable['THE BIOMANCER'].length, 3);
+});
+
+test('a thresholdless minion takes one HP per ordinary hit and its printed Stress attack never damages HP', async () => {
+  const jelly = deployAdversary(loadAdversaries().find(e => e.name === 'NEON JELLY'), { hidden: false });
+  const hero = character('Scout');
+  const hit = atTable(hero, jelly);
+  await applyDamage(hit.dice, hit.el, 40);
+  assert.equal(get(jelly).hp.current, 2);
+  assert.match(hit.el.querySelector('#dmg_detail_text').textContent, /1 HP por impacto/);
+
+  const sting = atTable(get(jelly), hero);
+  await sting.dice.executeDamageCalc();
+  assert.equal(sting.el.querySelector('#dmg_hp_loss_val').textContent, '0 HP');
+  const apply = sting.el.querySelector('#apply_dmg_to_target_btn');
+  apply.click(); apply.click();
+  assert.equal(get(hero).stress.current, 3);
+  assert.equal(get(hero).hp.current, hero.hp.max);
+});
+
+test('objective encounters open their printed procedure and stay out of damage targeting', async () => {
+  const marker = deployAdversary(loadAdversaries().find(e => e.name === 'THE GRANDFATHER LEVIATHAN'));
+  const hero = character('Scout');
+  const { el } = atTable(hero, hero);
+  assert.ok(!Array.from(el.querySelector('#dmg_target_select').options).some(o => o.value === marker.id));
+  const { openDossier } = await import('../src/dossierUI.js');
+  const sheet = openDossier(marker);
+  assert.match(sheet.textContent, /GRANDFATHER LEVIATHAN/);
+  assert.equal(sheet.querySelector('[name="hp_max"]'), null);
+  sheet.querySelector('[data-hidden]').click();
+  assert.equal(get(marker).hidden, false);
 });
 
 test('switching a published weapon prepares the alternate damage in the dice panel', async () => {

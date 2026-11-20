@@ -1,3 +1,4 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { TIER_ONE_PORTRAITS } from './bestiaryPortraits.js';
 import { adversaryDescription } from './adversaryDescription.js';
@@ -75,9 +76,15 @@ export class TokenHUD {
     const displayRole = isMasked ? 'Amenaza Desconocida // ?????' : (token.roleTag || 'Voidfarer');
     const isPC = token.actorType === 'player' || (!token.actorType && token.isPlayer);
     const maxStress = token.stress?.max ?? 6;
-    const isOverwhelmed = (token.stress?.current || 0) >= maxStress;
+    const isOverwhelmed = maxStress > 0 && (token.stress?.current || 0) >= maxStress;
 
     const canEdit = store.canEditToken(token.id);
+
+    if (isEncounterMarker(token)) {
+      this.container.innerHTML = sanitizeHTML(`<div class="token-quickbar glass-panel tok-qb-compact"><div class="tok-qb-avatar-group"><img src="${escapeHTML(actorPortrait(token))}" alt="" class="tok-qb-avatar"><span class="tok-qb-name">${escapeHTML(displayName)}</span></div>${canEdit ? '<button class="hud-btn" data-encounter>Ficha de encuentro</button>' : ''}</div>`);
+      this.container.querySelector('[data-encounter]')?.addEventListener('click', () => this.openCharacterSheetModal(token));
+      return;
+    }
 
     // --- COMPACT MINIMIZED QUICKBAR (DEFAULT) ---
     if (!this.isExpanded) {
@@ -157,7 +164,7 @@ export class TokenHUD {
           <div class="tok-qb-stat-actions">
             <button class="hud-btn hud-btn-xs" data-quick-stat="hp" data-delta="-1">-1</button>
             <button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="hp" data-delta="1">+1</button>
-            <span class="tok-qb-thresholds">M:${token.hp.majorThreshold} S:${token.hp.severeThreshold}</span>
+            <span class="tok-qb-thresholds">M:${token.hp.majorThreshold ?? '—'} S:${token.hp.severeThreshold ?? '—'}</span>
           </div>
         </div>
 
@@ -598,6 +605,7 @@ export class TokenHUD {
   }
 
   openTokenSettingsModal(token) {
+    if (isEncounterMarker(token)) return this.openCharacterSheetModal(token);
     if(store.sessionRole==='player'){notify('The Keeper manages character dossiers. Use your assigned character’s quick controls.');return;}
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
@@ -689,11 +697,11 @@ export class TokenHUD {
                 </div>
                 <div class="form-group">
                   <label>Major Threshold</label>
-                  <input type="number" id="sheet_hp_major" class="hud-input" value="${token.hp.majorThreshold}" />
+                  <input type="number" id="sheet_hp_major" class="hud-input" value="${token.hp.majorThreshold ?? ''}" placeholder="—" />
                 </div>
                 <div class="form-group">
                   <label>Severe Threshold</label>
-                  <input type="number" id="sheet_hp_severe" class="hud-input" value="${token.hp.severeThreshold}" />
+                  <input type="number" id="sheet_hp_severe" class="hud-input" value="${token.hp.severeThreshold ?? ''}" placeholder="—" />
                 </div>
               </div>
 
@@ -1170,8 +1178,8 @@ export class TokenHUD {
         hp: {
           current: parseInt(modal.querySelector('#sheet_hp_cur').value, 10),
           max: parseInt(modal.querySelector('#sheet_hp_max').value, 10),
-          majorThreshold: parseInt(modal.querySelector('#sheet_hp_major').value, 10),
-          severeThreshold: parseInt(modal.querySelector('#sheet_hp_severe').value, 10)
+          majorThreshold: modal.querySelector('#sheet_hp_major').value === '' ? null : modal.querySelector('#sheet_hp_major').valueAsNumber,
+          severeThreshold: modal.querySelector('#sheet_hp_severe').value === '' ? null : modal.querySelector('#sheet_hp_severe').valueAsNumber
         },
         armor: {
           current: parseInt(modal.querySelector('#sheet_armor_cur').value, 10),
