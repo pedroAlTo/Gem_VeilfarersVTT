@@ -15,6 +15,7 @@ import { FXEngine } from './fxEngine.js';
 import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
 import { isPartyToken } from './tokenPermissions.js';
+import { canvasFont } from './fontSets.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
@@ -2772,7 +2773,7 @@ export class CanvasEngine {
 
     if (!this.isMapLoaded) {
       ctx.fillStyle = '#00f3ff';
-      ctx.font = '18px "Orbitron", sans-serif';
+      ctx.font = `18px ${canvasFont('display')}`;
       ctx.textAlign = 'center';
       ctx.fillText('INITIALIZING QUANTUM TACTICAL MAP...', this.displayWidth / 2, this.displayHeight / 2);
       return;
@@ -3075,7 +3076,7 @@ export class CanvasEngine {
     const rule = c.rule || '';
 
     // Measure and wrap rule text
-    ctx.font = 'bold 12px "Rajdhani", sans-serif';
+    ctx.font = `bold 12px ${canvasFont('hud')}`;
     const titleW = ctx.measureText(title).width;
     ctx.font = '11px sans-serif';
 
@@ -3117,7 +3118,7 @@ export class CanvasEngine {
     ctx.shadowBlur = 0;
     // Title
     ctx.fillStyle = c.isState ? '#fde68a' : '#38bdf8';
-    ctx.font = 'bold 12px "Rajdhani", sans-serif';
+    ctx.font = `bold 12px ${canvasFont('hud')}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(title, boxX + 12, boxY + 8);
@@ -3208,7 +3209,7 @@ export class CanvasEngine {
           ctx.arc(first.x, first.y, 14/this.zoom, 0, Math.PI * 2);
           ctx.stroke();
 
-          ctx.font = 'bold 10px "Rajdhani", sans-serif';
+          ctx.font = `bold 10px ${canvasFont('hud')}`;
           ctx.fillStyle = '#10b981';
           ctx.fillText('CLIC PARA CERRAR', first.x + 16, first.y + 4);
         }
@@ -3717,7 +3718,7 @@ export class CanvasEngine {
         ctx.stroke();
 
         ctx.fillStyle = '#bae6fd';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(`🪟 ${visionPercent}%`, midX, midY);
@@ -3784,7 +3785,7 @@ export class CanvasEngine {
       ctx.fillStyle = sw.on ? '#fde68a' : '#475569'; if (sw.on) { ctx.shadowColor = '#fde68a'; ctx.shadowBlur = 10; }
       ctx.beginPath(); ctx.roundRect(-5, sw.on ? -10 : 1, 10, 9, 2); ctx.fill(); ctx.shadowBlur = 0;
       if (!sw.usable) { ctx.fillStyle = '#f87171'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🔒', 12, -12); }
-      if (keeper) { ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 10px "Rajdhani", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`${sw.label || 'Interruptor'}${sw.secret ? ' · SECRETO' : ''}`, 0, 26); }
+      if (keeper) { ctx.fillStyle = '#e2e8f0'; ctx.font = `bold 10px ${canvasFont('hud')}`; ctx.textAlign = 'center'; ctx.fillText(`${sw.label || 'Interruptor'}${sw.secret ? ' · SECRETO' : ''}`, 0, 26); }
       ctx.restore();
     }
     ctx.restore();
@@ -3830,7 +3831,7 @@ export class CanvasEngine {
 
       // Label
       ctx.fillStyle = '#e2e8f0';
-      ctx.font = 'bold 10px "Rajdhani", sans-serif';
+      ctx.font = `bold 10px ${canvasFont('hud')}`;
       ctx.textAlign = 'center';
       ctx.fillText(`${l.label || 'Light'}${l.off ? ' · OFF' : ''}`, l.x, l.y - 14);
 
@@ -3972,7 +3973,7 @@ export class CanvasEngine {
           ctx.fillStyle = '#1e293b';
           ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
           ctx.fillStyle = '#00f3ff';
-          ctx.font = `bold ${Math.round(radius * 0.7)}px "Orbitron", sans-serif`;
+          ctx.font = `bold ${Math.round(radius * 0.7)}px ${canvasFont('display')}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           const isKeeper = state.userRole === 'keeper';
@@ -4087,7 +4088,7 @@ export class CanvasEngine {
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('☠️ DEAD', 0, -radius - 15);
@@ -4105,7 +4106,7 @@ export class CanvasEngine {
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.fillText('HIDDEN', 0, -radius - 12);
         ctx.restore();
@@ -4123,7 +4124,7 @@ export class CanvasEngine {
         ctx.stroke();
 
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 8px "Rajdhani", sans-serif';
+        ctx.font = `bold 8px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('🕶️ OCULTO EN NIEBLA', 0, -radius - (tok.hidden ? 31 : 15));
@@ -4142,7 +4143,7 @@ export class CanvasEngine {
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.fillText(`🌊 DEPTH ${depth}`, 0, -radius - (tok.hidden ? 26 : 12));
         ctx.restore();
@@ -4244,9 +4245,11 @@ export class CanvasEngine {
   drawClassBanner(ctx, url, radius) {
     const flag = url && this.getTokenImage(url);
     if (!flag?.complete || !flag.naturalWidth || !flag.naturalHeight) return;
-    const height = 2 * radius * 0.35;
+    // Twice its first size (v2.27.17: at 35 % of the token it could hardly be seen). It hangs
+    // over the bottom-right edge of the ring so it does not cover the portrait.
+    const height = 2 * radius * 0.7;
     const width = height * flag.naturalWidth / flag.naturalHeight;
-    ctx.drawImage(flag, radius - width, radius - height, width, height);
+    ctx.drawImage(flag, radius - width * 0.6, radius - height, width, height);
   }
 
   renderGhostToken(ctx, ghost, gridSize, time, caption = 'ÚLTIMA POS.') {
@@ -4293,7 +4296,7 @@ export class CanvasEngine {
 
     // Badge
     ctx.globalAlpha = 0.85;
-    ctx.font = 'bold 9px "Rajdhani", sans-serif';
+    ctx.font = `bold 9px ${canvasFont('hud')}`;
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f59e0b';
     if (caption) ctx.fillText(caption, 0, radius + 12);
@@ -4408,7 +4411,7 @@ export class CanvasEngine {
     const midY = (y1 + y2) / 2;
 
     const distText = losBlocked ? `⚠️ BLOQUEADO · ${lockBand} · ${distMeters}m (${distSquares}c)` : `⚡ ${lockBand} · ${distMeters}m (${distSquares}c)`;
-    ctx.font = `${Math.max(8.5, Math.round(9.5 / this.zoom))}px "Rajdhani", sans-serif`;
+    ctx.font = `${Math.max(8.5, Math.round(9.5 / this.zoom))}px ${canvasFont('hud')}`;
     const textW = ctx.measureText(distText).width;
     const pillW = textW + 12 / this.zoom;
     const pillH = 15 / this.zoom;
@@ -4535,7 +4538,7 @@ export class CanvasEngine {
             ? (isKeeper && state.gmVision ? `📡 VIBRACIÓN: ????? [${target.name.toUpperCase()}]` : '📡 VIBRACIÓN: ?????')
             : `📡 VIBRACIÓN: ${target.name.toUpperCase()}`;
 
-          ctx.font = 'bold 9px "Rajdhani", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('hud')}`;
           const textW = ctx.measureText(labelText).width;
           const badgeW = Math.max(90, textW + 20);
 
@@ -4615,7 +4618,7 @@ export class CanvasEngine {
         : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
 
       ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
-      ctx.font = 'bold 11px "Rajdhani", sans-serif';
+      ctx.font = `bold 11px ${canvasFont('hud')}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(displayName, 0, radius + 12);
@@ -4645,7 +4648,7 @@ export class CanvasEngine {
           ctx.stroke();
 
           ctx.fillStyle = color;
-          ctx.font = 'bold 9px "Rajdhani", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('hud')}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(text, startX + bWidth / 2, badgeY + 7.5);
@@ -4700,7 +4703,7 @@ export class CanvasEngine {
 
         if (label) {
           ctx.fillStyle = color;
-          ctx.font = 'bold 8px "Rajdhani", sans-serif';
+          ctx.font = `bold 8px ${canvasFont('hud')}`;
           ctx.textAlign = 'center';
           ctx.fillText(label, 0, clockRadius + 8);
         }
@@ -4742,7 +4745,7 @@ export class CanvasEngine {
       : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
 
     ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
-    ctx.font = 'bold 11px "Rajdhani", sans-serif';
+    ctx.font = `bold 11px ${canvasFont('hud')}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(displayName, 0, radius + 12);
@@ -4776,7 +4779,7 @@ export class CanvasEngine {
         ctx.stroke();
 
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(b.text, startX + bWidth / 2, badgeY + 7);
@@ -4848,7 +4851,7 @@ export class CanvasEngine {
         ctx.stroke();
 
         ctx.fillStyle = '#00f3ff';
-        ctx.font = 'bold 8px "Rajdhani", sans-serif';
+        ctx.font = `bold 8px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(`${prog}/${segs} ${cfg.clockLabel}`, 0, clockRadius + 8);
@@ -5091,7 +5094,7 @@ export class CanvasEngine {
                       : tmpl.type === 'line' ? ` // ↕ ${widthMeters}m`
                       : '';
       const badgeText = `AREA: ${radiusMeters}m (${radiusSq} sq) // ${deg}°${extraInfo}`;
-      ctx.font = 'bold 11px "Orbitron", sans-serif';
+      ctx.font = `bold 11px ${canvasFont('display')}`;
       const textW = ctx.measureText(badgeText).width;
       const totalW = textW + 20;
       const badgeX = tmpl.x;
@@ -5197,7 +5200,7 @@ export class CanvasEngine {
     const midY = (start.y + end.y) / 2;
     const badgeText = movement ? `${rangeBand.toUpperCase()} · ${(distUnit === 'km' ? distPx / gridSize * scaleKilometers * 1000 : Number(distVal)).toLocaleString(undefined, { maximumFractionDigits: 1 })} m` : `${distVal}${distUnit} (${distGrid} sq) // [${rangeBand.toUpperCase()}]`;
 
-    ctx.font = 'bold 12px "Orbitron", sans-serif';
+    ctx.font = `bold 12px ${canvasFont('display')}`;
     const textWidth = ctx.measureText(badgeText).width;
 
     ctx.fillStyle = 'rgba(6, 11, 25, 0.9)';
@@ -5288,7 +5291,7 @@ export class CanvasEngine {
           ctx.textBaseline = 'middle';
           ctx.fillText(icon, midX, midY);
 
-          ctx.font = 'bold 9px "Orbitron", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('display')}`;
           ctx.fillStyle = '#ffffff';
           ctx.fillText((eff.label || (eff.type === 'laser' ? 'Laser Beam' : 'Line Anomaly')).toUpperCase(), midX, midY - 18);
         }
@@ -5344,7 +5347,7 @@ export class CanvasEngine {
           ctx.textBaseline = 'middle';
           ctx.fillText(icon, eff.x, eff.y);
 
-          ctx.font = 'bold 9px "Orbitron", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('display')}`;
           ctx.fillStyle = '#ffffff';
           ctx.fillText((eff.label || 'Poly Anomaly').toUpperCase(), eff.x, eff.y - 18);
         }
@@ -5386,7 +5389,7 @@ export class CanvasEngine {
           ctx.fillText(icon, eff.x, eff.y);
 
           // Label above
-          ctx.font = 'bold 9px "Orbitron", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('display')}`;
           ctx.fillStyle = '#ffffff';
           ctx.fillText((eff.label || 'Anomaly').toUpperCase(), eff.x, eff.y - 18);
         }

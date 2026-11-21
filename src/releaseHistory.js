@@ -1,6 +1,81 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.1', date: '2026-11-21', title: 'V3 · El Keeper decide siempre el daño; el dado vuelve a abrirse',
+    sections: [
+      { title: 'Daño', items: [
+        'El daño que aplica un jugador lo decide siempre el Keeper, sea cual sea el objetivo (también un enemigo al que se le haya asignado dueño, o su propio personaje): al Keeper le aparece la ventana para elegir los escudos y aplicar o cancelar. En la Ficha del jugador el botón dice «Enviar daño al Keeper» y, tras enviarlo, «Enviado al Keeper: él decide».',
+        'La mesa rechaza el daño que le llegue de un jugador sin pasar por esa ventana (cada aprobación vale una sola vez).',
+      ] },
+      { title: 'Pantalla', items: [
+        'Arreglado: el dado de la esquina del mapa (jugador y Keeper) y el botón de la pantalla del Keeper no respondían desde la v2.28.2.',
+      ] },
+    ],
+  },
+  {
+    version: '2.29.0', date: '2026-11-21', title: 'V3 · Ajustes, fuentes más legibles, panel lateral que se oculta y esquinas suaves',
+    sections: [
+      { title: 'Ajustes', items: [
+        'Nuevo botón «⚙ Ajustes» en la cabecera, con Sesiones, Sonido, Ayuda, el idioma (ES / EN), las fuentes y el comportamiento del panel lateral. Sesiones, Sonido y Ayuda salen de la cabecera.',
+      ] },
+      { title: 'Fuentes', items: [
+        'Dos juegos de fuentes a elegir en Ajustes: B · Exo 2 (Exo 2 en títulos y botones, Inter en el texto, JetBrains Mono en las cifras) y E · Sobria (Orbitron solo en los títulos, Inter en todo lo demás). Por defecto, B. La elección se recuerda en el navegador.',
+        'Ningún rótulo baja de 10 px (antes había de 7 y 8 px). El texto del mapa (nombres, barras, etiquetas) usa también la fuente elegida. Las cartas conservan su maqueta.',
+      ] },
+      { title: 'Panel lateral', items: [
+        'El panel derecho puede quedar fijo o ocultarse: en «Se oculta» solo asoma una pestaña en el borde derecho y el mapa usa todo el ancho; al llevar el ratón al borde, el panel entra con una animación rápida y suave, y se va al salir. Se cambia en Ajustes o con la chincheta del propio panel.',
+      ] },
+      { title: 'Paneles', items: [
+        'Esquinas redondeadas de 5 px, planas (sin bisel interior), en la cabecera, las herramientas, el panel lateral, la barra del personaje, los relojes y las ventanas.',
+        'En pantalla completa se oculta el rótulo de la esquina (operativos, rejilla, escena): repetía la cabecera y quedaba bajo la mano de cartas.',
+      ] },
+    ],
+  },
+  {
+    version: '2.28.2', date: '2026-11-21', title: 'V3 · El mapa ocupa toda la pantalla, sin marco',
+    sections: [
+      { title: 'Pantalla', items: [
+        'En escritorio el mapa ocupa todo el fondo de la ventana, sin marco. La cabecera, la barra de herramientas y el panel derecho flotan encima, con un fondo translúcido.',
+        'Lo que va sobre el mapa (nombre de la escena, relojes, barra del personaje, mano de cartas, dados) se coloca en el hueco que dejan los paneles, así que nada queda tapado. En móvil y tableta se mantiene la disposición de antes.',
+        'Fuera la etiqueta «Fear N/12» junto a la mano de cartas del Keeper: el Fear ya se ve arriba.',
+      ] },
+    ],
+  },
+  {
+    version: '2.28.1', date: '2026-11-21', title: 'V3 · Sin barra inferior: más alto para el mapa',
+    sections: [
+      { title: 'Pantalla', items: [
+        'Fuera la barra de estado de abajo (conexión, campaña, guardado e idioma): ese alto pasa al mapa y a los paneles laterales.',
+        'El estado del guardado y el selector de idioma ES / EN van en la cabecera, a la derecha. Al pasar el ratón por «Guardado» se ven la campaña y el estado de la conexión; al pulsarlo, el aviso de siempre. En pantallas estrechas solo queda el idioma.',
+      ] },
+    ],
+  },
+  {
+    version: '2.28.0', date: '2026-11-21', title: 'V3 · Armas y equipo, reorganizado; aumentos con efectos y cartas',
+    sections: [
+      { title: 'Armas y equipo', items: [
+        'Lo que llevas va primero, en cuatro bloques: Armas, Armadura, Aumentos y Equipo. Cada bloque tiene su «+ Añadir», que abre el catálogo ya filtrado en un panel aparte (se cierra con ✕ o Esc). «Solo lo que puedo usar» sigue marcado por defecto.',
+        'Cada arma deja a la vista solo Atacar; Editar y Quitar pasan al menú «⋯». Tocar una etiqueta (Stunning, Paired…) muestra su regla del glosario. Los textos largos se abren al tocarlos.',
+        'La armadura tiene su bloque, con umbrales y Armor Slots. «Cambiar» pone otra (sustituye a la que llevas). Quitarla deja los umbrales naturales (Mayor 2 / Grave 4 + nivel; 4 / 6 en Kryllian, Rift Spinner y Synthetic) y sin Armor Slots propios.',
+        'El editor completo del inventario queda solo para el Keeper.',
+      ] },
+      { title: 'Aumentos', items: [
+        'Sus efectos se aplican al instalarlos y se retiran al quitarlos: Reflejos de Combate (+1 Evasión), Blindaje Subdérmico (+1 Armor Slot máx., también sobre la armadura), Osificación Reforzada (+2 HP máx.), Extremidad Cibernética (+1 Fuerza), Acelerador Sináptico (+2 Agilidad) y Conjunto Sensorial (+2 Instinto).',
+        'Capacidad de aumentos (Corebook): la suma de tus tres mejores entre Fuerza, Agilidad, Finura y Presencia (Humanos y Synthetics +2). Cada aumento cuesta 1; por cada punto por encima, −1 Stress máximo mientras sigas por encima. El bloque muestra «capacidad usada / total».',
+        'Los aumentos que se activan son una carta en tu mano, junto a las de clase, ilustrada con la imagen del propio aumento: Pre-Cognición Táctica (1 Stress, 1 / escena: Ventaja en un ataque o reacción) y Supresor de Dolor (reacción, 1 / escena: limpia 1 Stress).',
+        'Poner y quitar armadura y aumentos lo aplica la mesa, así que en partida online también cambian la Evasión, los Traits y el Stress máximo del jugador.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.17', date: '2026-11-21', title: 'V3 · Insignia de clase más grande en el token',
+    sections: [
+      { title: 'Mapa', items: [
+        'La insignia de clase de la esquina inferior derecha del token mide el doble (70 % del diámetro en vez del 35 %) y cuelga sobre el borde del anillo, sin tapar el retrato ni el nombre.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.16', date: '2026-11-21', title: 'Insignias, retratos y cartas de acción',
     sections: [
       { title: 'Mesa', items: ['La insignia de clase ocupa el 35 % del diámetro del token en altura y queda en su esquina inferior derecha. Los jugadores pueden personalizar el retrato de sus tokens asignados desde su ficha.'] },

@@ -78,7 +78,7 @@ body {
   padding: 0;
   background: none;
   border: 0;
-  font: 8px var(--font-mono);
+  font: max(8px, var(--fs-min, 0px)) var(--font-mono);
   letter-spacing: 0.12em;
   color: #8094ae;
 }
@@ -194,7 +194,7 @@ body {
   height: 19px;
 }
 .tool-caption {
-  font: 8px var(--font-mono);
+  font: max(8px, var(--fs-min, 0px)) var(--font-mono);
   letter-spacing: 0.03em;
 }
 .tool-btn.active {
@@ -233,7 +233,7 @@ body {
   z-index: 15;
 }
 .eyebrow {
-  font: 9px var(--font-mono);
+  font: max(9px, var(--fs-min, 0px)) var(--font-mono);
   letter-spacing: 0.2em;
   color: #7993ae;
   display: block;
@@ -246,7 +246,7 @@ body {
   text-shadow: 0 2px 8px #000;
 }
 .field-coordinates {
-  font: 8px var(--font-mono);
+  font: max(8px, var(--fs-min, 0px)) var(--font-mono);
   letter-spacing: 0.13em;
   display: flex;
   gap: 8px;
@@ -282,7 +282,7 @@ body {
   letter-spacing: 0.03em;
 }
 .panel-index {
-  font: 9px var(--font-mono);
+  font: max(9px, var(--fs-min, 0px)) var(--font-mono);
   color: #55748c;
 }
 .sidebar-tab-nav {
@@ -296,7 +296,7 @@ body {
 .tab-nav-btn {
   padding: 9px 4px;
   border: 1px solid transparent;
-  font: 9px var(--font-mono);
+  font: max(9px, var(--fs-min, 0px)) var(--font-mono);
   letter-spacing: 0.04em;
   background: none;
   color: #8298b1;
@@ -327,7 +327,7 @@ body {
 }
 .subtab-btn {
   border: 0;
-  font: 9px var(--font-mono);
+  font: max(9px, var(--fs-min, 0px)) var(--font-mono);
   padding: 10px 6px;
   color: #8b9eb5;
 }
@@ -338,7 +338,7 @@ body {
   box-shadow: none;
 }
 .form-group label {
-  font: 9px var(--font-mono);
+  font: max(9px, var(--fs-min, 0px)) var(--font-mono);
   letter-spacing: 0.08em;
   color: #93a8bf;
   margin-bottom: 8px;
@@ -451,7 +451,7 @@ input[type='range']::-webkit-slider-thumb {
   width: 100%;
 }
 .fear-title {
-  font: 9px var(--font-mono);
+  font: max(9px, var(--fs-min, 0px)) var(--font-mono);
   letter-spacing: 0.16em;
 }
 .fear-counter {
@@ -469,7 +469,7 @@ input[type='range']::-webkit-slider-thumb {
   gap: 3px;
 }
 .fear-actions .hud-btn {
-  font: 8px var(--font-mono);
+  font: max(8px, var(--fs-min, 0px)) var(--font-mono);
   padding: 3px 5px;
   min-height: 20px;
 }
@@ -562,7 +562,7 @@ input[type='range']::-webkit-slider-thumb {
   gap: 16px;
   justify-content: space-between;
   align-items: center;
-  font: 8px var(--font-mono);
+  font: max(8px, var(--fs-min, 0px)) var(--font-mono);
   color: #70869c;
   letter-spacing: 0.1em;
   padding: 0 6px;
@@ -754,12 +754,12 @@ textarea {
   color: #deedf6;
 }
 .instrument-value small {
-  font: 8px var(--font-mono);
+  font: max(8px, var(--fs-min, 0px)) var(--font-mono);
   color: #849ab1;
   margin-top: 2px;
 }
 .instrument > span {
-  font: 8px var(--font-mono);
+  font: max(8px, var(--fs-min, 0px)) var(--font-mono);
   color: #9bb1c7;
   letter-spacing: 0.13em;
 }
@@ -899,7 +899,7 @@ textarea {
     letter-spacing: 0.13em;
   }
   .brand-version {
-    font-size: 6px;
+    font-size: max(6px, var(--fs-min, 0px));
   }
   .brand-logo-icon {
     font-size: 22px;
@@ -913,7 +913,7 @@ textarea {
     gap: 3px;
   }
   .header-right .hud-btn {
-    font-size: 8px;
+    font-size: max(8px, var(--fs-min, 0px));
     min-height: 27px;
     padding: 5px 7px;
   }
@@ -931,7 +931,7 @@ textarea {
     height: 43px;
   }
   .tool-caption {
-    font-size: 7px;
+    font-size: max(7px, var(--fs-min, 0px));
   }
   .workspace-container {
     gap: 6px;
@@ -947,10 +947,10 @@ textarea {
     font-size: 16px;
   }
   .eyebrow {
-    font-size: 7px;
+    font-size: max(7px, var(--fs-min, 0px));
   }
   .orbital-statusbar {
-    font-size: 7px;
+    font-size: max(7px, var(--fs-min, 0px));
   }
   .token-quickbar-container {
     bottom: 10px;
@@ -998,11 +998,11 @@ textarea {
   gap: 8px;
 }
 .layer-bar-title {
-  font-size: 9px;
+  font-size: max(9px, var(--fs-min, 0px));
 }
 .layer-active-name {
   max-width: 75px;
-  font-size: 9px;
+  font-size: max(9px, var(--fs-min, 0px));
 }
 .clocks-layer-overlay {
   top: 144px;
@@ -1071,7 +1071,7 @@ textarea {
   display: none;
 }
 .clock-badge-btn {
-  font-size: 7px;
+  font-size: max(7px, var(--fs-min, 0px));
   letter-spacing: 0.02em;
   padding: 3px;
 }
@@ -1101,7 +1101,7 @@ textarea {
   white-space: nowrap;
 }
 .tok-qb-compact .tok-qb-role {
-  font-size: 9px;
+  font-size: max(9px, var(--fs-min, 0px));
   white-space: nowrap;
 }
 .tok-qb-compact .tok-qb-stat-group,
@@ -1247,7 +1247,7 @@ textarea {
     gap: 3px !important;
   }
   .tok-qb-compact .tok-qb-actions button {
-    font-size: 8px;
+    font-size: max(8px, var(--fs-min, 0px));
     padding: 6px;
   }
   .token-quickbar-container {
@@ -1333,11 +1333,11 @@ textarea {
   gap: 4px;
 }
 .layer-active-name {
-  font-size: 8px;
+  font-size: max(8px, var(--fs-min, 0px));
   max-width: 68px;
 }
 .layer-bar-title {
-  font-size: 9px !important;
+  font-size: max(9px, var(--fs-min, 0px)) !important;
 }
 @media (max-width: 1024px) {
   .clocks-layer-overlay {
@@ -1346,7 +1346,7 @@ textarea {
     top: 84px;
   }
   .clock-widget.collapsed .clock-title {
-    font-size: 9px;
+    font-size: max(9px, var(--fs-min, 0px));
   }
   .clock-widget.collapsed .clock-title-group {
     gap: 6px;
@@ -1396,3 +1396,9 @@ textarea {
 .hud-select .orbital-select-trigger {
   font-size: 12px;
 }
+
+/* v2.28.1: the bottom status bar is gone; its save state and language switch sit in the header. */
+.header-status { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.header-status .status-save { font: max(9px, var(--fs-min, 0px)) var(--font-mono); letter-spacing: .1em; padding: 4px 6px; white-space: nowrap; }
+.header-status .status-save::before { content: '●'; margin-right: 5px; font-size: max(8px, var(--fs-min, 0px)); }
+@media (max-width: 900px) { .header-status .status-save { display: none; } }

@@ -297,7 +297,7 @@ test('drag preview keeps a translucent origin and measures the direct segment af
   assert.equal(labels.length, count);
 });
 
-test('the class flag occupies 35% of token diameter at lower right outside the portrait clip', async () => {
+test('the class flag occupies 70% of token diameter at lower right, over the ring (v2.27.17: twice its first size)', async () => {
   const { mapPortraitLayers } = await import('../src/tokenAvatars.js');
   const tok = { avatarUrl:'/assets/tokens/classes/human-mystic-f.svg' };
   const layers = mapPortraitLayers(tok);
@@ -308,5 +308,5 @@ test('the class flag occupies 35% of token diameter at lower right outside the p
   const badge = { complete:true, naturalWidth:100, naturalHeight:200 };
   const calls = [];
   CanvasEngine.prototype.drawClassBanner.call({getTokenImage:() => badge}, {drawImage:(...args) => calls.push(args)}, custom.flag, 50);
-  assert.deepEqual(calls, [[badge, 32.5, 15, 17.5, 35]]);
+  assert.deepEqual(calls, [[badge, 29, -20, 35, 70]]);
 });

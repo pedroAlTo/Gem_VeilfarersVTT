@@ -1545,7 +1545,8 @@ export function equipCatalogItem(inventory, catalogItem) {
       range: catalogItem.range || 'Close',
       features: catalogItem.features || '',
       tags: Array.isArray(catalogItem.tags) ? catalogItem.tags : tagsFromFeatures(catalogItem.features),
-      tier: catalogItem.tier || 'Tier 1'
+      tier: catalogItem.tier || 'Tier 1',
+      ...(catalogItem.id ? { catalogId: String(catalogItem.id).slice(0, 100) } : {})
     });
   } else {
     // Armor, Gear, Augmentations, or Drone Modules
@@ -1554,7 +1555,9 @@ export function equipCatalogItem(inventory, catalogItem) {
       name: catalogItem.name,
       tier: catalogItem.tier || '',
       quantity: String(catalogItem.quantity || '1'),
-      use: catalogItem.use || catalogItem.features || catalogItem.benefit || catalogItem.effect || ''
+      use: catalogItem.use || catalogItem.features || catalogItem.benefit || catalogItem.effect || '',
+      ...(catalogItem.id ? { catalogId: String(catalogItem.id).slice(0, 100) } : {}),
+      ...({ armor: { kind: 'armor' }, augmentations: { kind: 'augment' }, gear: { kind: 'gear' } }[catalogItem.category] || {})
     });
   }
   return draft;

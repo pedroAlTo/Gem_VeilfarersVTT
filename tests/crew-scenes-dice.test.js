@@ -180,8 +180,17 @@ test('two clients complete host/join, token assignment, scene sync, submission a
     newArmor: 1
   });
   await new Promise(resolve => setTimeout(resolve, 15));
+  // v2.29.1: damage is always the Keeper's call; a player's direct damage is refused.
+  assert.equal(hostStore.state.tokens.find(t => t.id === enemy.id).hp.current, 10);
+  const hit = { type: 'APPLY_DAMAGE', attackerId: token.id, targetId: enemy.id, hpLoss: 3, newHp: 7, armorLoss: 1, newArmor: 1 };
+  guest.sendToHost({ type: 'DAMAGE_REQUEST', request: { attackerName: 'Imported pilot', targetId: enemy.id, targetName: enemy.name, raw: 5, severity: 'Minor', options: [hit, { ...hit, armorLoss: 0, newArmor: 2 }] } });
+  await new Promise(resolve => setTimeout(resolve, 15));
+  assert.equal(hostStore.state.tokens.find(t => t.id === enemy.id).hp.current, 10, 'nothing until the Keeper decides');
+  document.querySelector('#kdmg_apply').click(); await new Promise(resolve => setTimeout(resolve, 15));
   assert.equal(hostStore.state.tokens.find(t => t.id === enemy.id).hp.current, 7);
   assert.equal(guestStore.state.tokens.find(t => t.id === enemy.id).hp.current, 7);
+  guest.broadcast({ ...hit, approval: 'forged', newHp: 4 }); await new Promise(resolve => setTimeout(resolve, 15));
+  assert.equal(hostStore.state.tokens.find(t => t.id === enemy.id).hp.current, 7, 'a forged approval does nothing');
   hostStore.assignTokenControllers(droneToken.id, []); host.syncAll(); await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(guestStore.canEditToken(droneToken.id), false);
 
   guest.disconnect(); assert.equal(guestStore.state.campaignName, 'Local backup'); assert.equal(guestStore.sessionRole, 'local'); host.disconnect();

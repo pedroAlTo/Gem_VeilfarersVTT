@@ -1,0 +1,47 @@
+/* Ajustes (v2.29.0). The header buttons it replaces stay in the page, hidden. */
+html body #network_modal_btn, html body #audio_toggle_btn, html body #help_btn { display: none !important; }
+.settings-wrap { position: relative; flex-shrink: 0; }
+.settings-btn { display: inline-flex !important; align-items: center; gap: 6px; }
+.settings-btn svg { width: 15px; height: 15px; }
+.settings-pop {
+  position: fixed; right: 16px; top: 64px; z-index: 9000; width: 300px; padding: 8px;
+  display: flex; flex-direction: column; gap: 4px; border-radius: 5px;
+  background: rgba(16, 8, 36, .97); border: 1px solid rgba(192, 132, 252, .45); box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
+  font: 13px var(--font-body, sans-serif); color: #e2e8f0;
+}
+.settings-pop[hidden] { display: none; }
+.settings-item { all: unset; box-sizing: border-box; cursor: pointer; padding: 8px 10px; border-radius: 4px; font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
+.settings-item small { font-weight: 400; color: #94a3b8; font-size: 11.5px; }
+.settings-item:hover, .settings-item:focus-visible { background: rgba(192, 132, 252, .14); }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-top: 1px solid rgba(255, 255, 255, .07); }
+.settings-row > span:first-child { color: #c4b5fd; font-size: 12px; font-weight: 600; }
+.settings-seg { display: inline-flex; border: 1px solid rgba(192, 132, 252, .45); border-radius: 4px; overflow: hidden; }
+.settings-seg button { all: unset; cursor: pointer; padding: 5px 9px; font-size: 11.5px; color: #cbd5e1; }
+.settings-seg button + button { border-left: 1px solid rgba(192, 132, 252, .3); }
+.settings-seg button[aria-pressed="true"] { background: #facc15; color: #1a1033; font-weight: 700; }
+.settings-seg button:focus-visible, .settings-item:focus-visible { outline: 2px solid #00f3ff; outline-offset: -2px; }
+.settings-pop .lang-switch { border-radius: 4px; overflow: hidden; }
+
+/* The right panel: pinned, or tucked away and shown at the right edge (desktop, full-bleed). */
+.panel-pin { all: unset; cursor: pointer; display: inline-grid; place-items: center; width: 26px; height: 26px; margin-left: 8px; border-radius: 4px; color: #94a3b8; border: 1px solid rgba(192, 132, 252, .35); }
+.panel-pin svg { width: 14px; height: 14px; transform: rotate(45deg); transition: transform .15s ease; }
+.panel-pin[aria-pressed="true"] { color: #facc15; border-color: #facc15; }
+.panel-pin[aria-pressed="true"] svg { transform: none; }
+.sidebar-hover-edge { display: none; }
+body.fullbleed.sb-auto .sidebar-hover-edge { display: block; position: fixed; top: var(--fb-top, 76px); right: 0; bottom: 0; width: 14px; z-index: 49; }
+html body.fullbleed .right-sidebar { transition: transform .18s cubic-bezier(.2, .7, .2, 1), box-shadow .18s ease; will-change: transform; }
+html body.fullbleed.sb-auto .right-sidebar:not(.sb-open) { transform: translateX(calc(100% + 8px - 6px)); box-shadow: none; }
+html body.fullbleed.sb-auto .right-sidebar.sb-open { transform: none; }
+/* A thin tab shows where the tucked-away panel is. */
+html body.fullbleed.sb-auto .right-sidebar:not(.sb-open)::before { content: ''; position: absolute; left: 0; top: 50%; width: 4px; height: 64px; transform: translateY(-50%); border-radius: 2px; background: #c084fc; }
+
+/* Panels: corners rounded 5 px, flat (no inner bevel). */
+html body .header-hud, html body .left-toolbar, html body .right-sidebar, html body .token-quickbar, html body .clock-widget,
+html body .card-hand-empty, html body .orbital-map-heading .fear-meter-overlay, html body .dossier-modal, html body .veil-modal-box,
+html body .dice-dock-panel, html body .element-inspector-container > *, html body .gm-menu, html body .players-overlay-hud {
+  border-radius: 5px !important;
+}
+html body .left-toolbar, html body .right-sidebar, html body .header-hud { box-shadow: 0 6px 22px rgba(0, 0, 0, .4) !important; }
+
+/* The tiny «PROGRESS» inside a clock is exempt from the 10 px floor: it must fit in the ring. */
+html body #clocks_layer_overlay .clock-inline-count em { font-size: 7.5px !important; letter-spacing: .06em !important; }
