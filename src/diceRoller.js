@@ -1,7 +1,9 @@
+import { CONTEXT_EDGES, contextualEdges } from './statePowers.js';
+import { swarmCandidates, bloodiedAttack } from './adversaryPassives.js';
 import { isEncounterMarker, perHitMinion } from './bestiaryProfiles.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { attackPresentation, weaponImpactType } from './combatFX.js';
-import { firstStrikeRider, throwExpression } from './damageRiders.js';
+import { throwExpression } from './damageRiders.js';
 import { guideEvent } from './onboarding.js';
 import { IMPACT_TYPES } from './encounterRules.js';
 import { dossierDialog } from './dossierUI.js';
@@ -17,8 +19,8 @@ import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
 import { proceduralAttack, fixedStressAttack } from './adversaryWeapons.js';
 import { damageNames, hitTypes } from './damageProtection.js';
-import { checkEdge, requireActive, lifeStage } from './combatState.js';
-import { distanceInfo, rangeCheck, weaponTraitId, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
+import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage } from './combatState.js';
+import { distanceInfo, rangeCheck, weaponRangeBand, weaponTraitId, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
 import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { throwDice, facesRoller } from './tableDice.js';
@@ -104,7 +106,7 @@ export class DiceRollerSidebar {
     const token = store.getSelectedToken();
     const actorChanged=this.currentActor?.id!==token?.id;
     this.currentActor = token;
-    if (actorChanged) this.container.querySelector('#dmg_delivery_tag').value = '';
+    if (actorChanged) { this.container.querySelector('#dmg_delivery_tag').value = ''; this.preparedCard = null; }
     if (this.preparedWeapon && (actorChanged || JSON.stringify(token && tokenInventory(token).weapons.find(w => w.id === this.preparedWeapon.id)) !== this.preparedWeapon.signature)) {
       this.preparedWeapon = null;
       this.container.querySelector('#dmg_formula').value = '';
@@ -266,7 +268,7 @@ export class DiceRollerSidebar {
   }
 
   // Sets up the roll a card asks for (Trait and DC) and leaves it one click away.
-  prepareCheck({ tokenId, traitId, dc }) {
+  prepareCheck({ tokenId, traitId, dc, playId = null, replyId = null }) {
     const actor = store.state.tokens.find(t => t.id === tokenId);
     if (!actor) return false;
     if (store.state.selectedTokenId !== tokenId) store.update({ selectedTokenId: tokenId });
@@ -279,6 +281,26 @@ export class DiceRollerSidebar {
       if (![...select.options].some(o => Number(o.value) === dc)) { const option = document.createElement('option'); option.value = String(dc); option.textContent = `DC ${dc}`; select.append(option); }
       select.value = String(dc);
     }
+    this.preparedCard = playId ? { tokenId, traitId, dc, playId, replyId } : null;
+    return true;
+  }
+
+  prepareCardDamage(actorId, targetId, formula, secret) {
+    const q = selector => this.container.querySelector(selector);
+    store.update({ selectedTokenId: actorId });
+    this.syncWithSelectedToken();
+    window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
+    q('#tab_damage_btn')?.click();
+    this.preparedWeapon = null; this.presetApplied = null; this.lastAttack = null;
+    this.populateDamageTargets();
+    q('#dmg_target_select').value = targetId; q('#dmg_target_select').onchange?.();
+    q('#dmg_weapon_select').value = ''; q('#dmg_delivery_tag').value = '';
+    q('#dmg_formula').value = formula; q('#dmg_proficiency').value = 1; q('#dmg_honed').value = 0;
+    q('#dmg_damage_type').value = 'auto';
+    for (const name of ['dmg_is_critical','dmg_is_direct','dmg_weapon_crushing','dmg_weapon_bleed']) if (q('#'+name)) q('#'+name).checked = false;
+    q('#secret_roll').checked = !!secret;
+    this.syncDamageMode();
+    notify('Daño preparado: elige el tipo impreso y calcula el impacto.');
     return true;
   }
 
@@ -1117,6 +1139,14 @@ export class DiceRollerSidebar {
     this.presetApplied = { proficiency: fresh.proficiency, honed: fresh.honed };
   }
 
+  chooseRollContext(clocks) {
+    return new Promise(resolve => {
+      const dlg = dossierDialog('¿Se aplica la ventaja del poder?', clocks.map(c => '<button class="hud-btn" data-clock="' + escapeHTML(c.id) + '">' + escapeHTML(c.name + ' · ' + CONTEXT_EDGES[c.name][1]) + '</button>').join('') + '<button class="hud-btn" data-clock="">Tirar sin este efecto</button>');
+      const observer = new MutationObserver(() => { if (!dlg.isConnected) { observer.disconnect(); resolve(null); } });
+      observer.observe(dlg.parentNode, { childList: true });
+      dlg.querySelectorAll('[data-clock]').forEach(b => { b.onclick = () => { observer.disconnect(); dlg.remove(); resolve(b.dataset.clock || null); }; });
+    });
+  }
   async executeActionCheck(attack = null) {
     const actor = attack?.actor || this.currentActor || store.getSelectedToken() || (store.sessionRole === 'player' ? (store.state.tokens.find(t => t.id === store.state.claimedTokenId) || store.getControlledTokens()[0]) : null) || {
       name: 'Voidwalker',
@@ -1136,7 +1166,9 @@ export class DiceRollerSidebar {
     const gear = !attack && actor.isPlayer !== false && actor.id ? await this.gearCheck(actor) : { disadvantage: false, text: '', worn: [] };
     const manualAdvantage = this.container.querySelector('#dice_advantage').checked;
     const situationalDisadvantage = this.container.querySelector('#dice_disadvantage').checked || !!attack?.disadvantage || gear.disadvantage;
-    const edge = checkEdge(actor, attack?.target, manualAdvantage, situationalDisadvantage);
+    const contexts = contextualEdges(actor, this.selectedTraitId);
+    const contextId = contexts.length ? await this.chooseRollContext(contexts) : null;
+    const edge = checkEdge(actor, attack?.target, manualAdvantage || !!contextId, situationalDisadvantage, this.selectedTraitId);
     const hasAdvantage = edge.advantage;
     const hasDisadvantage = edge.disadvantage;
     const useResolve = this.container.querySelector('#dice_use_resolve').checked;
@@ -1190,6 +1222,8 @@ export class DiceRollerSidebar {
       }
     }
 
+    const prepared = !attack && this.preparedCard;
+    const linked = prepared && prepared.tokenId === actor.id && prepared.traitId === this.selectedTraitId && prepared.dc === dc;
     let result;
     const playerName = store.state.userName || store.state.playerName || store.sessionAuthorName?.() || (store.state.userRole === 'keeper' ? 'Keeper' : 'Jugador');
     const tokenName = actor.name || 'Operativo';
@@ -1199,7 +1233,8 @@ export class DiceRollerSidebar {
         type: 'CHECK',
         actorId: actor.id,
         // An attack is an active action: the table gives the attacker the Spotlight.
-        ...(attack ? { attack: true, targetId: attack.target?.id } : {}),
+        ...(attack ? { attack: true, targetId: attack.target?.id, weaponId: attack.weaponId, viaDrone: !!attack.via, closingId: attack.closingId } : {}),
+        ...(linked ? { cardPlayId: prepared.playId, cardReplyId: prepared.replyId } : {}),
         playerName,
         tokenName,
         visibility: this.rollVisibility(),
@@ -1207,7 +1242,7 @@ export class DiceRollerSidebar {
           traitId: this.selectedTraitId,
           subtraitId,
           dc,
-          hasAdvantage: manualAdvantage,
+          hasAdvantage: manualAdvantage, contextId,
           hasDisadvantage: situationalDisadvantage,
           useResolve,
           experienceMod: expMod,
@@ -1227,6 +1262,7 @@ export class DiceRollerSidebar {
     }
 
     // Every die is written out: a single "Mod" figure hid the d6 inside the Trait bonus.
+    if (linked) this.preparedCard = null;
     const math = checkMath(result);
     // Overlay 3D results banner
     if (this.is3D && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
@@ -1316,7 +1352,7 @@ export class DiceRollerSidebar {
     return { disadvantage: notes.length > 0, text: notes.length ? ` Fuera de competencia (Desventaja): ${notes.join(' · ')}` : '', worn: inventory.items };
   }
 
-  async executeAttack() {
+  async executeAttack({ closingId = null, swarm = false } = {}) {
     const q = id => this.container.querySelector(id);
     const attacker = this.currentActor || store.getSelectedToken();
     const target = store.state.tokens.find(t => t.id === q('#dmg_target_select').value);
@@ -1331,7 +1367,8 @@ export class DiceRollerSidebar {
     const weapon = (tokenInventory(attacker).weapons || []).find(w => w.id === q('#dmg_weapon_select').value) || null;
     const map = store.getActiveMap() || {};
     const gap = distanceInfo(attacker, target, map), band = gap.band;
-    const range = rangeCheck(weapon, band);
+    if (swarm && (store.sessionRole === 'player' || store.state.userRole !== 'keeper' || !swarmCandidates(attacker,map,store.state.tokens).some(t => t.id === target.id))) throw new Error('La situación del enjambre o del objetivo ha cambiado.');
+    const range = swarm ? { allowed: true, reach: 'Close', disadvantage: false } : rangeCheck(weapon, band);
     // A drone whose signal is Lost cannot evade: Evasion −2 (Corebook ch. 14).
     const evasion = droneEvasion(target);
     // A drone attacks with its operator's Action and its operator's roll.
@@ -1351,14 +1388,22 @@ export class DiceRollerSidebar {
       + (gap.blocked ? ' ⚠️ Hay un muro o una puerta cerrada entre atacante y objetivo: línea de tiro bloqueada.' : '');
     if (!range.allowed) { show('—', 'FUERA DE ALCANCE', `${where} ${range.reason} Acércate o cambia de arma.`, 'miss'); notify(range.reason, 'error'); return { hit: false, blocked: true, band }; }
 
+    let attackRoll;
     let hit, critical, total, detail, rolled3D = false, fearAdvice = '';
     const gear = (attacker.isPlayer !== false || drone) ? await this.gearCheck(drone ? operator : attacker, { weapon: drone ? null : weapon, drone: drone ? attacker : null }) : { disadvantage: false, text: '' };
     if (attacker.isPlayer !== false || drone) {
-      const traitId = weaponTraitId(weapon);
+      const traitId = weapon ? weaponTraitId(weapon) : 'strength';
+      if (!weapon && !drone) {
+        this.preparedWeapon = null; this.presetApplied = null;
+        q('#dmg_formula').value = '1d4 Physical'; q('#dmg_proficiency').value = attacker.proficiency || 1;
+        q('#dmg_honed').value = honedEdgeOf(attacker); q('#dmg_damage_type').value = 'auto';
+        q('#dmg_delivery_tag').value = ''; q('#dmg_weapon_crushing').checked = false; q('#dmg_weapon_bleed').checked = false;
+      }
       if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
       const props = weaponAttackBonus(drone ? null : weapon, band);
-      const result = await this.executeActionCheck({ evasion, target, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '', bonus: props.bonus });
+      const result = await this.executeActionCheck({ evasion, target, weaponId: weapon?.id, closingId, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '', bonus: props.bonus });
       if (!result) return { hit: false, band };
+      attackRoll = result;
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
       // Overheating: its d6 after the attack, thrown as a 3D die.
       const heatFeatures = drone ? {} : weaponFeatures(weapon);
@@ -1372,14 +1417,17 @@ export class DiceRollerSidebar {
       rolled3D = this.can3D();
     } else {
       audio.playDiceRoll();
-      const edge = checkEdge(attacker, target, q('#dice_advantage').checked, q('#dice_disadvantage').checked || range.disadvantage);
+      const melee = !swarm && (!weapon || weaponRangeBand(weapon) === 'Melee' || !weaponRangeBand(weapon) && band === 'Melee');
+      const guard = melee && disciplinedDefense(target,attacker,map,store.state.tokens);
+      const edge = checkEdge(attacker, target, q('#dice_advantage').checked, q('#dice_disadvantage').checked || range.disadvantage || !!guard?.penalty);
       const groups = [{ qty: 1, sides: 20, theme: 'vfNeutral', role: 'Attack' }];
       if (edge.advantage || edge.disadvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: edge.advantage ? 'Advantage' : 'Disadvantage' });
       const attackLabel = `${attacker.name} · Ataque vs ${target.name}`;
       const faces = await this.roll3D(groups, attackLabel);
       rolled3D = !!faces;
       const conditional = target.conditions?.includes('Incapacitated') && /\+1 on attacks against an Incapacitated target/i.test(weapon?.features || '') ? 1 : 0;
-      const roll = rollAdversaryAttack({ attackModifier: (attacker.attackModifier ?? 0) + conditional, evasion, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces?.[0] ?? null, forcedD6: faces?.[1] ?? null });
+      const roll = rollAdversaryAttack({ attackModifier: (attacker.attackModifier ?? 0) + conditional + bloodiedAttack(attacker).attack, evasion, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces?.[0] ?? null, forcedD6: faces?.[1] ?? null });
+      if (guard) markMeleeDefense(store,target,guard);
       hit = roll.hit; critical = roll.isCritical; total = roll.total;
       const card = {
         label: attackLabel, playerName: 'Keeper', tokenName: attacker.name, actorName: attacker.name, skill: 'Ataque',
@@ -1396,7 +1444,7 @@ export class DiceRollerSidebar {
     }
     const rangeNote = (range.disadvantage ? ` ${range.reason}` : '') + (drone ? ` Tira ${operator.name}, operador del dron.${command.disadvantage ? ' ' + command.reason : ''}` : '') + (gear.text || '');
     // Bear Down after a missed attack may still carry it over the Evasion (applyBearDown).
-    this.lastAttack = { actorId: attacker.id, rollerId: (attacker.isPlayer !== false || drone) ? (operator?.id || attacker.id) : null, evasion, hit, where, rangeNote, detail };
+    this.lastAttack = { checkId: attackRoll?.id, targetId: target.id, actorId: attacker.id, rollerId: (attacker.isPlayer !== false || drone) ? (operator?.id || attacker.id) : null, evasion, hit, where, rangeNote, detail };
     if (!hit) {
       show(total, 'FALLO', `${where}${rangeNote} ${detail} No alcanza la Evasion ${evasion}: no hay daño.${fearAdvice ? ` ${fearAdvice}` : ''}`, 'miss');
       if (fearAdvice) notify(fearAdvice);
@@ -1407,17 +1455,23 @@ export class DiceRollerSidebar {
     // Let the table read the attack before the damage dice replace it.
     if (rolled3D) await new Promise(resolve => setTimeout(resolve, this.attackToDamagePause ?? 1600));
     this.featureWhisper = weapon ? { attacker: attacker.name, target: target.name, weapon: weapon.name } : null;
-    // Nirvana / Disciplined State: the first Melee attack of the state deals +2d6 by itself.
-    const strike = (attacker.isPlayer !== false && !drone) ? firstStrikeRider(attacker, weapon) : null;
-    if (strike) {
-      const r = await throwExpression(strike.dice, strike.label, attacker);
-      const clocks = (attacker.effectClocks || []).map(c => (c.id === strike.clockId ? { ...c, firstStrikeUsed: true } : c));
-      const before = store.tableActing; if (store.sessionRole !== 'player') store.tableActing = true;
-      try { store.updateToken(attacker.id, { effectClocks: clocks }); } finally { store.tableActing = before; }
-      await this.executeDamageCalc(null, { riders: [{ ...strike, value: r.total, faces: r.faces }] });
-      return { hit: true, critical, total, band };
+    const riders = [];
+    const passive = bloodiedAttack(attacker);
+    if (passive.flat) riders.push({ id: 'desperate-strike', label: 'Desperate Strike', value: passive.flat });
+    if (passive.die) {
+      const sides = /d(4|6|8|10|12|20)\b/i.exec(weapon?.damage || '')?.[1];
+      if (sides) {
+        const dice = '1d' + sides;
+        const extra = critical ? { total: Number(sides), faces: [] } : await throwExpression(dice, 'Territorial Rage', attacker);
+        riders.push({ id: 'territorial-rage', label: 'Territorial Rage', dice, value: extra.total, faces: extra.faces });
+      }
     }
-    await this.executeDamageCalc();
+    for (const rider of attackRoll?.damageRiders || []) {
+      if (!rider.dice) { riders.push(rider); continue; }
+      const rolled = await throwExpression(rider.dice, rider.label, attacker);
+      riders.push({ ...rider, value: rolled.total, faces: rolled.faces });
+    }
+    await this.executeDamageCalc(null, { riders });
     return { hit: true, critical, total, band };
   }
 
@@ -1534,7 +1588,8 @@ export class DiceRollerSidebar {
   // are thrown on the table first and this runs again with what they show.
   executeDamageCalc(rolled = null, { bearDown = 0, riders = [], extrasPinned = null, extraFaces = null } = {}) {
     if (lifeStage(this.currentActor)) { notify('Este personaje no puede infligir daño ordinario.', 'error'); return; }
-    const riderTotal = riders.reduce((n, r) => n + (Number(r.value) || 0), 0);
+    const riderTotal = riders.filter(r => !r.branch).reduce((n, r) => n + (Number(r.value) || 0), 0);
+    const bonusComponents = riders.filter(r => r.branch).map(r => ({ amount: r.value, types: r.branch === 'Void' ? ['void'] : r.branch === 'Lux' ? ['energy', 'radiant'] : ['physical', 'kinetic'] }));
     const bossPhase = this.currentActor?.boss?.states[this.currentActor.boss.index];
     if (bossPhase?.canAttack === false) { notify('Este estado usa su procedimiento especial; no tiene un ataque de daño estándar.', 'error'); return; }
     const targetSelect = this.container.querySelector('#dmg_target_select');
@@ -1615,7 +1670,7 @@ export class DiceRollerSidebar {
       diceCount: diceCount + proficiency - 1,
       diceSides,
       flatModifier: flatMod + honed + bearDown + riderTotal,
-      bonus: bearDown + riderTotal, // the formula path adds it too
+      bonusComponents, bonus: bearDown + riderTotal, // the formula path adds it too
       ...(faces.length ? { rollDie: sides => { const face = faces.shift(); return Number.isInteger(face) && face >= 1 && face <= sides ? face : Math.floor(Math.random() * sides) + 1; } } : {}),
       isCritical: isCritical && !keeperAttack,
       isKeeperCritical: isCritical && keeperAttack,
@@ -1737,7 +1792,7 @@ export class DiceRollerSidebar {
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
     let applied = false;
     // The damage stays open to Bear Down until it is applied: the same dice, plus the bonus.
-    const pending = { actorId: attackerId, faces: dmgResult.rolls.slice(), bonus: bearDown, riders, extras, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, applied: false };
+    const pending = { checkId: this.lastAttack?.actorId === attackerId && this.lastAttack?.targetId === targetId && this.lastAttack?.hit ? this.lastAttack.checkId : null, targetId, actorId: attackerId, faces: dmgResult.rolls.slice(), bonus: bearDown, riders, extras, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, applied: false };
     this.lastDamage = pending; this.lastRollKind = 'damage';
     applyBtn.disabled = !targetToken;
     applyBtn.textContent = targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
@@ -1907,6 +1962,7 @@ export class DiceRollerSidebar {
       }
       keeperDamageDialog(currentTarget, request, n => applyFinalDamage(n), { shields: spentShieldsChoice ?? (useArmor ? 1 : 0) });
     };
+    pending.apply = applyBtn.onclick;
   }
 }
 

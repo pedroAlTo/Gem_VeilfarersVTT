@@ -2,6 +2,9 @@ import { sanitizeHTML, escapeHTML as e } from './ui.js';
 // src/combatLog.js
 // Real-time Tactical Action and Roll Log for VeilVTT
 
+import { beginCardSession } from './cardLimits.js';
+import { dossierDialog } from './dossierDialog.js';
+import { openResolution, resolutionLabel } from './cardResolutionUI.js';
 import { store } from './state.js';
 
 export class CombatLogView {
@@ -23,6 +26,7 @@ export class CombatLogView {
       <div class="combat-log-content">
         <div class="sidebar-header-row">
           <span class="sidebar-title">TACTICAL CHRONICLE (${logs.length})</span>
+          ${isKeeper && store.state.tokens.some(t => Object.values(t.cardUses || {}).includes('session')) ? '<button class="hud-btn hud-btn-xs" data-game-session>Nueva sesión de juego</button>' : ''}
           <button class="hud-btn hud-btn-xs hud-btn-secondary" id="clear_log_btn">CLEAR</button>
         </div>
 
@@ -38,6 +42,7 @@ export class CombatLogView {
                   <span class="log-time">${e(entry.timestamp)}</span>
                 </div>
                 <div class="log-title">${e(entry.title)}</div>
+                ${entry.resolution ? `<button type="button" class="hud-btn hud-btn-xs" data-resolution="${e(entry.resolution.id)}">${e(resolutionLabel(entry.resolution))} · ${e(entry.resolution.name)}</button>` : ''}
                 ${entry.details ? `<div class="log-details">${e(entry.details)}</div>` : ''}
               </div>
             `;
@@ -46,11 +51,17 @@ export class CombatLogView {
       </div>
     `);
 
+    for (const btn of this.container.querySelectorAll('[data-resolution]')) btn.onclick = () => openResolution(btn.dataset.resolution);
+    const session = this.container.querySelector('[data-game-session]');
+    if (session) session.onclick = () => {
+      const modal = dossierDialog('Nueva sesión de juego','<p>Se renovarán los poderes de un uso por sesión para todos los personajes de esta sala.</p><button class="hud-btn" data-renew>Renovar usos de sesión</button>');
+      modal.querySelector('[data-renew]').onclick = () => { beginCardSession(store); modal.remove(); };
+    };
     const clearBtn = this.container.querySelector('#clear_log_btn');
     if (clearBtn) {
       clearBtn.disabled = !isKeeper;
       clearBtn.onclick = () => {
-        store.update({ logs: [] });
+        store.update({ logs: store.state.logs.filter(row => row.resolution?.phase === 'roll' || row.resolution?.replies?.some(r => !r.outcome)) });
       };
     }
   }

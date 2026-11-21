@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.7**.
-Paquete: `VeilFarers_VTT_v2.29.7.zip`.
+Versión actual del VTT: **v2.29.8**.
+Paquete: `VeilFarers_VTT_v2.29.8.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.8] — 2026-11-21
+
+Poderes y movimientos en mesa
+
+### Cartas
+
+- El registro conserva lanzador, objetivos, tirada y consecuencias. El Keeper puede pedir las tiradas impresas a los jugadores, preparar daño con escudos y aplicar recursos, condiciones y relojes. Los proyectos de dominio abren un reloj de campaña. Se guardan los límites de uso de 51 poderes.
+
+### Vanguard y bestiario
+
+- Path to Nirvana y The Refused Path muestran el estado en el token y Breaking Point en la otra cara de la carta. Swarm Tactics permite elegir dos objetivos a alcance Close con 3 HP o más y resolver cada impacto por separado.
 
 ## [2.29.7] — 2026-11-21
 

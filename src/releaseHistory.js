@@ -1,6 +1,13 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.8', date: '2026-11-21', title: 'Poderes y movimientos en mesa',
+    sections: [
+      { title: 'Cartas', items: ['El registro conserva lanzador, objetivos, tirada y consecuencias. El Keeper puede pedir las tiradas impresas a los jugadores, preparar daño con escudos y aplicar recursos, condiciones y relojes. Los proyectos de dominio abren un reloj de campaña. Se guardan los límites de uso de 51 poderes.'] },
+      { title: 'Vanguard y bestiario', items: ['Path to Nirvana y The Refused Path muestran el estado en el token y Breaking Point en la otra cara de la carta. Swarm Tactics permite elegir dos objetivos a alcance Close con 3 HP o más y resolver cada impacto por separado.'] },
+    ],
+  },
+  {
     version: '2.29.7', date: '2026-11-21', title: 'Equipamiento avanzado ilustrado',
     sections: [{ title: 'Inventario y cartas', items: ['Las 16 armaduras, cuatro armas y el módulo de precognición que faltaban en el catálogo de mesa tienen ilustración propia.'] }],
   },

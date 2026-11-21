@@ -11,13 +11,14 @@ import { validateActor } from './validation.js';
 import { characterDetails, setAffiliation, setConnection, exportSystemCharacter, exportNativeCharacter, downloadJSON, TRAIT_IDS } from './characterImport.js';
 import { mountEquipmentPanel } from './equipmentUI.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
+import { isPath, pathBadge } from './statePowers.js';
 import { clockPieHTML, editClock, tickClocks, MAX_SEGMENTS } from './effectClocks.js';
 
 // Effect clocks (Path to Nirvana, Rapid Regeneration…): mark, unmark, resize or end them.
 function effectClocksEditorHTML(token) {
   const list = token.effectClocks || [];
   if (!list.length) return '';
-  return `<h4 class="dossier-label">Efectos con duración</h4>${list.map(c => `<div class="effect-clock-row" data-fx="${e(c.id)}">${clockPieHTML(c, 24)}<strong>${e(c.name)}</strong>
+  return `<h4 class="dossier-label">Efectos con duración</h4>${list.map(c => `<div class="effect-clock-row" data-fx="${e(c.id)}">${clockPieHTML(c, 24)}<strong>${e(isPath(c.name) ? pathBadge(c) : c.name)}</strong>
     <span class="effect-clock-count">${c.filled} / ${c.segments}</span>
     <button type="button" class="hud-btn hud-btn-xs" data-fx-act="unmark" aria-label="Desmarcar un segmento de ${e(c.name)}">−</button>
     <button type="button" class="hud-btn hud-btn-xs" data-fx-act="mark" aria-label="Marcar un segmento de ${e(c.name)}">+</button>
