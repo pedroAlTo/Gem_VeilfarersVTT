@@ -16,6 +16,7 @@ import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { canvasFont } from './fontSets.js';
+import { seeThrough, windowSides, SEE_TOKENS_FROM } from './windows.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
@@ -2844,9 +2845,10 @@ export class CanvasEngine {
     // the Keeper's GM vision sees it softened so the map stays readable.
     // Who sees on this screen: the party (a player's tokens follow confirmed places; while the
     // player drags, the vision stays at the start of the drag).
-    // A token's own light (a flashlight) shows on a player's screen only while the party sees that
-    // token: an enemy out of sight does not give itself away with its light cone (v2.27.9).
-    const lightShown = t => state.userRole !== 'player' || this.isTokenVisibleToPlayers(t, activeTokens, map);
+    // A token's own light (a flashlight, often a cone) shows on a player's screen only for the
+    // party and the tokens that player controls. Enemies' and NPCs' cones are the Keeper's only
+    // (v2.27.9: not while out of sight; v2.29.2: never, user decision).
+    const lightShown = t => state.userRole !== 'player' || sharesSight(t);
     let viewers = [], previewOnly = false;
     if (state.userRole === 'player') {
       // Only the party's eyes: an enemy the player selects (to attack it) never sees for them.
@@ -3401,7 +3403,8 @@ export class CanvasEngine {
       let losBlocked = false;
       for (const wall of (map.walls || [])) {
         const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        if (wallType === 'window') continue; // Windows do not block line of sight
+        // A window lets the party make out who is behind it from a side clear enough (v2.29.2).
+        if (wallType === 'window' && seeThrough(wall, vx, vy) >= SEE_TOKENS_FROM) continue;
         if (wallType === 'door' && wall.isOpen) continue; // Open doors do not block LOS
 
         // Solid walls, closed doors, and secret doors block LOS
@@ -3422,7 +3425,7 @@ export class CanvasEngine {
     // behind their back, shows the room, never who is in it.
     const blocked = (ax, ay, bx, by) => (map.walls || []).some(wall => {
       const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-      if (wallType === 'window' || (wallType === 'door' && wall.isOpen)) return false;
+      if ((wallType === 'window' && seeThrough(wall, ax, ay) >= SEE_TOKENS_FROM) || (wallType === 'door' && wall.isOpen)) return false;
       return this.checkLineIntersection(ax, ay, bx, by, wall.x1, wall.y1, wall.x2, wall.y2);
     });
     const facing = (v, x, y) => {
@@ -3503,7 +3506,7 @@ export class CanvasEngine {
       let losBlocked = false;
       for (const wall of (map.walls || [])) {
         const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        if (wallType === 'window') continue;
+        if (wallType === 'window' && seeThrough(wall, vx, vy) >= SEE_TOKENS_FROM) continue;
         if (wallType === 'door' && wall.isOpen) continue;
         if (this.checkLineIntersection(vx, vy, x, y, wall.x1, wall.y1, wall.x2, wall.y2)) {
           losBlocked = true;
@@ -3567,7 +3570,6 @@ export class CanvasEngine {
       const isOpen = !!w.isOpen;
       const isLocked = !!w.isLocked;
       const isSecret = !!w.isSecret;
-      const visionPercent = w.visionPercent ?? 80;
 
       // Wall lines are ONLY visible for the Keeper.
       // Players see no wall lines (the walls block LOS and movement without drawing neon lines).
@@ -3613,12 +3615,9 @@ export class CanvasEngine {
           ctx.shadowBlur = 6;
         }
       } else if (isWindow) {
-        // Cyan glass sheen with double line & transparency
-        ctx.strokeStyle = isSelected ? '#00f3ff' : 'rgba(56, 189, 248, 0.85)';
-        ctx.lineWidth = isSelected ? 5 : 3.5;
-        ctx.setLineDash([8, 4]);
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = isSelected ? 12 : 6;
+        // A window is drawn as a thin glass pane below (v2.29.2), not as a thick dashed line.
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0)';
+        ctx.lineWidth = 0;
       } else {
         // Normal opaque wall
         ctx.strokeStyle = isSelected ? '#00f3ff' : 'rgba(255, 42, 95, 0.8)';
@@ -3633,16 +3632,22 @@ export class CanvasEngine {
       ctx.lineTo(w.x2, w.y2);
       ctx.stroke();
 
-      // For Windows: render tinted glass slab along the segment proportional to window opacity
+      // Windows: a thin glass pane (two fine lines with the glass between, tinted by how opaque it
+      // is) and small frame caps at its ends. The tint is the average of its two sides.
       if (isWindow) {
-        const glassAlpha = Math.max(0.12, ((100 - visionPercent) / 100) * 0.45);
+        const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1) || 1, nx = -(w.y2 - w.y1) / len, ny = (w.x2 - w.x1) / len, half = 2.2;
+        const { a, b } = windowSides(w), opacity = 1 - (a + b) / 200;
         ctx.save();
-        ctx.strokeStyle = `rgba(56, 189, 248, ${glassAlpha})`;
-        ctx.lineWidth = 10;
+        ctx.setLineDash([]);
+        ctx.shadowColor = '#7dd3fc'; ctx.shadowBlur = isSelected ? 10 : 3;
         ctx.beginPath();
-        ctx.moveTo(w.x1, w.y1);
-        ctx.lineTo(w.x2, w.y2);
-        ctx.stroke();
+        ctx.moveTo(w.x1 + nx * half, w.y1 + ny * half); ctx.lineTo(w.x2 + nx * half, w.y2 + ny * half);
+        ctx.lineTo(w.x2 - nx * half, w.y2 - ny * half); ctx.lineTo(w.x1 - nx * half, w.y1 - ny * half); ctx.closePath();
+        ctx.fillStyle = `rgba(125, 211, 252, ${0.12 + opacity * 0.55})`; ctx.fill();
+        ctx.lineWidth = isSelected ? 1.4 : 1; ctx.strokeStyle = isSelected ? '#e0f7ff' : 'rgba(186, 230, 253, 0.85)';
+        for (const side of [1, -1]) { ctx.beginPath(); ctx.moveTo(w.x1 + nx * half * side, w.y1 + ny * half * side); ctx.lineTo(w.x2 + nx * half * side, w.y2 + ny * half * side); ctx.stroke(); }
+        ctx.shadowBlur = 0; ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(224, 242, 254, 0.95)';
+        for (const [px, py] of [[w.x1, w.y1], [w.x2, w.y2]]) { ctx.beginPath(); ctx.moveTo(px + nx * 4.5, py + ny * 4.5); ctx.lineTo(px - nx * 4.5, py - ny * 4.5); ctx.stroke(); }
         ctx.restore();
       }
 
@@ -3708,20 +3713,20 @@ export class CanvasEngine {
           ctx.fillText((isSecret && isKeeper) ? '🕵️' : (isOpen ? '🔓' : (isLocked ? '🔒' : '🚪')), midX, midY);
         }
       } else if (isWindow) {
-        // Window glass badge
-        ctx.beginPath();
-        ctx.roundRect(midX - 22, midY - 9, 44, 18, 4);
-        ctx.fillStyle = 'rgba(8, 47, 73, 0.9)';
-        ctx.fill();
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        ctx.fillStyle = '#bae6fd';
-        ctx.font = `bold 9px ${canvasFont('hud')}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`🪟 ${visionPercent}%`, midX, midY);
+        // The Keeper reads each side's transparency on that side of the pane (A and B), small and
+        // only when it matters: in the wall editor or with the window selected. Players see glass.
+        if (isKeeper && (isEditor || isSelected)) {
+          const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1) || 1, nx = -(w.y2 - w.y1) / len, ny = (w.x2 - w.x1) / len;
+          const { a, b } = windowSides(w);
+          ctx.save();
+          ctx.font = `600 10px ${canvasFont('hud')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          for (const [label, value, side] of [['A', a, 1], ['B', b, -1]]) {
+            const tx = midX + nx * 13 * side, ty = midY + ny * 13 * side, text = `${label} ${value}%`, wdt = ctx.measureText(text).width + 10;
+            ctx.fillStyle = 'rgba(8, 20, 36, 0.85)'; ctx.beginPath(); ctx.roundRect(tx - wdt / 2, ty - 8, wdt, 16, 4); ctx.fill();
+            ctx.fillStyle = value === 0 ? '#fca5a5' : value === 100 ? '#e0f7ff' : '#bae6fd'; ctx.fillText(text, tx, ty + 0.5);
+          }
+          ctx.restore();
+        }
       } else if (isEditor) {
         ctx.beginPath();
         ctx.arc(midX, midY, 4, 0, Math.PI * 2);
@@ -4061,9 +4066,10 @@ export class CanvasEngine {
         ctx.restore();
       } else {
         ctx.save();
-        let rimColor = tok.color || '#00f3ff';
+        // The colour chosen in the sheet wins; the path and kind only give the default (v2.29.2:
+        // a Sleeping character used to be orange whatever colour was chosen).
+        let rimColor = tok.color || (tok.path === 'Sleeping' ? '#ffaa00' : '#00f3ff');
         if (isDead) rimColor = '#ef4444';
-        else if (tok.path === 'Sleeping') rimColor = '#ffaa00';
         else if (!tok.isPlayer) rimColor = tok.color || (tok.actorType === 'drone' ? '#72dfce' : '#ef4444');
         if (tok.hidden) rimColor = '#a855f7';
 
@@ -4170,8 +4176,9 @@ export class CanvasEngine {
       }
 
 
-      // Directional Vision & Smaller Directional Arrow Handle on Selected Token
-      if (isSelected) {
+      // Directional Vision & Smaller Directional Arrow Handle on Selected Token. A player sees it
+      // only on the party's tokens and their own: enemies' and NPCs' cones are the Keeper's (v2.29.2).
+      if (isSelected && (state.userRole !== 'player' || sharesSight(tok))) {
         ctx.save();
         const fAngle = tok.facingAngle ?? 0;
         const vAngle = tok.visionAngle ?? 90;

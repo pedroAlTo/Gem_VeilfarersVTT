@@ -550,3 +550,25 @@ test('font sets B and E: the choice is kept and the map text follows it (v2.29.0
   applyFontSet('nope'); assert.equal(currentFontSet(), 'b', 'an unknown set falls back to B'); assert.match(canvasFont('hud'), /Exo 2/);
   assert.equal(localStorage.getItem('veil.fonts'), 'b');
 });
+
+test('windows: one transparency per side, 0 % stops sight like a wall (v2.29.2)', async () => {
+  const { seeThrough, windowSide, windowSides, windowShadow } = await import('../src/windows.js');
+  const { LightingEngine } = await import('../src/lightingEngine.js');
+  const w = { x1: 0, y1: 0, x2: 100, y2: 0, wallType: 'window', isWindow: true, visionPercent: 100, visionPercentBack: 10 };
+  assert.equal(windowSide(w, 50, 20), 'a'); assert.equal(windowSide(w, 50, -20), 'b');
+  assert.equal(seeThrough(w, 50, 20), 100); assert.equal(seeThrough(w, 50, -20), 10);
+  assert.deepEqual(windowSides({ visionPercent: 40 }), { a: 40, b: 40 }, 'a window with one value is the same from both sides');
+  assert.ok(windowShadow(w, 50, 20, 500));
+  // From an opaque side the sight polygon stops at the window; from a clear side it goes through.
+  const engine = Object.create(LightingEngine.prototype);
+  const ys = (x, y) => engine.computeVisibilityPolygon(x, y, 300, [{ ...w, x1: -2000, x2: 2000, visionPercent: 0 }], null, 360).map(p => p.y ?? p[1]);
+  assert.ok(Math.min(...ys(50, 20)) > -1, 'side A at 0 %: sight stops at the window');
+  assert.ok(Math.max(...ys(50, -20)) > 200, 'side B at 10 %: seen through (dimmed by the fog)');
+});
+
+test('a player may change the colour of their token; the sheet sends only player fields (v2.29.2)', async () => {
+  const { validTokenPatch, pickPlayerFields } = await import('../src/validation.js');
+  assert.equal(validTokenPatch({ color: '#22d3ee' }), true);
+  assert.equal(validTokenPatch({ color: 'red; background:url(x)' }), false);
+  assert.deepEqual(Object.keys(pickPlayerFields({ color: '#ffffff', hasLight: true, name: 'X', stress: { current: 1, max: 6 } })).sort(), ['color', 'stress']);
+});

@@ -1,10 +1,28 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.1**.
-Paquete: `VeilFarers_VTT_v2.29.1.zip`.
+Versión actual del VTT: **v2.29.2**.
+Paquete: `VeilFarers_VTT_v2.29.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.2] — 2026-11-21
+
+V3 · Ventanas con transparencia por lado, color del token y conos solo para el Keeper
+
+### Ventanas
+
+- Cada lado de una ventana tiene su transparencia, de 0 % (muro opaco) a 100 % (cristal limpio): el espejo de una sala de interrogatorios es 100 % desde un lado y 10 % desde el otro. Lo que hay detrás se ve con la transparencia del lado desde el que se mira; a 0 % la ventana corta la vista como un muro. A 50 % o más se distingue quién hay detrás.
+- Antes la vista atravesaba siempre las ventanas y el porcentaje solo atenuaba la luz (con niebla no hacía nada).
+- Las ventanas se dibujan como un cristal fino con remates en los extremos, no como una línea gruesa. El Keeper ve el porcentaje de cada lado (A y B) en el editor de muros o con la ventana seleccionada; en el inspector hay un deslizador por lado y los atajos «Igual por los dos lados», «Espejo» e «Intercambiar A ↔ B».
+
+### Color del token
+
+- Arreglado: el color elegido no se aplicaba. Un personaje Sleeping se pintaba siempre en naranja (ahora el naranja es solo el color por defecto) y, en partida online, la mesa rechazaba la ficha que guardaba un jugador, así que su color no llegaba al borde, al nombre, al chat ni a los subtítulos. Ahora el jugador envía su color (y sus recursos), y la mesa lo acepta.
+
+### Visión
+
+- Los conos de los enemigos y NPC (su linterna y el arco de visión al seleccionarlos) solo los ve el Keeper. El jugador ve los del grupo y los de los tokens que controla.
 
 ## [2.29.1] — 2026-11-21
 

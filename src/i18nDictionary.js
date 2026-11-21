@@ -1477,6 +1477,12 @@ export const PAIRS = [
   ["Fijar u ocultar el panel lateral", "Pin or hide the side panel"],
   ["Exo 2 en títulos y botones, Inter en el texto", "Exo 2 for titles and buttons, Inter for text"],
   ["Orbitron solo en títulos, Inter en todo lo demás", "Orbitron for titles only, Inter for everything else"],
+  // V3 · Ventanas y daño (v2.29.2)
+  ["Igual por los dos lados", "Same from both sides"],
+  ["Espejo: A 100 % · B 10 %", "Mirror: A 100 % · B 10 %"],
+  ["Intercambiar A ↔ B", "Swap A ↔ B"],
+  ["Enviar daño al Keeper", "Send damage to the Keeper"],
+  ["Enviado al Keeper: él decide", "Sent to the Keeper: they decide"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

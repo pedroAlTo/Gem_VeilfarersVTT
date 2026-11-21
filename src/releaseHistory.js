@@ -1,6 +1,22 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.2', date: '2026-11-21', title: 'V3 · Ventanas con transparencia por lado, color del token y conos solo para el Keeper',
+    sections: [
+      { title: 'Ventanas', items: [
+        'Cada lado de una ventana tiene su transparencia, de 0 % (muro opaco) a 100 % (cristal limpio): el espejo de una sala de interrogatorios es 100 % desde un lado y 10 % desde el otro. Lo que hay detrás se ve con la transparencia del lado desde el que se mira; a 0 % la ventana corta la vista como un muro. A 50 % o más se distingue quién hay detrás.',
+        'Antes la vista atravesaba siempre las ventanas y el porcentaje solo atenuaba la luz (con niebla no hacía nada).',
+        'Las ventanas se dibujan como un cristal fino con remates en los extremos, no como una línea gruesa. El Keeper ve el porcentaje de cada lado (A y B) en el editor de muros o con la ventana seleccionada; en el inspector hay un deslizador por lado y los atajos «Igual por los dos lados», «Espejo» e «Intercambiar A ↔ B».',
+      ] },
+      { title: 'Color del token', items: [
+        'Arreglado: el color elegido no se aplicaba. Un personaje Sleeping se pintaba siempre en naranja (ahora el naranja es solo el color por defecto) y, en partida online, la mesa rechazaba la ficha que guardaba un jugador, así que su color no llegaba al borde, al nombre, al chat ni a los subtítulos. Ahora el jugador envía su color (y sus recursos), y la mesa lo acepta.',
+      ] },
+      { title: 'Visión', items: [
+        'Los conos de los enemigos y NPC (su linterna y el arco de visión al seleccionarlos) solo los ve el Keeper. El jugador ve los del grupo y los de los tokens que controla.',
+      ] },
+    ],
+  },
+  {
     version: '2.29.1', date: '2026-11-21', title: 'V3 · El Keeper decide siempre el daño; el dado vuelve a abrirse',
     sections: [
       { title: 'Daño', items: [
