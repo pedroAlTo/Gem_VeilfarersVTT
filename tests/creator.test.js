@@ -258,3 +258,12 @@ test('a signed-in user can save the finished character to their account; saving 
     assert.ok(document.querySelector('.creator-dialog'), 'the creator stays open after saving');
   } finally { account.saveCharacter = originalSave; account.user = originalUser; await store.saveQueue.catch(() => {}); dom.window.close(); }
 });
+
+test('the creator exports the selected portrait gender independently of pronouns', () => {
+  const state = { ...scholar(), pronouns: 'they/them', gender: 'f' };
+  const sheet = buildSheetDocument(state, data);
+  assert.equal(sheet.fields.gender, 'f');
+  const token = parseCharacterJSON(sheet).token;
+  assert.equal(token.pronouns, 'they/them');
+  assert.equal(token.avatarUrl, '/assets/tokens/classes/synthetic-scholar-f.svg');
+});

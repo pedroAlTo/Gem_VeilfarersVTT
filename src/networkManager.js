@@ -1,3 +1,4 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
 import { LanPeer } from './lanPeer.js';
 import { requireNetworkMode, LAN_SESSIONS } from './runtimeMode.js';
 // Keeper-authoritative replication. No cross-room BroadcastChannel.
@@ -10,10 +11,16 @@ function hitConditionsPatch(t, data) {
   return asked.length ? { conditions: normalizeConditions([...(t.conditions || []), ...asked]) } : {};
 }
 import { validateDrawing, canAnnotate } from './freehand.js';
+import { speakerToken } from './chatPortraits.js';
+import { isPortraitReference } from './portraitCatalog.js';
+import { actorPortrait } from './tokenAvatars.js';
 import { controlsToken, isDrone, isPartyToken } from './tokenPermissions.js';
 import { validArmorCut, applyArmorCut } from './weaponFeatures.js';
+import { characterKey } from './characterImport.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
+import { sameDamageDefenses } from './damageProtection.js';
+import { requireActive, LIFE_STATES, canChooseBlaze } from './combatState.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
 import { notify } from './ui.js';
 import { TABLE, KEEPER, chatRequest, validateChatEntry, chatVisibleTo, chatHistoryFor, appendChat } from './chat.js';
@@ -394,6 +401,7 @@ export class NetworkManager {
     return {
       ...this.store.serializeCampaign(),
       logs: (s.logs || []).filter(entry => entry.visibility !== 'keeper').map(entry => structuredClone(entry)),
+      keeperPortrait: s.keeperPortrait || '',
       chatMessages: chatHistoryFor(s.chatMessages, memberId),
       memberId, connectedPeers: this.store.state.connectedPeers || [],
       maps: [map],
@@ -415,7 +423,7 @@ export class NetworkManager {
             copy.name = 'Unknown contact';
             copy.roleTag = 'Unidentified';
             copy.species = '';
-            delete copy.sourceCharacter; delete copy.featureNotes;
+            delete copy.sourceCharacter; delete copy.featureNotes; delete copy.description;
           }
           return copy;
         }),
@@ -575,8 +583,8 @@ export class NetworkManager {
     }
     return this.request('CLAIM_TOKEN', { tokenId });
   }
-  async sendChat({ text, recipientId = TABLE, clientId = id() }) {
-    const payload = chatRequest({ text, recipientId, clientId });
+  async sendChat({ text, recipientId = TABLE, clientId = id(), senderTokenId }) {
+    const payload = chatRequest({ text, recipientId, clientId, senderTokenId });
     if (this.store.sessionRole === 'player') {
       if (![TABLE, KEEPER].includes(recipientId)) throw new Error('Los susurros se envían al Keeper.');
       return this.request('CHAT_SEND', payload);
@@ -602,7 +610,11 @@ export class NetworkManager {
         (recipient.id !== TABLE && senderId === KEEPER && !this.store.state.isConnected)) {
       throw new Error('El destinatario está desconectado. El susurro no se ha enviado.');
     }
-    const entry = validateChatEntry({ ...payload, id: id(), senderId, senderName: sender.name.trim() || 'Player', recipientName: recipient.name.trim() || 'Player', sentAt: Date.now() });
+    const token = speakerToken(this.store.state, senderId, payload.senderTokenId);
+    const portrait = token && actorPortrait(token);
+    const entry = validateChatEntry({ text: payload.text, recipientId: recipient.id, clientId: payload.clientId,
+      senderTokenId: token?.id, senderPortrait: isPortraitReference(portrait) ? portrait : undefined,
+      color: senderId === KEEPER ? '#fbbf24' : token?.color, id: id(), senderId, senderName: sender.name.trim() || 'Player', recipientName: recipient.name.trim() || 'Player', sentAt: Date.now() });
     this.store.update({ chatMessages: appendChat(this.store.state.chatMessages, entry) });
     // Deliberately separate from broadcast: private contents only enter participant sockets.
     for (const [peerId, conn] of this.connections) {
@@ -644,7 +656,8 @@ export class NetworkManager {
     if (safe.actorType !== 'player' && safe.isPlayer !== true) throw new Error('Import a player character. The Keeper creates drones and NPCs.');
     safe.actorType = 'player'; safe.isPlayer = true;
     const created = createActor(safe, this.store.state.activeMapId);
-    const existing = this.store.state.tokens.find(t => !isDrone(t) && t.ownerId === playerId);
+    const owned = this.store.state.tokens.filter(t => t.isPlayer !== false && (!t.actorType || t.actorType === 'player') && controlsToken(t, playerId));
+    const existing = owned.find(t => characterKey(t) === characterKey(created)) || (owned.length === 1 ? owned[0] : null);
     const actor = existing ? replaceActorSheet(existing, created) : { ...created, ownerId: playerId };
     const tokens = existing ? this.store.state.tokens.map(t => t.id === actor.id ? actor : t) : [...this.store.state.tokens, actor];
     validateCampaign({ ...this.store.serializeCampaign(), tokens });
@@ -757,6 +770,7 @@ export class NetworkManager {
       for (const patch of this.pendingTokenPatches.values()) {
         if (patch.tokenId === token.id && patch.campaignId === state.campaignId && patch.mapId === state.activeMapId && token.mapId === patch.mapId && controlsToken(token, this.store.memberId || this.store.peerId)) {
           result = { ...result, ...patch.partial };
+          if ('avatarUrl' in patch.partial) result.avatarUrl = actorPortrait(result);
           for (const key of ['hp', 'armor', 'stress', 'resolve']) if (patch.partial[key]) result[key] = { ...token[key], current: Math.min(token[key].max, patch.partial[key].current) };
           // A personal toggle never replaces the Keeper's configured light parameters.
           if ('hasSpotlight' in patch.partial) result.spotlight = { ...token.spotlight, enabled: patch.partial.hasSpotlight };
@@ -803,7 +817,10 @@ export class NetworkManager {
       this.sendToHost({ type: 'ACTION', requestId, action });
     });
   }
-  async performAction(action) {
+  async performAction(action, memberId = this.store.memberId || this.store.peerId) {
+    if (this.store.sessionRole === 'host' && action?.type === 'LIFE_TURN' && action.blaze != null &&
+        !canChooseBlaze(this.store.state.tokens.find(t => t.id === action.actorId), memberId))
+      throw new Error('El jugador asignado elige su último acto.');
     const { performGameAction } = await import('./gameActions.js');
     // Card rules data is fetched on demand; the table resolving a card makes sure it is there.
     if (['CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN'].includes(action?.type)) await (await import('./cardData.js')).loadCardData();
@@ -1031,6 +1048,7 @@ export class NetworkManager {
         const targetId = data.targetId || data.tokenId;
         const target = this.store.state.tokens.find(t => t.id === targetId);
         if (!target) throw new Error('Objetivo no encontrado.');
+        if (isEncounterMarker(target) || isEncounterMarker(this.store.state.tokens.find(t => t.id === attackerId))) throw new Error('Este encuentro se resuelve según su ficha.');
         if (target.mapId !== this.store.state.activeMapId) throw new Error('El objetivo no está en la escena actual.');
 
         // Validar que el emisor controla el token atacante o es dueño del objetivo
@@ -1040,8 +1058,15 @@ export class NetworkManager {
           throw new Error('El token atacante no está asignado a ti.');
         }
 
+        requireActive(this.store.state.tokens.find(t => t.id === attackerId));
         const currentHp = Number.isFinite(target.hp?.current) ? target.hp.current : 0;
         const currentArmor = Number.isFinite(target.armor?.current) ? target.armor.current : 0;
+
+        if (data.defense) {
+          const { hp, armor } = data.defense;
+          if (!sameDamageDefenses(target, data.defense) || hp !== currentHp || armor !== currentArmor)
+            throw new Error('Las defensas o las heridas del objetivo han cambiado. Vuelve a calcular el impacto.');
+        }
 
         let newHp = data.newHp != null ? Number(data.newHp) : (data.hpLoss != null ? Math.max(0, currentHp - Number(data.hpLoss)) : currentHp);
         let newArmor = data.newArmor != null ? Number(data.newArmor) : (data.armorLoss != null ? Math.max(0, currentArmor - Number(data.armorLoss)) : currentArmor);
@@ -1125,21 +1150,17 @@ export class NetworkManager {
               if (field !== 'current' && partial[k][field] !== token[k]?.[field]) throw new Error('Solo puedes cambiar el valor actual de ' + k + '.');
             partial[k] = { ...token[k], current: partial[k].current };
           }
+        if (partial.conditions && token.isPlayer !== false && LIFE_STATES.some(stage => partial.conditions.includes(stage) !== !!token.conditions?.includes(stage)))
+          throw new Error('Utiliza los controles de progreso y estabilización.');
+        if (('x' in partial && partial.x !== token.x) || ('y' in partial && partial.y !== token.y)) requireActive(token);
         // A player who moves their character takes the Spotlight (an active action).
         if (('x' in partial || 'y' in partial) && (partial.x !== token.x || partial.y !== token.y) && token.isPlayer !== false && token.actorType !== 'drone' && !token.hasSpotlight) partial.hasSpotlight = true;
-        if ('hasSpotlight' in partial) partial.spotlight = { ...token.spotlight, enabled: partial.hasSpotlight };
-        const turnOnSpotlight = Boolean(partial.hasSpotlight);
-        // Membership was checked above. Keeper's local Player-preview selection is irrelevant.
-        this.store._beforeTacticalMutation?.('Cambio de jugador', 'tok_' + token.id);
-        this.store.update({
-          tokens: this.store.state.tokens.map(t => {
-            if (t.id === token.id) return { ...t, ...partial };
-            if (turnOnSpotlight && (t.hasSpotlight || t.spotlight?.enabled)) {
-              return { ...t, hasSpotlight: false, spotlight: { ...(t.spotlight || {}), enabled: false } };
-            }
-            return t;
-          })
-        });
+        // The host applies the same round and Fear rules as the Keeper's own sheet.
+        const before = this.store.tableActing;
+        this.store.tableActing = true;
+        try {
+          if (!this.store.updateToken(token.id, partial)) throw new Error('Cambio rechazado. Revisa el foco de la ronda y el Fear disponible.');
+        } finally { this.store.tableActing = before; }
       } catch (error) {
         conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', sequence: data.sequence, error: error.message }));
       } finally {
@@ -1155,10 +1176,10 @@ export class NetworkManager {
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
           // Card actions resolve here too: the table pays their costs (they were missing, so a
           // connected player's card was refused as "not assigned").
-          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'REST_CHOICE'].includes(data.action?.type)
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
-        const result = await this.performAction(data.action);
+        const result = await this.performAction(data.action, this.members.get(senderId)?.id || senderId);
         this.syncAll();
         conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, result }));
       } catch (e) {

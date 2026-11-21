@@ -1,6 +1,8 @@
 import { store } from './state.js';
 import { guideEvent } from './onboarding.js';
 import { network } from './networkManager.js';
+import { LongMessagePortraits, speakerAppearance, speakerBadge } from './chatPortraits.js';
+import { openPortraitPicker } from './portraitPicker.js';
 import { newId } from './persistence.js';
 import { TABLE, KEEPER, CHAT_TEXT_LIMIT, chatHistoryFor, chatThread } from './chat.js';
 const RULES_SENDER = 'veil-rules'; // see rulesWhisper.js
@@ -13,6 +15,7 @@ export class ChatPanel {
     root.innerHTML = `<section class="chat-console">
       <div class="chat-heading">
         <span class="eyebrow">COMMS // ENLACE</span>
+        <button type="button" class="hud-btn chat-keeper-face" data-keeper-face title="Retrato del Keeper" aria-label="Retrato del Keeper" hidden></button>
         <span class="chat-status" role="status" title="Historial en tiempo real de la sesión"></span>
       </div>
       <label class="chat-channel-label" style="margin: 0;">
@@ -31,6 +34,20 @@ export class ChatPanel {
     </section>`;
     this.select = root.querySelector('vf-select'); this.input = root.querySelector('textarea');
     this.list = root.querySelector('.chat-messages'); this.error = root.querySelector('#chat_error');
+    this.faces = new LongMessagePortraits(this.list);
+    this.keeperFace = root.querySelector('[data-keeper-face]');
+    this.keeperFace.onclick = () => {
+      if (this.viewer !== KEEPER) return;
+      const campaign = this.store.state.campaignId;
+      const sceneTokens = (this.store.state.tokens || []).filter(t => t.mapId === this.store.state.activeMapId && !t.inReserve);
+      openPortraitPicker({ title: 'Retrato del Keeper', current: this.store.state.keeperPortrait,
+        allowCustom: true, sceneTokens, collection: sceneTokens.length ? 'scene' : 'human', resetLabel: 'Usar inicial del Keeper',
+        onChoose: url => {
+          if (this.viewer !== KEEPER || this.store.state.campaignId !== campaign) return false;
+          return this.store.update({ keeperPortrait: url });
+        },
+      });
+    };
     this.button = root.querySelector('.chat-send');
     this.select.addEventListener('change', () => this.choose(this.select.value));
     this.input.addEventListener('input', () => { this.error.textContent = ''; this.refreshComposer(); });
@@ -52,7 +69,7 @@ export class ChatPanel {
     const sidebar = document.getElementById('main_right_sidebar');
     if (sidebar) this.observer.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
     this.unsubscribe = this.store.subscribe((_, keys) => {
-      if (keys.some(k => ['chatMessages', 'players', 'connectedPeers', 'campaignId', 'userRole', 'isConnected', 'joiningSession', 'isHosting', 'roomCode'].includes(k))) this.refresh();
+      if (keys.some(k => ['chatMessages', 'keeperPortrait', 'players', 'connectedPeers', 'campaignId', 'userRole', 'isConnected', 'joiningSession', 'isHosting', 'roomCode'].includes(k))) this.refresh();
     });
     this.refresh();
   }
@@ -108,12 +125,18 @@ export class ChatPanel {
     this.root.querySelector('.chat-privacy').textContent = privateChannel
       ? 'SUSURRO · Solo tú y este destinatario. El Keeper guarda la conversación.'
       : 'MESA · Visible para todos los participantes de la sesión.';
+    this.keeperFace.hidden = this.viewer !== KEEPER;
+    if (this.keeperPortrait !== (state.keeperPortrait || '')) {
+      this.keeperPortrait = state.keeperPortrait || '';
+      this.keeperFace.replaceChildren(speakerBadge({ name: 'Keeper', url: this.keeperPortrait }), document.createTextNode('Retrato'));
+      this.messageSignature = '';
+    }
     const threadMessages = messages.filter(m => chatThread(m) === this.thread);
     const messageSignature = JSON.stringify([this.channel, threadMessages.map(m => m.id)]);
     if (messageSignature !== this.messageSignature) {
       const bottom = !this.messageSignature || this.list.scrollHeight - this.list.clientHeight - this.list.scrollTop < 60;
       this.messageSignature = messageSignature;
-      const fragment = document.createDocumentFragment();
+      const fragment = document.createDocumentFragment(), rows = [];
       if (!threadMessages.length) {
         const empty = document.createElement('p'); empty.className = 'chat-empty';
         empty.textContent = privateChannel ? 'Canal privado preparado. Los susurros aparecerán aquí.' : 'Abre la comunicación con tu tripulación.'; fragment.append(empty);
@@ -123,16 +146,18 @@ export class ChatPanel {
         const header = document.createElement('header'), name = document.createElement('strong'), time = document.createElement('time'), body = document.createElement('p');
         name.textContent = m.senderName; time.dateTime = new Date(m.sentAt).toISOString(); time.title = new Date(m.sentAt).toLocaleString();
         time.textContent = new Date(m.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const senderToken = this.store.state.tokens?.find(tok => tok.id === m.senderTokenId || tok.name === m.senderName || (tok.isPlayer && tok.ownerId === m.senderId));
-        const color = m.color || senderToken?.color;
+        const appearance = speakerAppearance(m, state);
+        const color = m.color || appearance?.color;
         if (color) {
           name.style.color = color;
           article.style.borderLeft = `3px solid ${color}`;
           body.style.color = color;
         }
-        body.textContent = m.text; header.append(name, time); article.append(header, body); fragment.append(article);
+        const speech = document.createElement('div'); speech.className = 'chat-speech';
+        body.textContent = m.text; header.append(name, time); speech.append(body); article.append(header, speech); fragment.append(article);
+        if (appearance) rows.push({ box: speech, body, appearance });
       }
-      this.list.replaceChildren(fragment); if (bottom) this.list.scrollTop = this.list.scrollHeight;
+      this.list.replaceChildren(fragment); this.faces.set(rows); if (bottom) this.list.scrollTop = this.list.scrollHeight;
     }
     this.refreshComposer();
   }
@@ -165,8 +190,7 @@ export class ChatPanel {
     this.error.textContent = ''; this.refreshComposer();
     try {
       const activeToken = this.store.getSelectedToken?.() || this.store.state.tokens?.find(t => t.id === this.store.state.claimedTokenId);
-      const color = activeToken?.color;
-      await this.network.sendChat({ text, recipientId: channel, clientId, color, senderTokenId: activeToken?.id });
+      await this.network.sendChat({ text, recipientId: channel, clientId, senderTokenId: activeToken?.id });
       guideEvent('chat');
       if (this.identity !== identity) return;
       if (this.drafts.get(channel)?.text === text) this.drafts.delete(channel);
@@ -178,7 +202,7 @@ export class ChatPanel {
     }
   }
   destroy() {
-    this.unsubscribe(); this.observer.disconnect();
+    this.unsubscribe(); this.observer.disconnect(); this.faces.destroy();
     window.removeEventListener('veil:open_chat', this.open); window.removeEventListener('resize', this.visibility);
     document.removeEventListener('visibilitychange', this.visibility);
   }

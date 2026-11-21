@@ -1,6 +1,83 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.16', date: '2026-11-21', title: 'Insignias, retratos y cartas de acción',
+    sections: [
+      { title: 'Mesa', items: ['La insignia de clase ocupa el 35 % del diámetro del token en altura y queda en su esquina inferior derecha. Los jugadores pueden personalizar el retrato de sus tokens asignados desde su ficha.'] },
+      { title: 'Cartas y equipo', items: ['Los movimientos Sleeping y del Keeper tienen ilustraciones. Las capacidades de los enemigos se agrupan en ocho categorías ilustradas. El inventario muestra las piezas de equipo con el estilo de las armaduras.'] },
+    ],
+  },
+  {
+    version: '2.27.15', date: '2026-11-21', title: 'Medición de movimiento y arte de la mesa',
+    sections: [
+      { title: 'Mapa', items: ['Durante el arrastre se conserva un retrato translúcido en el origen. La línea directa muestra los metros y el rango de la escena.'] },
+      { title: 'Ilustraciones', items: ['Retratos del bestiario de Tier 2, ilustraciones para los 21 poderes de nivel 1 y miniaturas en el equipo, los aumentos y los módulos de dron.'] },
+    ],
+  },
+  {
+    version: '2.27.14', date: '2026-11-21', title: 'Rift Spinners y retratos en la mesa',
+    sections: [
+      { title: 'Personajes y PNJ', items: [
+        'Cinco arañas de cristal con marcas individuales ilustran los Rift Spinners en el mapa, las fichas y las nueve insignias de clase.',
+        'El retrato automático utiliza el género de la ficha y después los pronombres. Desde su ficha, cada jugador puede elegir un retrato predefinido para sus tokens. El Keeper puede usar cualquier ascendencia, un retrato del bestiario o una imagen propia para un PNJ.',
+      ] },
+      { title: 'Chat y susurros', items: [
+        'Los mensajes que ocupan más de dos líneas muestran el retrato del hablante a la izquierda. El chat y los subtítulos se adaptan al ancho disponible.',
+        'Desde Chat, el Keeper puede elegir un token de la escena o subir su propia imagen. El retrato se guarda con la campaña.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.13', date: '2026-11-20', title: 'Bestiario en mesa y retratos de la tripulación',
+    sections: [
+      { title: 'Adversarios y encuentros', items: [
+        'El Keeper puede colocar los 57 perfiles. Hay 48 adversarios de combate y nueve encuentros por objetivos con un marcador que abre el procedimiento del libro.',
+        'La biblioteca identifica los valores provisionales de 44 fichas y explica sus defensas según la criatura. En una ficha ya desplegada, el Keeper puede recuperar las pistas vacías desde la biblioteca. El registro editorial está en docs/bestiario-pendientes-core.md.',
+        'Los esbirros sin umbrales reciben 1 HP por impacto ordinario que cause daño. Los ataques de Void Leech y Neon Jelly permiten marcar el Stress impreso directamente al objetivo.',
+      ] },
+      { title: 'Retratos de personajes', items: [
+        '45 retratos de las nueve ascendencias parten de las ilustraciones del paquete editorial. Las nueve insignias de clase dan identidad a las 243 combinaciones de ascendencia, clase y género. Harker, Vea y HE-09 tienen retratos propios renovados.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.12', date: '2026-11-20', title: 'Bestiario ilustrado de Tier 1',
+    sections: [
+      { title: 'Retratos en fichas y mapa', items: [
+        'Trece ilustraciones cubren ocho adversarios del bestiario, tres jefes del Keeper y los dos adversarios principales de Hearts in the Void. Los dos perfiles de la plaga de ratas de Charon comparten retrato.',
+        'La biblioteca muestra la ilustración al abrir un perfil de Tier 1. Los tokens reconocen el nombre del adversario y el Keeper puede elegir cualquiera de los trece retratos en los ajustes del token.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.11', date: '2026-11-20', title: 'Retratos de los personajes y descripciones del bestiario',
+    sections: [
+      { title: 'Personajes y adversarios', items: [
+        'Al importar o asignar un personaje, el mapa y las fichas muestran su retrato de ascendencia con la insignia de su clase. Se recuperan 46 ilustraciones ya dibujadas y el creador conserva la variante elegida al exportar el JSON.',
+        'Las 57 entradas del bestiario incluyen la descripción del libro. El Keeper puede editarla en las fichas desplegadas. Los contactos sin identificar conservan su identidad oculta.',
+      ] },
+      { title: 'Reglas en mesa', items: [
+        'La regla de mesa del VTT para el Spotlight cobra 1 Fear por adversario y bloquea un segundo foco en la misma ronda, también desde sus ajustes o desde un jugador que lo controla.',
+        'Las defensas se aplican a su parte del daño mixto antes de comparar el resultado con los umbrales. En descanso largo, Prepare devuelve la Hope del Awakened a 2.',
+      ] },
+    ],
+  },
+  {
+    version: '2.27.10', date: '2026-11-20', title: 'Combate, bestiario y navegación según el Corebook 12.06',
+    sections: [
+      { title: 'En la mesa', items: [
+        'A 0 HP, la ficha sigue el progreso de Dying y Final. Un aliado adyacente puede estabilizar. Blaze of Glory requiere la elección del jugador y la confirmación de que ha resuelto su último acto.',
+        'Overwhelmed y Vulnerable se aplican en la tirada y se cancelan cuando coinciden. Las resistencias y las inmunidades activas se aplican antes de los umbrales de daño.',
+        'Rapid Regeneration cura al activarse y al empezar cada Spotlight elegible. El Keeper dispone de Nueva ronda para abrir el siguiente ciclo.',
+      ] },
+      { title: 'Herramientas del Keeper y de la tripulación', items: [
+        'El bestiario ofrece las armas y variantes impresas de cada adversario. Los perfiles narrativos remiten a su procedimiento. La cabecera de Fear usa los mismos movimientos y costes que la mano del Keeper.',
+        'El salto FTL separa el cálculo de ruta de la iniciación por el piloto. La solución queda guardada y se consume una Pearl al entrar en tránsito.',
+        'El Códice en español e inglés recoge las reglas de Effort, Recovery Anchor, heridas, Stress y Long Bruise del Corebook 12.06.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.9', date: '2026-11-19', title: 'V3 · La linterna de un enemigo oculto no lo delata',
     sections: [
       { title: 'Niebla y visión', items: [

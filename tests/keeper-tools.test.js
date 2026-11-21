@@ -30,9 +30,9 @@ const mount = () => { const node = document.createElement('div'); document.body.
 
 test('catalog preserves printed combat values, full abilities and book provenance', () => {
   assert.equal(catalog.length, 57); assert.equal(new Set(catalog.map(x => x.id)).size, 57);
-  assert.equal(catalog.filter(x => x.deployable).length, 42);
+  assert.equal(catalog.filter(x => x.placement !== 'narrative').length, 48);
   const swarm = profile('CHARON SKITTER-RAT SWARM');
-  assert.deepEqual([swarm.hp, swarm.evasion, swarm.attack, swarm.major, swarm.severe, swarm.stress], [6, 11, 2, 6, 12, null]);
+  assert.deepEqual([swarm.hp, swarm.evasion, swarm.attack, swarm.major, swarm.severe, swarm.stress], [6, 11, 2, 6, 12, 0]);
   assert.equal(swarm.damage, '1d8 (Horde) / 1d4 (Depleted)');
   const synthetic = profile('ROGUE SYNTHETIC');
   assert.deepEqual([synthetic.hp, synthetic.stress, synthetic.evasion, synthetic.attack, synthetic.major, synthetic.severe], [12, 6, 13, 3, 10, 18]);
@@ -43,17 +43,47 @@ test('catalog preserves printed combat values, full abilities and book provenanc
   assert.match(broker.damage, /surgical tools.*arm-cannon/);
   assert.match(broker.text, /Physical Description/); assert.match(broker.text, /Relationship Hooks/);
   assert.deepEqual(broker.traits, { agility: 2, strength: 3, finesse: 2, instinct: 1, presence: 0, knowledge: 4 });
-  for (const entry of catalog) { assert.ok(entry.book && entry.section && entry.line > 0 && entry.text.length > 30); }
+  for (const entry of catalog) { assert.ok(entry.book && entry.section && entry.line > 0 && entry.text.length > 30);
+    assert.ok(entry.description.length > 25 && !entry.description.includes('**'), entry.name); }
   const plugin = adversaryLibraryPlugin(); const watched = [];
   const source = plugin.load.call({ addWatchFile: file => watched.push(file) }, plugin.resolveId('virtual:veil-adversaries'));
-  assert.deepEqual(JSON.parse(source.slice('export default '.length)), catalog); assert.equal(watched.length, 3);
+  assert.deepEqual(JSON.parse(source.slice('export default '.length)), catalog); assert.equal(watched.length, 4);
 });
 
-test('incomplete and narrative-only encounters stay reference-only instead of acquiring invented stats', () => {
-  for (const name of ['VOID MITE CLUSTER', 'THE GRANDFATHER LEVIATHAN', "THE EMPEROR'S SHADOW"]) {
-    const entry = profile(name); assert.ok(entry, name); assert.equal(entry.deployable, false, name);
-    assert.throws(() => deployAdversary(entry), /procedimiento/);
+test('all 57 profiles can be placed and retained in a saved campaign', async () => {
+  const { validateCampaign } = await import('../src/validation.js');
+  for (const entry of catalog) {
+    const token = deployAdversary(entry);
+    assert.equal(token.hp.max, entry.hp ?? 0, entry.name);
+    assert.ok(token.featureNotes.includes(entry.text), entry.name);
+    if (entry.placement === 'narrative') assert.equal(token.bestiaryMode, 'narrative', entry.name);
   }
+  const saved = JSON.parse(JSON.stringify(store.serializeCampaign()));
+  assert.doesNotThrow(() => validateCampaign(saved));
+  assert.equal(saved.tokens.filter(t => t.bestiaryMode === 'narrative').length, 9);
+  assert.equal(catalog.filter(e => e.proposalReason).length, 44);
+  const mites = profile('VOID MITE CLUSTER');
+  assert.deepEqual(mites.provisional, { major: 5, severe: 10, armor: 0, stress: 2 });
+  assert.deepEqual([mites.hp, mites.evasion, mites.attack, mites.damage], [8, 13, 3, '1d6 Void']);
+  assert.deepEqual(profile('CINDER-MITE').provisional, { severe: 9, armor: 1 });
+  assert.equal(profile('NEON JELLY').armor, 0);
+  assert.equal(profile('FERRO-BEAST').armor, 4);
+  assert.equal(profile('VANKO THE VILE (AUGMENTATION SPECIALIST)').provisional, undefined);
+});
+
+test('the Keeper can fill missing legacy tracks on the selected original token once', async () => {
+  const entry = profile('FERRO-BEAST');
+  const token = deployAdversary(entry);
+  const note = token.featureNotes.split('\n\nPropuesta del VTT')[0];
+  store.updateToken(token.id, { name: 'El Guardián', featureNotes: note, armor: { current: 0, max: 0 }, hp: { ...token.hp, current: 2 } });
+  const modal = await openAdversaryLibrary([entry]);
+  const apply = modal.querySelector('[data-apply-tracks]');
+  assert.match(apply.textContent, /El Guardián.*Armor 4/);
+  apply.click();
+  assert.deepEqual(store.getSelectedToken().armor, { max: 4, current: 4 });
+  assert.equal(store.getSelectedToken().hp.current, 2);
+  assert.equal(modal.querySelector('[data-apply-tracks]'), null);
+  assert.ok(store.getSelectedToken().featureNotes.startsWith(note));
 });
 
 test('deployment makes independent hidden tokens in the active scene with the complete source notes', () => {
@@ -85,11 +115,59 @@ test('library search, book/tier filters and deployment operate from the actual c
   const reference = await openAdversaryLibrary(catalog);
   reference.querySelector('[data-search]').value = 'GRANDFATHER LEVIATHAN';
   reference.querySelector('[data-search]').dispatchEvent(new Event('input'));
-  assert.equal(reference.querySelector('[data-deploy]').disabled, true);
-  assert.match(reference.querySelector('[data-detail]').textContent, /Ficha de consulta/);
+  assert.equal(reference.querySelector('[data-deploy]').disabled, false);
+  assert.equal(reference.querySelector('[data-deploy-boss]').disabled, true);
+  assert.match(reference.querySelector('[data-deploy]').textContent, /marcador/);
   store.sessionRole = 'player'; assert.equal(await openAdversaryLibrary(catalog), undefined);
   reference.querySelector('[data-deploy]').disabled = false; reference.querySelector('[data-deploy]').click();
   assert.equal(store.state.tokens.filter(t => t.name.includes('GRANDFATHER')).length, 0);
+});
+
+test('the illustrated Void Mite can be placed with identified, editable provisional values', async () => {
+  const modal = await openAdversaryLibrary(catalog);
+  const search = modal.querySelector('[data-search]');
+  const show = name => { search.value = name; search.dispatchEvent(new Event('input')); };
+  show('Void Mite Cluster');
+  const refArt = modal.querySelector('[data-detail] img').getAttribute('src');
+  assert.equal(modal.querySelector('[data-detail] a').getAttribute('href'), refArt);
+  assert.equal(modal.querySelector('[data-deploy]').disabled, false);
+  assert.match(modal.querySelector('[data-detail] details').textContent, /Major 5 · Severe 10/);
+  modal.querySelector('[data-deploy]').click();
+  const deployed = store.getSelectedToken();
+  assert.equal(deployed.avatarUrl, refArt);
+  assert.equal(deployed.hp.majorThreshold, 5);
+  assert.match(deployed.featureNotes, /Propuesta del VTT/);
+  const other = await openAdversaryLibrary(catalog);
+  other.querySelector('[data-search]').value = 'Security Drone Model-V';
+  other.querySelector('[data-search]').dispatchEvent(new Event('input'));
+  const securityArt = other.querySelector('[data-detail] img').getAttribute('src');
+  assert.notEqual(securityArt, refArt);
+  other.querySelector('[data-deploy]').click();
+  assert.equal(store.getSelectedToken().avatarUrl, securityArt);
+});
+
+test('the Keeper can pick a Refuge portrait, preview it and keep it when the token is renamed', async () => {
+  const { TokenHUD } = await import('../src/tokenSheet.js');
+  const token = deployAdversary(profile('SECURITY DRONE MODEL-V'));
+  new TokenHUD(mount()).openTokenSettingsModal(token);
+  document.querySelector('#sheet_portrait_picker').click();
+  const picker = document.querySelector('.portrait-picker'), collection = picker.querySelector('[data-collection]');
+  collection.value = 'rift_spinner'; collection.dispatchEvent(new Event('change'));
+  assert.equal(picker.querySelectorAll('.portrait-choice').length, 5);
+  assert.ok(picker.querySelector('.portrait-choice img').getAttribute('src').includes('rift_spinner'));
+  collection.value = 'bestiary'; collection.dispatchEvent(new Event('change'));
+  const choices = [...picker.querySelectorAll('.portrait-choice')];
+  assert.equal(choices.length, 13);
+  const queen = choices.find(b => b.textContent === 'Weaver Queen');
+  const url = queen.querySelector('img').getAttribute('src');
+  queen.click(); await new Promise(r => setTimeout(r, 0));
+  assert.equal(document.querySelector('#sheet_avatar_preview').getAttribute('src'), url);
+  document.querySelector('#sheet_name').value = 'Hunger Weaver';
+  document.querySelector('#sheet_save_btn').click();
+  const saved = store.state.tokens.find(t => t.id === token.id);
+  assert.equal(saved.name, 'Hunger Weaver');
+  assert.equal(saved.avatarUrl, url);
+  assert.equal(saved.portraitOverride, true);
 });
 
 test('secret Keeper checks persist locally and never broadcast dice or enter player snapshots', async () => {
@@ -178,4 +256,50 @@ test('the dice panel adds Bear Down to the open damage roll with the same dice',
     assert.equal(q('#dmg_raw_val').textContent, '8');
     assert.equal(panel.pendingDamageFor(target.id), null, 'only the roller can Bear Down on it');
   });
+});
+
+
+test('enemy dossiers show editable book descriptions, recover legacy profiles and keep masked contacts anonymous', async () => {
+  const { openDossier } = await import('../src/dossierUI.js');
+  const { adversaryDescription } = await import('../src/adversaryDescription.js');
+  const a = deployAdversary(profile('ROGUE SYNTHETIC'), { hidden: false });
+  assert.match(a.description, /protocol droid/);
+  assert.equal(adversaryDescription({ featureNotes: a.featureNotes }), a.description);
+  assert.match(profile('SCRAP DRONE').description, /^Automated maintenance/);
+  assert.match(profile('MAMA K (INFORMATION BROKER)').description, /^Mama K is a kindly grandmother/);
+  assert.equal(adversaryDescription({ featureNotes: 'Private GM plan for tomorrow.' }), '');
+  const modal = openDossier(a, () => {});
+  const box = modal.querySelector('[name=description]');
+  assert.equal(box.value, a.description); box.value = 'A damaged protocol droid.';
+  modal.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  const saved = store.state.tokens.find(t => t.id === a.id);
+  assert.equal(saved.description, box.value);
+  const n = new NetworkManager();
+  assert.equal(n.snapshotFor('guest').tokens.find(t => t.id === a.id).description, undefined);
+  n.disconnect();
+});
+
+test('the player can browse every ancestry from their dossier and only change an assigned token', async () => {
+  const { openDossier } = await import('../src/dossierUI.js');
+  const { openActorPortrait } = await import('../src/portraitPicker.js');
+  const token = store.state.tokens.find(t => t.isPlayer);
+  const other = store.state.tokens.find(t => t.id !== token.id);
+  store.update({ userRole:'player', claimedTokenId:token.id });
+  assert.equal(openActorPortrait(other.id), undefined);
+  const dossier = openDossier(token);
+  dossier.querySelector('[data-portrait]').click();
+  const picker = document.querySelector('.portrait-picker');
+  assert.ok(picker.querySelector('[data-upload]'));
+  const group = picker.querySelector('[data-collection]');
+  group.value = 'rift_spinner'; group.dispatchEvent(new Event('change'));
+  const cls = picker.querySelector('[data-class]'); cls.value = ''; cls.dispatchEvent(new Event('change'));
+  const tile = picker.querySelector('.portrait-choice');
+  const url = tile.querySelector('img').getAttribute('src');
+  tile.click(); await new Promise(r => setTimeout(r,0));
+  assert.equal(store.state.tokens.find(t => t.id === token.id).avatarUrl, url);
+  assert.equal(dossier.querySelector('.dossier-portrait').getAttribute('src'), url);
+  dossier.querySelector('[data-portrait]').click();
+  document.querySelector('.portrait-picker [data-auto]').click(); await new Promise(r => setTimeout(r,0));
+  assert.equal(store.state.tokens.find(t => t.id === token.id).portraitOverride, false);
+  assert.notEqual(dossier.querySelector('.dossier-portrait').getAttribute('src'), url);
 });

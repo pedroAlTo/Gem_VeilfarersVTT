@@ -1,10 +1,101 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.9**.
-Paquete: `VeilFarers_VTT_v2.27.9.zip`.
+Versión actual del VTT: **v2.27.16**.
+Paquete: `VeilFarers_VTT_v2.27.16.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.16] — 2026-11-21
+
+Insignias, retratos y cartas de acción
+
+### Mesa
+
+- La insignia de clase ocupa el 35 % del diámetro del token en altura y queda en su esquina inferior derecha. Los jugadores pueden personalizar el retrato de sus tokens asignados desde su ficha.
+
+### Cartas y equipo
+
+- Los movimientos Sleeping y del Keeper tienen ilustraciones. Las capacidades de los enemigos se agrupan en ocho categorías ilustradas. El inventario muestra las piezas de equipo con el estilo de las armaduras.
+
+## [2.27.15] — 2026-11-21
+
+Medición de movimiento y arte de la mesa
+
+### Mapa
+
+- Durante el arrastre se conserva un retrato translúcido en el origen. La línea directa muestra los metros y el rango de la escena.
+
+### Ilustraciones
+
+- Retratos del bestiario de Tier 2, ilustraciones para los 21 poderes de nivel 1 y miniaturas en el equipo, los aumentos y los módulos de dron.
+
+## [2.27.14] — 2026-11-21
+
+Rift Spinners y retratos en la mesa
+
+### Personajes y PNJ
+
+- Cinco arañas de cristal con marcas individuales ilustran los Rift Spinners en el mapa, las fichas y las nueve insignias de clase.
+- El retrato automático utiliza el género de la ficha y después los pronombres. Desde su ficha, cada jugador puede elegir un retrato predefinido para sus tokens. El Keeper puede usar cualquier ascendencia, un retrato del bestiario o una imagen propia para un PNJ.
+
+### Chat y susurros
+
+- Los mensajes que ocupan más de dos líneas muestran el retrato del hablante a la izquierda. El chat y los subtítulos se adaptan al ancho disponible.
+- Desde Chat, el Keeper puede elegir un token de la escena o subir su propia imagen. El retrato se guarda con la campaña.
+
+## [2.27.13] — 2026-11-20
+
+Bestiario en mesa y retratos de la tripulación
+
+### Adversarios y encuentros
+
+- El Keeper puede colocar los 57 perfiles. Hay 48 adversarios de combate y nueve encuentros por objetivos con un marcador que abre el procedimiento del libro.
+- La biblioteca identifica los valores provisionales de 44 fichas y explica sus defensas según la criatura. En una ficha ya desplegada, el Keeper puede recuperar las pistas vacías desde la biblioteca. El registro editorial está en docs/bestiario-pendientes-core.md.
+- Los esbirros sin umbrales reciben 1 HP por impacto ordinario que cause daño. Los ataques de Void Leech y Neon Jelly permiten marcar el Stress impreso directamente al objetivo.
+
+### Retratos de personajes
+
+- 45 retratos de las nueve ascendencias parten de las ilustraciones del paquete editorial. Las nueve insignias de clase dan identidad a las 243 combinaciones de ascendencia, clase y género. Harker, Vea y HE-09 tienen retratos propios renovados.
+
+## [2.27.12] — 2026-11-20
+
+Bestiario ilustrado de Tier 1
+
+### Retratos en fichas y mapa
+
+- Trece ilustraciones cubren ocho adversarios del bestiario, tres jefes del Keeper y los dos adversarios principales de Hearts in the Void. Los dos perfiles de la plaga de ratas de Charon comparten retrato.
+- La biblioteca muestra la ilustración al abrir un perfil de Tier 1. Los tokens reconocen el nombre del adversario y el Keeper puede elegir cualquiera de los trece retratos en los ajustes del token.
+
+## [2.27.11] — 2026-11-20
+
+Retratos de los personajes y descripciones del bestiario
+
+### Personajes y adversarios
+
+- Al importar o asignar un personaje, el mapa y las fichas muestran su retrato de ascendencia con la insignia de su clase. Se recuperan 46 ilustraciones ya dibujadas y el creador conserva la variante elegida al exportar el JSON.
+- Las 57 entradas del bestiario incluyen la descripción del libro. El Keeper puede editarla en las fichas desplegadas. Los contactos sin identificar conservan su identidad oculta.
+
+### Reglas en mesa
+
+- La regla de mesa del VTT para el Spotlight cobra 1 Fear por adversario y bloquea un segundo foco en la misma ronda, también desde sus ajustes o desde un jugador que lo controla.
+- Las defensas se aplican a su parte del daño mixto antes de comparar el resultado con los umbrales. En descanso largo, Prepare devuelve la Hope del Awakened a 2.
+
+## [2.27.10] — 2026-11-20
+
+Combate, bestiario y navegación según el Corebook 12.06
+
+### En la mesa
+
+- A 0 HP, la ficha sigue el progreso de Dying y Final. Un aliado adyacente puede estabilizar. Blaze of Glory requiere la elección del jugador y la confirmación de que ha resuelto su último acto.
+- Overwhelmed y Vulnerable se aplican en la tirada y se cancelan cuando coinciden. Las resistencias y las inmunidades activas se aplican antes de los umbrales de daño.
+- Rapid Regeneration cura al activarse y al empezar cada Spotlight elegible. El Keeper dispone de Nueva ronda para abrir el siguiente ciclo.
+
+### Herramientas del Keeper y de la tripulación
+
+- El bestiario ofrece las armas y variantes impresas de cada adversario. Los perfiles narrativos remiten a su procedimiento. La cabecera de Fear usa los mismos movimientos y costes que la mano del Keeper.
+- El salto FTL separa el cálculo de ruta de la iniciación por el piloto. La solución queda guardada y se consume una Pearl al entrar en tránsito.
+- El Códice en español e inglés recoge las reglas de Effort, Recovery Anchor, heridas, Stress y Long Bruise del Corebook 12.06.
 
 ## [2.27.9] — 2026-11-19
 

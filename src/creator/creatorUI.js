@@ -1,3 +1,5 @@
+import { equipmentThumbnail } from '../equipmentArtwork.js';
+import { powerArt } from '../loadoutCards.js';
 // Character creator wizard of the VTT. The rules live in creatorModel.js; this file is
 // only the nine-step dialog and what happens with the finished sheet.
 import { escapeHTML as e, notify } from '../ui.js';
@@ -5,7 +7,8 @@ import { store } from '../state.js';
 import { newId } from '../persistence.js';
 import { dossierDialog } from '../dossierUI.js';
 import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
-import { defaultTokenAvatar, detectArchetype, detectGender, getArchetypeTokenAvatar, listAncestryArchetypeTokens } from '../tokenAvatars.js';
+import { portraitGenderOptions } from '../portraitPicker.js';
+import { actorPortrait, listAncestryArchetypeTokens } from '../tokenAvatars.js';
 import { account } from '../cloudAccount.js';
 import {
   CREATOR_STEPS, TRAIT_IDS, TRAIT_ARRAY, EQUIP_BUDGET, STARTING_POWERS, experienceCount, affiliationStatus, freshState, setChoice, isStepReady, firstIncompleteStep,
@@ -16,7 +19,7 @@ const DRAFT_KEY = 'veil_creator_draft';
 const short = (text, max = 190) => { const s = String(text ?? '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim(); return s.length > max ? s.slice(0, max).trim() + '…' : s; };
 const plain = text => String(text ?? '').replace(/\*\*/g, '').replace(/[ \t]+/g, ' ').trim();
 const chip = (label, value) => `<span class="creator-chip"><b>${e(label)}</b> ${e(value)}</span>`;
-const card = (attrs, selected, title, tag, body) => `<button type="button" class="creator-card ${selected ? 'selected' : ''}" aria-pressed="${selected}" ${attrs}><strong>${e(title)}</strong>${tag ? `<span class="creator-card-tag">${e(tag)}</span>` : ''}${body ? `<span class="creator-card-text">${e(body)}</span>` : ''}</button>`;
+const card = (attrs, selected, title, tag, body, illustration = '') => `<button type="button" class="creator-card ${selected ? 'selected' : ''}" aria-pressed="${selected}" ${attrs}>${illustration}<strong>${e(title)}</strong>${tag ? `<span class="creator-card-tag">${e(tag)}</span>` : ''}${body ? `<span class="creator-card-text">${e(body)}</span>` : ''}</button>`;
 
 function loadDraft() {
   try { const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return saved && typeof saved === 'object' ? { ...freshState(), ...saved } : freshState(); } catch { return freshState(); }
@@ -51,7 +54,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       ? `${chip('Daño', item.damage)}${chip('Alcance', item.range)}${chip('Trait', item.trait)}${chip('Carga', item.burden ?? '—')}`
       : `${chip('Umbrales', `${startingThresholds(item).major} / ${startingThresholds(item).severe}`)}${chip('Armor Slots', item.armorSlots)}${item.improvementCapacity != null ? chip('Mejoras', item.improvementCapacity) : ''}`;
     return `<button type="button" class="creator-card creator-equip ${on ? 'selected' : ''}" aria-pressed="${on}" data-${type}="${e(item.name)}">
-      <span class="creator-power-head"><strong>${suits ? '★ ' : ''}${e(item.name)}</strong><span class="creator-pick">${on ? '✓ Elegida' : 'Elegir'}</span></span>
+      <span class="creator-power-head">${equipmentThumbnail(item)}<strong>${suits ? '★ ' : ''}${e(item.name)}</strong><span class="creator-pick">${on ? '✓ Elegida' : 'Elegir'}</span></span>
       <span class="creator-card-tag">${e(item.category)}${type === 'armor' ? ' armor' : ''} · ${item.cost} Cr${item.pack !== 'core' ? ' · Rust & Steel' : ''}${suits ? ' · Recomendada' : ''}</span>
       <span class="creator-chips">${stats}</span>${featureList(item)}</button>`;
   };
@@ -75,7 +78,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
         ${anc?.id === 'human' ? `<h4 class="dossier-label">INHERITANCE OF THE BUILDERS · ELIGE UNA</h4>
           <div class="creator-grid two">${card('data-set="humanInheritance" data-value="graft"', state.humanInheritance === 'graft', 'The Graft', 'Un aumento gratis, sin inconveniente', 'Common (TT1): no ocupa Augment Slot. Military (TT2): ocupa 1 slot.')}${card('data-set="humanInheritance" data-value="tool"', state.humanInheritance === 'tool', 'The Tool', 'Un objeto Experimental (TT3) de 9 Cr', 'De cualquier catálogo de equipo en juego. Es tuyo y está pagado.')}</div>
           ${state.humanInheritance ? `<label class="hud-checkbox-label"><input type="checkbox" data-rs ${state.includeRustAndSteel ? 'checked' : ''}> Incluir el catálogo de Rust &amp; Steel</label>
-          <div class="creator-grid">${inheritanceOptions(state, data).map(item => card(`data-set="humanInheritanceItem" data-value="${e(item.id)}"`, item.id === state.humanInheritanceItem, item.name, state.humanInheritance === 'graft' ? `${item.tier} · ${item.capacityCost ? '1 Augment Slot' : '0 Augment Slots'}` : `${item.catalog} · ${item.tier} · ${item.cost} Cr`, state.humanInheritance === 'graft' ? item.benefit : item.summary)).join('')}</div>` : ''}` : ''}
+          <div class="creator-grid">${inheritanceOptions(state, data).map(item => card(`data-set="humanInheritanceItem" data-value="${e(item.id)}"`, item.id === state.humanInheritanceItem, item.name, state.humanInheritance === 'graft' ? `${item.tier} · ${item.capacityCost ? '1 Augment Slot' : '0 Augment Slots'}` : `${item.catalog} · ${item.tier} · ${item.cost} Cr`, state.humanInheritance === 'graft' ? item.benefit : item.summary, equipmentThumbnail(item))).join('')}</div>` : ''}` : ''}
         ${anc?.subStrains?.length ? `<h4 class="dossier-label">ELIGE UNA ESTIRPE</h4><div class="creator-grid">${anc.subStrains.map(s => card(`data-set="subStrain" data-value="${e(s.id)}"`, s.id === state.subStrain, s.name, s.epithet, short(s.featText || s.flavor))).join('')}</div>` : ''}`;
     },
     2: () => `<h3>Community</h3><p class="dossier-muted">Dónde creció y qué le enseñó.</p>
@@ -123,8 +126,10 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const domains = characterDomains(state, data);
       const chosen = state.powers.map(id => data.powers.find(p => powerId(p) === id)).filter(Boolean);
       const powerCard = p => {
+        const illustration = powerArt(p).illustration;
         const on = state.powers.includes(powerId(p)), full = !on && state.powers.length >= STARTING_POWERS;
         return `<button type="button" class="creator-card creator-power ${on ? 'selected' : ''}" aria-pressed="${on}" data-power="${e(powerId(p))}" ${full ? 'title="Ya tienes dos: quita uno para cambiarlo"' : ''}>
+          ${illustration ? `<img class="creator-power-illustration" loading="lazy" src="${e(illustration)}" alt="" />` : ''}
           <span class="creator-power-head"><strong>${e(p.n)}</strong><span class="creator-pick">${on ? '✓ En tu Loadout' : full ? 'Loadout completo' : 'Elegir'}</span></span>
           <span class="creator-chips">${chip('Tipo', p.t)}${chip('Coste', p.cost || 'Sin coste')}${p.dc && p.dc !== '—' ? chip('Tirada', p.dc) : ''}${chip('Recall', p.rc ?? '0')}</span>
           <span class="creator-card-text creator-power-text">${e(plain(p.txt))}</span></button>`;
@@ -157,26 +162,25 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const pending = CREATOR_STEPS.filter(s => s.id < 9 && !isStepReady(state, s.id, data));
       const canPlace = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
       const targets = canPlace ? store.state.tokens.filter(t => t.isPlayer !== false && t.actorType !== 'adversary') : [];
-      const gender = detectGender(state.pronouns, state.name);
-            const defaultArch = detectArchetype(cls?.name || cls?.id);
-            const selectedArch = state.tokenArchetype || defaultArch;
-            const avatarUrl = getArchetypeTokenAvatar(state.ancestry, selectedArch, gender);
-            const archetypes = listAncestryArchetypeTokens(state.ancestry, state.pronouns, state.name);
+      const selectedArch = state.tokenArchetype || '';
+      const avatarUrl = creatorPortrait();
+      const archetypes = listAncestryArchetypeTokens(state.ancestry, state.gender || state.pronouns, state.name);
       return `<h3>Detalles</h3>
         <div class="creator-avatar-preview" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 10px 14px; background: rgba(0, 243, 255, 0.06); border: 1px solid rgba(0, 243, 255, 0.25); border-radius: 8px;">
           <img src="${avatarUrl}" alt="Retrato del Token" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #00f3ff; flex-shrink: 0; box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);" />
           <div>
             <div style="font-weight: 700; color: #00f3ff; font-size: 0.9rem;">Retrato de Token automático</div>
-            <div class="dossier-muted" style="font-size: 0.8rem;">Asignado por Ancestry (${e(state.ancestry || 'Human')}) y pronombres/género.</div>
+            <div class="dossier-muted" style="font-size: 0.8rem;">${e(state.ancestry || 'Human')} · ${e(cls?.name || '')} · ${e(state.pronouns || 'Sin pronombres indicados')}</div>
           </div>
         </div>
         <div class="creator-archetype-picker" style="margin-bottom: 14px;">
           <span class="dossier-eyebrow" style="margin-bottom: 6px; display: block;">VARIANTE DE RETRATO / TIPOLOGÍA</span>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+            <button type="button" class="hud-btn ${!selectedArch ? "hud-btn-primary" : ""}" data-token-arch="auto">Usar mi clase</button>
             ${archetypes.map(a => `<button type="button" class="hud-btn ${a.id === selectedArch ? "hud-btn-primary" : ""}" data-token-arch="${a.id}" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 0.8rem; text-align: left; cursor: pointer;"><img src="${a.avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid ${a.id === selectedArch ? "#00f3ff" : "rgba(255,255,255,0.2)"}; flex-shrink: 0;" alt="" /><span><strong>${e(a.label.split("/")[0].trim())}</strong></span></button>`).join("")}
           </div>
         </div>
-        <div class="dossier-identity"><label class="dossier-field"><span>Nombre</span><input class="hud-input" data-field="name" maxlength="120" value="${e(state.name)}"></label><label class="dossier-field"><span>Pronombres</span><input class="hud-input" data-field="pronouns" maxlength="60" value="${e(state.pronouns)}"></label></div>
+        <div class="dossier-identity"><label class="dossier-field"><span>Nombre</span><input class="hud-input" data-field="name" maxlength="120" value="${e(state.name)}"></label><label class="dossier-field"><span>Pronombres</span><input class="hud-input" data-field="pronouns" maxlength="60" value="${e(state.pronouns)}"></label><label class="dossier-field"><span>Género del retrato</span><vf-select class="hud-select" data-gender>${portraitGenderOptions(state.gender)}</vf-select></label></div>
         ${text('bgAnswer', cls ? cls.bgQuestion : 'Pregunta de trasfondo')}
         <div class="dossier-identity">${text('appearance', 'Apariencia')}${text('voice', 'Voz y maneras')}</div>
         ${state.path === 'Sleeping' ? text('anchor', 'Recovery Anchor', 1) : ''}
@@ -203,15 +207,16 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
 
   // One id per character, so saving it again updates the same entry instead of duplicating it.
   let characterId = state.characterId || '';
+  function creatorPortrait() {
+    return actorPortrait({ species: state.ancestry, gender: state.gender, pronouns: state.pronouns, name: state.name,
+      characterClass: classOf(state, data)?.name, tokenArchetype: state.tokenArchetype });
+  }
   async function finish(kind) {
     try {
       if (!characterId) { characterId = 'vtt-' + newId(); state = { ...state, characterId }; save(); }
       const doc = buildSheetDocument(state, data, { characterId });
       if (kind === 'download') { downloadJSON(doc, `${state.name.trim() || 'personaje'}.json`); notify('Ficha descargada.'); return; }
       const token = parseCharacterJSON(doc).token;
-            const g = detectGender(state.pronouns, state.name);
-            const chosenArch = state.tokenArchetype || detectArchetype(classOf(state, data)?.name);
-            token.avatarUrl = getArchetypeTokenAvatar(state.ancestry, chosenArch, g);
       if (kind === 'account') {
         account.lastSaveTarget = 'cloud';
         await account.saveCharacter({ ...token, x: 0, y: 0 });
@@ -234,7 +239,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
     else if (el.dataset.domain) { const d = el.dataset.domain, list = state.sleepingMysticDomains.filter(x => x !== d); if (list.length === state.sleepingMysticDomains.length) { list.push(d); if (list.length > 2) list.shift(); } state = { ...state, sleepingMysticDomains: list }; save(); render(); }
     else if (el.dataset.power) { const id = el.dataset.power, has = state.powers.includes(id); if (!has && state.powers.length >= STARTING_POWERS) { error.textContent = `Solo ${STARTING_POWERS} Poderes iniciales: quita uno para cambiarlo.`; return; } state = { ...state, powers: has ? state.powers.filter(p => p !== id) : [...state.powers, id] }; save(); render(); }
     else if (el.dataset.weapon || el.dataset.armor) { const key = el.dataset.weapon ? 'weapons' : 'armors', name = el.dataset.weapon || el.dataset.armor, has = state[key].includes(name); state = { ...state, [key]: has ? [] : [name] }; save(); render(); }
-    else if (el.dataset.tokenArch) { state = { ...state, tokenArchetype: el.dataset.tokenArch }; save(); render(); }
+    else if (el.dataset.tokenArch) { state = { ...state, tokenArchetype: el.dataset.tokenArch === 'auto' ? '' : el.dataset.tokenArch }; save(); render(); }
     else if (el.dataset.finish) finish(el.dataset.finish);
     else if (el.dataset.act === 'prev') { step = Math.max(1, step - 1); render(); }
     else if (el.dataset.act === 'next') { if (!isStepReady(state, step, data)) { error.textContent = `Completa «${CREATOR_STEPS[step - 1].label}» para seguir, o salta a otro paso desde la lista.`; return; } step = Math.min(9, step + 1); render(); }
@@ -243,7 +248,8 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
   });
   modal.addEventListener('change', event => {
     const el = event.target;
-    if (el.dataset.trait) { const traits = { ...state.traits }; if (el.value === '') delete traits[el.dataset.trait]; else traits[el.dataset.trait] = Number(el.value); state = { ...state, traits }; save(); render(); }
+    if (el.matches('[data-gender]')) { state = { ...state, gender: el.value }; save(); render(); }
+    else if (el.dataset.trait) { const traits = { ...state.traits }; if (el.value === '') delete traits[el.dataset.trait]; else traits[el.dataset.trait] = Number(el.value); state = { ...state, traits }; save(); render(); }
     else if ('rs' in el.dataset) { state = { ...state, includeRustAndSteel: el.checked }; save(); render(); }
   });
   // Text fields update the draft without redrawing, so typing is never interrupted.
@@ -256,7 +262,11 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       save();
       if (['name', 'pronouns'].includes(el.dataset.field)) {
         const img = modal.querySelector('.creator-avatar-preview img');
-        if (img) img.src = defaultTokenAvatar(state.ancestry, state.pronouns, state.name);
+        if (img) img.src = creatorPortrait();
+        for (const item of listAncestryArchetypeTokens(state.ancestry, state.gender || state.pronouns, state.name)) {
+          const thumb = modal.querySelector('[data-token-arch="' + item.id + '"] img');
+          if (thumb) thumb.src = item.avatarUrl;
+        }
       }
     }
     else return;

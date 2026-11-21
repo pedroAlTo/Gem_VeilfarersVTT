@@ -1,3 +1,9 @@
+import { dossierDialog } from './dossierDialog.js';
+export { dossierDialog } from './dossierDialog.js';
+import { isEncounterMarker } from './bestiaryProfiles.js';
+import { adversaryDescription } from './adversaryDescription.js';
+import { openActorPortrait, portraitGenderOptions } from './portraitPicker.js';
+import { actorPortrait, sheetGender } from './tokenAvatars.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { guideEvent } from './onboarding.js';
 import { store } from './state.js';
@@ -40,27 +46,6 @@ function bindEffectClocksEditor(box, tokenId) {
   });
 }
 
-export function dossierDialog(title, body, className = '') {
-  const previous = document.activeElement;
-  const modal = document.createElement('div');
-  modal.className = `veil-modal-backdrop dossier-backdrop ${className}`;
-  modal.innerHTML = sanitizeHTML(`<section class="veil-modal-box dossier-modal" role="dialog" aria-modal="true" aria-label="${e(title)}"><header class="veil-modal-header"><h3>${e(title)}</h3><button class="modal-close-btn" aria-label="Cerrar">×</button></header><div class="dossier-body">${body}</div></section>`);
-  const close = () => { if (modal.dataset.busy) return; modal.remove(); previous?.focus?.(); };
-  modal.querySelector('.modal-close-btn').onclick = close;
-  modal.onclick = event => { if (event.target === modal) close(); };
-  modal.onkeydown = event => {
-    if (event.key === 'Escape') { event.stopPropagation(); close(); }
-    if (event.key === 'Tab') {
-      const items = [...modal.querySelectorAll('button, input, textarea, [tabindex="0"]')].filter(x => !x.disabled && x.getClientRects().length);
-      const first = items[0], last = items.at(-1);
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-    }
-  };
-  document.body.append(modal);
-  modal.querySelector('.modal-close-btn').focus();
-  return modal;
-}
 const field = (label, key, value, type = 'text', attrs = '') => `<label class="dossier-field"><span>${e(label)}</span><input class="hud-input" name="${key}" type="${type}" value="${e(value)}" ${attrs}></label>`;
 const stat = (label, key, value, min = 0, max = 10000) => field(label, key, value ?? 0, 'number', `min="${min}" max="${max}" step="1" required`);
 const narrative = (title, value) => `<article class="dossier-narrative"><h4>${e(title)}</h4><p>${e(value).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')}</p></article>`;
@@ -77,22 +62,47 @@ function powerCard(power) {
 }
 export function openDossier(token, openSettings, initialTab = 'stats') {
   guideEvent('sheet');
+  const face = `<img class="dossier-portrait" src="${e(actorPortrait(token))}" alt="">`;
+  const portrait = store.canEditToken(token.id) ? `<button type="button" class="actor-portrait-button" data-portrait title="Cambiar retrato" aria-label="Cambiar retrato">${face}<span aria-hidden="true">✎</span></button>` : face;
+  function bindPortrait(root) {
+    const button = root.querySelector('[data-portrait]');
+    if (button) button.onclick = () => openActorPortrait(token.id, url => { button.querySelector('img').src = url; });
+  }
+  if (isEncounterMarker(token)) {
+    if (!store.canEditToken(token.id)) return;
+    const marker = dossierDialog('Ficha de encuentro', `
+      <div class="dossier-hero">${portrait}<div>
+      <span class="dossier-eyebrow">Encuentro por objetivos</span><h2>${e(token.name)}</h2><p>${e(token.roleTag || '')}</p></div></div>
+      <p>${e(adversaryDescription(token))}</p><div class="bestiary-source" style="white-space:pre-wrap">${e(token.featureNotes || '')}</div>
+      ${store.sessionRole !== 'player' && store.state.userRole === 'keeper' ? '<label><input type="checkbox" data-hidden> Oculto para los jugadores</label>' : ''}`);
+    bindPortrait(marker);
+    const hidden = marker.querySelector('[data-hidden]');
+    if (hidden) {
+      hidden.checked = !!token.hidden;
+      hidden.onchange = () => store.updateToken(token.id, { hidden: hidden.checked });
+    }
+    return marker;
+  }
   const pc = token.actorType === 'player' || (!token.actorType && token.isPlayer);
+  const threshold = (label, key) => token.bestiaryMode === 'minion'
+    ? field(label, key, token.hp[key] ?? '', 'number', 'min="1" max="10000" placeholder="—"')
+    : stat(label, key, token.hp[key]);
   const d = characterDetails(token), imported = !!token.sourceCharacter;
   const hasBackground = pc;
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
-    <div class="dossier-hero"><div class="dossier-seal"><span>${pc ? 'LVL' : 'NPC'}</span><strong>${pc ? e(token.level ?? 1) : '◇'}</strong></div><div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
+    <div class="dossier-hero">${portrait}<div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}${pc ? ' · Nivel ' + e(token.level ?? 1) : ''}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
     <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn sheet-full" data-tab="source">JSON original</button>' : ''}<span class="dossier-view" role="group" aria-label="Detalle de la ficha"><button type="button" class="hud-btn" data-view="basic" title="Lo que se usa durante la partida">Básica</button><button type="button" class="hud-btn" data-view="full" title="Todos los campos, máximos y exportación">Completa</button></span><button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="font-weight:600;">💾 Guardar ficha</button></nav>
     <form id="dossier_form">
       <div data-panel="stats">
+        ${!pc && token.actorType !== 'drone' ? '<label class="dossier-field"><span>Descripción</span><textarea class="hud-input" name="description" rows="3" maxlength="10000">' + e(adversaryDescription(token)) + '</textarea></label>' : ''}
         <div class="dossier-condition-summary"><button type="button" class="hud-btn" data-open-conditions>Condiciones</button><div class="condition-badges" data-condition-badges>${conditionBadges(token)}</div></div>
         <div class="effect-clock-editor" data-effect-clocks>${effectClocksEditorHTML(token)}</div>
-        <div class="dossier-identity">${field('Nombre', 'actorName', token.name)}${field(pc ? 'Clase' : 'Rol', pc ? 'characterClass' : 'roleTag', pc ? token.characterClass || '' : token.roleTag || '')}${pc ? field('Subclase', 'subclass', token.subclass || '') : ''}${field('Ancestry / especie', 'species', token.species || '')}${pc ? field('Comunidad', 'community', token.community || '') + stat('Nivel', 'level', token.level ?? 1, 1, 100) + stat('Proficiency', 'proficiency', token.proficiency ?? 1, 1, 100) : ''}${stat('Evasion', 'evasion', token.evasion ?? 10, 0, 100)}</div>
+        <div class="dossier-identity">${field('Nombre', 'actorName', token.name)}${field(pc ? 'Clase' : 'Rol', pc ? 'characterClass' : 'roleTag', pc ? token.characterClass || '' : token.roleTag || '')}${pc ? field('Subclase', 'subclass', token.subclass || '') : ''}${field('Ancestry / especie', 'species', token.species || '')}${pc ? field('Pronombres', 'portraitPronouns', token.pronouns || '') + `<label class="dossier-field"><span>Género del retrato</span><vf-select class="hud-select" data-gender>${portraitGenderOptions(sheetGender(token, token.sourceCharacter?.document?.fields))}</vf-select></label>` + field('Comunidad', 'community', token.community || '') + stat('Nivel', 'level', token.level ?? 1, 1, 100) + stat('Proficiency', 'proficiency', token.proficiency ?? 1, 1, 100) : ''}${stat('Evasion', 'evasion', token.evasion ?? 10, 0, 100)}</div>
         <div class="dossier-resources">
           ${[['hp', 'HP · disponibles'], ['armor', 'Armor · disponibles'], ['stress', 'Stress · marcado']].map(([k, label]) => `<section class="dossier-resource ${k}"><h4>${label}</h4><div>${stat('Actual', `${k}_current`, token[k]?.current)}${stat('Máximo', `${k}_max`, token[k]?.max, k === 'hp' ? 1 : 0)}</div></section>`).join('')}
           ${pc ? `<section class="dossier-resource path"><h4>${e(token.path || 'Awakened')}</h4><div>${token.path === 'Sleeping' ? stat('Effort', 'effort', token.effort, 0, token.effortMax ?? 6) + stat('Resolve', 'resolve_current', token.resolve?.current, 0, token.resolve?.max ?? 2) : stat('Hope', 'hope', token.hope, 0, token.hopeMax ?? 6)}</div></section>` : ''}
         </div>
-        <div class="dossier-thresholds"><span>UMBRALES FINALES<br><small>Incluyen los ajustes de la ficha</small></span>${stat('Major', 'majorThreshold', token.hp.majorThreshold)}${stat('Severe', 'severeThreshold', token.hp.severeThreshold)}</div>
+        <div class="dossier-thresholds"><span>UMBRALES FINALES<br><small>Incluyen los ajustes de la ficha</small></span>${threshold('Major', 'majorThreshold')}${threshold('Severe', 'severeThreshold')}</div>
         ${pc ? `<h4 class="dossier-label">TRAITS · VALORES FINALES</h4><div class="dossier-traits">${TRAIT_IDS.map(k => stat(k, `trait_${k}`, token.traits?.[k], -100, 100)).join('')}</div>${token.path === 'Sleeping' ? `<div class="dossier-identity">${stat('Resolve máximo', 'resolve_max', token.resolve?.max, 0, 100)}${field('Dado Resolve', 'resolve_die', token.resolve?.dieType || 'd4', 'text', 'pattern="d[46]" required')}${stat('Honed Edge', 'honedEdgeBonus', token.honedEdgeBonus, 0, 100)}${field('Recovery Anchor', 'recoveryAnchor', token.recoveryAnchor || '')}</div>` : ''}` : `<h4 class="dossier-label">BLOQUE DE COMBATE</h4><div class="dossier-identity">${stat('Modificador de ataque', 'attackModifier', token.attackModifier, -100, 100)}${field('Daño (expresión completa)', 'damageExpression', token.damageExpression || '', 'text', 'placeholder="Ej.: 1d8+1 Phys + 1d4 Shock"')}${field('Alcance', 'attackRange', token.attackRange || '')}</div><p class="dossier-muted">Las expresiones y habilidades se muestran como referencia; los efectos especiales se resuelven según su texto.</p>`}
         <label class="dossier-field"><span>${pc ? 'Notas y habilidades de la sesión' : 'Notas y habilidades del adversario'}</span><textarea class="hud-input" name="featureNotes" rows="2">${e(token.featureNotes || '')}</textarea></label>
       </div>
@@ -183,6 +193,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
   const droneButton = modal.querySelector('#dossier_drone');
   if (droneButton) droneButton.onclick = async () => { modal.remove(); const { openDroneConsole } = await import('./droneUI.js'); openDroneConsole(token.id); };
   if (!pc) { const bossButton = modal.querySelector('#dossier_boss'); bossButton.disabled = store.sessionRole === 'player' || store.state.userRole !== 'keeper'; bossButton.onclick = async () => { modal.remove(); const { openBossEditor } = await import('./bossUI.js'); openBossEditor(token.id); }; }
+  bindPortrait(modal);
   const playerView = store.sessionRole === 'player' || store.state.userRole === 'player';
   const readPlayerPatch = () => {
     const current = store.state.tokens.find(t => t.id === token.id);
@@ -203,12 +214,28 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
     const form = modal.querySelector('form');
     if (!form.reportValidity()) throw new Error('Revisa los campos de la ficha.');
     const data = Object.fromEntries(new FormData(form)), updated = structuredClone(current);
-    for (const key of ['name', 'species', 'characterClass', 'subclass', 'community', 'roleTag', 'damageExpression', 'attackRange', 'featureNotes', 'recoveryAnchor']) if (key in data) updated[key] = data[key].trim();
+    for (const key of ['name', 'species', 'characterClass', 'subclass', 'community', 'roleTag', 'damageExpression', 'attackRange', 'featureNotes', 'description', 'recoveryAnchor']) if (key in data) updated[key] = data[key].trim();
+    if (pc) {
+      const original = updated.sourceCharacter?.document;
+      const gender = modal.querySelector('[data-gender]').value;
+      if (gender !== sheetGender(current, original?.fields)) {
+        for (const source of [updated, original?.fields, original].filter(Boolean)) {
+          for (const key of ['gender', 'sex', 'sexo', 'género', 'genero', 'character_gender']) delete source[key];
+        }
+        updated.gender = gender;
+      }
+      if (data.portraitPronouns.trim() !== (current.pronouns || '')) {
+        for (const source of [updated, original?.fields, original].filter(Boolean)) {
+          for (const key of ['pron', 'pronouns', 'pronombres']) delete source[key];
+        }
+        updated.pronouns = data.portraitPronouns.trim();
+      }
+    }
     if ('actorName' in data) updated.name = data.actorName.trim();
     if (!updated.name) throw new Error('El nombre no puede estar vacío.');
     for (const key of ['level', 'proficiency', 'evasion', 'hope', 'effort', 'honedEdgeBonus', 'attackModifier']) if (key in data) updated[key] = Number(data[key]);
     for (const key of ['hp', 'armor', 'stress']) updated[key] = { ...current[key], current: Number(data[`${key}_current`]), max: Number(data[`${key}_max`]) };
-    for (const key of ['majorThreshold', 'severeThreshold']) updated.hp[key] = Number(data[key]);
+    for (const key of ['majorThreshold', 'severeThreshold']) updated.hp[key] = data[key] === '' ? null : Number(data[key]);
     if (pc) {
       updated.roleTag = [updated.characterClass, updated.subclass].filter(Boolean).join(' · ');
       updated.traits = Object.fromEntries(TRAIT_IDS.map(k => [k, Number(data[`trait_${k}`])]));

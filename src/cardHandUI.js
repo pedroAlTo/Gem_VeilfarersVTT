@@ -6,6 +6,7 @@ import { network } from './networkManager.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { dossierDialog } from './dossierUI.js';
 import { cardData, loadCardData } from './cardData.js';
+import { roundKey } from './combatState.js';
 import { bearDown } from './bearDown.js';
 import { throwDice } from './tableDice.js';
 import { durationDice } from './effectClocks.js';
@@ -26,6 +27,7 @@ const affordable = (token, card) => {
 const pills = card => {
   const c = card.cost, list = [];
   if (card.type && (card.kind === 'power' || card.kind === 'vault' || card.kind === 'archive')) list.push(['type', card.type.replace(/\s*\(.*$/, '')]);
+  if (card.category) list.push(['type', card.category]);
   if (card.tier) list.push(['plain', card.tier]);
   if (card.kind === 'archive') list.push(['resolve', '1+ Resolve']);
   if (c.fear) list.push(['fear', `${c.fear} Fear`]);
@@ -59,6 +61,7 @@ export function cardFace(card, { large = false } = {}) {
     <span class="vf-card-frame layout-${e(art.layout)}" style="--card-color:${e(card.color)}">
       <span class="vf-card-head"><strong class="vf-card-title">${e(card.name)}</strong>${price ? `<span class="vf-card-badge ${price[0]}">${e(String(price[1]))}</span>` : ''}</span>
       <span class="vf-card-art">
+        ${Number.isInteger(art.cell) && art.cell >= 0 && art.cell < 9 ? `<span class="vf-sheet-window"><img class="vf-power-picture vf-sheet-picture" src="${e(art.illustration)}" style="left:-${art.cell % 3 * 100}%;top:-${Math.floor(art.cell / 3) * 100}%" alt="" draggable="false" /></span>` : art.illustration ? `<img class="vf-power-picture" src="${e(art.illustration)}" alt="" loading="lazy" draggable="false" />` : ''}
         ${art.flag ? `<span class="vf-card-flag"><img src="${e(art.flag)}" alt="" draggable="false" />${card.level ? `<b>${card.level}</b>` : ''}</span>` : ''}
         ${art.band ? `<img class="vf-card-band" src="${e(art.band)}" alt="" draggable="false" />` : ''}
       </span>
@@ -296,33 +299,10 @@ export class CardHand {
     } catch (error) { notify(error.message, 'error'); return false; }
   }
 
-  // The Keeper plays at their own table: Fear is spent there and the table is told, unless the
-  // dice panel is set to secret rolls, in which case only the Keeper's log keeps it.
   async playKeeper(card, point = null) {
-    if (!keeperView()) return false;
-    const fear = store.state.fear || 0, cost = card.cost.fear || 0;
-    if (fear < cost) { notify(`No hay Fear suficiente: hacen falta ${cost} y quedan ${fear}.`, 'error'); return false; }
-    const target = card.actorId ? store.state.tokens.find(t => t.id === card.actorId) : store.getSelectedToken?.();
-    // Spotlight Enemies with an adversary selected hands it the Spotlight; the table already
-    // charges 1 Fear for that, so it is not charged twice.
-    if (card.spotlight && target && target.isPlayer === false && !target.hasSpotlight && !target.spotlight?.enabled) {
-      if (store.updateToken(target.id, { hasSpotlight: true, spotlight: { ...(target.spotlight || {}), enabled: true } }) === false) return false;
-    } else if (cost && !store.spendFear(cost, card.actorName ? `${card.actorName}: ${card.name}` : card.name)) { notify('No se pudo gastar el Fear.', 'error'); return false; }
-    network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
-    const secretRoll = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
-    const roll = card.die ? (await throwDice([{ qty: 1, sides: card.die, role: card.name }], { label: card.name, actor: { name: 'Keeper' }, secret: secretRoll }))[0] : null;
-    const who = card.actorName || (card.spotlight && target?.isPlayer === false ? target.name : 'Keeper');
-    const summary = `${who} · ${card.name}${cost ? ` · ${cost} Fear (quedan ${store.state.fear})` : ''}${roll ? ` · d${card.die} [${roll}]` : ''}`;
-    const secret = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
-    window.veilDiceEngine?.showCallout?.({ playerName: 'Keeper', tokenName: who, label: card.name, skill: card.name, outcome: cost ? `${cost} FEAR` : cardKindName(card.kind).toUpperCase(), modifiers: summary, details: summary, visibility: secret ? 'keeper' : 'table' });
-    if (!cost) store.addLog({ sender: 'Keeper', type: 'KEEPER_MOVE', title: card.name, details: summary, ...(secret ? { visibility: 'keeper' } : {}) });
-    if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); if (!secret) network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
-    if (!secret) {
-      const line = `🜏 Keeper · ${summary} — ${card.text.replace(/\s+/g, ' ').trim()}`;
-      network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: 'Keeper', text: line, channel: 'table' }));
-    }
-    this.render();
-    return true;
+    const played = await playKeeperMove(card, point);
+    if (played) this.render();
+    return played;
   }
 
   inspect(card, point = null) {
@@ -515,3 +495,32 @@ export class CardFeed {
   }
 }
 const CARD_FEED_LIMIT = 4, CARD_FEED_LIFE = 90000;
+
+export async function playKeeperMove(card, point = null) {
+  if (!keeperView()) return false;
+  const fear = store.state.fear || 0, cost = card.cost.fear || 0;
+  if (fear < cost) { notify(`No hay Fear suficiente: hacen falta ${cost} y quedan ${fear}.`, 'error'); return false; }
+  const target = card.actorId ? store.state.tokens.find(t => t.id === card.actorId) : store.getSelectedToken?.();
+  // Spotlight Enemies with an adversary selected hands it the Spotlight; the table already
+  // charges 1 Fear for that, so it is not charged twice.
+  if (card.spotlight) {
+    if (!target || target.isPlayer !== false || target.actorType === 'drone' || target.hasSpotlight || target.roundSpotlight === roundKey(store.getActiveMap())) {
+      notify('Selecciona un adversario que aún no haya actuado en esta ronda.', 'error'); return false;
+    }
+    if (store.updateToken(target.id, { hasSpotlight: true, spotlight: { ...(target.spotlight || {}), enabled: true } }) === false) return false;
+  } else if (cost && !store.spendFear(cost, card.actorName ? `${card.actorName}: ${card.name}` : card.name)) { notify('No se pudo gastar el Fear.', 'error'); return false; }
+  network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
+  const secretRoll = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
+  const roll = card.die ? (await throwDice([{ qty: 1, sides: card.die, role: card.name }], { label: card.name, actor: { name: 'Keeper' }, secret: secretRoll }))[0] : null;
+  const who = card.actorName || (card.spotlight && target?.isPlayer === false ? target.name : 'Keeper');
+  const summary = `${who} · ${card.name}${cost ? ` · ${cost} Fear (quedan ${store.state.fear})` : ''}${roll ? ` · d${card.die} [${roll}]` : ''}`;
+  const secret = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
+  window.veilDiceEngine?.showCallout?.({ playerName: 'Keeper', tokenName: who, label: card.name, skill: card.name, outcome: cost ? `${cost} FEAR` : cardKindName(card.kind).toUpperCase(), modifiers: summary, details: summary, visibility: secret ? 'keeper' : 'table' });
+  if (!cost) store.addLog({ sender: 'Keeper', type: 'KEEPER_MOVE', title: card.name, details: summary, ...(secret ? { visibility: 'keeper' } : {}) });
+  if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); if (!secret) network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
+  if (!secret) {
+    const line = `🜏 Keeper · ${summary} — ${card.text.replace(/\s+/g, ' ').trim()}`;
+    network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: 'Keeper', text: line, channel: 'table' }));
+  }
+  return true;
+}

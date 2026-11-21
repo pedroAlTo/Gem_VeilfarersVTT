@@ -1,3 +1,7 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
+import { actorPortrait } from './tokenAvatars.js';
+import { actorCollection, openPortraitPicker } from './portraitPicker.js';
+import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
 import { validateActor } from './validation.js';
@@ -7,7 +11,6 @@ import { tokenInventory } from './equipment.js';
 // Token HUD Quickbar and Holographic Character Sheet Editor
 
 import { notify, confirmAction, sanitizeHTML, escapeHTML } from './ui.js';
-import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { toggleSpotlight } from './spotlight.js';
@@ -72,9 +75,15 @@ export class TokenHUD {
     const displayRole = isMasked ? 'Amenaza Desconocida // ?????' : (token.roleTag || 'Voidfarer');
     const isPC = token.actorType === 'player' || (!token.actorType && token.isPlayer);
     const maxStress = token.stress?.max ?? 6;
-    const isOverwhelmed = (token.stress?.current || 0) >= maxStress;
+    const isOverwhelmed = maxStress > 0 && (token.stress?.current || 0) >= maxStress;
 
     const canEdit = store.canEditToken(token.id);
+
+    if (isEncounterMarker(token)) {
+      this.container.innerHTML = sanitizeHTML(`<div class="token-quickbar glass-panel tok-qb-compact"><div class="tok-qb-avatar-group"><img src="${escapeHTML(actorPortrait(token))}" alt="" class="tok-qb-avatar"><span class="tok-qb-name">${escapeHTML(displayName)}</span></div>${canEdit ? '<button class="hud-btn" data-encounter>Ficha de encuentro</button>' : ''}</div>`);
+      this.container.querySelector('[data-encounter]')?.addEventListener('click', () => this.openCharacterSheetModal(token));
+      return;
+    }
 
     // --- COMPACT MINIMIZED QUICKBAR (DEFAULT) ---
     if (!this.isExpanded) {
@@ -82,7 +91,7 @@ export class TokenHUD {
         <div class="token-quickbar glass-panel tok-qb-compact">
           <!-- Token Avatar & Name -->
           <div class="tok-qb-avatar-group">
-            <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" class="tok-qb-avatar" />
+            <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" />
             <div class="tok-qb-meta">
               <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
               <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
@@ -132,7 +141,7 @@ export class TokenHUD {
       <div class="token-quickbar glass-panel tok-qb-expanded">
         <!-- Token Header / Avatar -->
         <div class="tok-qb-avatar-group">
-          <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" class="tok-qb-avatar" />
+          <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" />
           <div class="tok-qb-meta">
             <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
@@ -147,13 +156,14 @@ export class TokenHUD {
 
         <div class="tok-qb-divider"></div>
 
+        ${!isPC && !isMasked && token.actorType !== 'drone' && adversaryDescription(token) ? '<details class="token-description"><summary>Descripción</summary><p>' + escapeHTML(adversaryDescription(token)) + '</p></details>' : ''}
         <!-- HP & Thresholds -->
         <div class="tok-qb-stat-group">
           ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
           <div class="tok-qb-stat-actions">
             <button class="hud-btn hud-btn-xs" data-quick-stat="hp" data-delta="-1">-1</button>
             <button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="hp" data-delta="1">+1</button>
-            <span class="tok-qb-thresholds">M:${token.hp.majorThreshold} S:${token.hp.severeThreshold}</span>
+            <span class="tok-qb-thresholds">M:${token.hp.majorThreshold ?? '—'} S:${token.hp.severeThreshold ?? '—'}</span>
           </div>
         </div>
 
@@ -594,6 +604,7 @@ export class TokenHUD {
   }
 
   openTokenSettingsModal(token) {
+    if (isEncounterMarker(token)) return this.openCharacterSheetModal(token);
     if(store.sessionRole==='player'){notify('The Keeper manages character dossiers. Use your assigned character’s quick controls.');return;}
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
@@ -608,13 +619,11 @@ export class TokenHUD {
             <!-- Left Column: Portrait & Identity -->
             <div class="sheet-col-left">
               <div class="sheet-avatar-frame">
-                <img src="${escapeHTML(token.avatarUrl || '/assets/tokens/captain_harker.jpg')}" id="sheet_avatar_preview" class="sheet-avatar-img" />
+                <img src="${escapeHTML(actorPortrait(token))}" id="sheet_avatar_preview" class="sheet-avatar-img" />
               </div>
 
               <div class="form-group" style="margin-top: 10px;">
-                <label>Avatar URL or File</label>
-                <input type="text" id="sheet_avatar_url" class="hud-input" value="${escapeHTML(token.avatarUrl || '')}" />
-                <input type="file" id="sheet_avatar_file" accept="image/*" class="hud-file-input" style="margin-top: 6px;" />
+                <button type="button" class="hud-btn" id="sheet_portrait_picker">Elegir retrato</button>
               </div>
 
               <div class="form-group">
@@ -680,11 +689,11 @@ export class TokenHUD {
                 </div>
                 <div class="form-group">
                   <label>Major Threshold</label>
-                  <input type="number" id="sheet_hp_major" class="hud-input" value="${token.hp.majorThreshold}" />
+                  <input type="number" id="sheet_hp_major" class="hud-input" value="${token.hp.majorThreshold ?? ''}" placeholder="—" />
                 </div>
                 <div class="form-group">
                   <label>Severe Threshold</label>
-                  <input type="number" id="sheet_hp_severe" class="hud-input" value="${token.hp.severeThreshold}" />
+                  <input type="number" id="sheet_hp_severe" class="hud-input" value="${token.hp.severeThreshold ?? ''}" placeholder="—" />
                 </div>
               </div>
 
@@ -1057,39 +1066,15 @@ export class TokenHUD {
       sleepingSection.style.display = pathSelect.value === 'Sleeping' ? 'block' : 'none';
     };
 
-    // Local avatar file upload
-    const fileInput = modal.querySelector('#sheet_avatar_file');
-    const avatarPreview = modal.querySelector('#sheet_avatar_preview');
-    const avatarUrlInput = modal.querySelector('#sheet_avatar_url');
-
-    fileInput.onchange = async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const { isConfigured } = getCloudinaryConfig();
-        if (isConfigured) {
-          try {
-            notify('Subiendo avatar de token a Cloudinary (Token_)...');
-            const res = await uploadToCloudinary(file, () => {}, { prefix: 'Token_' });
-            avatarPreview.src = res.url;
-            avatarUrlInput.value = res.url;
-            notify('Avatar de token subido a Cloudinary.');
-            return;
-          } catch (err) {
-            notify('No se pudo subir a Cloudinary (' + err.message + '). Usando imagen local.', 'error');
-          }
-        }
-        const reader = new FileReader();
-        reader.onload = (re) => {
-          avatarPreview.src = re.target.result;
-          avatarUrlInput.value = re.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-
-    avatarUrlInput.oninput = () => {
-      avatarPreview.src = avatarUrlInput.value;
-    };
+    let chosenIllustration = null;
+    const preview = modal.querySelector('#sheet_avatar_preview');
+    modal.querySelector('#sheet_portrait_picker').onclick = () => openPortraitPicker({
+      current: preview.getAttribute('src'), collection: actorCollection(token), allowCustom: true, cloud: true,
+      onChoose(url) {
+        chosenIllustration = url;
+        preview.src = actorPortrait({ ...token, avatarUrl: url, portraitOverride: Boolean(url) });
+      },
+    });
 
     // Reserve token
     const sheetReserveBtn = modal.querySelector('#sheet_reserve_btn');
@@ -1137,6 +1122,7 @@ export class TokenHUD {
       });
 
       const actorTypeVal = modal.querySelector('#sheet_actor_type')?.value || 'player';
+      const avatarUrl = chosenIllustration ?? token.avatarUrl;
       const updated = {
         name: modal.querySelector('#sheet_name').value.trim() || token.name,
         roleTag: modal.querySelector('#sheet_role').value.trim(),
@@ -1144,14 +1130,15 @@ export class TokenHUD {
         isPlayer: actorTypeVal === 'player',
         hideName: modal.querySelector('#sheet_hide_name')?.checked ?? false,
         species: modal.querySelector('#sheet_species')?.value.trim() || token.species,
-        avatarUrl: avatarUrlInput.value || token.avatarUrl,
+        avatarUrl,
+        portraitOverride: chosenIllustration === null ? token.portraitOverride === true : Boolean(chosenIllustration),
         path: pathSelect.value,
         size: parseInt(modal.querySelector('#sheet_size').value, 10),
         hp: {
           current: parseInt(modal.querySelector('#sheet_hp_cur').value, 10),
           max: parseInt(modal.querySelector('#sheet_hp_max').value, 10),
-          majorThreshold: parseInt(modal.querySelector('#sheet_hp_major').value, 10),
-          severeThreshold: parseInt(modal.querySelector('#sheet_hp_severe').value, 10)
+          majorThreshold: modal.querySelector('#sheet_hp_major').value === '' ? null : modal.querySelector('#sheet_hp_major').valueAsNumber,
+          severeThreshold: modal.querySelector('#sheet_hp_severe').value === '' ? null : modal.querySelector('#sheet_hp_severe').valueAsNumber
         },
         armor: {
           current: parseInt(modal.querySelector('#sheet_armor_cur').value, 10),
@@ -1205,18 +1192,7 @@ export class TokenHUD {
       };
 
       try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
-      if (updated.hasSpotlight && !token.hasSpotlight) {
-        const isAdversary = (updated.actorType === 'adversary' || !updated.isPlayer) && updated.actorType !== 'drone';
-        if (isAdversary && (store.state.userRole === 'keeper' || store.sessionRole !== 'player')) {
-          if ((store.state.fear ?? 0) < 1) {
-            notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
-            return;
-          }
-          store.spendFear(1, `Foco en adversario: ${updated.name}`);
-          network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
-        }
-      }
-      store.updateToken(token.id, updated);
+      if (!store.updateToken(token.id, updated)) return;
       if (store.sessionRole !== 'player') {
         network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
         network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });

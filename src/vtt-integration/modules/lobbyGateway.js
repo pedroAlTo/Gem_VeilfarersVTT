@@ -1,3 +1,4 @@
+import { actorPortrait } from '../../tokenAvatars.js';
 import {
   signInWithPopup,
   GoogleAuthProvider,
@@ -877,6 +878,7 @@ export class VeilfarersLobbyGateway {
       card.className = 'vault-char-card';
       card.innerHTML = `
         <div class="vault-card-body">
+          ${sheet ? '<img class="vault-card-avatar" src="' + escapeHtml(actorPortrait(sheet)) + '" alt="" loading="lazy">' : ''}
           <div class="vault-card-main">
             <div class="vault-card-header-row">
               <h4>${escapeHtml(row.name || 'Personaje')}</h4>

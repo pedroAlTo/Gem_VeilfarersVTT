@@ -1,3 +1,5 @@
+import { isPortraitReference } from './portraitCatalog.js';
+
 // Session chat is owned by the Keeper. Whispers always include the Keeper.
 export const CHAT_LIMIT = 500;
 export const CHAT_TEXT_LIMIT = 2000;
@@ -13,8 +15,7 @@ export function chatRequest(input) {
     text: input.text.trim(),
     clientId: input.clientId,
     recipientId: input.recipientId,
-    ...(input.color ? { color: String(input.color) } : {}),
-    ...(input.senderTokenId ? { senderTokenId: String(input.senderTokenId) } : {})
+    ...(string(input.senderTokenId, 200) ? { senderTokenId: input.senderTokenId } : {})
   };
 }
 
@@ -28,11 +29,12 @@ export function validateChatEntry(entry) {
     throw new Error('Mensaje de chat no válido.');
   }
   // Only canonical fields are persisted or forwarded.
-  const { id, clientId, senderId, senderName, recipientId, recipientName, text, sentAt, color, senderTokenId } = entry;
+  const { id, clientId, senderId, senderName, recipientId, recipientName, text, sentAt, color, senderTokenId, senderPortrait } = entry;
   return {
     id, clientId, senderId, senderName, recipientId, recipientName, text, sentAt,
     ...(color ? { color: String(color) } : {}),
-    ...(senderTokenId ? { senderTokenId: String(senderTokenId) } : {})
+    ...(string(senderTokenId, 200) ? { senderTokenId } : {}),
+    ...(isPortraitReference(senderPortrait) ? { senderPortrait } : {})
   };
 }
 

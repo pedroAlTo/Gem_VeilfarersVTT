@@ -12,10 +12,15 @@ import { store } from './state.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { TRAITS } from './rulesEngine.js';
 import { tokenInventory } from './equipment.js';
+import { openActorPortrait } from './portraitPicker.js';
+import { actorPortrait } from './tokenAvatars.js';
 import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { normalizeConditions, conditionDefinition } from './conditions.js';
-import { distanceInfo, rangeCheck, netEdge, weaponRangeBand, weaponAttackBonus } from './attackFlow.js';
+import { openConditions } from './conditionUI.js';
+import { checkEdge, lifeStage } from './combatState.js';
+import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus } from './attackFlow.js';
+import { proceduralAttack } from './adversaryWeapons.js';
 import { damageTypeOf, penetrationFor } from './rulesEngine.js';
 import { clockPieHTML } from './effectClocks.js';
 import { availableRiders, throwExpression } from './damageRiders.js';
@@ -144,7 +149,7 @@ export class PlayerActionBar {
     // The target marked for an attack: if either token moves, the distance is worked out again.
     if (this.targeting?.targetId) {
       const target = store.state.tokens.find(t => t.id === this.targeting.targetId);
-      const key = target ? `${token.x},${token.y},${target.x},${target.y}` : '';
+      const key = target ? JSON.stringify([token.x, token.y, target.x, target.y, token.conditions, token.stress, target.conditions, token.pendingAdvantage]) : '';
       if (!target) this.stopTargeting(false);
       else if (this.targeting.posKey && key !== this.targeting.posKey) { this.targeting.posKey = key; this.markTarget(target); }
     }
@@ -153,7 +158,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, actorPortrait(token), store.canEditToken(token.id), stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -172,11 +177,13 @@ export class PlayerActionBar {
       : exp !== null && cost ? `<span class="pab-hope-cost" role="status">−1 Hope · ${hope} → ${hope - 1}</span>` : '';
     const expRow = `<div class="pab-row pab-exp-row"><span class="pab-label">Experiencias</span><div class="pab-buttons">${expButtons}${expNote}</div></div>`;
     document.body.classList.toggle('pab-hope-pending', exp !== null && cost > 0);
+    const stage = lifeStage(token);
     const subtitle = [token.characterClass, token.path].filter(Boolean).join(' · ');
     this.root.innerHTML = sanitizeHTML(`
-      <header class="pab-head"><div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
+      <header class="pab-head">${store.canEditToken(token.id) ? `<button type="button" class="actor-portrait-button pab-portrait-button" data-pab-portrait title="Cambiar retrato" aria-label="Cambiar retrato"><img src="${e(actorPortrait(token))}" alt=""></button>` : ''}<div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
         <button type="button" class="pab-focus ${token.hasSpotlight ? 'is-on' : ''}" data-pab-focus aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tienes el foco · pulsa para quitarlo' : 'Tomar el foco'}" ${store.canEditToken(token.id) ? '' : 'disabled'}>✨ ${token.hasSpotlight ? 'Con el foco' : 'Tomar foco'}</button></header>
       ${this.statsHTML(stats)}
+      ${stage ? '<button type="button" class="hud-btn" data-pab-life>' + e(stage) + ' · <span>Ver estado del personaje</span></button>' : ''}
       <div class="pab-row">
         <span class="pab-label">Tirar</span>
         <div class="pab-buttons pab-traits">${TRAITS.map(t => `<button type="button" class="pab-trait ${trait === t.id ? 'selected' : ''}" data-pab-trait="${t.id}" aria-pressed="${trait === t.id}" title="${e(t.name)} · DC ${e(dc)}"><b>${e(t.short)}</b><span>${sign(Number(token.traits?.[t.id]) || 0)}</span></button>`).join('')}</div>
@@ -198,7 +205,12 @@ export class PlayerActionBar {
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
       ${this.result ? this.resultRow() : ''}`);
+    this.root.querySelector('[data-pab-portrait]')?.addEventListener('click', () => openActorPortrait(token.id));
     this.root.querySelector('[data-pab-focus]')?.addEventListener('click', () => { if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } });
+    if (stage) {
+      this.root.querySelector('[data-pab-life]').onclick = () => openConditions(token.id);
+      this.root.querySelectorAll('[data-pab-trait], [data-pab-weapon], [data-pab-bear], [data-pab-apply], [data-pab-attack-edge]').forEach(b => { b.disabled = true; });
+    }
     this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.tap({ kind: 'trait', id: b.dataset.pabTrait }); });
     this.root.querySelectorAll('[data-pab-exp]').forEach(b => { b.onclick = () => this.tap({ kind: 'exp', id: Number(b.dataset.pabExp) }); });
     this.root.querySelectorAll('[data-pab-weapon]').forEach(b => { b.onclick = () => (this.targeting?.weaponId === b.dataset.pabWeapon ? this.stopTargeting() : this.startTargeting(b.dataset.pabWeapon)); });
@@ -298,7 +310,7 @@ export class PlayerActionBar {
     const token = store.state.tokens.find(t => t.id === tokenId);
     if (!token) return;
     const weapons = (tokenInventory(token).weapons || []).filter(usableWeapon);
-    if (!weapons.length) { notify('Este adversario no tiene ataque en su ficha: indica su daño para atacar.', 'error'); return; }
+    if (!weapons.length) { notify(proceduralAttack(token) ? 'Este adversario se resuelve mediante las habilidades y objetivos de su ficha.' : 'Este adversario no tiene ataque en su ficha: indica su daño para atacar.', 'error'); return; }
     this.keeperAttack = true; this.tokenId = tokenId; this.weapons = weapons;
     window.veilDiceDock?.close(); // the map must be free to pick the target; the result reopens it
     this.startTargeting(weapons[0].id);
@@ -319,6 +331,23 @@ export class PlayerActionBar {
     const p = this.targeting.preview;
     box.innerHTML = sanitizeHTML(`<header><b data-no-i18n>${e(attacker?.name || '')}</b> · <span data-no-i18n>${e(weapon?.name || '')}</span><button type="button" class="pab-more" data-kap-cancel aria-label="Cancelar el ataque">×</button></header>
       ${p ? this.targetHint(p) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>'}`);
+    if (this.weapons.length > 1) {
+      const menu = document.createElement('vf-select');
+      menu.setAttribute('aria-label', 'Ataque del adversario');
+      for (const w of this.weapons) {
+        const option = document.createElement('option');
+        option.value = w.id;
+        option.textContent = w.name + ' · ' + w.damage;
+        if (w.id === weapon?.id) option.setAttribute('selected', '');
+        menu.append(option);
+      }
+      box.querySelector('header').after(menu);
+      menu.onchange = () => {
+        this.targeting.weaponId = menu.value;
+        const marked = store.state.tokens.find(t => t.id === this.targeting.targetId);
+        if (marked) this.markTarget(marked); else this.keeperPanel();
+      };
+    }
     box.querySelector('[data-kap-cancel]').onclick = () => this.stopTargeting();
     box.querySelectorAll('[data-pab-attack-edge]').forEach(b => { b.onclick = () => this.confirmAttack(b.dataset.pabAttackEdge); });
   }
@@ -366,16 +395,18 @@ export class PlayerActionBar {
     const gap = distanceInfo(token, target, store.getActiveMap?.() || {}), check = rangeCheck(weapon, gap.band);
     const targeting = this.targeting;
     targeting.targetId = target.id;
-    targeting.posKey = `${token.x},${token.y},${target.x},${target.y}`;
+    targeting.posKey = JSON.stringify([token.x, token.y, target.x, target.y, token.conditions, token.stress, target.conditions, token.pendingAdvantage]);
     window.veilCanvas?.setAttackTarget?.(this.tokenId, target.id);
     const gear = await window.veilDiceRoller?.gearCheck?.(token, { weapon }).catch(() => null) || { disadvantage: false, text: '' };
     if (this.targeting !== targeting || targeting.targetId !== target.id) return;
-    const edge = netEdge(!!token.pendingAdvantage, check.disadvantage || gear.disadvantage);
+    const roller = token.actorType === 'drone' ? store.state.tokens.find(t => t.id === token.drone?.operatorId) : token;
+    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage);
     const props = weaponAttackBonus(weapon, gap.band), type = damageTypeOf(weapon || ''), pen = penetrationFor(type);
     const reasons = [check.disadvantage || !check.allowed ? check.reason : '',
       props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',
       pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
-    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed, edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
+    if (lifeStage(roller)) reasons.unshift('El personaje no puede atacar en este estado.');
+    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed && !lifeStage(roller), edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
     if (this.keeperAttack) this.keeperPanel();
     this.signature = ''; this.render();
   }

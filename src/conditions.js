@@ -121,21 +121,21 @@ export const CAMPAIGN_STATES = [
   },
   {
     "name": "Dying",
-    "rule": "0 HP. The character is unconscious and makes Dying Progress / Death Moves each Spotlight until stabilized (DC 15) or dead.",
+    "rule": "At 0 HP you cannot act. At the start of your Spotlight roll 1d12. On 8+ mark one progress. The second mark leads to Final. An adjacent ally can stabilize you with Knowledge or Finesse, DC 15.",
     "label": "Moribundo",
     "path": "M9 12h6m-3-3v6m-7 4h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z",
     "isState": true
   },
   {
     "name": "Final",
-    "rule": "Critical dying state. One step before irreversible death. Further unmitigated damage or failed death moves cause permanent death.",
+    "rule": "At the start of your Spotlight roll 1d12. On 8+ mark one Final Progress. The second mark means death. Basic stabilization is DC 20. Corebook ch. 10.",
     "label": "Estado Final",
     "path": "M12 2v20M5 7h14M8 12h8",
     "isState": true
   },
   {
     "name": "Long Bruise",
-    "rule": "Persistent injury from returning from Dying. Reduces maximum HP by 1 until completing a Long Rest.",
+    "rule": "Mark one Stress when returning from Dying or Final. This Long Bruise persists until Decompress during a Long Rest. Corebook chs. 9–10.",
     "label": "Secuela Grave",
     "path": "M4 4l16 16M4 20L20 4",
     "isState": true

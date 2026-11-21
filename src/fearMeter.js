@@ -1,11 +1,14 @@
-import { sanitizeHTML } from './ui.js';
+import { sanitizeHTML, escapeHTML as esc } from './ui.js';
 // src/fearMeter.js
 // Futuristic 12-Cell Global Fear Meter Widget with GSAP High-Impact Animations
 
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
-import { KEEPER_MOVES } from './rulesEngine.js';
+import { keeperCards } from './loadoutCards.js';
+import { playKeeperMove } from './cardHandUI.js';
+import { nextSpotlightRound } from './combatState.js';
+import { openEnvironment } from './environmentUI.js';
 import gsap from 'gsap';
 
 export class FearMeterHUD {
@@ -151,12 +154,14 @@ export class FearMeterHUD {
       if (isKeeper) {
         controlsEl.innerHTML = sanitizeHTML(`
           <button class="hud-btn hud-btn-xs hud-btn-amber" id="fear_spend_menu_btn" title="Gastar Miedo en Movimientos del Keeper">SPEND FEAR</button>
+          <button class="hud-btn hud-btn-xs" id="next_spotlight_round" title="Cerrar la ronda cuando hayan actuado sus participantes">Nueva ronda</button>
           <button class="hud-btn hud-btn-xs" id="fear_session_reset_btn" title="Reinicio de Sesión (Tirar 1d4+2)">RESET</button>
         `);
 
         controlsEl.querySelector('#fear_spend_menu_btn').onclick = () => {
           this.openSpendModal();
         };
+        controlsEl.querySelector('#next_spotlight_round').onclick = () => nextSpotlightRound(store);
         controlsEl.querySelector('#fear_session_reset_btn').onclick = () => {
           store.resetFearSession();
           network.broadcast({ type: 'FEAR_UPDATE', fear: store.getState().fear });
@@ -177,6 +182,8 @@ export class FearMeterHUD {
 
   openSpendModal() {
     const state = store.getState();
+    const cards = keeperCards(store.getSelectedToken()).filter(card => card.playable);
+    const map = store.getActiveMap();
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
     modal.innerHTML = sanitizeHTML(`
@@ -186,22 +193,9 @@ export class FearMeterHUD {
           <button class="modal-close-btn">&times;</button>
         </div>
         <div class="veil-modal-body">
-          <p class="modal-intro">Select an authorized Keeper Move from Chapter 2 & 4 of the Keeper's Companion:</p>
           <div class="keeper-moves-list">
-            ${KEEPER_MOVES.map(m => `
-              <div class="keeper-move-card ${state.fear < m.cost ? 'disabled' : ''}">
-                <div class="move-info">
-                  <div class="move-title-row">
-                    <span class="move-name">${m.name}</span>
-                    <span class="move-cost">${m.cost} FEAR</span>
-                  </div>
-                  <div class="move-desc">${m.desc}</div>
-                </div>
-                <button class="hud-btn hud-btn-sm hud-btn-danger spend-action-btn" data-cost="${m.cost}" data-name="${m.name}" ${state.fear < m.cost ? 'disabled' : ''}>
-                  EXECUTE
-                </button>
-              </div>
-            `).join('')}
+            ${cards.map((card, index) => `<div class="keeper-move-card"><div class="move-info"><strong>${esc(card.name)} · ${card.cost.fear || 0} Fear</strong><p>${esc(card.text)}</p></div><button type="button" class="hud-btn spend-action-btn" data-card="${index}" ${state.fear < card.cost.fear ? 'disabled' : ''}>Ejecutar</button></div>`).join('')}
+            ${map?.environment?.microId ? '<button class="hud-btn" data-environment>Activar entorno de la escena</button>' : ''}
           </div>
         </div>
       </div>
@@ -214,15 +208,12 @@ export class FearMeterHUD {
       if (e.target === modal) modal.remove();
     };
 
+    modal.querySelector('[data-environment]')?.addEventListener('click', () => { modal.remove(); openEnvironment(map.id); });
     modal.querySelectorAll('.spend-action-btn').forEach(btn => {
-      btn.onclick = () => {
-        const cost = parseInt(btn.dataset.cost, 10);
-        const name = btn.dataset.name;
-        if (store.spendFear(cost, name)) {
-          network.broadcast({ type: 'FEAR_UPDATE', fear: store.getState().fear });
-          audio.playFearAlert();
-          modal.remove();
-        }
+      btn.onclick = async () => {
+        btn.disabled = true;
+        if (await playKeeperMove(cards[Number(btn.dataset.card)])) modal.remove();
+        else btn.disabled = false;
       };
     });
   }

@@ -44,7 +44,7 @@ test('Long Rest: full HP / Stress / Armor; Decompress ends Long Bruise; Prepare 
   assert.deepEqual(patch.conditions, [], 'Long Bruise (Decompress) and Poisoned (a Long Rest) end');
   assert.deepEqual([patch.armor.max, patch.armor.current], [4, 4], 'Armor Piercing and Disintegrating cuts come back; all slots repaired');
   assert.equal(restPatch(hurt, 'long', ['recover', 'prepare']).patch.hope, 2);
-  assert.equal(restPatch(pc('a', { hope: 5 }), 'long', ['recover', 'prepare']).patch.hope, 5, 'Prepare never lowers Hope');
+  assert.equal(restPatch(pc('a', { hope: 5 }), 'long', ['recover', 'prepare']).patch.hope, 2, 'Prepare restores session-start Hope even from above 2');
   // An enemy on the scene gets its Armor Piercing cut back too.
   const enemy = { id: 'e', mapId: 'm1', isPlayer: false, armor: { current: 0, max: 1, cut: { long: 2, repairAll: 0, downtime: 1 } } };
   const rest = chooseMoves(newRest('long', [pc('a'), enemy], 'm1', 'r'), 'a', ['recover', 'decompress']);

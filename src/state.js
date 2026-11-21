@@ -2,10 +2,12 @@
 // Centralized reactive state store for VeilVTT with Layers, Water, Handouts, and Sleeping Moves
 
 import { activeCampaignId, readCampaign, writeCampaign, selectCampaign, newId, listCampaigns } from './persistence.js';
+import { actorPortrait } from './tokenAvatars.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { controlsToken, assignControls, movePartyToScene } from './tokenPermissions.js';
 import { CAMPAIGN_KEYS, validateCampaign } from './validation.js';
 import { confirmAction, notify } from './ui.js';
+import { combatTransition, lifeStage, roundKey } from './combatState.js';
 import { waterGeometry } from './waterGeometry.js';
 
 import { INITIAL_MAPS, INITIAL_TOKENS, INITIAL_CLOCKS, INITIAL_HANDOUTS } from './defaultData.js';
@@ -35,6 +37,7 @@ class StateStore {
       activeTransmission: null, // Broadcasted handout currently popped up
       logs: [],
       chatMessages: [],
+      keeperPortrait: '',
       arcs: [
         {
           id: 'arc_main',
@@ -160,6 +163,11 @@ class StateStore {
     if (this.sessionRole === 'player' && !this.remoteApplying) {
       if (Object.keys(partialState).some(k=>CAMPAIGN_KEYS.includes(k))) return false;
       if (partialState.userRole === 'keeper') return false;
+    }
+    if (partialState.tokens && !this.undoManager?.isRestoring && !partialState.campaignId && !partialState.activeMapId && !this.remoteApplying && this.sessionRole !== 'player') {
+      const previous = new Map(this.state.tokens.map(t => [t.id, t]));
+      const map = this.getActiveMap();
+      partialState = { ...partialState, tokens: partialState.tokens.map(t => combatTransition(previous.get(t.id), t, map)) };
     }
     Object.assign(this.state, partialState);
     this.notify(Object.keys(partialState));
@@ -343,54 +351,15 @@ class StateStore {
   getControlledTokens() { return this.getTokensForActiveMap().filter(token => this.canEditToken(token.id)); }
 
   setTokenSpotlight(tokenId, active = true) {
-    const target = this.state.tokens.find(t => t.id === tokenId);
-    if (!target) return false;
-    if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
-
-    if (active) {
-      const isAdversary = (target.actorType === 'adversary' || target.isPlayer === false) && target.actorType !== 'drone';
-      if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
-        if ((this.state.fear ?? 0) < 1) {
-          notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
-          return false;
-        }
-        this.spendFear(1, `Foco en adversario: ${target.name}`);
-        if (typeof window !== 'undefined' && window.network?.broadcast) {
-          window.network.broadcast({ type: 'FEAR_UPDATE', fear: this.state.fear });
-        }
-      }
-    }
-
-    if (this.sessionRole === 'player' && !this.remoteApplying) {
-      return this.updateToken(tokenId, { hasSpotlight: Boolean(active) });
-    }
-
-    this._beforeTacticalMutation(active ? `Activar foco en ${target.name}` : `Desactivar foco en ${target.name}`);
-    const spotConfig = target.spotlight || { radius: 140, color: '#fbbf24', intensity: 0.85 };
-    const tokens = this.state.tokens.map(t => {
-      if (t.id === tokenId) {
-        return {
-          ...t,
-          hasSpotlight: Boolean(active),
-          spotlight: { ...(t.spotlight || spotConfig), enabled: Boolean(active) }
-        };
-      }
-      // El foco sólo lo puede tener un token a la vez: al activarse en uno, se apaga en los demás
-      if (active && (t.hasSpotlight || t.spotlight?.enabled)) {
-        return {
-          ...t,
-          hasSpotlight: false,
-          spotlight: { ...(t.spotlight || {}), enabled: false }
-        };
-      }
-      return t;
-    });
-
-    this.update({ tokens });
-    return true;
+    return this.updateToken(tokenId, { hasSpotlight: Boolean(active) });
   }
 
   updateToken(tokenId, partial) {
+    if (this.sessionBusy) return false;
+    if (this.state.userRole === 'player' && !this.tableActing && !this.remoteApplying && ('x' in partial || 'y' in partial)) {
+      const actor = this.state.tokens.find(t => t.id === tokenId);
+      if (lifeStage(actor) && (('x' in partial && partial.x !== actor.x) || ('y' in partial && partial.y !== actor.y))) return false;
+    }
     if (!this.remoteApplying && !this.tableActing && this.state.userRole === 'player' && !this.canEditToken(tokenId)) return false;
     if (this.sessionRole === 'player' && !this.remoteApplying) {
       // A rest pauses the table: the Keeper would refuse the change anyway.
@@ -398,22 +367,31 @@ class StateStore {
       if (this.canEditToken(tokenId)) return this.sendTokenPatch?.(tokenId, partial);
       return false;
     }
-    this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
-    const turningOnSpotlight = Boolean(partial.hasSpotlight || partial.spotlight?.enabled);
-    const targetToken = this.state.tokens.find(t => t.id === tokenId);
-    if (turningOnSpotlight && targetToken && !targetToken.hasSpotlight && !targetToken.spotlight?.enabled) {
-      const isAdversary = (targetToken.actorType === 'adversary' || targetToken.isPlayer === false) && targetToken.actorType !== 'drone';
-      if (isAdversary && (this.state.userRole === 'keeper' || this.sessionRole !== 'player')) {
-        if ((this.state.fear ?? 0) < 1) {
-          notify('Se requiere al menos 1 punto de Miedo (Fear) para otorgar el foco a un adversario.', 'error');
-          return false;
-        }
-        this.spendFear(1, `Foco en adversario: ${targetToken.name}`);
-        if (typeof window !== 'undefined' && window.network?.broadcast) {
-          window.network.broadcast({ type: 'FEAR_UPDATE', fear: this.state.fear });
-        }
-      }
+    const target = this.state.tokens.find(t => t.id === tokenId);
+    if (!target) return false;
+    if (['avatarUrl', 'species', 'name', 'pronouns', 'gender', 'tokenArchetype', 'characterClass', 'roleTag', 'actorType'].some(key => key in partial)) {
+      partial = { ...partial, avatarUrl: actorPortrait({ ...target, ...partial }) };
     }
+    const setsSpotlight = 'hasSpotlight' in partial || partial.spotlight?.enabled != null;
+    const turningOnSpotlight = setsSpotlight && Boolean(partial.hasSpotlight ?? partial.spotlight.enabled);
+    if (setsSpotlight) {
+      partial = { ...partial, hasSpotlight: turningOnSpotlight, spotlight: {
+        ...(target.spotlight || { radius: 140, color: '#fbbf24', intensity: 0.85 }), ...partial.spotlight, enabled: turningOnSpotlight
+      } };
+    }
+    const adversary = (target.actorType === 'adversary' || target.isPlayer === false) && target.actorType !== 'drone';
+    if (!this.remoteApplying && turningOnSpotlight && !target.hasSpotlight && !target.spotlight?.enabled && adversary) {
+      if (target.roundSpotlight === roundKey(this.getActiveMap())) {
+        notify('Este adversario ya tuvo el foco en esta ronda.', 'error');
+        return false;
+      }
+      if ((this.state.fear ?? 0) < 1) {
+        notify('Se requiere 1 Fear para dar el foco a un adversario.', 'error');
+        return false;
+      }
+      this.spendFear(1, 'Foco en adversario: ' + target.name);
+    }
+    this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
     const tokens = this.state.tokens.map(t => {
       if (t.id === tokenId) {
         return { ...t, ...partial };
@@ -1139,7 +1117,8 @@ class StateStore {
     // Old archives may omit optional fields, never borrow maps/actors/logs from the open session.
     const base = structuredClone(this.initialCampaign);
     const legacyArcs = [{ id: 'arc_main', name: 'Arco 1: Operaciones Activas', description: '', sceneIds: (input.maps || base.maps).map(m => m.id), tokenIds: [], images: [] }];
-    const data = validateCampaign({ ...base, ...input, arcs: input.arcs ?? legacyArcs, logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
+    const data = validateCampaign({ ...base, ...input, arcs: input.arcs ?? legacyArcs, keeperPortrait: input.keeperPortrait ?? '', logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
+    data.tokens = data.tokens.map(token => ({ ...token, avatarUrl: actorPortrait(token) }));
     if (!data.maps.some(m => m.id === data.activeMapId)) data.activeMapId = data.maps[0].id;
     if (data.fogExploredOpacity === undefined || data.fogExploredOpacity === 0.88) {
       data.fogExploredOpacity = 0.50;
@@ -1190,7 +1169,7 @@ class StateStore {
         const id = 'map_' + newId();
         data.maps = [{ id, name: 'Escena inicial', imageUrl: '/assets/maps/blank-grid.svg', gridSize: 64, gridType: 'square', gridColor: 'rgba(0,243,255,.18)', ambientLight: 1, ambientColor: '#080d18', walls: [], lights: [], effects: [], waterZones: [] }];
         data.arcs = [{ id: 'arc_' + newId(), name: 'Arco 1', description: '', sceneIds: [id], tokenIds: [], images: [] }];
-        data.activeMapId = id; data.tokens = []; data.clocks = []; data.handouts = []; data.logs = []; data.chatMessages = [];
+        data.activeMapId = id; data.tokens = []; data.clocks = []; data.handouts = []; data.logs = []; data.chatMessages = []; data.keeperPortrait = '';
         data.fear = 0; data.fogOfWar = false; data.starship.visible = false; data.starship.name = 'Nave sin asignar';
       }
       return data;

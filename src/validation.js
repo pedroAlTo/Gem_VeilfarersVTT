@@ -1,3 +1,4 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
 import { validRest } from './rest.js';
 import { validateDroneState } from './drones.js';
 import { validEffectClocks } from './effectClocks.js';
@@ -5,6 +6,8 @@ import { validateDrawing } from './freehand.js';
 import { validateEnvironment, validateBoss } from './encounterRules.js';
 import { validateInventory } from './equipment.js';
 import { validateChatHistory } from './chat.js';
+import { isPlayerPortrait, isPortraitSource } from './portraitCatalog.js';
+
 export const CAMPAIGN_KEYS = [
   'campaignId',
   'campaignName',
@@ -22,6 +25,7 @@ export const CAMPAIGN_KEYS = [
   'logs',
   'players',
   'chatMessages',
+  'keeperPortrait',
   'rest',
 ];
 export const finite = (x, min = -1e6, max = 1e6) =>
@@ -72,6 +76,7 @@ export function validateCampaign(data) {
     }
   }
   for (const m of data.maps) {
+    if (m.spotlightRound !== undefined) assert(Number.isSafeInteger(m.spotlightRound) && m.spotlightRound >= 1, 'Invalid Spotlight round.');
     validateEnvironment(m.environment);
     if (m.drawings !== undefined) {
       assert(Array.isArray(m.drawings) && m.drawings.length <= 500, 'Invalid drawings.');
@@ -103,6 +108,9 @@ export function validateCampaign(data) {
   }
   for (const t of data.tokens) {
     validateActor(t);
+    if (t.blazeChoice != null) assert(typeof t.blazeChoice === 'string' && t.blazeChoice.length <= 60, 'Invalid Death Move.');
+    if (t.lifeProgress !== undefined) assert(Number.isInteger(t.lifeProgress) && finite(t.lifeProgress, 0, 1), 'Invalid life progress.');
+    for (const stamp of [t.roundSpotlight, t.lifeRollRound, t.ftlRound]) if (stamp != null) assert(typeof stamp === 'string' && stamp.length <= 220, 'Invalid Spotlight round.');
     assert(t.mapId === 'reserve' || t.inReserve || data.maps.some(m => m.id === t.mapId), 'Token refers to an unknown map.');
   }
   for (const c of data.clocks)
@@ -135,6 +143,9 @@ export function validateCampaign(data) {
         ),
       'Invalid shield arcs.'
     );
+    if (s.jump != null) assert(['ready', 'transit'].includes(s.jump.phase) && typeof s.jump.id === 'string' && s.jump.id.length <= 200 &&
+      typeof s.jump.destination === 'string' && s.jump.destination.length > 0 && s.jump.destination.length <= 120 &&
+      typeof s.jump.mapId === 'string' && s.jump.mapId.length <= 200, 'Invalid FTL solution.');
     if (s.systems)
       assert(
         Object.values(s.systems).every((n) => Number.isInteger(n) && finite(n, 0, 3)),
@@ -143,7 +154,9 @@ export function validateCampaign(data) {
   } else throw new Error('Missing starship data.');
   if (data.rest !== undefined) assert(validRest(data.rest), 'Invalid rest.');
   if (data.logs !== undefined) assert(Array.isArray(data.logs) && data.logs.length <= 150 && data.logs.every(x => x && typeof x === 'object'), 'Invalid session log.');
-  return structuredClone({ ...data, chatMessages: validateChatHistory(data.chatMessages) });
+  const keeperPortrait = data.keeperPortrait ?? '';
+  assert(keeperPortrait === '' || isPortraitSource(keeperPortrait), 'Invalid Keeper portrait.');
+  return structuredClone({ ...data, keeperPortrait, chatMessages: validateChatHistory(data.chatMessages) });
 }
 
 export function validTokenPatch(p) {
@@ -167,10 +180,15 @@ export function validTokenPatch(p) {
           'inventory',
           'hasSpotlight',
           'effectClocks',
+          'avatarUrl',
+          'portraitOverride',
         ].includes(k)
     )
   )
     return false;
+  if ('avatarUrl' in p || 'portraitOverride' in p) {
+    if (!(p.portraitOverride === true && isPlayerPortrait(p.avatarUrl)) && !(p.portraitOverride === false && p.avatarUrl === '')) return false;
+  }
   for (const k of ['x', 'y', 'rotation', 'facingAngle']) if (k in p && !finite(p[k])) return false;
   for (const k of ['hope', 'effort']) if (k in p && !finite(p[k], 0, 6)) return false;
   if ('hasSpotlight' in p && typeof p.hasSpotlight !== 'boolean') return false;
@@ -201,7 +219,9 @@ export function validateActor(t) {
     assert(t && typeof t === 'object', 'Invalid actor.');
     assert(typeof t.name === 'string' && finite(t.x) && finite(t.y), 'Invalid token data.');
     resource(t.hp, 'HP');
-    assert(t.hp.max >= 1, 'HP maximum must be positive.');
+    if (t.bestiaryMode != null) assert(['partial', 'minion', 'narrative'].includes(t.bestiaryMode) && t.actorType === 'adversary', 'Invalid bestiary profile.');
+    if (isEncounterMarker(t)) assert(t.hp.max === 0 && t.hp.current === 0, 'Encounter markers have no HP pool.');
+    else assert(t.hp.max >= 1, 'HP maximum must be positive.');
     for (const key of ['armor', 'stress', 'resolve'])
       if (t[key] !== undefined) resource(t[key], key);
     for (const key of ['hope', 'effort'])
@@ -224,7 +244,7 @@ export function validateActor(t) {
   for (const key of ['majorThreshold', 'severeThreshold']) if (t.hp[key] !== undefined && t.hp[key] !== null) assert(finite(t.hp[key], 0, 10000), 'Invalid damage thresholds.');
   if (t.hp.majorThreshold !== undefined && t.hp.severeThreshold !== undefined && t.hp.majorThreshold !== null && t.hp.severeThreshold !== null) assert(t.hp.severeThreshold >= t.hp.majorThreshold, 'Severe debe ser igual o mayor que Major.');
   for (const key of ['level', 'proficiency', 'evasion', 'attackModifier', 'honedEdgeBonus']) if (t[key] !== undefined && t[key] !== null) assert(finite(t[key], key === 'attackModifier' ? -100 : 0, 100), `Invalid ${key}.`);
-  for (const key of ['species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes']) {
+  for (const key of ['species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes', 'description']) {
     if (t[key] === null) delete t[key];
     else if (t[key] !== undefined) {
       if (typeof t[key] !== 'string') t[key] = String(t[key]);

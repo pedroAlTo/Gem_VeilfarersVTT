@@ -1,7 +1,7 @@
 {
   "name": "veilfarers-vtt",
   "private": true,
-  "version": "2.27.9",
+  "version": "2.27.16",
   "type": "module",
   "scripts": {
     "dev": "vite",

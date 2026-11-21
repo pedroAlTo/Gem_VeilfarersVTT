@@ -169,3 +169,22 @@ test('the equipment tab works in place: search and add, quantities, edit, confir
   assert.ok(panel.querySelector('[data-prepare-weapon]'), 'the weapon keeps its attack button');
   modal.remove();
 });
+
+
+test('mixed damage uses each defence, rounds repeated types once and preserves the rolled faces', async () => {
+  const { sameDamageDefenses } = await import('../src/damageProtection.js');
+  const hit = (formula, conditions, more = {}) => resolveDamageExpression(formula, { targetToken: { conditions }, rollDie: sides => sides, ...more });
+  const result = hit('d8+1 Phys + d4 Shock', ['Resistance: Physical', 'Immunity: Shock']);
+  assert.deepEqual(result.rolls, [8, 4]); assert.equal(result.effectiveDamage, 4);
+  assert.equal(result.fullyProtected, false);
+  const groups = result.groups.map(({ types, applied }) => ({ types, applied }));
+  assert.ok(sameDamageDefenses({ conditions: ['Immunity: Shock', 'Resistance: Physical'] }, { groups }));
+  assert.ok(!sameDamageDefenses({ conditions: ['Immunity: Shock'] }, { groups }));
+  assert.equal(hit('1 Fire + 1 Fire', ['Resistance: Fire']).effectiveDamage, 1);
+  assert.equal(hit('d8 Phys + d4 Neural', ['Immunity: Neural']).stressMarked, 0);
+  assert.equal(hit('d8 Phys + d4 Neural', ['Immunity: Physical']).stressMarked, 1);
+  assert.equal(hit('d8 Phys + d4 Shock', ['Immunity: Physical', 'Immunity: Energy']).finalHpDamage, 0);
+  const critical = hit('d8+1 Phys + d4 Shock', ['Immunity: Shock'], { isCritical: true, proficiency: 2, honed: 1, bonus: 2 });
+  assert.deepEqual(critical.rolls, [8, 8, 8, 8, 4, 4]);
+  assert.equal(critical.effectiveDamage, 36);
+});

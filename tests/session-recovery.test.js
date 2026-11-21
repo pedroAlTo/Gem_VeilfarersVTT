@@ -268,3 +268,45 @@ test('unconfirmed movement does not reveal rooms or adversaries before Keeper ac
   await f.deliverHost(); await f.deliverGuest();
   assert.equal(engine.isTokenVisibleToPlayers(enemy, store.state.tokens, map), true);
 });
+
+test('drag preview keeps a translucent origin and measures the direct segment after a detour', async () => {
+  await endpoints();
+  const map = store.getActiveMap();
+  Object.assign(map, { gridSize: 50, gridScaleMeters: 2 });
+  mouse('mousedown', 100, 100);
+  mouse('mousemove', 100, 200);
+  mouse('mousemove', 250, 100);
+  const marks = [], labels = [], lines = [];
+  const ctx = new Proxy({
+    measureText: () => ({ width: 95 }),
+    translate: (x, y) => marks.push([x, y]),
+    lineTo: (x, y) => lines.push([x, y]),
+    fillText: (s, x) => labels.push([s, x]),
+  }, { get: (target, key) => key in target ? target[key] : () => {} });
+  engine.renderMovementPreview(ctx, map);
+  assert.deepEqual(marks[0], [100, 100]);
+  assert.deepEqual(lines.at(-1), [250, 100]);
+  assert.deepEqual(labels.at(-1), ['CLOSE · 6 m', 175]);
+  map.scaleType = 'starship';
+  map.gridScaleKm = 1;
+  engine.renderMovementPreview(ctx, map);
+  assert.deepEqual(labels.at(-1), ['ENGAGEMENT · ' + (3000).toLocaleString() + ' m', 175]);
+  mouse('mouseup', 250, 100);
+  const count = labels.length;
+  engine.renderMovementPreview(ctx, map);
+  assert.equal(labels.length, count);
+});
+
+test('the class flag occupies 35% of token diameter at lower right outside the portrait clip', async () => {
+  const { mapPortraitLayers } = await import('../src/tokenAvatars.js');
+  const tok = { avatarUrl:'/assets/tokens/classes/human-mystic-f.svg' };
+  const layers = mapPortraitLayers(tok);
+  assert.equal(layers.portrait, '/assets/tokens/crew/human-f-station.webp');
+  const custom = mapPortraitLayers({ avatarUrl:'https://example.org/me.webp', characterClass:'Mystic' });
+  assert.equal(custom.portrait, 'https://example.org/me.webp');
+  assert.equal(custom.flag, layers.flag);
+  const badge = { complete:true, naturalWidth:100, naturalHeight:200 };
+  const calls = [];
+  CanvasEngine.prototype.drawClassBanner.call({getTokenImage:() => badge}, {drawImage:(...args) => calls.push(args)}, custom.flag, 50);
+  assert.deepEqual(calls, [[badge, 32.5, 15, 17.5, 35]]);
+});

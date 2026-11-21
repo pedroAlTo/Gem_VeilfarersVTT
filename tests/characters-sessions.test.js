@@ -150,7 +150,9 @@ test('ficha renders active references safely, saves Evasion and keeps Resolve ma
   token.name = '<img src=x onerror=alert(1)>'; token.path = 'Sleeping'; token.resolve.current = 1;
   store.state.tokens.push(token);
   const modal = openDossier(token, () => {});
-  assert.equal(modal.querySelectorAll('.dossier-hero img').length, 0);
+  assert.equal(modal.querySelectorAll('.dossier-hero img').length, 1);
+  assert.equal(modal.querySelector('.dossier-portrait').getAttribute('src'), token.avatarUrl);
+  assert.equal(modal.querySelector('.dossier-hero [onerror]'), null);
   assert.equal(modal.querySelector('[name=resolve_max]').value, '2');
   modal.querySelector('[name=evasion]').value = '14';
   modal.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));

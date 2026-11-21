@@ -1,3 +1,4 @@
+import { isEncounterMarker } from './bestiaryProfiles.js';
 import { store } from './state.js';
 import { dossierDialog } from './dossierUI.js';
 import { escapeHTML as e, notify } from './ui.js';
@@ -14,7 +15,7 @@ export async function openBossEditor(tokenId, catalog) {
   if (!isKeeper(store.state, store.sessionRole)) return;
   const profiles = catalog ?? (await import('virtual:veil-encounters')).default.bosses;
   let token = store.state.tokens.find(t => t.id === tokenId);
-  if (!token || token.isPlayer || token.actorType === 'player' || !isKeeper(store.state, store.sessionRole)) return;
+  if (!token || isEncounterMarker(token) || token.isPlayer || token.actorType === 'player' || !isKeeper(store.state, store.sessionRole)) return;
   let draft = structuredClone(token.boss || { index: 0, states: [{ ...blank(token), name: 'Estado inicial' }, { ...blank(token), name: 'Desesperación' }] });
   let source = token.boss?.sourceText || '';
   const initialIndex = token.boss?.index ?? 0;

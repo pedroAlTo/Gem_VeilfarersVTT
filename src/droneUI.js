@@ -1,3 +1,4 @@
+import { equipmentThumbnail } from './equipmentArtwork.js';
 // The drone console: build a drone from a Grade and Modules (Corebook ch. 14), and run it at
 // the table (signal, link mode, Lost protocol, operator, modules offline, complications).
 import { dossierDialog } from './dossierUI.js';
@@ -69,7 +70,7 @@ export function openDroneConsole(tokenId = null) {
     for (const m of shown) { const key = `${GRADE_LABEL[m.grade]} · ${m.group}`; groups.set(key, [...(groups.get(key) || []), m]); }
     q('[data-drone-modules]').innerHTML = sanitizeHTML(shown.length ? [...groups].map(([title, list]) => `<fieldset class="drone-group"><legend>${e(title)}</legend>${list.map(m => {
       const on = state.modules.includes(m.id), off = state.offline.includes(m.id);
-      return `<div class="drone-module ${on ? 'selected' : ''}"><label><input type="checkbox" data-module="${e(m.id)}" ${on ? 'checked' : ''} /><span><strong>${e(m.name)}</strong> <em>${m.slots} Slot${m.slots === 1 ? '' : 's'} · ${m.cost} Cr · ${e(m.source)}</em><small>${e(m.effect)}</small></span></label>${on && token ? `<label class="drone-offline"><input type="checkbox" data-offline="${e(m.id)}" ${off ? 'checked' : ''} /> Offline</label>` : ''}</div>`;
+      return `<div class="drone-module ${on ? 'selected' : ''}"><label><input type="checkbox" data-module="${e(m.id)}" ${on ? 'checked' : ''} />${equipmentThumbnail(m)}<span><strong>${e(m.name)}</strong> <em>${m.slots} Slot${m.slots === 1 ? '' : 's'} · ${m.cost} Cr · ${e(m.source)}</em><small>${e(m.effect)}</small></span></label>${on && token ? `<label class="drone-offline"><input type="checkbox" data-offline="${e(m.id)}" ${off ? 'checked' : ''} /> Offline</label>` : ''}</div>`;
     }).join('')}</fieldset>`).join('') : '<p class="dossier-muted">Ningún módulo coincide con la búsqueda.</p>');
   };
   const renderSummary = () => {
@@ -159,7 +160,7 @@ export function openDroneConsole(tokenId = null) {
       } else {
         const canvas = window.veilCanvas, center = canvas?.screenToWorld?.(canvas.displayWidth / 2, canvas.displayHeight / 2) || { x: 500, y: 500 };
         const member = store.state.memberId || store.state.peerId || 'keeper';
-        const created = store.addToken({ ...data, name, avatarUrl: '/assets/tokens/synthetic_infiltrator_echo.jpg', visionAngle: 90, fov: 90, facingAngle: 0, ownerId: '', controllerIds: member !== 'keeper' ? [member] : [], ...center });
+        const created = store.addToken({ ...data, name, visionAngle: 90, fov: 90, facingAngle: 0, ownerId: '', controllerIds: member !== 'keeper' ? [member] : [], ...center });
         if (!created) throw new Error('No se pudo crear el dron.');
         store.update({ selectedTokenId: created.id });
         network.broadcast?.({ type: 'TOKEN_ADD', token: created });

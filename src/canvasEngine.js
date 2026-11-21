@@ -1,3 +1,5 @@
+import { mapPortraitLayers } from './tokenAvatars.js';
+import { isEncounterMarker } from './bestiaryProfiles.js';
 // src/canvasEngine.js
 // High-Resolution Tactical Canvas Engine with Water Depths (0-5), Editable Walls & Lights,
 // Drag-Resizable Templates, Expanded Particle FX, and Multi-Layer Support
@@ -621,7 +623,8 @@ export class CanvasEngine {
   }
 
   beginTokenDrag(token, facing = false) {
-    this.tokenDragContext = { campaignId: store.state.campaignId, mapId: token.mapId, tool: store.state.activeTool, role: store.state.userRole, x: token.x, y: token.y, facingAngle: token.facingAngle };
+    this.lastMoveDistance = null;
+    this.tokenDragContext = { distance: 0, campaignId: store.state.campaignId, mapId: token.mapId, tool: store.state.activeTool, role: store.state.userRole, x: token.x, y: token.y, facingAngle: token.facingAngle };
     // Gesture state is a visual preview, never the authoritative token object.
     if (facing) this.draggedTokenFacing = { ...token };
     else { this.draggedToken = { ...token }; this.draggedTokenOrigX = token.x; this.draggedTokenOrigY = token.y; }
@@ -694,10 +697,52 @@ export class CanvasEngine {
         return true;
       }
     }
+    const stepDistance = Math.hypot(x - tok.x, y - tok.y);
     if (store.updateToken(tok.id, { x, y }) === false) return true;
+    const previous = this.lastMoveDistance;
+    const continued = previous?.tokenId === tok.id && previous.mapId === map.id && previous.keyboard && previous.expires > performance.now();
+    this.showMoveDistance(tok.id, map.id, (continued ? previous.distance : 0) + stepDistance, true);
     if (store.sessionRole !== 'player' && state.userRole === 'player') grantSpotlight(store, tok.id);
     if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId: tok.id, x, y });
     return true;
+  }
+
+  showMoveDistance(tokenId, mapId, distance, keyboard = false) {
+    this.lastMoveDistance = { tokenId, mapId, distance, keyboard, expires: performance.now() + 1500 };
+  }
+
+  renderMovementPreview(ctx, map) {
+    if (!this.draggedToken || !this.tokenDragContext?.distance) return;
+    const origin = this.tokenDragContext;
+    const token = this.draggedToken;
+    const grid = map.gridSize || 64;
+    this.renderGhostToken(ctx, { ...token, x: origin.x, y: origin.y, avatar: token.avatarUrl }, grid, 0, '');
+    this.renderRuler(ctx, origin, token, grid, true);
+  }
+
+  renderMoveDistance(ctx, map, tokens) {
+    const drag = this.draggedToken;
+    const saved = this.lastMoveDistance;
+    const active = drag ? this.tokenDragContext : saved;
+    if (!active || active.mapId !== map.id || !active.distance || (!drag && active.expires <= performance.now())) return;
+    const token = drag || tokens.find(t => t.id === saved.tokenId);
+    if (!token) return;
+    const grid = map.gridSize || 64;
+    const meters = active.distance / grid * (map.gridScaleMeters || DEFAULT_METERS_PER_SQUARE);
+    const label = meters.toLocaleString(undefined, { maximumFractionDigits: 1 }) + ' m';
+    const point = this.worldToScreen(token.x, token.y);
+    ctx.save();
+    ctx.font = 'bold 14px system-ui';
+    const width = Math.ceil(ctx.measureText(label).width) + 16;
+    const x = Math.max(0, Math.min(this.displayWidth - width, point.x - width / 2));
+    const y = Math.max(0, Math.min(this.displayHeight - 24, point.y + (token.size || 1) * grid * this.zoom / 2 + 8));
+    ctx.fillStyle = '#091625';
+    ctx.fillRect(x, y, width, 24);
+    ctx.fillStyle = '#a5f3fc';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + width / 2, y + 12);
+    ctx.restore();
   }
 
   // The scene's darkness now: 1 − its ambient light. When the Keeper changes it with a
@@ -1630,6 +1675,7 @@ export class CanvasEngine {
           }
         }
 
+        this.tokenDragContext.distance += Math.hypot(nextX - this.draggedToken.x, nextY - this.draggedToken.y);
         this.draggedToken.x = nextX;
         this.draggedToken.y = nextY;
         return;
@@ -1988,12 +2034,14 @@ export class CanvasEngine {
         }
         const tokenId = this.draggedToken.id;
         const moved = finalX !== this.draggedTokenOrigX || finalY !== this.draggedTokenOrigY;
+        const distance = this.tokenDragContext.distance + Math.hypot(finalX - this.draggedToken.x, finalY - this.draggedToken.y);
         this.cancelTokenDrag();
-        store.updateToken(tokenId, { x: finalX, y: finalY });
+        const accepted = store.updateToken(tokenId, { x: finalX, y: finalY }) !== false;
         // The Keeper's own Player view: a move is the player's active action (a connected
         // player's move gets it from the table when the patch arrives).
-        if (moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantSpotlight(store, tokenId);
-        if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId, x: finalX, y: finalY });
+        if (accepted && !isBlocked && (moved || distance > 0)) this.showMoveDistance(tokenId, map.id, distance);
+        if (accepted && moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantSpotlight(store, tokenId);
+        if (accepted && store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId, x: finalX, y: finalY });
       }
 
       if (this.draggedWall) {
@@ -3003,7 +3051,10 @@ export class CanvasEngine {
       this.renderFogOverlay(ctx, map, now * 0.001);
     }
 
+    this.renderMovementPreview(ctx, map);
     ctx.restore();
+
+    if (!this.draggedToken) this.renderMoveDistance(ctx, map, activeTokens);
 
     // Floating tactical condition / state tooltip
     if (this.activeHoveredCondition) {
@@ -3889,8 +3940,9 @@ export class CanvasEngine {
       }
 
       // Avatar & Defeated / Dead Token representation (HP <= 0)
+      const layers = mapPortraitLayers(tok);
       const bossPending = tok.boss ? !tok.boss.defeated && (tok.boss.index < tok.boss.states.length - 1 || tok.boss.states[tok.boss.index].defeat === 'objective') : tok.bossStatus?.pending;
-      const isDead = tok.boss?.defeated || tok.bossStatus?.defeated || (typeof tok.hp?.current === 'number' && tok.hp.current <= 0 && !bossPending);
+      const isDead = tok.boss?.defeated || tok.bossStatus?.defeated || (!isEncounterMarker(tok) && typeof tok.hp?.current === 'number' && tok.hp.current <= 0 && !bossPending);
 
       ctx.save();
       ctx.beginPath();
@@ -3913,7 +3965,7 @@ export class CanvasEngine {
         ctx.textBaseline = 'middle';
         ctx.fillText('☠️', 0, 0);
       } else {
-        const img = this.getTokenImage(tok.avatarUrl);
+        const img = this.getTokenImage(layers.portrait);
         if (img && img.complete && img.naturalWidth > 0) {
           ctx.drawImage(img, -radius, -radius, radius * 2, radius * 2);
         } else {
@@ -4021,6 +4073,8 @@ export class CanvasEngine {
         ctx.stroke();
         ctx.restore();
       }
+
+      this.drawClassBanner(ctx, layers.flag, radius);
 
       // Dead / Defeated Badge above token
       if (isDead) {
@@ -4187,7 +4241,15 @@ export class CanvasEngine {
   }
 
   // --- Render Ghost / Last Known Position of Enemy in Fog of War ---
-  renderGhostToken(ctx, ghost, gridSize, time) {
+  drawClassBanner(ctx, url, radius) {
+    const flag = url && this.getTokenImage(url);
+    if (!flag?.complete || !flag.naturalWidth || !flag.naturalHeight) return;
+    const height = 2 * radius * 0.35;
+    const width = height * flag.naturalWidth / flag.naturalHeight;
+    ctx.drawImage(flag, radius - width, radius - height, width, height);
+  }
+
+  renderGhostToken(ctx, ghost, gridSize, time, caption = 'ÚLTIMA POS.') {
     const radius = ((ghost.size || 1) * gridSize) / 2;
     ctx.save();
     ctx.translate(ghost.x, ghost.y);
@@ -4210,7 +4272,8 @@ export class CanvasEngine {
     ctx.fill();
 
     // Portrait / initial
-    const img = this.getTokenImage(ghost.avatar);
+    const layers = mapPortraitLayers({ ...ghost, avatarUrl: ghost.avatar });
+    const img = this.getTokenImage(layers.portrait);
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.save();
       ctx.beginPath();
@@ -4226,12 +4289,14 @@ export class CanvasEngine {
       ctx.fillText((ghost.name || '?')[0].toUpperCase(), 0, 0);
     }
 
+    this.drawClassBanner(ctx, layers.flag, radius);
+
     // Badge
     ctx.globalAlpha = 0.85;
     ctx.font = 'bold 9px "Rajdhani", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f59e0b';
-    ctx.fillText('ÚLTIMA POS.', 0, radius + 12);
+    if (caption) ctx.fillText(caption, 0, radius + 12);
 
     ctx.restore();
   }
@@ -4513,6 +4578,7 @@ export class CanvasEngine {
   }
 
   renderTokenVitals(ctx, tok, radius) {
+    if (isEncounterMarker(tok)) return;
     ctx.save();
     const cfg = tok.displayConfig || {};
     const gaugeScale = Math.max(1, Math.min(2, 0.9 / this.zoom));
@@ -5072,7 +5138,7 @@ export class CanvasEngine {
   }
 
   // --- Measurement Ruler with Canonical System Range Bands ---
-  renderRuler(ctx, start, end, gridSize) {
+  renderRuler(ctx, start, end, gridSize, movement = false) {
     const map = store.getActiveMap() || {};
     const distPx = Math.hypot(end.x - start.x, end.y - start.y);
     const distGrid = (distPx / gridSize).toFixed(1);
@@ -5086,9 +5152,10 @@ export class CanvasEngine {
     let distUnit = 'm';
     let rangeBand = 'Contact';
 
+    const scaleKilometers = map.gridScaleKm || (map.gridScaleMeters ? map.gridScaleMeters * 2.5 : 5.0);
     if (isStarship) {
       // Starship Combat Scale (Naval Combat Chapter 17)
-      const scaleKm = map.gridScaleKm || (map.gridScaleMeters ? map.gridScaleMeters * 2.5 : 5.0);
+      const scaleKm = scaleKilometers;
       distVal = ((distPx / gridSize) * scaleKm).toFixed(1);
       distUnit = 'km';
 
@@ -5128,7 +5195,7 @@ export class CanvasEngine {
 
     const midX = (start.x + end.x) / 2;
     const midY = (start.y + end.y) / 2;
-    const badgeText = `${distVal}${distUnit} (${distGrid} sq) // [${rangeBand.toUpperCase()}]`;
+    const badgeText = movement ? `${rangeBand.toUpperCase()} · ${(distUnit === 'km' ? distPx / gridSize * scaleKilometers * 1000 : Number(distVal)).toLocaleString(undefined, { maximumFractionDigits: 1 })} m` : `${distVal}${distUnit} (${distGrid} sq) // [${rangeBand.toUpperCase()}]`;
 
     ctx.font = 'bold 12px "Orbitron", sans-serif';
     const textWidth = ctx.measureText(badgeText).width;

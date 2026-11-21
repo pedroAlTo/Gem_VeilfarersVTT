@@ -1,3 +1,5 @@
+import { isEncounterMarker, perHitMinion } from './bestiaryProfiles.js';
+import { actorPortrait } from './tokenAvatars.js';
 import { attackPresentation, weaponImpactType } from './combatFX.js';
 import { firstStrikeRider, throwExpression } from './damageRiders.js';
 import { guideEvent } from './onboarding.js';
@@ -13,7 +15,10 @@ import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network } from './networkManager.js';
 import { normalizeConditions } from './conditions.js';
-import { distanceInfo, rangeCheck, weaponTraitId, netEdge, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
+import { proceduralAttack, fixedStressAttack } from './adversaryWeapons.js';
+import { damageNames, hitTypes } from './damageProtection.js';
+import { checkEdge, requireActive, lifeStage } from './combatState.js';
+import { distanceInfo, rangeCheck, weaponTraitId, rollAdversaryAttack, dualityAttackHit, weaponAttackBonus } from './attackFlow.js';
 import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { throwDice, facesRoller } from './tableDice.js';
@@ -99,6 +104,7 @@ export class DiceRollerSidebar {
     const token = store.getSelectedToken();
     const actorChanged=this.currentActor?.id!==token?.id;
     this.currentActor = token;
+    if (actorChanged) this.container.querySelector('#dmg_delivery_tag').value = '';
     if (this.preparedWeapon && (actorChanged || JSON.stringify(token && tokenInventory(token).weapons.find(w => w.id === this.preparedWeapon.id)) !== this.preparedWeapon.signature)) {
       this.preparedWeapon = null;
       this.container.querySelector('#dmg_formula').value = '';
@@ -167,7 +173,7 @@ export class DiceRollerSidebar {
     if (!select) return;
     const weapons = token ? (tokenInventory(token).weapons || []) : [];
     if (!weapons.length) {
-      select.innerHTML = '<option value="">Ataque básico (sin armas) · 1d4</option>';
+      select.innerHTML = fixedStressAttack(token) ? '<option value="">Ataque · ' + escapeHTML(token.damageExpression) + '</option>' : proceduralAttack(token) ? '<option value="">Procedimiento de la ficha</option>' : '<option value="">Ataque básico (sin armas) · 1d4</option>';
       select.onchange = null;
       return;
     }
@@ -176,6 +182,7 @@ export class DiceRollerSidebar {
     if (currentId) {
       select.value = currentId;
     }
+    if (!currentId && token.isPlayer === false) this.applyWeaponPreset(token, weapons[0]);
     select.onchange = () => {
       if (select.value && token) {
         this.prepareWeapon(token.id, select.value);
@@ -188,6 +195,8 @@ export class DiceRollerSidebar {
     const preset = weaponPreset(actor, weapon);
     const formEl = this.container.querySelector('#dmg_formula');
     if (formEl) formEl.value = preset.formula;
+    const delivery = this.container.querySelector('#dmg_delivery_tag');
+    if (delivery) delivery.value = '';
     this.syncDamageMode();
     const profEl = this.container.querySelector('#dmg_proficiency');
     if (profEl) profEl.value = preset.proficiency;
@@ -598,6 +607,7 @@ export class DiceRollerSidebar {
               <label class="dossier-field"><span>Tipo de daño · Penetración</span><vf-select class="hud-select" id="dmg_damage_type"><option value="auto" selected>Automático · según el arma</option><option value="physical">Physical · 0</option><option value="energy">Energy · −2 a los umbrales</option><option value="void">Void · −4 a los umbrales</option><option value="neural">Neural · −4 y +1 Stress</option></vf-select></label>
               <div class="form-row">
                 <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_reflective" /><span>Objetivo con armadura Reflective (anula Energy)</span></label>
+                <label>Etiqueta de daño <vf-select id="dmg_delivery_tag"><option value="">Según el arma</option>${damageNames.slice(4).map(n => '<option>' + n + '</option>').join('')}</vf-select></label>
                 <label class="hud-checkbox-label"><input type="checkbox" id="dmg_target_warded" /><span>Objetivo con Ward (anula Void y Neural)</span></label>
               </div>
               <div class="form-row">
@@ -890,7 +900,7 @@ export class DiceRollerSidebar {
   populateDamageTargets() {
     const select = this.container.querySelector('#dmg_target_select');
     if (!select) return;
-    const tokens = store.getTokensForActiveMap();
+    const tokens = store.getTokensForActiveMap().filter(token => !isEncounterMarker(token));
     const previous = select.value;
     select.innerHTML = sanitizeHTML('<option value="">Sin objetivo · calcular</option>' + tokens.map(t => `
       <option value="${escapeHTML(t.id)}">${escapeHTML(t.name)} (HP ${t.hp.current}/${t.hp.max})</option>
@@ -902,8 +912,8 @@ export class DiceRollerSidebar {
       if (tok) {
         const maj = this.container.querySelector('#dmg_major_thresh');
         const sev = this.container.querySelector('#dmg_severe_thresh');
-        if (maj) maj.value = tok.hp.majorThreshold;
-        if (sev) sev.value = tok.hp.severeThreshold;
+        if (maj) maj.value = tok.hp.majorThreshold ?? '';
+        if (sev) sev.value = tok.hp.severeThreshold ?? '';
       }
       const attackerId = this.currentActor?.id || store.getState().selectedTokenId;
       if (window.veilCanvas) {
@@ -1115,6 +1125,7 @@ export class DiceRollerSidebar {
       subtraits: {}
     };
 
+    try { requireActive(actor); } catch (error) { notify(error.message, 'error'); return null; }
     const traitMod = actor.traits?.[this.selectedTraitId] ?? (actor.attackModifier ?? 0);
     const subtraitId = this.container.querySelector('#dice_subtrait_select').value;
     const subtraitMod = subtraitId ? (actor.subtraits?.[subtraitId] ?? 0) : 0;
@@ -1123,7 +1134,9 @@ export class DiceRollerSidebar {
     // Worn armor or augmentations outside the character's training: Disadvantage (an attack
     // already counted them, with its weapon).
     const gear = !attack && actor.isPlayer !== false && actor.id ? await this.gearCheck(actor) : { disadvantage: false, text: '', worn: [] };
-    const edge = netEdge(this.container.querySelector('#dice_advantage').checked, this.container.querySelector('#dice_disadvantage').checked || !!attack?.disadvantage || gear.disadvantage);
+    const manualAdvantage = this.container.querySelector('#dice_advantage').checked;
+    const situationalDisadvantage = this.container.querySelector('#dice_disadvantage').checked || !!attack?.disadvantage || gear.disadvantage;
+    const edge = checkEdge(actor, attack?.target, manualAdvantage, situationalDisadvantage);
     const hasAdvantage = edge.advantage;
     const hasDisadvantage = edge.disadvantage;
     const useResolve = this.container.querySelector('#dice_use_resolve').checked;
@@ -1186,7 +1199,7 @@ export class DiceRollerSidebar {
         type: 'CHECK',
         actorId: actor.id,
         // An attack is an active action: the table gives the attacker the Spotlight.
-        ...(attack ? { attack: true } : {}),
+        ...(attack ? { attack: true, targetId: attack.target?.id } : {}),
         playerName,
         tokenName,
         visibility: this.rollVisibility(),
@@ -1194,8 +1207,8 @@ export class DiceRollerSidebar {
           traitId: this.selectedTraitId,
           subtraitId,
           dc,
-          hasAdvantage,
-          hasDisadvantage,
+          hasAdvantage: manualAdvantage,
+          hasDisadvantage: situationalDisadvantage,
           useResolve,
           experienceMod: expMod,
           customMod,
@@ -1308,8 +1321,11 @@ export class DiceRollerSidebar {
     const attacker = this.currentActor || store.getSelectedToken();
     const target = store.state.tokens.find(t => t.id === q('#dmg_target_select').value);
     if (!attacker) throw new Error('Selecciona el token que ataca.');
+    requireActive(attacker);
     if (!target) throw new Error('Elige un objetivo para atacar.');
     if (target.id === attacker.id) throw new Error('Un token no puede atacarse a sí mismo.');
+    if (isEncounterMarker(attacker) || isEncounterMarker(target)) throw new Error('Este encuentro se resuelve según su ficha.');
+    if (proceduralAttack(attacker) && !fixedStressAttack(attacker) && !tokenInventory(attacker).weapons.length) throw new Error('Este adversario se resuelve mediante las habilidades y objetivos de su ficha.');
     const bossPhase = attacker.boss?.states?.[attacker.boss.index];
     if (bossPhase?.canAttack === false) throw new Error('Este estado usa su procedimiento especial; no tiene un ataque estándar.');
     const weapon = (tokenInventory(attacker).weapons || []).find(w => w.id === q('#dmg_weapon_select').value) || null;
@@ -1321,6 +1337,7 @@ export class DiceRollerSidebar {
     // A drone attacks with its operator's Action and its operator's roll.
     const drone = isDroneToken(attacker), command = drone ? droneCommand(attacker) : null;
     const operator = drone ? store.state.tokens.find(t => t.id === attacker.drone?.operatorId && t.isPlayer !== false) : null;
+    if (operator) requireActive(operator);
     if (drone && !command.allowed) throw new Error(command.reason);
     if (drone && !operator) throw new Error('Asigna un operador al dron (Ficha → Dron · módulos y señal): atacar con un dron es la Acción y la tirada de su operador.');
     const show = (total, outcome, detail, tone) => {
@@ -1340,7 +1357,7 @@ export class DiceRollerSidebar {
       const traitId = weaponTraitId(weapon);
       if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
       const props = weaponAttackBonus(drone ? null : weapon, band);
-      const result = await this.executeActionCheck({ evasion, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '', bonus: props.bonus });
+      const result = await this.executeActionCheck({ evasion, target, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '', bonus: props.bonus });
       if (!result) return { hit: false, band };
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
       // Overheating: its d6 after the attack, thrown as a 3D die.
@@ -1355,13 +1372,14 @@ export class DiceRollerSidebar {
       rolled3D = this.can3D();
     } else {
       audio.playDiceRoll();
-      const edge = netEdge(q('#dice_advantage').checked, q('#dice_disadvantage').checked || range.disadvantage);
+      const edge = checkEdge(attacker, target, q('#dice_advantage').checked, q('#dice_disadvantage').checked || range.disadvantage);
       const groups = [{ qty: 1, sides: 20, theme: 'vfNeutral', role: 'Attack' }];
       if (edge.advantage || edge.disadvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: edge.advantage ? 'Advantage' : 'Disadvantage' });
       const attackLabel = `${attacker.name} · Ataque vs ${target.name}`;
       const faces = await this.roll3D(groups, attackLabel);
       rolled3D = !!faces;
-      const roll = rollAdversaryAttack({ attackModifier: attacker.attackModifier ?? 0, evasion, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces?.[0] ?? null, forcedD6: faces?.[1] ?? null });
+      const conditional = target.conditions?.includes('Incapacitated') && /\+1 on attacks against an Incapacitated target/i.test(weapon?.features || '') ? 1 : 0;
+      const roll = rollAdversaryAttack({ attackModifier: (attacker.attackModifier ?? 0) + conditional, evasion, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces?.[0] ?? null, forcedD6: faces?.[1] ?? null });
       hit = roll.hit; critical = roll.isCritical; total = roll.total;
       const card = {
         label: attackLabel, playerName: 'Keeper', tokenName: attacker.name, actorName: attacker.name, skill: 'Ataque',
@@ -1478,15 +1496,57 @@ export class DiceRollerSidebar {
 
   }
 
+  showStressDamage(attacker, target) {
+    const q = selector => this.container.querySelector(selector);
+    const amount = fixedStressAttack(attacker);
+    const mapId = store.state.activeMapId;
+    const secret = this.rollVisibility() === 'keeper';
+    this.lastDamage = null;
+    q('#damage_result_display').style.display = 'block';
+    q('#dmg_shield_mitigation_row').style.display = 'none';
+    q('#dmg_raw_val').textContent = amount;
+    q('#dmg_severity_val').textContent = 'Stress';
+    q('#dmg_hp_loss_val').textContent = '0 HP';
+    q('#dmg_detail_text').textContent = (secret ? 'SOLO KEEPER · ' : '') + attacker.damageExpression;
+    const apply = q('#apply_dmg_to_target_btn');
+    apply.disabled = !target?.stress?.max;
+    apply.textContent = apply.disabled ? 'Elige un objetivo con pista de Stress' : 'Marcar ' + amount + ' Stress';
+    apply.onclick = () => {
+      if (apply.disabled || store.sessionBusy || store.state.rest || !store.canEditToken(attacker.id) || store.state.activeMapId !== mapId) return;
+      if ((this.currentActor || store.getSelectedToken())?.id !== attacker.id) return;
+      const current = store.state.tokens.find(t => t.id === target?.id && t.mapId === mapId);
+      if (!current?.stress || q('#dmg_target_select').value !== current.id || isEncounterMarker(current)) return;
+      apply.disabled = true;
+      if (store.sessionRole === 'player') {
+        network.broadcast({ type: 'APPLY_DAMAGE', attackerId: attacker.id, targetId: current.id, hpLoss: 0, armorLoss: 0, stressMark: amount, isDirect: true, secret });
+      } else {
+        const before = store.tableActing; store.tableActing = true;
+        try {
+          store.updateToken(current.id, { stress: { ...current.stress, current: Math.min(current.stress.max, current.stress.current + amount) } });
+        } finally { store.tableActing = before; }
+        store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'DAMAGE', sender: 'Keeper', title: attacker.name, details: current.name + ' · ' + attacker.damageExpression });
+      }
+      apply.textContent = store.sessionRole === 'player' ? 'Enviado al Keeper' : 'Stress aplicado';
+    };
+  }
+
   // rolled: the faces read from the 3D dice. Without them (3D off, or a first call) the dice
   // are thrown on the table first and this runs again with what they show.
   executeDamageCalc(rolled = null, { bearDown = 0, riders = [], extrasPinned = null, extraFaces = null } = {}) {
+    if (lifeStage(this.currentActor)) { notify('Este personaje no puede infligir daño ordinario.', 'error'); return; }
     const riderTotal = riders.reduce((n, r) => n + (Number(r.value) || 0), 0);
     const bossPhase = this.currentActor?.boss?.states[this.currentActor.boss.index];
     if (bossPhase?.canAttack === false) { notify('Este estado usa su procedimiento especial; no tiene un ataque de daño estándar.', 'error'); return; }
     const targetSelect = this.container.querySelector('#dmg_target_select');
     const targetId = targetSelect.value;
     const targetToken = store.getState().tokens.find(t => t.id === targetId);
+    const actor = this.currentActor || store.getSelectedToken();
+    if (isEncounterMarker(actor) || isEncounterMarker(targetToken)) { notify('Este encuentro se resuelve según su ficha.'); return; }
+    if (proceduralAttack(actor) && !tokenInventory(actor).weapons.length) {
+      if (fixedStressAttack(actor)) return this.showStressDamage(actor, targetToken);
+      notify('Usa el procedimiento impreso en la ficha del adversario.'); return;
+    }
+    const perHit = perHitMinion(targetToken);
 
     const diceCount = parseInt(this.container.querySelector('#dmg_dice_count').value, 10);
     const diceSides = parseInt(this.container.querySelector('#dmg_dice_sides').value, 10);
@@ -1494,8 +1554,8 @@ export class DiceRollerSidebar {
     // With a target, its own thresholds decide the hit: the preview must match what is applied.
     const majorInput = this.container.querySelector('#dmg_major_thresh'), severeInput = this.container.querySelector('#dmg_severe_thresh');
     if (targetToken?.hp) {
-      if (Number.isFinite(targetToken.hp.majorThreshold)) majorInput.value = targetToken.hp.majorThreshold;
-      if (Number.isFinite(targetToken.hp.severeThreshold)) severeInput.value = targetToken.hp.severeThreshold;
+      majorInput.value = targetToken.hp.majorThreshold ?? '';
+      severeInput.value = targetToken.hp.severeThreshold ?? '';
     }
     const major = parseInt(majorInput.value, 10);
     const severe = parseInt(severeInput.value, 10);
@@ -1527,9 +1587,14 @@ export class DiceRollerSidebar {
     const activeWeapon = this.currentActor && wSelect?.value ? (tokenInventory(this.currentActor).weapons || []).find(w => w.id === wSelect.value) : null;
     // The formula left in the panel may be just dice ("1d6+1"): then the weapon says the type (Energy −2…).
     const formulaType = formula ? damageTypeOf(formula) : 'physical';
-    const damageType = chosenType && chosenType !== 'auto' ? chosenType : formulaType !== 'physical' ? formulaType : damageTypeOf(activeWeapon || formula || '');
+    const tag = this.container.querySelector('#dmg_delivery_tag').value;
+    const weaponType = activeWeapon ? damageTypeOf(activeWeapon) : damageTypeOf(tag);
+    const typedFormula = /\b(?:physical|phys)\b/i.test(formula) || formulaType !== 'physical';
+    const autoType = typedFormula ? formulaType : weaponType;
+    const damageType = chosenType && chosenType !== 'auto' ? chosenType : autoType;
+    const types = hitTypes(damageType, activeWeapon, formula, tag);
     feats = { ...weaponFeatures(activeWeapon), crushing, bleed }; // the two boxes follow the weapon and can be changed by hand
-    if (![major,severe,mr].every(Number.isFinite) || major<1 || severe<major || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
+    if ((!isDirect && !perHit && (![major, severe].every(Number.isFinite) || major < 1 || severe < major)) || (!formula && (![diceCount,diceSides,flatMod].every(Number.isFinite) || diceCount<1 || diceCount>100))) { notify('Check the damage dice and thresholds.','error'); return; }
     // A drone is fired by a player character: its Critical doubles the dice like any player's.
     const keeperAttack = this.currentActor?.isPlayer === false && !isDroneToken(this.currentActor);
     if (!rolled && this.can3D()) {
@@ -1561,7 +1626,8 @@ export class DiceRollerSidebar {
       currentArmorSlots: targetToken ? usableSlots(targetToken) : 2,
       mountRating: mr,
       proficiency, honed,
-      damageType,
+      damageType, types, targetToken, deliveryTag: tag,
+      typeOverride: chosenType && chosenType !== 'auto' ? chosenType : '',
       targetReflective: reflectiveInput.checked,
       targetWarded: wardedInput.checked,
     };
@@ -1583,10 +1649,11 @@ export class DiceRollerSidebar {
     }
     const extras = extrasPinned || damageExtras(feats, dmgResult.rolls, extraSides, extraFaces?.length ? facesRoller(extraFaces) : undefined);
     if (extras.bonus) {
-      const again = resolveDamage({ diceCount: 0, flatModifier: dmgResult.rawDamage + extras.bonus, targetMajorThreshold: major, targetSevereThreshold: severe, isDirectDamage: isDirect, damageType, targetReflective: reflectiveInput.checked, targetWarded: wardedInput.checked, useArmorSlot: false, currentArmorSlots: damageOptions.currentArmorSlots, mountRating: mr });
-      dmgResult = { ...dmgResult, rawDamage: again.rawDamage, finalSeverity: again.finalSeverity, finalHpDamage: again.finalHpDamage, effectiveMajor: again.effectiveMajor, effectiveSevere: again.effectiveSevere };
+      const components = dmgResult.components.map((part, i) => i ? part : { ...part, amount: part.amount + extras.bonus * mr });
+      const again = resolveDamage({ ...damageOptions, diceCount: 0, components });
+      dmgResult = { ...dmgResult, ...again, rolls: dmgResult.rolls, flatModifier: dmgResult.flatModifier, baseDiceTotal: dmgResult.baseDiceTotal };
     }
-    const devastating = isDirect ? 0 : devastatingExtra(feats, dmgResult.rawDamage, dmgResult.effectiveSevere);
+    const devastating = isDirect || perHit ? 0 : devastatingExtra(feats, dmgResult.effectiveDamage, dmgResult.effectiveSevere);
     if (devastating) dmgResult = { ...dmgResult, finalHpDamage: dmgResult.finalHpDamage + devastating };
     const maxDie = dmgResult.rolls.some((r, i) => r === (rollSides[i] || diceSides));
     // An enemy's maximum Armor Slots are cut at once by Armor Piercing, Disintegrating, Shredding.
@@ -1626,11 +1693,13 @@ export class DiceRollerSidebar {
     const detailText = (bearDown ? `Bear Down +${bearDown} · ` : '') + (formula ? formula + ' · ' : '') + `Dice: [${dmgResult.rolls.join(', ')}] + ${dmgResult.flatModifier} ${dmgResult.mountRating > 1 ? `x MR ${dmgResult.mountRating}` : ''} = ${dmgResult.rawDamage} Raw Damage. ` +
       (dmgResult.penetration
         ? `${DAMAGE_TYPES[dmgResult.damageType]} · Penetración −${dmgResult.penetration}: umbrales ${major}/${severe} → ${dmgResult.effectiveMajor}/${dmgResult.effectiveSevere} para este impacto. `
-        : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
+        : `${DAMAGE_TYPES[dmgResult.damageType] || 'Physical'}${!isDirect && !perHit && dmgResult.damageType !== 'physical' ? ' · Penetración anulada por la defensa del objetivo' : ''}. `) +
+      (dmgResult.protection ? dmgResult.groups.map(g => g.types.join('/') + ' ' + g.amount + ' → ' + g.effective +
+        (g.applied === 'immune' ? ' (inmunidad)' : g.applied === 'resistant' ? ' (resistencia)' : '')).join(' + ') + '. ' : '') +
       (dmgResult.stressMarked ? 'Neural: +1 Stress. ' : '') +
       (featureNotes.length ? featureNotes.join(' ') + ' ' : '') +
-      (bleed ? (targetToken && !canBleed(targetToken) ? 'Bleed: el objetivo no sangra (inmune). ' : 'Bleed: el objetivo queda Bleeding. ') : '') +
-      `Compared to Major (${dmgResult.effectiveMajor}) & Severe (${dmgResult.effectiveSevere}). ` +
+      (bleed && !dmgResult.fullyProtected ? (targetToken && !canBleed(targetToken) ? 'Bleed: el objetivo no sangra (inmune). ' : 'Bleed: el objetivo queda Bleeding. ') : '') +
+      (isDirect ? '' : perHit ? 'Sin umbrales: 1 HP por impacto que cause daño. ' : `Compared to Major (${dmgResult.effectiveMajor}) & Severe (${dmgResult.effectiveSevere}). `) +
       (dmgResult.armorSlotSpent ? '1 Armor Slot spent to lower severity step.' : 'No armor slot used.');
     const secret = this.rollVisibility() === 'keeper';
     this.secretDamage = secret;
@@ -1644,7 +1713,7 @@ export class DiceRollerSidebar {
     const damageMapId = targetToken?.mapId;
 
     let spentShieldsChoice = null;
-    const targetArmorAvailable = usableSlots(targetToken);
+    const targetArmorAvailable = dmgResult.fullyProtected ? 0 : usableSlots(targetToken);
     const shieldRow = this.container.querySelector('#dmg_shield_mitigation_row');
     const mitigateBtn = this.container.querySelector('#dmg_mitigate_btn');
     if (shieldRow && mitigateBtn) {
@@ -1674,6 +1743,12 @@ export class DiceRollerSidebar {
     applyBtn.textContent = targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
     applyBtn.onclick = () => {
       if (applied) return;
+      const canApply = () => {
+        const attacker = store.state.tokens.find(t => t.id === attackerId);
+        if (attackerId && (!attacker || lifeStage(attacker))) { notify('Este personaje no puede infligir daño ordinario.', 'error'); return false; }
+        return store.state.activeMapId === damageMapId;
+      };
+      if (!canApply()) return;
       const currentTarget = store.state.tokens.find(t => t.id === targetId);
       if (!currentTarget) return;
       if (currentTarget.mapId !== damageMapId || currentTarget.mapId !== store.state.activeMapId) {
@@ -1687,7 +1762,8 @@ export class DiceRollerSidebar {
 
         const currentDamage = resolveDamage({
           diceCount: 0,
-          flatModifier: dmgResult.rawDamage,
+          components: dmgResult.components,
+          targetToken,
           targetMajorThreshold: targetToken.hp.majorThreshold ?? major,
           targetSevereThreshold: targetToken.hp.severeThreshold ?? severe,
           isDirectDamage: isDirect,
@@ -1698,8 +1774,9 @@ export class DiceRollerSidebar {
           targetWarded: damageOptions.targetWarded
         });
 
+        if (currentDamage.fullyProtected) spentShields = 0;
         // Each shield spent absorbs damage/reduces severity
-        const mitigatedHpDamage = Math.max(0, (currentDamage.finalHpDamage || 0) + (isDirect ? 0 : devastatingExtra(feats, dmgResult.rawDamage, currentDamage.effectiveSevere)) - (spentShields > 0 ? (spentShields - 1) : 0));
+        const mitigatedHpDamage = Math.max(0, (currentDamage.finalHpDamage || 0) + (isDirect || perHitMinion(targetToken) ? 0 : devastatingExtra(feats, currentDamage.effectiveDamage, currentDamage.effectiveSevere)) - (spentShields > 0 ? (spentShields - 1) : 0));
         const finalHpDamage = targetToken.pendingBrace && !isDirect ? Math.max(0, mitigatedHpDamage - 1) : mitigatedHpDamage;
 
         const currentArmor = targetToken.armor?.current || 0;
@@ -1711,9 +1788,9 @@ export class DiceRollerSidebar {
         const armorLost = currentArmor - newArmor;
         // Neural: 1 Stress on top of the HP, capped by the target's Stress track.
         // Neural, Energy Surge and Poison mark Stress; Bleed and Ignite add their condition.
-        const stressMark = targetToken.stress ? Math.min(3, (currentDamage.stressMarked ? 1 : 0) + (isDirect ? 0 : hitStress(feats, { hpLost }))) : 0;
-        const addCondition = bleed && canBleed(targetToken) ? 'Bleeding' : '';
-        const addConditions = isDirect ? [] : hitConditions(feats, { hpLost });
+        const stressMark = !currentDamage.fullyProtected && targetToken.stress ? Math.min(3, (currentDamage.stressMarked ? 1 : 0) + (isDirect ? 0 : hitStress(feats, { hpLost }))) : 0;
+        const addCondition = !currentDamage.fullyProtected && bleed && canBleed(targetToken) ? 'Bleeding' : '';
+        const addConditions = isDirect || currentDamage.fullyProtected ? [] : hitConditions(feats, { hpLost });
         const withCondition = t => (addCondition || addConditions.length) ? { conditions: normalizeConditions([...(t.conditions || []), ...(addCondition ? [addCondition] : []), ...addConditions]) } : {};
         // The cut to an enemy's maximum Armor Slots, on the armor left after this hit.
         const cut = enemyArmor && !isPartyToken(targetToken) ? armorCut(activeWeapon, { hit: true, damaged: hpLost > 0, maxDie }, targetToken.armor?.max || 0) : null;
@@ -1736,6 +1813,7 @@ export class DiceRollerSidebar {
           isDirect,
           isCritical,
           rawDamage: dmgResult.rawDamage,
+          defense: { groups: currentDamage.groups.map(({ types, applied }) => ({ types, applied })), hp: targetToken.hp.current, armor: currentArmor },
           kind: impactKind,
           secret,
           logDetails: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.${cut ? ` Armor Slots máximos −${cut.long + cut.repairAll + cut.downtime} (${armorAfter(targetToken).max}).` : ''}`
@@ -1744,6 +1822,7 @@ export class DiceRollerSidebar {
       };
 
       const applyFinalDamage = (spentShields = 0) => {
+        if (applied || !canApply()) return;
         applied = true; pending.applied = true;
         applyBtn.disabled = true;
         applyBtn.textContent = 'DAMAGE APPLIED';
@@ -1812,7 +1891,7 @@ export class DiceRollerSidebar {
       };
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
-      const currentArmorNow = usableSlots(currentTarget);
+      const currentArmorNow = planDamage(0).currentDamage.fullyProtected ? 0 : usableSlots(currentTarget);
       // Damage is the Keeper's call (v2.27.5: to an NPC, an adversary or another player's
       // character): a window lets them choose its shields and apply or cancel it. A connected
       // player's hit goes to the Keeper with every option; only a hit on their own character
@@ -1855,7 +1934,7 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
   const describe = n => { const o = options[n]; return `Pierde ${o.hpLoss} HP · HP ${o.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}`; };
   const modal = dossierDialog('⚔️ DAÑO A ' + targetToken.name, `
     <div class="kdmg">
-      <div class="kdmg-head"><img src="${escapeHTML(targetToken.avatarUrl || '/assets/tokens/captain_harker.jpg')}" alt="" />
+      <div class="kdmg-head"><img src="${escapeHTML(actorPortrait(targetToken))}" alt="" />
         <div><strong>${escapeHTML(targetToken.name)}</strong><p class="dossier-muted">${escapeHTML(request.attackerName || 'Ataque')}: ${escapeHTML(String(request.raw))} de daño · ${escapeHTML(String(request.severity || ''))}</p></div></div>
       ${max > 0 ? `<label class="dossier-field kdmg-shields"><span>Escudos a gastar (${max} disponible${max > 1 ? 's' : ''})</span>
         <div class="kdmg-row"><input type="range" id="kdmg_shields" min="0" max="${max}" value="${start}" /><b id="kdmg_shields_val">${start}</b></div></label>` : '<p class="dossier-muted">Sin escudos disponibles para este impacto.</p>'}
@@ -1888,7 +1967,7 @@ export function promptShieldMitigation(targetToken, incomingRawDamage, usable, o
 
   const modal = dossierDialog('🛡️ MITIGACIÓN CON ESCUDOS · ' + targetToken.name, `
     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
-      <img src="${escapeHTML(targetToken.avatarUrl || '/assets/tokens/captain_harker.jpg')}" style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid #00f3ff; object-fit: cover;" alt="" />
+      <img src="${escapeHTML(actorPortrait(targetToken))}" style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid #00f3ff; object-fit: cover;" alt="" />
       <div>
         <h3 style="margin: 0; color: #fff; font-size: 15px;">${escapeHTML(targetToken.name)}</h3>
         <p class="dossier-muted" style="margin: 2px 0 0;">¡Impacto entrante de ${incomingRawDamage} de daño!</p>

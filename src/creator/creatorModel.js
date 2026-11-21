@@ -35,7 +35,7 @@ export function freshState() {
     ancestry: null, subStrain: null, humanInheritance: null, humanInheritanceItem: null, community: null, path: null, cls: null, subclass: null,
     traits: {}, experiences: ['', '', ''], affiliation: null, veilAlignment: null, sleepingMysticDomains: [], powers: [],
     weapons: [], armors: [], kit: '', includeRustAndSteel: false,
-    name: '', pronouns: '', appearance: '', voice: '', bgAnswer: '', anchor: '', wound: '',
+    name: '', pronouns: '', gender: '', appearance: '', voice: '', bgAnswer: '', anchor: '', wound: '',
   };
 }
 
@@ -205,7 +205,8 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
   const major = Number(base.major) + level, severe = Number(base.severe) + level, slots = armor ? Number(armor.armorSlots) || 0 : 0;
 
   const f = {
-    character_id: characterId, name: clean(state.name), pron: clean(state.pronouns), level: String(level), prof: '1', chosen_path: sleeping ? 'Sleeping' : 'Awakened',
+    character_id: characterId, name: clean(state.name), pron: clean(state.pronouns), ...(state.gender ? { gender: state.gender } : {}), level: String(level), prof: '1', chosen_path: sleeping ? 'Sleeping' : 'Awakened',
+    ...(state.tokenArchetype ? { token_archetype: state.tokenArchetype } : {}),
     ancestry: anc.name, ancestry_gift: ancestryText, ancestry_note: '', ailuran_variant: strain ? strain.name : '',
     community: com.name, community_gift: communityText, community_note: '', community_advantages: '',
     affiliation: aff.name, aff_standing: independent ? '' : '+1 Good Standing', aff_reputation: independent ? '' : 'Unknown (0)', aff_tokens: independent ? '1 Favor por sesión (Independent Favor Pool)' : '', aff_notes: [affiliationNotes, appearance].filter(Boolean).join('\n\n'), aff_faction_notes: '',

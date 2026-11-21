@@ -1,3 +1,4 @@
+import { actorPortrait } from '../../tokenAvatars.js';
 import { ref, onValue, runTransaction, push, serverTimestamp } from "firebase/database";
 import { getFirebaseDatabaseInstance } from "./firebaseClient.js";
 
@@ -196,7 +197,6 @@ export class KeeperHudController {
 
     const name = staticData.name || 'Viajero';
     const species = staticData.species || 'Explorador';
-    const avatar = staticData.avatarUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="%2338bdf8" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>';
 
     const hp = Number(dynamicState.hp) || 0;
     const maxHp = Number(staticData.maxHp) || 6;
@@ -226,7 +226,7 @@ export class KeeperHudController {
 
     card.innerHTML = `
       <div class="party-card-top">
-        <img src="${avatar}" alt="${name}" class="party-avatar" />
+        <img alt="" class="party-avatar" />
         <div class="party-info">
           <strong class="party-name" title="${name}">${name}</strong>
           <span class="party-sub">${species}</span>
@@ -251,6 +251,7 @@ export class KeeperHudController {
         </div>
       </div>
     `;
+    card.querySelector('.party-avatar').src = actorPortrait(staticData);
   }
 
   initKeeperDiceRoller() {

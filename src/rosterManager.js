@@ -1,3 +1,4 @@
+import { actorPortrait } from './tokenAvatars.js';
 import { openCharacterImport } from './characterManager.js';
 import { dossierDialog } from './dossierUI.js';
 import { openDroneConsole } from './droneUI.js';
@@ -45,7 +46,7 @@ export class RosterManager {
             const isSelected = tok.id === state.selectedTokenId;
             return `
               <div class="roster-token-card glass-panel ${isSelected ? 'selected' : ''}" data-id="${tok.id}">
-                <img src="${tok.avatarUrl || '/assets/tokens/captain_harker.jpg'}" class="roster-token-avatar" />
+                <img src="${escapeHTML(actorPortrait(tok))}" class="roster-token-avatar" />
                 <div class="roster-token-info">
                   <div class="roster-name-row">
                     <span class="roster-name">${escapeHTML(tok.name)}</span>
@@ -87,7 +88,7 @@ export class RosterManager {
             ${reserveTokens.map(tok => {
               return `
                 <div class="roster-token-card glass-panel reserve-token-card" data-id="${tok.id}" style="border-color: rgba(245, 158, 11, 0.35); background: rgba(15, 23, 42, 0.7); cursor: pointer;" title="Haz clic para ver o editar su ficha">
-                  <img src="${tok.avatarUrl || '/assets/tokens/captain_harker.jpg'}" class="roster-token-avatar" style="border: 2px solid #f59e0b;" />
+                  <img src="${escapeHTML(actorPortrait(tok))}" class="roster-token-avatar" style="border: 2px solid #f59e0b;" />
                   <div class="roster-token-info">
                     <div class="roster-name-row">
                       <span class="roster-name" style="color: #fbbf24;">${escapeHTML(tok.name)}</span>
@@ -293,7 +294,7 @@ export function openClaimCharacterModal() {
         ${availablePCs.map(tok => `
           <article class="roster-token-card glass-panel claim-card" style="padding: 10px; cursor: pointer; border: 1px solid rgba(0, 243, 255, 0.3); border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between;" data-claim-id="${escapeHTML(tok.id)}">
             <div style="display: flex; gap: 8px; align-items: center;">
-              <img src="${tok.avatarUrl || '/assets/tokens/captain_harker.jpg'}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #00f3ff;" alt="" />
+              <img src="${escapeHTML(actorPortrait(tok))}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #00f3ff;" alt="" />
               <div>
                 <strong style="color: #fff; font-size: 13px; display: block;">${escapeHTML(tok.name)}</strong>
                 <small style="color: var(--cyan-pearl); font-size: 11px;">${escapeHTML(tok.path || 'Operativo')}</small>
