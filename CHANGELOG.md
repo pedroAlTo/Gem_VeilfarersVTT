@@ -1,10 +1,28 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.17**.
-Paquete: `VeilFarers_VTT_v2.27.17.zip`.
+Versión actual del VTT: **v2.28.0**.
+Paquete: `VeilFarers_VTT_v2.28.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.28.0] — 2026-11-21
+
+V3 · Armas y equipo, reorganizado; aumentos con efectos y cartas
+
+### Armas y equipo
+
+- Lo que llevas va primero, en cuatro bloques: Armas, Armadura, Aumentos y Equipo. Cada bloque tiene su «+ Añadir», que abre el catálogo ya filtrado en un panel aparte (se cierra con ✕ o Esc). «Solo lo que puedo usar» sigue marcado por defecto.
+- Cada arma deja a la vista solo Atacar; Editar y Quitar pasan al menú «⋯». Tocar una etiqueta (Stunning, Paired…) muestra su regla del glosario. Los textos largos se abren al tocarlos.
+- La armadura tiene su bloque, con umbrales y Armor Slots. «Cambiar» pone otra (sustituye a la que llevas). Quitarla deja los umbrales naturales (Mayor 2 / Grave 4 + nivel; 4 / 6 en Kryllian, Rift Spinner y Synthetic) y sin Armor Slots propios.
+- El editor completo del inventario queda solo para el Keeper.
+
+### Aumentos
+
+- Sus efectos se aplican al instalarlos y se retiran al quitarlos: Reflejos de Combate (+1 Evasión), Blindaje Subdérmico (+1 Armor Slot máx., también sobre la armadura), Osificación Reforzada (+2 HP máx.), Extremidad Cibernética (+1 Fuerza), Acelerador Sináptico (+2 Agilidad) y Conjunto Sensorial (+2 Instinto).
+- Capacidad de aumentos (Corebook): la suma de tus tres mejores entre Fuerza, Agilidad, Finura y Presencia (Humanos y Synthetics +2). Cada aumento cuesta 1; por cada punto por encima, −1 Stress máximo mientras sigas por encima. El bloque muestra «capacidad usada / total».
+- Los aumentos que se activan son una carta en tu mano, junto a las de clase, ilustrada con la imagen del propio aumento: Pre-Cognición Táctica (1 Stress, 1 / escena: Ventaja en un ataque o reacción) y Supresor de Dolor (reacción, 1 / escena: limpia 1 Stress).
+- Poner y quitar armadura y aumentos lo aplica la mesa, así que en partida online también cambian la Evasión, los Traits y el Stress máximo del jugador.
 
 ## [2.27.17] — 2026-11-21
 

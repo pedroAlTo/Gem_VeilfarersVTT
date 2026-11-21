@@ -1,4 +1,7 @@
 import { actionArt } from './actionCardArt.js';
+import { tokenInventory } from './equipment.js';
+import { installedAugments, augmentRule, catalogEntry } from './gear.js';
+import { equipmentPicture } from './equipmentArtwork.js';
 import { enemyCategory } from './adversaryCardCategories.js';
 // The hand of a player character: what it can play, what playing it costs and how Powers move
 // between Vault and Loadout. Pure rules (Corebook 12.06, ch. 7 and 18); the hand UI draws it.
@@ -39,7 +42,7 @@ export const classArt = cls => { const id = lower(cls?.id || cls?.name); return 
 export const cornerArt = (kind, id) => ({ illustration: kind === 'ancestry' && id
   ? '/assets/tokens/crew/' + id.replace('-', '_') + '-n.webp'
   : sceneArt(communityScenes[id] || 'spark-of-hope'), flag: '', band: `${CARD_ART}${kind}-band.png`, layout: 'corner' });
-export const CARD_KINDS = { power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background', effort: 'Common Effort', beardown: 'Resolve Move', fear: 'Fear', adversary: 'Adversario' };
+export const CARD_KINDS = { augment: 'Aumento', power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background', effort: 'Common Effort', beardown: 'Resolve Move', fear: 'Fear', adversary: 'Adversario' };
 // A card's kind in words, never undefined (a kind without a name falls back to «Carta»).
 export const cardKindName = kind => CARD_KINDS[kind] || 'Carta';
 
@@ -158,6 +161,14 @@ export function characterCards(token, data, options = {}) {
   for (const gift of (ancestry?.gifts || []).filter(usableGift)) cards.push({ id: `ancestry:${ancestry.id}:${slug(gift.name)}`, kind: 'ancestry', zone: 'innate', name: gift.name, subtitle: `Ancestry · ${ancestry.name}`, color: ancestry.color || '#94a3b8', art: cornerArt('ancestry', ancestry.id), costText: costLabel(giftCost(gift, sleeping)), cost: giftCost(gift, sleeping), roll: null, rollText: '', rc: 0, text: text(gift.text), limit: giftLimit(gift), playable: true });
   const community = byName(data.communities, token.community);
   if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community', community.id), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
+  // Augmentations that are used (they have a moment, a price or a limit), installed: one card each,
+  // with the classes' cards, illustrated with the augment's own picture (user decision, v2.28.0).
+  for (const row of installedAugments(tokenInventory(token))) {
+    const rule = augmentRule(row)?.active; if (!rule) continue;
+    const entry = catalogEntry(row), picture = equipmentPicture(entry || row);
+    const cost = parseCost(rule.stress ? `${rule.stress} Stress` : '');
+    cards.push({ id: `augment:${row.id}`, kind: 'augment', zone: 'innate', name: row.name, subtitle: `Aumento${entry?.tier ? ` · ${entry.tier}` : ''}`, color: '#22d3ee', art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band', ...(picture || {}) }, costText: rule.stress ? `${rule.stress} Stress` : '—', cost, roll: null, rollText: '', rc: 0, text: rule.text, limit: rule.limit, reaction: !!rule.reaction, effect: rule.clearStress ? { clearStress: rule.clearStress } : null, playable: true });
+  }
   if (!sleeping) for (const name of vaultNames(token)) { const known = byName(data.powers, name); cards.push(powerCard(known || { n: name }, 'vault')); }
   // Bear Down and the Common Efforts come after the character's own cards.
   if (sleeping) cards.push(...sleepingCommonCards(token, options));
@@ -220,6 +231,8 @@ export function playCard(source, card, { resolveSpent = null, random = Math.rand
     token.resolve = { ...token.resolve, current: token.resolve.current - cost.resolve };
     if (card.cost.rolls) { const rolls = Array.from({ length: cost.resolve }, die); notes.push(`Resolve: ${token.resolve.dieType || 'd4'} [${rolls.join(', ')}] = ${rolls.reduce((n, v) => n + v, 0)}.`); }
   }
+  // An augment whose benefit is clearing Stress (Pain Suppressor).
+  if (card.effect?.clearStress && token.stress) { const before = token.stress.current || 0; token.stress = { ...token.stress, current: Math.max(0, before - card.effect.clearStress) }; notes.push(`Limpia ${before - token.stress.current} Stress.`); }
   if (card.cost.open && !cost.resolve) notes.push('Esta carta tiene un coste variable o de mantenimiento: ajústalo a mano en la ficha.');
   if (roll) notes.push(`Tirada: ${card.rollText}.`);
   return { token, paid: cost, fear, roll, summary: `${card.name} · ${costLabel(cost)}`, notes };

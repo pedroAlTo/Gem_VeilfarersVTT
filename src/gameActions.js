@@ -12,6 +12,9 @@ import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
 import { handoffControl } from './drones.js';
+import { tokenInventory, validateInventory } from './equipment.js';
+import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
+import { installGear, removeGear } from './gear.js';
 import { characterCards, playCard, recallPower, learnPower, costLabel, CARD_KINDS, cardKindName } from './loadoutCards.js';
 const lastRoll = new Map();
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
@@ -79,6 +82,25 @@ function resolveGameAction(action, store) {
     return { actorId: actor.id, conditions };
   }
   if (action.type === 'FTL') return resolveJump(store, actor, action, resolveGameAction);
+  // Armor and augmentations: the table puts them on or takes them off and applies or undoes what
+  // they change (thresholds, Armor Slots, Evasion, HP, Traits, over-capacity Stress).
+  if (action.type === 'GEAR_INSTALL' || action.type === 'GEAR_REMOVE') {
+    const inventory = tokenInventory(actor);
+    let patch, said;
+    if (action.type === 'GEAR_INSTALL') {
+      const item = EQUIPMENT_CATALOG.find(i => i.id === String(action.catalogId ?? ''));
+      if (!item) throw new Error('Ese objeto no está en el catálogo.');
+      patch = installGear(actor, inventory, item); said = `${item.category === 'armor' ? 'se pone' : 'instala'} ${item.name}`;
+    } else {
+      const row = [...inventory.weapons, ...inventory.items].find(r => r.id === String(action.rowId ?? ''));
+      patch = removeGear(actor, inventory, String(action.rowId ?? '')); said = `quita ${row?.name || 'un objeto'}`;
+    }
+    validateInventory(patch.inventory);
+    store.updateToken(actor.id, patch);
+    const log = { sender: actor.name, type: 'GEAR', title: `${actor.name} ${said}`, details: [patch.hp && `Umbrales ${patch.hp.majorThreshold}/${patch.hp.severeThreshold}, HP máx. ${patch.hp.max}`, patch.armor && `Armor Slots ${patch.armor.current}/${patch.armor.max}`, patch.evasion != null && `Evasión ${patch.evasion}`, patch.stress && `Stress máx. ${patch.stress.max}`].filter(Boolean).join(' · ') || 'Sin cambios en sus números.' };
+    store.addLog(log);
+    return { actorId: actor.id, patch, log };
+  }
   if (action.type === 'LIFE_TURN') {
     const stage = lifeStage(actor), map = store.getActiveMap();
     if (action.finish === true) {

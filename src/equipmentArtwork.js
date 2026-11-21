@@ -18,8 +18,16 @@ const objectSheets = [
   ["tt1-smoke-flash-pod", "tt1-stun-dart"],
 ];
 const objects = new Map(objectSheets.flatMap((sheet, index) => sheet.map((id, cell) => [id, { index, cell }])));
+// The picture of a piece of equipment, for a card: one image, or a cell of a 3 × 3 sheet.
+// item: a catalog entry or an inventory row (by catalogId, id or name). null if it has none.
+export function equipmentPicture(item) {
+  const id = [item?.catalogId, item?.id].map(v => equipmentPictures.get(String(v ?? '').toLowerCase())).find(Boolean) || equipmentPictures.get(String(item?.name).toLowerCase()) || extras[String(item?.name).toLowerCase()];
+  const object = objects.get(id);
+  if (object) return { illustration: `/assets/equipment/objects/set-${object.index + 1}.webp`, cell: object.cell };
+  return typeof id === 'string' ? { illustration: `/assets/equipment/${id}.webp` } : null;
+}
 export function equipmentThumbnail(item) {
-  const id = equipmentPictures.get(String(item.id).toLowerCase()) || equipmentPictures.get(String(item.name).toLowerCase()) || extras[String(item.name).toLowerCase()];
+  const id = [item.catalogId, item.id].map(v => equipmentPictures.get(String(v ?? '').toLowerCase())).find(Boolean) || equipmentPictures.get(String(item.name).toLowerCase()) || extras[String(item.name).toLowerCase()];
   const object = objects.get(id);
   if (object) {
     const { index, cell } = object;

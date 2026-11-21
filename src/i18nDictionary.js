@@ -1437,6 +1437,28 @@ export const PAIRS = [
   ["Tiene el foco · pulsa para quitarlo", "Has the spotlight · press to remove it"],
   ["Tienes el foco · pulsa para quitarlo", "You have the spotlight · press to remove it"],
   ["✨ Tienes el foco.", "✨ You have the spotlight."],
+  // V3 · Armas y equipo (v2.28.0)
+  ["+ Añadir", "+ Add"],
+  ["Ponérmela", "Put on"],
+  ["Instalar", "Install"],
+  ["Activable · carta en tu mano", "Activatable · card in your hand"],
+  ["Editor completo (Keeper)", "Full editor (Keeper)"],
+  ["Los cambios se guardan al momento.", "Changes are saved at once."],
+  ["Busca por nombre…", "Search by name…"],
+  ["Solo lo que puedo usar", "Only what I can use"],
+  ["Añadir un arma", "Add a weapon"],
+  ["Añadir una armadura", "Add armor"],
+  ["Añadir un aumento", "Add an augment"],
+  ["Sin armas.", "No weapons."],
+  ["Sin armadura: umbrales naturales y ningún Armor Slot propio.", "No armor: natural thresholds and no Armor Slots of its own."],
+  ["Sin aumentos instalados.", "No augments installed."],
+  ["Sin objetos.", "No items."],
+  ["Cerrar el catálogo", "Close the catalog"],
+  ["Ver la regla", "See the rule"],
+  ["Toca para ver todo", "Tap to see it all"],
+  ["Aumento", "Augment"],
+  ["De la ficha importada. «Cambiar» la sustituye por una del catálogo.", "From the imported sheet. «Change» replaces it with one from the catalog."],
+  ["Sin regla en el glosario: aplícala según su texto.", "No glossary rule: apply it as written."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

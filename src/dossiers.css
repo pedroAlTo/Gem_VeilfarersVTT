@@ -171,7 +171,23 @@
 .equip-result > div, .equip-main { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
 .equip-result strong, .equip-main strong { color:#fff; font-size:13px; } .equip-result em, .equip-main em { font-style:normal; color:#c084fc; font-size:10.5px; }
 .equip-result small, .equip-main small { color:#9baec4; font-size:11.5px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.equip-row:hover small { -webkit-line-clamp:unset; }
+.equip-main small[data-equip-expand] { cursor:pointer; } .equip-main small.is-open { -webkit-line-clamp:unset; display:block; }
+/* v2.28.0: four blocks, each with its own «+ Añadir»; the catalog opens apart. */
+.equip-block-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:4px 0 6px; }
+.equip-block-head h4 { margin:0; }
+.equip-capacity { color:#94a3b8; letter-spacing:.04em; text-transform:none; } .equip-capacity.over { color:#fb7185; }
+.equip-add-head { display:flex; align-items:center; justify-content:space-between; } .equip-add-head strong { color:#fff; font-size:13px; letter-spacing:.06em; }
+.equip-close { all:unset; cursor:pointer; color:#cbd5e1; font-size:15px; padding:2px 8px; border:1px solid rgba(255,255,255,.15); } .equip-close:hover, .equip-close:focus-visible { color:#fff; border-color:#00f3ff; }
+.equip-more { all:unset; box-sizing:border-box; cursor:pointer; min-width:30px; height:24px; text-align:center; font:700 14px/22px system-ui,sans-serif; color:#cbd5e1; border:1px solid rgba(192,132,252,.45); }
+.equip-more:hover, .equip-more:focus-visible { color:#fff; border-color:#c084fc; }
+.equip-tags { display:flex; flex-wrap:wrap; gap:5px; margin:3px 0; }
+.equip-tag { all:unset; cursor:pointer; font:700 10.5px/1 ui-monospace,monospace; color:#fde68a; padding:4px 7px; border:1px solid rgba(250,204,21,.55); background:rgba(120,72,8,.25); }
+.equip-tag:hover, .equip-tag:focus-visible, .equip-tag.active { background:rgba(250,204,21,.18); color:#fff; }
+.equip-tag-rule { margin:2px 0 4px; padding:7px 9px; border-left:2px solid #facc15; background:rgba(250,204,21,.07); color:#e2e8f0; font-size:11.5px; line-height:1.5; }
+.equip-stats { color:#c4eeff; font-size:12px; } .equip-stats b { font:600 14px ui-monospace,monospace; color:#fff; }
+.equip-effect { color:#67e8f9; font:600 12.5px system-ui,sans-serif; }
+.equip-card-note { align-self:flex-start; font:700 9.5px/1 system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:#0b1020; background:#22d3ee; padding:4px 6px; }
+.equip-main small.equip-drawback { color:#fda4af; }
 .equip-list { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
 .equip-damage { font:600 15px ui-monospace,monospace; color:#c4eeff; }
 .equip-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end; }

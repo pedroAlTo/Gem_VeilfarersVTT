@@ -131,45 +131,96 @@ test('unassigned players cannot prepare another token weapon; assigned players c
   el.querySelector('#dmg_target_select').value=t.id;dice.executeDamageCalc();assert.equal(el.querySelector('#apply_dmg_to_target_btn').disabled,false);
 });
 
-test('the equipment tab works in place: search and add, quantities, edit, confirm before removing, new entries saved only with a name', async () => {
+test('the equipment tab: four blocks, each «+ Añadir» opens the catalog filtered, armor through the table, ⋯ for edit and remove (v2.28.0)', async () => {
   const { openDossier } = await import('../src/dossierUI.js');
   const t = actor({ level: 2, inventory: { weapons: [weapon()], items: [{ id: 'kit', name: 'Medkit', tier: '', quantity: '2', use: 'Heals' }] } });
   store.state.tokens = [t]; store.state.selectedTokenId = t.id;
   const modal = openDossier(t, () => {}, 'equipment'), panel = modal.querySelector('[data-panel="equipment"]'), live = () => store.state.tokens[0];
   const click = selector => panel.querySelector(selector).click();
-  // Nothing is listed until something is asked for; then at most eight entries with an Añadir button.
-  assert.equal(panel.querySelectorAll('[data-equip-add]').length, 0);
-  click('[data-equip-category="armor"]');
-  const armorRows = panel.querySelectorAll('[data-equip-add]'); assert.ok(armorRows.length > 0 && armorRows.length <= 8);
-  armorRows[0].click();
-  assert.equal(live().inventory.items.length, 2); assert.ok(live().armor.max >= 1, 'equipping armor sets its Armor Slots');
+  const tick = () => new Promise(r => setTimeout(r, 0));
+  // What the character carries comes first, in four blocks; the catalog stays closed.
+  assert.deepEqual([...panel.querySelectorAll('.equip-block-head h4')].map(h => h.textContent.split('·')[0].trim()), ['ARMAS', 'ARMADURA', 'AUMENTOS', 'EQUIPO']);
+  assert.equal(panel.querySelector('[data-equip-panel]').hidden, true); assert.equal(panel.querySelectorAll('[data-equip-add]').length, 0);
+  // «+ Añadir» in the Armor block opens the catalog with armor only.
+  click('[data-equip-open="armor"]');
+  assert.equal(panel.querySelector('[data-equip-panel]').hidden, false);
+  const armorRows = panel.querySelectorAll('[data-equip-add]'); assert.ok(armorRows.length > 0 && armorRows.length <= 12);
+  armorRows[0].click(); await tick();
+  assert.equal(live().inventory.items.length, 2); assert.ok(live().armor.max >= 1, 'putting on armor sets its Armor Slots');
+  assert.equal(live().inventory.items.at(-1).kind, 'armor');
+  click('[data-equip-open="gear"]');
   const search = panel.querySelector('[data-equip-search]'); search.value = 'zzzz-no-such-thing'; search.dispatchEvent(new Event('input'));
   assert.match(panel.querySelector('[data-equip-results]').textContent, /Nada en el catálogo/);
+  click('[data-equip-close]'); assert.equal(panel.querySelector('[data-equip-panel]').hidden, true);
   // Quantities change with one click and never go below zero.
   click('[data-equip-qty="kit"][data-delta="1"]'); assert.equal(live().inventory.items[0].quantity, '3');
   for (let i = 0; i < 5; i++) click('[data-equip-qty="kit"][data-delta="-1"]'); assert.equal(live().inventory.items[0].quantity, '0');
-  // Editing a weapon in its own row.
+  // Editing a weapon: from its «⋯».
   const weaponId = live().inventory.weapons[0].id;
-  click(`[data-equip-edit="${weaponId}"]`);
+  assert.equal(panel.querySelector(`[data-equip-edit="${weaponId}"]`), null, 'edit and remove wait behind ⋯');
+  click(`[data-equip-menu="${weaponId}"]`); click(`[data-equip-edit="${weaponId}"]`);
   const form = panel.querySelector('[data-equip-form]');
   form.querySelector('[data-field="name"]').value = 'Rifle del capitán'; form.querySelector('[data-field="range"]').value = 'Far'; form.querySelector('[data-field="damageMode"]').checked = true;
   form.querySelector('[data-equip-save]').click();
   assert.deepEqual([live().inventory.weapons[0].name, live().inventory.weapons[0].range, live().inventory.weapons[0].damageMode], ['Rifle del capitán', 'Far', 'final']);
-  // A new entry is not saved until it has a name; cancelling leaves nothing behind.
-  click('[data-equip-custom="items"]'); assert.equal(live().inventory.items.length, 2);
+  // A new entry (from the Equipo catalog) is not saved until it has a name; cancelling leaves nothing.
+  click('[data-equip-open="gear"]'); click('[data-equip-custom="items"]'); assert.equal(live().inventory.items.length, 2);
   click('[data-equip-save]');
   assert.match(panel.querySelector('[data-equip-error]').textContent, /Ponle un nombre/); assert.equal(live().inventory.items.length, 2);
   click('[data-equip-cancel]'); assert.equal(panel.querySelector('[data-equip-form]'), null);
-  click('[data-equip-custom="items"]');
+  click('[data-equip-open="gear"]'); click('[data-equip-custom="items"]');
   panel.querySelector('[data-equip-form] [data-field="name"]').value = 'Cuerda'; click('[data-equip-save]');
   assert.equal(live().inventory.items.at(-1).name, 'Cuerda');
-  // Removing asks once on the same button.
+  // Removing asks once on the same button, behind ⋯.
+  click('[data-equip-menu="kit"]');
   click('[data-equip-remove="kit"]'); assert.equal(live().inventory.items.length, 3); assert.equal(panel.querySelector('[data-equip-remove="kit"]').textContent, '¿Quitar?');
   click('[data-equip-remove="kit"]'); assert.equal(live().inventory.items.some(i => i.id === 'kit'), false);
+  // Taking the armor off leaves the natural thresholds (2 / 4 + level) and no Armor Slots of its own.
+  const armorId = live().inventory.items.find(i => i.kind === 'armor').id;
+  click(`[data-equip-menu="${armorId}"]`); click(`[data-equip-remove="${armorId}"]`); click(`[data-equip-remove="${armorId}"]`); await tick();
+  assert.equal(live().inventory.items.some(i => i.kind === 'armor'), false);
+  assert.deepEqual([live().hp.majorThreshold, live().hp.severeThreshold, live().armor.max], [4, 6, 0]);
   assert.ok(panel.querySelector('[data-prepare-weapon]'), 'the weapon keeps its attack button');
+  // The full editor is the Keeper's only.
+  assert.equal(panel.querySelector('[data-equip-keeper]').hidden, store.state.userRole !== 'keeper' || store.sessionRole === 'player');
   modal.remove();
 });
 
+test('augmentations: effects applied on install and undone on removal, capacity costs maximum Stress, active ones are cards (v2.28.0)', async () => {
+  const { installGear, removeGear, augmentCapacity, AUGMENTS } = await import('../src/gear.js');
+  const { EQUIPMENT_CATALOG } = await import('../src/equipmentLibrary.js');
+  const { characterCards, playCard } = await import('../src/loadoutCards.js');
+  const { setCardData } = await import('../src/cardData.js');
+  const { CREATOR_DATA } = await import('../src/creator/creatorData.js');
+  const item = id => EQUIPMENT_CATALOG.find(i => i.id === id);
+  let t = { id: 'aug', name: 'Kael', isPlayer: true, level: 1, evasion: 10, ancestry: 'Ailuran', traits: { strength: 0, agility: 1, finesse: 0, presence: 0, instinct: 0, knowledge: 0 }, hp: { current: 6, max: 6, majorThreshold: 3, severeThreshold: 5 }, stress: { current: 0, max: 6 }, armor: { current: 0, max: 0 }, inventory: { weapons: [], items: [] } };
+  const apply = patch => { t = { ...t, ...patch }; };
+  assert.equal(augmentCapacity(t), 1, 'the three best of Str/Agi/Fin/Pre');
+  apply(installGear(t, t.inventory, item('core_aug_combat_reflexes'), 'r1'));
+  assert.equal(t.evasion, 11); assert.equal(t.stress.max, 6, 'within capacity');
+  apply(installGear(t, t.inventory, item('core_aug_reinforced_bones'), 'r2'));
+  assert.deepEqual([t.hp.max, t.hp.current], [8, 8]); assert.equal(t.stress.max, 5, 'one past the capacity: −1 maximum Stress');
+  assert.throws(() => installGear(t, t.inventory, item('core_aug_reinforced_bones'), 'r3'), /ya está instalado/);
+  apply(installGear(t, t.inventory, item('core_aug_prosthetic_limb'), 'r4'));
+  assert.equal(t.traits.strength, 1); assert.equal(t.stress.max, 5, '+1 Strength raises the capacity as the third augment uses it');
+  apply(removeGear(t, t.inventory, 'r2'));
+  assert.deepEqual([t.hp.max, t.hp.current], [6, 6]); assert.equal(t.stress.max, 6, 'back within capacity');
+  apply(removeGear(t, t.inventory, 'r1')); assert.equal(t.evasion, 10);
+  // Subdermal Armor adds to the armor's slots, also when armor is put on afterwards.
+  apply(installGear(t, t.inventory, item('core_aug_subdermal_armor'), 'r5')); assert.deepEqual(t.armor, { current: 1, max: 1 });
+  const vest = EQUIPMENT_CATALOG.find(i => i.category === 'armor' && i.armorSlots);
+  apply(installGear(t, t.inventory, vest, 'a1')); assert.equal(t.armor.max, vest.armorSlots + 1);
+  apply(removeGear(t, t.inventory, 'a1')); assert.equal(t.armor.max, 1); assert.deepEqual([t.hp.majorThreshold, t.hp.severeThreshold], [3, 5]);
+  // An augment that is used is a card in the hand, illustrated with its own picture.
+  assert.ok(AUGMENTS.core_aug_pain_suppressor.active);
+  apply(installGear(t, t.inventory, item('core_aug_pain_suppressor'), 'r6'));
+  setCardData(CREATOR_DATA);
+  const card = characterCards({ ...t, characterClass: 'Soldier', path: 'Awakened' }, CREATOR_DATA).find(c => c.kind === 'augment');
+  assert.ok(card, 'the Pain Suppressor is a card'); assert.match(card.art.illustration, /equipment/); assert.equal(card.limit, '1 / escena');
+  const played = playCard({ ...t, stress: { current: 3, max: 6 } }, card);
+  assert.equal(played.token.stress.current, 2, 'it clears 1 Stress');
+  assert.equal(characterCards({ ...t, characterClass: 'Soldier', path: 'Awakened' }, CREATOR_DATA).filter(c => c.kind === 'augment').length, 1, 'passive augments are not cards');
+});
 
 test('mixed damage uses each defence, rounds repeated types once and preserves the rolled faces', async () => {
   const { sameDamageDefenses } = await import('../src/damageProtection.js');

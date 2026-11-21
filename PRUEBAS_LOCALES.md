@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.17.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.27.17**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.27.17** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.27.17.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.28.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.28.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.28.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.28.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -90,6 +90,9 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.27.17.zip**. Abre **AYUD
 75. **(V3) Enemigo con dueño.** En una sala online, asigna un adversario a un jugador (o déjalo con controlador). Ese jugador y los demás no ven su cono de visión ni la zona que mira, y solo lo ven cuando un personaje del grupo lo mira. Una luz sobre el adversario no lo muestra si nadie del grupo lo mira.
 76. **(V3) Linterna del enemigo.** Da luz propia a un adversario (con ángulo, p. ej. 60°) y ponlo en una zona explorada fuera de la vista del grupo. El jugador no ve su cono de luz, solo el fantasma «ÚLTIMA POS.». Cuando un personaje lo mira, se ve el adversario con su luz.
 77. **(V3) Insignia de clase.** Un personaje con clase (p. ej. Scoundrel) muestra su insignia en la esquina inferior derecha del token, al doble de tamaño que antes, sin tapar el retrato ni el nombre.
+78. **(V3) Armas y equipo.** Abre la ficha → Armas y equipo. Arriba están tus Armas, Armadura, Aumentos y Equipo. «+ Añadir» de cada bloque abre el catálogo filtrado; ✕ lo cierra. En un arma solo se ve Atacar; Editar y Quitar están en «⋯». Toca una etiqueta: aparece su regla. Como jugador no ves «Editor completo»; como Keeper sí.
+79. **(V3) Armadura.** «+ Añadir» en Armadura: se ponen sus umbrales y Armor Slots. «Cambiar» por otra: la primera desaparece. Quítala con «⋯ → Quitar»: umbrales naturales (2 / 4 + nivel) y 0 Armor Slots (más los del Blindaje Subdérmico si lo tienes).
+80. **(V3) Aumentos.** Instala Reflejos de Combate: Evasión +1; quítalo: vuelve. Instala aumentos hasta pasar la capacidad: el bloque lo marca en rojo y el Stress máximo baja 1 por cada punto de más. Instala el Supresor de Dolor: aparece como carta en tu mano con su imagen; úsala con Stress marcado: limpia 1. Repite como jugador conectado: los números cambian igual.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 
