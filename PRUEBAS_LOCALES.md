@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.3.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.3**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.3** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.3.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.4.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.4**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.4** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.4.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -106,6 +106,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.3.zip**. Abre **AYUDA
 91. **(V3) Conos de enemigos.** Como jugador, selecciona un enemigo o NPC con linterna: no ves su arco de visión ni el cono de su luz. Como Keeper, sí.
 92. **(V3) El Keeper ve todos los tokens.** Con la niebla activada y la Visión GM apagada, en vista Keeper se ven todos los tokens, también los que están en zonas sin explorar (atenuados y con la marca de niebla). En vista jugador, esos tokens no aparecen.
 93. **(V3) Graduación de las ventanas.** Pon un lado de una ventana a 5 %, 25 %, 50 %, 75 % y 100 % y mira desde ese lado con un personaje: lo de detrás pasa de casi negro a limpio, poco a poco.
+94. **(V3) Luces y niebla.** Como jugador, con la niebla activada, enciende una luz en una sala que el grupo no ve: sigue en la niebla. Abre la puerta o mira por una ventana: se ve la parte iluminada (por la ventana, con la transparencia de tu lado; a 0 % nada).
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

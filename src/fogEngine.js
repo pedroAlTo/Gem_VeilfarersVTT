@@ -1,5 +1,4 @@
 import { drawSoftened, visionFill, fingerprint, wallValues } from './softMask.js';
-import { lightStrength } from './lightingEngine.js';
 import { isWindowWall, seeThrough, windowShadow } from './windows.js';
 // src/fogEngine.js
 // Advanced Fog of War & Exploration Shroud Engine for Veilfarers VTT
@@ -106,7 +105,6 @@ export class FogOfWarEngine {
     return ctx;
   }
   resetExploration(mapId) {
-    this.dispelStamped = null;
     const canvas = this.exploredCanvases.get(mapId);
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -388,29 +386,10 @@ export class FogOfWarEngine {
         final.drawImage(target.canvas, 0, 0);
       }
     };
-    // Map lights that are on dissipate the fog of their whole lit area (walls still stop the
-    // light), by their intensity: the dimmest shows it in half-light, from intensity 1 it is
-    // clear as day. A lit area is seen and remembered; the Keeper turns a light off (or keeps the
-    // room dark) to hide it.
-    const dispel = (lights || []).filter(l => l.fixture).map(light => {
-      const poly = lightingEngine.computeVisibilityPolygon(light.x, light.y, light.radius || 200, walls, light.facingAngle ?? null, light.visionAngle ?? 360);
-      return poly && poly.length >= 3 ? { poly, x: light.x, y: light.y, radius: light.radius || 200, strength: lightStrength(light.intensity ?? 0.8) } : null;
-    }).filter(Boolean);
-    const paintDispel = (target, cut) => {
-      for (const d of dispel) {
-        tracePolygon(target, d.poly);
-        if (cut) {
-          const g = target.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.radius);
-          g.addColorStop(0, `rgba(0, 0, 0, ${d.strength})`); g.addColorStop(0.8, `rgba(0, 0, 0, ${d.strength})`); g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          target.fillStyle = g;
-        } else target.fillStyle = '#ffffff';
-        target.fill();
-      }
-    };
-    // A lit area is remembered once (stamping it again every frame would only force the fog to be
-    // worked out again each frame).
-    const dispelKey = dispel.map(d => `${Math.round(d.x)},${Math.round(d.y)},${Math.round(d.radius)},${d.poly.length}`).join('|') + '#' + mapId;
-    if (stamp && dispel.length && dispelKey !== this.dispelStamped) { this.dispelStamped = dispelKey; this.exploredVersion++; paintDispel(expCtx, false); }
+    // Lights clear the fog only where the party can see (v2.29.4, user decision 21 Nov 2026: «luz
+    // solo si se ve»). A lit area is part of each viewer's sight above (`lit`): behind a wall it
+    // stays in the fog, and through a window it is seen with the transparency of the viewer's side.
+    // Up to v2.29.3 every light that was on cleared its whole area, seen or not (v2.26.1).
     if (stamp && visionShapes.length) {
       this.exploredVersion++;
       paintSeen(expCtx, '#ffffff');
@@ -437,7 +416,6 @@ export class FogOfWarEngine {
     // 5. Cut out what the viewers see right now (0% fog).
     fCtx.globalCompositeOperation = 'destination-out';
     paintSeen(fCtx, 'cut');
-    paintDispel(fCtx, true);
 
     // Reset composite operation to normal
     fCtx.globalCompositeOperation = 'source-over';

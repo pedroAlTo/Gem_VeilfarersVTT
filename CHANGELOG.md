@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.3**.
-Paquete: `VeilFarers_VTT_v2.29.3.zip`.
+Versión actual del VTT: **v2.29.4**.
+Paquete: `VeilFarers_VTT_v2.29.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.4] — 2026-11-21
+
+V3 · Las luces despejan la niebla solo donde el grupo ve: las ventanas ya funcionan con salas iluminadas
+
+### Niebla y luces
+
+- Una luz encendida despeja la niebla solo donde el grupo tiene línea de visión (antes despejaba toda su zona, la viera alguien o no). Una sala iluminada tras un muro queda en la niebla hasta que alguien la vea.
+- Por eso las ventanas ya funcionan también con salas iluminadas: desde un lado al 0 % la sala queda oculta, y con más transparencia se ve más (por ejemplo, 5 % casi negro, 20 % muy oscuro, 50 % atenuado, 100 % limpio).
 
 ## [2.29.3] — 2026-11-21
 

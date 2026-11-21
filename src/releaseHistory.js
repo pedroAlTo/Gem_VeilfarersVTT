@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.4', date: '2026-11-21', title: 'V3 · Las luces despejan la niebla solo donde el grupo ve: las ventanas ya funcionan con salas iluminadas',
+    sections: [
+      { title: 'Niebla y luces', items: [
+        'Una luz encendida despeja la niebla solo donde el grupo tiene línea de visión (antes despejaba toda su zona, la viera alguien o no). Una sala iluminada tras un muro queda en la niebla hasta que alguien la vea.',
+        'Por eso las ventanas ya funcionan también con salas iluminadas: desde un lado al 0 % la sala queda oculta, y con más transparencia se ve más (por ejemplo, 5 % casi negro, 20 % muy oscuro, 50 % atenuado, 100 % limpio).',
+      ] },
+    ],
+  },
+  {
     version: '2.29.3', date: '2026-11-21', title: 'V3 · El Keeper ve siempre los tokens; ventanas con graduación',
     sections: [
       { title: 'Vista del Keeper', items: [
