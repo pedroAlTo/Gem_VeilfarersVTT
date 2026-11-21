@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.16**.
-Paquete: `VeilFarers_VTT_v2.27.16.zip`.
+Versión actual del VTT: **v2.27.17**.
+Paquete: `VeilFarers_VTT_v2.27.17.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.17] — 2026-11-21
+
+V3 · Insignia de clase más grande en el token
+
+### Mapa
+
+- La insignia de clase de la esquina inferior derecha del token mide el doble (70 % del diámetro en vez del 35 %) y cuelga sobre el borde del anillo, sin tapar el retrato ni el nombre.
 
 ## [2.27.16] — 2026-11-21
 

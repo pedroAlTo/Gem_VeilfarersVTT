@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.17', date: '2026-11-21', title: 'V3 · Insignia de clase más grande en el token',
+    sections: [
+      { title: 'Mapa', items: [
+        'La insignia de clase de la esquina inferior derecha del token mide el doble (70 % del diámetro en vez del 35 %) y cuelga sobre el borde del anillo, sin tapar el retrato ni el nombre.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.16', date: '2026-11-21', title: 'Insignias, retratos y cartas de acción',
     sections: [
       { title: 'Mesa', items: ['La insignia de clase ocupa el 35 % del diámetro del token en altura y queda en su esquina inferior derecha. Los jugadores pueden personalizar el retrato de sus tokens asignados desde su ficha.'] },

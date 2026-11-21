@@ -4244,9 +4244,11 @@ export class CanvasEngine {
   drawClassBanner(ctx, url, radius) {
     const flag = url && this.getTokenImage(url);
     if (!flag?.complete || !flag.naturalWidth || !flag.naturalHeight) return;
-    const height = 2 * radius * 0.35;
+    // Twice its first size (v2.27.17: at 35 % of the token it could hardly be seen). It hangs
+    // over the bottom-right edge of the ring so it does not cover the portrait.
+    const height = 2 * radius * 0.7;
     const width = height * flag.naturalWidth / flag.naturalHeight;
-    ctx.drawImage(flag, radius - width, radius - height, width, height);
+    ctx.drawImage(flag, radius - width * 0.6, radius - height, width, height);
   }
 
   renderGhostToken(ctx, ghost, gridSize, time, caption = 'ÚLTIMA POS.') {
