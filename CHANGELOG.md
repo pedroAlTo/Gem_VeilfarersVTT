@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.0**.
-Paquete: `VeilFarers_VTT_v2.29.0.zip`.
+Versión actual del VTT: **v2.29.1**.
+Paquete: `VeilFarers_VTT_v2.29.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.1] — 2026-11-21
+
+V3 · El Keeper decide siempre el daño; el dado vuelve a abrirse
+
+### Daño
+
+- El daño que aplica un jugador lo decide siempre el Keeper, sea cual sea el objetivo (también un enemigo al que se le haya asignado dueño, o su propio personaje): al Keeper le aparece la ventana para elegir los escudos y aplicar o cancelar. En la Ficha del jugador el botón dice «Enviar daño al Keeper» y, tras enviarlo, «Enviado al Keeper: él decide».
+- La mesa rechaza el daño que le llegue de un jugador sin pasar por esa ventana (cada aprobación vale una sola vez).
+
+### Pantalla
+
+- Arreglado: el dado de la esquina del mapa (jugador y Keeper) y el botón de la pantalla del Keeper no respondían desde la v2.28.2.
 
 ## [2.29.0] — 2026-11-21
 

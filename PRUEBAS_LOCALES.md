@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -99,6 +99,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.0.zip**. Abre **AYUDA
 84. **(V3) Fuentes.** En Ajustes → Fuentes alterna B y E: cambian los títulos, botones, cifras y el texto del mapa; ningún rótulo es diminuto; las cartas no cambian. Recarga: se mantiene la elegida.
 85. **(V3) Panel lateral.** Ajustes → Panel lateral → «Se oculta» (o la chincheta del panel): el panel se va y queda una pestaña en el borde derecho. Lleva el ratón al borde: entra rápido y suave; sal: se va. Mientras escribes en un campo del panel, no se esconde. «Fijo» lo deja siempre a la vista. Recarga: se mantiene.
 86. **(V3) Esquinas.** Cabecera, herramientas, panel lateral, barra del personaje, relojes y ventanas tienen las esquinas ligeramente redondeadas (5 px), planas.
+87. **(V3) El Keeper decide el daño.** En una sala online, un jugador ataca a un enemigo (también uno que tenga asignado) y pulsa «Enviar daño al Keeper». No cambia nada hasta que el Keeper, en su ventana, elige los escudos y pulsa Aplicar (o Cancelar). El jugador ve el resultado.
+88. **(V3) Dado y pantalla del Keeper.** Como jugador y como Keeper, el dado de la esquina superior derecha del mapa abre y cierra su panel; el botón de la pantalla del Keeper la sube y la baja.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

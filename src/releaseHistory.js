@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.1', date: '2026-11-21', title: 'V3 · El Keeper decide siempre el daño; el dado vuelve a abrirse',
+    sections: [
+      { title: 'Daño', items: [
+        'El daño que aplica un jugador lo decide siempre el Keeper, sea cual sea el objetivo (también un enemigo al que se le haya asignado dueño, o su propio personaje): al Keeper le aparece la ventana para elegir los escudos y aplicar o cancelar. En la Ficha del jugador el botón dice «Enviar daño al Keeper» y, tras enviarlo, «Enviado al Keeper: él decide».',
+        'La mesa rechaza el daño que le llegue de un jugador sin pasar por esa ventana (cada aprobación vale una sola vez).',
+      ] },
+      { title: 'Pantalla', items: [
+        'Arreglado: el dado de la esquina del mapa (jugador y Keeper) y el botón de la pantalla del Keeper no respondían desde la v2.28.2.',
+      ] },
+    ],
+  },
+  {
     version: '2.29.0', date: '2026-11-21', title: 'V3 · Ajustes, fuentes más legibles, panel lateral que se oculta y esquinas suaves',
     sections: [
       { title: 'Ajustes', items: [

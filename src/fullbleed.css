@@ -25,3 +25,6 @@ body:not(.fullbleed) .map-safe-area { position: absolute; inset: 0; pointer-even
 :where(body:not(.fullbleed) .map-safe-area > *) { pointer-events: auto; }
 /* The corner readout (operatives, grid, scene) repeats the header and would sit under the hand. */
 html body.fullbleed .orbital-field-readout { display: none !important; }
+/* Buttons styled with `all: unset` (the dice, the Keeper's screen) inherit pointer-events, so the
+   safe area's «none» reached them: a button on the map always takes clicks. */
+html body .map-safe-area > button { pointer-events: auto; }

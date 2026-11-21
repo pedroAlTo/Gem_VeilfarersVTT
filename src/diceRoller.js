@@ -1892,34 +1892,20 @@ export class DiceRollerSidebar {
 
       const useArmor = this.container.querySelector('#dmg_use_armor')?.checked;
       const currentArmorNow = planDamage(0).currentDamage.fullyProtected ? 0 : usableSlots(currentTarget);
-      // Damage is the Keeper's call (v2.27.5: to an NPC, an adversary or another player's
-      // character): a window lets them choose its shields and apply or cancel it. A connected
-      // player's hit goes to the Keeper with every option; only a hit on their own character
-      // is applied by the player.
-      const keeperDecides = store.sessionRole !== 'player' || !store.canEditToken(currentTarget.id);
-      if (keeperDecides) {
-        const maxShields = isDirect ? 0 : currentArmorNow;
-        const options = Array.from({ length: Math.min(maxShields, 10) + 1 }, (_, n) => planDamage(n).damagePayload);
-        const request = { attackerName: damageOptions.attackerName, targetId: currentTarget.id, targetName: currentTarget.name, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, options, secret };
-        if (store.sessionRole === 'player') {
-          applied = true; pending.applied = true; applyBtn.disabled = true; applyBtn.textContent = 'ENVIADO AL KEEPER';
-          network.sendToHost?.({ type: 'DAMAGE_REQUEST', request });
-          notify(`Daño a ${currentTarget.name}: el Keeper decide los escudos y lo aplica.`);
-          window.dispatchEvent(new CustomEvent('veil:attack-done', { detail: { attackerId, targetId: currentTarget.id } }));
-          return;
-        }
-        keeperDamageDialog(currentTarget, request, n => applyFinalDamage(n), { shields: spentShieldsChoice ?? (useArmor ? 1 : 0) });
+      // Damage is always the Keeper's call (v2.27.5; v2.29.1: always, whatever the target, also
+      // one the player controls): a window lets the Keeper choose its shields and apply or cancel
+      // it. A connected player's hit goes to the Keeper with every option worked out.
+      const maxShields = isDirect ? 0 : currentArmorNow;
+      const options = Array.from({ length: Math.min(maxShields, 10) + 1 }, (_, n) => planDamage(n).damagePayload);
+      const request = { attackerName: damageOptions.attackerName, targetId: currentTarget.id, targetName: currentTarget.name, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, options, secret };
+      if (store.sessionRole === 'player') {
+        applied = true; pending.applied = true; applyBtn.disabled = true; applyBtn.textContent = 'ENVIADO AL KEEPER';
+        network.sendToHost?.({ type: 'DAMAGE_REQUEST', request });
+        notify(`Daño a ${currentTarget.name}: el Keeper decide los escudos y si lo aplica.`);
+        window.dispatchEvent(new CustomEvent('veil:attack-done', { detail: { attackerId, targetId: currentTarget.id } }));
         return;
       }
-      let finalSpentShields = 0;
-      if (!isDirect && currentArmorNow > 0) {
-        if (spentShieldsChoice !== null && spentShieldsChoice !== undefined) {
-          finalSpentShields = Math.min(currentArmorNow, Math.max(0, spentShieldsChoice));
-        } else if (useArmor) {
-          finalSpentShields = 1;
-        }
-      }
-      applyFinalDamage(finalSpentShields);
+      keeperDamageDialog(currentTarget, request, n => applyFinalDamage(n), { shields: spentShieldsChoice ?? (useArmor ? 1 : 0) });
     };
   }
 }
