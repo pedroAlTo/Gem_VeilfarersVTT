@@ -21,8 +21,27 @@ export function powerArt(power) {
   return Number(power.l) === 1 && illustratedPowers.has(slug) ? { ...art, illustration: '/assets/cards/powers/level-1/' + slug + '.webp' } : art;
 }
 export const domainArt = domain => DOMAIN_COLORS[domain] ? { flag: `${CARD_ART}domain-${lower(domain)}-flag.png`, band: `${CARD_ART}domain-${lower(domain)}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' };
-export const classArt = cls => { const id = lower(cls?.id || cls?.name); return CLASS_ART.includes(id) ? { flag: `${CARD_ART}class-${id}-flag.png`, band: `${CARD_ART}class-${id}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' }; };
-export const cornerArt = kind => ({ flag: '', band: `${CARD_ART}${kind}-band.png`, layout: 'corner' });
+// Existing editorial scenes also illustrate the non-domain cards in a Sleeping hand.
+const sceneArt = id => CARD_ART + 'powers/level-1/' + id + '.webp';
+const classScenes = {
+  diplomat: 'silver-tongue', engineer: 'drone-whisper', explorer: 'environmental-adaptation',
+  mystic: 'veil-sensitivity', pilot: 'vector-calculus', scholar: 'biological-scan',
+  scoundrel: 'perfect-facade', soldier: 'tactical-overwatch', vanguard: 'force-shield',
+};
+const communityScenes = {
+  'core-world': 'perfect-facade', 'trade-hub': 'linguistic-patch', 'frontier-colony': 'environmental-adaptation',
+  'void-station': 'quantum-firewall', 'free-fleet': 'vector-calculus',
+  agrisynth: 'biological-scan', 'displaced-enclave': 'spark-of-hope',
+};
+const effortScenes = {
+  'Steady Hands': 'system-jackknife', 'Read the Room': 'biological-scan', 'Push Through': 'environmental-adaptation',
+  'The Opening': 'vector-calculus', 'Try Again': 'slipstream-jolt', Brace: 'force-shield',
+  'Cover the Angle': 'tactical-overwatch', 'Second Wind': 'rapid-regeneration', 'Seize the Moment': 'blinding-flash',
+};
+export const classArt = cls => { const id = lower(cls?.id || cls?.name); return CLASS_ART.includes(id) ? { illustration: sceneArt(classScenes[id]), flag: `${CARD_ART}class-${id}-flag.png`, band: `${CARD_ART}class-${id}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' }; };
+export const cornerArt = (kind, id) => ({ illustration: kind === 'ancestry' && id
+  ? '/assets/tokens/crew/' + id.replace('-', '_') + '-n.webp'
+  : sceneArt(communityScenes[id] || 'spark-of-hope'), flag: '', band: `${CARD_ART}${kind}-band.png`, layout: 'corner' });
 export const CARD_KINDS = { power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background', effort: 'Common Effort', beardown: 'Resolve Move', fear: 'Fear', adversary: 'Adversario' };
 // A card's kind in words, never undefined (a kind without a name falls back to «Carta»).
 export const cardKindName = kind => CARD_KINDS[kind] || 'Carta';
@@ -139,9 +158,9 @@ export function characterCards(token, data, options = {}) {
   // One card per Gift that is used (it has a moment, a price or a limit); passive Gifts are
   // always on and stay on the sheet.
   const ancestry = ancestryOf(token, data);
-  for (const gift of (ancestry?.gifts || []).filter(usableGift)) cards.push({ id: `ancestry:${ancestry.id}:${slug(gift.name)}`, kind: 'ancestry', zone: 'innate', name: gift.name, subtitle: `Ancestry · ${ancestry.name}`, color: ancestry.color || '#94a3b8', art: cornerArt('ancestry'), costText: costLabel(giftCost(gift, sleeping)), cost: giftCost(gift, sleeping), roll: null, rollText: '', rc: 0, text: text(gift.text), limit: giftLimit(gift), playable: true });
+  for (const gift of (ancestry?.gifts || []).filter(usableGift)) cards.push({ id: `ancestry:${ancestry.id}:${slug(gift.name)}`, kind: 'ancestry', zone: 'innate', name: gift.name, subtitle: `Ancestry · ${ancestry.name}`, color: ancestry.color || '#94a3b8', art: cornerArt('ancestry', ancestry.id), costText: costLabel(giftCost(gift, sleeping)), cost: giftCost(gift, sleeping), roll: null, rollText: '', rc: 0, text: text(gift.text), limit: giftLimit(gift), playable: true });
   const community = byName(data.communities, token.community);
-  if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community'), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
+  if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community', community.id), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
   if (!sleeping) for (const name of vaultNames(token)) { const known = byName(data.powers, name); cards.push(powerCard(known || { n: name }, 'vault')); }
   // Bear Down and the Common Efforts come after the character's own cards.
   if (sleeping) cards.push(...sleepingCommonCards(token, options));
@@ -153,8 +172,8 @@ export function characterCards(token, data, options = {}) {
 // Read-only cards (they are consulted, not played from here).
 export function catalogGroups(data) {
   const read = card => ({ zone: 'catalog', roll: null, rollText: '', rc: 0, playable: false, ...card });
-  const ancestry = (data.ancestries || []).map(a => ({ group: a.name, cards: (a.gifts || []).map(g => read({ id: `cat:ancestry:${a.id}:${slug(g.name)}`, kind: 'ancestry', name: g.name, subtitle: `Ancestry · ${a.name}`, color: a.color || '#94a3b8', art: cornerArt('ancestry'), costText: usableGift(g) ? costLabel(giftCost(g)) : 'Pasivo', cost: giftCost(g), text: text(g.text), limit: giftLimit(g) })) }));
-  const community = (data.communities || []).filter(c => c.feature).map(c => ({ group: c.name, cards: [read({ id: `cat:community:${c.id}`, kind: 'community', name: c.feature.name, subtitle: `Background · ${c.name}`, color: c.color || '#94a3b8', art: cornerArt('community'), costText: '—', cost: parseCost(''), text: text(c.feature.text) })] }));
+  const ancestry = (data.ancestries || []).map(a => ({ group: a.name, cards: (a.gifts || []).map(g => read({ id: `cat:ancestry:${a.id}:${slug(g.name)}`, kind: 'ancestry', name: g.name, subtitle: `Ancestry · ${a.name}`, color: a.color || '#94a3b8', art: cornerArt('ancestry', a.id), costText: usableGift(g) ? costLabel(giftCost(g)) : 'Pasivo', cost: giftCost(g), text: text(g.text), limit: giftLimit(g) })) }));
+  const community = (data.communities || []).filter(c => c.feature).map(c => ({ group: c.name, cards: [read({ id: `cat:community:${c.id}`, kind: 'community', name: c.feature.name, subtitle: `Background · ${c.name}`, color: c.color || '#94a3b8', art: cornerArt('community', c.id), costText: '—', cost: parseCost(''), text: text(c.feature.text) })] }));
   const feature = (cls, f, label, path) => f && read({ id: `cat:${path}:${cls.id}:${slug(f.name)}`, kind: 'feature', name: f.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${label}`, color: cls.color || '#c084fc', art: classArt(cls), costText: (f.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(f.name), text: text(f.text) });
   const awakened = (data.classes || []).map(cls => ({ group: cls.name, cards: [feature(cls, cls.hopeFeature, 'Hope Feature', 'aw'), feature(cls, cls.classFeature, 'Class Feature', 'aw')].filter(Boolean) }));
   const sleeping = (data.classes || []).filter(c => c.sleepingRules).map(cls => {
@@ -282,11 +301,11 @@ export const COMMON_EFFORTS = [
 const NO_COST = () => ({ hope: 0, stress: 0, effort: 0, resolve: 0, hp: 0, fear: 0, open: false });
 export function sleepingCommonCards(token, { optionalEfforts = false } = {}) {
   if (token?.path !== 'Sleeping' || token.isPlayer === false) return [];
-  const bearDown = { id: 'resolve:bear-down', kind: 'beardown', zone: 'innate', name: 'Bear Down', subtitle: 'Resolve Move universal', color: '#b45309', art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band' },
+  const bearDown = { id: 'resolve:bear-down', kind: 'beardown', zone: 'innate', name: 'Bear Down', subtitle: 'Resolve Move universal', color: '#b45309', art: { illustration: sceneArt('mind-shield'), flag: '', band: '/assets/cards/plain-band.png', layout: 'band' },
     costText: 'spend and roll 1+', cost: { ...NO_COST(), resolve: 1, open: true, rolls: true }, roll: null, rollText: `Tira ${token.resolve?.dieType || 'd4'} por Resolve`, rc: 0, playable: true,
     text: 'After any Duality Roll, attack, reaction, or damage roll, before the outcome is narrated, spend Resolve Dice and add their total. It adds to the total only: it never changes which die came up higher and never makes a Critical.' };
   const efforts = COMMON_EFFORTS.filter(e => !e.optional || optionalEfforts).map(e => ({ id: `effort:${slug(e.name)}`, kind: 'effort', zone: 'innate', move: e.move, name: e.name, subtitle: `Common Effort · ${e.effort} Effort`, color: '#a16207',
-    art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band' }, costText: `${e.effort} Effort`, cost: { ...NO_COST(), effort: e.effort }, roll: null, rollText: '', rc: 0, playable: true, text: e.text }));
+    art: { illustration: sceneArt(effortScenes[e.name]), flag: '', band: '/assets/cards/plain-band.png', layout: 'band' }, costText: `${e.effort} Effort`, cost: { ...NO_COST(), effort: e.effort }, roll: null, rollText: '', rc: 0, playable: true, text: e.text }));
   return [bearDown, ...efforts];
 }
 

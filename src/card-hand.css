@@ -137,3 +137,5 @@
 .vf-power-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .vf-card-large .vf-card-art:has(.vf-power-picture) { flex-basis: 42%; }
 .creator-power-illustration { width: 100%; height: 96px; object-fit: cover; border-radius: 5px; }
+
+.vf-card-art:has(.vf-power-picture) .vf-card-band { max-height: 24%; object-fit: fill; }

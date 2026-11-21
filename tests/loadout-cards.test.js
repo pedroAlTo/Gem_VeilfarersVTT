@@ -309,3 +309,15 @@ test('finishing an active action gives the player the Spotlight; a Reaction or a
   assert.equal(grantSpotlight(store, 'tok_s'), false, 'already in the Spotlight: nothing to do');
   assert.equal(grantSpotlight(store, 'nope'), false);
 });
+
+test('Sleeping hand displays an illustration for every card in the fan and enlarged view', async () => {
+  const { existsSync } = await import('node:fs');
+  const { cardFace } = await import('../src/cardHandUI.js');
+  const token = character({ path: 'Sleeping', cls: 'mystic', mystic: ['Tech', 'Lux'] });
+  const cards = characterCards(token, data, { optionalEfforts: true });
+  assert.ok(cards.some(c => c.name === 'Cover the Angle'));
+  for (const c of cards) {
+    assert.ok(c.art.illustration && existsSync(new URL('../public' + c.art.illustration, import.meta.url)), c.name);
+    for (const large of [false, true]) assert.ok(cardFace(c, { large }).includes('src="' + c.art.illustration + '"'), c.name);
+  }
+});
