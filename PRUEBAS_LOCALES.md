@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.4.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.4**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.4** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.4.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.5.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.5**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.5** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.5.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 

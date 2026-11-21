@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.4**.
-Paquete: `VeilFarers_VTT_v2.29.4.zip`.
+Versión actual del VTT: **v2.29.5**.
+Paquete: `VeilFarers_VTT_v2.29.5.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.5] — 2026-11-21
+
+Ilustraciones de los poderes de dominio de nivel 2 a 5
+
+### Cartas
+
+- Los 56 poderes de nivel 2 a 5 tienen ilustración propia en la mano, el Vault y el catálogo.
 
 ## [2.29.4] — 2026-11-21
 

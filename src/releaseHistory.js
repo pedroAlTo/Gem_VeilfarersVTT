@@ -1,6 +1,10 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.5', date: '2026-11-21', title: 'Ilustraciones de los poderes de dominio de nivel 2 a 5',
+    sections: [{ title: 'Cartas', items: ['Los 56 poderes de nivel 2 a 5 tienen ilustración propia en la mano, el Vault y el catálogo.'] }],
+  },
+  {
     version: '2.29.4', date: '2026-11-21', title: 'V3 · Las luces despejan la niebla solo donde el grupo ve: las ventanas ya funcionan con salas iluminadas',
     sections: [
       { title: 'Niebla y luces', items: [

@@ -20,8 +20,23 @@ export const DOMAIN_COLORS = { Tech: '#00697f', Synthesis: '#1f5c2b', Social: '#
 const CARD_ART = '/assets/cards/';
 const CLASS_ART = ['diplomat', 'engineer', 'explorer', 'mystic', 'pilot', 'scholar', 'scoundrel', 'soldier', 'vanguard'];
 const illustratedPowers = new Set('drone-whisper quantum-firewall system-jackknife biological-scan environmental-adaptation rapid-regeneration linguistic-patch perfect-facade silver-tongue mind-shield telekinetic-grasp veil-sensitivity force-shield kinetic-blast tactical-overwatch slipstream-jolt temporal-cloak vector-calculus blinding-flash spark-of-hope wayfinders-pulse'.split(' '));
+// The eight painted cells in each domain sheet are in level order, two powers per level.
+const domainSheetNames = {
+  Tech: ["Data Ghost", "Emergency Repair", "Digital Cascade", "Rapid Fabrication", "AI Symbiosis", "System Repair", "Adaptive Protocol", "Network Dominion"],
+  Synthesis: ["Ecosystem Analysis", "Symbiotic Bond", "Hostile Environment Mastery", "Symbiotic Bloom", "Adaptive Evolution", "Bio-Integration", "Cellular Reconstruction", "Terraforming Genesis"],
+  Social: ["Emotional Manipulation", "Inspiring Presence", "Compelling Argument", "Master of Disguise", "Rallying Cry", "Web of Lies", "Legendary Reputation", "Social Puppeteer"],
+  Neural: ["Memory Echo", "Synaptic Disruption", "Empathic Network", "Mind-Slip", "Cordon of Will", "Neural Feedback", "Mind Spike", "Temporal Glimpse"],
+  Kinetic: ["Impact Absorption", "Kinetic Barrier", "Protective Dome", "Velocity Surge", "Guardian's Aegis", "Precision Strike", "Kinetic Mastery", "Shockwave Pulse"],
+  Void: ["Lucky Break", "Spatial Shift", "Flux Field", "Temporal Muffle", "Danger Sense", "Spatial Cache", "Fate's Hand", "Phase Walk"],
+  Lux: ["Eyes of Truth", "Photon Shield", "Aura of Clarity", "Stellar Lance", "Deflection Prism", "Solar Judgment", "Beacon of Resurrection", "Cartographer of the Unseen"],
+};
 export function powerArt(power) {
   const art = domainArt(power.d);
+  const names = Object.hasOwn(domainSheetNames, power.d) && domainSheetNames[power.d];
+  const cell = names ? names.indexOf(power.n) : -1;
+  if (cell >= 0 && Number(power.l) === 2 + Math.floor(cell / 2)) {
+    return { ...art, illustration: CARD_ART + 'powers/domains/' + lower(power.d) + '.webp', cell };
+  }
   const slug = String(power.n).toLowerCase().replace(/['’]/g, '').replace(/ +/g, '-');
   return Number(power.l) === 1 && illustratedPowers.has(slug) ? { ...art, illustration: '/assets/cards/powers/level-1/' + slug + '.webp' } : art;
 }
