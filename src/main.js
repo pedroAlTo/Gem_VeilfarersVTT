@@ -36,6 +36,7 @@ import { sanitizeHTML, confirmAction, notify } from './ui.js';
 // Application entry point for VEILVTT
 
 import { initOrbitalUI } from './orbitalUI.js';
+import { mountFullbleed } from './fullbleedLayout.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network, getActiveSession, clearActiveSession } from './networkManager.js';
@@ -76,6 +77,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   startTranslation(document.body);
   await store.ready;
   initOrbitalUI();
+  // The map fills the window and the panels float over it (desktop; v2.28.2).
+  mountFullbleed();
   import('./layoutLock.js').then(({ lockLayoutScroll }) => lockLayoutScroll()).catch(() => {});
   import('./mobileUI.js').then(({ mountMobileNotice }) => mountMobileNotice()).catch(() => {});
   import('./onboardingUI.js').then(({ mountOnboarding }) => mountOnboarding({ cloud: !LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured })).catch(error => console.warn('Guide unavailable:', error));
@@ -104,7 +107,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(document.getElementById('tab_pane_sheet')); import('./groupMenus.js').then(({ mountPlayerGroups }) => { window.veilGroupMenus = mountPlayerGroups(); }); import('./effectClockRuntime.js').then(({ startEffectClocks }) => startEffectClocks()); import('./restUI.js').then(({ mountRestUI }) => mountRestUI()); }).catch(error => console.warn('Action bar unavailable:', error));
   window.veilCardFeed = new CardFeed(quickbarContainer.parentElement);
   // The character bar and the deck icon move by pressing on them and dragging (V3).
-  import('./movablePanel.js').then(({ makeMovable }) => { const area = document.getElementById('canvas_viewport_root'); makeMovable(quickbarContainer, 'quickbar', { area }); const hand = document.getElementById('card_hand_root'); if (hand) makeMovable(() => hand.querySelector('.card-deck'), 'deck', { area, root: hand }); });
+  import('./movablePanel.js').then(({ makeMovable }) => { const area = document.querySelector('.map-safe-area') || document.getElementById('canvas_viewport_root'); makeMovable(quickbarContainer, 'quickbar', { area }); const hand = document.getElementById('card_hand_root'); if (hand) makeMovable(() => hand.querySelector('.card-deck'), 'deck', { area, root: hand }); });
 
   // 5. Initialize Tactical Layers HUD
   const layerContainer = document.getElementById('layer_hud_container');

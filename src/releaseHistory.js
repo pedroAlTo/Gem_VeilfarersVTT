@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.28.2', date: '2026-11-21', title: 'V3 · El mapa ocupa toda la pantalla, sin marco',
+    sections: [
+      { title: 'Pantalla', items: [
+        'En escritorio el mapa ocupa todo el fondo de la ventana, sin marco. La cabecera, la barra de herramientas y el panel derecho flotan encima, con un fondo translúcido.',
+        'Lo que va sobre el mapa (nombre de la escena, relojes, barra del personaje, mano de cartas, dados) se coloca en el hueco que dejan los paneles, así que nada queda tapado. En móvil y tableta se mantiene la disposición de antes.',
+        'Fuera la etiqueta «Fear N/12» junto a la mano de cartas del Keeper: el Fear ya se ve arriba.',
+      ] },
+    ],
+  },
+  {
     version: '2.28.1', date: '2026-11-21', title: 'V3 · Sin barra inferior: más alto para el mapa',
     sections: [
       { title: 'Pantalla', items: [

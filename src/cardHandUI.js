@@ -227,7 +227,6 @@ export class CardHand {
     this.root.classList.remove('hidden'); this.quickbar.classList.add('with-hand');
     const n = cards.length;
     this.root.innerHTML = sanitizeHTML(`
-      <div class="card-hand-label"><span>Fear ${fear}/12${token ? ` · ${e(token.name)}` : ''}</span></div>
       <div class="card-hand-fan" style="--n:${n}">${cards.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(null, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(card.costText)}">${cardFace(card)}</button>`).join('')}</div>
       ${deckButton('Mazo: consulta todos los Poderes del juego')}`);
     this.layoutFan(n);

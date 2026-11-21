@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.28.1**.
-Paquete: `VeilFarers_VTT_v2.28.1.zip`.
+Versión actual del VTT: **v2.28.2**.
+Paquete: `VeilFarers_VTT_v2.28.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.28.2] — 2026-11-21
+
+V3 · El mapa ocupa toda la pantalla, sin marco
+
+### Pantalla
+
+- En escritorio el mapa ocupa todo el fondo de la ventana, sin marco. La cabecera, la barra de herramientas y el panel derecho flotan encima, con un fondo translúcido.
+- Lo que va sobre el mapa (nombre de la escena, relojes, barra del personaje, mano de cartas, dados) se coloca en el hueco que dejan los paneles, así que nada queda tapado. En móvil y tableta se mantiene la disposición de antes.
+- Fuera la etiqueta «Fear N/12» junto a la mano de cartas del Keeper: el Fear ya se ve arriba.
 
 ## [2.28.1] — 2026-11-21
 
