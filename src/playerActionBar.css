@@ -3,9 +3,9 @@
 .player-action-bar { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 14px; color: var(--text-main, #e5edf5); }
 .pab-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--vx-line); background: rgba(42,11,92,.22); }
 .pab-head strong { display: block; font: 600 15px/1.15 var(--font-hud); color: #f3e8ff; letter-spacing: .03em; }
-.pab-head small { display: block; margin-top: 3px; font: 9px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
+.pab-head small { display: block; margin-top: 3px; font: max(9px, var(--fs-min, 0px))/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
 .pab-empty { margin: 8px 0; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
-.pab-label, .pab-cell span, .pab-armor span, .pab-others > span { font: 9px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); }
+.pab-label, .pab-cell span, .pab-armor span, .pab-others > span { font: max(9px, var(--fs-min, 0px))/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); }
 .pab-label:empty { display: none; }
 /* Defense and resources */
 .pab-stats { display: flex; flex-direction: column; gap: 8px; }
@@ -30,7 +30,7 @@
 .pab-trait span { font: 600 14px/1 var(--font-hud); color: var(--vx-light); }
 .pab-weapon { width: 100%; }
 .pab-weapon b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-hud); font-size: 13px; letter-spacing: .02em; }
-.pab-weapon span { font: 9px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); flex: none; }
+.pab-weapon span { font: max(9px, var(--fs-min, 0px))/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); flex: none; }
 .pab-exp { min-height: 32px; padding: 7px 9px; font-family: var(--font-hud); font-size: 12px; letter-spacing: .02em; }
 .pab-exp b { font-weight: 600; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pab-exp span { color: #edd58a; font-weight: 700; }
@@ -46,7 +46,7 @@
 .pab-more { all: unset; cursor: pointer; position: absolute; top: -5px; right: 0; width: 24px; height: 20px; text-align: center; line-height: 18px; color: var(--text-dim); border: 1px solid var(--vx-line); font-size: 13px; }
 .pab-more.active, .pab-more:hover { color: #fff; border-color: var(--vx-light); }
 .pab-options { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.pab-dc { font: 9px/1 var(--font-mono); letter-spacing: .14em; color: var(--text-dim); }
+.pab-dc { font: max(9px, var(--fs-min, 0px))/1 var(--font-mono); letter-spacing: .14em; color: var(--text-dim); }
 .pab-dc select { margin-left: 4px; background: #13072b; color: #f3e8ff; border: 1px solid var(--vx-line-strong); font: 600 11px/1 var(--font-mono); padding: 4px; }
 .pab-hint { margin: 0; font-size: 12px; line-height: 1.4; color: var(--text-dim); }
 .pab-hint:not(.pab-pick-hint) { color: #00f3ff; }
@@ -105,7 +105,7 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 /* Effect clocks (Path to Nirvana, Rapid Regeneration…) */
 .fx-pie { display: inline-block; flex: none; border-radius: 50%; border: 1px solid #fde68a; background: conic-gradient(rgba(124,58,237,.6) 0 var(--fx-pct), rgba(253,230,138,.9) var(--fx-pct) 100%); }
 .pab-effects { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.pab-effects > span { font: 9px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); margin-right: 2px; }
+.pab-effects > span { font: max(9px, var(--fs-min, 0px))/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); margin-right: 2px; }
 .pab-effects i { display: inline-flex; align-items: center; gap: 6px; font: normal 500 12px/1 var(--font-hud); padding: 3px 8px 3px 4px; border: 1px solid rgba(253,230,138,.45); color: #fde68a; background: rgba(42,11,92,.3); }
 .pab-effects i b { color: #f3e8ff; font-weight: 600; }
 .pab-effects i small { font: 10px/1 var(--font-mono); color: #fde68a; }

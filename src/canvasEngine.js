@@ -15,6 +15,8 @@ import { FXEngine } from './fxEngine.js';
 import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
 import { isPartyToken } from './tokenPermissions.js';
+import { canvasFont } from './fontSets.js';
+import { seeThrough, windowSides, SEE_TOKENS_FROM } from './windows.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
@@ -2772,7 +2774,7 @@ export class CanvasEngine {
 
     if (!this.isMapLoaded) {
       ctx.fillStyle = '#00f3ff';
-      ctx.font = '18px "Orbitron", sans-serif';
+      ctx.font = `18px ${canvasFont('display')}`;
       ctx.textAlign = 'center';
       ctx.fillText('INITIALIZING QUANTUM TACTICAL MAP...', this.displayWidth / 2, this.displayHeight / 2);
       return;
@@ -2843,9 +2845,10 @@ export class CanvasEngine {
     // the Keeper's GM vision sees it softened so the map stays readable.
     // Who sees on this screen: the party (a player's tokens follow confirmed places; while the
     // player drags, the vision stays at the start of the drag).
-    // A token's own light (a flashlight) shows on a player's screen only while the party sees that
-    // token: an enemy out of sight does not give itself away with its light cone (v2.27.9).
-    const lightShown = t => state.userRole !== 'player' || this.isTokenVisibleToPlayers(t, activeTokens, map);
+    // A token's own light (a flashlight, often a cone) shows on a player's screen only for the
+    // party and the tokens that player controls. Enemies' and NPCs' cones are the Keeper's only
+    // (v2.27.9: not while out of sight; v2.29.2: never, user decision).
+    const lightShown = t => state.userRole !== 'player' || sharesSight(t);
     let viewers = [], previewOnly = false;
     if (state.userRole === 'player') {
       // Only the party's eyes: an enemy the player selects (to attack it) never sees for them.
@@ -3075,7 +3078,7 @@ export class CanvasEngine {
     const rule = c.rule || '';
 
     // Measure and wrap rule text
-    ctx.font = 'bold 12px "Rajdhani", sans-serif';
+    ctx.font = `bold 12px ${canvasFont('hud')}`;
     const titleW = ctx.measureText(title).width;
     ctx.font = '11px sans-serif';
 
@@ -3117,7 +3120,7 @@ export class CanvasEngine {
     ctx.shadowBlur = 0;
     // Title
     ctx.fillStyle = c.isState ? '#fde68a' : '#38bdf8';
-    ctx.font = 'bold 12px "Rajdhani", sans-serif';
+    ctx.font = `bold 12px ${canvasFont('hud')}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(title, boxX + 12, boxY + 8);
@@ -3208,7 +3211,7 @@ export class CanvasEngine {
           ctx.arc(first.x, first.y, 14/this.zoom, 0, Math.PI * 2);
           ctx.stroke();
 
-          ctx.font = 'bold 10px "Rajdhani", sans-serif';
+          ctx.font = `bold 10px ${canvasFont('hud')}`;
           ctx.fillStyle = '#10b981';
           ctx.fillText('CLIC PARA CERRAR', first.x + 16, first.y + 4);
         }
@@ -3400,7 +3403,8 @@ export class CanvasEngine {
       let losBlocked = false;
       for (const wall of (map.walls || [])) {
         const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        if (wallType === 'window') continue; // Windows do not block line of sight
+        // A window lets the party make out who is behind it from a side clear enough (v2.29.2).
+        if (wallType === 'window' && seeThrough(wall, vx, vy) >= SEE_TOKENS_FROM) continue;
         if (wallType === 'door' && wall.isOpen) continue; // Open doors do not block LOS
 
         // Solid walls, closed doors, and secret doors block LOS
@@ -3421,7 +3425,7 @@ export class CanvasEngine {
     // behind their back, shows the room, never who is in it.
     const blocked = (ax, ay, bx, by) => (map.walls || []).some(wall => {
       const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-      if (wallType === 'window' || (wallType === 'door' && wall.isOpen)) return false;
+      if ((wallType === 'window' && seeThrough(wall, ax, ay) >= SEE_TOKENS_FROM) || (wallType === 'door' && wall.isOpen)) return false;
       return this.checkLineIntersection(ax, ay, bx, by, wall.x1, wall.y1, wall.x2, wall.y2);
     });
     const facing = (v, x, y) => {
@@ -3502,7 +3506,7 @@ export class CanvasEngine {
       let losBlocked = false;
       for (const wall of (map.walls || [])) {
         const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        if (wallType === 'window') continue;
+        if (wallType === 'window' && seeThrough(wall, vx, vy) >= SEE_TOKENS_FROM) continue;
         if (wallType === 'door' && wall.isOpen) continue;
         if (this.checkLineIntersection(vx, vy, x, y, wall.x1, wall.y1, wall.x2, wall.y2)) {
           losBlocked = true;
@@ -3566,7 +3570,6 @@ export class CanvasEngine {
       const isOpen = !!w.isOpen;
       const isLocked = !!w.isLocked;
       const isSecret = !!w.isSecret;
-      const visionPercent = w.visionPercent ?? 80;
 
       // Wall lines are ONLY visible for the Keeper.
       // Players see no wall lines (the walls block LOS and movement without drawing neon lines).
@@ -3612,12 +3615,9 @@ export class CanvasEngine {
           ctx.shadowBlur = 6;
         }
       } else if (isWindow) {
-        // Cyan glass sheen with double line & transparency
-        ctx.strokeStyle = isSelected ? '#00f3ff' : 'rgba(56, 189, 248, 0.85)';
-        ctx.lineWidth = isSelected ? 5 : 3.5;
-        ctx.setLineDash([8, 4]);
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = isSelected ? 12 : 6;
+        // A window is drawn as a thin glass pane below (v2.29.2), not as a thick dashed line.
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0)';
+        ctx.lineWidth = 0;
       } else {
         // Normal opaque wall
         ctx.strokeStyle = isSelected ? '#00f3ff' : 'rgba(255, 42, 95, 0.8)';
@@ -3632,16 +3632,22 @@ export class CanvasEngine {
       ctx.lineTo(w.x2, w.y2);
       ctx.stroke();
 
-      // For Windows: render tinted glass slab along the segment proportional to window opacity
+      // Windows: a thin glass pane (two fine lines with the glass between, tinted by how opaque it
+      // is) and small frame caps at its ends. The tint is the average of its two sides.
       if (isWindow) {
-        const glassAlpha = Math.max(0.12, ((100 - visionPercent) / 100) * 0.45);
+        const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1) || 1, nx = -(w.y2 - w.y1) / len, ny = (w.x2 - w.x1) / len, half = 2.2;
+        const { a, b } = windowSides(w), opacity = 1 - (a + b) / 200;
         ctx.save();
-        ctx.strokeStyle = `rgba(56, 189, 248, ${glassAlpha})`;
-        ctx.lineWidth = 10;
+        ctx.setLineDash([]);
+        ctx.shadowColor = '#7dd3fc'; ctx.shadowBlur = isSelected ? 10 : 3;
         ctx.beginPath();
-        ctx.moveTo(w.x1, w.y1);
-        ctx.lineTo(w.x2, w.y2);
-        ctx.stroke();
+        ctx.moveTo(w.x1 + nx * half, w.y1 + ny * half); ctx.lineTo(w.x2 + nx * half, w.y2 + ny * half);
+        ctx.lineTo(w.x2 - nx * half, w.y2 - ny * half); ctx.lineTo(w.x1 - nx * half, w.y1 - ny * half); ctx.closePath();
+        ctx.fillStyle = `rgba(125, 211, 252, ${0.12 + opacity * 0.55})`; ctx.fill();
+        ctx.lineWidth = isSelected ? 1.4 : 1; ctx.strokeStyle = isSelected ? '#e0f7ff' : 'rgba(186, 230, 253, 0.85)';
+        for (const side of [1, -1]) { ctx.beginPath(); ctx.moveTo(w.x1 + nx * half * side, w.y1 + ny * half * side); ctx.lineTo(w.x2 + nx * half * side, w.y2 + ny * half * side); ctx.stroke(); }
+        ctx.shadowBlur = 0; ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(224, 242, 254, 0.95)';
+        for (const [px, py] of [[w.x1, w.y1], [w.x2, w.y2]]) { ctx.beginPath(); ctx.moveTo(px + nx * 4.5, py + ny * 4.5); ctx.lineTo(px - nx * 4.5, py - ny * 4.5); ctx.stroke(); }
         ctx.restore();
       }
 
@@ -3707,20 +3713,20 @@ export class CanvasEngine {
           ctx.fillText((isSecret && isKeeper) ? '🕵️' : (isOpen ? '🔓' : (isLocked ? '🔒' : '🚪')), midX, midY);
         }
       } else if (isWindow) {
-        // Window glass badge
-        ctx.beginPath();
-        ctx.roundRect(midX - 22, midY - 9, 44, 18, 4);
-        ctx.fillStyle = 'rgba(8, 47, 73, 0.9)';
-        ctx.fill();
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        ctx.fillStyle = '#bae6fd';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`🪟 ${visionPercent}%`, midX, midY);
+        // The Keeper reads each side's transparency on that side of the pane (A and B), small and
+        // only when it matters: in the wall editor or with the window selected. Players see glass.
+        if (isKeeper && (isEditor || isSelected)) {
+          const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1) || 1, nx = -(w.y2 - w.y1) / len, ny = (w.x2 - w.x1) / len;
+          const { a, b } = windowSides(w);
+          ctx.save();
+          ctx.font = `600 10px ${canvasFont('hud')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          for (const [label, value, side] of [['A', a, 1], ['B', b, -1]]) {
+            const tx = midX + nx * 13 * side, ty = midY + ny * 13 * side, text = `${label} ${value}%`, wdt = ctx.measureText(text).width + 10;
+            ctx.fillStyle = 'rgba(8, 20, 36, 0.85)'; ctx.beginPath(); ctx.roundRect(tx - wdt / 2, ty - 8, wdt, 16, 4); ctx.fill();
+            ctx.fillStyle = value === 0 ? '#fca5a5' : value === 100 ? '#e0f7ff' : '#bae6fd'; ctx.fillText(text, tx, ty + 0.5);
+          }
+          ctx.restore();
+        }
       } else if (isEditor) {
         ctx.beginPath();
         ctx.arc(midX, midY, 4, 0, Math.PI * 2);
@@ -3784,7 +3790,7 @@ export class CanvasEngine {
       ctx.fillStyle = sw.on ? '#fde68a' : '#475569'; if (sw.on) { ctx.shadowColor = '#fde68a'; ctx.shadowBlur = 10; }
       ctx.beginPath(); ctx.roundRect(-5, sw.on ? -10 : 1, 10, 9, 2); ctx.fill(); ctx.shadowBlur = 0;
       if (!sw.usable) { ctx.fillStyle = '#f87171'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🔒', 12, -12); }
-      if (keeper) { ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 10px "Rajdhani", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`${sw.label || 'Interruptor'}${sw.secret ? ' · SECRETO' : ''}`, 0, 26); }
+      if (keeper) { ctx.fillStyle = '#e2e8f0'; ctx.font = `bold 10px ${canvasFont('hud')}`; ctx.textAlign = 'center'; ctx.fillText(`${sw.label || 'Interruptor'}${sw.secret ? ' · SECRETO' : ''}`, 0, 26); }
       ctx.restore();
     }
     ctx.restore();
@@ -3830,7 +3836,7 @@ export class CanvasEngine {
 
       // Label
       ctx.fillStyle = '#e2e8f0';
-      ctx.font = 'bold 10px "Rajdhani", sans-serif';
+      ctx.font = `bold 10px ${canvasFont('hud')}`;
       ctx.textAlign = 'center';
       ctx.fillText(`${l.label || 'Light'}${l.off ? ' · OFF' : ''}`, l.x, l.y - 14);
 
@@ -3845,6 +3851,9 @@ export class CanvasEngine {
     const state = store.getState();
     const gridSize = map.gridSize || 64;
     const isKeeperGM = state.userRole === 'keeper' && state.gmVision;
+    // The Keeper's view always shows every token, also in the fog (v2.29.3, user decision); the ones
+    // the party does not see are dimmed and marked. Only the player's view hides them.
+    const keeperSees = state.userRole === 'keeper';
 
     for (const tok of tokens) {
       const radius = (tok.size * gridSize) / 2;
@@ -3867,7 +3876,7 @@ export class CanvasEngine {
             mapId: map.id
           });
         }
-      } else if (!isKeeperGM) {
+      } else if (!keeperSees) {
         // Token is out of real-time vision.
         // If players previously spotted this enemy in explored territory, show frozen last known position
         const lastPos = this.lastKnownEnemyPositions.get(tok.id);
@@ -3890,7 +3899,7 @@ export class CanvasEngine {
       ctx.translate(tok.x, tok.y);
 
       // Dimmed transparency for tokens in the dark seen by Keeper
-      if (!isVisibleToPlayers && isKeeperGM) {
+      if (!isVisibleToPlayers && keeperSees) {
         ctx.globalAlpha = 0.52;
       }
 
@@ -3972,7 +3981,7 @@ export class CanvasEngine {
           ctx.fillStyle = '#1e293b';
           ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
           ctx.fillStyle = '#00f3ff';
-          ctx.font = `bold ${Math.round(radius * 0.7)}px "Orbitron", sans-serif`;
+          ctx.font = `bold ${Math.round(radius * 0.7)}px ${canvasFont('display')}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           const isKeeper = state.userRole === 'keeper';
@@ -4060,9 +4069,10 @@ export class CanvasEngine {
         ctx.restore();
       } else {
         ctx.save();
-        let rimColor = tok.color || '#00f3ff';
+        // The colour chosen in the sheet wins; the path and kind only give the default (v2.29.2:
+        // a Sleeping character used to be orange whatever colour was chosen).
+        let rimColor = tok.color || (tok.path === 'Sleeping' ? '#ffaa00' : '#00f3ff');
         if (isDead) rimColor = '#ef4444';
-        else if (tok.path === 'Sleeping') rimColor = '#ffaa00';
         else if (!tok.isPlayer) rimColor = tok.color || (tok.actorType === 'drone' ? '#72dfce' : '#ef4444');
         if (tok.hidden) rimColor = '#a855f7';
 
@@ -4087,7 +4097,7 @@ export class CanvasEngine {
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('☠️ DEAD', 0, -radius - 15);
@@ -4105,14 +4115,14 @@ export class CanvasEngine {
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.fillText('HIDDEN', 0, -radius - 12);
         ctx.restore();
       }
 
       // Darkness / Hidden in Fog indicator for Keeper
-      if (!isVisibleToPlayers && isKeeperGM) {
+      if (!isVisibleToPlayers && keeperSees) {
         ctx.save();
         ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
         ctx.strokeStyle = '#fca5a5';
@@ -4123,7 +4133,7 @@ export class CanvasEngine {
         ctx.stroke();
 
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 8px "Rajdhani", sans-serif';
+        ctx.font = `bold 8px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('🕶️ OCULTO EN NIEBLA', 0, -radius - (tok.hidden ? 31 : 15));
@@ -4142,7 +4152,7 @@ export class CanvasEngine {
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.fillText(`🌊 DEPTH ${depth}`, 0, -radius - (tok.hidden ? 26 : 12));
         ctx.restore();
@@ -4169,8 +4179,9 @@ export class CanvasEngine {
       }
 
 
-      // Directional Vision & Smaller Directional Arrow Handle on Selected Token
-      if (isSelected) {
+      // Directional Vision & Smaller Directional Arrow Handle on Selected Token. A player sees it
+      // only on the party's tokens and their own: enemies' and NPCs' cones are the Keeper's (v2.29.2).
+      if (isSelected && (state.userRole !== 'player' || sharesSight(tok))) {
         ctx.save();
         const fAngle = tok.facingAngle ?? 0;
         const vAngle = tok.visionAngle ?? 90;
@@ -4244,9 +4255,11 @@ export class CanvasEngine {
   drawClassBanner(ctx, url, radius) {
     const flag = url && this.getTokenImage(url);
     if (!flag?.complete || !flag.naturalWidth || !flag.naturalHeight) return;
-    const height = 2 * radius * 0.35;
+    // Twice its first size (v2.27.17: at 35 % of the token it could hardly be seen). It hangs
+    // over the bottom-right edge of the ring so it does not cover the portrait.
+    const height = 2 * radius * 0.7;
     const width = height * flag.naturalWidth / flag.naturalHeight;
-    ctx.drawImage(flag, radius - width, radius - height, width, height);
+    ctx.drawImage(flag, radius - width * 0.6, radius - height, width, height);
   }
 
   renderGhostToken(ctx, ghost, gridSize, time, caption = 'ÚLTIMA POS.') {
@@ -4293,7 +4306,7 @@ export class CanvasEngine {
 
     // Badge
     ctx.globalAlpha = 0.85;
-    ctx.font = 'bold 9px "Rajdhani", sans-serif';
+    ctx.font = `bold 9px ${canvasFont('hud')}`;
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f59e0b';
     if (caption) ctx.fillText(caption, 0, radius + 12);
@@ -4327,8 +4340,7 @@ export class CanvasEngine {
     if (!attacker || attacker.id === target.id) return;
 
     // Visibility test for players: do not reveal adversaries out of sight
-    const isKeeperGM = state.userRole === 'keeper' && state.gmVision;
-    if (!isKeeperGM && !target.isPlayer && !this.isTokenVisibleToPlayers(target, tokens, map)) {
+    if (state.userRole !== 'keeper' && !target.isPlayer && !this.isTokenVisibleToPlayers(target, tokens, map)) {
       return;
     }
 
@@ -4408,7 +4420,7 @@ export class CanvasEngine {
     const midY = (y1 + y2) / 2;
 
     const distText = losBlocked ? `⚠️ BLOQUEADO · ${lockBand} · ${distMeters}m (${distSquares}c)` : `⚡ ${lockBand} · ${distMeters}m (${distSquares}c)`;
-    ctx.font = `${Math.max(8.5, Math.round(9.5 / this.zoom))}px "Rajdhani", sans-serif`;
+    ctx.font = `${Math.max(8.5, Math.round(9.5 / this.zoom))}px ${canvasFont('hud')}`;
     const textW = ctx.measureText(distText).width;
     const pillW = textW + 12 / this.zoom;
     const pillH = 15 / this.zoom;
@@ -4535,7 +4547,7 @@ export class CanvasEngine {
             ? (isKeeper && state.gmVision ? `📡 VIBRACIÓN: ????? [${target.name.toUpperCase()}]` : '📡 VIBRACIÓN: ?????')
             : `📡 VIBRACIÓN: ${target.name.toUpperCase()}`;
 
-          ctx.font = 'bold 9px "Rajdhani", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('hud')}`;
           const textW = ctx.measureText(labelText).width;
           const badgeW = Math.max(90, textW + 20);
 
@@ -4615,7 +4627,7 @@ export class CanvasEngine {
         : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
 
       ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
-      ctx.font = 'bold 11px "Rajdhani", sans-serif';
+      ctx.font = `bold 11px ${canvasFont('hud')}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(displayName, 0, radius + 12);
@@ -4645,7 +4657,7 @@ export class CanvasEngine {
           ctx.stroke();
 
           ctx.fillStyle = color;
-          ctx.font = 'bold 9px "Rajdhani", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('hud')}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(text, startX + bWidth / 2, badgeY + 7.5);
@@ -4700,7 +4712,7 @@ export class CanvasEngine {
 
         if (label) {
           ctx.fillStyle = color;
-          ctx.font = 'bold 8px "Rajdhani", sans-serif';
+          ctx.font = `bold 8px ${canvasFont('hud')}`;
           ctx.textAlign = 'center';
           ctx.fillText(label, 0, clockRadius + 8);
         }
@@ -4742,7 +4754,7 @@ export class CanvasEngine {
       : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
 
     ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
-    ctx.font = 'bold 11px "Rajdhani", sans-serif';
+    ctx.font = `bold 11px ${canvasFont('hud')}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(displayName, 0, radius + 12);
@@ -4776,7 +4788,7 @@ export class CanvasEngine {
         ctx.stroke();
 
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px "Rajdhani", sans-serif';
+        ctx.font = `bold 9px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(b.text, startX + bWidth / 2, badgeY + 7);
@@ -4848,7 +4860,7 @@ export class CanvasEngine {
         ctx.stroke();
 
         ctx.fillStyle = '#00f3ff';
-        ctx.font = 'bold 8px "Rajdhani", sans-serif';
+        ctx.font = `bold 8px ${canvasFont('hud')}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(`${prog}/${segs} ${cfg.clockLabel}`, 0, clockRadius + 8);
@@ -5091,7 +5103,7 @@ export class CanvasEngine {
                       : tmpl.type === 'line' ? ` // ↕ ${widthMeters}m`
                       : '';
       const badgeText = `AREA: ${radiusMeters}m (${radiusSq} sq) // ${deg}°${extraInfo}`;
-      ctx.font = 'bold 11px "Orbitron", sans-serif';
+      ctx.font = `bold 11px ${canvasFont('display')}`;
       const textW = ctx.measureText(badgeText).width;
       const totalW = textW + 20;
       const badgeX = tmpl.x;
@@ -5197,7 +5209,7 @@ export class CanvasEngine {
     const midY = (start.y + end.y) / 2;
     const badgeText = movement ? `${rangeBand.toUpperCase()} · ${(distUnit === 'km' ? distPx / gridSize * scaleKilometers * 1000 : Number(distVal)).toLocaleString(undefined, { maximumFractionDigits: 1 })} m` : `${distVal}${distUnit} (${distGrid} sq) // [${rangeBand.toUpperCase()}]`;
 
-    ctx.font = 'bold 12px "Orbitron", sans-serif';
+    ctx.font = `bold 12px ${canvasFont('display')}`;
     const textWidth = ctx.measureText(badgeText).width;
 
     ctx.fillStyle = 'rgba(6, 11, 25, 0.9)';
@@ -5288,7 +5300,7 @@ export class CanvasEngine {
           ctx.textBaseline = 'middle';
           ctx.fillText(icon, midX, midY);
 
-          ctx.font = 'bold 9px "Orbitron", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('display')}`;
           ctx.fillStyle = '#ffffff';
           ctx.fillText((eff.label || (eff.type === 'laser' ? 'Laser Beam' : 'Line Anomaly')).toUpperCase(), midX, midY - 18);
         }
@@ -5344,7 +5356,7 @@ export class CanvasEngine {
           ctx.textBaseline = 'middle';
           ctx.fillText(icon, eff.x, eff.y);
 
-          ctx.font = 'bold 9px "Orbitron", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('display')}`;
           ctx.fillStyle = '#ffffff';
           ctx.fillText((eff.label || 'Poly Anomaly').toUpperCase(), eff.x, eff.y - 18);
         }
@@ -5386,7 +5398,7 @@ export class CanvasEngine {
           ctx.fillText(icon, eff.x, eff.y);
 
           // Label above
-          ctx.font = 'bold 9px "Orbitron", sans-serif';
+          ctx.font = `bold 9px ${canvasFont('display')}`;
           ctx.fillStyle = '#ffffff';
           ctx.fillText((eff.label || 'Anomaly').toUpperCase(), eff.x, eff.y - 18);
         }

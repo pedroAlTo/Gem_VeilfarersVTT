@@ -1,4 +1,7 @@
 import { actionArt } from './actionCardArt.js';
+import { tokenInventory } from './equipment.js';
+import { installedAugments, augmentRule, catalogEntry } from './gear.js';
+import { equipmentPicture } from './equipmentArtwork.js';
 import { enemyCategory } from './adversaryCardCategories.js';
 // The hand of a player character: what it can play, what playing it costs and how Powers move
 // between Vault and Loadout. Pure rules (Corebook 12.06, ch. 7 and 18); the hand UI draws it.
@@ -17,8 +20,39 @@ export const DOMAIN_COLORS = { Tech: '#00697f', Synthesis: '#1f5c2b', Social: '#
 const CARD_ART = '/assets/cards/';
 const CLASS_ART = ['diplomat', 'engineer', 'explorer', 'mystic', 'pilot', 'scholar', 'scoundrel', 'soldier', 'vanguard'];
 const illustratedPowers = new Set('drone-whisper quantum-firewall system-jackknife biological-scan environmental-adaptation rapid-regeneration linguistic-patch perfect-facade silver-tongue mind-shield telekinetic-grasp veil-sensitivity force-shield kinetic-blast tactical-overwatch slipstream-jolt temporal-cloak vector-calculus blinding-flash spark-of-hope wayfinders-pulse'.split(' '));
+// The eight painted cells in each domain sheet are in level order, two powers per level.
+const domainSheetNames = {
+  Tech: ["Data Ghost", "Emergency Repair", "Digital Cascade", "Rapid Fabrication", "AI Symbiosis", "System Repair", "Adaptive Protocol", "Network Dominion"],
+  Synthesis: ["Ecosystem Analysis", "Symbiotic Bond", "Hostile Environment Mastery", "Symbiotic Bloom", "Adaptive Evolution", "Bio-Integration", "Cellular Reconstruction", "Terraforming Genesis"],
+  Social: ["Emotional Manipulation", "Inspiring Presence", "Compelling Argument", "Master of Disguise", "Rallying Cry", "Web of Lies", "Legendary Reputation", "Social Puppeteer"],
+  Neural: ["Memory Echo", "Synaptic Disruption", "Empathic Network", "Mind-Slip", "Cordon of Will", "Neural Feedback", "Mind Spike", "Temporal Glimpse"],
+  Kinetic: ["Impact Absorption", "Kinetic Barrier", "Protective Dome", "Velocity Surge", "Guardian's Aegis", "Precision Strike", "Kinetic Mastery", "Shockwave Pulse"],
+  Void: ["Lucky Break", "Spatial Shift", "Flux Field", "Temporal Muffle", "Danger Sense", "Spatial Cache", "Fate's Hand", "Phase Walk"],
+  Lux: ["Eyes of Truth", "Photon Shield", "Aura of Clarity", "Stellar Lance", "Deflection Prism", "Solar Judgment", "Beacon of Resurrection", "Cartographer of the Unseen"],
+};
+// Each row records the painted cells in one sheet, left to right, top to bottom.
+const upperPowerSheets = [
+  ["Tech:6:Consciousness Transfer", "Tech:6:Invention Protocol", "Tech:7:Megascale Fabrication", "Tech:7:Systemic Shutdown", "Tech:8:Cascading Upgrade", "Tech:8:Digital Apotheosis", "Tech:9:Precursor Protocol", "Tech:9:Quantum Command Hub", "Tech:10:Architect of Matter"],
+  ["Tech:10:Cosmic Engineer", "Synthesis:6:Ecosystem Creation", "Synthesis:6:Metamorphic Mastery", "Synthesis:7:Biomorphic Arsenal", "Synthesis:7:Hivemind Convergence", "Synthesis:8:Bio-Weapon Architect", "Synthesis:8:Local Life Web", "Synthesis:9:Genesis Protocol", "Synthesis:9:Global Stimulus Field"],
+  ["Synthesis:10:Cosmic Synthesis", "Synthesis:10:Universal Life Force", "Social:6:Charismatic Authority", "Social:6:Mass Deception", "Social:7:Memetic Erasure", "Social:7:Perfect Masquerade", "Social:8:Cult of Personality", "Social:8:Mass Hysteria", "Social:9:Diplomatic Redirection"],
+  ["Social:9:Fabricate Reality", "Social:10:Architect of Civilization", "Social:10:Cosmic Accord", "Neural:6:Collective Consciousness", "Neural:6:Psychic Storm", "Neural:7:Mind Sanctuary", "Neural:7:Veil Suppression", "Neural:8:Psychic Collapse", "Neural:8:Temporal Maelstrom"],
+  ["Neural:9:Destiny Weave", "Neural:9:Psychic Fallout", "Neural:10:Consciousness Bridge", "Neural:10:Veil Mastery", "Kinetic:6:Energy Cascade", "Kinetic:6:Force Fortress", "Kinetic:7:Orbital Lance", "Kinetic:7:Temporal Freeze", "Kinetic:8:Singularity Well"],
+  ["Kinetic:8:Tactical Aegis", "Kinetic:9:Asteroid Redirect", "Kinetic:9:Indomitable Bastion", "Kinetic:10:Absolute Command", "Kinetic:10:Force Incarnate", "Void:6:Spatial Link", "Void:6:Void Sanctuary", "Void:7:Chrono Stasis", "Void:7:Phase Jump"],
+  ["Void:8:Phantom Ship", "Void:8:Temporal Disarray", "Void:9:Cosmic Luck", "Void:9:The Navigator's Truth", "Void:10:Master of Fate", "Void:10:Master of Space", "Lux:6:Lightbridge", "Lux:6:Photonic Detonation", "Lux:7:Corona Beam"],
+  ["Lux:7:Inviolable Sanctum", "Lux:8:Omniscient Eye", "Lux:8:Solar Avatar", "Lux:9:Pulse of Genesis", "Lux:9:Stellar Chorus", "Lux:10:Apotheosis", "Lux:10:Eternal Beacon"],
+];
+const upperPowerArt = new Map(upperPowerSheets.flatMap((names, sheet) => names.map((key, cell) =>
+  [key, { illustration: CARD_ART + 'powers/domains/upper-' + (sheet + 1) + '.webp', cell }])));
+
 export function powerArt(power) {
   const art = domainArt(power.d);
+  const upper = upperPowerArt.get(`${power.d}:${power.l}:${power.n}`);
+  if (upper) return { ...art, ...upper };
+  const names = Object.hasOwn(domainSheetNames, power.d) && domainSheetNames[power.d];
+  const cell = names ? names.indexOf(power.n) : -1;
+  if (cell >= 0 && Number(power.l) === 2 + Math.floor(cell / 2)) {
+    return { ...art, illustration: CARD_ART + 'powers/domains/' + lower(power.d) + '.webp', cell };
+  }
   const slug = String(power.n).toLowerCase().replace(/['’]/g, '').replace(/ +/g, '-');
   return Number(power.l) === 1 && illustratedPowers.has(slug) ? { ...art, illustration: '/assets/cards/powers/level-1/' + slug + '.webp' } : art;
 }
@@ -39,7 +73,7 @@ export const classArt = cls => { const id = lower(cls?.id || cls?.name); return 
 export const cornerArt = (kind, id) => ({ illustration: kind === 'ancestry' && id
   ? '/assets/tokens/crew/' + id.replace('-', '_') + '-n.webp'
   : sceneArt(communityScenes[id] || 'spark-of-hope'), flag: '', band: `${CARD_ART}${kind}-band.png`, layout: 'corner' });
-export const CARD_KINDS = { power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background', effort: 'Common Effort', beardown: 'Resolve Move', fear: 'Fear', adversary: 'Adversario' };
+export const CARD_KINDS = { augment: 'Aumento', power: 'Poder', vault: 'Vault', archive: 'Archivo', move: 'Resolve Move', feature: 'Clase', ancestry: 'Ancestry', community: 'Background', effort: 'Common Effort', beardown: 'Resolve Move', fear: 'Fear', adversary: 'Adversario' };
 // A card's kind in words, never undefined (a kind without a name falls back to «Carta»).
 export const cardKindName = kind => CARD_KINDS[kind] || 'Carta';
 
@@ -158,6 +192,14 @@ export function characterCards(token, data, options = {}) {
   for (const gift of (ancestry?.gifts || []).filter(usableGift)) cards.push({ id: `ancestry:${ancestry.id}:${slug(gift.name)}`, kind: 'ancestry', zone: 'innate', name: gift.name, subtitle: `Ancestry · ${ancestry.name}`, color: ancestry.color || '#94a3b8', art: cornerArt('ancestry', ancestry.id), costText: costLabel(giftCost(gift, sleeping)), cost: giftCost(gift, sleeping), roll: null, rollText: '', rc: 0, text: text(gift.text), limit: giftLimit(gift), playable: true });
   const community = byName(data.communities, token.community);
   if (community?.feature) cards.push({ id: `community:${community.id}`, kind: 'community', zone: 'innate', name: community.feature.name, subtitle: `Background · ${community.name}`, color: community.color || '#94a3b8', art: cornerArt('community', community.id), costText: '—', cost: parseCost(''), roll: null, rollText: '', rc: 0, text: text(community.feature.text), playable: true });
+  // Augmentations that are used (they have a moment, a price or a limit), installed: one card each,
+  // with the classes' cards, illustrated with the augment's own picture (user decision, v2.28.0).
+  for (const row of installedAugments(tokenInventory(token))) {
+    const rule = augmentRule(row)?.active; if (!rule) continue;
+    const entry = catalogEntry(row), picture = equipmentPicture(entry || row);
+    const cost = parseCost(rule.stress ? `${rule.stress} Stress` : '');
+    cards.push({ id: `augment:${row.id}`, kind: 'augment', zone: 'innate', name: row.name, subtitle: `Aumento${entry?.tier ? ` · ${entry.tier}` : ''}`, color: '#22d3ee', art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band', ...(picture || {}) }, costText: rule.stress ? `${rule.stress} Stress` : '—', cost, roll: null, rollText: '', rc: 0, text: rule.text, limit: rule.limit, reaction: !!rule.reaction, effect: rule.clearStress ? { clearStress: rule.clearStress } : null, playable: true });
+  }
   if (!sleeping) for (const name of vaultNames(token)) { const known = byName(data.powers, name); cards.push(powerCard(known || { n: name }, 'vault')); }
   // Bear Down and the Common Efforts come after the character's own cards.
   if (sleeping) cards.push(...sleepingCommonCards(token, options));
@@ -220,6 +262,8 @@ export function playCard(source, card, { resolveSpent = null, random = Math.rand
     token.resolve = { ...token.resolve, current: token.resolve.current - cost.resolve };
     if (card.cost.rolls) { const rolls = Array.from({ length: cost.resolve }, die); notes.push(`Resolve: ${token.resolve.dieType || 'd4'} [${rolls.join(', ')}] = ${rolls.reduce((n, v) => n + v, 0)}.`); }
   }
+  // An augment whose benefit is clearing Stress (Pain Suppressor).
+  if (card.effect?.clearStress && token.stress) { const before = token.stress.current || 0; token.stress = { ...token.stress, current: Math.max(0, before - card.effect.clearStress) }; notes.push(`Limpia ${before - token.stress.current} Stress.`); }
   if (card.cost.open && !cost.resolve) notes.push('Esta carta tiene un coste variable o de mantenimiento: ajústalo a mano en la ficha.');
   if (roll) notes.push(`Tirada: ${card.rollText}.`);
   return { token, paid: cost, fear, roll, summary: `${card.name} · ${costLabel(cost)}`, notes };

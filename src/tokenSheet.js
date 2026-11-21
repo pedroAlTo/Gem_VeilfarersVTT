@@ -4,7 +4,7 @@ import { actorCollection, openPortraitPicker } from './portraitPicker.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
-import { validateActor } from './validation.js';
+import { validateActor, pickPlayerFields } from './validation.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { tokenInventory } from './equipment.js';
 // src/tokenSheet.js
@@ -1192,7 +1192,9 @@ export class TokenHUD {
       };
 
       try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
-      if (!store.updateToken(token.id, updated)) return;
+      // A connected player sends only what a player may change (its resources and colour); the
+      // whole sheet would be refused by the table and nothing, the colour included, would apply.
+      if (!store.updateToken(token.id, store.sessionRole === 'player' ? pickPlayerFields(updated) : updated)) return;
       if (store.sessionRole !== 'player') {
         network.broadcast({ type: 'TOKEN_UPDATE', tokenId: token.id, partial: updated });
         network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });

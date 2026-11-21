@@ -1,10 +1,146 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.16**.
-Paquete: `VeilFarers_VTT_v2.27.16.zip`.
+Versión actual del VTT: **v2.29.6**.
+Paquete: `VeilFarers_VTT_v2.29.6.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.6] — 2026-11-21
+
+Ilustraciones para los poderes de nivel 6 a 10
+
+### Cartas
+
+- Los 70 poderes de nivel 6 a 10 completan las ilustraciones de las 147 cartas de los siete dominios.
+
+## [2.29.5] — 2026-11-21
+
+Ilustraciones de los poderes de dominio de nivel 2 a 5
+
+### Cartas
+
+- Los 56 poderes de nivel 2 a 5 tienen ilustración propia en la mano, el Vault y el catálogo.
+
+## [2.29.4] — 2026-11-21
+
+V3 · Las luces despejan la niebla solo donde el grupo ve: las ventanas ya funcionan con salas iluminadas
+
+### Niebla y luces
+
+- Una luz encendida despeja la niebla solo donde el grupo tiene línea de visión (antes despejaba toda su zona, la viera alguien o no). Una sala iluminada tras un muro queda en la niebla hasta que alguien la vea.
+- Por eso las ventanas ya funcionan también con salas iluminadas: desde un lado al 0 % la sala queda oculta, y con más transparencia se ve más (por ejemplo, 5 % casi negro, 20 % muy oscuro, 50 % atenuado, 100 % limpio).
+
+## [2.29.3] — 2026-11-21
+
+V3 · El Keeper ve siempre los tokens; ventanas con graduación
+
+### Vista del Keeper
+
+- En vista Keeper se ven siempre todos los tokens, también los que están en la niebla de guerra, sin necesidad de activar la Visión GM. Los que el grupo no ve se dibujan atenuados y con la marca de «en la niebla». En vista jugador nada cambia.
+
+### Ventanas
+
+- Arreglado: la transparencia de las ventanas era «nada o todo». Ahora lo que hay detrás se ve más o menos según el % del lado desde el que se mira: a 5 % casi negro, a 25 % muy oscuro, a 50 % atenuado, a 100 % limpio.
+- Lo que se ve a través de un cristal al 50 % o más queda recordado como explorado; por debajo, solo se ve mientras se mira.
+
+## [2.29.2] — 2026-11-21
+
+V3 · Ventanas con transparencia por lado, color del token y conos solo para el Keeper
+
+### Ventanas
+
+- Cada lado de una ventana tiene su transparencia, de 0 % (muro opaco) a 100 % (cristal limpio): el espejo de una sala de interrogatorios es 100 % desde un lado y 10 % desde el otro. Lo que hay detrás se ve con la transparencia del lado desde el que se mira; a 0 % la ventana corta la vista como un muro. A 50 % o más se distingue quién hay detrás.
+- Antes la vista atravesaba siempre las ventanas y el porcentaje solo atenuaba la luz (con niebla no hacía nada).
+- Las ventanas se dibujan como un cristal fino con remates en los extremos, no como una línea gruesa. El Keeper ve el porcentaje de cada lado (A y B) en el editor de muros o con la ventana seleccionada; en el inspector hay un deslizador por lado y los atajos «Igual por los dos lados», «Espejo» e «Intercambiar A ↔ B».
+
+### Color del token
+
+- Arreglado: el color elegido no se aplicaba. Un personaje Sleeping se pintaba siempre en naranja (ahora el naranja es solo el color por defecto) y, en partida online, la mesa rechazaba la ficha que guardaba un jugador, así que su color no llegaba al borde, al nombre, al chat ni a los subtítulos. Ahora el jugador envía su color (y sus recursos), y la mesa lo acepta.
+
+### Visión
+
+- Los conos de los enemigos y NPC (su linterna y el arco de visión al seleccionarlos) solo los ve el Keeper. El jugador ve los del grupo y los de los tokens que controla.
+
+## [2.29.1] — 2026-11-21
+
+V3 · El Keeper decide siempre el daño; el dado vuelve a abrirse
+
+### Daño
+
+- El daño que aplica un jugador lo decide siempre el Keeper, sea cual sea el objetivo (también un enemigo al que se le haya asignado dueño, o su propio personaje): al Keeper le aparece la ventana para elegir los escudos y aplicar o cancelar. En la Ficha del jugador el botón dice «Enviar daño al Keeper» y, tras enviarlo, «Enviado al Keeper: él decide».
+- La mesa rechaza el daño que le llegue de un jugador sin pasar por esa ventana (cada aprobación vale una sola vez).
+
+### Pantalla
+
+- Arreglado: el dado de la esquina del mapa (jugador y Keeper) y el botón de la pantalla del Keeper no respondían desde la v2.28.2.
+
+## [2.29.0] — 2026-11-21
+
+V3 · Ajustes, fuentes más legibles, panel lateral que se oculta y esquinas suaves
+
+### Ajustes
+
+- Nuevo botón «⚙ Ajustes» en la cabecera, con Sesiones, Sonido, Ayuda, el idioma (ES / EN), las fuentes y el comportamiento del panel lateral. Sesiones, Sonido y Ayuda salen de la cabecera.
+
+### Fuentes
+
+- Dos juegos de fuentes a elegir en Ajustes: B · Exo 2 (Exo 2 en títulos y botones, Inter en el texto, JetBrains Mono en las cifras) y E · Sobria (Orbitron solo en los títulos, Inter en todo lo demás). Por defecto, B. La elección se recuerda en el navegador.
+- Ningún rótulo baja de 10 px (antes había de 7 y 8 px). El texto del mapa (nombres, barras, etiquetas) usa también la fuente elegida. Las cartas conservan su maqueta.
+
+### Panel lateral
+
+- El panel derecho puede quedar fijo o ocultarse: en «Se oculta» solo asoma una pestaña en el borde derecho y el mapa usa todo el ancho; al llevar el ratón al borde, el panel entra con una animación rápida y suave, y se va al salir. Se cambia en Ajustes o con la chincheta del propio panel.
+
+### Paneles
+
+- Esquinas redondeadas de 5 px, planas (sin bisel interior), en la cabecera, las herramientas, el panel lateral, la barra del personaje, los relojes y las ventanas.
+- En pantalla completa se oculta el rótulo de la esquina (operativos, rejilla, escena): repetía la cabecera y quedaba bajo la mano de cartas.
+
+## [2.28.2] — 2026-11-21
+
+V3 · El mapa ocupa toda la pantalla, sin marco
+
+### Pantalla
+
+- En escritorio el mapa ocupa todo el fondo de la ventana, sin marco. La cabecera, la barra de herramientas y el panel derecho flotan encima, con un fondo translúcido.
+- Lo que va sobre el mapa (nombre de la escena, relojes, barra del personaje, mano de cartas, dados) se coloca en el hueco que dejan los paneles, así que nada queda tapado. En móvil y tableta se mantiene la disposición de antes.
+- Fuera la etiqueta «Fear N/12» junto a la mano de cartas del Keeper: el Fear ya se ve arriba.
+
+## [2.28.1] — 2026-11-21
+
+V3 · Sin barra inferior: más alto para el mapa
+
+### Pantalla
+
+- Fuera la barra de estado de abajo (conexión, campaña, guardado e idioma): ese alto pasa al mapa y a los paneles laterales.
+- El estado del guardado y el selector de idioma ES / EN van en la cabecera, a la derecha. Al pasar el ratón por «Guardado» se ven la campaña y el estado de la conexión; al pulsarlo, el aviso de siempre. En pantallas estrechas solo queda el idioma.
+
+## [2.28.0] — 2026-11-21
+
+V3 · Armas y equipo, reorganizado; aumentos con efectos y cartas
+
+### Armas y equipo
+
+- Lo que llevas va primero, en cuatro bloques: Armas, Armadura, Aumentos y Equipo. Cada bloque tiene su «+ Añadir», que abre el catálogo ya filtrado en un panel aparte (se cierra con ✕ o Esc). «Solo lo que puedo usar» sigue marcado por defecto.
+- Cada arma deja a la vista solo Atacar; Editar y Quitar pasan al menú «⋯». Tocar una etiqueta (Stunning, Paired…) muestra su regla del glosario. Los textos largos se abren al tocarlos.
+- La armadura tiene su bloque, con umbrales y Armor Slots. «Cambiar» pone otra (sustituye a la que llevas). Quitarla deja los umbrales naturales (Mayor 2 / Grave 4 + nivel; 4 / 6 en Kryllian, Rift Spinner y Synthetic) y sin Armor Slots propios.
+- El editor completo del inventario queda solo para el Keeper.
+
+### Aumentos
+
+- Sus efectos se aplican al instalarlos y se retiran al quitarlos: Reflejos de Combate (+1 Evasión), Blindaje Subdérmico (+1 Armor Slot máx., también sobre la armadura), Osificación Reforzada (+2 HP máx.), Extremidad Cibernética (+1 Fuerza), Acelerador Sináptico (+2 Agilidad) y Conjunto Sensorial (+2 Instinto).
+- Capacidad de aumentos (Corebook): la suma de tus tres mejores entre Fuerza, Agilidad, Finura y Presencia (Humanos y Synthetics +2). Cada aumento cuesta 1; por cada punto por encima, −1 Stress máximo mientras sigas por encima. El bloque muestra «capacidad usada / total».
+- Los aumentos que se activan son una carta en tu mano, junto a las de clase, ilustrada con la imagen del propio aumento: Pre-Cognición Táctica (1 Stress, 1 / escena: Ventaja en un ataque o reacción) y Supresor de Dolor (reacción, 1 / escena: limpia 1 Stress).
+- Poner y quitar armadura y aumentos lo aplica la mesa, así que en partida online también cambian la Evasión, los Traits y el Stress máximo del jugador.
+
+## [2.27.17] — 2026-11-21
+
+V3 · Insignia de clase más grande en el token
+
+### Mapa
+
+- La insignia de clase de la esquina inferior derecha del token mide el doble (70 % del diámetro en vez del 35 %) y cuelga sobre el borde del anillo, sin tapar el retrato ni el nombre.
 
 ## [2.27.16] — 2026-11-21
 

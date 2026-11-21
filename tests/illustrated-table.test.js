@@ -62,3 +62,22 @@ test('Sleeping and Keeper moves and the eight enemy categories use distinct pack
   }
   assert.equal(slots.size, 64);
 });
+
+test('all seven domains show distinct level 2–10 paintings in compact and enlarged cards', async () => {
+  const { powerCard } = await import('../src/loadoutCards.js');
+  const { cardFace } = await import('../src/cardHandUI.js');
+  const slots = new Set();
+  for (const p of data('creator/data/powers').filter(p => p.l >= 2 && p.l <= 10)) {
+    const card = powerCard(p, 'loadout');
+    const { illustration, cell } = card.art;
+    checkImage(illustration);
+    assert.ok(Number.isInteger(cell) && cell >= 0 && cell < 9, p.n);
+    slots.add(illustration + '#' + cell);
+    for (const large of [true, false]) {
+      const html = cardFace(card, { large });
+      assert.ok(html.includes('src="' + illustration + '"'), p.n);
+      assert.ok(html.includes('left:-' + cell % 3 * 100 + '%;top:-' + Math.floor(cell / 3) * 100 + '%'), p.n);
+    }
+  }
+  assert.equal(slots.size, 126);
+});

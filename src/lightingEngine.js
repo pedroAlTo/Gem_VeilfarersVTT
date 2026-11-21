@@ -1,4 +1,5 @@
 import { drawSoftened, fingerprint, wallValues } from './softMask.js';
+import { isWindowWall, seeThrough } from './windows.js';
 // src/lightingEngine.js
 // 2D Raycasting Dynamic Lighting & Shadow Engine for VeilVTT
 
@@ -142,7 +143,8 @@ export class LightingEngine {
     for (const w of walls) {
       // Open doors and transparent windows allow light and vision rays to pass
       if ((w.isDoor || w.wallType === 'door') && w.isOpen) continue;
-      if (w.isWindow || w.wallType === 'window') continue;
+      // A window lets sight and light through unless it is opaque (0 %) from this side (v2.29.2).
+      if (isWindowWall(w) && seeThrough(w, lx, ly) > 0) continue;
 
       // Distance from point to line segment
       const dx = w.x2 - w.x1;
@@ -410,15 +412,14 @@ export class LightingEngine {
 
     // 2b. Window Opacity Shadow Attenuation Pass
     // Semi-transparent windows cast a dimming shadow behind them proportional to (100 - visionPercent)%
-    const windowWalls = walls.filter(w => (w.isWindow || w.wallType === 'window') && (w.visionPercent ?? 80) < 100);
+    const windowWalls = walls.filter(isWindowWall);
     if (windowWalls.length > 0 && !reuse) {
       lCtx.globalCompositeOperation = 'source-over';
       for (const win of windowWalls) {
-        const visPct = Math.max(0, Math.min(100, win.visionPercent ?? 80));
-        const shadowFactor = (100 - visPct) / 100; // e.g. 80% vision = 0.20 shadow factor
-        if (shadowFactor <= 0.01) continue;
-
         for (const light of allLights) {
+          // How much light crosses depends on the side the light is on.
+          const shadowFactor = (100 - seeThrough(win, light.x, light.y)) / 100;
+          if (shadowFactor <= 0.01 || shadowFactor >= 1) continue;
           const midX = (win.x1 + win.x2) / 2;
           const midY = (win.y1 + win.y2) / 2;
           const distLight = Math.hypot(midX - light.x, midY - light.y);

@@ -1,5 +1,5 @@
 import { drawSoftened, visionFill, fingerprint, wallValues } from './softMask.js';
-import { lightStrength } from './lightingEngine.js';
+import { isWindowWall, seeThrough, windowShadow } from './windows.js';
 // src/fogEngine.js
 // Advanced Fog of War & Exploration Shroud Engine for Veilfarers VTT
 // Supports Unvisited Total Darkness (100%), Explored Shroud (80%-95%), and Real-time LOS FOV
@@ -96,8 +96,15 @@ export class FogOfWarEngine {
   /**
    * Resets exploration for a map (returns all areas to 100% darkness)
    */
+  // A clean canvas of the map's size for one viewer's view behind windows.
+  scratchContext(width, height) {
+    if (!this.scratch) this.scratch = document.createElement('canvas');
+    if (this.scratch.width !== width || this.scratch.height !== height) { this.scratch.width = width; this.scratch.height = height; }
+    const ctx = this.scratch.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.clearRect(0, 0, width, height);
+    return ctx;
+  }
   resetExploration(mapId) {
-    this.dispelStamped = null;
     const canvas = this.exploredCanvases.get(mapId);
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -342,11 +349,23 @@ export class FogOfWarEngine {
       const los = lightingEngine.computeVisibilityPolygon(viewer.x, viewer.y, daylight ? sightRange : Math.max(own, ...lit.map(l => Math.hypot(l.x - viewer.x, l.y - viewer.y) + l.radius), 1), walls, facingAngle, visionAngle);
       if (!los || los.length < 3) continue;
       currentVisionPolygons.push(los);
-      visionShapes.push({ los, x: viewer.x, y: viewer.y, own });
+      // Windows half-see-through from this viewer's side dim what lies behind them (v2.29.2).
+      const shadows = [];
+      for (const w of walls) {
+        if (!isWindowWall(w)) continue;
+        const t = seeThrough(w, viewer.x, viewer.y);
+        if (t <= 0 || t >= 100) continue; // 0: a wall (the sight polygon stops there); 100: clear
+        const quad = windowShadow(w, viewer.x, viewer.y, sightRange * 2);
+        if (quad) shadows.push({ quad, keep: t / 100 });
+      }
+      visionShapes.push({ los, x: viewer.x, y: viewer.y, own, shadows });
     }
     // The seen area, painted with `paint` (fog: cut out; memory: white).
-    const paintSeen = (target, paint) => {
-      for (const { los, x, y, own } of visionShapes) {
+    const paintSeen = (final, paint) => {
+      for (const { los, x, y, own, shadows } of visionShapes) {
+        // Behind a half-see-through window the view is drawn apart and thinned to the window's
+        // transparency, then laid on the fog (or the memory) like any other view.
+        const target = shadows.length ? this.scratchContext(mapWidth, mapHeight) : final;
         target.save();
         tracePolygon(target, los); target.clip();
         if (daylight) { target.fillStyle = paint === 'cut' ? 'rgba(0, 0, 0, 1)' : '#ffffff'; target.fillRect(0, 0, mapWidth, mapHeight); }
@@ -357,31 +376,20 @@ export class FogOfWarEngine {
           for (const l of lit) { tracePolygon(target, l.poly); target.fillStyle = paint === 'cut' ? 'rgba(0, 0, 0, 1)' : '#ffffff'; target.fill(); }
         }
         target.restore();
+        if (target === final) continue;
+        target.save(); target.globalCompositeOperation = 'destination-out';
+        // The live view is thinned to the window's transparency. The memory is all or nothing (it is
+        // stamped on every redraw, so a partial stamp would add up to fully explored): what is seen
+        // through glass clear enough to make out who is there (50 % or more) is remembered.
+        for (const { quad, keep } of shadows) { tracePolygon(target, quad); target.fillStyle = `rgba(0, 0, 0, ${paint === 'cut' ? 1 - keep : keep >= 0.5 ? 0 : 1})`; target.fill(); }
+        target.restore();
+        final.drawImage(target.canvas, 0, 0);
       }
     };
-    // Map lights that are on dissipate the fog of their whole lit area (walls still stop the
-    // light), by their intensity: the dimmest shows it in half-light, from intensity 1 it is
-    // clear as day. A lit area is seen and remembered; the Keeper turns a light off (or keeps the
-    // room dark) to hide it.
-    const dispel = (lights || []).filter(l => l.fixture).map(light => {
-      const poly = lightingEngine.computeVisibilityPolygon(light.x, light.y, light.radius || 200, walls, light.facingAngle ?? null, light.visionAngle ?? 360);
-      return poly && poly.length >= 3 ? { poly, x: light.x, y: light.y, radius: light.radius || 200, strength: lightStrength(light.intensity ?? 0.8) } : null;
-    }).filter(Boolean);
-    const paintDispel = (target, cut) => {
-      for (const d of dispel) {
-        tracePolygon(target, d.poly);
-        if (cut) {
-          const g = target.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.radius);
-          g.addColorStop(0, `rgba(0, 0, 0, ${d.strength})`); g.addColorStop(0.8, `rgba(0, 0, 0, ${d.strength})`); g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          target.fillStyle = g;
-        } else target.fillStyle = '#ffffff';
-        target.fill();
-      }
-    };
-    // A lit area is remembered once (stamping it again every frame would only force the fog to be
-    // worked out again each frame).
-    const dispelKey = dispel.map(d => `${Math.round(d.x)},${Math.round(d.y)},${Math.round(d.radius)},${d.poly.length}`).join('|') + '#' + mapId;
-    if (stamp && dispel.length && dispelKey !== this.dispelStamped) { this.dispelStamped = dispelKey; this.exploredVersion++; paintDispel(expCtx, false); }
+    // Lights clear the fog only where the party can see (v2.29.4, user decision 21 Nov 2026: «luz
+    // solo si se ve»). A lit area is part of each viewer's sight above (`lit`): behind a wall it
+    // stays in the fog, and through a window it is seen with the transparency of the viewer's side.
+    // Up to v2.29.3 every light that was on cleared its whole area, seen or not (v2.26.1).
     if (stamp && visionShapes.length) {
       this.exploredVersion++;
       paintSeen(expCtx, '#ffffff');
@@ -408,7 +416,6 @@ export class FogOfWarEngine {
     // 5. Cut out what the viewers see right now (0% fog).
     fCtx.globalCompositeOperation = 'destination-out';
     paintSeen(fCtx, 'cut');
-    paintDispel(fCtx, true);
 
     // Reset composite operation to normal
     fCtx.globalCompositeOperation = 'source-over';

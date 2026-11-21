@@ -327,6 +327,7 @@ export class ElementInspectorHUD {
     const isLocked = !!wall.isLocked;
     const isSecret = !!wall.isSecret;
     const visionPercent = wall.visionPercent ?? 80;
+    const sidesA = Math.max(0, Math.min(100, visionPercent)), sidesB = Math.max(0, Math.min(100, wall.visionPercentBack ?? visionPercent));
 
     const map = store.getActiveMap();
     const connectedNeighbours = (map?.walls || []).filter(other =>
@@ -402,16 +403,21 @@ export class ElementInspectorHUD {
                   : '✓ Visible y desbloqueada. Cualquier jugador o Keeper puede abrir y cerrar esta puerta con 1 clic en el mapa.')}
             </div>
           ` : isWindow ? `
-            <div class="insp-row" style="align-items: center; gap: 10px;">
-              <div class="insp-col" style="flex: 2;">
-                <label style="font-size: 11px; color: #38bdf8; font-weight: 700; display: flex; justify-content: space-between;">
-                  <span>% DE VISIÓN / TRANSPARENCIA</span>
-                  <span id="window_vis_val">${visionPercent}%</span>
+            <div class="insp-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+              ${[['a', 'LADO A', sidesA], ['b', 'LADO B', sidesB]].map(([side, name, value]) => `
+              <div class="insp-col">
+                <label style="font-size: 11px; color: #7dd3fc; font-weight: 700; display: flex; justify-content: space-between;">
+                  <span>${name} · se ve a través</span><span id="window_vis_${side}">${value}%</span>
                 </label>
-                <input type="range" id="insp_window_vis" min="10" max="100" step="5" value="${visionPercent}" class="hud-range" style="width: 100%;" />
+                <input type="range" data-window-side="${side}" min="0" max="100" step="5" value="${value}" class="hud-range" style="width: 100%;" />
+              </div>`).join('')}
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="hud-btn hud-btn-xs" data-window-preset="same">Igual por los dos lados</button>
+                <button type="button" class="hud-btn hud-btn-xs" data-window-preset="mirror">Espejo: A 100 % · B 10 %</button>
+                <button type="button" class="hud-btn hud-btn-xs" data-window-preset="swap">Intercambiar A ↔ B</button>
               </div>
-              <div class="insp-col" style="flex: 1; font-size: 10px; color: var(--text-dim);">
-                Permite ver y pasar luz a través. Los tokens NO pueden traspasarla.
+              <div style="font-size: 10.5px; color: var(--text-dim); line-height: 1.45;">
+                0 % = muro opaco · 100 % = cristal limpio. Cada lado tiene su valor: desde el lado A se ve con el % de A (en el mapa, la etiqueta A está en ese lado). A 50 % o más se distingue quién hay detrás. Deja pasar la luz; los tokens no la atraviesan.
               </div>
             </div>
           ` : `
@@ -518,15 +524,22 @@ export class ElementInspectorHUD {
       };
     }
 
-    // Window Slider
-    const visSlider = this.container.querySelector('#insp_window_vis');
-    if (visSlider) {
-      visSlider.oninput = (e) => {
-        const val = parseInt(e.target.value, 10);
-        this.container.querySelector('#window_vis_val').textContent = `${val}%`;
-        store.updateWall(wall.id, { visionPercent: val });
+    // Window: one transparency per side (v2.29.2). A is visionPercent, B is visionPercentBack.
+    this.container.querySelectorAll('[data-window-side]').forEach(slider => {
+      slider.oninput = (e) => {
+        const val = parseInt(e.target.value, 10), side = slider.dataset.windowSide;
+        this.container.querySelector(`#window_vis_${side}`).textContent = `${val}%`;
+        store.updateWall(wall.id, side === 'a' ? { visionPercent: val } : { visionPercentBack: val });
       };
-    }
+    });
+    this.container.querySelectorAll('[data-window-preset]').forEach(button => {
+      button.onclick = () => {
+        const current = store.getActiveMap()?.walls?.find(x => x.id === wall.id) || wall;
+        const a = current.visionPercent ?? 80, b = current.visionPercentBack ?? a;
+        const patch = { same: { visionPercentBack: a }, mirror: { visionPercent: 100, visionPercentBack: 10 }, swap: { visionPercent: b, visionPercentBack: a } }[button.dataset.windowPreset];
+        if (patch) { store.updateWall(wall.id, patch); this.render?.(); }
+      };
+    });
 
     this.container.querySelector('#insp_delete_btn').onclick = () => {
       store.deleteWall(wall.id);

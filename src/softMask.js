@@ -38,7 +38,7 @@ export function fingerprint(values) {
   }
   return h >>> 0;
 }
-export const wallValues = walls => walls.flatMap(w => [w.x1, w.y1, w.x2, w.y2, w.isOpen ? 1 : 0, w.wallType || (w.isDoor ? 'door' : w.isWindow ? 'window' : 'wall'), w.visionPercent ?? -1]);
+export const wallValues = walls => walls.flatMap(w => [w.x1, w.y1, w.x2, w.y2, w.isOpen ? 1 : 0, w.wallType || (w.isDoor ? 'door' : w.isWindow ? 'window' : 'wall'), w.visionPercent ?? -1, w.visionPercentBack ?? -1]);
 
 // Sight does not end in a line: it is full up to most of its range and fades over the rest.
 export const VISION_FADE_START = 0.72;

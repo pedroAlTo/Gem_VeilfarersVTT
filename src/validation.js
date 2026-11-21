@@ -159,6 +159,10 @@ export function validateCampaign(data) {
   return structuredClone({ ...data, keeperPortrait, chatMessages: validateChatHistory(data.chatMessages) });
 }
 
+// What a player may change on a token they control (the table checks every field).
+export const PLAYER_TOKEN_FIELDS = ['x', 'y', 'rotation', 'facingAngle', 'hp', 'armor', 'stress', 'hope', 'effort', 'effortTrack', 'resolve', 'conditions', 'inventory', 'hasSpotlight', 'effectClocks', 'avatarUrl', 'portraitOverride', 'color'];
+export const pickPlayerFields = patch => Object.fromEntries(Object.entries(patch || {}).filter(([k]) => PLAYER_TOKEN_FIELDS.includes(k)));
+
 export function validTokenPatch(p) {
   if (!p || typeof p !== 'object') return false;
   if (
@@ -182,6 +186,7 @@ export function validTokenPatch(p) {
           'effectClocks',
           'avatarUrl',
           'portraitOverride',
+          'color',
         ].includes(k)
     )
   )
@@ -190,6 +195,8 @@ export function validTokenPatch(p) {
     if (!(p.portraitOverride === true && isPlayerPortrait(p.avatarUrl)) && !(p.portraitOverride === false && p.avatarUrl === '')) return false;
   }
   for (const k of ['x', 'y', 'rotation', 'facingAngle']) if (k in p && !finite(p[k])) return false;
+  // The token's own colour (border, name, chat, subtitles): a plain hex colour (v2.29.2).
+  if ('color' in p && !(typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color))) return false;
   for (const k of ['hope', 'effort']) if (k in p && !finite(p[k], 0, 6)) return false;
   if ('hasSpotlight' in p && typeof p.hasSpotlight !== 'boolean') return false;
   for (const k of ['hp', 'armor', 'stress', 'resolve'])

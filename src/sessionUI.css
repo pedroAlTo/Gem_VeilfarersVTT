@@ -180,7 +180,7 @@
   display: grid !important;
   place-items: center !important;
   font-family: var(--font-mono, monospace) !important;
-  font-size: 7px !important;
+  font-size: max(7px, var(--fs-min, 0px)) !important;
   font-weight: 700 !important;
   color: rgba(255, 255, 255, 0.45) !important;
   transform: skew(22deg) !important;
@@ -419,7 +419,7 @@
   font-weight: 700;
 }
 .crew-map-badge {
-  font-size: 9px;
+  font-size: max(9px, var(--fs-min, 0px));
   padding: 1px 4px;
   border-radius: 4px;
   font-family: var(--font-mono, monospace);

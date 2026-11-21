@@ -991,7 +991,10 @@ export class NetworkManager {
       if (!valid) { conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El daño no se pudo aplicar: el objetivo o el atacante ya no son válidos.' })); return; }
       import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options }, n => {
         const chosen = options[n];
-        this.handleIncomingMessage(this.envelope({ ...chosen, type: 'APPLY_DAMAGE' }), senderId);
+        // A one-use approval: the table applies a player's damage only after this window.
+        const approval = `dmg_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+        (this.approvedDamage ||= new Set()).add(approval);
+        this.handleIncomingMessage(this.envelope({ ...chosen, type: 'APPLY_DAMAGE', approval }), senderId);
         conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: true, text: `Keeper: ${target.name} pierde ${chosen.hpLoss} HP${chosen.spentShields ? ` (${chosen.spentShields} escudo${chosen.spentShields > 1 ? 's' : ''})` : ''}.` }));
       }, { onCancel: () => conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: `El Keeper ha cancelado el daño a ${target.name}.` })) }));
       return;
@@ -1048,6 +1051,9 @@ export class NetworkManager {
         const targetId = data.targetId || data.tokenId;
         const target = this.store.state.tokens.find(t => t.id === targetId);
         if (!target) throw new Error('Objetivo no encontrado.');
+        // Damage is always the Keeper's call (v2.29.1): a player's damage reaches here only through
+        // the Keeper's window (DAMAGE_REQUEST), which hands a one-use approval.
+        if (this.connections.has(senderId) && !(typeof data.approval === 'string' && this.approvedDamage?.delete(data.approval))) throw new Error('El daño lo decide el Keeper: envíaselo desde el resultado del ataque.');
         if (isEncounterMarker(target) || isEncounterMarker(this.store.state.tokens.find(t => t.id === attackerId))) throw new Error('Este encuentro se resuelve según su ficha.');
         if (target.mapId !== this.store.state.activeMapId) throw new Error('El objetivo no está en la escena actual.');
 
@@ -1176,7 +1182,7 @@ export class NetworkManager {
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
           // Card actions resolve here too: the table pays their costs (they were missing, so a
           // connected player's card was refused as "not assigned").
-          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL'].includes(data.action?.type)
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL', 'GEAR_INSTALL', 'GEAR_REMOVE'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
         const result = await this.performAction(data.action, this.members.get(senderId)?.id || senderId);

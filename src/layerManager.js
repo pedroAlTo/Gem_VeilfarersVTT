@@ -156,7 +156,7 @@ export class LayerManagerHUD {
           ${isKeeper ? `
             <div class="layer-fow-section" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0, 243, 255, 0.25);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: 'Rajdhani', sans-serif;">🌫️ NIEBLA DE COMBATE (FOG OF WAR)</span>
+                <span style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: var(--font-hud);">🌫️ NIEBLA DE COMBATE (FOG OF WAR)</span>
                 <button class="hud-btn hud-btn-xs ${state.fogOfWar !== false ? 'active' : ''}" id="btn_toggle_fow_layer" style="font-size: 10px; padding: 2px 8px;">
                   ${state.fogOfWar !== false ? 'ON' : 'OFF'}
                 </button>
@@ -176,7 +176,7 @@ export class LayerManagerHUD {
             </div>
 
             <div class="layer-weather-section" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0, 243, 255, 0.25);">
-              <div style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: 'Rajdhani', sans-serif; margin-bottom: 6px;">
+              <div style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: var(--font-hud); margin-bottom: 6px;">
                 🌧️ CLIMA & EFECTOS ATMOSFÉRICOS (WEATHER OVERLAY)
               </div>
               <div style="display: flex; gap: 6px; margin-bottom: 6px;">

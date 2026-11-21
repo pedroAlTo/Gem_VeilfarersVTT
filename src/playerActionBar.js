@@ -435,7 +435,7 @@ export class PlayerActionBar {
     return {
       targetName, outcome, notes: heat ? [...notes, heat] : notes,
       raw: damage ? q('dmg_raw_val')?.textContent?.trim() : '', severity: damage ? q('dmg_severity_val')?.textContent?.trim() : '', loss: damage ? q('dmg_hp_loss_val')?.textContent?.trim() : '',
-      canApply: !!(damage && apply && !apply.disabled), shields: !!(damage && mitigate && mitigate.style.display !== 'none'), applied: !!(apply && /APPLIED|APLICADO/i.test(apply.textContent || '')),
+      canApply: !!(damage && apply && !apply.disabled), shields: !!(damage && mitigate && mitigate.style.display !== 'none'), applied: !!(apply && /APPLIED|APLICADO|ENVIADO/i.test(apply.textContent || '')), sent: !!(apply && /ENVIADO/i.test(apply.textContent || '')),
     };
   }
   resultRow() {
@@ -447,7 +447,7 @@ export class PlayerActionBar {
       ${(r.notes || []).length ? `<ul class="pab-notes">${r.notes.map(n => `<li>${e(n)}</li>`).join('')}</ul>` : ''}
       ${hit && !r.applied ? this.ridersHTML() : ''}
       ${this.resultRange ? `<div class="pab-range ${this.resultRange.penalty ? 'penalty' : ''}">Distancia: <span data-no-i18n>${e(this.resultRange.band)} · ${e(this.resultRange.meters.toFixed(1))} m</span>${this.resultRange.penalty ? ` · ${e(this.resultRange.penalty)}` : ''}</div>` : ''}
-      <div class="pab-result-actions">${hit && !r.applied ? `<button type="button" class="pab-apply-main" data-pab-apply ${r.canApply ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span>Aplicar daño</span>${r.loss ? `<b>${e(r.loss)}</b>` : ''}</button>` : ''}${hit && r.shields && !r.applied ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-shields>Escudos</button>' : ''}${r.applied ? '<span class="pab-applied">Daño aplicado</span>' : ''}<button type="button" class="pab-more" data-pab-clear aria-label="Quitar el resultado">×</button></div>
+      <div class="pab-result-actions">${hit && !r.applied ? `<button type="button" class="pab-apply-main" data-pab-apply ${r.canApply ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span>${store.sessionRole === 'player' ? 'Enviar daño al Keeper' : 'Aplicar daño'}</span>${r.loss ? `<b>${e(r.loss)}</b>` : ''}</button>` : ''}${hit && r.shields && !r.applied ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-shields>Escudos</button>' : ''}${r.applied ? `<span class="pab-applied">${r.sent ? 'Enviado al Keeper: él decide' : 'Daño aplicado'}</span>` : ''}<button type="button" class="pab-more" data-pab-clear aria-label="Quitar el resultado">×</button></div>
     </div>`;
   }
   // Effects that add damage to this attack (Combat Surge, The Held Line, Breaking Point).
