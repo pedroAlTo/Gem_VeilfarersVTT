@@ -1,6 +1,25 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.0', date: '2026-11-21', title: 'V3 · Ajustes, fuentes más legibles, panel lateral que se oculta y esquinas suaves',
+    sections: [
+      { title: 'Ajustes', items: [
+        'Nuevo botón «⚙ Ajustes» en la cabecera, con Sesiones, Sonido, Ayuda, el idioma (ES / EN), las fuentes y el comportamiento del panel lateral. Sesiones, Sonido y Ayuda salen de la cabecera.',
+      ] },
+      { title: 'Fuentes', items: [
+        'Dos juegos de fuentes a elegir en Ajustes: B · Exo 2 (Exo 2 en títulos y botones, Inter en el texto, JetBrains Mono en las cifras) y E · Sobria (Orbitron solo en los títulos, Inter en todo lo demás). Por defecto, B. La elección se recuerda en el navegador.',
+        'Ningún rótulo baja de 10 px (antes había de 7 y 8 px). El texto del mapa (nombres, barras, etiquetas) usa también la fuente elegida. Las cartas conservan su maqueta.',
+      ] },
+      { title: 'Panel lateral', items: [
+        'El panel derecho puede quedar fijo o ocultarse: en «Se oculta» solo asoma una pestaña en el borde derecho y el mapa usa todo el ancho; al llevar el ratón al borde, el panel entra con una animación rápida y suave, y se va al salir. Se cambia en Ajustes o con la chincheta del propio panel.',
+      ] },
+      { title: 'Paneles', items: [
+        'Esquinas redondeadas de 5 px, planas (sin bisel interior), en la cabecera, las herramientas, el panel lateral, la barra del personaje, los relojes y las ventanas.',
+        'En pantalla completa se oculta el rótulo de la esquina (operativos, rejilla, escena): repetía la cabecera y quedaba bajo la mano de cartas.',
+      ] },
+    ],
+  },
+  {
     version: '2.28.2', date: '2026-11-21', title: 'V3 · El mapa ocupa toda la pantalla, sin marco',
     sections: [
       { title: 'Pantalla', items: [

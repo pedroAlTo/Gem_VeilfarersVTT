@@ -541,3 +541,12 @@ test('successful saves report SAVED after the write completes', async () => {
   assert.equal(store.state.saveStatus, 'saved');
   assert.equal(store.state.saveError, undefined);
 });
+
+test('font sets B and E: the choice is kept and the map text follows it (v2.29.0)', async () => {
+  const { applyFontSet, currentFontSet, canvasFont, FONT_SETS } = await import('../src/fontSets.js');
+  assert.deepEqual(Object.keys(FONT_SETS), ['b', 'e']);
+  applyFontSet('e'); assert.equal(currentFontSet(), 'e'); assert.equal(document.documentElement.dataset.fonts, 'e');
+  assert.match(canvasFont('hud'), /Inter/); assert.match(canvasFont('display'), /Orbitron/);
+  applyFontSet('nope'); assert.equal(currentFontSet(), 'b', 'an unknown set falls back to B'); assert.match(canvasFont('hud'), /Exo 2/);
+  assert.equal(localStorage.getItem('veil.fonts'), 'b');
+});

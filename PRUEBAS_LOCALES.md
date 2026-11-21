@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.28.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.28.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.28.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.28.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -95,6 +95,10 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.28.2.zip**. Abre **AYUDA
 80. **(V3) Aumentos.** Instala Reflejos de Combate: Evasión +1; quítalo: vuelve. Instala aumentos hasta pasar la capacidad: el bloque lo marca en rojo y el Stress máximo baja 1 por cada punto de más. Instala el Supresor de Dolor: aparece como carta en tu mano con su imagen; úsala con Stress marcado: limpia 1. Repite como jugador conectado: los números cambian igual.
 81. **(V3) Sin barra inferior.** No hay barra de estado bajo el mapa: el mapa y los paneles llegan al borde inferior. En la cabecera, a la derecha, están «Guardado» (su tooltip da la campaña y la conexión; al pulsarlo, el aviso) y ES / EN. Cambia de idioma desde ahí.
 82. **(V3) Mapa a pantalla completa.** En escritorio, el mapa llena toda la ventana, sin marco; la cabecera, las herramientas y el panel derecho flotan encima. El título de la escena, los relojes, la barra del personaje, la mano de cartas y el dado quedan en el hueco libre, sin quedar tapados. Arrastra la barra del personaje: no se mete bajo el panel. Haz clic y arrastra en el mapa: funciona en toda la ventana fuera de los paneles. Abre la ficha: queda por encima de todo. Estrecha la ventana por debajo de 1025 px: vuelve la disposición apilada. Como Keeper con un adversario seleccionado no aparece «Fear N/12» junto a sus cartas.
+83. **(V3) Ajustes.** Pulsa «⚙ Ajustes»: Sesiones abre las sesiones, Sonido silencia y reactiva, Ayuda abre la ayuda, ES / EN cambia el idioma. Esc o un clic fuera lo cierra. Sesiones, el altavoz y Ayuda ya no están sueltos en la cabecera.
+84. **(V3) Fuentes.** En Ajustes → Fuentes alterna B y E: cambian los títulos, botones, cifras y el texto del mapa; ningún rótulo es diminuto; las cartas no cambian. Recarga: se mantiene la elegida.
+85. **(V3) Panel lateral.** Ajustes → Panel lateral → «Se oculta» (o la chincheta del panel): el panel se va y queda una pestaña en el borde derecho. Lleva el ratón al borde: entra rápido y suave; sal: se va. Mientras escribes en un campo del panel, no se esconde. «Fijo» lo deja siempre a la vista. Recarga: se mantiene.
+86. **(V3) Esquinas.** Cabecera, herramientas, panel lateral, barra del personaje, relojes y ventanas tienen las esquinas ligeramente redondeadas (5 px), planas.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

@@ -1,0 +1,12 @@
+/* Font sets B and E (v2.29.0). Both keep every small label at 10 px or more (--fs-min). */
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+html[data-fonts], html[data-fonts] body { --fs-min: 10px; }
+html[data-fonts="b"], html[data-fonts="b"] body {
+  --font-display: 'Exo 2', sans-serif !important; --font-hud: 'Exo 2', sans-serif !important;
+  --font-body: 'Inter', sans-serif !important; --font-mono: 'JetBrains Mono', ui-monospace, monospace !important; --font-ui: 'Inter', sans-serif !important;
+}
+html[data-fonts="e"], html[data-fonts="e"] body {
+  --font-display: 'Orbitron', sans-serif !important; --font-hud: 'Inter', sans-serif !important;
+  --font-body: 'Inter', sans-serif !important; --font-mono: 'JetBrains Mono', ui-monospace, monospace !important; --font-ui: 'Inter', sans-serif !important;
+}
+html[data-fonts] body { font-family: var(--font-body); }

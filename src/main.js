@@ -37,6 +37,9 @@ import { sanitizeHTML, confirmAction, notify } from './ui.js';
 
 import { initOrbitalUI } from './orbitalUI.js';
 import { mountFullbleed } from './fullbleedLayout.js';
+import { mountSettingsMenu } from './settingsMenu.js';
+import { applyFontSet } from './fontSets.js';
+import './fontSets.css';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
 import { network, getActiveSession, clearActiveSession } from './networkManager.js';
@@ -73,6 +76,7 @@ if (typeof window !== 'undefined') {
 window.addEventListener('DOMContentLoaded', async () => {
   setupVeilfarersIntegration();
   // One interface language (ES / EN), and the Home button and language switch.
+  applyFontSet();
   mountHeaderControls();
   startTranslation(document.body);
   await store.ready;
@@ -82,6 +86,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   import('./layoutLock.js').then(({ lockLayoutScroll }) => lockLayoutScroll()).catch(() => {});
   import('./mobileUI.js').then(({ mountMobileNotice }) => mountMobileNotice()).catch(() => {});
   import('./onboardingUI.js').then(({ mountOnboarding }) => mountOnboarding({ cloud: !LOCAL_ONLY && !LAN_SESSIONS && cloudConfigured })).catch(error => console.warn('Guide unavailable:', error));
+  // Ajustes: Sesiones, Sonido, Ayuda, idioma, fuentes y panel lateral (v2.29.0).
+  mountSettingsMenu();
   mountStatusbarLanguage();
   const helpButton = document.getElementById('help_btn');
   helpButton.title = `Ayuda y changelog · ${APP_LABEL}`;

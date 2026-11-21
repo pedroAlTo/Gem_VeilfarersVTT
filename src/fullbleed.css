@@ -23,3 +23,5 @@ html body.fullbleed .map-safe-area { position: absolute; top: var(--fb-top, 76px
 /* Outside the full-bleed layout the safe area is only a pass-through box. */
 body:not(.fullbleed) .map-safe-area { position: absolute; inset: 0; pointer-events: none; }
 :where(body:not(.fullbleed) .map-safe-area > *) { pointer-events: auto; }
+/* The corner readout (operatives, grid, scene) repeats the header and would sit under the hand. */
+html body.fullbleed .orbital-field-readout { display: none !important; }

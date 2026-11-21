@@ -1459,6 +1459,24 @@ export const PAIRS = [
   ["Aumento", "Augment"],
   ["De la ficha importada. «Cambiar» la sustituye por una del catálogo.", "From the imported sheet. «Change» replaces it with one from the catalog."],
   ["Sin regla en el glosario: aplícala según su texto.", "No glossary rule: apply it as written."],
+  // V3 · Ajustes, fuentes y panel lateral (v2.29.0)
+  ["AJUSTES", "SETTINGS"],
+  ["Ajustes", "Settings"],
+  ["Partida, sala y tripulación", "Game, room and crew"],
+  ["Sonido", "Sound"],
+  ["Activado · pulsa para silenciarlo", "On · press to mute"],
+  ["Silenciado · pulsa para activarlo", "Muted · press to turn on"],
+  ["Guía, versión y cambios", "Guide, version and changes"],
+  ["Idioma", "Language"],
+  ["Fuentes", "Fonts"],
+  ["Panel lateral", "Side panel"],
+  ["Fijo", "Pinned"],
+  ["Se oculta", "Hides"],
+  ["Panel fijo · pulsa para que se oculte solo", "Pinned panel · press to let it hide"],
+  ["El panel se oculta · pulsa para dejarlo fijo", "The panel hides · press to pin it"],
+  ["Fijar u ocultar el panel lateral", "Pin or hide the side panel"],
+  ["Exo 2 en títulos y botones, Inter en el texto", "Exo 2 for titles and buttons, Inter for text"],
+  ["Orbitron solo en títulos, Inter en todo lo demás", "Orbitron for titles only, Inter for everything else"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

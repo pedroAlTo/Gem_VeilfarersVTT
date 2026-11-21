@@ -5,7 +5,7 @@
 .lang-btn.active { color: #0d0420; background: #fde68a; }
 .lang-switch-lobby { position: absolute; top: 14px; right: 16px; z-index: 5; background: rgba(13,4,32,.85); }
 .lang-switch-status { margin-left: 0; }
-.lang-switch-status .lang-btn { padding: 2px 7px; font-size: 9px; }
+.lang-switch-status .lang-btn { padding: 2px 7px; font-size: max(9px, var(--fs-min, 0px)); }
 .home-btn { font-size: 14px; padding: 0 9px; }
 .header-hud .brand-badge[data-home] { cursor: pointer; }
 .header-hud .brand-badge[data-home]:hover .brand-title, .header-hud .brand-badge[data-home]:focus-visible .brand-title { color: #fde68a; }

@@ -33,7 +33,9 @@ export function mountFullbleed() {
     const top = header ? header.getBoundingClientRect().bottom + GAP : GAP;
     root.setProperty('--fb-top', `${Math.round(top)}px`);
     root.setProperty('--fb-left', `${Math.round((shown(tools) ? tools.getBoundingClientRect().right : 0) + GAP)}px`);
-    const left = shown(panel) && !panel.classList.contains('collapsed') ? panel.getBoundingClientRect().left : width;
+    // A tucked-away panel (Ajustes → «Se oculta») leaves only its edge: the map keeps that width
+    // even while the panel slides over it.
+    const left = document.body.classList.contains('sb-auto') ? width - 6 : shown(panel) && !panel.classList.contains('collapsed') ? panel.getBoundingClientRect().left : width;
     root.setProperty('--fb-right', `${Math.round(width - left + GAP)}px`);
   };
   const observer = new ResizeObserver(() => requestAnimationFrame(measure));

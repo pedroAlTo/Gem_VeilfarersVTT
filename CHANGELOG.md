@@ -1,10 +1,32 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.28.2**.
-Paquete: `VeilFarers_VTT_v2.28.2.zip`.
+Versión actual del VTT: **v2.29.0**.
+Paquete: `VeilFarers_VTT_v2.29.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.0] — 2026-11-21
+
+V3 · Ajustes, fuentes más legibles, panel lateral que se oculta y esquinas suaves
+
+### Ajustes
+
+- Nuevo botón «⚙ Ajustes» en la cabecera, con Sesiones, Sonido, Ayuda, el idioma (ES / EN), las fuentes y el comportamiento del panel lateral. Sesiones, Sonido y Ayuda salen de la cabecera.
+
+### Fuentes
+
+- Dos juegos de fuentes a elegir en Ajustes: B · Exo 2 (Exo 2 en títulos y botones, Inter en el texto, JetBrains Mono en las cifras) y E · Sobria (Orbitron solo en los títulos, Inter en todo lo demás). Por defecto, B. La elección se recuerda en el navegador.
+- Ningún rótulo baja de 10 px (antes había de 7 y 8 px). El texto del mapa (nombres, barras, etiquetas) usa también la fuente elegida. Las cartas conservan su maqueta.
+
+### Panel lateral
+
+- El panel derecho puede quedar fijo o ocultarse: en «Se oculta» solo asoma una pestaña en el borde derecho y el mapa usa todo el ancho; al llevar el ratón al borde, el panel entra con una animación rápida y suave, y se va al salir. Se cambia en Ajustes o con la chincheta del propio panel.
+
+### Paneles
+
+- Esquinas redondeadas de 5 px, planas (sin bisel interior), en la cabecera, las herramientas, el panel lateral, la barra del personaje, los relojes y las ventanas.
+- En pantalla completa se oculta el rótulo de la esquina (operativos, rejilla, escena): repetía la cabecera y quedaba bajo la mano de cartas.
 
 ## [2.28.2] — 2026-11-21
 
