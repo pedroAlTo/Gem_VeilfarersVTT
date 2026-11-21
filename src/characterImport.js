@@ -1,5 +1,5 @@
 import { tokenInventory } from './equipment.js';
-import { actorPortrait, customTokenPortrait } from './tokenAvatars.js';
+import { actorPortrait, customTokenPortrait, sheetGender, sheetPronouns } from './tokenAvatars.js';
 // Character Sheet 2.80 exports use final Traits/thresholds and separate resource tracks.
 // Keep the original document intact, including fields that this VTT cannot automate.
 export const TRAIT_IDS = ['agility', 'strength', 'finesse', 'knowledge', 'instinct', 'presence'];
@@ -93,7 +93,7 @@ export function parseCharacterJSON(input) {
   const token = {
     name: text(f.name).trim(), actorType: 'player', isPlayer: true, path,
     characterClass: text(f.class), subclass: text(f.subclass), subclassRank: text(f.subclass_rank),
-    species: text(f.ancestry), community: text(f.community), pronouns: text(f.pron ?? f.pronouns), gender: text(f.gender),
+    species: text(f.ancestry), community: text(f.community), pronouns: sheetPronouns(f, doc), gender: sheetGender(f, doc),
     roleTag: [f.class, f.subclass].filter(Boolean).join(' · '),
     avatarUrl: text(f.avatarUrl || doc.avatarUrl), portraitOverride: f.portrait_override === true, tokenArchetype: text(f.token_archetype),
     level: number(f.level, 'Nivel', 1, 100), proficiency: number(f.prof, 'Proficiency', 1, 100),

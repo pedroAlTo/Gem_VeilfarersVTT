@@ -180,3 +180,30 @@
 .equip-check { display:flex; align-items:center; gap:8px; font-size:11.5px; color:#cbd5e1; cursor:pointer; }
 .equip-link { all:unset; cursor:pointer; color:#c084fc; text-decoration:underline; } .equip-link:disabled { opacity:.4; cursor:not-allowed; }
 @media(max-width:620px) { .equip-result, .equip-row { flex-direction:column; } .equip-actions { justify-content:flex-start; } }
+
+.actor-portrait-button {
+  position:relative; display:inline-grid; flex:none; place-items:center; padding:0; border:0;
+  border-radius:50%; color:var(--cyan-neon); background:transparent; cursor:pointer;
+}
+.actor-portrait-button > span {
+  position:absolute; right:0; bottom:0; border-radius:50%; background:#152535;
+  color:#bff9ff; padding:2px 5px; font-size:12px; border:1px solid #5d9bae;
+}
+.pab-portrait-button img { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid #659bad; }
+.portrait-picker .dossier-modal { width:min(520px,95vw); }
+.portrait-picker [hidden] { display:none!important; }
+.portrait-filters,.portrait-custom,.portrait-footer { display:flex; align-items:end; gap:8px; flex-wrap:wrap; }
+.portrait-filters label,.portrait-custom label { flex:1; min-width:105px; }
+.portrait-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(80px,1fr)); gap:6px; margin:10px 0;
+  max-height:min(42vh,300px); overflow:auto; align-content:start;
+}
+.portrait-choice {
+  display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0; padding:6px;
+  border:1px solid #344155; background:#0d1523; color:#dce9f8; border-radius:5px;
+  font:500 11px/1.2 var(--font-hud); cursor:pointer;
+}
+.portrait-choice img { width:min(60px,100%); aspect-ratio:1; object-fit:cover; border-radius:50%; border:1px solid #526d82; }
+.portrait-choice:hover,.portrait-choice[aria-pressed=true] { border-color:#63d8ea; background:#173041; }
+.portrait-choice:focus-visible,.actor-portrait-button:focus-visible { outline:2px solid #87eafa; outline-offset:2px; }
+.portrait-footer { justify-content:flex-end; }

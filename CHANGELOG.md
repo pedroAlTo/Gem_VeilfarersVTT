@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.13**.
-Paquete: `VeilFarers_VTT_v2.27.13.zip`.
+Versión actual del VTT: **v2.27.14**.
+Paquete: `VeilFarers_VTT_v2.27.14.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.14] — 2026-11-21
+
+Rift Spinners y retratos en la mesa
+
+### Personajes y PNJ
+
+- Cinco arañas de cristal con marcas individuales ilustran los Rift Spinners en el mapa, las fichas y las nueve insignias de clase.
+- El retrato automático utiliza el género de la ficha y después los pronombres. Desde su ficha, cada jugador puede elegir un retrato predefinido para sus tokens. El Keeper puede usar cualquier ascendencia, un retrato del bestiario o una imagen propia para un PNJ.
+
+### Chat y susurros
+
+- Los mensajes que ocupan más de dos líneas muestran el retrato del hablante a la izquierda. El chat y los subtítulos se adaptan al ancho disponible.
+- Desde Chat, el Keeper puede elegir un token de la escena o subir su propia imagen. El retrato se guarda con la campaña.
 
 ## [2.27.13] — 2026-11-20
 

@@ -1,5 +1,6 @@
 import { store } from './state.js';
-import { escapeHTML } from './ui.js';
+import { chatVisibleTo, KEEPER } from './chat.js';
+import { LongMessagePortraits, speakerAppearance } from './chatPortraits.js';
 
 class SubtitleOverlayManager {
   constructor() {
@@ -28,11 +29,20 @@ class SubtitleOverlayManager {
     `;
     document.body.appendChild(this.root);
 
+    this.faces = new LongMessagePortraits(this.root);
     this.senderEl = this.root.querySelector('#vf-sub-sender');
     this.textEl = this.root.querySelector('#vf-sub-text');
 
     // Subscribe to store updates for chatMessages
+    const identity = () => JSON.stringify([store.state.campaignId, store.state.userRole, store.sessionRole, store.memberId]);
+    let lastIdentity = identity();
     store.subscribe((state, keys) => {
+      if (lastIdentity !== identity()) {
+        lastIdentity = identity();
+        this.hide();
+        this.lastProcessedMsgId = state.chatMessages?.at(-1)?.id;
+        return;
+      }
       if (keys.includes('chatMessages')) {
         this.checkNewChatMessage(state.chatMessages || []);
       }
@@ -51,21 +61,21 @@ class SubtitleOverlayManager {
     if (!latest || latest.id === this.lastProcessedMsgId) return;
     this.lastProcessedMsgId = latest.id;
 
-    // Find token/sender color
-    const tokens = store.state.tokens || [];
-    const senderToken = tokens.find(t => t.id === latest.senderTokenId || t.name === latest.senderName || (t.isPlayer && t.ownerId === latest.senderId));
-    const isKeeper = latest.senderId === 'keeper' || latest.senderName?.toLowerCase().includes('keeper');
-    const color = latest.color || senderToken?.color || (isKeeper ? '#fbbf24' : '#00f3ff');
+    const viewer = store.sessionRole === 'player' ? store.memberId : store.state.userRole === 'keeper' ? KEEPER : null;
+    if (!chatVisibleTo(latest, viewer)) return;
+    const appearance = speakerAppearance(latest, store.state);
+    const isKeeper = latest.senderId === KEEPER;
+    const color = latest.color || appearance?.color || '#00f3ff';
 
     this.show({
       sender: latest.senderName || (isKeeper ? 'KEEPER' : 'OPERATIVO'),
       text: latest.text,
-      color,
+      appearance, color,
       duration: 5500
     });
   }
 
-  show({ sender = '', text = '', color = '#00f3ff', duration = 5500 }) {
+  show({ sender = '', text = '', color = '#00f3ff', duration = 5500, appearance }) {
     if (!this.root) this.init();
     if (!this.root || !text) return;
 
@@ -100,6 +110,7 @@ class SubtitleOverlayManager {
     }
     this.root.classList.remove('is-hidden');
     this.root.classList.add('is-visible');
+    this.faces.set(appearance ? [{ box: card, body: this.textEl, appearance }] : []);
 
     this.hideTimer = setTimeout(() => {
       this.hide();
@@ -108,6 +119,7 @@ class SubtitleOverlayManager {
 
   hide() {
     if (!this.root) return;
+    this.faces.set([]);
     this.root.classList.remove('is-visible');
     this.root.classList.add('is-hidden');
     clearTimeout(this.hideTimer);

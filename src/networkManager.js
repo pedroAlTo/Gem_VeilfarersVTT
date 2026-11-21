@@ -11,6 +11,9 @@ function hitConditionsPatch(t, data) {
   return asked.length ? { conditions: normalizeConditions([...(t.conditions || []), ...asked]) } : {};
 }
 import { validateDrawing, canAnnotate } from './freehand.js';
+import { speakerToken } from './chatPortraits.js';
+import { isPortraitReference } from './portraitCatalog.js';
+import { actorPortrait } from './tokenAvatars.js';
 import { controlsToken, isDrone, isPartyToken } from './tokenPermissions.js';
 import { validArmorCut, applyArmorCut } from './weaponFeatures.js';
 import { characterKey } from './characterImport.js';
@@ -398,6 +401,7 @@ export class NetworkManager {
     return {
       ...this.store.serializeCampaign(),
       logs: (s.logs || []).filter(entry => entry.visibility !== 'keeper').map(entry => structuredClone(entry)),
+      keeperPortrait: s.keeperPortrait || '',
       chatMessages: chatHistoryFor(s.chatMessages, memberId),
       memberId, connectedPeers: this.store.state.connectedPeers || [],
       maps: [map],
@@ -579,8 +583,8 @@ export class NetworkManager {
     }
     return this.request('CLAIM_TOKEN', { tokenId });
   }
-  async sendChat({ text, recipientId = TABLE, clientId = id() }) {
-    const payload = chatRequest({ text, recipientId, clientId });
+  async sendChat({ text, recipientId = TABLE, clientId = id(), senderTokenId }) {
+    const payload = chatRequest({ text, recipientId, clientId, senderTokenId });
     if (this.store.sessionRole === 'player') {
       if (![TABLE, KEEPER].includes(recipientId)) throw new Error('Los susurros se envían al Keeper.');
       return this.request('CHAT_SEND', payload);
@@ -606,7 +610,11 @@ export class NetworkManager {
         (recipient.id !== TABLE && senderId === KEEPER && !this.store.state.isConnected)) {
       throw new Error('El destinatario está desconectado. El susurro no se ha enviado.');
     }
-    const entry = validateChatEntry({ ...payload, id: id(), senderId, senderName: sender.name.trim() || 'Player', recipientName: recipient.name.trim() || 'Player', sentAt: Date.now() });
+    const token = speakerToken(this.store.state, senderId, payload.senderTokenId);
+    const portrait = token && actorPortrait(token);
+    const entry = validateChatEntry({ text: payload.text, recipientId: recipient.id, clientId: payload.clientId,
+      senderTokenId: token?.id, senderPortrait: isPortraitReference(portrait) ? portrait : undefined,
+      color: senderId === KEEPER ? '#fbbf24' : token?.color, id: id(), senderId, senderName: sender.name.trim() || 'Player', recipientName: recipient.name.trim() || 'Player', sentAt: Date.now() });
     this.store.update({ chatMessages: appendChat(this.store.state.chatMessages, entry) });
     // Deliberately separate from broadcast: private contents only enter participant sockets.
     for (const [peerId, conn] of this.connections) {
@@ -762,6 +770,7 @@ export class NetworkManager {
       for (const patch of this.pendingTokenPatches.values()) {
         if (patch.tokenId === token.id && patch.campaignId === state.campaignId && patch.mapId === state.activeMapId && token.mapId === patch.mapId && controlsToken(token, this.store.memberId || this.store.peerId)) {
           result = { ...result, ...patch.partial };
+          if ('avatarUrl' in patch.partial) result.avatarUrl = actorPortrait(result);
           for (const key of ['hp', 'armor', 'stress', 'resolve']) if (patch.partial[key]) result[key] = { ...token[key], current: Math.min(token[key].max, patch.partial[key].current) };
           // A personal toggle never replaces the Keeper's configured light parameters.
           if ('hasSpotlight' in patch.partial) result.spotlight = { ...token.spotlight, enabled: patch.partial.hasSpotlight };

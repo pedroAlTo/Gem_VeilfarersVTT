@@ -37,6 +37,7 @@ class StateStore {
       activeTransmission: null, // Broadcasted handout currently popped up
       logs: [],
       chatMessages: [],
+      keeperPortrait: '',
       arcs: [
         {
           id: 'arc_main',
@@ -1116,7 +1117,7 @@ class StateStore {
     // Old archives may omit optional fields, never borrow maps/actors/logs from the open session.
     const base = structuredClone(this.initialCampaign);
     const legacyArcs = [{ id: 'arc_main', name: 'Arco 1: Operaciones Activas', description: '', sceneIds: (input.maps || base.maps).map(m => m.id), tokenIds: [], images: [] }];
-    const data = validateCampaign({ ...base, ...input, arcs: input.arcs ?? legacyArcs, logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
+    const data = validateCampaign({ ...base, ...input, arcs: input.arcs ?? legacyArcs, keeperPortrait: input.keeperPortrait ?? '', logs: input.logs ?? [], chatMessages: input.chatMessages ?? [], starship: { ...base.starship, ...input.starship } });
     data.tokens = data.tokens.map(token => ({ ...token, avatarUrl: actorPortrait(token) }));
     if (!data.maps.some(m => m.id === data.activeMapId)) data.activeMapId = data.maps[0].id;
     if (data.fogExploredOpacity === undefined || data.fogExploredOpacity === 0.88) {
@@ -1168,7 +1169,7 @@ class StateStore {
         const id = 'map_' + newId();
         data.maps = [{ id, name: 'Escena inicial', imageUrl: '/assets/maps/blank-grid.svg', gridSize: 64, gridType: 'square', gridColor: 'rgba(0,243,255,.18)', ambientLight: 1, ambientColor: '#080d18', walls: [], lights: [], effects: [], waterZones: [] }];
         data.arcs = [{ id: 'arc_' + newId(), name: 'Arco 1', description: '', sceneIds: [id], tokenIds: [], images: [] }];
-        data.activeMapId = id; data.tokens = []; data.clocks = []; data.handouts = []; data.logs = []; data.chatMessages = [];
+        data.activeMapId = id; data.tokens = []; data.clocks = []; data.handouts = []; data.logs = []; data.chatMessages = []; data.keeperPortrait = '';
         data.fear = 0; data.fogOfWar = false; data.starship.visible = false; data.starship.name = 'Nave sin asignar';
       }
       return data;

@@ -151,3 +151,88 @@ test('Enter on the map opens the table chat, but never steals the key from a fie
   dialog.remove();
   assert.equal(entersTableChat(press(map), page), true);
 });
+
+test('three rendered lines get a round speaker portrait while two lines stay compact, including after resize', () => {
+  const keeperPortrait = '/assets/tokens/crew/rift_spinner-n.webp';
+  Object.assign(store.state, { keeperPortrait, chatMessages: [
+    message({text:'First\nSecond'}), message({text:'First\nSecond\nThird'}), message({text:'A message that wraps with the sidebar.'}),
+  ] });
+  const p = panel(manager()), bodies = [...p.list.querySelectorAll('.chat-speech')];
+  assert.equal(bodies[0].querySelector('img'), null);
+  assert.equal(bodies[1].firstElementChild.querySelector('img').getAttribute('src'), keeperPortrait);
+  assert.equal(bodies[2].querySelector('img'), null);
+  const body = bodies[2].querySelector('p');
+  body.style.lineHeight = '16px';
+  let height = 48; body.getBoundingClientRect = () => ({height});
+  p.faces.measure();
+  assert.equal(bodies[2].firstElementChild.querySelector('img').getAttribute('src'), keeperPortrait);
+  height = 32; p.faces.measure(); assert.equal(bodies[2].querySelector('img'), null);
+});
+
+test('the host resolves the selected controlled speaker, rejects impersonation, and does not repeat embedded image data in history', () => {
+  const n = manager(); host(n);
+  const mapId = store.state.activeMapId, face = '/assets/tokens/crew/rift_spinner-n.webp';
+  store.state.tokens = [
+    { id:'main', mapId, ownerId:'pilot', isPlayer:true, species:'Kryx' },
+    { id:'shared', mapId, controllerIds:['pilot','engineer'], actorType:'drone', avatarUrl:face, portraitOverride:true, color:'#336699' },
+    { id:'secret', mapId, ownerId:'pilot', hidden:true, avatarUrl:'/private.png' },
+  ];
+  const post = (senderId, senderTokenId) => n.acceptChat({text:'Message',clientId:crypto.randomUUID(),recipientId:TABLE,senderTokenId,color:'#ffffff',senderPortrait:'/forged.jpg'}, senderId);
+  const shared = post('pilot','shared');
+  assert.deepEqual([shared.senderTokenId,shared.senderPortrait,shared.color], ['shared',face,'#336699']);
+  assert.equal(post('pilot','secret').senderTokenId,'main');
+  assert.equal(post('engineer','main').senderTokenId,'shared');
+  const keeper = post(KEEPER, 'secret');
+  assert.equal(keeper.senderTokenId,undefined); assert.equal(keeper.senderPortrait,undefined);
+  store.state.tokens[1].avatarUrl = 'data:image/webp;base64,YQ==';
+  assert.equal(post('pilot','shared').senderPortrait, undefined);
+});
+
+test('the Keeper can use a scene token as the campaign portrait and players receive the image without actor details', async () => {
+  const n = manager(); host(n); const p = panel(n);
+  const token = store.state.tokens.find(t => t.mapId === store.state.activeMapId);
+  p.keeperFace.click();
+  const picker = document.querySelector('.portrait-picker');
+  assert.equal(picker.querySelector('[data-collection]').value,'scene');
+  assert.ok(picker.querySelector('[data-upload]'));
+  const choice = [...picker.querySelectorAll('.portrait-choice')].find(el => el.textContent === token.name);
+  const url = choice.querySelector('img').getAttribute('src');
+  choice.click(); await new Promise(r => setTimeout(r,0));
+  assert.equal(store.state.keeperPortrait,url);
+  assert.equal(validateCampaign(store.serializeCampaign()).keeperPortrait,url);
+  assert.equal(n.snapshotFor('pilot').keeperPortrait,url);
+  const legacy = store.serializeCampaign(); delete legacy.keeperPortrait;
+  assert.equal(store.normalizeCampaign(legacy).keeperPortrait,'');
+  store.update({userRole:'player'}); assert.equal(p.keeperFace.hidden,true);
+  assert.equal(p.list.querySelector('img'),null);
+});
+
+test('a Keeper upload is cropped to a token-sized image and remains available after reopening the session', async () => {
+  const p = panel(manager());
+  const oldImage = globalThis.Image, originalContext = dom.window.HTMLCanvasElement.prototype.getContext;
+  const originalData = dom.window.HTMLCanvasElement.prototype.toDataURL;
+  const oldCreate = URL.createObjectURL, oldRevoke = URL.revokeObjectURL;
+  let crop, revoked;
+  try {
+    globalThis.Image = class {
+      get naturalWidth() { return 640; } get naturalHeight() { return 400; }
+      set src(value) { queueMicrotask(() => this.onload()); }
+    };
+    URL.createObjectURL = () => 'blob:test-upload'; URL.revokeObjectURL = value => { revoked = value; };
+    dom.window.HTMLCanvasElement.prototype.getContext = () => ({drawImage:(_img,...coords) => {crop=coords;}});
+    dom.window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/webp;base64,YQ==';
+    p.keeperFace.click();
+    const input = document.querySelector('.portrait-picker [data-file]');
+    Object.defineProperty(input,'files',{value:[new dom.window.File(['test'],'face.png',{type:'image/png'})]});
+    input.dispatchEvent(new Event('change')); await new Promise(r => setTimeout(r,0));
+    assert.deepEqual(crop, [120,0,400,400,0,0,320,320]);
+    assert.equal(revoked,'blob:test-upload');
+    const id = store.state.campaignId, url = 'data:image/webp;base64,YQ==';
+    assert.equal(store.state.keeperPortrait,url); await store.saveQueue;
+    await store.createSession('Another room'); assert.equal(store.state.keeperPortrait,'');
+    await store.openSession(id); assert.equal(store.state.keeperPortrait,url);
+  } finally {
+    globalThis.Image = oldImage; URL.createObjectURL = oldCreate; URL.revokeObjectURL = oldRevoke;
+    dom.window.HTMLCanvasElement.prototype.getContext = originalContext; dom.window.HTMLCanvasElement.prototype.toDataURL = originalData;
+  }
+});

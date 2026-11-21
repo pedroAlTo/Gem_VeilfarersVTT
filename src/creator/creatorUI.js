@@ -5,6 +5,7 @@ import { store } from '../state.js';
 import { newId } from '../persistence.js';
 import { dossierDialog } from '../dossierUI.js';
 import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
+import { portraitGenderOptions } from '../portraitPicker.js';
 import { actorPortrait, listAncestryArchetypeTokens } from '../tokenAvatars.js';
 import { account } from '../cloudAccount.js';
 import {
@@ -159,7 +160,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const targets = canPlace ? store.state.tokens.filter(t => t.isPlayer !== false && t.actorType !== 'adversary') : [];
       const selectedArch = state.tokenArchetype || '';
       const avatarUrl = creatorPortrait();
-      const archetypes = listAncestryArchetypeTokens(state.ancestry, state.pronouns, state.name);
+      const archetypes = listAncestryArchetypeTokens(state.ancestry, state.gender || state.pronouns, state.name);
       return `<h3>Detalles</h3>
         <div class="creator-avatar-preview" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 10px 14px; background: rgba(0, 243, 255, 0.06); border: 1px solid rgba(0, 243, 255, 0.25); border-radius: 8px;">
           <img src="${avatarUrl}" alt="Retrato del Token" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #00f3ff; flex-shrink: 0; box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);" />
@@ -175,7 +176,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
             ${archetypes.map(a => `<button type="button" class="hud-btn ${a.id === selectedArch ? "hud-btn-primary" : ""}" data-token-arch="${a.id}" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 0.8rem; text-align: left; cursor: pointer;"><img src="${a.avatarUrl}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid ${a.id === selectedArch ? "#00f3ff" : "rgba(255,255,255,0.2)"}; flex-shrink: 0;" alt="" /><span><strong>${e(a.label.split("/")[0].trim())}</strong></span></button>`).join("")}
           </div>
         </div>
-        <div class="dossier-identity"><label class="dossier-field"><span>Nombre</span><input class="hud-input" data-field="name" maxlength="120" value="${e(state.name)}"></label><label class="dossier-field"><span>Pronombres</span><input class="hud-input" data-field="pronouns" maxlength="60" value="${e(state.pronouns)}"></label></div>
+        <div class="dossier-identity"><label class="dossier-field"><span>Nombre</span><input class="hud-input" data-field="name" maxlength="120" value="${e(state.name)}"></label><label class="dossier-field"><span>Pronombres</span><input class="hud-input" data-field="pronouns" maxlength="60" value="${e(state.pronouns)}"></label><label class="dossier-field"><span>Género del retrato</span><vf-select class="hud-select" data-gender>${portraitGenderOptions(state.gender)}</vf-select></label></div>
         ${text('bgAnswer', cls ? cls.bgQuestion : 'Pregunta de trasfondo')}
         <div class="dossier-identity">${text('appearance', 'Apariencia')}${text('voice', 'Voz y maneras')}</div>
         ${state.path === 'Sleeping' ? text('anchor', 'Recovery Anchor', 1) : ''}
@@ -203,7 +204,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
   // One id per character, so saving it again updates the same entry instead of duplicating it.
   let characterId = state.characterId || '';
   function creatorPortrait() {
-    return actorPortrait({ species: state.ancestry, pronouns: state.pronouns, name: state.name,
+    return actorPortrait({ species: state.ancestry, gender: state.gender, pronouns: state.pronouns, name: state.name,
       characterClass: classOf(state, data)?.name, tokenArchetype: state.tokenArchetype });
   }
   async function finish(kind) {
@@ -243,7 +244,8 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
   });
   modal.addEventListener('change', event => {
     const el = event.target;
-    if (el.dataset.trait) { const traits = { ...state.traits }; if (el.value === '') delete traits[el.dataset.trait]; else traits[el.dataset.trait] = Number(el.value); state = { ...state, traits }; save(); render(); }
+    if (el.matches('[data-gender]')) { state = { ...state, gender: el.value }; save(); render(); }
+    else if (el.dataset.trait) { const traits = { ...state.traits }; if (el.value === '') delete traits[el.dataset.trait]; else traits[el.dataset.trait] = Number(el.value); state = { ...state, traits }; save(); render(); }
     else if ('rs' in el.dataset) { state = { ...state, includeRustAndSteel: el.checked }; save(); render(); }
   });
   // Text fields update the draft without redrawing, so typing is never interrupted.
@@ -257,7 +259,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       if (['name', 'pronouns'].includes(el.dataset.field)) {
         const img = modal.querySelector('.creator-avatar-preview img');
         if (img) img.src = creatorPortrait();
-        for (const item of listAncestryArchetypeTokens(state.ancestry, state.pronouns, state.name)) {
+        for (const item of listAncestryArchetypeTokens(state.ancestry, state.gender || state.pronouns, state.name)) {
           const thumb = modal.querySelector('[data-token-arch="' + item.id + '"] img');
           if (thumb) thumb.src = item.avatarUrl;
         }

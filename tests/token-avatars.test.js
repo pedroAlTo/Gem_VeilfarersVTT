@@ -248,3 +248,35 @@ test('the system JSON carries a chosen portrait style and explicit gender into t
   doc.fields.avatarUrl = 'https://example.org/miles.jpg';
   assert.equal(parseCharacterJSON(doc).token.avatarUrl, doc.fields.avatarUrl);
 });
+
+test('explicit sheet identity takes precedence over pronouns, names and stale default art', async () => {
+  const { exportSystemCharacter } = await import('../src/characterImport.js');
+  const doc = JSON.parse(fs.readFileSync(new URL('./fixtures/creator/Miles.json', import.meta.url)));
+  Object.assign(doc.fields, { ancestry: 'Ailurean', gender: '', sexo: 'hembra', pron: '', pronouns: 'he/him' });
+  const token = parseCharacterJSON(doc).token;
+  assert.equal(token.pronouns, 'he/him');
+  assert.equal(token.avatarUrl, '/assets/tokens/classes/ailuran-diplomat-f.svg');
+  assert.equal(parseCharacterJSON(exportSystemCharacter(token)).token.avatarUrl, token.avatarUrl);
+  assert.equal(actorPortrait({ ...token, gender: 'no binario' }), '/assets/tokens/classes/ailuran-diplomat-n.svg');
+  assert.equal(actorPortrait({ ...token, gender: '', pronouns: '' }), token.avatarUrl);
+  assert.equal(actorPortrait({ name:'Capt. Jonathan Harker', gender:'Femenina', avatarUrl:'/assets/tokens/captain_harker.jpg' }), '/assets/tokens/crew/human-f-station.webp');
+  assert.equal(detectGender('', 'Piedra'), 'n');
+  assert.equal(detectGender('', 'Cobalto'), 'n');
+  assert.equal(detectGender('macho', 'Lucy'), 'm');
+});
+
+test('a player portrait patch must choose a complete catalog entry or reset it atomically', async () => {
+  const { validTokenPatch } = await import('../src/validation.js');
+  const { portraitChoices, presetLocation } = await import('../src/portraitCatalog.js');
+  const base = portraitChoices('rift_spinner');
+  assert.equal(new Set(base.map(x => x.url)).size, 5);
+  for (const option of [...base, ...portraitChoices('kryx', 'mystic'), ...portraitChoices('bestiary')]) {
+    assert.ok(presetLocation(option.url));
+    assert.ok(validTokenPatch({ avatarUrl: option.url, portraitOverride:true }));
+  }
+  assert.ok(validTokenPatch({ avatarUrl:'', portraitOverride:false }));
+  for (const patch of [{avatarUrl:base[0].url}, {portraitOverride:false}, {avatarUrl:base[0].url,portraitOverride:false},
+    {avatarUrl:'https://example.org/own.png',portraitOverride:true}, {avatarUrl:'/assets/tokens/crew/not-real.webp',portraitOverride:true}]) {
+    assert.equal(validTokenPatch(patch), false);
+  }
+});

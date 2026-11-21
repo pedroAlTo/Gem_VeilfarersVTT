@@ -4,6 +4,16 @@
 // in both languages, as the books print them. Book content (Powers, abilities, modules, names)
 // is not here: it is the text of the books.
 export const PAIRS = [
+  ['Elegir retrato', 'Choose portrait'], ['Cambiar retrato', 'Change portrait'], ['Retratos disponibles', 'Available portraits'],
+  ['Género del retrato', 'Portrait gender'], ['Según los pronombres', 'Use pronouns'], ['Femenino', 'Feminine'], ['Masculino', 'Masculine'], ['Neutro', 'Neutral'],
+  ['Colección', 'Collection'], ['Insignia de clase', 'Class insignia'], ['Sin insignia', 'No insignia'], ['Tripulación conocida', 'Named crew'],
+  ['Tokens de la escena', 'Scene tokens'], ['Subir imagen', 'Upload image'], ['Usar URL', 'Use URL'], ['URL de imagen', 'Image URL'],
+  ['Retrato', 'Portrait'], ['Retrato del Keeper', 'Keeper portrait'], ['Usar inicial del Keeper', 'Use Keeper initial'], ['Usar retrato automático', 'Use automatic portrait'],
+  ['Femenino · Campo', 'Feminine · Field'], ['Masculino · Campo', 'Masculine · Field'],
+  ['Femenino · Estación', 'Feminine · Station'], ['Masculino · Estación', 'Masculine · Station'],
+  ['No se ha podido leer la imagen.', 'The image could not be read.'], ['Selecciona una imagen válida.', 'Choose a valid image.'],
+  ['Introduce una URL de imagen válida.', 'Enter a valid image URL.'],
+  ['No se ha podido cambiar el retrato. Comprueba la conexión y la asignación del token.', 'Could not change the portrait. Check the connection and token assignment.'],
   // Access and lobby
   ['VEILFARERS // TERMINAL DE ACCESO TÁCTICO', 'VEILFARERS // TACTICAL ACCESS TERMINAL'],
   ['PORTAL TÁCTICO', 'TACTICAL PORTAL'],

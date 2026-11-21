@@ -47,7 +47,7 @@ export function replaceActorSheet(existing, imported) {
   next.tokenArchetype = imported.tokenArchetype || imported.sourceCharacter?.document?.fields?.token_archetype || '';
   const sameCharacter = characterKey(existing) === characterKey(imported);
   if (!sameCharacter) {
-    for (const key of ['species', 'characterClass', 'roleTag', 'pronouns', 'gender', 'sourceCharacter']) {
+    for (const key of ['species', 'characterClass', 'roleTag', 'pronouns', 'pron', 'pronombres', 'gender', 'sex', 'sexo', 'genero', 'género', 'character_gender', 'sourceCharacter']) {
       if (!(key in imported)) delete next[key];
     }
   }

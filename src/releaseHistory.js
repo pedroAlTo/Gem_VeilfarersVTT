@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.14', date: '2026-11-21', title: 'Rift Spinners y retratos en la mesa',
+    sections: [
+      { title: 'Personajes y PNJ', items: [
+        'Cinco arañas de cristal con marcas individuales ilustran los Rift Spinners en el mapa, las fichas y las nueve insignias de clase.',
+        'El retrato automático utiliza el género de la ficha y después los pronombres. Desde su ficha, cada jugador puede elegir un retrato predefinido para sus tokens. El Keeper puede usar cualquier ascendencia, un retrato del bestiario o una imagen propia para un PNJ.',
+      ] },
+      { title: 'Chat y susurros', items: [
+        'Los mensajes que ocupan más de dos líneas muestran el retrato del hablante a la izquierda. El chat y los subtítulos se adaptan al ancho disponible.',
+        'Desde Chat, el Keeper puede elegir un token de la escena o subir su propia imagen. El retrato se guarda con la campaña.',
+      ] },
+    ],
+  },
+  {
     version: '2.27.13', date: '2026-11-20', title: 'Bestiario en mesa y retratos de la tripulación',
     sections: [
       { title: 'Adversarios y encuentros', items: [

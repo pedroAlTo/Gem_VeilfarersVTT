@@ -81,6 +81,14 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     await pilot.manager.importCharacter({ ...assigned, name: 'Kryx Pilot', species: 'Kryx', pronouns: 'ella', characterClass: 'Pilot', avatarUrl: '/assets/tokens/captain_harker.jpg' });
     const pilotPortrait = '/assets/tokens/classes/kryx-pilot-f.svg';
     await until(() => [keeper, pilot].every(endpoint => endpoint.state.state.tokens.find(t => t.id === tokenId)?.avatarUrl === pilotPortrait), 'imported portrait reaches the map for both roles');
+    const chosen = '/assets/tokens/crew/rift_spinner-n.webp';
+    assert.equal(pilot.state.updateToken(tokenId, { avatarUrl: chosen, portraitOverride: true }), true);
+    await until(() => [keeper, pilot].every(c => c.state.state.tokens.find(t => t.id === tokenId)?.avatarUrl === chosen), 'player portrait confirmed on both ends');
+    assert.equal(pilot.state.updateToken(tokenId, { avatarUrl: '', portraitOverride: false }), true);
+    assert.equal(pilot.state.state.tokens.find(t => t.id === tokenId).avatarUrl, pilotPortrait);
+    await until(() => keeper.state.state.tokens.find(t => t.id === tokenId).avatarUrl === pilotPortrait, 'reset restores the sheet on the host');
+    keeper.state.update({ keeperPortrait: chosen });
+    await until(() => pilot.state.state.keeperPortrait === chosen, 'Keeper face reaches the player');
     const water = keeper.state.addWaterZone({name:'Polygon lake',shape:'polygon',points:[{x:0,y:0},{x:180,y:0},{x:80,y:140}],depth:2});
     await until(() => pilot.state.getActiveMap().waterZones?.some(w => w.id === water.id), 'water geometry reaches player');
     assert.deepEqual(pilot.state.getActiveMap().waterZones.find(w => w.id === water.id).points,water.points);
@@ -121,7 +129,9 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     await engineer.manager.joinSession(room, 'Engineer', keeper.manager.invite);
     window.sessionStorage.setItem(seatKey, pilotResume);
     const pilotId = pilot.state.memberId;
-    const publicChat = await pilot.manager.sendChat({text:'PUBLIC_CHAT_SENTINEL'});
+    const publicChat = await pilot.manager.sendChat({text:'PUBLIC_CHAT_SENTINEL', senderTokenId: tokenId});
+    assert.equal(publicChat.senderTokenId, tokenId);
+    assert.equal(publicChat.senderPortrait, pilotPortrait);
     await until(() => engineer.state.state.chatMessages.some(m => m.id === publicChat.id), 'public chat reaches another player');
     const privateChat = await keeper.manager.sendChat({text:'KEEPER_WHISPER_SENTINEL',recipientId:pilotId});
     await until(() => pilot.state.state.chatMessages.some(m => m.id === privateChat.id), 'Keeper whisper reaches chosen player');

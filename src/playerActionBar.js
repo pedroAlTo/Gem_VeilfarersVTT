@@ -12,6 +12,8 @@ import { store } from './state.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { TRAITS } from './rulesEngine.js';
 import { tokenInventory } from './equipment.js';
+import { openActorPortrait } from './portraitPicker.js';
+import { actorPortrait } from './tokenAvatars.js';
 import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { normalizeConditions, conditionDefinition } from './conditions.js';
@@ -156,7 +158,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, actorPortrait(token), store.canEditToken(token.id), stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -178,7 +180,7 @@ export class PlayerActionBar {
     const stage = lifeStage(token);
     const subtitle = [token.characterClass, token.path].filter(Boolean).join(' · ');
     this.root.innerHTML = sanitizeHTML(`
-      <header class="pab-head"><div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
+      <header class="pab-head">${store.canEditToken(token.id) ? `<button type="button" class="actor-portrait-button pab-portrait-button" data-pab-portrait title="Cambiar retrato" aria-label="Cambiar retrato"><img src="${e(actorPortrait(token))}" alt=""></button>` : ''}<div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
         <button type="button" class="pab-focus ${token.hasSpotlight ? 'is-on' : ''}" data-pab-focus aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tienes el foco · pulsa para quitarlo' : 'Tomar el foco'}" ${store.canEditToken(token.id) ? '' : 'disabled'}>✨ ${token.hasSpotlight ? 'Con el foco' : 'Tomar foco'}</button></header>
       ${this.statsHTML(stats)}
       ${stage ? '<button type="button" class="hud-btn" data-pab-life>' + e(stage) + ' · <span>Ver estado del personaje</span></button>' : ''}
@@ -203,6 +205,7 @@ export class PlayerActionBar {
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
       ${this.result ? this.resultRow() : ''}`);
+    this.root.querySelector('[data-pab-portrait]')?.addEventListener('click', () => openActorPortrait(token.id));
     this.root.querySelector('[data-pab-focus]')?.addEventListener('click', () => { if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } });
     if (stage) {
       this.root.querySelector('[data-pab-life]').onclick = () => openConditions(token.id);

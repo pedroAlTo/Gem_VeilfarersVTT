@@ -1,6 +1,6 @@
 import { isEncounterMarker } from './bestiaryProfiles.js';
 import { actorPortrait } from './tokenAvatars.js';
-import { TIER_ONE_PORTRAITS } from './bestiaryPortraits.js';
+import { actorCollection, openPortraitPicker } from './portraitPicker.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
@@ -11,7 +11,6 @@ import { tokenInventory } from './equipment.js';
 // Token HUD Quickbar and Holographic Character Sheet Editor
 
 import { notify, confirmAction, sanitizeHTML, escapeHTML } from './ui.js';
-import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { toggleSpotlight } from './spotlight.js';
@@ -624,14 +623,7 @@ export class TokenHUD {
               </div>
 
               <div class="form-group" style="margin-top: 10px;">
-                ${token.actorType === 'adversary' || token.isPlayer === false ? `<label for="sheet_bestiary_art">Ilustración del bestiario</label>
-                <vf-select id="sheet_bestiary_art" class="hud-select">
-                  <option value="">Elegir un retrato de Tier 1…</option>
-                  ${TIER_ONE_PORTRAITS.map(p => `<option value="${p.url}">${escapeHTML(p.name)}</option>`).join('')}
-                </vf-select>` : ''}
-                <label for="sheet_avatar_url">Avatar URL or File</label>
-                <input type="text" id="sheet_avatar_url" class="hud-input" value="${escapeHTML(token.avatarUrl || '')}" />
-                <input type="file" id="sheet_avatar_file" accept="image/*" class="hud-file-input" style="margin-top: 6px;" />
+                <button type="button" class="hud-btn" id="sheet_portrait_picker">Elegir retrato</button>
               </div>
 
               <div class="form-group">
@@ -1074,48 +1066,15 @@ export class TokenHUD {
       sleepingSection.style.display = pathSelect.value === 'Sleeping' ? 'block' : 'none';
     };
 
-    // Local avatar file upload
-    const fileInput = modal.querySelector('#sheet_avatar_file');
-    const avatarPreview = modal.querySelector('#sheet_avatar_preview');
-    const avatarUrlInput = modal.querySelector('#sheet_avatar_url');
-    const bestiarySelect = modal.querySelector('#sheet_bestiary_art');
-    let chosenIllustration = '';
-    bestiarySelect?.addEventListener('change', () => {
-      if (!bestiarySelect.value) return;
-      chosenIllustration = bestiarySelect.value;
-      avatarUrlInput.value = chosenIllustration;
-      avatarPreview.src = chosenIllustration;
-      bestiarySelect.value = '';
+    let chosenIllustration = null;
+    const preview = modal.querySelector('#sheet_avatar_preview');
+    modal.querySelector('#sheet_portrait_picker').onclick = () => openPortraitPicker({
+      current: preview.getAttribute('src'), collection: actorCollection(token), allowCustom: true, cloud: true,
+      onChoose(url) {
+        chosenIllustration = url;
+        preview.src = actorPortrait({ ...token, avatarUrl: url, portraitOverride: Boolean(url) });
+      },
     });
-
-    fileInput.onchange = async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const { isConfigured } = getCloudinaryConfig();
-        if (isConfigured) {
-          try {
-            notify('Subiendo avatar de token a Cloudinary (Token_)...');
-            const res = await uploadToCloudinary(file, () => {}, { prefix: 'Token_' });
-            avatarPreview.src = res.url;
-            avatarUrlInput.value = res.url;
-            notify('Avatar de token subido a Cloudinary.');
-            return;
-          } catch (err) {
-            notify('No se pudo subir a Cloudinary (' + err.message + '). Usando imagen local.', 'error');
-          }
-        }
-        const reader = new FileReader();
-        reader.onload = (re) => {
-          avatarPreview.src = re.target.result;
-          avatarUrlInput.value = re.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-
-    avatarUrlInput.oninput = () => {
-      avatarPreview.src = avatarUrlInput.value;
-    };
 
     // Reserve token
     const sheetReserveBtn = modal.querySelector('#sheet_reserve_btn');
@@ -1163,7 +1122,7 @@ export class TokenHUD {
       });
 
       const actorTypeVal = modal.querySelector('#sheet_actor_type')?.value || 'player';
-      const avatarUrl = avatarUrlInput.value.trim();
+      const avatarUrl = chosenIllustration ?? token.avatarUrl;
       const updated = {
         name: modal.querySelector('#sheet_name').value.trim() || token.name,
         roleTag: modal.querySelector('#sheet_role').value.trim(),
@@ -1172,7 +1131,7 @@ export class TokenHUD {
         hideName: modal.querySelector('#sheet_hide_name')?.checked ?? false,
         species: modal.querySelector('#sheet_species')?.value.trim() || token.species,
         avatarUrl,
-        portraitOverride: !!avatarUrl && (avatarUrl === chosenIllustration || avatarUrl !== token.avatarUrl || token.portraitOverride === true),
+        portraitOverride: chosenIllustration === null ? token.portraitOverride === true : Boolean(chosenIllustration),
         path: pathSelect.value,
         size: parseInt(modal.querySelector('#sheet_size').value, 10),
         hp: {

@@ -6,6 +6,8 @@ import { validateDrawing } from './freehand.js';
 import { validateEnvironment, validateBoss } from './encounterRules.js';
 import { validateInventory } from './equipment.js';
 import { validateChatHistory } from './chat.js';
+import { isPresetPortrait, isPortraitSource } from './portraitCatalog.js';
+
 export const CAMPAIGN_KEYS = [
   'campaignId',
   'campaignName',
@@ -23,6 +25,7 @@ export const CAMPAIGN_KEYS = [
   'logs',
   'players',
   'chatMessages',
+  'keeperPortrait',
   'rest',
 ];
 export const finite = (x, min = -1e6, max = 1e6) =>
@@ -151,7 +154,9 @@ export function validateCampaign(data) {
   } else throw new Error('Missing starship data.');
   if (data.rest !== undefined) assert(validRest(data.rest), 'Invalid rest.');
   if (data.logs !== undefined) assert(Array.isArray(data.logs) && data.logs.length <= 150 && data.logs.every(x => x && typeof x === 'object'), 'Invalid session log.');
-  return structuredClone({ ...data, chatMessages: validateChatHistory(data.chatMessages) });
+  const keeperPortrait = data.keeperPortrait ?? '';
+  assert(keeperPortrait === '' || isPortraitSource(keeperPortrait), 'Invalid Keeper portrait.');
+  return structuredClone({ ...data, keeperPortrait, chatMessages: validateChatHistory(data.chatMessages) });
 }
 
 export function validTokenPatch(p) {
@@ -175,10 +180,15 @@ export function validTokenPatch(p) {
           'inventory',
           'hasSpotlight',
           'effectClocks',
+          'avatarUrl',
+          'portraitOverride',
         ].includes(k)
     )
   )
     return false;
+  if ('avatarUrl' in p || 'portraitOverride' in p) {
+    if (!(p.portraitOverride === true && isPresetPortrait(p.avatarUrl)) && !(p.portraitOverride === false && p.avatarUrl === '')) return false;
+  }
   for (const k of ['x', 'y', 'rotation', 'facingAngle']) if (k in p && !finite(p[k])) return false;
   for (const k of ['hope', 'effort']) if (k in p && !finite(p[k], 0, 6)) return false;
   if ('hasSpotlight' in p && typeof p.hasSpotlight !== 'boolean') return false;
