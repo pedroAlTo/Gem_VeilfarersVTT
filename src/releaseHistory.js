@@ -1,6 +1,10 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.6', date: '2026-11-21', title: 'Ilustraciones para los poderes de nivel 6 a 10',
+    sections: [{ title: 'Cartas', items: ['Los 70 poderes de nivel 6 a 10 completan las ilustraciones de las 147 cartas de los siete dominios.'] }],
+  },
+  {
     version: '2.29.5', date: '2026-11-21', title: 'Ilustraciones de los poderes de dominio de nivel 2 a 5',
     sections: [{ title: 'Cartas', items: ['Los 56 poderes de nivel 2 a 5 tienen ilustración propia en la mano, el Vault y el catálogo.'] }],
   },

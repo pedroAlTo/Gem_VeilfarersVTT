@@ -30,8 +30,24 @@ const domainSheetNames = {
   Void: ["Lucky Break", "Spatial Shift", "Flux Field", "Temporal Muffle", "Danger Sense", "Spatial Cache", "Fate's Hand", "Phase Walk"],
   Lux: ["Eyes of Truth", "Photon Shield", "Aura of Clarity", "Stellar Lance", "Deflection Prism", "Solar Judgment", "Beacon of Resurrection", "Cartographer of the Unseen"],
 };
+// Each row records the painted cells in one sheet, left to right, top to bottom.
+const upperPowerSheets = [
+  ["Tech:6:Consciousness Transfer", "Tech:6:Invention Protocol", "Tech:7:Megascale Fabrication", "Tech:7:Systemic Shutdown", "Tech:8:Cascading Upgrade", "Tech:8:Digital Apotheosis", "Tech:9:Precursor Protocol", "Tech:9:Quantum Command Hub", "Tech:10:Architect of Matter"],
+  ["Tech:10:Cosmic Engineer", "Synthesis:6:Ecosystem Creation", "Synthesis:6:Metamorphic Mastery", "Synthesis:7:Biomorphic Arsenal", "Synthesis:7:Hivemind Convergence", "Synthesis:8:Bio-Weapon Architect", "Synthesis:8:Local Life Web", "Synthesis:9:Genesis Protocol", "Synthesis:9:Global Stimulus Field"],
+  ["Synthesis:10:Cosmic Synthesis", "Synthesis:10:Universal Life Force", "Social:6:Charismatic Authority", "Social:6:Mass Deception", "Social:7:Memetic Erasure", "Social:7:Perfect Masquerade", "Social:8:Cult of Personality", "Social:8:Mass Hysteria", "Social:9:Diplomatic Redirection"],
+  ["Social:9:Fabricate Reality", "Social:10:Architect of Civilization", "Social:10:Cosmic Accord", "Neural:6:Collective Consciousness", "Neural:6:Psychic Storm", "Neural:7:Mind Sanctuary", "Neural:7:Veil Suppression", "Neural:8:Psychic Collapse", "Neural:8:Temporal Maelstrom"],
+  ["Neural:9:Destiny Weave", "Neural:9:Psychic Fallout", "Neural:10:Consciousness Bridge", "Neural:10:Veil Mastery", "Kinetic:6:Energy Cascade", "Kinetic:6:Force Fortress", "Kinetic:7:Orbital Lance", "Kinetic:7:Temporal Freeze", "Kinetic:8:Singularity Well"],
+  ["Kinetic:8:Tactical Aegis", "Kinetic:9:Asteroid Redirect", "Kinetic:9:Indomitable Bastion", "Kinetic:10:Absolute Command", "Kinetic:10:Force Incarnate", "Void:6:Spatial Link", "Void:6:Void Sanctuary", "Void:7:Chrono Stasis", "Void:7:Phase Jump"],
+  ["Void:8:Phantom Ship", "Void:8:Temporal Disarray", "Void:9:Cosmic Luck", "Void:9:The Navigator's Truth", "Void:10:Master of Fate", "Void:10:Master of Space", "Lux:6:Lightbridge", "Lux:6:Photonic Detonation", "Lux:7:Corona Beam"],
+  ["Lux:7:Inviolable Sanctum", "Lux:8:Omniscient Eye", "Lux:8:Solar Avatar", "Lux:9:Pulse of Genesis", "Lux:9:Stellar Chorus", "Lux:10:Apotheosis", "Lux:10:Eternal Beacon"],
+];
+const upperPowerArt = new Map(upperPowerSheets.flatMap((names, sheet) => names.map((key, cell) =>
+  [key, { illustration: CARD_ART + 'powers/domains/upper-' + (sheet + 1) + '.webp', cell }])));
+
 export function powerArt(power) {
   const art = domainArt(power.d);
+  const upper = upperPowerArt.get(`${power.d}:${power.l}:${power.n}`);
+  if (upper) return { ...art, ...upper };
   const names = Object.hasOwn(domainSheetNames, power.d) && domainSheetNames[power.d];
   const cell = names ? names.indexOf(power.n) : -1;
   if (cell >= 0 && Number(power.l) === 2 + Math.floor(cell / 2)) {
