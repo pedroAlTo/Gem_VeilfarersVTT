@@ -1,7 +1,7 @@
 import { dossierDialog } from './dossierUI.js';
 import { store } from './state.js';
 import { escapeHTML as esc, notify } from './ui.js';
-import { tierOnePortrait } from './bestiaryPortraits.js';
+import { bestiaryPortrait } from './bestiaryPortraits.js';
 import { placementMode, proposalSummary } from './bestiaryProfiles.js';
 
 const keeper = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
@@ -87,7 +87,7 @@ export async function openAdversaryLibrary(catalog) {
     const stats = [['HP',entry.hp], ['Evasion',entry.evasion], ['Ataque',entry.attack == null ? null : (entry.attack >= 0 ? '+' : '') + entry.attack], ['Major / Severe',entry.major != null || entry.severe != null ? (entry.major ?? '—') + ' / ' + (entry.severe ?? '—') : null], ['Stress',entry.stress], ['Armor',entry.armor]];
     const existing = store.getSelectedToken();
     const missing = missingLegacyTracks(existing, entry);
-    const portrait = tierOnePortrait(entry.name);
+    const portrait = bestiaryPortrait(entry.name);
     detail.innerHTML = `<div class="bestiary-heading"><div><span class="dossier-eyebrow">${esc(entry.book)} · 12.06</span><h3>${esc(entry.name)}</h3><p>${esc(label(entry))}</p>
       <p class="dossier-muted">${esc(entry.section)} · línea ${entry.line}</p></div>
       ${portrait ? `<a href="${portrait}" target="_blank" rel="noopener" aria-label="Ver ilustración de ${esc(entry.name)}"><img src="${portrait}" width="96" height="96" alt=""></a>` : ''}</div>

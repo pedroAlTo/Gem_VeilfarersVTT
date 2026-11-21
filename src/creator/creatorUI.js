@@ -1,3 +1,5 @@
+import { equipmentThumbnail } from '../equipmentArtwork.js';
+import { powerArt } from '../loadoutCards.js';
 // Character creator wizard of the VTT. The rules live in creatorModel.js; this file is
 // only the nine-step dialog and what happens with the finished sheet.
 import { escapeHTML as e, notify } from '../ui.js';
@@ -17,7 +19,7 @@ const DRAFT_KEY = 'veil_creator_draft';
 const short = (text, max = 190) => { const s = String(text ?? '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim(); return s.length > max ? s.slice(0, max).trim() + '…' : s; };
 const plain = text => String(text ?? '').replace(/\*\*/g, '').replace(/[ \t]+/g, ' ').trim();
 const chip = (label, value) => `<span class="creator-chip"><b>${e(label)}</b> ${e(value)}</span>`;
-const card = (attrs, selected, title, tag, body) => `<button type="button" class="creator-card ${selected ? 'selected' : ''}" aria-pressed="${selected}" ${attrs}><strong>${e(title)}</strong>${tag ? `<span class="creator-card-tag">${e(tag)}</span>` : ''}${body ? `<span class="creator-card-text">${e(body)}</span>` : ''}</button>`;
+const card = (attrs, selected, title, tag, body, illustration = '') => `<button type="button" class="creator-card ${selected ? 'selected' : ''}" aria-pressed="${selected}" ${attrs}>${illustration}<strong>${e(title)}</strong>${tag ? `<span class="creator-card-tag">${e(tag)}</span>` : ''}${body ? `<span class="creator-card-text">${e(body)}</span>` : ''}</button>`;
 
 function loadDraft() {
   try { const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return saved && typeof saved === 'object' ? { ...freshState(), ...saved } : freshState(); } catch { return freshState(); }
@@ -52,7 +54,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       ? `${chip('Daño', item.damage)}${chip('Alcance', item.range)}${chip('Trait', item.trait)}${chip('Carga', item.burden ?? '—')}`
       : `${chip('Umbrales', `${startingThresholds(item).major} / ${startingThresholds(item).severe}`)}${chip('Armor Slots', item.armorSlots)}${item.improvementCapacity != null ? chip('Mejoras', item.improvementCapacity) : ''}`;
     return `<button type="button" class="creator-card creator-equip ${on ? 'selected' : ''}" aria-pressed="${on}" data-${type}="${e(item.name)}">
-      <span class="creator-power-head"><strong>${suits ? '★ ' : ''}${e(item.name)}</strong><span class="creator-pick">${on ? '✓ Elegida' : 'Elegir'}</span></span>
+      <span class="creator-power-head">${equipmentThumbnail(item)}<strong>${suits ? '★ ' : ''}${e(item.name)}</strong><span class="creator-pick">${on ? '✓ Elegida' : 'Elegir'}</span></span>
       <span class="creator-card-tag">${e(item.category)}${type === 'armor' ? ' armor' : ''} · ${item.cost} Cr${item.pack !== 'core' ? ' · Rust & Steel' : ''}${suits ? ' · Recomendada' : ''}</span>
       <span class="creator-chips">${stats}</span>${featureList(item)}</button>`;
   };
@@ -76,7 +78,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
         ${anc?.id === 'human' ? `<h4 class="dossier-label">INHERITANCE OF THE BUILDERS · ELIGE UNA</h4>
           <div class="creator-grid two">${card('data-set="humanInheritance" data-value="graft"', state.humanInheritance === 'graft', 'The Graft', 'Un aumento gratis, sin inconveniente', 'Common (TT1): no ocupa Augment Slot. Military (TT2): ocupa 1 slot.')}${card('data-set="humanInheritance" data-value="tool"', state.humanInheritance === 'tool', 'The Tool', 'Un objeto Experimental (TT3) de 9 Cr', 'De cualquier catálogo de equipo en juego. Es tuyo y está pagado.')}</div>
           ${state.humanInheritance ? `<label class="hud-checkbox-label"><input type="checkbox" data-rs ${state.includeRustAndSteel ? 'checked' : ''}> Incluir el catálogo de Rust &amp; Steel</label>
-          <div class="creator-grid">${inheritanceOptions(state, data).map(item => card(`data-set="humanInheritanceItem" data-value="${e(item.id)}"`, item.id === state.humanInheritanceItem, item.name, state.humanInheritance === 'graft' ? `${item.tier} · ${item.capacityCost ? '1 Augment Slot' : '0 Augment Slots'}` : `${item.catalog} · ${item.tier} · ${item.cost} Cr`, state.humanInheritance === 'graft' ? item.benefit : item.summary)).join('')}</div>` : ''}` : ''}
+          <div class="creator-grid">${inheritanceOptions(state, data).map(item => card(`data-set="humanInheritanceItem" data-value="${e(item.id)}"`, item.id === state.humanInheritanceItem, item.name, state.humanInheritance === 'graft' ? `${item.tier} · ${item.capacityCost ? '1 Augment Slot' : '0 Augment Slots'}` : `${item.catalog} · ${item.tier} · ${item.cost} Cr`, state.humanInheritance === 'graft' ? item.benefit : item.summary, equipmentThumbnail(item))).join('')}</div>` : ''}` : ''}
         ${anc?.subStrains?.length ? `<h4 class="dossier-label">ELIGE UNA ESTIRPE</h4><div class="creator-grid">${anc.subStrains.map(s => card(`data-set="subStrain" data-value="${e(s.id)}"`, s.id === state.subStrain, s.name, s.epithet, short(s.featText || s.flavor))).join('')}</div>` : ''}`;
     },
     2: () => `<h3>Community</h3><p class="dossier-muted">Dónde creció y qué le enseñó.</p>
@@ -124,8 +126,10 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
       const domains = characterDomains(state, data);
       const chosen = state.powers.map(id => data.powers.find(p => powerId(p) === id)).filter(Boolean);
       const powerCard = p => {
+        const illustration = powerArt(p).illustration;
         const on = state.powers.includes(powerId(p)), full = !on && state.powers.length >= STARTING_POWERS;
         return `<button type="button" class="creator-card creator-power ${on ? 'selected' : ''}" aria-pressed="${on}" data-power="${e(powerId(p))}" ${full ? 'title="Ya tienes dos: quita uno para cambiarlo"' : ''}>
+          ${illustration ? `<img class="creator-power-illustration" loading="lazy" src="${e(illustration)}" alt="" />` : ''}
           <span class="creator-power-head"><strong>${e(p.n)}</strong><span class="creator-pick">${on ? '✓ En tu Loadout' : full ? 'Loadout completo' : 'Elegir'}</span></span>
           <span class="creator-chips">${chip('Tipo', p.t)}${chip('Coste', p.cost || 'Sin coste')}${p.dc && p.dc !== '—' ? chip('Tirada', p.dc) : ''}${chip('Recall', p.rc ?? '0')}</span>
           <span class="creator-card-text creator-power-text">${e(plain(p.txt))}</span></button>`;

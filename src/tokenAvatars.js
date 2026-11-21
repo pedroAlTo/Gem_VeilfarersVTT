@@ -1,4 +1,4 @@
-import { isTierOnePortrait, tierOnePortrait } from './bestiaryPortraits.js';
+import { isBestiaryPortrait, bestiaryPortrait } from './bestiaryPortraits.js';
 
 /**
  * Token Avatar Resolver for Veilfarers VTT.
@@ -193,8 +193,8 @@ export function customTokenPortrait(token) {
   const url = token?.avatarUrl;
   if (!url || typeof url !== 'string' || url === MARKER || url === TOKEN_DIR + 'synthetic_infiltrator_echo.jpg') return '';
   if (token.portraitOverride === true) return url;
-  if (isTierOnePortrait(url)) return '';
-  if (url === techInsignia && (token.isPlayer === false || token.actorType === 'adversary') && tierOnePortrait(token.name)) return '';
+  if (isBestiaryPortrait(url)) return '';
+  if (url === techInsignia && (token.isPlayer === false || token.actorType === 'adversary') && bestiaryPortrait(token.name)) return '';
   if (namedPortraits.some(([, file]) => url === TOKEN_DIR + file)) return '';
   return url.startsWith(TOKEN_DIR + 'classes/') || url.startsWith(TOKEN_DIR + 'crew/') || legacyPortrait.test(url) ? '' : url;
 }
@@ -210,9 +210,9 @@ export function actorPortrait(token = {}) {
   if (named && (!expectedGender || !portraitGender(identity) || portraitGender(identity) === expectedGender) && (token.avatarUrl === TOKEN_DIR + named[1] || (!token.species && !token.characterClass))) return TOKEN_DIR + named[1];
   if (token.actorType === 'drone') return techInsignia;
   if (token.isPlayer === false || token.actorType === 'adversary') {
-    const art = tierOnePortrait(token.name) || bestiaryArt.get(String(token.name || '').trim().toLowerCase());
+    const art = bestiaryPortrait(token.name) || bestiaryArt.get(String(token.name || '').trim().toLowerCase());
     if (art) return art;
-    if (isTierOnePortrait(token.avatarUrl)) return token.avatarUrl;
+    if (isBestiaryPortrait(token.avatarUrl)) return token.avatarUrl;
   }
   const species = token.species || token.ancestry || fields.ancestry;
   if (!species && (token.isPlayer === false || ['adversary', 'npc'].includes(token.actorType))) return MARKER;

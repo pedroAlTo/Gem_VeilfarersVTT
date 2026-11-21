@@ -1,6 +1,13 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.15', date: '2026-11-21', title: 'Medición de movimiento y arte de la mesa',
+    sections: [
+      { title: 'Mapa', items: ['Durante el arrastre se conserva un retrato translúcido en el origen. La línea directa muestra los metros y el rango de la escena.'] },
+      { title: 'Ilustraciones', items: ['Retratos del bestiario de Tier 2, ilustraciones para los 21 poderes de nivel 1 y miniaturas en el equipo, los aumentos y los módulos de dron.'] },
+    ],
+  },
+  {
     version: '2.27.14', date: '2026-11-21', title: 'Rift Spinners y retratos en la mesa',
     sections: [
       { title: 'Personajes y PNJ', items: [

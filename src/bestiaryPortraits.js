@@ -34,3 +34,28 @@ export function tierOnePortrait(name) {
 export function isTierOnePortrait(url) {
   return urls.has(url);
 }
+
+export const TIER_TWO_PORTRAITS = [
+  { name: 'Silent Gloomfang', url: '/assets/tokens/bestiary/tier-2/01.webp' },
+  { name: 'Void Leech Swarm', url: '/assets/tokens/bestiary/tier-2/02.webp' },
+  { name: 'Rust Hulk', url: '/assets/tokens/bestiary/tier-2/03.webp' },
+  { name: 'Cult Zealot', url: '/assets/tokens/bestiary/tier-2/04.webp' },
+  { name: 'Wraith-Touched', url: '/assets/tokens/bestiary/tier-2/05.webp' },
+  { name: 'House Joric Marine', url: '/assets/tokens/bestiary/tier-2/06.webp' },
+  { name: 'Gloomfang', url: '/assets/tokens/bestiary/tier-2/07.webp' },
+  { name: 'Glass Weaver', url: '/assets/tokens/bestiary/tier-2/08.webp' },
+  { name: 'Rogue Synthetic', url: '/assets/tokens/bestiary/tier-2/09.webp' },
+  { name: 'Phase-Stalker', url: '/assets/tokens/bestiary/tier-2/10.webp' },
+  { name: 'Volkov Enforcer', url: '/assets/tokens/bestiary/tier-2/11.webp' },
+  { name: 'Mama K', url: '/assets/tokens/bestiary/tier-2/12.webp' },
+  { name: 'The Whispering Monk', url: '/assets/tokens/bestiary/tier-2/13.webp' },
+  { name: 'Sly Marlo', url: '/assets/tokens/bestiary/tier-2/14.webp' },
+  { name: 'The Void-Caller', url: '/assets/tokens/bestiary/tier-2/15.webp' },
+  { name: 'The “Chimera” Stealth Tank', url: '/assets/tokens/bestiary/tier-2/16.webp' },
+  { name: 'The Dual-Minded Psion', url: '/assets/tokens/bestiary/tier-2/17.webp' },
+  { name: 'The Corporate Negotiator', url: '/assets/tokens/bestiary/tier-2/18.webp' },
+];
+const tierTwo = new Map(TIER_TWO_PORTRAITS.map(p => [nameKey(p.name), p.url]));
+const tierTwoUrls = new Set(tierTwo.values());
+export const bestiaryPortrait = name => tierOnePortrait(name) || tierTwo.get(nameKey(name)) || '';
+export const isBestiaryPortrait = url => isTierOnePortrait(url) || tierTwoUrls.has(url);

@@ -1,5 +1,5 @@
 import { ANCESTRY_IDS, TOKEN_CLASSES, PORTRAIT_GENDERS, classPortraitPath, crewPortraitPath } from './tokenAvatars.js';
-import { TIER_ONE_PORTRAITS } from './bestiaryPortraits.js';
+import { TIER_ONE_PORTRAITS, TIER_TWO_PORTRAITS } from './bestiaryPortraits.js';
 
 export const ancestryNames = {
   ailuran: 'Ailurean', bloomstrider: 'Bloomstrider', celestiari: 'Celestiari', ethereal: 'Ethereal',
@@ -7,6 +7,7 @@ export const ancestryNames = {
 };
 const labels = { m: 'Masculino', f: 'Femenino', n: 'Neutro' };
 export function portraitChoices(collection, cls = '') {
+  if (collection === 'bestiary-2') return TIER_TWO_PORTRAITS;
   if (collection === 'bestiary') return TIER_ONE_PORTRAITS;
   if (collection === 'crew') return [
     ['captain_harker.jpg', 'Capt. Harker'], ['pilot_vea.jpg', 'Vea Kaelen'],
@@ -22,7 +23,7 @@ export function portraitChoices(collection, cls = '') {
   }));
 }
 const presets = new Map();
-for (const collection of ['bestiary', 'crew', ...ANCESTRY_IDS]) {
+for (const collection of ['bestiary', 'bestiary-2', 'crew', ...ANCESTRY_IDS]) {
   const classes = ANCESTRY_IDS.includes(collection) ? ['', ...TOKEN_CLASSES] : [''];
   for (const cls of classes) for (const { url } of portraitChoices(collection, cls)) presets.set(url, { collection, cls });
 }

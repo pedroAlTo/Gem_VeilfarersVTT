@@ -710,6 +710,15 @@ export class CanvasEngine {
     this.lastMoveDistance = { tokenId, mapId, distance, keyboard, expires: performance.now() + 1500 };
   }
 
+  renderMovementPreview(ctx, map) {
+    if (!this.draggedToken || !this.tokenDragContext?.distance) return;
+    const origin = this.tokenDragContext;
+    const token = this.draggedToken;
+    const grid = map.gridSize || 64;
+    this.renderGhostToken(ctx, { ...token, x: origin.x, y: origin.y, avatar: token.avatarUrl }, grid, 0, '');
+    this.renderRuler(ctx, origin, token, grid, true);
+  }
+
   renderMoveDistance(ctx, map, tokens) {
     const drag = this.draggedToken;
     const saved = this.lastMoveDistance;
@@ -3041,9 +3050,10 @@ export class CanvasEngine {
       this.renderFogOverlay(ctx, map, now * 0.001);
     }
 
+    this.renderMovementPreview(ctx, map);
     ctx.restore();
 
-    this.renderMoveDistance(ctx, map, activeTokens);
+    if (!this.draggedToken) this.renderMoveDistance(ctx, map, activeTokens);
 
     // Floating tactical condition / state tooltip
     if (this.activeHoveredCondition) {
@@ -4227,7 +4237,7 @@ export class CanvasEngine {
   }
 
   // --- Render Ghost / Last Known Position of Enemy in Fog of War ---
-  renderGhostToken(ctx, ghost, gridSize, time) {
+  renderGhostToken(ctx, ghost, gridSize, time, caption = 'ÚLTIMA POS.') {
     const radius = ((ghost.size || 1) * gridSize) / 2;
     ctx.save();
     ctx.translate(ghost.x, ghost.y);
@@ -4271,7 +4281,7 @@ export class CanvasEngine {
     ctx.font = 'bold 9px "Rajdhani", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f59e0b';
-    ctx.fillText('ÚLTIMA POS.', 0, radius + 12);
+    if (caption) ctx.fillText(caption, 0, radius + 12);
 
     ctx.restore();
   }
@@ -5113,7 +5123,7 @@ export class CanvasEngine {
   }
 
   // --- Measurement Ruler with Canonical System Range Bands ---
-  renderRuler(ctx, start, end, gridSize) {
+  renderRuler(ctx, start, end, gridSize, movement = false) {
     const map = store.getActiveMap() || {};
     const distPx = Math.hypot(end.x - start.x, end.y - start.y);
     const distGrid = (distPx / gridSize).toFixed(1);
@@ -5127,9 +5137,10 @@ export class CanvasEngine {
     let distUnit = 'm';
     let rangeBand = 'Contact';
 
+    const scaleKilometers = map.gridScaleKm || (map.gridScaleMeters ? map.gridScaleMeters * 2.5 : 5.0);
     if (isStarship) {
       // Starship Combat Scale (Naval Combat Chapter 17)
-      const scaleKm = map.gridScaleKm || (map.gridScaleMeters ? map.gridScaleMeters * 2.5 : 5.0);
+      const scaleKm = scaleKilometers;
       distVal = ((distPx / gridSize) * scaleKm).toFixed(1);
       distUnit = 'km';
 
@@ -5169,7 +5180,7 @@ export class CanvasEngine {
 
     const midX = (start.x + end.x) / 2;
     const midY = (start.y + end.y) / 2;
-    const badgeText = `${distVal}${distUnit} (${distGrid} sq) // [${rangeBand.toUpperCase()}]`;
+    const badgeText = movement ? `${rangeBand.toUpperCase()} · ${(distUnit === 'km' ? distPx / gridSize * scaleKilometers * 1000 : Number(distVal)).toLocaleString(undefined, { maximumFractionDigits: 1 })} m` : `${distVal}${distUnit} (${distGrid} sq) // [${rangeBand.toUpperCase()}]`;
 
     ctx.font = 'bold 12px "Orbitron", sans-serif';
     const textWidth = ctx.measureText(badgeText).width;

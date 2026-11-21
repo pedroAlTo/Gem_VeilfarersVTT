@@ -14,6 +14,12 @@ export const DOMAIN_COLORS = { Tech: '#00697f', Synthesis: '#1f5c2b', Social: '#
 // corner band for Ancestry and Background cards.
 const CARD_ART = '/assets/cards/';
 const CLASS_ART = ['diplomat', 'engineer', 'explorer', 'mystic', 'pilot', 'scholar', 'scoundrel', 'soldier', 'vanguard'];
+const illustratedPowers = new Set('drone-whisper quantum-firewall system-jackknife biological-scan environmental-adaptation rapid-regeneration linguistic-patch perfect-facade silver-tongue mind-shield telekinetic-grasp veil-sensitivity force-shield kinetic-blast tactical-overwatch slipstream-jolt temporal-cloak vector-calculus blinding-flash spark-of-hope wayfinders-pulse'.split(' '));
+export function powerArt(power) {
+  const art = domainArt(power.d);
+  const slug = String(power.n).toLowerCase().replace(/['’]/g, '').replace(/ +/g, '-');
+  return Number(power.l) === 1 && illustratedPowers.has(slug) ? { ...art, illustration: '/assets/cards/powers/level-1/' + slug + '.webp' } : art;
+}
 export const domainArt = domain => DOMAIN_COLORS[domain] ? { flag: `${CARD_ART}domain-${lower(domain)}-flag.png`, band: `${CARD_ART}domain-${lower(domain)}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' };
 export const classArt = cls => { const id = lower(cls?.id || cls?.name); return CLASS_ART.includes(id) ? { flag: `${CARD_ART}class-${id}-flag.png`, band: `${CARD_ART}class-${id}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' }; };
 export const cornerArt = kind => ({ flag: '', band: `${CARD_ART}${kind}-band.png`, layout: 'corner' });
@@ -91,7 +97,7 @@ export const powerCard = (power, zone, sheet = {}) => {
   const type = power.t || sheet.type || 'Power', passive = /passive/i.test(type) || /long-term project/i.test(type);
   return {
     id: `${zone}:${slug(power.n)}`, kind: zone === 'loadout' ? 'power' : zone, zone, name: power.n,
-    domain: power.d || '', level: power.l || 0, type, tier: power.tier || '', color: DOMAIN_COLORS[power.d] || '#6d28d9', art: domainArt(power.d),
+    domain: power.d || '', level: power.l || 0, type, tier: power.tier || '', color: DOMAIN_COLORS[power.d] || '#6d28d9', art: powerArt(power),
     subtitle: [power.d, power.l && `L${power.l}`, type].filter(Boolean).join(' · '),
     costText: power.cost || sheet.cost || '—', cost: parseCost(power.cost), roll: parseRoll(power.dc), rollText: power.dc && power.dc !== '—' ? power.dc : '',
     rc: Number(power.rc ?? sheet.rc ?? 0) || 0, text: text(power.txt || sheet.text), reaction: /reaction/i.test(type), playable: zone !== 'vault' && !passive,

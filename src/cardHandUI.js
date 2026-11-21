@@ -60,6 +60,7 @@ export function cardFace(card, { large = false } = {}) {
     <span class="vf-card-frame layout-${e(art.layout)}" style="--card-color:${e(card.color)}">
       <span class="vf-card-head"><strong class="vf-card-title">${e(card.name)}</strong>${price ? `<span class="vf-card-badge ${price[0]}">${e(String(price[1]))}</span>` : ''}</span>
       <span class="vf-card-art">
+        ${art.illustration ? `<img class="vf-power-picture" src="${e(art.illustration)}" alt="" loading="lazy" draggable="false" />` : ''}
         ${art.flag ? `<span class="vf-card-flag"><img src="${e(art.flag)}" alt="" draggable="false" />${card.level ? `<b>${card.level}</b>` : ''}</span>` : ''}
         ${art.band ? `<img class="vf-card-band" src="${e(art.band)}" alt="" draggable="false" />` : ''}
       </span>
