@@ -1,8 +1,7 @@
 import extras from './extraEquipmentArt.json' with { type: 'json' };
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 
-const illustratedEquipment = EQUIPMENT_CATALOG.filter(item => /Common|Military|Tier [12]\b/.test(item.tier));
-const equipmentPictures = new Map(illustratedEquipment.flatMap(item => [item.id, item.name, ...item.name.split(' / ')].map(key => [key.toLowerCase(), item.id])));
+const equipmentPictures = new Map(EQUIPMENT_CATALOG.flatMap(item => [item.id, item.name, ...item.name.split(' / ')].map(key => [key.toLowerCase(), item.id])));
 // Equipment painted from the original medallion entries. Each row is one 3 × 3 sheet.
 const objectSheets = [
   ["core_wp_plasma_rapier", "core_wp_gravity_hammer", "core_wp_electro_whip", "core_wp_kinetic_pistol", "core_wp_flechette_pistol", "core_wp_plasma_pistol", "core_wp_needle_gun", "core_wp_combat_pistol", "core_wp_gauss_pistol"],
@@ -16,6 +15,9 @@ const objectSheets = [
   ["tt1-internal-storage-compartment", "tt1-memory-core-basic", "tt1-muscle-weave-basic", "tt1-olfactory-booster", "tt1-optical-enhancement-basic", "tt1-reflex-trigger", "tt1-respiratory-enhancement", "tt1-subdermal-plating-light", "tt1-shielded-receiver"],
   ["tt1-radiation-chem-sensor", "tt1-audio-suite", "tt1-medical-scanner", "tt1-tool-mount", "tt1-cutter", "tt1-repair-kit", "tt1-noise-dampener", "tt1-low-profile-frame", "tt1-decoy-flare-pod"],
   ["tt1-smoke-flash-pod", "tt1-stun-dart"],
+  ["core_ar_smart_fabric","core_ar_special_forces","core_ar_tactical_armor","core_ar_assault_armor","core_ar_marine_armor","core_ar_power_rig","core_ar_battle_armor","core_ar_power_armor_heavy","core_ar_siege_armor"],
+  ["rs_ar_sun_touched","rs_ar_dawn_regalia","rs_ar_iron_tyrant","rs_ar_shadow_weave","rs_ar_joric_battle_plate","rs_ar_centurion_siege","rs_ar_collectors_carapace","core_wp_phase_blade","core_wp_void_cleaver"],
+  ["core_wp_phase_pistol","core_wp_void_pistol","core_aug_combat_precognition"],
 ];
 const objects = new Map(objectSheets.flatMap((sheet, index) => sheet.map((id, cell) => [id, { index, cell }])));
 // The picture of a piece of equipment, for a card: one image, or a cell of a 3 × 3 sheet.
@@ -27,11 +29,11 @@ export function equipmentPicture(item) {
   return typeof id === 'string' ? { illustration: `/assets/equipment/${id}.webp` } : null;
 }
 export function equipmentThumbnail(item) {
-  const id = [item.catalogId, item.id].map(v => equipmentPictures.get(String(v ?? '').toLowerCase())).find(Boolean) || equipmentPictures.get(String(item.name).toLowerCase()) || extras[String(item.name).toLowerCase()];
-  const object = objects.get(id);
-  if (object) {
-    const { index, cell } = object;
-    return `<span class="equip-object-picture"><img src="/assets/equipment/objects/set-${index + 1}.webp" style="left:-${cell % 3 * 100}%;top:-${Math.floor(cell / 3) * 100}%" alt="" loading="lazy" /></span>`;
+  const picture = equipmentPicture(item);
+  if (!picture) return '';
+  if (Number.isInteger(picture.cell)) {
+    const { illustration, cell } = picture;
+    return `<span class="equip-object-picture"><img src="${illustration}" style="left:-${cell % 3 * 100}%;top:-${Math.floor(cell / 3) * 100}%" alt="" loading="lazy" /></span>`;
   }
-  return typeof id === 'string' ? `<img src="/assets/equipment/${id}.webp" width="54" height="54" loading="lazy" alt="" style="object-fit:cover;border-radius:5px;flex:none" />` : '';
+  return `<img src="${picture.illustration}" width="54" height="54" loading="lazy" alt="" style="object-fit:cover;border-radius:5px;flex:none" />`;
 }

@@ -1,6 +1,10 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.7', date: '2026-11-21', title: 'Equipamiento avanzado ilustrado',
+    sections: [{ title: 'Inventario y cartas', items: ['Las 16 armaduras, cuatro armas y el módulo de precognición que faltaban en el catálogo de mesa tienen ilustración propia.'] }],
+  },
+  {
     version: '2.29.6', date: '2026-11-21', title: 'Ilustraciones para los poderes de nivel 6 a 10',
     sections: [{ title: 'Cartas', items: ['Los 70 poderes de nivel 6 a 10 completan las ilustraciones de las 147 cartas de los siete dominios.'] }],
   },

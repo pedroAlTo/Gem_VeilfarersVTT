@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.6**.
-Paquete: `VeilFarers_VTT_v2.29.6.zip`.
+Versión actual del VTT: **v2.29.7**.
+Paquete: `VeilFarers_VTT_v2.29.7.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.7] — 2026-11-21
+
+Equipamiento avanzado ilustrado
+
+### Inventario y cartas
+
+- Las 16 armaduras, cuatro armas y el módulo de precognición que faltaban en el catálogo de mesa tienen ilustración propia.
 
 ## [2.29.6] — 2026-11-21
 
