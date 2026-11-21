@@ -4,7 +4,7 @@
 .lang-btn:hover, .lang-btn:focus-visible { color: #fff; background: rgba(109,40,217,.35); }
 .lang-btn.active { color: #0d0420; background: #fde68a; }
 .lang-switch-lobby { position: absolute; top: 14px; right: 16px; z-index: 5; background: rgba(13,4,32,.85); }
-.lang-switch-status { margin-left: 12px; }
+.lang-switch-status { margin-left: 0; }
 .lang-switch-status .lang-btn { padding: 2px 7px; font-size: 9px; }
 .home-btn { font-size: 14px; padding: 0 9px; }
 .header-hud .brand-badge[data-home] { cursor: pointer; }

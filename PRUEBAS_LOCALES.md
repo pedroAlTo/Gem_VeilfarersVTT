@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.28.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.28.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.28.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.28.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.28.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.28.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.28.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.28.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -93,6 +93,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.28.0.zip**. Abre **AYUDA
 78. **(V3) Armas y equipo.** Abre la ficha → Armas y equipo. Arriba están tus Armas, Armadura, Aumentos y Equipo. «+ Añadir» de cada bloque abre el catálogo filtrado; ✕ lo cierra. En un arma solo se ve Atacar; Editar y Quitar están en «⋯». Toca una etiqueta: aparece su regla. Como jugador no ves «Editor completo»; como Keeper sí.
 79. **(V3) Armadura.** «+ Añadir» en Armadura: se ponen sus umbrales y Armor Slots. «Cambiar» por otra: la primera desaparece. Quítala con «⋯ → Quitar»: umbrales naturales (2 / 4 + nivel) y 0 Armor Slots (más los del Blindaje Subdérmico si lo tienes).
 80. **(V3) Aumentos.** Instala Reflejos de Combate: Evasión +1; quítalo: vuelve. Instala aumentos hasta pasar la capacidad: el bloque lo marca en rojo y el Stress máximo baja 1 por cada punto de más. Instala el Supresor de Dolor: aparece como carta en tu mano con su imagen; úsala con Stress marcado: limpia 1. Repite como jugador conectado: los números cambian igual.
+81. **(V3) Sin barra inferior.** No hay barra de estado bajo el mapa: el mapa y los paneles llegan al borde inferior. En la cabecera, a la derecha, están «Guardado» (su tooltip da la campaña y la conexión; al pulsarlo, el aviso) y ES / EN. Cambia de idioma desde ahí.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

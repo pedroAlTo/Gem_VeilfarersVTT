@@ -1396,3 +1396,9 @@ textarea {
 .hud-select .orbital-select-trigger {
   font-size: 12px;
 }
+
+/* v2.28.1: the bottom status bar is gone; its save state and language switch sit in the header. */
+.header-status { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.header-status .status-save { font: 9px var(--font-mono); letter-spacing: .1em; padding: 4px 6px; white-space: nowrap; }
+.header-status .status-save::before { content: '●'; margin-right: 5px; font-size: 8px; }
+@media (max-width: 900px) { .header-status .status-save { display: none; } }

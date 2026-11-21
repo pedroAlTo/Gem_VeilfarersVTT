@@ -49,6 +49,6 @@ export function mountHeaderControls() {
   if (lobby && !lobby.querySelector('.lang-switch')) lobby.append(languageSwitch('lang-switch-lobby'));
 }
 export function mountStatusbarLanguage() {
-  const bar = document.querySelector('.orbital-statusbar');
+  const bar = document.querySelector('.header-status');
   if (bar && !bar.querySelector('.lang-switch')) bar.append(languageSwitch('lang-switch-status'));
 }

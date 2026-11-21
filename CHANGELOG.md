@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.28.0**.
-Paquete: `VeilFarers_VTT_v2.28.0.zip`.
+Versión actual del VTT: **v2.28.1**.
+Paquete: `VeilFarers_VTT_v2.28.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.28.1] — 2026-11-21
+
+V3 · Sin barra inferior: más alto para el mapa
+
+### Pantalla
+
+- Fuera la barra de estado de abajo (conexión, campaña, guardado e idioma): ese alto pasa al mapa y a los paneles laterales.
+- El estado del guardado y el selector de idioma ES / EN van en la cabecera, a la derecha. Al pasar el ratón por «Guardado» se ven la campaña y el estado de la conexión; al pulsarlo, el aviso de siempre. En pantallas estrechas solo queda el idioma.
 
 ## [2.28.0] — 2026-11-21
 

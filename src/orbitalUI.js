@@ -100,11 +100,14 @@ export function initOrbitalUI() {
   const readout = document.createElement('div');
   readout.className = 'orbital-field-readout';
   viewport.append(readout);
-  const footer = document.createElement('footer');
-  footer.className = 'orbital-statusbar';
-  footer.innerHTML =
-    '<span><i class="live-dot"></i> VEIL CONNECTION <b id="orbital_connection">LOCAL</b></span><span id="orbital_campaign"></span><button id="orbital_save_status" class="status-save">SAVED</button>';
-  document.getElementById('app_root').append(footer);
+  // The bottom status bar is gone (v2.28.1, user decision: wasted space under the map). What it
+  // said lives in the header: the save state (its tooltip has the connection and the campaign)
+  // and the language switch.
+  const footer = document.createElement('div');
+  footer.className = 'header-status';
+  footer.innerHTML = '<button type="button" id="orbital_save_status" class="status-save">SAVED</button>';
+  const right = document.querySelector('.header-right');
+  if (right) right.prepend(footer); else document.getElementById('app_root').append(footer);
   const update = () => {
     const s = store.state;
     const currentMap = store.getActiveMap();
@@ -114,8 +117,7 @@ export function initOrbitalUI() {
       store.getActiveMap()?.name || 'No active scene';
     document.getElementById('orbital_view_mode').textContent =
       s.userRole === 'keeper' ? 'KEEPER VIEW' : 'PLAYER VIEW';
-    document.getElementById('orbital_connection').textContent = connection.detail;
-    document.getElementById('orbital_campaign').textContent = s.campaignName;
+
     document.getElementById('role_keeper_btn').disabled = store.sessionRole === 'player';
     document
       .querySelectorAll('.keeper-only-tool')
@@ -125,6 +127,7 @@ export function initOrbitalUI() {
     label.textContent =
       store.sessionRole === 'player' ? 'SESSION REPLICA' : (s.saveStatus || 'saved').toUpperCase();
     label.dataset.state = s.saveStatus;
+    label.title = [s.campaignName, `Conexión al Velo: ${connection.detail}`, 'Pulsa para ver el estado del guardado'].filter(Boolean).join(' · ');
   };
   window.addEventListener('veil:save-status', update);
   store.subscribe(update);
