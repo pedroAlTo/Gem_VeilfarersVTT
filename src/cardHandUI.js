@@ -27,6 +27,7 @@ const affordable = (token, card) => {
 const pills = card => {
   const c = card.cost, list = [];
   if (card.type && (card.kind === 'power' || card.kind === 'vault' || card.kind === 'archive')) list.push(['type', card.type.replace(/\s*\(.*$/, '')]);
+  if (card.category) list.push(['type', card.category]);
   if (card.tier) list.push(['plain', card.tier]);
   if (card.kind === 'archive') list.push(['resolve', '1+ Resolve']);
   if (c.fear) list.push(['fear', `${c.fear} Fear`]);
@@ -60,7 +61,7 @@ export function cardFace(card, { large = false } = {}) {
     <span class="vf-card-frame layout-${e(art.layout)}" style="--card-color:${e(card.color)}">
       <span class="vf-card-head"><strong class="vf-card-title">${e(card.name)}</strong>${price ? `<span class="vf-card-badge ${price[0]}">${e(String(price[1]))}</span>` : ''}</span>
       <span class="vf-card-art">
-        ${art.illustration ? `<img class="vf-power-picture" src="${e(art.illustration)}" alt="" loading="lazy" draggable="false" />` : ''}
+        ${Number.isInteger(art.cell) && art.cell >= 0 && art.cell < 9 ? `<span class="vf-sheet-window"><img class="vf-power-picture vf-sheet-picture" src="${e(art.illustration)}" style="left:-${art.cell % 3 * 100}%;top:-${Math.floor(art.cell / 3) * 100}%" alt="" draggable="false" /></span>` : art.illustration ? `<img class="vf-power-picture" src="${e(art.illustration)}" alt="" loading="lazy" draggable="false" />` : ''}
         ${art.flag ? `<span class="vf-card-flag"><img src="${e(art.flag)}" alt="" draggable="false" />${card.level ? `<b>${card.level}</b>` : ''}</span>` : ''}
         ${art.band ? `<img class="vf-card-band" src="${e(art.band)}" alt="" draggable="false" />` : ''}
       </span>

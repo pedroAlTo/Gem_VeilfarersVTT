@@ -37,3 +37,28 @@ test('Every table catalog item at tiers 1 and 2 and all common Creator and drone
     checkImage(thumb.match(/src="([^"]+)"/)[1]);
   }
 });
+
+test('Sleeping and Keeper moves and the eight enemy categories use distinct packaged paintings', async () => {
+  const { actionArt } = await import('../src/actionCardArt.js');
+  const { FEAR_MOVES, sleepingCommonCards, keeperCards } = await import('../src/loadoutCards.js');
+  const cards = [
+    ...data('creator/data/resolveMoves').map(move => actionArt(move.name)),
+    ...sleepingCommonCards({path:'Sleeping'}, {optionalEfforts:true}).map(c => c.art),
+    ...FEAR_MOVES.map(c => c.art),
+  ];
+  const types = new Map();
+  for (const profile of loadAdversaries()) {
+    for (const c of keeperCards({ id: 'enemy', isPlayer: false, featureNotes: profile.text })) {
+      if (c.kind === 'adversary') types.set(c.category, c.art);
+    }
+  }
+  assert.equal(types.size, 8);
+  cards.push(...types.values());
+  const slots = new Set();
+  for (const {illustration, cell} of cards) {
+    assert.ok(Number.isInteger(cell) && cell >= 0 && cell <= 8);
+    checkImage(illustration);
+    slots.add(illustration + '#' + cell);
+  }
+  assert.equal(slots.size, 64);
+});

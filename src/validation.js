@@ -6,7 +6,7 @@ import { validateDrawing } from './freehand.js';
 import { validateEnvironment, validateBoss } from './encounterRules.js';
 import { validateInventory } from './equipment.js';
 import { validateChatHistory } from './chat.js';
-import { isPresetPortrait, isPortraitSource } from './portraitCatalog.js';
+import { isPlayerPortrait, isPortraitSource } from './portraitCatalog.js';
 
 export const CAMPAIGN_KEYS = [
   'campaignId',
@@ -187,7 +187,7 @@ export function validTokenPatch(p) {
   )
     return false;
   if ('avatarUrl' in p || 'portraitOverride' in p) {
-    if (!(p.portraitOverride === true && isPresetPortrait(p.avatarUrl)) && !(p.portraitOverride === false && p.avatarUrl === '')) return false;
+    if (!(p.portraitOverride === true && isPlayerPortrait(p.avatarUrl)) && !(p.portraitOverride === false && p.avatarUrl === '')) return false;
   }
   for (const k of ['x', 'y', 'rotation', 'facingAngle']) if (k in p && !finite(p[k])) return false;
   for (const k of ['hope', 'effort']) if (k in p && !finite(p[k], 0, 6)) return false;

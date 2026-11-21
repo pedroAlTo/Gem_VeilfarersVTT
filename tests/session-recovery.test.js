@@ -296,3 +296,17 @@ test('drag preview keeps a translucent origin and measures the direct segment af
   engine.renderMovementPreview(ctx, map);
   assert.equal(labels.length, count);
 });
+
+test('the class flag occupies 35% of token diameter at lower right outside the portrait clip', async () => {
+  const { mapPortraitLayers } = await import('../src/tokenAvatars.js');
+  const tok = { avatarUrl:'/assets/tokens/classes/human-mystic-f.svg' };
+  const layers = mapPortraitLayers(tok);
+  assert.equal(layers.portrait, '/assets/tokens/crew/human-f-station.webp');
+  const custom = mapPortraitLayers({ avatarUrl:'https://example.org/me.webp', characterClass:'Mystic' });
+  assert.equal(custom.portrait, 'https://example.org/me.webp');
+  assert.equal(custom.flag, layers.flag);
+  const badge = { complete:true, naturalWidth:100, naturalHeight:200 };
+  const calls = [];
+  CanvasEngine.prototype.drawClassBanner.call({getTokenImage:() => badge}, {drawImage:(...args) => calls.push(args)}, custom.flag, 50);
+  assert.deepEqual(calls, [[badge, 32.5, 15, 17.5, 35]]);
+});

@@ -161,12 +161,28 @@ export function listAncestryArchetypeTokens(species, pronouns, name) {
   }));
 }
 
+function resolveClass(value) {
+  return (String(value || '').toLowerCase().match(/[\p{L}]+/gu) || [])
+    .map(word => classAliases[word] || word).find(word => TOKEN_CLASSES.includes(word));
+}
+
+// The roster uses a composited SVG; on the map its two layers need different clips.
+export function mapPortraitLayers(token) {
+  const url = token.avatarUrl || '';
+  const preset = /^\/assets\/tokens\/classes\/([a-z_]+)-([a-z]+)-([mfn])\.svg$/.exec(url);
+  const cls = resolveClass(token.characterClass || token.class || token.sourceCharacter?.document?.fields?.class)
+    || preset?.[2] || resolveClass(token.roleTag);
+  return {
+    portrait: preset ? crewPortraitPath(preset[1], preset[3], preset[2]) : url,
+    flag: TOKEN_CLASSES.includes(cls) ? '/assets/cards/class-' + cls + '-flag.png' : '',
+  };
+}
+
 export function defaultTokenAvatar(species, pronouns, name, roleOrClass = '') {
   const ancestry = normalizeAncestryId(species);
   const gender = detectGender(pronouns, name);
   if (roleOrClass) {
-    const words = String(roleOrClass).toLowerCase().match(/[\p{L}]+/gu) || [];
-    const cls = words.map(w => classAliases[w] || w).find(w => TOKEN_CLASSES.includes(w));
+    const cls = resolveClass(roleOrClass);
     return cls ? classPortraitPath(ancestry, cls, gender) : getArchetypeTokenAvatar(ancestry, detectArchetype(roleOrClass), gender);
   }
   return ANCESTRY_TOKEN_AVATARS[ancestry][gender];

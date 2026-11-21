@@ -42,3 +42,8 @@ export function isInlinePortrait(url) {
 export function isPortraitSource(url) {
   return isPortraitReference(url) || (typeof url === 'string' && url.length <= 180000 && isInlinePortrait(url));
 }
+
+export function isPlayerPortrait(url) {
+  return isPresetPortrait(url) || (typeof url === 'string' && url.length <= 180000 && isInlinePortrait(url))
+    || (isPortraitReference(url) && /^https?:\/\//i.test(url));
+}

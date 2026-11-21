@@ -275,8 +275,10 @@ test('a player portrait patch must choose a complete catalog entry or reset it a
     assert.ok(validTokenPatch({ avatarUrl: option.url, portraitOverride:true }));
   }
   assert.ok(validTokenPatch({ avatarUrl:'', portraitOverride:false }));
+  assert.ok(validTokenPatch({avatarUrl:'https://example.org/own.png',portraitOverride:true}));
+  assert.ok(validTokenPatch({avatarUrl:'data:image/webp;base64,UklGRg==',portraitOverride:true}));
   for (const patch of [{avatarUrl:base[0].url}, {portraitOverride:false}, {avatarUrl:base[0].url,portraitOverride:false},
-    {avatarUrl:'https://example.org/own.png',portraitOverride:true}, {avatarUrl:'/assets/tokens/crew/not-real.webp',portraitOverride:true}]) {
+    {avatarUrl:'javascript:void(0)',portraitOverride:true}, {avatarUrl:'/assets/tokens/crew/not-real.webp',portraitOverride:true}]) {
     assert.equal(validTokenPatch(patch), false);
   }
 });

@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.27.15**.
-Paquete: `VeilFarers_VTT_v2.27.15.zip`.
+Versión actual del VTT: **v2.27.16**.
+Paquete: `VeilFarers_VTT_v2.27.16.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.27.16] — 2026-11-21
+
+Insignias, retratos y cartas de acción
+
+### Mesa
+
+- La insignia de clase ocupa el 35 % del diámetro del token en altura y queda en su esquina inferior derecha. Los jugadores pueden personalizar el retrato de sus tokens asignados desde su ficha.
+
+### Cartas y equipo
+
+- Los movimientos Sleeping y del Keeper tienen ilustraciones. Las capacidades de los enemigos se agrupan en ocho categorías ilustradas. El inventario muestra las piezas de equipo con el estilo de las armaduras.
 
 ## [2.27.15] — 2026-11-21
 

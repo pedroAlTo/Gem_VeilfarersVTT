@@ -1,3 +1,4 @@
+import { mapPortraitLayers } from './tokenAvatars.js';
 import { isEncounterMarker } from './bestiaryProfiles.js';
 // src/canvasEngine.js
 // High-Resolution Tactical Canvas Engine with Water Depths (0-5), Editable Walls & Lights,
@@ -3939,6 +3940,7 @@ export class CanvasEngine {
       }
 
       // Avatar & Defeated / Dead Token representation (HP <= 0)
+      const layers = mapPortraitLayers(tok);
       const bossPending = tok.boss ? !tok.boss.defeated && (tok.boss.index < tok.boss.states.length - 1 || tok.boss.states[tok.boss.index].defeat === 'objective') : tok.bossStatus?.pending;
       const isDead = tok.boss?.defeated || tok.bossStatus?.defeated || (!isEncounterMarker(tok) && typeof tok.hp?.current === 'number' && tok.hp.current <= 0 && !bossPending);
 
@@ -3963,7 +3965,7 @@ export class CanvasEngine {
         ctx.textBaseline = 'middle';
         ctx.fillText('☠️', 0, 0);
       } else {
-        const img = this.getTokenImage(tok.avatarUrl);
+        const img = this.getTokenImage(layers.portrait);
         if (img && img.complete && img.naturalWidth > 0) {
           ctx.drawImage(img, -radius, -radius, radius * 2, radius * 2);
         } else {
@@ -4071,6 +4073,8 @@ export class CanvasEngine {
         ctx.stroke();
         ctx.restore();
       }
+
+      this.drawClassBanner(ctx, layers.flag, radius);
 
       // Dead / Defeated Badge above token
       if (isDead) {
@@ -4237,6 +4241,14 @@ export class CanvasEngine {
   }
 
   // --- Render Ghost / Last Known Position of Enemy in Fog of War ---
+  drawClassBanner(ctx, url, radius) {
+    const flag = url && this.getTokenImage(url);
+    if (!flag?.complete || !flag.naturalWidth || !flag.naturalHeight) return;
+    const height = 2 * radius * 0.35;
+    const width = height * flag.naturalWidth / flag.naturalHeight;
+    ctx.drawImage(flag, radius - width, radius - height, width, height);
+  }
+
   renderGhostToken(ctx, ghost, gridSize, time, caption = 'ÚLTIMA POS.') {
     const radius = ((ghost.size || 1) * gridSize) / 2;
     ctx.save();
@@ -4260,7 +4272,8 @@ export class CanvasEngine {
     ctx.fill();
 
     // Portrait / initial
-    const img = this.getTokenImage(ghost.avatar);
+    const layers = mapPortraitLayers({ ...ghost, avatarUrl: ghost.avatar });
+    const img = this.getTokenImage(layers.portrait);
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.save();
       ctx.beginPath();
@@ -4275,6 +4288,8 @@ export class CanvasEngine {
       ctx.textBaseline = 'middle';
       ctx.fillText((ghost.name || '?')[0].toUpperCase(), 0, 0);
     }
+
+    this.drawClassBanner(ctx, layers.flag, radius);
 
     // Badge
     ctx.globalAlpha = 0.85;

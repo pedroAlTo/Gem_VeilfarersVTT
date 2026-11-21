@@ -1,6 +1,13 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.27.16', date: '2026-11-21', title: 'Insignias, retratos y cartas de acción',
+    sections: [
+      { title: 'Mesa', items: ['La insignia de clase ocupa el 35 % del diámetro del token en altura y queda en su esquina inferior derecha. Los jugadores pueden personalizar el retrato de sus tokens asignados desde su ficha.'] },
+      { title: 'Cartas y equipo', items: ['Los movimientos Sleeping y del Keeper tienen ilustraciones. Las capacidades de los enemigos se agrupan en ocho categorías ilustradas. El inventario muestra las piezas de equipo con el estilo de las armaduras.'] },
+    ],
+  },
+  {
     version: '2.27.15', date: '2026-11-21', title: 'Medición de movimiento y arte de la mesa',
     sections: [
       { title: 'Mapa', items: ['Durante el arrastre se conserva un retrato translúcido en el origen. La línea directa muestra los metros y el rango de la escena.'] },

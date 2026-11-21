@@ -139,3 +139,9 @@
 .creator-power-illustration { width: 100%; height: 96px; object-fit: cover; border-radius: 5px; }
 
 .vf-card-art:has(.vf-power-picture) .vf-card-band { max-height: 24%; object-fit: fill; }
+
+.vf-sheet-window { position:absolute; width:100%; aspect-ratio:1; top:50%; transform:translateY(-50%); overflow:hidden; }
+.vf-sheet-picture { width:300%; height:300%; max-width:none; object-fit:fill; }
+
+.equip-object-picture { position:relative; display:inline-block; width:54px; height:54px; flex:none; overflow:hidden; border-radius:5px; }
+.equip-object-picture > img { position:absolute; width:300%; height:300%; max-width:none; max-height:none; }

@@ -2,7 +2,7 @@ import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e } from './ui.js';
 import { store } from './state.js';
 import { actorPortrait, ANCESTRY_IDS, normalizeAncestryId, TOKEN_CLASSES } from './tokenAvatars.js';
-import { ancestryNames, isPortraitReference, isPortraitSource, isPresetPortrait, portraitChoices, presetLocation } from './portraitCatalog.js';
+import { ancestryNames, isPlayerPortrait, isPortraitReference, isPortraitSource, isPresetPortrait, portraitChoices, presetLocation } from './portraitCatalog.js';
 
 const option = (value, label, current) => `<option value="${e(value)}" ${value === current ? 'selected' : ''}>${e(label)}</option>`;
 export const portraitGenderOptions = value => [['', 'Según los pronombres'], ['f', 'Femenino'], ['m', 'Masculino'], ['n', 'Neutro']]
@@ -110,9 +110,9 @@ export function openActorPortrait(tokenId, onApplied) {
   if (!token || !store.canEditToken(tokenId)) return;
   const keeper = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
   const campaign = store.state.campaignId;
-  return openPortraitPicker({ current: actorPortrait(token), collection: actorCollection(token), allowCustom: keeper(), cloud: keeper(),
+  return openPortraitPicker({ current: actorPortrait(token), collection: actorCollection(token), allowCustom: true, cloud: keeper(),
     onChoose(url) {
-      if (campaign !== store.state.campaignId || !store.canEditToken(tokenId) || (url && !keeper() && !isPresetPortrait(url))) return false;
+      if (campaign !== store.state.campaignId || !store.canEditToken(tokenId) || (url && !keeper() && !isPlayerPortrait(url))) return false;
       const patch = { avatarUrl: url, portraitOverride: Boolean(url) };
       if (!store.updateToken(tokenId, patch)) return false;
       onApplied?.(actorPortrait({ ...token, ...patch }));

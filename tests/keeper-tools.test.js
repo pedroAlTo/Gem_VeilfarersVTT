@@ -289,7 +289,7 @@ test('the player can browse every ancestry from their dossier and only change an
   const dossier = openDossier(token);
   dossier.querySelector('[data-portrait]').click();
   const picker = document.querySelector('.portrait-picker');
-  assert.equal(picker.querySelector('[data-upload]'), null);
+  assert.ok(picker.querySelector('[data-upload]'));
   const group = picker.querySelector('[data-collection]');
   group.value = 'rift_spinner'; group.dispatchEvent(new Event('change'));
   const cls = picker.querySelector('[data-class]'); cls.value = ''; cls.dispatchEvent(new Event('change'));

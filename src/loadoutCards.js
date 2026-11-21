@@ -1,3 +1,5 @@
+import { actionArt } from './actionCardArt.js';
+import { enemyCategory } from './adversaryCardCategories.js';
 // The hand of a player character: what it can play, what playing it costs and how Powers move
 // between Vault and Loadout. Pure rules (Corebook 12.06, ch. 7 and 18); the hand UI draws it.
 import { availablePowers } from './advancement.js';
@@ -32,11 +34,6 @@ const communityScenes = {
   'core-world': 'perfect-facade', 'trade-hub': 'linguistic-patch', 'frontier-colony': 'environmental-adaptation',
   'void-station': 'quantum-firewall', 'free-fleet': 'vector-calculus',
   agrisynth: 'biological-scan', 'displaced-enclave': 'spark-of-hope',
-};
-const effortScenes = {
-  'Steady Hands': 'system-jackknife', 'Read the Room': 'biological-scan', 'Push Through': 'environmental-adaptation',
-  'The Opening': 'vector-calculus', 'Try Again': 'slipstream-jolt', Brace: 'force-shield',
-  'Cover the Angle': 'tactical-overwatch', 'Second Wind': 'rapid-regeneration', 'Seize the Moment': 'blinding-flash',
 };
 export const classArt = cls => { const id = lower(cls?.id || cls?.name); return CLASS_ART.includes(id) ? { illustration: sceneArt(classScenes[id]), flag: `${CARD_ART}class-${id}-flag.png`, band: `${CARD_ART}class-${id}-band.png`, layout: 'band' } : { flag: '', band: `${CARD_ART}plain-band.png`, layout: 'band' }; };
 export const cornerArt = (kind, id) => ({ illustration: kind === 'ancestry' && id
@@ -150,7 +147,7 @@ export function characterCards(token, data, options = {}) {
     if (!moves.length) moves = ofClass.filter(m => !m.subclass || lower(m.subclass) === lower(token.subclass));
     for (const move of moves) {
       const cost = parseCost(move.cost, 'move');
-      cards.push({ id: `move:${slug(move.name)}`, kind: 'move', zone: 'loadout', name: move.name, subtitle: ['Resolve Move', move.subclass || move.class].filter(Boolean).join(' · '), color: cls?.color || '#fb923c', art: classArt(cls), costText: move.cost, cost, roll: null, rollText: cost.rolls ? `Tira ${token.resolve?.dieType || 'd4'} por Resolve` : '', rc: 0, text: text(move.text), playable: true });
+      cards.push({ id: `move:${slug(move.name)}`, kind: 'move', zone: 'loadout', name: move.name, subtitle: ['Resolve Move', move.subclass || move.class].filter(Boolean).join(' · '), color: cls?.color || '#fb923c', art: actionArt(move.name, classArt(cls)), costText: move.cost, cost, roll: null, rollText: cost.rolls ? `Tira ${token.resolve?.dieType || 'd4'} por Resolve` : '', rc: 0, text: text(move.text), playable: true });
     }
   }
   const pathFeature = sleeping ? rules?.effortFeature : rules?.hopeFeature;
@@ -178,7 +175,7 @@ export function catalogGroups(data) {
   const awakened = (data.classes || []).map(cls => ({ group: cls.name, cards: [feature(cls, cls.hopeFeature, 'Hope Feature', 'aw'), feature(cls, cls.classFeature, 'Class Feature', 'aw')].filter(Boolean) }));
   const sleeping = (data.classes || []).filter(c => c.sleepingRules).map(cls => {
     const r = cls.sleepingRules;
-    const moves = (data.resolveMoves || []).filter(m => lower(m.class) === lower(cls.name)).map(m => read({ id: `cat:move:${slug(m.class)}:${slug(m.name)}`, kind: 'move', name: m.name, subtitle: ['Resolve Move', m.subclass || m.class].filter(Boolean).join(' · '), color: cls.color || '#fb923c', art: classArt(cls), costText: m.cost, cost: parseCost(m.cost, 'move'), text: text(m.text) }));
+    const moves = (data.resolveMoves || []).filter(m => lower(m.class) === lower(cls.name)).map(m => read({ id: `cat:move:${slug(m.class)}:${slug(m.name)}`, kind: 'move', name: m.name, subtitle: ['Resolve Move', m.subclass || m.class].filter(Boolean).join(' · '), color: cls.color || '#fb923c', art: actionArt(m.name, classArt(cls)), costText: m.cost, cost: parseCost(m.cost, 'move'), text: text(m.text) }));
     return { group: cls.name, cards: [feature(cls, r.effortFeature, 'Effort Feature', 'sl'), feature(cls, r.classFeature, 'Class Feature', 'sl'), ...moves].filter(Boolean) };
   });
   return { ancestry, community, awakened, sleeping };
@@ -301,11 +298,11 @@ export const COMMON_EFFORTS = [
 const NO_COST = () => ({ hope: 0, stress: 0, effort: 0, resolve: 0, hp: 0, fear: 0, open: false });
 export function sleepingCommonCards(token, { optionalEfforts = false } = {}) {
   if (token?.path !== 'Sleeping' || token.isPlayer === false) return [];
-  const bearDown = { id: 'resolve:bear-down', kind: 'beardown', zone: 'innate', name: 'Bear Down', subtitle: 'Resolve Move universal', color: '#b45309', art: { illustration: sceneArt('mind-shield'), flag: '', band: '/assets/cards/plain-band.png', layout: 'band' },
+  const bearDown = { id: 'resolve:bear-down', kind: 'beardown', zone: 'innate', name: 'Bear Down', subtitle: 'Resolve Move universal', color: '#b45309', art: actionArt('Bear Down'),
     costText: 'spend and roll 1+', cost: { ...NO_COST(), resolve: 1, open: true, rolls: true }, roll: null, rollText: `Tira ${token.resolve?.dieType || 'd4'} por Resolve`, rc: 0, playable: true,
     text: 'After any Duality Roll, attack, reaction, or damage roll, before the outcome is narrated, spend Resolve Dice and add their total. It adds to the total only: it never changes which die came up higher and never makes a Critical.' };
   const efforts = COMMON_EFFORTS.filter(e => !e.optional || optionalEfforts).map(e => ({ id: `effort:${slug(e.name)}`, kind: 'effort', zone: 'innate', move: e.move, name: e.name, subtitle: `Common Effort · ${e.effort} Effort`, color: '#a16207',
-    art: { illustration: sceneArt(effortScenes[e.name]), flag: '', band: '/assets/cards/plain-band.png', layout: 'band' }, costText: `${e.effort} Effort`, cost: { ...NO_COST(), effort: e.effort }, roll: null, rollText: '', rc: 0, playable: true, text: e.text }));
+    art: actionArt(e.name), costText: `${e.effort} Effort`, cost: { ...NO_COST(), effort: e.effort }, roll: null, rollText: '', rc: 0, playable: true, text: e.text }));
   return [bearDown, ...efforts];
 }
 
@@ -313,7 +310,7 @@ export function sleepingCommonCards(token, { optionalEfforts = false } = {}) {
 // The Keeper's hand: the Fear moves of the Corebook (ch. 9) and, with an adversary selected,
 // its printed abilities.
 export const FEAR_COLOR = '#7e22ce';
-const fearCard = (id, name, fear, text, extra = {}) => ({ id: `fear:${id}`, kind: 'fear', zone: 'innate', name, subtitle: 'Fear · Keeper', color: FEAR_COLOR, art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band' },
+const fearCard = (id, name, fear, text, extra = {}) => ({ id: `fear:${id}`, kind: 'fear', zone: 'innate', name, subtitle: 'Fear · Keeper', color: FEAR_COLOR, art: actionArt(name),
   costText: `${fear} Fear`, cost: { ...NO_COST(), fear }, roll: null, rollText: '', rc: 0, playable: true, text, ...extra });
 export const FEAR_MOVES = [
   fearCard('spotlight', 'Spotlight Enemies', 1, 'Spend 1 Fear to let one eligible NPC that has not yet acted in the current Spotlight cycle take its Spotlight now. This changes order but never grants a second Spotlight in that cycle. A defensive Reaction still requires its own printed trigger.', { spotlight: true }),
@@ -347,11 +344,14 @@ export function adversaryAbilities(source) {
 export function keeperCards(token) {
   const cards = [...FEAR_MOVES];
   if (token && token.isPlayer === false && token.actorType !== 'drone') {
-    for (const ability of adversaryAbilities(token.featureNotes)) cards.push({
-      id: `adversary:${token.id}:${slug(ability.name)}`, kind: 'adversary', zone: 'innate', name: ability.name, subtitle: `${token.name} · ${ability.type}${ability.fear ? ` · Fear ${ability.fear}` : ''}`,
-      color: ability.fear ? FEAR_COLOR : '#9b150c', art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band' }, costText: ability.fear ? `${ability.fear} Fear` : '—',
-      cost: { ...NO_COST(), fear: ability.fear }, roll: null, rollText: '', rc: 0, reaction: ability.type === 'Reaction', playable: ability.type !== 'Passive', text: ability.text, actorId: token.id, actorName: token.name,
-    });
+    for (const ability of adversaryAbilities(token.featureNotes)) {
+      const category = enemyCategory(ability);
+      cards.push({
+        id: `adversary:${token.id}:${slug(ability.name)}`, kind: 'adversary', zone: 'innate', name: ability.name, subtitle: `${token.name} · ${ability.type}${ability.fear ? ` · Fear ${ability.fear}` : ''}`,
+        category, color: ability.fear ? FEAR_COLOR : '#9b150c', art: actionArt(category), costText: ability.fear ? `${ability.fear} Fear` : '—',
+        cost: { ...NO_COST(), fear: ability.fear }, roll: null, rollText: '', rc: 0, reaction: ability.type === 'Reaction', playable: ability.type !== 'Passive', text: ability.text, actorId: token.id, actorName: token.name,
+      });
+    }
   }
   return cards;
 }

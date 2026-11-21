@@ -84,6 +84,9 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     const chosen = '/assets/tokens/crew/rift_spinner-n.webp';
     assert.equal(pilot.state.updateToken(tokenId, { avatarUrl: chosen, portraitOverride: true }), true);
     await until(() => [keeper, pilot].every(c => c.state.state.tokens.find(t => t.id === tokenId)?.avatarUrl === chosen), 'player portrait confirmed on both ends');
+    const custom = 'https://example.org/pilot.webp';
+    assert.equal(pilot.state.updateToken(tokenId, { avatarUrl: custom, portraitOverride: true }), true);
+    await until(() => [keeper, pilot].every(c => c.state.state.tokens.find(t => t.id === tokenId)?.avatarUrl === custom), 'custom player portrait reaches both endpoints');
     assert.equal(pilot.state.updateToken(tokenId, { avatarUrl: '', portraitOverride: false }), true);
     assert.equal(pilot.state.state.tokens.find(t => t.id === tokenId).avatarUrl, pilotPortrait);
     await until(() => keeper.state.state.tokens.find(t => t.id === tokenId).avatarUrl === pilotPortrait, 'reset restores the sheet on the host');
