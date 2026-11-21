@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.2**.
-Paquete: `VeilFarers_VTT_v2.29.2.zip`.
+Versión actual del VTT: **v2.29.3**.
+Paquete: `VeilFarers_VTT_v2.29.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.3] — 2026-11-21
+
+V3 · El Keeper ve siempre los tokens; ventanas con graduación
+
+### Vista del Keeper
+
+- En vista Keeper se ven siempre todos los tokens, también los que están en la niebla de guerra, sin necesidad de activar la Visión GM. Los que el grupo no ve se dibujan atenuados y con la marca de «en la niebla». En vista jugador nada cambia.
+
+### Ventanas
+
+- Arreglado: la transparencia de las ventanas era «nada o todo». Ahora lo que hay detrás se ve más o menos según el % del lado desde el que se mira: a 5 % casi negro, a 25 % muy oscuro, a 50 % atenuado, a 100 % limpio.
+- Lo que se ve a través de un cristal al 50 % o más queda recordado como explorado; por debajo, solo se ve mientras se mira.
 
 ## [2.29.2] — 2026-11-21
 

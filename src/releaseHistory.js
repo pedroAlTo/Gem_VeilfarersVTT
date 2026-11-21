@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.3', date: '2026-11-21', title: 'V3 · El Keeper ve siempre los tokens; ventanas con graduación',
+    sections: [
+      { title: 'Vista del Keeper', items: [
+        'En vista Keeper se ven siempre todos los tokens, también los que están en la niebla de guerra, sin necesidad de activar la Visión GM. Los que el grupo no ve se dibujan atenuados y con la marca de «en la niebla». En vista jugador nada cambia.',
+      ] },
+      { title: 'Ventanas', items: [
+        'Arreglado: la transparencia de las ventanas era «nada o todo». Ahora lo que hay detrás se ve más o menos según el % del lado desde el que se mira: a 5 % casi negro, a 25 % muy oscuro, a 50 % atenuado, a 100 % limpio.',
+        'Lo que se ve a través de un cristal al 50 % o más queda recordado como explorado; por debajo, solo se ve mientras se mira.',
+      ] },
+    ],
+  },
+  {
     version: '2.29.2', date: '2026-11-21', title: 'V3 · Ventanas con transparencia por lado, color del token y conos solo para el Keeper',
     sections: [
       { title: 'Ventanas', items: [

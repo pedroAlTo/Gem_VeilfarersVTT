@@ -3851,6 +3851,9 @@ export class CanvasEngine {
     const state = store.getState();
     const gridSize = map.gridSize || 64;
     const isKeeperGM = state.userRole === 'keeper' && state.gmVision;
+    // The Keeper's view always shows every token, also in the fog (v2.29.3, user decision); the ones
+    // the party does not see are dimmed and marked. Only the player's view hides them.
+    const keeperSees = state.userRole === 'keeper';
 
     for (const tok of tokens) {
       const radius = (tok.size * gridSize) / 2;
@@ -3873,7 +3876,7 @@ export class CanvasEngine {
             mapId: map.id
           });
         }
-      } else if (!isKeeperGM) {
+      } else if (!keeperSees) {
         // Token is out of real-time vision.
         // If players previously spotted this enemy in explored territory, show frozen last known position
         const lastPos = this.lastKnownEnemyPositions.get(tok.id);
@@ -3896,7 +3899,7 @@ export class CanvasEngine {
       ctx.translate(tok.x, tok.y);
 
       // Dimmed transparency for tokens in the dark seen by Keeper
-      if (!isVisibleToPlayers && isKeeperGM) {
+      if (!isVisibleToPlayers && keeperSees) {
         ctx.globalAlpha = 0.52;
       }
 
@@ -4119,7 +4122,7 @@ export class CanvasEngine {
       }
 
       // Darkness / Hidden in Fog indicator for Keeper
-      if (!isVisibleToPlayers && isKeeperGM) {
+      if (!isVisibleToPlayers && keeperSees) {
         ctx.save();
         ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
         ctx.strokeStyle = '#fca5a5';
@@ -4337,8 +4340,7 @@ export class CanvasEngine {
     if (!attacker || attacker.id === target.id) return;
 
     // Visibility test for players: do not reveal adversaries out of sight
-    const isKeeperGM = state.userRole === 'keeper' && state.gmVision;
-    if (!isKeeperGM && !target.isPlayer && !this.isTokenVisibleToPlayers(target, tokens, map)) {
+    if (state.userRole !== 'keeper' && !target.isPlayer && !this.isTokenVisibleToPlayers(target, tokens, map)) {
       return;
     }
 

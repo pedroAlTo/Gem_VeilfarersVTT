@@ -17,9 +17,10 @@ export const seeThrough = (w, x, y) => windowSides(w)[windowSide(w, x, y)];
 export const SEE_TOKENS_FROM = 50;
 
 // The area hidden behind a window, seen from (x, y): the window and its two edges pushed away
-// from the viewer by `reach`. Returns four points, or null when the viewer is on the line.
+// from the viewer by `reach`. Returns four {x, y} points (the polygons' shape everywhere in the
+// fog and the lighting), or null when the viewer is on the line.
 export function windowShadow(w, x, y, reach) {
-  const far = (px, py) => { const dx = px - x, dy = py - y, m = Math.hypot(dx, dy); return m < 1e-6 ? null : [px + (dx / m) * reach, py + (dy / m) * reach]; };
+  const far = (px, py) => { const dx = px - x, dy = py - y, m = Math.hypot(dx, dy); return m < 1e-6 ? null : { x: px + (dx / m) * reach, y: py + (dy / m) * reach }; };
   const q1 = far(w.x1, w.y1), q2 = far(w.x2, w.y2);
-  return q1 && q2 ? [[w.x1, w.y1], [w.x2, w.y2], q2, q1] : null;
+  return q1 && q2 ? [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }, q2, q1] : null;
 }

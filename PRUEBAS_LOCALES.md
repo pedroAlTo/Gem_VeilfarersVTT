@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.3.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.3**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.3** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.3.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -104,6 +104,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.2.zip**. Abre **AYUDA
 89. **(V3) Ventana espejo.** Como Keeper, crea una ventana y en el inspector pulsa «Espejo: A 100 % · B 10 %» (el mapa marca A y B a cada lado). Con la niebla activada, un personaje en el lado A ve con claridad lo de detrás y a quien esté allí; en el lado B lo ve apagado y no distingue a nadie. Pon un lado a 0 %: desde ese lado la ventana tapa como un muro. La ventana se ve como un cristal fino.
 90. **(V3) Color del token.** Como jugador conectado, abre la ficha del token, elige otro color y guarda: cambia el borde y el nombre en el mapa, y los nuevos mensajes de chat y subtítulos salen en ese color. Funciona también con un personaje Sleeping.
 91. **(V3) Conos de enemigos.** Como jugador, selecciona un enemigo o NPC con linterna: no ves su arco de visión ni el cono de su luz. Como Keeper, sí.
+92. **(V3) El Keeper ve todos los tokens.** Con la niebla activada y la Visión GM apagada, en vista Keeper se ven todos los tokens, también los que están en zonas sin explorar (atenuados y con la marca de niebla). En vista jugador, esos tokens no aparecen.
+93. **(V3) Graduación de las ventanas.** Pon un lado de una ventana a 5 %, 25 %, 50 %, 75 % y 100 % y mira desde ese lado con un personaje: lo de detrás pasa de casi negro a limpio, poco a poco.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

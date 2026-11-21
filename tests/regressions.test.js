@@ -558,7 +558,9 @@ test('windows: one transparency per side, 0 % stops sight like a wall (v2.29.2)'
   assert.equal(windowSide(w, 50, 20), 'a'); assert.equal(windowSide(w, 50, -20), 'b');
   assert.equal(seeThrough(w, 50, 20), 100); assert.equal(seeThrough(w, 50, -20), 10);
   assert.deepEqual(windowSides({ visionPercent: 40 }), { a: 40, b: 40 }, 'a window with one value is the same from both sides');
-  assert.ok(windowShadow(w, 50, 20, 500));
+  const shadow = windowShadow(w, 50, 20, 500);
+  assert.equal(shadow.length, 4); assert.ok(shadow.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)), 'points as {x, y}, like every polygon the fog traces');
+  assert.ok(shadow[2].y < -100 && shadow[3].y < -100, 'pushed away from the viewer, behind the glass');
   // From an opaque side the sight polygon stops at the window; from a clear side it goes through.
   const engine = Object.create(LightingEngine.prototype);
   const ys = (x, y) => engine.computeVisibilityPolygon(x, y, 300, [{ ...w, x1: -2000, x2: 2000, visionPercent: 0 }], null, 360).map(p => p.y ?? p[1]);

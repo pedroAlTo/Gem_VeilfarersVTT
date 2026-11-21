@@ -380,7 +380,10 @@ export class FogOfWarEngine {
         target.restore();
         if (target === final) continue;
         target.save(); target.globalCompositeOperation = 'destination-out';
-        for (const { quad, keep } of shadows) { tracePolygon(target, quad); target.fillStyle = `rgba(0, 0, 0, ${1 - keep})`; target.fill(); }
+        // The live view is thinned to the window's transparency. The memory is all or nothing (it is
+        // stamped on every redraw, so a partial stamp would add up to fully explored): what is seen
+        // through glass clear enough to make out who is there (50 % or more) is remembered.
+        for (const { quad, keep } of shadows) { tracePolygon(target, quad); target.fillStyle = `rgba(0, 0, 0, ${paint === 'cut' ? 1 - keep : keep >= 0.5 ? 0 : 1})`; target.fill(); }
         target.restore();
         final.drawImage(target.canvas, 0, 0);
       }
