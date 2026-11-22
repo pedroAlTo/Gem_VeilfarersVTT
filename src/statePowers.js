@@ -1,3 +1,4 @@
+import { immuneTo } from './powerEffects.js';
 export const PATH_TRAITS = ['agility', 'instinct', 'strength'];
 export const isPath = name => /^(path to nirvana|the refused path)$/i.test(name || '');
 export const activePath = token => token?.effectClocks?.find(c => isPath(c.name) && c.filled < c.segments);
@@ -8,7 +9,7 @@ export const pathBranch = token => {
   if (/pure conduit|lux/i.test(name)) return 'Lux';
   return '';
 };
-export const pathImmune = (token, condition) => !!activePath(token) && /^(Stunned|Dazed)$/i.test(condition);
+export const pathImmune = (token, condition) => (!!activePath(token) && /^(Stunned|Dazed)$/i.test(condition)) || immuneTo(token, condition);
 export const pathTitle = clock => /^the refused path$/i.test(clock.name) ? 'Disciplined State' : 'Nirvana State';
 export function pathBadge(clock) {
   return pathTitle(clock) + ' · ' + (clock.trait || 'elige atributo') + ' · Integridad ' + (clock.segments - clock.filled) + '/' + clock.segments;
@@ -30,6 +31,8 @@ export const CONTEXT_EDGES = {
   'Perfect Facade': ['presence', 'Mantener el engaño del disfraz'],
   'Veil Sensitivity': ['instinct', 'Detectar mentiras o intenciones hostiles'],
   'Ecosystem Analysis': ['instinct', 'Supervivencia, navegación o rastreo en la zona estudiada'],
+  'Eyes of Truth': ['instinct', 'Percibir o investigar'],
+  'Temporal Cloak': ['agility', 'Evitar ser detectado'],
 };
 export function contextualEdges(actor, trait) {
   return (actor?.effectClocks || []).filter(clock => Object.hasOwn(CONTEXT_EDGES, clock.name) && CONTEXT_EDGES[clock.name][0] === trait);

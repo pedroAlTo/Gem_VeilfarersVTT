@@ -1,10 +1,27 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.33.0**.
-Paquete: `VeilFarers_VTT_v2.33.0.zip`.
+Versión actual del VTT: **v2.34.0**.
+Paquete: `VeilFarers_VTT_v2.34.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.34.0] — 2026-11-22
+
+V3 · Mejoras con números y modificadores de tirada
+
+### Mejoras activas
+
+- Kinetic Barrier: mientras dura, +1 Evasion, resistencia a daño Physical y una barrera que absorbe hasta 10 de daño. En la ventana de daño aparece ya elegida; cuando se gasta, se disipa.
+- Velocity Surge: si sale la tirada, +2 a las tiradas de Agility durante la escena.
+- Aura of Clarity: si sale, tú y los aliados a alcance Close sumáis +1 a los umbrales de daño y sois inmunes a Frightened y Dazed.
+- Protective Dome: si sale, quien está en la zona Very Close gana +2 Evasion.
+- Eyes of Truth y Temporal Cloak dan su Ventaja contextual (Instinct para percibir; Agility para no ser detectado) en el panel de dados.
+
+### Para la próxima tirada
+
+- Silver Tongue: la próxima tirada de Presence suma tu Tier y un 11 en el dado de Hope cuenta como 12.
+- Vector Calculus: la próxima tirada de Agility o Finesse suma tu nivel y un 10 o menos en el dado de Hope cuenta como 11.
 
 ## [2.33.0] — 2026-11-22
 

@@ -1,3 +1,4 @@
+import { evasionBonus } from './powerEffects.js';
 // Drones by the book: Corebook 12.06, chapter 14 (Drones and Remote Tools), with the module
 // lists of the Corebook and of Rust & Steel. A drone is a Grade (its chassis) plus Modules.
 import DRONE_MODULES_DATA from './droneModules.json' with { type: 'json' };
@@ -128,7 +129,8 @@ export const improveSignal = signal => ['stable', 'unstable', 'lost'][Math.max(0
 // A drone under attack with its signal Lost cannot evade: Evasion −2 (unless its protocol
 // keeps it moving, which stays a Keeper call made by changing the signal state).
 export function droneEvasion(token) {
-  const base = Number.isFinite(token?.evasion) ? token.evasion : 10;
+  // Powers that raise Evasion while active (Kinetic Barrier, Protective Dome).
+  const base = (Number.isFinite(token?.evasion) ? token.evasion : 10) + evasionBonus(token);
   return isDroneToken(token) && signalOf(token) === 'lost' ? base - 2 : base;
 }
 

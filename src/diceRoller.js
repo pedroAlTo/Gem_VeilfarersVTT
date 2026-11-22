@@ -31,6 +31,7 @@ import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvi
 import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses, damageDicePools, honedEdgeOf } from './equipment.js';
 import { resolutionLog, POWER_DAMAGE } from './cardResolution.js';
 import { damageReactions, reduceComponents, reactorsFor, REACTIONS } from './powerReactions.js';
+import { thresholdBonus } from './powerEffects.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -1639,8 +1640,10 @@ export class DiceRollerSidebar {
     // With a target, its own thresholds decide the hit: the preview must match what is applied.
     const majorInput = this.container.querySelector('#dmg_major_thresh'), severeInput = this.container.querySelector('#dmg_severe_thresh');
     if (targetToken?.hp) {
-      majorInput.value = targetToken.hp.majorThreshold ?? '';
-      severeInput.value = targetToken.hp.severeThreshold ?? '';
+      // Aura of Clarity and the like raise the thresholds while active.
+      const raised = thresholdBonus(targetToken);
+      majorInput.value = targetToken.hp.majorThreshold != null ? targetToken.hp.majorThreshold + raised : '';
+      severeInput.value = targetToken.hp.severeThreshold != null ? targetToken.hp.severeThreshold + raised : '';
     }
     const major = parseInt(majorInput.value, 10);
     const severe = parseInt(severeInput.value, 10);
@@ -1851,8 +1854,8 @@ export class DiceRollerSidebar {
           // A reaction Power (Photon Shield, Impact Absorption, Mind Shield) lowers the damage first.
           components: reaction ? reduceComponents(dmgResult.components, reaction.amount, reaction.types) : dmgResult.components,
           targetToken,
-          targetMajorThreshold: targetToken.hp.majorThreshold ?? major,
-          targetSevereThreshold: targetToken.hp.severeThreshold ?? severe,
+          targetMajorThreshold: targetToken.hp.majorThreshold != null ? targetToken.hp.majorThreshold + thresholdBonus(targetToken) : major,
+          targetSevereThreshold: targetToken.hp.severeThreshold != null ? targetToken.hp.severeThreshold + thresholdBonus(targetToken) : severe,
           isDirectDamage: isDirect,
           useArmorSlot: spentShields > 0,
           currentArmorSlots: usableSlots(targetToken),
@@ -2041,7 +2044,7 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
   if (typeof document === 'undefined' || !document.body) { onApply(0, -1); return; }
   // Reaction Powers (v2.33.0): each one has its own options, worked out by the attacker.
   const reactions = (Array.isArray(request.reactions) ? request.reactions : []).filter(r => Array.isArray(r?.options) && r.options.length);
-  let ri = -1;
+  let ri = reactions.findIndex(r => r.free);
   const set = () => (ri >= 0 ? reactions[ri].options : base), max = () => set().length - 1;
   const describe = n => { const o = set()[Math.min(n, max())]; return `Pierde ${o.hpLoss} HP · HP ${o.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}`; };
   const start = Math.max(0, Math.min(max(), shields));
@@ -2049,7 +2052,7 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
     <div class="kdmg">
       <div class="kdmg-head"><img src="${escapeHTML(actorPortrait(targetToken))}" alt="" />
         <div><strong>${escapeHTML(targetToken.name)}</strong><p class="dossier-muted">${escapeHTML(request.attackerName || 'Ataque')}: ${escapeHTML(String(request.raw))} de daño · ${escapeHTML(String(request.severity || ''))}</p></div></div>
-      ${reactions.length ? `<label class="dossier-field"><span>Reacción (pregunta al jugador)</span><vf-select class="hud-select" id="kdmg_reaction"><option value="-1">Ninguna</option>${reactions.map((r, i) => `<option value="${i}">${escapeHTML(r.label)}</option>`).join('')}</vf-select></label>` : ''}
+      ${reactions.length ? `<label class="dossier-field"><span>Reacción (pregunta al jugador)</span><vf-select class="hud-select" id="kdmg_reaction"><option value="-1">Ninguna</option>${reactions.map((r, i) => `<option value="${i}"${i === ri ? ' selected' : ''}>${escapeHTML(r.label)}</option>`).join('')}</vf-select></label>` : ''}
       <label class="dossier-field kdmg-shields" id="kdmg_shields_field"><span id="kdmg_shields_label"></span>
         <div class="kdmg-row"><input type="range" id="kdmg_shields" min="0" max="${max()}" value="${start}" /><b id="kdmg_shields_val">${start}</b></div></label>
       <p class="dossier-muted" id="kdmg_noshields">Sin escudos disponibles para este impacto.</p>

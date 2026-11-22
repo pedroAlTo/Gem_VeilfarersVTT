@@ -8,6 +8,7 @@ import { canReceiveHealing, LIFE_STATES } from './combatState.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { facesRoller } from './tableDice.js';
 import { pathImmune } from './statePowers.js';
+import { CLOCK_BONUSES } from './powerEffects.js';
 
 // Range and recipients here are the printed activation requirements. Fictional objects and
 // points without a token remain legitimate subjects of the other cards.
@@ -64,6 +65,8 @@ const AREA_METERS = { Melee: 1, 'Very Close': 5, Close: 10, Far: 25 };
 export function areaRule(card) {
   const text = String(card?.text || '').replace(/\*+/g, '');
   if (/choose a point/i.test(text)) return null;
+  // A zone printed another way: Protective Dome covers a Very Close zone around the caster.
+  if (card?.name === 'Protective Dome') return { reach: 'Very Close', who: 'allies', self: true, check: null, failure: null };
   const m = AREA_RX.exec(text);
   if (!m) return null;
   const reach = RANGE_BANDS.find(b => b.toLowerCase() === m[3].toLowerCase());
@@ -301,6 +304,12 @@ export function completeCardRoll(store, record, roll, previous = null) {
   if (previous && record.failureFearGained) store.addFear(-Math.min(record.failureFearGained, store.state.fear));
   const notes = [];
   if (success && SELF_EFFECTS[record.name]) notes.push(applySelfEffect(store, record.name, record.actorId, record.mode));
+  // An area Power whose effect lasts on everyone inside (Aura of Clarity, Protective Dome).
+  if (success && record.area && CLOCK_BONUSES[record.name]) {
+    const inside = record.targetIds.map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);
+    for (const t of inside) store.updateToken(t.id, { effectClocks: addClock((t.effectClocks || []).filter(c => c.name !== record.name), newClock({ name: record.name, segments: 1, tick: 'manual', scene: true }, { source: actor?.name || '' })) });
+    notes.push(record.name + ' en ' + (inside.map(t => t.name).join(', ') || 'nadie') + '.');
+  }
   if (success) {
     const targets = record.targetIds.map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);
     if (record.name === 'Synaptic Disruption' && targets[0]) {

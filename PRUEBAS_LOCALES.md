@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.33.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.33.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.33.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.33.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.34.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.34.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.34.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.34.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -118,6 +118,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.33.0.zip**. Abre **AYUDA
 103. **(V3) Temporal Cloak.** Con un Mystic Sleeping, Uncanny Power → Temporal Cloak · Personal → Manifestar: si la tirada sale, el token queda Oculto. Al atacar deja de estarlo. Con Biological Scan sobre un enemigo, el registro muestra su HP y sus estados.
 104. **(V3) Reacciones al atacar.** Pon a un aliado con Tactical Overwatch y Force Shield (en el Loadout, con Hope) a 2 casillas de otro personaje. Como Keeper, ataca a ese personaje con un adversario: aparece Tactical Overwatch; «la usa» → el ataque tira con Desventaja y el objetivo tiene +2 Armor Slots (vuelven a su valor cuando el aliado recibe el Spotlight). Si el ataque impacta por menos de 3, aparece Force Shield: «la usa» → falla y se prepara el daño 1d4×Proficiency contra el atacante.
 105. **(V3) Reacciones en el daño.** Con un personaje que tenga Impact Absorption, recibe un impacto Physical: en la ventana del Keeper elige la reacción en «Reacción»; el HP final cambia; al aplicar, marca 1 Stress y su próximo ataque suma lo absorbido. Con un aliado con Photon Shield a Close, la reducción es su Tier + 2.
+106. **(V3) Mejoras activas.** Juega Kinetic Barrier: la Evasion sube 1. Recibe un impacto Physical: la ventana de daño trae «Kinetic Barrier» elegida y el daño baja (y la resistencia lo reduce a la mitad); tras absorber 10 se disipa. Lanza Aura of Clarity con aliados cerca: tras el éxito, los umbrales de todos suben 1 y un Dazed no se les aplica. Lanza Protective Dome: los aliados a 2 casillas ganan +2 Evasion.
+107. **(V3) Próxima tirada.** Juega Silver Tongue y haz una tirada de Presence: suma tu Tier y, si el Hope sale 11, cuenta como 12. Juega Vector Calculus y tira Agility: suma tu nivel y el Hope mínimo es 11. Juega Velocity Surge (con éxito): tus tiradas de Agility suman +2.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

@@ -3,10 +3,11 @@ import { newId } from './persistence.js';
 import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
-import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges } from './statePowers.js';
+import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
 import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
+import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
 import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
@@ -173,6 +174,16 @@ function resolveGameAction(action, store) {
     // and leaves what lasts (the amount Impact Absorption keeps, Tactical Overwatch's Armor Slots).
     if (action.type === 'REACTION_PAY') {
       const name = String(action.name ?? ''), rule = REACTIONS[name];
+      // Kinetic Barrier absorbs from its pool; at 0 it dissipates (and its Evasion and Resistance go).
+      if (name === 'Kinetic Barrier') {
+        const wall = barrier(actor);
+        if (!wall) throw new Error('La barrera ya no está.');
+        const used = Math.max(0, Math.min(wall.left, Math.round(Number(action.amount) || 0))), left = wall.left - used;
+        apply({ effectClocks: left > 0 ? actor.effectClocks.map(c => c.id === wall.clock.id ? { ...c, absorbed: left } : c) : actor.effectClocks.filter(c => c.id !== wall.clock.id) });
+        const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Kinetic Barrier`, details: `Absorbe ${used} de daño.${left > 0 ? ` Quedan ${left}.` : ' La barrera se disipa.'}` };
+        store.addLog(log);
+        return { id: newId(), actorId: actor.id, log, summary: log.details };
+      }
       if (!rule || !holdsReaction(actor, name, data)) throw new Error('Esa reacción no está en el Loadout de ' + actor.name + '.');
       if (!canPay(actor, rule.cost)) throw new Error(actor.name + ' no puede pagar ' + name + '.');
       const patch = {};
@@ -275,6 +286,16 @@ function resolveGameAction(action, store) {
       kineticClock = { ...newClock({ name: 'Kinetic Blast', segments: 1, tick: 'manual', scene: true }), empower };
       result.notes.push('Su próximo ataque cuerpo a cuerpo: al impactar, + Strength + 1d8' + (empower ? ' + ' + empower + '×(' + (actor.proficiency || 1) + 'd6) por Empower' : '') + ' de daño Physical (Kinetic).');
     }
+    // Powers spent «when making a roll» are armed for the next matching roll; Powers that only
+    // give a contextual Advantage for the scene leave their clock (Eyes of Truth).
+    let armedClock = null;
+    if (NEXT_ROLL[card.name]) {
+      armedClock = newClock({ name: card.name, segments: 1, tick: 'manual', scene: true });
+      result.notes.push(`Preparado para tu próxima tirada de ${NEXT_ROLL[card.name].traits.join(' o ')}: +${NEXT_ROLL[card.name].bonus(actor)} (${NEXT_ROLL[card.name].note}).`);
+    } else if (CONTEXT_EDGES[card.name] && !SELF_EFFECTS[card.name] && !cardDuration(card, actor, () => 1) && !result.roll) {
+      armedClock = newClock({ name: card.name, segments: 1, tick: 'manual', scene: true });
+      result.notes.push(`Ventaja en ${CONTEXT_EDGES[card.name][0]} · ${CONTEXT_EDGES[card.name][1]} durante la escena.`);
+    }
     // Biological Scan: touching the target shows its HP and conditions at once.
     if (card.name === 'Biological Scan' && targets[0]) {
       const t = targets[0];
@@ -320,6 +341,7 @@ function resolveGameAction(action, store) {
     // Another Power of the Domain ends a self effect that says so (Temporal Cloak and Void).
     const ended = card.domain && endSelfEffects(store.state.tokens.find(t => t.id === actor.id), { domain: card.domain, name: card.name });
     if (ended) { store.updateToken(actor.id, { effectClocks: ended.effectClocks, conditions: ended.conditions }); result.notes.push('Termina ' + ended.ended.join(', ') + '.'); }
+    if (armedClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock((live.effectClocks || []).filter(c => c.name !== armedClock.name), armedClock) }); }
     if (kineticClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock(live.effectClocks, kineticClock) }); }
     if (area && AREA_BOONS[card.name] && !result.failed && !result.roll) {
       for (const t of targets) store.updateToken(t.id, AREA_BOONS[card.name](store.state.tokens.find(x => x.id === t.id)));
@@ -392,6 +414,18 @@ function resolveGameAction(action, store) {
     const guard = melee && disciplinedDefense(target, actor, store.getActiveMap?.(), store.state.tokens);
     const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty, o.traitId);
     const keeperRoll = !player;
+    // Powers in effect (Velocity Surge +2 Agility) and those armed for this roll (Silver Tongue,
+    // Vector Calculus: a bonus and a Hope die that counts higher).
+    const surge = player ? rollBonus(actor, o.traitId) : 0, armed = player ? armedRoll(actor, o.traitId) : null;
+    const powerNotes = [];
+    if (surge) powerNotes.push(`+${surge} por Poderes activos`);
+    let forcedHope = o.forcedHope;
+    if (armed) {
+      const face = Number.isFinite(Number(forcedHope)) ? Math.max(1, Math.min(12, Math.round(Number(forcedHope)))) : 1 + Math.floor(Math.random() * 12);
+      forcedHope = armed.rule.hope(face);
+      powerNotes.push(`${armed.clock.name}: +${armed.rule.bonus(actor)}${forcedHope !== face ? ` · Hope ${face} cuenta como ${forcedHope}` : ''}`);
+    }
+    const powerMod = surge + (armed ? armed.rule.bonus(actor) : 0);
     const result = keeperRoll ? rollAdversaryCheck({
       actorName: actor.name,
       modifier: (actor.attackModifier ?? 0) + (o.customMod || 0) + (actor.pendingCheckBonus || 0),
@@ -414,13 +448,15 @@ function resolveGameAction(action, store) {
       useResolve: !!resolve,
       resolveDieType: actor.resolve?.dieType || 'd4',
       experienceMod: exp,
-      customMod: (o.customMod || 0) + (actor.pendingCheckBonus || 0),
-      forcedHope: o.forcedHope,
+      customMod: (o.customMod || 0) + (actor.pendingCheckBonus || 0) + powerMod,
+      forcedHope,
       forcedFear: o.forcedFear,
       forcedAdv: o.forcedAdv,
       forcedResolve: o.forcedResolve,
     });
     const patch = { pendingCheckBonus: 0, pendingAdvantage: false };
+    if (armed) patch.effectClocks = (actor.effectClocks || []).filter(c => c.id !== armed.clock.id);
+    if (powerNotes.length) result.outcomeDesc = `${result.outcomeDesc || ''} ${powerNotes.join('. ')}.`.trim();
     if (resolve) patch.resolve = { ...actor.resolve, current: actor.resolve.current - 1 };
     if (player && !sleeping) {
       patch.hope = clamp(

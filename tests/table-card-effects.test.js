@@ -368,3 +368,56 @@ test('paying a reaction: Impact Absorption keeps the amount for the next attack;
   assert.equal(get(s, 'hero').effectClocks.find(c => c.tempArmor).sourceId, 'medic');
   assert.throws(() => performGameAction({ type: 'REACTION_PAY', actorId: 'hero', name: 'Photon Shield' }, s), /no está en el Loadout/);
 });
+
+test('Powers in effect do the sums: Kinetic Barrier, Velocity Surge, Aura of Clarity, Protective Dome and the next-roll Powers', async () => {
+  const { droneEvasion } = await import('../src/drones.js');
+  const { damageProtection } = await import('../src/damageProtection.js');
+  const { damageReactions } = await import('../src/powerReactions.js');
+  const { pathImmune } = await import('../src/statePowers.js');
+  // Kinetic Barrier: +1 Evasion, Resistance to Physical, absorbs up to 10 and dissipates.
+  const s = table({ ...withPower('Kinetic Barrier'), evasion: 10 }, hostile('foe'));
+  play(s, 'caster', 'Kinetic Barrier');
+  assert.equal(droneEvasion(get(s, 'caster')), 11);
+  assert.equal(damageProtection(get(s, 'caster'), new Set(['physical'])), 'resistant');
+  const [wall] = damageReactions({ target: get(s, 'caster'), attacker: get(s, 'foe'), components: [{ amount: 6, types: ['physical'] }], tokens: s.state.tokens, map: scene, data });
+  assert.deepEqual([wall.name, wall.amount, wall.free], ['Kinetic Barrier', 6, true]);
+  performGameAction({ type: 'REACTION_PAY', actorId: 'caster', name: 'Kinetic Barrier', amount: 6 }, s);
+  assert.equal(get(s, 'caster').effectClocks.find(c => c.name === 'Kinetic Barrier').absorbed, 4);
+  performGameAction({ type: 'REACTION_PAY', actorId: 'caster', name: 'Kinetic Barrier', amount: 9 }, s);
+  assert.equal(droneEvasion(get(s, 'caster')), 10, 'spent: it dissipates');
+  // Velocity Surge: +2 on Agility Rolls once cast.
+  const v = table(withPower('Velocity Surge'));
+  const cast = play(v, 'caster', 'Velocity Surge');
+  check(v, 'caster', { ...cast.roll, forcedHope: 9, forcedFear: 4 }, { cardPlayId: cast.id });
+  const surge = check(v, 'caster', { traitId: 'agility', dc: 10, forcedHope: 5, forcedFear: 3 });
+  assert.equal(surge.total, 5 + 3 + 2 + 2, 'Agility 2 + Velocity Surge 2');
+  // Aura of Clarity: you and allies in Close: thresholds +1, immune to Frightened and Dazed.
+  const a = table(withPower('Aura of Clarity'), { ...actor('ally'), x: 64 + 64 * 3 });
+  const aura = play(a, 'caster', 'Aura of Clarity');
+  check(a, 'caster', { ...aura.roll, traitId: 'presence', forcedHope: 10, forcedFear: 6 }, { cardPlayId: aura.id });
+  assert.equal(pathImmune(get(a, 'ally'), 'Dazed'), true);
+  assert.equal(pathImmune(get(a, 'ally'), 'Restrained'), false);
+  const { thresholdBonus } = await import('../src/powerEffects.js');
+  assert.deepEqual([thresholdBonus(get(a, 'caster')), thresholdBonus(get(a, 'ally'))], [1, 1]);
+  // Protective Dome: everyone in the Very Close zone +2 Evasion.
+  const d = table({ ...withPower('Protective Dome'), evasion: 10 }, { ...actor('ally'), x: 128, evasion: 9 }, { ...actor('out'), x: 64 + 64 * 6, evasion: 9 });
+  const dome = play(d, 'caster', 'Protective Dome');
+  check(d, 'caster', { ...dome.roll, forcedHope: 10, forcedFear: 6 }, { cardPlayId: dome.id });
+  assert.deepEqual(['caster', 'ally', 'out'].map(id => droneEvasion(get(d, id))), [12, 11, 9]);
+  // Silver Tongue: the next Presence Roll adds the Tier and a Hope 11 counts as 12 (a match).
+  const t = table({ ...withPower('Silver Tongue'), traits: { presence: 1 } });
+  play(t, 'caster', 'Silver Tongue');
+  const talk = check(t, 'caster', { traitId: 'presence', dc: 15, forcedHope: 11, forcedFear: 12 });
+  assert.equal(talk.isCritical, true);
+  assert.equal(get(t, 'caster').effectClocks.some(c => c.name === 'Silver Tongue'), false, 'spent by that roll');
+  // Vector Calculus: Agility + Level, Hope 10 or lower counts as 11.
+  const n = table(withPower('Vector Calculus'));
+  play(n, 'caster', 'Vector Calculus');
+  const pilot = check(n, 'caster', { traitId: 'agility', dc: 15, forcedHope: 3, forcedFear: 4 });
+  assert.equal(pilot.total, 11 + 4 + 2 + 5, 'Hope 3 → 11, Agility 2, Level 5');
+  // Eyes of Truth: Advantage on Instinct to perceive for the scene.
+  const { contextualEdges } = await import('../src/statePowers.js');
+  const e = table(withPower('Eyes of Truth'));
+  play(e, 'caster', 'Eyes of Truth');
+  assert.equal(contextualEdges(get(e, 'caster'), 'instinct').length, 1);
+});

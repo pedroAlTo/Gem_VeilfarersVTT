@@ -1,6 +1,22 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.34.0', date: '2026-11-22', title: 'V3 · Mejoras con números y modificadores de tirada',
+    sections: [
+      { title: 'Mejoras activas', items: [
+        'Kinetic Barrier: mientras dura, +1 Evasion, resistencia a daño Physical y una barrera que absorbe hasta 10 de daño. En la ventana de daño aparece ya elegida; cuando se gasta, se disipa.',
+        'Velocity Surge: si sale la tirada, +2 a las tiradas de Agility durante la escena.',
+        'Aura of Clarity: si sale, tú y los aliados a alcance Close sumáis +1 a los umbrales de daño y sois inmunes a Frightened y Dazed.',
+        'Protective Dome: si sale, quien está en la zona Very Close gana +2 Evasion.',
+        'Eyes of Truth y Temporal Cloak dan su Ventaja contextual (Instinct para percibir; Agility para no ser detectado) en el panel de dados.',
+      ] },
+      { title: 'Para la próxima tirada', items: [
+        'Silver Tongue: la próxima tirada de Presence suma tu Tier y un 11 en el dado de Hope cuenta como 12.',
+        'Vector Calculus: la próxima tirada de Agility o Finesse suma tu nivel y un 10 o menos en el dado de Hope cuenta como 11.',
+      ] },
+    ],
+  },
+  {
     version: '2.33.0', date: '2026-11-22', title: 'V3 · Reacciones en el ataque y en la ventana de daño',
     sections: [
       { title: 'Al atacar', items: [

@@ -14,6 +14,7 @@ import { characterCards } from './loadoutCards.js';
 import { distanceInfo, RANGE_BANDS } from './attackFlow.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { tierOf } from './effectClocks.js';
+import { barrier } from './powerEffects.js';
 
 const prof = token => Math.max(1, Math.min(10, Number(token?.proficiency) || 1));
 const roll = (qty, sides, random = Math.random) => Array.from({ length: qty }, () => Math.floor(random() * sides) + 1);
@@ -68,6 +69,12 @@ export function reduceComponents(components = [], amount = 0, types = null) {
 // rolled: [{ name, actorId, actorName, amount, faces, label, types }].
 export function damageReactions({ target, attacker, components, tokens, map, data, random = Math.random }) {
   const out = [];
+  // Kinetic Barrier: the target's own barrier absorbs first (no price; it dissipates when spent).
+  const wall = barrier(target), total = components.reduce((n, p) => n + (p.amount || 0), 0);
+  if (wall && total > 0) {
+    const amount = Math.min(wall.left, total);
+    out.push({ name: 'Kinetic Barrier', actorId: target.id, actorName: target.name, amount, faces: [], free: true, types: null, label: `Kinetic Barrier de ${target.name}: absorbe ${amount} (le quedan ${wall.left})` });
+  }
   const touches = types => !types || components.some(p => p.amount > 0 && p.types?.some(t => types.includes(t)));
   for (const [name, rule] of Object.entries(REACTIONS)) {
     if (rule.when !== 'damage' || !touches(rule.types)) continue;
