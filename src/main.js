@@ -28,6 +28,7 @@ import { APP_LABEL } from './version.js';
 import { initSessionBar, openSessionLobby } from './sessionLobby.js';
 import { subtitleOverlay } from './subtitleOverlay.js';
 import './dossiers.css';
+import './tableActions.css';
 import { checkBackupReminder } from './sessionManager.js';
 import { LOCAL_ONLY, LAN_SESSIONS } from './runtimeMode.js';
 import { cloudConfigured } from './cloudAccount.js';

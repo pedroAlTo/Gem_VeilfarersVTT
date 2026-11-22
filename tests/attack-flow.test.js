@@ -335,3 +335,139 @@ test('token distance is measured base to base', () => {
   assert.equal(distanceInfo({ x: 0, y: 0 }, { x: 128, y: 0 }, { gridSize: g }).band, 'Very Close', 'one empty square between bases: 2 m');
   assert.deepEqual([0, 0.5, 1, 2.5, 3, 5, 5.5, 12.5, 13].map(s => gapBandFor(s, 2)), ['Melee', 'Melee', 'Very Close', 'Very Close', 'Close', 'Close', 'Far', 'Far', 'Extreme']);
 });
+
+test('the hand selects an attribute, turns the live card, then links a targeted spell to the dice and log', async () => {
+  const {CardHand} = await import('../src/cardHandUI.js');
+  const {loadCardData} = await import('../src/cardData.js');
+  const {openResolution} = await import('../src/cardResolutionUI.js');
+  await loadCardData();
+  const {a,t,dice} = scene({ attacker:{characterClass:'Vanguard',subclass:'Ghost Blade',hope:6} });
+  a.sheetFields = {a_pwr_1_n:'Synaptic Disruption'};
+  store.state.userRole = 'player'; store.state.claimedTokenId = a.id;
+  window.veilDiceRoller = dice;
+  const bar = document.createElement('div'); document.body.append(bar);
+  const hand = new CardHand(bar);
+  const inspect = name => hand.inspect(hand.cards.find(c => c.name === name));
+  const path = inspect('Path to Nirvana');
+  const trait = path.querySelector('vf-select[name=path_trait]');
+  assert.ok(trait); trait.value = 'agility';
+  await path.querySelector('[data-card-play]').onclick();
+  assert.equal(store.state.tokens.find(x=>x.id===a.id).effectClocks[0].trait,'agility');
+  assert.ok(hand.root.querySelector('.vf-path-reverse'));
+  assert.match(inspect('Breaking Point').textContent,/after any multipliers/);
+  const spell = inspect('Synaptic Disruption');
+  spell.querySelector('[name=card_target]').value=t.id;
+  await spell.querySelector('[data-card-play]').onclick();
+  assert.equal(dice.preparedCard.traitId,'presence'); const id=dice.preparedCard.playId;
+  await dice.executeActionCheck();
+  const entry = store.state.logs.find(row=>row.resolution?.id===id);
+  assert.equal(entry.resolution.phase,'ready');assert.deepEqual(entry.resolution.targetIds,[t.id]);
+  store.state.userRole='keeper';
+  const panel = openResolution(id);
+  assert.ok(panel.querySelector('[data-effect=apply]'));assert.match(panel.textContent,/Presence Spellcast Roll/);
+  panel.querySelector('[name=kind]').value='note';panel.querySelector('[name=kind]').onchange();
+  panel.querySelector('[name=note]').value='Consecuencia acordada';
+  panel.querySelector('[data-effect=apply]').click();
+  assert.match(store.state.logs.find(row=>row.resolution?.id===id).resolution.applied[0].label,/Consecuencia acordada/);
+  hand.unsubscribe(); delete window.veilDiceRoller;
+});
+
+test('Swarm Tactics from its card rolls two attacks and retains both shield decisions', async () => {
+  const {openSwarmAttack} = await import('../src/swarmAttackUI.js');
+  const {a,t,dice} = scene({attacker:{isPlayer:false,actorType:'adversary',hp:{current:3,max:6},attackModifier:20,damageExpression:'1d8 (Horde) / 1d4 (Depleted)',featureNotes:'**Swarm Tactics** _(Passive):_ While the Horde has 3+ HP, it can attack two targets within Close range simultaneously.'},target:{isPlayer:true,evasion:6}});
+  const b={...structuredClone(t),id:'second-target',name:'Segundo objetivo',x:t.x+1};
+  store.state.tokens.push(b);window.veilDiceRoller=dice;
+  const modal=openSwarmAttack(a.id,t.id);
+  modal.querySelector('input[value="second-target"]').checked=true;
+  await modal.querySelector('[data-swarm]').onclick();
+  const results=document.querySelector('[aria-label="Swarm Tactics · resultados"]');
+  assert.ok(results,modal.textContent);
+  assert.equal(results.querySelectorAll('[data-hit]').length,2);
+  for(const [i,btn] of [...results.querySelectorAll('[data-hit]')].entries()){
+    btn.click();
+    const confirm=document.querySelector('#kdmg_apply');
+    assert.ok(confirm);
+    assert.ok(confirm.closest('[role=dialog]').textContent.includes([t,b][i].name));
+    confirm.click();
+  }
+  assert.equal(store.state.logs.filter(row=>row.title==='Ataque · '+a.name).length,2);
+  delete window.veilDiceRoller;
+});
+
+test('Burst Fire adds to the weapon once without repeating typed Vanguard damage', async () => {
+  const { dice, q, t, live } = scene({ weapon: { features: 'Burst Fire' } });
+  q('#dmg_formula').value = '1d8 Physical';
+  await dice.executeDamageCalc([8], {
+    extraFaces: [2],
+    riders: [
+      {label:'Primer golpe',branch:'Void',value:2},
+      {label:'Breaking Point',branch:'Void',value:3},
+    ],
+  });
+  assert.equal(dice.lastDamage.raw,15);
+  assert.equal(q('#dmg_raw_val').textContent,'15');
+  q('#apply_dmg_to_target_btn').click();
+  document.querySelector('#kdmg_apply').click();
+  assert.equal(live(t.id).hp.current,4);
+});
+
+test('the Keeper can open a new narrative arc from the log after clearing the original play', async () => {
+  const { CombatLogView } = await import('../src/combatLog.js');
+  const { a } = scene();
+  const key = JSON.stringify(['story arc','unassigned','Megascale Fabrication']);
+  store.updateToken(a.id,{cardUses:{[key]:'story arc'}});
+  store.update({arcs:[]});
+  const container = document.createElement('section');
+  document.body.append(container);
+  new CombatLogView(container);
+  container.querySelector('#clear_log_btn').click();
+  container.querySelector('[data-new-arc]').click();
+  document.querySelector('[data-renew]').click();
+  assert.deepEqual(store.state.tokens.find(t=>t.id===a.id).cardUses,{});
+  assert.equal(container.querySelector('[data-new-arc]'),null);
+});
+
+test('a table panel leaves the map interactive and switching actors cannot play the old hand', async () => {
+  const { CardHand } = await import('../src/cardHandUI.js');
+  const { loadCardData } = await import('../src/cardData.js');
+  const { dossierDialog } = await import('../src/dossierDialog.js');
+  await loadCardData();
+  const { a, t } = scene({ attacker: { characterClass: 'Vanguard', hope: 6 }, target: { actorType: 'player', isPlayer: true } });
+  store.state.userRole = 'player'; store.state.claimedTokenId = a.id;
+  const bar = document.createElement('div'), mapControl = document.createElement('button');
+  document.body.append(bar, mapControl);
+  const hand = new CardHand(bar);
+  const card = hand.cards.find(c => c.name === 'Path to Nirvana');
+  const first = hand.inspect(card), panel = hand.inspect(card);
+  assert.equal(first.isConnected, false);
+  assert.equal(panel.querySelector('[role=dialog]').getAttribute('aria-modal'), 'false');
+  assert.equal(panel.querySelector('.table-rule').open, false);
+  panel.querySelector('[name=path_trait]').value = 'instinct';
+  mapControl.onclick = () => store.update({ selectedTokenId: t.id });
+  mapControl.focus(); mapControl.click();
+  assert.equal(document.activeElement, mapControl);
+  await panel.querySelector('[data-card-play]').onclick();
+  assert.ok(panel.isConnected); assert.match(panel.querySelector('[role=alert]').textContent, /cambiado/);
+  assert.equal(store.state.tokens.find(x => x.id === a.id).hope, 6);
+  assert.equal(store.state.tokens.find(x => x.id === t.id).effectClocks?.length || 0, 0);
+  const full = dossierDialog('Ficha', '');
+  assert.equal(full.querySelector('[role=dialog]').getAttribute('aria-modal'), 'true');
+  hand.unsubscribe();
+});
+
+test('the damage panel keeps its target, prevents duplicate prompts and refreshes a changed defense', async () => {
+  const { dice, q, t, live } = scene({ weapon: {} });
+  q('#dmg_formula').value = '1d8 Physical';
+  await dice.executeDamageCalc([8]);
+  const open = q('#apply_dmg_to_target_btn');
+  open.click(); open.click();
+  const panels = () => document.querySelectorAll('.damage-action-dialog');
+  assert.equal(panels().length, 1);
+  assert.equal(panels()[0].querySelector('[role=dialog]').getAttribute('aria-modal'), 'false');
+  store.updateToken(t.id, { hp: { ...t.hp, current: 5 } });
+  panels()[0].querySelector('#kdmg_apply').click();
+  assert.equal(live(t.id).hp.current, 5);
+  assert.equal(panels().length, 1); assert.match(panels()[0].textContent, /HP 4\/6/);
+  panels()[0].querySelector('#kdmg_apply').click();
+  assert.equal(live(t.id).hp.current, 4); assert.equal(panels().length, 0);
+});

@@ -14,6 +14,9 @@ const { store } = await import('../src/state.js');
 const { LanPeer } = await import('../src/lanPeer.js');
 const { NetworkManager } = await import('../src/networkManager.js');
 const { connectionDisplay } = await import('../src/runtimeMode.js');
+const { characterCards } = await import('../src/loadoutCards.js');
+const { loadCardData } = await import('../src/cardData.js');
+const { activePath } = await import('../src/statePowers.js');
 
 async function until(predicate, message) {
   const deadline = Date.now() + 3000;
@@ -143,6 +146,14 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     assert.equal(retry.id, reply.id);
     assert.equal(keeper.state.state.chatMessages.filter(m => m.id === reply.id).length,1);
     await assert.rejects(pilot.manager.request('CHAT_SEND',{text:'FORBIDDEN_WHISPER_SENTINEL',recipientId:engineer.state.memberId,clientId:'forbidden'}), /Keeper/);
+    keeper.state.updateToken(tokenId, { characterClass:'Vanguard', subclass:'Ghost Blade', path:'Awakened', hope:6, effectClocks:[] });
+    const pilotToken = endpoint => endpoint.state.state.tokens.find(t => t.id === tokenId);
+    await until(() => pilotToken(pilot)?.characterClass === 'Vanguard', 'Keeper character update reaches the assigned seat');
+    const data = await loadCardData();
+    const path = characterCards(pilotToken(pilot),data).find(c => c.name === 'Path to Nirvana');
+    await pilot.manager.requestAction({type:'CARD_PLAY',actorId:tokenId,cardId:path.id,trait:'instinct'});
+    await until(() => [keeper,pilot,engineer].every(peer => activePath(pilotToken(peer))?.trait === 'instinct'), 'the table sees the chosen trait on the same token');
+    const integrity = structuredClone(activePath(pilotToken(keeper)));
     pilot.manager.disconnect();
     await until(() => keeper.state.state.connectedPeers.length === 1, 'disconnected player leaves roster');
     await assert.rejects(keeper.manager.sendChat({text:'OFFLINE_WHISPER_SENTINEL',recipientId:pilotId}),/desconectado/);
@@ -151,6 +162,10 @@ test('LAN: token positions and public rolls synchronize, secret rolls never reac
     assert.deepEqual(pose(pilot.state), [map, 512, 256]);
     assert.ok(pilot.state.canEditToken(tokenId));
     assert.equal(pilot.state.memberId,pilotId);
+    assert.deepEqual(activePath(pilotToken(pilot)),integrity);
+    assert.ok(characterCards(pilotToken(pilot),data).some(c => c.reverse && c.name === 'Breaking Point'));
+    const linkedCheck = await pilot.manager.requestAction({type:'CHECK',actorId:tokenId,options:{traitId:'instinct',dc:12,forcedHope:9,forcedFear:4,forcedAdv:5}});
+    assert.equal(linkedCheck.advVal,5,'the Keeper honors the restored advantage on the player’s roll');
     const restoredWater = pilot.state.getActiveMap().waterZones.find(w => w.id === water.id);
     assert.equal(restoredWater.shape,'polygon');assert.deepEqual(restoredWater.points,water.points);
     assert.ok(pilot.state.state.chatMessages.some(m => m.id === privateChat.id));

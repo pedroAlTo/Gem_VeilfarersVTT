@@ -45,6 +45,11 @@ export const AVAILABLE_STATS = [
 import { openColorPickerPopover } from './colorPicker.js';
 export { openColorPickerPopover };
 
+function quickStat(key, label, current, max, canEdit, spend, gain, color = key) {
+  const button = (delta, title) => `<button type="button" class="hud-btn hud-btn-xs ${delta > 0 ? 'hud-btn-primary' : ''}" data-quick-stat="${key}" data-delta="${delta}" title="${title}" aria-label="${title}" ${(delta < 0 ? current <= 0 : current >= max) ? 'disabled' : ''}>${delta < 0 ? '−' : '+'}</button>`;
+  return `<div class="stat-telemetry-col">${statGaugeHTML(label, current, max, color)}${canEdit ? `<div class="quick-stat-stepper">${button(-1, spend)}${button(1, gain)}</div>` : ''}</div>`;
+}
+
 export class TokenHUD {
   constructor(quickbarContainer) {
     this.container = quickbarContainer;
@@ -102,22 +107,14 @@ export class TokenHUD {
           <div class="tok-qb-divider"></div>
 
           <div class="token-telemetry-grid">
-            <div class="stat-telemetry-col" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-              ${statGaugeHTML('HP', token.hp?.current, token.hp?.max, 'hp')}
-              ${canEdit ? `<div class="quick-stat-stepper" style="display: flex; gap: 2px;"><button class="hud-btn hud-btn-xs" data-quick-stat="hp" data-delta="-1" title="Restar 1 HP" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">-</button><button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="hp" data-delta="1" title="Sumar 1 HP" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">+</button></div>` : ''}
-            </div>
-            <div class="stat-telemetry-col" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-              ${statGaugeHTML('ARMOR', token.armor?.current, token.armor?.max, 'armor')}
-              ${canEdit ? `<div class="quick-stat-stepper" style="display: flex; gap: 2px;"><button class="hud-btn hud-btn-xs" data-quick-stat="armor" data-delta="-1" title="Gastar 1 Escudo" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">-</button><button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="armor" data-delta="1" title="Recargar 1 Escudo" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">+</button></div>` : ''}
-            </div>
-            <div class="stat-telemetry-col" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-              ${statGaugeHTML('STRESS', token.stress?.current, maxStress, 'stress')}
-              ${canEdit ? `<div class="quick-stat-stepper" style="display: flex; gap: 2px;"><button class="hud-btn hud-btn-xs" data-quick-stat="stress" data-delta="-1" title="Aliviar 1 Estrés" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">-</button><button class="hud-btn hud-btn-xs hud-btn-primary" data-quick-stat="stress" data-delta="1" title="Añadir 1 Estrés" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">+</button></div>` : ''}
-            </div>
-            <div class="stat-telemetry-col" style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-              ${isPC ? `${statGaugeHTML(token.path === 'Sleeping' ? 'EFFORT' : 'HOPE', token.path === 'Sleeping' ? token.effort : token.hope, 6, 'path')}
-              ${canEdit ? `<div class="quick-stat-stepper" style="display: flex; gap: 2px;"><button class="hud-btn hud-btn-xs" data-quick-stat="hope" data-delta="-1" title="Gastar 1 ${token.path === 'Sleeping' ? 'Esfuerzo' : 'Esperanza'}" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">-</button><button class="hud-btn hud-btn-xs hud-btn-cyan" data-quick-stat="hope" data-delta="1" title="Ganar 1 ${token.path === 'Sleeping' ? 'Esfuerzo' : 'Esperanza'}" style="padding: 0 4px; min-width: 18px; height: 18px; line-height: 1;">+</button></div>` : ''}` : `<div class="dossier-eyebrow">EVASION ${token.evasion ?? '—'}<br>ATTACK ${token.attackModifier ?? '—'}</div>`}
-            </div>
+            ${quickStat('hp', 'HP', token.hp?.current, token.hp?.max, canEdit, 'Restar 1 HP', 'Sumar 1 HP')}
+            ${quickStat('armor', 'ARMOR', token.armor?.current, token.armor?.max, canEdit, 'Gastar 1 Escudo', 'Recargar 1 Escudo')}
+            ${quickStat('stress', 'STRESS', token.stress?.current, maxStress, canEdit, 'Aliviar 1 Estrés', 'Añadir 1 Estrés')}
+            ${isPC ? (token.path === 'Sleeping'
+              ? quickStat('hope', 'EFFORT', token.effort ?? 0, token.effortMax ?? 6, canEdit, 'Gastar 1 Esfuerzo', 'Ganar 1 Esfuerzo', 'path')
+              : quickStat('hope', 'HOPE', token.hope ?? 0, token.hopeMax ?? 6, canEdit, 'Gastar 1 Esperanza', 'Ganar 1 Esperanza', 'path'))
+              : `<div class="dossier-eyebrow">EVASION ${token.evasion ?? '—'}<br>ATTACK ${token.attackModifier ?? '—'}</div>`}
+            ${isPC && token.path === 'Sleeping' ? quickStat('resolve', 'Resolve · ' + (token.resolve?.dieType === 'd6' ? 'd6' : 'd4'), token.resolve?.current ?? 0, token.resolve?.max ?? 2, canEdit, 'Gastar 1 dado de Resolve', 'Recuperar 1 dado de Resolve') : ''}
           </div>
 
           <!-- Compact Action Controls -->
@@ -387,7 +384,7 @@ export class TokenHUD {
       spotlightBtn.onclick = () => { if (toggleSpotlight(token.id)) this.render(); };
     }
 
-    // Direct Quick Stat Steppers (HP, Armor/Shields, Stress, Hope/Effort)
+    // Direct Quick stat steppers for the selected token
     this.container.querySelectorAll('[data-quick-stat]').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
@@ -412,6 +409,13 @@ export class TokenHUD {
           const newS = Math.max(0, Math.min(maxS, (curTok.stress?.current ?? 0) + delta));
           store.updateToken(curTok.id, { stress: { ...curTok.stress, current: newS } });
           if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial: { stress: { ...curTok.stress, current: newS } } });
+        } else if (stat === 'resolve' && curTok.path === 'Sleeping') {
+          const pool = { current: 0, max: 2, dieType: 'd4', ...curTok.resolve };
+          const current = Math.max(0, Math.min(pool.max, pool.current + delta));
+          if (current === pool.current) return;
+          const partial = { resolve: { ...pool, current } };
+          store.updateToken(curTok.id, partial);
+          if (store.sessionRole !== 'player') network.broadcast?.({ type: 'TOKEN_UPDATE', tokenId: curTok.id, partial });
         } else if (stat === 'hope') {
           if (curTok.path === 'Sleeping') {
             const newEffort = Math.max(0, Math.min(curTok.effortMax ?? 6, (curTok.effort ?? 0) + delta));

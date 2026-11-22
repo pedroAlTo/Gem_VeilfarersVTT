@@ -1,0 +1,51 @@
+/* Table decisions leave the map available. The interactive surface is the panel itself. */
+html body .veil-modal-backdrop.table-action-panel {
+  position: fixed;
+  inset: 12px 12px auto auto;
+  width: min(372px, calc(100vw - 24px));
+  padding: 0;
+  display: block;
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+html body.fullbleed .table-action-panel {
+  top: var(--fb-top, 76px);
+  right: var(--fb-right, 12px);
+}
+html body .table-action-panel.damage-action-dialog { width: min(328px, calc(100vw - 24px)); }
+html body .table-action-panel:has(~ .table-action-panel) { visibility: hidden; }
+html body .table-action-panel > .veil-modal-box {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  max-height: min(53dvh, 440px);
+  pointer-events: auto;
+  box-shadow: 0 6px 22px #08031485;
+}
+html body .table-action-panel .veil-modal-header { padding: 5px 10px; gap: 8px; }
+html body .table-action-panel .veil-modal-header h3 { letter-spacing: .07em; line-height: 1.3; }
+.table-action-panel .dossier-body { padding: 9px 11px; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.table-action-panel .card-inspect { grid-template-columns: auto minmax(0, 1fr); gap: 10px; justify-items: stretch; }
+.table-action-panel .table-card-preview { --w: 88px; --h: 122px; pointer-events: none; }
+.table-action-panel .table-card-preview .vf-card-art { flex: 1; }
+.table-action-panel .table-card-preview .vf-card-body { flex: none; }
+.table-action-panel .table-card-preview :is(.vf-card-text, .vf-card-foot) { display: none; }
+.table-action-panel .card-inspect-side { gap: 6px; }
+.table-action-panel .table-rule > summary { cursor: pointer; color: var(--vx-light, #d2baff); }
+.table-action-panel .table-rule[open] > summary { margin-bottom: 5px; }
+.table-action-panel .card-inspect-text { max-height: none; overflow: visible; }
+.table-action-panel .card-resolution { display: grid; gap: 6px; }
+.table-action-panel .card-resolution fieldset { min-width: 0; margin: 0; }
+.table-action-panel .kdmg { display: grid; gap: 8px; }
+.table-action-panel .kdmg-head img { width: 34px; height: 34px; }
+.table-action-panel .dossier-footer { margin-top: 4px; padding: 6px 0 0; gap: 6px; box-shadow: none; }
+.table-action-panel :is(.dossier-footer, .dossier-error):empty { display: none; }
+@media (max-width: 650px) {
+  html body .veil-modal-backdrop.table-action-panel {
+    inset: auto max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) auto;
+    max-width: calc(100vw - 12px);
+  }
+  html body .table-action-panel > .veil-modal-box { max-height: 46dvh; }
+  .table-action-panel .table-card-preview { --w: 66px; --h: 92px; }
+}

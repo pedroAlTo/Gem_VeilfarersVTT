@@ -19,9 +19,12 @@ import { statGaugeHTML } from './tokenVitals.js';
 import { normalizeConditions, conditionDefinition } from './conditions.js';
 import { openConditions } from './conditionUI.js';
 import { checkEdge, lifeStage } from './combatState.js';
-import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus } from './attackFlow.js';
+import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus, weaponTraitId } from './attackFlow.js';
+import { hasSwarmTactics } from './adversaryPassives.js';
+import { openSwarmAttack } from './swarmAttackUI.js';
 import { proceduralAttack } from './adversaryWeapons.js';
 import { damageTypeOf, penetrationFor } from './rulesEngine.js';
+import { isPath, pathBadge } from './statePowers.js';
 import { clockPieHTML } from './effectClocks.js';
 import { availableRiders, throwExpression } from './damageRiders.js';
 import { bearDown, bearDownTarget, prepareResolve } from './bearDown.js';
@@ -99,7 +102,7 @@ export function sheetStats(token, armorName = '') {
     path: sleeping ? { label: 'EFFORT', current: token.effort ?? 0, max: token.effortMax ?? 6 } : { label: 'HOPE', current: token.hope ?? 0, max: token.hopeMax ?? 6 },
     resolve: sleeping ? { current: token.resolve?.current ?? 0, max: token.resolve?.max ?? 0, die: token.resolve?.dieType || 'd4' } : null,
     others,
-    effects: (token.effectClocks || []).map(c => ({ id: c.id, name: c.name, segments: c.segments, filled: c.filled, die: c.die || '' })),
+    effects: (token.effectClocks || []).map(c => ({ id: c.id, name: isPath(c.name) ? pathBadge(c) : c.name, segments: c.segments, filled: c.filled, die: c.die || '' })),
   };
 }
 
@@ -348,6 +351,12 @@ export class PlayerActionBar {
         if (marked) this.markTarget(marked); else this.keeperPanel();
       };
     }
+    if (hasSwarmTactics(attacker) && attacker.hp.current >= 3) {
+      const swarm = document.createElement('button');
+      swarm.type = 'button'; swarm.className = 'hud-btn'; swarm.textContent = 'Swarm Tactics · dos objetivos';
+      swarm.onclick = () => openSwarmAttack(attacker.id, this.targeting.targetId);
+      box.append(swarm);
+    }
     box.querySelector('[data-kap-cancel]').onclick = () => this.stopTargeting();
     box.querySelectorAll('[data-pab-attack-edge]').forEach(b => { b.onclick = () => this.confirmAttack(b.dataset.pabAttackEdge); });
   }
@@ -400,7 +409,7 @@ export class PlayerActionBar {
     const gear = await window.veilDiceRoller?.gearCheck?.(token, { weapon }).catch(() => null) || { disadvantage: false, text: '' };
     if (this.targeting !== targeting || targeting.targetId !== target.id) return;
     const roller = token.actorType === 'drone' ? store.state.tokens.find(t => t.id === token.drone?.operatorId) : token;
-    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage);
+    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage, weaponTraitId(weapon));
     const props = weaponAttackBonus(weapon, gap.band), type = damageTypeOf(weapon || ''), pen = penetrationFor(type);
     const reasons = [check.disadvantage || !check.allowed ? check.reason : '',
       props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',
@@ -476,19 +485,39 @@ export class PlayerActionBar {
     try { store.updateToken(token.id, patch); } finally { store.tableActing = before; }
     notify(`Prepare (${rest === 'long' ? 'descanso largo' : 'descanso corto'}): Resolve ${patch.resolve.current}/${patch.resolve.max}.`);
   }
+  async startClosingStrike(token, card, weaponId) {
+    const pending = window.veilDiceRoller?.pendingDamageFor(token.id);
+    if (pending?.checkId) return this.useRider('breaking-point');
+    if (this.tokenId !== token.id) return false;
+    this.startTargeting(weaponId || '');
+    if (!this.targeting) return false;
+    this.targeting.closingId = card.clockId;
+    notify('Breaking Point: elige el objetivo de tu acción. Esc cancela sin terminar el estado.');
+    return true;
+  }
   async useRider(id) {
     const rider = this.riders().find(r => r.id === id), dice = window.veilDiceRoller, token = store.state.tokens.find(t => t.id === this.tokenId);
-    if (!rider || !dice || !token) return;
+    if (!rider || !dice || !token || this.busyRider) return false;
+    const pending = dice.pendingDamageFor(token.id);
+    if (!pending || (rider.kind === 'state' && !pending.checkId)) return false;
+    this.busyRider = true;
     try {
       // The table pays the card (Hope / Effort) as when it is played from the hand.
       if (rider.kind === 'card') await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: rider.cardId, playerName: store.state.userName || '', tokenName: token.name });
       // Breaking Point ends the state.
-      if (rider.kind === 'state') store.updateToken(token.id, { effectClocks: (token.effectClocks || []).filter(c => c.id !== rider.clockId) });
+      if (rider.kind === 'state') {
+        const card = characterCards(token, cardData()).find(c => c.reverse);
+        if (!card) return false;
+        const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, clockId: rider.clockId, checkId: pending.checkId });
+        Object.assign(rider, result.rider);
+      }
       const roll = await throwExpression(rider.dice, rider.label, token);
-      dice.applyDamageRider({ id: rider.id, label: rider.label, dice: rider.dice, value: roll.total, faces: roll.faces });
+      if (dice.pendingDamageFor(token.id) !== pending || pending.applied) return false;
+      dice.applyDamageRider({ id: rider.id, branch: rider.branch, label: rider.label, dice: rider.dice, value: roll.total, faces: roll.faces });
       notify(`${rider.label}: +${roll.total} (${rider.dice} [${roll.faces.join(', ')}]).`);
       setTimeout(() => { if (this.result) { this.result = this.readResult(this.result.targetName); this.signature = ''; this.render(); } }, 300);
-    } catch (error) { notify(error.message, 'error'); }
+      return true;
+    } catch (error) { notify(error.message, 'error'); return false; } finally { this.busyRider = false; }
   }
   applyDamage() {
     document.getElementById('apply_dmg_to_target_btn')?.click();
@@ -503,10 +532,10 @@ export class PlayerActionBar {
     const chosen = t.weaponId;
     this.swallowUntil = performance.now() + 700;
     this.stopTargeting(true, { keepMark: true });
-    this.attack(chosen, target, edge);
+    this.attack(chosen, target, edge, t.closingId);
   }
 
-  async attack(weaponId, target, edge = 'normal') {
+  async attack(weaponId, target, edge = 'normal', closingId = null) {
     const dice = window.veilDiceRoller, token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!dice || !token) return;
     const dockWasOpen = !!window.veilDiceDock?.isOpen;
@@ -521,7 +550,7 @@ export class PlayerActionBar {
       if (weaponSelect) weaponSelect.value = weaponId || '';
       if (targetSelect) { targetSelect.value = target.id; targetSelect.onchange?.(); }
       this.applyRoll(edge, 0);
-      await dice.executeAttack();
+      await dice.executeAttack({ closingId });
       // The range and its penalty, said in the bar (the panel says it in its detail line).
       const weapon = (tokenInventory(token).weapons || []).find(w => w.id === weaponId) || null;
       const gap = distanceInfo(token, target, store.getActiveMap?.() || {}), check = rangeCheck(weapon, gap.band);

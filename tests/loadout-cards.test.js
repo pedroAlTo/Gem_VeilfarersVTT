@@ -30,10 +30,10 @@ test('an Awakened hand holds its Loadout Powers, the Hope Feature, the Ancestry 
   const token = character();
   fields(token).a_vault = 'Tech · L1 · ' + data.powers.find(p => p.d === 'Tech' && p.l === 1 && !loadoutNames(token).includes(p.n)).n;
   const cards = characterCards(token, data);
-  assert.deepEqual(cards.map(c => c.kind), ['power', 'power', 'feature', 'ancestry', 'community', 'vault']);
+  assert.deepEqual(cards.map(c => c.kind), ['power', 'power', 'feature', 'feature', 'feature', 'ancestry', 'community', 'vault']);
   const [first] = cards, printed = data.powers.find(p => p.n === first.name);
   assert.deepEqual([first.costText, first.rc, first.domain, first.level], [printed.cost, Number(printed.rc), printed.d, 1]);
-  assert.equal(cards[2].cost.hope, 3, 'Eureka Moment (3 Hope)'); assert.equal(cards[3].name, 'Modular Consciousness', 'the Gift that is used, not the passive one'); assert.match(cards[4].subtitle, /^Background · /);
+  assert.equal(cards[2].cost.hope, 3, 'Eureka Moment (3 Hope)'); assert.equal(cards.find(c => c.kind === 'ancestry').name, 'Modular Consciousness', 'the Gift that is used, not the passive one'); assert.match(cards.find(c => c.kind === 'community').subtitle, /^Background · /);
   assert.equal(cards.at(-1).playable, false, 'a Vault card must be Recalled first');
   assert.deepEqual(characterCards({ isPlayer: false }, data), []);
 });
@@ -128,8 +128,10 @@ test('the table resolves a played card and a Recall: costs are paid on the Keepe
   assert.equal(recalled.entered, spare.n); assert.ok(loadoutNames(store.state.tokens[0]).includes(spare.n));
   // Uncanny Power gives the Keeper its Fear.
   const mystic = { ...character({ path: 'Sleeping', cls: 'mystic', mystic: ['Lux', 'Neural'] }), id: 'tok_mystic', resolve: { current: 2, max: 2, dieType: 'd4' } };
-  const second = fakeStore(mystic), archive = characterCards(mystic, data).find(c => c.kind === 'archive' && c.playable);
-  performGameAction({ type: 'CARD_PLAY', actorId: 'tok_mystic', cardId: archive.id, resolveSpent: 2 }, second);
+  const second = fakeStore(mystic);
+  second.state.tokens.push({ ...hero, id: 'ally', mapId: mystic.mapId, x: 0, y: 0 });
+  const archive = characterCards(mystic, data).find(c => c.kind === 'archive' && c.playable);
+  performGameAction({ type: 'CARD_PLAY', actorId: 'tok_mystic', cardId: archive.id, resolveSpent: 2, targetId: 'ally' }, second);
   assert.deepEqual([second.state.fear, second.state.tokens[0].resolve.current], [2, 0]);
   assert.throws(() => performGameAction({ type: 'CARD_PLAY', actorId: 'tok_adv', cardId: 'x' }, fakeStore({ id: 'tok_adv', name: 'Pirata', isPlayer: false })), /Solo los personajes jugadores/);
 });
@@ -197,7 +199,7 @@ test('older tokens without class or ancestry fields get them from their role tex
   assert.deepEqual([classOf(vea, data)?.id, classOf(he09, data)?.id, ancestryOf(he09, data)?.name, classOf(harker, data)], ['pilot', 'engineer', 'Synthetic', null]);
   assert.equal(classOf({ characterClass: 'Soldier', roleTag: 'Ace Pilot' }, data).id, 'soldier', 'the sheet field wins over the free text');
   assert.equal(classOf({ roleTag: 'Copilot of the Vagrant' }, data), null, 'whole words only');
-  assert.deepEqual(characterCards(he09, data).map(c => c.kind), ['move', 'move', 'feature', 'ancestry', 'beardown', 'effort', 'effort', 'effort', 'effort', 'effort', 'effort', 'effort']);
+  assert.deepEqual(characterCards(he09, data).map(c => c.kind), ['move', 'move', 'feature', 'feature', 'ancestry', 'beardown', 'effort', 'effort', 'effort', 'effort', 'effort', 'effort', 'effort']);
   assert.deepEqual(characterCards(harker, data), []);
 });
 
@@ -273,7 +275,7 @@ test('a card with a duration puts its clock on the player, or on the marked ally
   const store = { sessionRole: 'local', state: { userRole: 'keeper', campaignId: 'c', tokens: [vanguard, ally], fear: 0 },
     updateToken(id, patch) { Object.assign(this.state.tokens.find(t => t.id === id), patch); return true; }, addFear() {}, addLog() {} };
   const nirvana = characterCards(vanguard, data).find(c => /Nirvana/.test(c.name));
-  const out = performGameAction({ type: 'CARD_PLAY', actorId: 'tok_v', cardId: nirvana.id, targetId: 'tok_a' }, store);
+  const out = performGameAction({ type: 'CARD_PLAY', actorId: 'tok_v', cardId: nirvana.id, trait: 'agility', targetId: 'tok_a' }, store);
   assert.equal(vanguard.effectClocks[0].die, 'd6', 'Tier 2 (level 5): Integrity d6');
   assert.equal(ally.effectClocks, undefined, 'a state on yourself never goes to the ally');
   assert.match(out.notes.join(' '), /Integrity Die d6/);

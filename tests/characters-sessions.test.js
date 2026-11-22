@@ -280,3 +280,22 @@ test('the sheet opens in Básica for players and Completa for the Keeper, rememb
   const css = readFileSync(new URL('../src/dossiers.css', import.meta.url), 'utf8');
   assert.match(css, /\[data-sheet-view='basic'\] \.sheet-full \{ display:none !important; \}/);
 });
+
+test('the compact Sleeper bar spends and regains Resolve with the recorded die and respects control', () => {
+  const token = store.addToken({ name: 'Lucy Fer', actorType: 'player', path: 'Sleeping', resolve: { current: 1, max: 2, dieType: 'd6' } });
+  store.state.selectedTokenId = token.id;
+  const root = document.createElement('div');
+  document.body.append(root);
+  const hud = new TokenHUD(root);
+  const button = delta => root.querySelector('[data-quick-stat="resolve"][data-delta="' + delta + '"]');
+  const meter = () => root.querySelector('[role=meter][aria-label="Resolve · d6"]');
+  assert.ok(root.querySelector('[role=meter][aria-label="EFFORT"]'));
+  assert.equal(meter().getAttribute('aria-valuetext'), '1 / 2');
+  button(-1).click(); assert.equal(button(-1).disabled, true);
+  button(1).click(); button(1).click(); assert.equal(button(1).disabled, true);
+  assert.deepEqual(store.getSelectedToken().resolve, { current: 2, max: 2, dieType: 'd6' });
+  store.state.userRole = 'player'; store.state.claimedTokenId = null; hud.render();
+  assert.ok(meter()); assert.equal(button(-1), null);
+  store.getSelectedToken().path = 'Awakened'; hud.render();
+  assert.equal(meter(), null); assert.ok(root.querySelector('[role=meter][aria-label="HOPE"]'));
+});

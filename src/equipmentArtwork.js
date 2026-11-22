@@ -1,8 +1,43 @@
 import extras from './extraEquipmentArt.json' with { type: 'json' };
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
+import { equipmentNameAliases, equipmentNameKey } from './equipmentNames.js';
 
-const illustratedEquipment = EQUIPMENT_CATALOG.filter(item => /Common|Military|Tier [12]\b/.test(item.tier));
-const equipmentPictures = new Map(illustratedEquipment.flatMap(item => [item.id, item.name, ...item.name.split(' / ')].map(key => [key.toLowerCase(), item.id])));
+const catalogIds = new Set([...EQUIPMENT_CATALOG.map(item => item.id), ...Object.values(extras)]);
+const exactNames = new Map(Object.entries(extras).map(([name, id]) => [equipmentNameKey(name), id]));
+const aliases = new Map();
+for (const item of EQUIPMENT_CATALOG) {
+  for (const key of equipmentNameAliases(item.name)) if (!aliases.has(key)) aliases.set(key, item.id);
+  for (const name of [item.name, ...item.name.split(' / ')]) exactNames.set(equipmentNameKey(name), item.id);
+}
+// The local inventory used to save a short display name, often with a generated row ID.
+// Renamed items use their original art identity. Retired items share a painting of
+// the same equipment family; this lookup never changes their stats or inventory IDs.
+const legacyEquipment = [
+  ['core_ar_tactical_weave', 'Malla Táctica Balística'],
+  ['core_ar_heavy_combat_suit', 'Traje de Combate Blindado Orbital'],
+  ['core_wp_plasma_carbine', 'Carabina de Plasma'],
+  ['core_wp_mag_cannon', 'Cañón de Aceleración Magnética', 'core_wp_railgun'],
+  ['core_wp_scattergun', 'Escopeta Táctica de Dispersión', 'tt1-shotgun-civilian'],
+  ['core_wp_void_rifle', 'Rifle de Francotirador del Vacío', 'core_wp_sniper_system'],
+  ['core_wp_beam_saber', 'Espada de Haz Fotónico', 'core_wp_plasma_rapier'],
+  ['rs_wp_chitin_spikes', 'Lanzador de Espículas Quitinosas', 'core_wp_needle_gun'],
+  ['rs_wp_chitin_mandible', 'Garras Mandibulares Biomecánicas', 'rs_wp_kryllian_wrist_blade'],
+  ['rs_aug_lithian_seismic_node', 'Nodo Sísmico Subdérmico Lithian', 'core_aug_sensory_package'],
+  ['rs_aug_geode_core', 'Núcleo Resonante de Geoda', 'rs_ar_lithian_silicate'],
+  ['rs_aug_chitin_pheromone', 'Transmisor de Feromonas de Alerta', 'tt1-communications-implant'],
+  ['rs_aug_neural_overclock', 'Módulo de Overclocking Neural Sintético', 'core_aug_enhanced_reflexes'],
+  ['rs_aug_subdermal_wiring', 'Cableado Óptico de Reflejos Subdérmicos', 'core_aug_combat_reflexes'],
+  ['rs_aug_void_gills', 'Branquias de Membrana del Vacío', 'tt1-respiratory-enhancement'],
+  ['rs_aug_zerog_thrusters', 'Propulsores Maniobrables de Gravedad Cero', 'drone_mod_mil_flight'],
+  ['rs_aug_ocular_targeter', 'Ojo Cibernético con HUD Táctico', 'tt1-optical-enhancement-basic'],
+  ['rs_aug_hydraulic_muscle', 'Injerto Muscular Hidráulico', 'tt1-enhanced-muscles'],
+  ['rs_aug_auto_adrenal_pump', 'Bomba Adrenal de Resucitación Táctica', 'core_gr_stim_injector'],
+];
+const legacyIds = new Map();
+for (const [id, name, artId = id] of legacyEquipment) {
+  exactNames.set(equipmentNameKey(name), artId);
+  legacyIds.set(id, artId);
+}
 // Equipment painted from the original medallion entries. Each row is one 3 × 3 sheet.
 const objectSheets = [
   ["core_wp_plasma_rapier", "core_wp_gravity_hammer", "core_wp_electro_whip", "core_wp_kinetic_pistol", "core_wp_flechette_pistol", "core_wp_plasma_pistol", "core_wp_needle_gun", "core_wp_combat_pistol", "core_wp_gauss_pistol"],
@@ -16,22 +51,31 @@ const objectSheets = [
   ["tt1-internal-storage-compartment", "tt1-memory-core-basic", "tt1-muscle-weave-basic", "tt1-olfactory-booster", "tt1-optical-enhancement-basic", "tt1-reflex-trigger", "tt1-respiratory-enhancement", "tt1-subdermal-plating-light", "tt1-shielded-receiver"],
   ["tt1-radiation-chem-sensor", "tt1-audio-suite", "tt1-medical-scanner", "tt1-tool-mount", "tt1-cutter", "tt1-repair-kit", "tt1-noise-dampener", "tt1-low-profile-frame", "tt1-decoy-flare-pod"],
   ["tt1-smoke-flash-pod", "tt1-stun-dart"],
+  ["core_ar_smart_fabric","core_ar_special_forces","core_ar_tactical_armor","core_ar_assault_armor","core_ar_marine_armor","core_ar_power_rig","core_ar_battle_armor","core_ar_power_armor_heavy","core_ar_siege_armor"],
+  ["rs_ar_sun_touched","rs_ar_dawn_regalia","rs_ar_iron_tyrant","rs_ar_shadow_weave","rs_ar_joric_battle_plate","rs_ar_centurion_siege","rs_ar_collectors_carapace","core_wp_phase_blade","core_wp_void_cleaver"],
+  ["core_wp_phase_pistol","core_wp_void_pistol","core_aug_combat_precognition"],
 ];
 const objects = new Map(objectSheets.flatMap((sheet, index) => sheet.map((id, cell) => [id, { index, cell }])));
 // The picture of a piece of equipment, for a card: one image, or a cell of a 3 × 3 sheet.
 // item: a catalog entry or an inventory row (by catalogId, id or name). null if it has none.
 export function equipmentPicture(item) {
-  const id = [item?.catalogId, item?.id].map(v => equipmentPictures.get(String(v ?? '').toLowerCase())).find(Boolean) || equipmentPictures.get(String(item?.name).toLowerCase()) || extras[String(item?.name).toLowerCase()];
+  const explicit = [item?.catalogId, item?.id].map(id => legacyIds.get(id) || id).find(id => catalogIds.has(id));
+  if (explicit) return pictureForId(explicit);
+  const names = equipmentNameAliases(item?.name);
+  const id = exactNames.get(names[0]) || names.map(name => exactNames.get(name) || aliases.get(name)).find(Boolean);
+  return pictureForId(id);
+}
+function pictureForId(id) {
   const object = objects.get(id);
   if (object) return { illustration: `/assets/equipment/objects/set-${object.index + 1}.webp`, cell: object.cell };
   return typeof id === 'string' ? { illustration: `/assets/equipment/${id}.webp` } : null;
 }
 export function equipmentThumbnail(item) {
-  const id = [item.catalogId, item.id].map(v => equipmentPictures.get(String(v ?? '').toLowerCase())).find(Boolean) || equipmentPictures.get(String(item.name).toLowerCase()) || extras[String(item.name).toLowerCase()];
-  const object = objects.get(id);
-  if (object) {
-    const { index, cell } = object;
-    return `<span class="equip-object-picture"><img src="/assets/equipment/objects/set-${index + 1}.webp" style="left:-${cell % 3 * 100}%;top:-${Math.floor(cell / 3) * 100}%" alt="" loading="lazy" /></span>`;
+  const picture = equipmentPicture(item);
+  if (!picture) return '';
+  if (Number.isInteger(picture.cell)) {
+    const { illustration, cell } = picture;
+    return `<span class="equip-object-picture"><img src="${illustration}" style="left:-${cell % 3 * 100}%;top:-${Math.floor(cell / 3) * 100}%" alt="" loading="lazy" /></span>`;
   }
-  return typeof id === 'string' ? `<img src="/assets/equipment/${id}.webp" width="54" height="54" loading="lazy" alt="" style="object-fit:cover;border-radius:5px;flex:none" />` : '';
+  return `<img src="${picture.illustration}" width="54" height="54" loading="lazy" alt="" style="object-fit:cover;border-radius:5px;flex:none" />`;
 }

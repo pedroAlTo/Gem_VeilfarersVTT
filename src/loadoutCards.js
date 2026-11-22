@@ -1,3 +1,5 @@
+import { hasSwarmTactics } from './adversaryPassives.js';
+import { pathCard } from './statePowers.js';
 import { actionArt } from './actionCardArt.js';
 import { tokenInventory } from './equipment.js';
 import { installedAugments, augmentRule, catalogEntry } from './gear.js';
@@ -144,7 +146,7 @@ export function archivePackages(token) {
 }
 
 export const powerCard = (power, zone, sheet = {}) => {
-  const type = power.t || sheet.type || 'Power', passive = /passive/i.test(type) || /long-term project/i.test(type);
+  const type = power.t || sheet.type || 'Power', passive = /passive/i.test(type);
   return {
     id: `${zone}:${slug(power.n)}`, kind: zone === 'loadout' ? 'power' : zone, zone, name: power.n,
     domain: power.d || '', level: power.l || 0, type, tier: power.tier || '', color: DOMAIN_COLORS[power.d] || '#6d28d9', art: powerArt(power),
@@ -171,7 +173,7 @@ export function characterCards(token, data, options = {}) {
     for (const [domain, level] of archivePackages(token)) for (const power of data.powers.filter(p => p.d === domain && p.l === level)) {
       const card = powerCard(power, 'archive');
       // Uncanny Power cannot reproduce a Reaction or a Passive Power.
-      cards.push({ ...card, playable: card.playable && !card.reaction });
+      cards.push({ ...card, playable: card.playable && !card.reaction && !/project/i.test(card.type) });
     }
   }
   if (sleeping) {
@@ -186,6 +188,21 @@ export function characterCards(token, data, options = {}) {
   }
   const pathFeature = sleeping ? rules?.effortFeature : rules?.hopeFeature;
   if (pathFeature) cards.push({ id: `feature:${slug(pathFeature.name)}`, kind: 'feature', zone: 'innate', name: pathFeature.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${sleeping ? 'Effort Feature' : 'Hope Feature'}`, color: cls.color || '#c084fc', art: classArt(cls), costText: (pathFeature.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(pathFeature.name), roll: null, rollText: '', rc: 0, text: text(pathFeature.text), playable: true });
+  // The class and the subclass ranks actually acquired on this character.
+  const branchList = sleeping ? cls?.sleepingSubclasses : cls?.awakenedSubclasses;
+  const branch = branchList?.find(b => lower(b.name) === lower(token.subclass) || lower(token.subclass).startsWith(lower(b.name) + ' ('));
+  const rank = Math.max(Number(token.advancement?.subclassUpgrades) || 0, /mastery/i.test(token.subclassRank) ? 2 : /specialization/i.test(token.subclassRank) ? 1 : 0);
+  const features = [[rules?.classFeature, 'Clase'], [branch?.foundation, 'Foundation'], [rank >= 1 && branch?.specialization, 'Specialization'], [rank >= 2 && branch?.mastery, 'Mastery']];
+  for (const [feature, tier] of features) {
+    if (!feature?.name) continue;
+    const description = text(feature.desc || feature.text), passive = /passive/i.test(feature.type || '');
+    // Multi-option class features have conditional costs paid when the printed option is chosen.
+    const price = /^(?:spend|mark) (\d+ (?:Hope|Effort|Stress))\b/i.exec(description)?.[1] || '';
+    cards.push({ id: 'class-rule:' + slug(feature.name), kind: 'feature', zone: 'innate', name: feature.name,
+      subtitle: [branch && tier !== 'Clase' ? branch.name : cls.name, tier, feature.type].filter(Boolean).join(' · '),
+      art: classArt(cls), color: cls.color, costText: price || '—', cost: parseCost(price), roll: null, rollText: '', rc: 0,
+      text: description, reaction: /reaction/i.test(feature.type || ''), guidedFeature: true, passive, playable: true });
+  }
   // One card per Gift that is used (it has a moment, a price or a limit); passive Gifts are
   // always on and stay on the sheet.
   const ancestry = ancestryOf(token, data);
@@ -203,7 +220,7 @@ export function characterCards(token, data, options = {}) {
   if (!sleeping) for (const name of vaultNames(token)) { const known = byName(data.powers, name); cards.push(powerCard(known || { n: name }, 'vault')); }
   // Bear Down and the Common Efforts come after the character's own cards.
   if (sleeping) cards.push(...sleepingCommonCards(token, options));
-  return cards;
+  return cards.map(card => pathCard(card, token));
 }
 
 // The deck's reference catalog besides the Powers (user request, 18 Nov 2026): every Ancestry
@@ -250,6 +267,12 @@ export function playCard(source, card, { resolveSpent = null, random = Math.rand
     notes.push(`Ignora el coste de Hope. Acción completa. Spellcast de Knowledge contra DC ${roll.dc}. Con Critical Success recuperas el Resolve gastado.`);
     return { token, paid: { resolve: spent, stress: cost.stress, hp: cost.hp }, fear, roll, summary: `${card.name} · Uncanny Power`, notes };
   }
+  if (/all remaining Hope/i.test(card.costText)) {
+    const minimum = Number(/minimum (\d+)/i.exec(card.costText)?.[1] || 1);
+    need(token.hope || 0, minimum, 'Hope');
+    cost.hope = token.hope;
+  }
+  if (/^Long-Term Project/i.test(card.type) && /per (day|week) of maintenance/i.test(card.costText)) cost.stress = 0;
   if (cost.open && cost.resolve) cost.resolve = Math.max(cost.resolve, Number(resolveSpent) || cost.resolve);
   need(token.hope || 0, cost.hope, 'Hope'); need(token.effort || 0, cost.effort, 'Effort'); need(token.resolve?.current || 0, cost.resolve, 'Resolve');
   if (cost.stress && overwhelmed(token)) throw new Error('Overwhelmed: no puedes pagar costes de Stress.');
@@ -381,7 +404,23 @@ export function adversaryAbilities(source) {
     else if ((m = line.match(/^(?:-\s*)?\*\*(.+?)\*\*\s*[_*]\((.+?)\):?[_*]:?\s*(.+)$/))) add(m[1], m[2], m[3]);
     else if ((m = line.match(/^(?:-\s*)?\*\*(.+?)\s*\(([^)]*(?:Action|Reaction|Passive|Fear)[^)]*)\)[:.]?\*\*:?\s*(.+)$/i))) add(m[1], m[2], m[3]);
     else if ((m = line.match(/^(?:-\s*)?(?:\*\*)?([A-Z][A-Za-z' -]{2,40}?)(?:\*\*)?\s*\((Fear\s*\d+[^)]*)\)\s*[:.]?\s*(.+)$/))) add(m[1], m[2], m[3]);
+    else if ((m = line.match(/^-\s*\*\*(.+?)\s*[-–—]\s*(Passive|Action|Reaction):\*\*\s*(.+)$/i))) add(m[1], m[2], m[3]);
+    else if ((m = line.match(/^-\s*\*\*(Poisoned Hairpin|Call in Favors|Backup):\*\*\s*(.+)$/i))) add(m[1], 'Procedimiento', m[2]);
     else if ((m = line.match(/^-\s*\*\*(Special):\*\*\s*(.+)$/))) add(m[1], 'Action', m[2]);
+  }
+  // Encounter objectives and service-only NPCs have procedures instead of attacks.
+  for (let i = 0; i < lines.length; i++) {
+    const heading = /^\*\*(Hazard|Objective|Consequence|Combat Use|Services):\*\*\s*(.*)$/i.exec(lines[i]);
+    if (!heading) continue;
+    let body = heading[2];
+    if (!body && heading[1] === 'Services') {
+      let j = i + 1;
+      while (j < lines.length && !lines[j]) j++;
+      while (j < lines.length && lines[j].startsWith('- ')) body += (body ? '\n' : '') + lines[j++];
+    }
+    if (!body) continue;
+    const same = found.filter(a => a.name === heading[1] || a.name.startsWith(heading[1] + ' ')).length;
+    add(heading[1] + (same ? ' ' + (same + 1) : ''), 'Procedimiento', body);
   }
   return found;
 }
@@ -393,7 +432,7 @@ export function keeperCards(token) {
       cards.push({
         id: `adversary:${token.id}:${slug(ability.name)}`, kind: 'adversary', zone: 'innate', name: ability.name, subtitle: `${token.name} · ${ability.type}${ability.fear ? ` · Fear ${ability.fear}` : ''}`,
         category, color: ability.fear ? FEAR_COLOR : '#9b150c', art: actionArt(category), costText: ability.fear ? `${ability.fear} Fear` : '—',
-        cost: { ...NO_COST(), fear: ability.fear }, roll: null, rollText: '', rc: 0, reaction: ability.type === 'Reaction', playable: ability.type !== 'Passive', text: ability.text, actorId: token.id, actorName: token.name,
+        cost: { ...NO_COST(), fear: ability.fear }, roll: null, rollText: '', rc: 0, swarm: ability.name === 'Swarm Tactics' && hasSwarmTactics(token), reaction: ability.type === 'Reaction', playable: ability.type !== 'Passive' || (ability.name === 'Swarm Tactics' && hasSwarmTactics(token) && token.hp?.current >= 3), text: ability.text, actorId: token.id, actorName: token.name,
       });
     }
   }

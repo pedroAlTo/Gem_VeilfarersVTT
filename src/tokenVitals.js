@@ -4,7 +4,7 @@ export function gaugeState(current, max, statKey = 'hp') {
   const ratio = limit > 0 ? Math.max(0, Math.min(1, value / limit)) : 0;
   const danger = limit > 0 && (statKey === 'hp' ? ratio <= 0.25 : statKey === 'stress' && ratio >= 1);
   const color = danger ? '#fb779d' : statKey === 'hp' ? (ratio <= 0.5 ? '#eac78a' : '#72e5cf')
-    : statKey === 'stress' ? '#d990ed' : statKey === 'armor' ? '#79cef9' : '#edd58a';
+    : statKey === 'stress' ? '#d990ed' : statKey === 'armor' ? '#79cef9' : statKey === 'resolve' ? '#c4a7ff' : '#edd58a';
   return { value, limit, ratio, danger, color, cells: Math.max(1, Math.min(24, Math.ceil(limit))) };
 }
 export function statGaugeHTML(label, current, max, key) {

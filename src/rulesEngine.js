@@ -246,7 +246,7 @@ export function resolveDamage({
   targetReflective = false,
   targetWarded = false,
   protection: fallbackProtection = '',
-  components, targetToken, types = [primaryType],
+  components, bonusComponents = [], targetToken, types = [primaryType],
   currentArmorSlots = 2,
   mountRating = 1, // 1 for person, 2 for Tier 2/3 ship, 3 for Tier 4/5 ship
   // One die at a time. The dice panel passes the faces read from the 3D dice here.
@@ -277,7 +277,8 @@ export function resolveDamage({
     }
   }
 
-  const damageParts = components ?? [{ amount: (baseDiceTotal + flatModifier) * mountRating, types: [...types] }];
+  const baseParts = components ?? [{ amount: (baseDiceTotal + flatModifier) * mountRating, types: [...types] }];
+  const damageParts = bonusComponents.length ? [...baseParts, ...bonusComponents] : baseParts;
   const rawDamage = damageParts.reduce((sum, part) => sum + part.amount, 0);
   const { groups, effectiveDamage, protection, fullyProtected } = mitigateComponents(damageParts, targetToken, fallbackProtection);
   const surviving = groups.filter(group => group.effective > 0);

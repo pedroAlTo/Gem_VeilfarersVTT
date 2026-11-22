@@ -2,12 +2,16 @@ import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
 import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
-import { rollAdversaryCheck, distanceInfo } from './attackFlow.js';
+import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
+import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges } from './statePowers.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions } from './cardResolution.js';
+import { firstStrikeRider } from './damageRiders.js';
+import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { resolveJump } from './starshipJump.js';
-import { checkEdge, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES } from './combatState.js';
+import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES } from './combatState.js';
 import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
@@ -15,8 +19,9 @@ import { handoffControl } from './drones.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear } from './gear.js';
-import { characterCards, playCard, recallPower, learnPower, costLabel, CARD_KINDS, cardKindName } from './loadoutCards.js';
+import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName } from './loadoutCards.js';
 const lastRoll = new Map();
+const closingStrike = actor => ({ id: 'breaking-point', branch: pathBranch(actor), label: 'Breaking Point' + (pathBranch(actor) ? ' · ' + pathBranch(actor) : ''), dice: Math.max(1, Math.min(10, actor.proficiency || 1)) + 'd6' });
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
 // The table that resolves an action (the Keeper's, local or hosting) applies it even while its
 // own screen previews the Player view, whose edit guard would otherwise drop the change silently.
@@ -75,6 +80,7 @@ function resolveGameAction(action, store) {
   if (action.type === 'CONDITION') {
     if (typeof action.name !== 'string' || !action.name.trim() || action.name.length > 100 || typeof action.active !== 'boolean') throw new Error('Condición inválida.');
     const name = normalizeConditions([action.name])[0], current = normalizeConditions(actor.conditions);
+    if (action.active && pathImmune(actor, name)) throw new Error(actor.name + ' es inmune a ' + name + '.');
     if (actor.isPlayer !== false && LIFE_STATES.includes(name)) throw new Error('Utiliza los controles de progreso y estabilización.');
     const conditions = action.active ? normalizeConditions([...current, name]) : current.filter(c => c !== name);
     if (conditions.length > 30) throw new Error('Máximo 30 condiciones por token.');
@@ -175,13 +181,43 @@ function resolveGameAction(action, store) {
     }
     const card = characterCards(actor, data).find(c => c.id === action.cardId);
     if (!card) throw new Error('Esa carta ya no está en la mano de este personaje.');
+    const state = activePath(actor);
+    if (card.chooseTrait && !PATH_TRAITS.includes(action.trait)) throw new Error('Elige Agility, Instinct o Strength para este estado.');
+    if (card.reverse) {
+      if (!state || action.clockId !== state.id) throw new Error('Ese estado ya terminó.');
+      if (card.chooseTrait) {
+        apply({ effectClocks: actor.effectClocks.map(c => c.id === state.id ? { ...c, trait: action.trait } : c) });
+        return { summary: 'Atributo del estado: ' + action.trait };
+      }
+      const hit = lastRoll.get(rollKey);
+      if (!hit || hit.id !== action.checkId || !hit.hitTarget || hit.mapId !== store.state.activeMapId || hit.pathId !== state.id || hit.closedPath) throw new Error('Selecciona una acción con daño pendiente del personaje.');
+      apply({ effectClocks: actor.effectClocks.filter(c => c.id !== state.id) });
+      hit.closedPath = true;
+      const rider = closingStrike(actor);
+      const log = { sender: actor.name, type: 'EFFECT', title: 'Breaking Point', details: state.name + ' termina. +' + rider.dice + ' al daño de la acción.' };
+      store.addLog(log);
+      return { rider, log, summary: log.details };
+    }
+    if (card.kind === 'effort' || card.kind === 'beardown') throw new Error('Utiliza la acción de Effort o Resolve de esta carta.');
+    const openChecks = (store.state.logs || []).filter(row => row.resolution?.phase === 'roll' || row.resolution?.replies?.some(r => !r.outcome));
+    if (openChecks.length >= 140) throw new Error('Resuelve las tiradas pendientes antes de jugar otra carta.');
+    const use = cardUse(card,store.state);
+    if (usedBy(actor,use)) throw new Error(card.name + ' ya está gastado (' + use.label + ').');
+    const ids = action.targetIds ?? (action.targetId ? [action.targetId] : []);
+    const targets = cardTargets(actor, card, ids, store);
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
     // A card whose text sets a duration starts an effect clock on the character (Path to
     // Nirvana: Proficiency Spotlights; Rapid Regeneration: 1d4 turns).
-    const duration = result.failed ? null : cardDuration(card, actor, facesRoller(Array.isArray(action.durationFaces) ? action.durationFaces.slice(0, 4) : []));
+    const choice = cardRollOptions(card);
+    if (choice && card.kind !== 'archive' && result.roll) {
+      const dc = action.cardDC ?? result.roll.dc;
+      if (!choice.includes(dc)) throw new Error('DC fuera de las opciones impresas.');
+      result.roll.dc = dc;
+    }
+    const duration = (result.failed || result.roll || card.guidedFeature || projectSize(card)) ? null : cardDuration(card, actor, facesRoller(Array.isArray(action.durationFaces) ? action.durationFaces.slice(0, 4) : []));
     // An effect that may help someone else goes to the ally the player marked (a player
     // character on the same scene), otherwise to the one who plays the card.
-    const marked = action.targetId && action.targetId !== actor.id ? store.state.tokens.find(t => t.id === action.targetId) : null;
+    const marked = targets[0];
     const holder = duration && marked && helpsOthers(card) && (marked.isPlayer !== false || isPartyToken(marked)) && marked.actorType !== 'drone' && !marked.hidden && marked.mapId === actor.mapId ? marked : actor;
     if (card.name === 'Rapid Regeneration' && duration) {
       if ((action.targetId && holder.id !== action.targetId) || !['Melee', 'Very Close'].includes(distanceInfo(actor, holder, store.getActiveMap?.()).band))
@@ -193,6 +229,7 @@ function resolveGameAction(action, store) {
       result.notes.push(`Reloj «${duration.name}»${holder !== actor ? ` en ${holder.name}` : ''}: ${duration.note}${when}`);
     }
     const clock = duration ? newClock(duration, { source: actor.name }) : null;
+    if (clock && card.chooseTrait) { clock.trait = action.trait; result.notes.push('Ventaja en ' + action.trait + '.'); }
     let immediate = {};
     if (card.name === 'Rapid Regeneration' && duration) {
       const recipient = holder === actor ? result.token : holder;
@@ -201,17 +238,34 @@ function resolveGameAction(action, store) {
         ...(surge ? { stress: { ...recipient.stress, current: Math.max(0, recipient.stress.current - 1) } } : {}) };
       result.notes.push(holder.name + ': recupera 1 HP' + (surge ? ' y limpia 1 Stress (Surge).' : '.'));
     }
-    apply({ ...resources(result.token), ...(holder === actor ? immediate : {}), ...(clock && holder === actor ? { effectClocks: addClock(actor.effectClocks, clock) } : {}) });
-    if (clock && holder !== actor) store.updateToken(holder.id, { ...immediate, effectClocks: addClock(holder.effectClocks, clock) });
+    apply({ ...resources(result.token), ...(use && !result.failed ? {cardUses: {...actor.cardUses,[use.key]:use.scope}} : {}), ...(holder === actor ? immediate : {}) });
+    if (holder !== actor && Object.keys(immediate).length) store.updateToken(holder.id, immediate);
+    const effect = !result.roll && !result.failed && resolveImmediate(store, actor, targets, card, action.effectFace);
+    if (effect) result.notes.push(effect);
     // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
-    if (ACTIVE_CARD_KINDS.has(card.kind) && !card.reaction) grantSpotlight(store, actor.id);
+    if (ACTIVE_CARD_KINDS.has(card.kind) && !card.reaction && !card.passive && !card.guidedFeature && !projectSize(card)) grantSpotlight(store, actor.id);
+    if (clock) {
+      const live = store.state.tokens.find(t => t.id === holder.id);
+      store.updateToken(live.id, { effectClocks: addClock(live.effectClocks, clock) });
+    }
     if (result.fear) store.addFear(result.fear);
     const details = [result.summary, ...result.notes].join(' ');
-    const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${card.name}`, details };
+    const playId = newId();
+    const resolution = createResolution(card, actor, targets, result.roll, playId, store.state.activeMapId);
+    if (use) resolution.limit = use;
+    if (resolution.project && !result.roll && !result.failed) {
+      const mission = store.addClock({ title: card.name + ' · ' + actor.name, segments: resolution.project, category: 'progress' });
+      resolution.clockId = mission.id;
+      resolution.notes = ['Proyecto iniciado. Marca el reloj al resolver cada fase de trabajo impresa.'];
+    }
+    if (result.failed) resolution.phase = 'done';
+    if (card.kind === 'archive') resolution.refundResolve = result.paid.resolve;
+    if (action.durationFaces) resolution.durationFaces = action.durationFaces.slice(0, 4);
+    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details, resolution };
     store.addLog(log);
     // The Keeper's table shows the card that was just used.
-    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('veil:card-played', { detail: { card, actorId: actor.id, actorName: actor.name, playerName: String(action.playerName ?? '').slice(0, 80), summary: result.summary, notes: result.notes, failed: !!result.failed, at: Date.now() } }));
-    return { id: newId(), actorId: actor.id, log, outcomeTitle: `${cardKindName(card.kind)} · ${costLabel(result.paid)}`.toUpperCase(), card: { id: card.id, name: card.name, kind: card.kind, color: card.color }, roll: result.roll, failed: !!result.failed, notes: result.notes, summary: result.summary, fear: result.fear };
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('veil:card-played', { detail: { card, playId, actorId: actor.id, actorName: actor.name, playerName: String(action.playerName ?? '').slice(0, 80), summary: result.summary, notes: result.notes, failed: !!result.failed, at: Date.now() } }));
+    return { id: playId, actorId: actor.id, log, outcomeTitle: `${cardKindName(card.kind)} · ${costLabel(result.paid)}`.toUpperCase(), card: { id: card.id, name: card.name, kind: card.kind, color: card.color }, roll: result.roll, failed: !!result.failed, notes: result.notes, summary: result.summary, fear: result.fear };
   }
   if (action.type === 'CHECK') {
     const o = action.options || {};
@@ -234,7 +288,19 @@ function resolveGameAction(action, store) {
       throw new Error('Resolve requires a Sleeping character with available Resolve.');
     const target = action.attack && action.targetId ? store.state.tokens.find(t => t.id === action.targetId && t.mapId === actor.mapId) : null;
     if (action.attack && action.targetId && !target) throw new Error('El objetivo ya no está en esta escena.');
-    const edge = checkEdge(actor, target, o.hasAdvantage, o.hasDisadvantage);
+    const cast = awaitingRoll(store, action.cardPlayId, actor, o, action.cardReplyId);
+    if (cast && (action.attack || secret !== (store.state.logs.find(row => row.resolution?.id === cast.id)?.visibility === 'keeper'))) throw new Error('Resuelve el poder con su propia tirada pública.');
+    const state = activePath(actor);
+    const ownAttack = target && player && !action.viaDrone && target.id !== actor.id;
+    if (action.closingId && (!ownAttack || !state || state.id !== action.closingId)) throw new Error('Breaking Point requiere el estado activo y una acción propia.');
+    const weapon = ownAttack && action.weaponId ? tokenInventory(actor).weapons.find(w => w.id === action.weaponId) : null;
+    if (ownAttack && action.weaponId && !weapon) throw new Error('El arma ya no pertenece al personaje.');
+    const context = o.contextId && contextualEdges(actor,o.traitId).find(c => c.id === o.contextId);
+    if (o.contextId && !context) throw new Error('Ese efecto contextual ya no está activo para el atributo.');
+    if (action.closingId && (target.hidden || target.mapId !== store.state.activeMapId)) throw new Error('El objetivo de Breaking Point ya no está en la escena.');
+    const melee = ownAttack && (!weapon || weaponRangeBand(weapon) === 'Melee');
+    const guard = melee && disciplinedDefense(target, actor, store.getActiveMap?.(), store.state.tokens);
+    const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty, o.traitId);
     const keeperRoll = !player;
     const result = keeperRoll ? rollAdversaryCheck({
       actorName: actor.name,
@@ -301,11 +367,32 @@ function resolveGameAction(action, store) {
       const ticked = tickClocks(actor.effectClocks, { kind: 'fear' });
       patch.effectClocks = ticked.list; integrityEnded = ticked.expired;
     }
+    const hit = ownAttack && (result.isCritical || result.total >= o.dc);
+    const damageRiders = [];
+    if (state && melee) {
+      const opening = firstStrikeRider(actor, weapon);
+      if (opening && target.isPlayer === false && !isPartyToken(target)) {
+        if (hit) damageRiders.push({ ...opening, branch: pathBranch(actor), label: opening.label + ' · ' + (pathBranch(actor) || 'rama') });
+        patch.effectClocks = (patch.effectClocks || actor.effectClocks).map(c => c.id === state.id ? { ...c, firstStrikeUsed: true } : c);
+      }
+      if (hit && /refused/i.test(state.name) && actor.traits?.[state.trait]) damageRiders.push({ id: 'disciplined-trait', label: state.trait, value: actor.traits[state.trait] });
+    }
+    if (action.closingId) {
+      if (hit) damageRiders.push(closingStrike(actor));
+      patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== state.id);
+    }
+    if (['agility','finesse'].includes(o.traitId) && actor.effectClocks?.some(c => c.name === 'Slipstream Jolt')) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.name !== 'Slipstream Jolt');
     if (!standalone) store.updateToken(actor.id, patch);
+    if (guard) markMeleeDefense(store, target, guard);
+    // Resolve the normal payout before the card's additional Fear, so revising a
+    // failed cast cannot remove the Fear earned by the Duality roll at the cap.
+    if (result.fearGain) store.addFear(result.fearGain);
+    if (cast) completeCardRoll(store, cast, result);
     if (action.attack && player) grantSpotlight(store, actor.id);
     for (const c of integrityEnded) store.addLog({ sender: actor.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${actor.name}: el Integrity Die llega a 0 y «${c.name}» termina.` });
-    if (result.fearGain) store.addFear(result.fearGain);
-    const record = { id: newId(), actorId: actor.id, ...result, ...(secret ? { visibility: 'keeper' } : {}) };
+    const record = { id: newId(), actorId: actor.id, ...result,
+      ...(cast ? { cardPlayId: cast.id, ...(cast.replyId ? { cardReplyId: cast.replyId } : {}) } : {}),
+      ...(ownAttack ? { hitTarget: hit ? target.id : null, mapId: store.state.activeMapId, pathId: state?.id || null, closedPath: !!action.closingId, damageRiders } : {}), ...(secret ? { visibility: 'keeper' } : {}) };
     lastRoll.set(rollKey, record);
     const log = {
       sender: actor.name,
@@ -341,6 +428,7 @@ function resolveGameAction(action, store) {
       throw new Error('Make a check first, then use Bear Down before narrating its outcome.');
     if (actor.path !== 'Sleeping' || (actor.resolve?.current || 0) < 1)
       throw new Error('No Resolve available.');
+    const cast = cardToAmend(store, previous);
     // Bear Down spends any number of Resolve Dice and adds their total (Corebook ch. 7).
     const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
     const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
@@ -362,6 +450,7 @@ function resolveGameAction(action, store) {
       result.outcomeDesc = `Bear Down adds ${bonus} (${count}${actor.resolve.dieType || 'd4'}: ${dice.join(', ')}). ${success ? 'The check succeeds.' : 'The check still fails.'} Dominance and Path payout are unchanged.`;
     }
     result.bearDown = { count, dice, bonus };
+    if (cast) completeCardRoll(store, cast, result, previous);
     lastRoll.set(rollKey, result);
     const log = {
       sender: actor.name,
@@ -423,7 +512,9 @@ function resolveGameAction(action, store) {
         current: Math.max(0, (patch.stress || actor.stress).current - 2),
       };
     store.updateToken(actor.id, patch);
+    const common = COMMON_EFFORTS.find(c => c.move === move);
     const log = {
+      ...(common ? { resolution: createResolution(common, actor, [], null, newId(), store.state.activeMapId) } : {}),
       sender: actor.name,
       type: 'EFFORT',
       title: move,
@@ -440,7 +531,7 @@ export function finishRest(store, rest = store.state.rest) {
   if (!rest) return { rest: null };
   const { patches, lines } = resolveRest(rest, store.state.tokens);
   store._beforeTacticalMutation?.(REST_NAMES[rest.kind]);
-  store.update({ rest: null, tokens: store.state.tokens.map(t => (patches.has(t.id) ? { ...t, ...patches.get(t.id) } : t)) });
+  store.update({ rest: null, tokens: store.state.tokens.map(t => (patches.has(t.id) ? { ...t, ...patches.get(t.id), ...(rest.kind === 'long' ? resetCardUses(t,'long rest') : {}) } : t)) });
   const log = { sender: 'Keeper', type: 'REST', title: `${REST_NAMES[rest.kind]} completado`, details: lines.join('\n') || 'Sin cambios.' };
   store.addLog(log);
   return { rest: null, done: true, lines };

@@ -29,9 +29,9 @@ test('Every first-level power resolves its own illustration', () => {
   assert.equal(new Set(paths).size, 21);
   paths.forEach(checkImage);
 });
-test('Every table catalog item at tiers 1 and 2 and all common Creator and drone gear resolve packaged art', () => {
+test('Every table catalog item and all common Creator and drone gear resolve packaged art', () => {
   const common = [...data('creator/data/armor'), ...data('creator/data/weapons'), ...data('creator/data/humanInheritance').grafts, ...data('droneModules')].filter(x => (x.grade || x.tier).toLowerCase() === 'common');
-  for (const item of [...common, ...EQUIPMENT_CATALOG.filter(x => /Common|Military|Tier [12]/.test(x.tier))]) {
+  for (const item of [...common, ...EQUIPMENT_CATALOG]) {
     const thumb = equipmentThumbnail({name:item.name});
     assert.ok(thumb, item.name);
     checkImage(thumb.match(/src="([^"]+)"/)[1]);

@@ -1,3 +1,4 @@
+import { PATH_TRAITS } from './statePowers.js';
 // Effect clocks (V3): the duration of an effect a card starts, kept on the token.
 // Path to Nirvana ("a number of Spotlights equal to your Proficiency") makes a clock of
 // Proficiency segments; Rapid Regeneration ("Roll 1d4: the result is the number of additional
@@ -64,6 +65,8 @@ export function cardDuration(card, token = {}, roll = rollDie) {
     const faces = Array.from({ length: n }, () => roll(sides)), total = clamp(faces.reduce((a, b) => a + b, 0), 1, MAX_SEGMENTS);
     return { ...base, segments: total, faces, note: `${n}d${sides} [${faces.join(', ')}]: dura ${total} turno${total > 1 ? 's' : ''}.`, perTick };
   }
+  const timedContext = { 'Ecosystem Analysis': '24 horas', 'Perfect Facade': '1 hora' };
+  if (Object.hasOwn(timedContext, card?.name)) return { ...base, segments: 1, tick: 'manual', note: 'Dura ' + timedContext[card.name] + '.' };
   const own = durationSentences(text).join(' ');
   const rounds = own.match(/(?:lasts?|lasting|for) (\d+|one|two|three|four|five|six) (?:more |additional )?(?:Spotlights|turns|rounds?)\b/i);
   if (rounds) {
@@ -115,6 +118,12 @@ export function validEffectClocks(v) {
     && Number.isInteger(c.segments) && c.segments >= 1 && c.segments <= MAX_SEGMENTS
     && Number.isInteger(c.filled) && c.filled >= 0 && c.filled <= c.segments
     && ['spotlight', 'fear', 'manual'].includes(c.tick)
+    && (c.condition === undefined || ['Dazed', 'Stunned'].includes(c.condition))
+    && (c.expiry === undefined || ['round','spotlight-end'].includes(c.expiry))
+    && (c.seenSpotlight === undefined || typeof c.seenSpotlight === 'boolean')
+    && (c.edge === undefined || ['advantage','disadvantage'].includes(c.edge))
+    && (c.meleeRound === undefined || typeof c.meleeRound === 'string' && c.meleeRound.length <= 160)
+    && (c.trait === undefined || PATH_TRAITS.includes(c.trait))
     && (c.scene === undefined || typeof c.scene === 'boolean') && (c.firstStrikeUsed === undefined || typeof c.firstStrikeUsed === 'boolean') && (c.die === undefined || /^d(4|6|8|10|12)$/.test(c.die))
     && (c.perTick === undefined || (c.perTick && typeof c.perTick === 'object' && Number.isInteger(c.perTick.hp ?? 0) && (c.perTick.hp ?? 0) >= 0 && (c.perTick.hp ?? 0) <= 20))
     && (c.source === undefined || (typeof c.source === 'string' && c.source.length <= 80)));

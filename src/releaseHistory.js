@@ -1,6 +1,38 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.10', date: '2026-11-22', title: 'Visión Ailurean, Resolve y equipo en mesa',
+    sections: [
+      { title: 'En la mesa', items: [
+        'Los Sleeper ven en la barra flotante el Resolve disponible, su máximo y el dado d4 o d6. Pueden gastarlo o recuperarlo junto al Effort.',
+        'Desde un personaje Ailurean, el mapa, los obstáculos y los efectos se ven en grises con un ligero tinte azul. Los personajes de otros jugadores conservan su color.',
+        'Las cartas, sus resoluciones y la elección de escudos se abren en un panel compacto que deja el mapa visible e interactivo.',
+        'La ficha reconoce los nombres antiguos, abreviados y bilingües del equipo ilustrado, incluida la armadura de fichas importadas.',
+      ] },
+    ],
+  },
+  {
+    version: '2.29.9', date: '2026-11-22', title: 'Bear Down, daño de Vanguard y usos por arco',
+    sections: [
+      { title: 'En la mesa', items: [
+        'Bear Down actualiza el resultado del poder o de la tirada solicitada al personaje. Al pasar de fallo a éxito se aplica el beneficio una sola vez y se conserva el Fear de la tirada de Dualidad.',
+        'Los dados extra del arma se suman una sola vez al primer golpe y a Breaking Point. El total mostrado y el daño aplicado usan las mismas cantidades.',
+        'En las escenas sin arco asignado, el Keeper puede iniciar un nuevo arco narrativo desde el registro y renovar los usos aunque haya cerrado o borrado la carta.',
+      ] },
+    ],
+  },
+  {
+    version: '2.29.8', date: '2026-11-21', title: 'Poderes y movimientos en mesa',
+    sections: [
+      { title: 'Cartas', items: ['El registro conserva lanzador, objetivos, tirada y consecuencias. El Keeper puede pedir las tiradas impresas a los jugadores, preparar daño con escudos y aplicar recursos, condiciones y relojes. Los proyectos de dominio abren un reloj de campaña. Se guardan los límites de uso de 51 poderes.'] },
+      { title: 'Vanguard y bestiario', items: ['Path to Nirvana y The Refused Path muestran el estado en el token y Breaking Point en la otra cara de la carta. Swarm Tactics permite elegir dos objetivos a alcance Close con 3 HP o más y resolver cada impacto por separado.'] },
+    ],
+  },
+  {
+    version: '2.29.7', date: '2026-11-21', title: 'Equipamiento avanzado ilustrado',
+    sections: [{ title: 'Inventario y cartas', items: ['Las 16 armaduras, cuatro armas y el módulo de precognición que faltaban en el catálogo de mesa tienen ilustración propia.'] }],
+  },
+  {
     version: '2.29.6', date: '2026-11-21', title: 'Ilustraciones para los poderes de nivel 6 a 10',
     sections: [{ title: 'Cartas', items: ['Los 70 poderes de nivel 6 a 10 completan las ilustraciones de las 147 cartas de los siete dominios.'] }],
   },

@@ -4,7 +4,7 @@ import { store } from './state.js';
 import { guideEvent } from './onboarding.js';
 import { network } from './networkManager.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
-import { dossierDialog } from './dossierUI.js';
+import { tableDialog } from './dossierDialog.js';
 import { cardData, loadCardData } from './cardData.js';
 import { roundKey } from './combatState.js';
 import { bearDown } from './bearDown.js';
@@ -12,6 +12,12 @@ import { throwDice } from './tableDice.js';
 import { durationDice } from './effectClocks.js';
 import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups } from './loadoutCards.js';
 
+import {cardUse,usedBy} from './cardLimits.js';
+import { cardChoices, chosenCardOptions, openResolution } from './cardResolutionUI.js';
+import { TARGET_RULES, cardRollOptions, createResolution } from './cardResolution.js';
+import { openSwarmAttack } from './swarmAttackUI.js';
+import { tokenAtPoint } from './playerActionBar.js';
+import { newId } from './persistence.js';
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
 const keeperView = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
 
@@ -20,6 +26,7 @@ const affordable = (token, card) => {
   if (KEEPER_KINDS.has(card.kind)) return (store.state.fear || 0) >= (card.cost.fear || 0);
   // A Common Effort can always be paid at 0 Effort through Burnout.
   if (card.kind === 'effort') return (token.effort || 0) >= card.cost.effort || (token.effort || 0) === 0;
+  if (usedBy(token,cardUse(card,store.state))) return false;
   const c = card.cost, stressRoom = (token.stress?.max ?? 6) - (token.stress?.current || 0);
   if (card.kind === 'archive') return (token.resolve?.current || 0) >= 1 && c.stress <= stressRoom;
   return (token.hope || 0) >= c.hope && (token.effort || 0) >= c.effort && (token.resolve?.current || 0) >= c.resolve && c.stress <= stressRoom;
@@ -58,7 +65,7 @@ export function cardFace(card, { large = false } = {}) {
   const art = card.art || { flag: '', band: '', layout: 'band' }, price = badge(card);
   const footLeft = card.domain ? `${card.domain} · LV ${card.level}` : cardKindName(card.kind), footRight = card.kind === 'power' || card.kind === 'vault' ? `RC ${card.rc}` : '';
   return `
-    <span class="vf-card-frame layout-${e(art.layout)}" style="--card-color:${e(card.color)}">
+    <span class="vf-card-frame ${card.reverse ? 'vf-path-reverse' : ''} layout-${e(art.layout)}" style="--card-color:${e(card.color)}">
       <span class="vf-card-head"><strong class="vf-card-title">${e(card.name)}</strong>${price ? `<span class="vf-card-badge ${price[0]}">${e(String(price[1]))}</span>` : ''}</span>
       <span class="vf-card-art">
         ${Number.isInteger(art.cell) && art.cell >= 0 && art.cell < 9 ? `<span class="vf-sheet-window"><img class="vf-power-picture vf-sheet-picture" src="${e(art.illustration)}" style="left:-${art.cell % 3 * 100}%;top:-${Math.floor(art.cell / 3) * 100}%" alt="" draggable="false" /></span>` : art.illustration ? `<img class="vf-power-picture" src="${e(art.illustration)}" alt="" loading="lazy" draggable="false" />` : ''}
@@ -140,7 +147,7 @@ export class CardHand {
     // While the rules data loads, the deck stays in sight (it is always visible).
     if (!data) { this.signature = ''; this.tokenId = null; this.root.classList.remove('hidden'); this.quickbar.classList.remove('with-hand'); this.root.innerHTML = sanitizeHTML(deckButton('Mazo: consulta todos los Poderes del juego')); this.root.querySelector('[data-open-vault]').onclick = () => this.toggleDrawer('', false, { catalogOnly: true }); return; }
     const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts });
-    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, cards.map(c => c.id)]);
+    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token.id;
     const hand = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault'), n = hand.length;
@@ -221,7 +228,7 @@ export class CardHand {
   renderKeeper() {
     const selected = store.getSelectedToken?.(), token = selected && selected.isPlayer === false && selected.actorType !== 'drone' ? selected : null;
     const cards = keeperCards(token), fear = store.state.fear || 0;
-    const signature = JSON.stringify(['keeper', token?.id, token?.featureNotes?.length, fear, cards.map(c => c.id)]);
+    const signature = JSON.stringify(['keeper', token?.id, token?.featureNotes, token?.hp?.current, fear, cards.map(c => c.id)]);
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token?.id || null;
     this.root.classList.remove('hidden'); this.quickbar.classList.add('with-hand');
@@ -242,26 +249,35 @@ export class CardHand {
     if (!token) return;
     if (card.kind === 'effort' && (token.effort || 0) < card.cost.effort) { this.inspect(card, point); return; }
     if (!card.playable) { this.inspect(card); return; }
-    if (card.kind === 'archive' || (card.cost.open && card.cost.resolve)) { this.inspect(card, point); return; }
+    if (card.chooseTrait || card.reverse || TARGET_RULES[card.name] || cardRollOptions(card) || card.kind === 'archive' || (card.cost.open && card.cost.resolve)) { this.inspect(card, point); return; }
     this.play(card, point);
   }
 
-  async play(card, point = null, resolveSpent = null, { burnout = false } = {}) {
+  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC } = {}) {
     if (KEEPER_KINDS.has(card.kind)) return this.playKeeper(card, point);
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return false;
+    if (card.reverse) {
+      try {
+        if (!card.chooseTrait) return await window.veilActionBar?.startClosingStrike(token, card, weaponId);
+        await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, clockId: card.clockId, trait });
+        return true;
+      } catch (err) { notify(err.message, 'error'); return false; }
+    }
     if (card.kind === 'beardown' || card.kind === 'effort') return this.playSleeping(card, token, point, resolveSpent, burnout);
     try {
       const playerName = store.state.userName || store.state.playerName || 'Jugador';
       // The ally marked on the map receives an effect meant for others (Rapid Regeneration…).
       // (the marked target, or the ally selected on the map: touch your companion, then play).
-      const picked = [store.state.targetTokenId, store.state.selectedTokenId].find(id => id && id !== token.id && store.state.tokens.some(t => t.id === id && t.isPlayer !== false));
-      const targetId = picked || undefined;
+      const picked = this.cardTarget(point);
+      const recipients = card.chooseTrait ? [] : targetIds ?? (picked ? [picked] : []);
       // A duration set by a die (Rapid Regeneration: 1d4 turns) is thrown here, as 3D dice.
       const dd = durationDice(card);
       const durationFaces = dd ? await throwDice([{ qty: dd.qty, sides: dd.sides, role: 'Duración' }], { label: `${card.name} · duración`, actor: token,
         describe: v => ({ outcome: `${v.reduce((a, b) => a + b, 0)} turnos`, modifiers: `${dd.qty}d${dd.sides} [${v.join(', ')}]` }) }) : null;
-      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, resolveSpent, playerName, tokenName: token.name, ...(targetId ? { targetId } : {}), ...(durationFaces ? { durationFaces } : {}) });
+      const effectFace = card.name === 'Emergency Repair' && card.kind !== 'archive'
+        ? (await throwDice([{ qty: 1, sides: 8, role: 'Reparación' }], { label: card.name, actor: token }))[0] : undefined;
+      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
       const detail = [result.summary, ...(result.notes || [])].join(' ');
       window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: result.failed ? 'NO SE MANIFIESTA' : result.outcomeTitle, modifiers: detail, details: detail });
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
@@ -269,7 +285,7 @@ export class CardHand {
       const effect = card.text.replace(/\s+/g, ' ').trim();
       const line = `🂠 ${playerName} (${token.name}) usa ${card.name} [${cardKindName(card.kind)}] — ${detail} Efecto: ${effect}`;
       network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
-      if (result.roll && !result.failed) { window.veilDiceRoller?.prepareCheck?.({ tokenId: token.id, ...result.roll }); notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`); }
+      if (result.roll && !result.failed) { window.veilDiceRoller?.prepareCheck?.({ tokenId: token.id, ...result.roll, playId: result.id }); notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`); }
       guideEvent('card');
       return true;
     } catch (error) { notify(error.message, 'error'); return false; }
@@ -304,42 +320,64 @@ export class CardHand {
     return played;
   }
 
+  cardTarget(point) {
+    if (point) return tokenAtPoint(store.getTokensForActiveMap(), point, store.getActiveMap()?.gridSize || 64)?.id;
+    return store.state.targetTokenId || undefined;
+  }
   inspect(card, point = null) {
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     // Reference cards of the deck (and the Powers of the catalog) are read without a character.
     const reference = card.zone === 'catalog' || card.zone === 'vault';
     if (!token && !KEEPER_KINDS.has(card.kind) && !reference) return;
+    const use = cardUse(card,store.state);
     const burnoutOnly = card.kind === 'effort' && (token?.effort || 0) === 0;
     const chooses = card.playable && (card.kind === 'archive' || (card.cost.open && card.cost.resolve)), available = token?.resolve?.current || 0;
-    const modal = dossierDialog(card.name, `
+    const { activeMapId: mapId, selectedTokenId: selectedId } = store.state;
+    const modal = tableDialog(card.name, `
       <div class="card-inspect">
-        <div class="vf-card vf-card-large">${cardFace(card, { large: true })}</div>
+        <div class="vf-card table-card-preview" aria-hidden="true">${cardFace(card)}</div>
         <div class="card-inspect-side">
           <p class="dossier-muted">${e(card.subtitle)}</p>
-          <p class="card-inspect-text">${richText(card.text)}</p>
+          <details class="table-rule"${!card.playable ? ' open' : ''}><summary>Texto de la carta</summary><p class="card-inspect-text">${richText(card.text)}</p></details>
+          ${use ? `<p class="dossier-muted">${e(use.label)} · ${usedBy(token,use) ? 'Gastado' : 'Disponible'}</p>` : ''}
           ${card.kind === 'archive' ? '<p class="dossier-muted">Uncanny Power: gasta Resolve, tira un dado de Resolve por cada uno y suma Knowledge; el resultado es el nivel máximo que alcanzas. El Keeper gana 1 Fear por Resolve. Ignoras el coste de Hope y tiras Knowledge contra DC 10 + nivel.</p>' : ''}
           ${card.zone === 'vault' ? '<p class="dossier-muted">Esta carta está en el Vault. Tráela al Loadout con un Recall.</p>' : ''}
           ${card.zone === 'catalog' ? '<p class="dossier-muted">Carta de consulta del mazo: se juega desde la mano del personaje que la tiene.</p>' : ''}
           ${!card.playable && card.zone !== 'vault' && card.zone !== 'catalog' ? '<p class="dossier-muted">Carta pasiva, de reacción no reproducible o proyecto a largo plazo: se consulta, no se juega desde la mano.</p>' : ''}
           ${KEEPER_KINDS.has(card.kind) ? `<p class="dossier-muted">Fear del Keeper: ${store.state.fear || 0}/12.${card.kind === 'adversary' ? ' Una criatura usa como mucho una Fear Ability por ciclo de Spotlight, más una Reaction defensiva.' : ''}</p>` : ''}
+          ${card.playable && token && !reference && !KEEPER_KINDS.has(card.kind) && !['beardown','effort'].includes(card.kind) ? cardChoices(card,token,this.cardTarget(point)) : ''}
           ${burnoutOnly ? '<p class="dossier-muted">No te queda Effort: puedes usarla con Burnout. Pagas 1 HP, marcas 1 Stress y tu Stress máximo baja 1 hasta tu próxima Recovery.</p>' : card.kind === 'effort' && (token.effort || 0) < card.cost.effort ? `<p class="dossier-error">Hace falta ${card.cost.effort} Effort y tienes ${token.effort || 0}.</p>` : ''}
           ${chooses ? `<label class="dossier-field"><span>Resolve que gastas (tienes ${available})</span><input class="hud-input" type="number" name="card_resolve" min="1" max="${Math.max(1, available)}" value="${Math.max(1, card.cost.resolve || 1)}" /></label>` : ''}
           <p class="dossier-error" role="alert"></p>
+          ${card.kind === 'adversary' && !card.playable && !card.swarm && keeperView() ? '<button type="button" class="hud-btn" data-observe>Resolver el desencadenante en mesa</button>' : ''}
           <footer class="dossier-footer">${card.zone === 'vault' && token ? '<button type="button" class="hud-btn hud-btn-primary" data-card-recall>Recall al Loadout</button>' : card.playable ? `<button type="button" class="hud-btn hud-btn-primary" data-card-play>Jugar · ${e(card.kind === 'archive' ? 'Uncanny Power' : costLabel(card.cost))}</button>` : ''}</footer>
         </div>
       </div>`, 'card-inspect-dialog');
+    const stillAvailable = () => {
+      const available = KEEPER_KINDS.has(card.kind)
+        ? keeperView() && (!card.spotlight || store.state.selectedTokenId === selectedId)
+        : token && this.owner()?.id === token.id && this.tokenId === token.id && token.mapId === mapId;
+      if (available && store.state.activeMapId === mapId) return true;
+      modal.querySelector('[role=alert]').textContent = 'Ha cambiado el personaje o la escena. Vuelve a abrir la carta desde su mano.';
+      return false;
+    };
     const playButton = modal.querySelector('[data-card-play]');
     if (playButton) {
+      if (card.reverse) playButton.textContent = card.chooseTrait ? 'Guardar atributo' : 'Usar Breaking Point';
+      if (usedBy(token,use)) { playButton.textContent = 'Uso gastado'; playButton.disabled = true; }
       if (burnoutOnly) playButton.textContent = 'Usar con Burnout · 1 HP';
       if (card.kind === 'effort' && !burnoutOnly && (token.effort || 0) < card.cost.effort) playButton.disabled = true;
       playButton.onclick = async () => {
+        if (playButton.disabled || !stillAvailable()) return;
         const spent = chooses ? Math.max(1, Number(modal.querySelector('[name="card_resolve"]').value) || 1) : null;
         playButton.disabled = true;
-        if (await this.play(card, point, spent, { burnout: burnoutOnly })) modal.remove(); else playButton.disabled = false;
+        if (await this.play(card, point, spent, { burnout: burnoutOnly, ...chosenCardOptions(modal) })) modal.remove(); else playButton.disabled = false;
       };
     }
+    const observe = modal.querySelector('[data-observe]');
+    if (observe) observe.onclick = async () => { if (stillAvailable() && await playKeeperMove(card,point)) modal.remove(); };
     const recall = modal.querySelector('[data-card-recall]');
-    if (recall) recall.onclick = () => { modal.remove(); this.toggleDrawer(card.name, true); };
+    if (recall) recall.onclick = () => { if (stillAvailable()) { modal.remove(); this.toggleDrawer(card.name, true); } };
     return modal;
   }
 
@@ -481,14 +519,15 @@ export class CardFeed {
   }
   open(entry) {
     if (!entry) return null;
+    if (entry.playId && store.state.logs.some(row => row.resolution?.id === entry.playId)) return openResolution(entry.playId);
     const card = entry.card;
-    return dossierDialog(`${entry.actorName} usa ${card.name}`, `
+    return tableDialog(`${entry.actorName} usa ${card.name}`, `
       <div class="card-inspect">
-        <div class="vf-card vf-card-large">${cardFace(card, { large: true })}</div>
+        <div class="vf-card table-card-preview" aria-hidden="true">${cardFace(card)}</div>
         <div class="card-inspect-side">
           <p class="dossier-muted">Usada por <strong>${e(entry.actorName)}</strong>${entry.playerName ? ` (${e(entry.playerName)})` : ''} · ${e(card.subtitle)}</p>
           <p class="card-inspect-text"><strong>${e(entry.summary)}</strong>${entry.notes?.length ? `<br>${e(entry.notes.join(' '))}` : ''}</p>
-          <p class="card-inspect-text">${e(card.text).replace(/\n/g, '<br>')}</p>
+          <details class="table-rule"><summary>Texto de la carta</summary><p class="card-inspect-text">${richText(card.text)}</p></details>
         </div>
       </div>`, 'card-inspect-dialog');
   }
@@ -497,9 +536,14 @@ const CARD_FEED_LIMIT = 4, CARD_FEED_LIFE = 90000;
 
 export async function playKeeperMove(card, point = null) {
   if (!keeperView()) return false;
+  if (card.swarm) return !!openSwarmAttack(card.actorId,store.state.targetTokenId);
   const fear = store.state.fear || 0, cost = card.cost.fear || 0;
   if (fear < cost) { notify(`No hay Fear suficiente: hacen falta ${cost} y quedan ${fear}.`, 'error'); return false; }
   const target = card.actorId ? store.state.tokens.find(t => t.id === card.actorId) : store.getSelectedToken?.();
+  if (card.actorId && (!target || target.mapId !== store.state.activeMapId)) { notify('El adversario ya no está en la escena.', 'error'); return false; }
+  const cycle = target && roundKey(store.getActiveMap());
+  const usageKey = card.kind === 'adversary' && cost ? (card.reaction ? 'fearReactionRound' : 'fearAbilityRound') : null;
+  if (usageKey && target[usageKey] === cycle) { notify('Esta criatura ya usó esa activación de Fear en este ciclo de Spotlight.', 'error'); return false; }
   // Spotlight Enemies with an adversary selected hands it the Spotlight; the table already
   // charges 1 Fear for that, so it is not charged twice.
   if (card.spotlight) {
@@ -508,6 +552,7 @@ export async function playKeeperMove(card, point = null) {
     }
     if (store.updateToken(target.id, { hasSpotlight: true, spotlight: { ...(target.spotlight || {}), enabled: true } }) === false) return false;
   } else if (cost && !store.spendFear(cost, card.actorName ? `${card.actorName}: ${card.name}` : card.name)) { notify('No se pudo gastar el Fear.', 'error'); return false; }
+  if (usageKey) store.updateToken(target.id,{ [usageKey]: cycle });
   network.broadcast?.({ type: 'FEAR_UPDATE', fear: store.state.fear });
   const secretRoll = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
   const roll = card.die ? (await throwDice([{ qty: 1, sides: card.die, role: card.name }], { label: card.name, actor: { name: 'Keeper' }, secret: secretRoll }))[0] : null;
@@ -515,7 +560,10 @@ export async function playKeeperMove(card, point = null) {
   const summary = `${who} · ${card.name}${cost ? ` · ${cost} Fear (quedan ${store.state.fear})` : ''}${roll ? ` · d${card.die} [${roll}]` : ''}`;
   const secret = window.veilDiceRoller?.rollVisibility?.() === 'keeper';
   window.veilDiceEngine?.showCallout?.({ playerName: 'Keeper', tokenName: who, label: card.name, skill: card.name, outcome: cost ? `${cost} FEAR` : cardKindName(card.kind).toUpperCase(), modifiers: summary, details: summary, visibility: secret ? 'keeper' : 'table' });
-  if (!cost) store.addLog({ sender: 'Keeper', type: 'KEEPER_MOVE', title: card.name, details: summary, ...(secret ? { visibility: 'keeper' } : {}) });
+  const mapId = store.state.activeMapId, playId = newId();
+  const resolution = createResolution(card, card.actorId ? target : null, [], null, playId, mapId);
+  store.addLog({ sender: 'Keeper', type: 'KEEPER_MOVE', title: card.name, details: summary, resolution, ...(secret ? { visibility: 'keeper' } : {}) });
+  if (typeof document !== 'undefined') openResolution(playId);
   if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); if (!secret) network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
   if (!secret) {
     const line = `🜏 Keeper · ${summary} — ${card.text.replace(/\s+/g, ' ').trim()}`;
