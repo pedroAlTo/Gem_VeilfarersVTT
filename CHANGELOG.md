@@ -1,10 +1,27 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.35.0**.
-Paquete: `VeilFarers_VTT_v2.35.0.zip`.
+Versión actual del VTT: **v2.36.0**.
+Paquete: `VeilFarers_VTT_v2.36.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.36.0] — 2026-11-22
+
+V3 · Cartas más sencillas: un gesto, apuntar en el mapa y la resolución en una tarjeta
+
+### La mano
+
+- Cada carta muestra un resumen de una línea en español (por ejemplo «Ataque a distancia · Presence DC 15 · Far · 2d8 Energy»). El texto completo de las reglas está en el detalle.
+- Cada carta dice su estado: Preparada, Activa (Kinetic Barrier con lo que le queda), Reacción, Usada, o lo que falta («Falta 1 Hope», «Sin Resolve»).
+- Al pasar el ratón, la carta se ve grande con su coste, su alcance, su tirada, su daño, el resumen y las reglas.
+
+### Usar una carta
+
+- Un clic (o arrastrarla al mapa) la usa sola. Si tiene objetivo, se apunta en el mapa: se iluminan los objetivos válidos a su alcance y se toca uno. Si es un área, se ve el círculo y quién queda dentro; un clic la lanza. Esc cancela.
+- Doble clic abre sus opciones: objetivo de una lista, modo, Empower, Ventaja o Desventaja, una Experiencia y un modificador. El botón dice todo («Lanzar · 1 Hope · Presence DC 15»).
+- La tirada se hace sola, sin abrir el panel de dados. Si la carta hace daño y acierta, el daño se tira y llega a la ventana del Keeper, que decide escudos y reacciones (también Telekinetic Grasp y el retroceso de Force Shield).
+- Lo que pasa se sigue en una tarjeta junto a la mano: objetivo, coste, tirada, tiradas de los objetivos, efecto y si queda abierta para el Keeper, con «Ver detalle».
 
 ## [2.35.0] — 2026-11-22
 

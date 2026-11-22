@@ -198,3 +198,56 @@ html body .veil-modal-backdrop.table-action-panel.uncanny-dialog > .veil-modal-b
 .archive-add { display: grid; gap: 6px; justify-items: start; }
 .archive-add .card-drawer-step { margin: 0; }
 .uncanny-manage { margin-top: 8px; }
+
+/* The card flow (v2.36.0): summary on the card, state badge, large preview on hover, aiming on
+   the map and the resolution card beside the hand. */
+.vf-card-text.summary { font: 700 8.5px/1.3 Inter, system-ui, sans-serif; color: #1b1420; }
+.vf-card { position: relative; }
+.vf-card-status { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); z-index: 5; white-space: nowrap; padding: 3px 8px; border-radius: 10px; font: 800 8px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.vf-card-status.ready { background: #22d3ee; color: #062a33; }
+.vf-card-status.active { background: #34d399; color: #052e1f; }
+.vf-card-status.react { background: #f59e0b; color: #2a1300; }
+.vf-card-status.no { background: #475569; color: #e2e8f0; }
+.card-hand-fan .vf-card:hover .vf-card-status { opacity: 0; }
+
+.card-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.card-chip { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font: 700 11px/1.2 Inter, system-ui, sans-serif; border: 1px solid rgba(148,163,184,.4); background: rgba(15,23,42,.7); color: #e2e8f0; }
+.card-chip.cost { border-color: #fbbf24; color: #fde68a; } .card-chip.roll { border-color: #22d3ee; color: #a5f3fc; }
+.card-chip.reach { border-color: #a78bfa; color: #ddd6fe; } .card-chip.dmg { border-color: #f87171; color: #fecaca; }
+.card-inspect-summary { margin: 0; font-size: 13px; line-height: 1.4; color: #f8fafc; font-weight: 600; }
+
+.card-preview { position: fixed; z-index: 1300; width: min(500px, calc(100vw - 24px)); display: grid; grid-template-columns: 180px 1fr; gap: 14px; padding: 14px; background: rgba(13,4,32,.96); border: 1px solid rgba(192,132,252,.55); border-radius: 5px; box-shadow: 0 12px 34px rgba(0,0,0,.65); pointer-events: none; animation: cardPreviewIn .14s ease-out; }
+@keyframes cardPreviewIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.card-preview-face { --w: 180px; --h: 252px; cursor: default; }
+.card-preview-face .vf-card-text { font-size: 8px; }
+.card-preview-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card-preview-title { font: 700 15px/1.2 'Chakra Petch', system-ui, sans-serif; letter-spacing: .06em; color: #fde68a; text-transform: uppercase; }
+.card-preview-status { align-self: flex-start; padding: 3px 8px; border-radius: 10px; font: 800 9px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.card-preview-status.ready { background: #22d3ee; color: #062a33; } .card-preview-status.active { background: #34d399; color: #052e1f; }
+.card-preview-status.react { background: #f59e0b; color: #2a1300; } .card-preview-status.no { background: #475569; color: #e2e8f0; }
+.card-preview-summary { margin: 0; font-size: 14px; line-height: 1.4; font-weight: 600; color: #f8fafc; }
+.card-preview-rules { margin: 0; font-size: 11.5px; line-height: 1.45; color: #94a3b8; max-height: 120px; overflow: hidden; }
+.card-preview-hint { margin: 0; padding: 6px 9px; border: 1px solid rgba(253,230,138,.5); border-radius: 4px; font: 700 11px/1.3 'Chakra Petch', system-ui, sans-serif; letter-spacing: .06em; color: #fde68a; }
+.card-preview-hint b { color: #00f3ff; }
+@media (max-width: 700px) { .card-preview { display: none; } }
+
+.card-aim-banner { position: fixed; top: calc(var(--fb-top, 60px) + 6px); left: 50%; transform: translateX(-50%); z-index: 1300; max-width: calc(100vw - 24px); padding: 8px 14px; background: rgba(13,4,32,.95); border: 1px solid #a78bfa; border-radius: 5px; font: 700 12px/1.35 'Chakra Petch', system-ui, sans-serif; letter-spacing: .05em; color: #e9d5ff; box-shadow: 0 6px 20px rgba(0,0,0,.5); text-align: center; }
+.card-aim-banner b { color: #fde68a; } .card-aim-banner kbd { font: inherit; color: #00f3ff; }
+body.card-aiming #tactical_canvas { cursor: crosshair; }
+
+.card-tracker { position: fixed; z-index: 1250; width: min(380px, calc(100vw - 24px)); padding: 10px 12px 12px; background: rgba(13,4,32,.96); border: 1px solid rgba(192,132,252,.55); border-radius: 5px; box-shadow: 0 10px 30px rgba(0,0,0,.6); color: #e2e8f0; }
+.card-tracker header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.card-tracker header strong { flex: 1; font: 700 14px/1.2 'Chakra Petch', system-ui, sans-serif; letter-spacing: .06em; color: #fde68a; text-transform: uppercase; }
+.card-tracker header span { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .14em; color: #c084fc; text-transform: uppercase; }
+.card-tracker-close { all: unset; cursor: pointer; padding: 0 4px; font-size: 18px; color: #94a3b8; } .card-tracker-close:hover { color: #f8fafc; }
+.card-tracker-steps { list-style: none; margin: 0; padding: 0; }
+.card-tracker-steps li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(148,163,184,.15); font-size: 13px; line-height: 1.35; }
+.card-tracker-steps li:last-child { border-bottom: 0; }
+.card-tracker-steps i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 11px; background: #34d399; color: #052e1f; }
+.card-tracker-steps li.wait i { background: #f59e0b; color: #2a1300; } .card-tracker-steps li.fail i { background: #f87171; color: #2a0a0a; }
+.card-tracker-steps small { display: block; color: #94a3b8; font-size: 11.5px; margin-top: 2px; }
+.card-tracker footer { display: flex; justify-content: flex-end; margin-top: 6px; }
+
+.card-roll-options { display: grid; gap: 6px; margin: 0; padding: 8px 10px; border: 1px solid rgba(34,211,238,.35); border-radius: 5px; }
+.card-roll-options legend { padding: 0 4px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .14em; color: #a5f3fc; text-transform: uppercase; }
+.card-edge { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; }

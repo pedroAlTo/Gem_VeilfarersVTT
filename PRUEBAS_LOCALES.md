@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.35.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.35.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.35.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.35.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.36.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.36.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.36.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.36.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -123,6 +123,9 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.35.0.zip**. Abre **AYUDA
 108. **(V3) Lucky Break.** Con Lucky Break en el Loadout, haz una tirada que salga con Fear; toca la carta: aparecen tus dados; «Relanzar Hope» tira un d12 3D, marca 1 Stress y el resultado cambia en el registro (y el Hope y el Fear del Keeper con él). Tras un ataque fallido, si el nuevo total alcanza la Evasion, el ataque pasa a impacto.
 109. **(V3) Flux Field y Telekinetic Grasp.** Lanza Flux Field (si sale con Hope, tienes los dos modos); toca la carta otra vez: elige Lucky Streak y un aliado (Ventaja en su próxima tirada); un segundo uso en la misma ronda se rechaza. Lanza Telekinetic Grasp; toca la carta, elige un enemigo a alcance Far: se prepara su daño Void.
 110. **(V3) Mind-Slip.** Lánzalo con Stagger sobre un NPC: queda Prone. Con Compel: aparece su tirada de Presence DC 15; si falla, la resolución dice que lo muevas una banda. Con Field of Hesitation: el círculo Very Close aparece en el mapa.
+111. **(V3) La mano.** Con un Awakened con Stellar Lance, Blinding Flash, Kinetic Barrier y Silver Tongue: cada carta muestra su resumen en español; las de reacción dicen «Reacción»; sin Hope, «Falta 1 Hope». Pasa el ratón por una carta: se ve grande con sus datos.
+112. **(V3) Un clic.** Clic en Stellar Lance: aparece «Apuntando…» y los objetivos válidos con un anillo verde; toca uno: se paga, se tira sola (sin abrir el panel de dados) y, si acierta, el daño llega a la ventana del Keeper. Clic en Blinding Flash: se ve el círculo y quién queda dentro; clic en el mapa lo lanza; Esc cancela. Clic en Kinetic Barrier: se usa al momento y la carta pasa a «Activa · 10/10».
+113. **(V3) Doble clic y tarjeta.** Doble clic en Stellar Lance: ventana con resumen, datos, objetivo, Ventaja/Normal/Desventaja, Experiencia y modificador; «Lanzar» tira con esas opciones. Tras cualquier carta, la tarjeta junto a la mano va marcando objetivo, coste, tirada y efecto; «Ver detalle» abre la resolución.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

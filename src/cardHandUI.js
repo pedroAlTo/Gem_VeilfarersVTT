@@ -16,6 +16,9 @@ import {cardUse,usedBy} from './cardLimits.js';
 import { cardChoices, chosenCardOptions, openResolution } from './cardResolutionUI.js';
 import { TARGET_RULES, SELF_EFFECTS, CARD_MODES, SUSTAINED, eligible, cardRollOptions, createResolution } from './cardResolution.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
+import { cardSummary } from './cardSummaries.js';
+import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode } from './cardFlow.js';
+import { characterDetails } from './characterImport.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { newId } from './persistence.js';
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
@@ -62,7 +65,7 @@ const badge = card => {
 // The card: gold frame; at the top its name and cost (what shows in the hand, where the lower
 // part is hidden); then the flag of its Domain or Class (with the level for Powers) and the
 // name band; and below, the rules on a white panel.
-export function cardFace(card, { large = false } = {}) {
+export function cardFace(card, { large = false, summary = '' } = {}) {
   const art = card.art || { flag: '', band: '', layout: 'band' }, price = badge(card);
   const footLeft = card.domain ? `${card.domain} · LV ${card.level}` : cardKindName(card.kind), footRight = card.kind === 'power' || card.kind === 'vault' ? `RC ${card.rc}` : '';
   return `
@@ -75,7 +78,7 @@ export function cardFace(card, { large = false } = {}) {
       </span>
       <span class="vf-card-body">
         <span class="vf-card-pills">${pills(card)}</span>
-        <span class="vf-card-text">${e(large ? card.text : card.text.slice(0, 170) + (card.text.length > 170 ? '…' : ''))}</span>
+        <span class="vf-card-text${summary && !large ? ' summary' : ''}">${e(large ? card.text : summary || card.text.slice(0, 170) + (card.text.length > 170 ? '…' : ''))}</span>
         <span class="vf-card-foot"><em>${e(footLeft)}</em><em>${e(footRight)}</em></span>
       </span>
       <span class="vf-card-shine"></span>
@@ -163,7 +166,7 @@ export class CardHand {
     const title = token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
     this.root.innerHTML = sanitizeHTML(`
       <div class="card-hand-label"><span>${e(title)}</span></div>
-      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}">${cardFace(card)}</button>`).join('')}</div>
+      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}">${statusBadge(cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`).join('')}</div>
       ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : deckButton('Mazo: consulta todos los Poderes')}`);
     this.layoutFan(n);
     this.bind();
@@ -179,10 +182,36 @@ export class CardHand {
         node.style.setProperty('--ry', `${(x * 16).toFixed(1)}deg`); node.style.setProperty('--rx', `${(-y * 12).toFixed(1)}deg`);
         node.style.setProperty('--sx', `${((x + 0.5) * 100).toFixed(0)}%`); node.style.setProperty('--sy', `${((y + 0.5) * 100).toFixed(0)}%`);
       };
-      node.onpointerleave = () => { for (const name of ['--rx', '--ry']) node.style.removeProperty(name); };
-      node.onpointerdown = event => { if (event.button === 0) this.track(event, node, card); };
+      node.onpointerleave = () => { for (const name of ['--rx', '--ry']) node.style.removeProperty(name); hidePreview(); };
+      // Hovering shows the card large, with its summary and its data (v2.36.0).
+      node.onpointerenter = event => { if (event.pointerType !== 'touch' && card) { const live = store.state.tokens.find(t => t.id === this.tokenId); showPreview(this, card, live, cardFace(card, { large: true })); } };
+      node.onpointerdown = event => { hidePreview(); if (event.button === 0) this.track(event, node, card); };
       node.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.inspect(card); } };
+      node.ondblclick = event => event.preventDefault();
     }
+  }
+
+  // One click uses the card with its defaults; a second click soon after opens its options
+  // (user decision, v2.36.0). A drag past a few pixels lifts it to be dropped on the map.
+  clicked(card) {
+    if (this.clickTimer && this.clickCard === card.id) { clearTimeout(this.clickTimer); this.clickTimer = null; stopAim(); this.inspect(card); return; }
+    clearTimeout(this.clickTimer); this.clickCard = card.id;
+    this.clickTimer = setTimeout(() => { this.clickTimer = null; this.quick(card); }, 260);
+  }
+
+  // The automatic use of a card: it is aimed on the map if it has a target, previewed if it is
+  // an area, played at once otherwise; the roll is thrown and the result followed beside the hand.
+  quick(card, point = null) {
+    if (KEEPER_KINDS.has(card.kind) || !card.playable) { this.use(card, point); return; }
+    const token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!token) return;
+    if (card.uncanny || card.kind === 'archive') { this.openUncanny(card, point); return; }
+    if (this.special(card, token, point)) return;
+    const plan = quickPlan(card, token);
+    if (plan === 'dialog') { this.inspect(card, point); return; }
+    const options = { rollNow: true, ...(defaultMode(card) ? { mode: defaultMode(card) } : {}) };
+    if (plan === 'play' || point) { this.play(card, point, null, options); return; }
+    startAim(card, token, plan, targetIds => this.play(card, null, null, { ...options, targetIds }));
   }
 
   // Click inspects; dragging past a few pixels lifts the card so it can be dropped on the map.
@@ -202,12 +231,12 @@ export class CardHand {
     const end = event => {
       window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end);
       viewport?.classList.remove('card-drop-target'); node.classList.remove('dragging');
-      if (!ghost) { if (event.type === 'pointerup') this.inspect(card); return; }
+      if (!ghost) { if (event.type === 'pointerup') this.clicked(card); return; }
       const dropped = event.type === 'pointerup' && overBoard(event);
       ghost.remove();
       if (!dropped) return;
       const box = viewport.getBoundingClientRect(), point = window.veilCanvas?.screenToWorld?.(event.clientX - box.left, event.clientY - box.top) || null;
-      this.use(card, point);
+      this.quick(card, point);
     };
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
   }
@@ -256,7 +285,7 @@ export class CardHand {
     this.play(card, point);
   }
 
-  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, mode, empower, rollNow = false } = {}) {
+  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, mode, empower, rollNow = false, rollEdge = 'normal', expIndex = '', rollMod = 0 } = {}) {
     if (KEEPER_KINDS.has(card.kind)) return this.playKeeper(card, point);
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return false;
@@ -288,14 +317,20 @@ export class CardHand {
       const effect = card.text.replace(/\s+/g, ' ').trim();
       const line = `🂠 ${playerName} (${token.name}) usa ${card.name} [${cardKindName(card.kind)}] — ${detail} Efecto: ${effect}`;
       network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
+      // The resolution is followed in one card beside the hand (v2.36.0).
+      trackPlay(this, card, token, result);
       if (result.roll && !result.failed) {
-        // Uncanny Power rolls its Knowledge Spellcast at once (user decision, v2.31.1).
-        const prepared = window.veilDiceRoller?.prepareCheck?.({ tokenId: token.id, ...result.roll, playId: result.id });
-        if (rollNow && prepared) await window.veilDiceRoller.executeActionCheck?.();
-        else notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`);
+        // The roll is thrown at once (Uncanny Power since v2.31.1; every card since v2.36.0),
+        // with the options chosen in the card's window (Advantage, Experience, modifier).
+        const dice = window.veilDiceRoller;
+        const prepared = dice?.prepareCheck?.({ tokenId: token.id, ...result.roll, playId: result.id, open: !rollNow });
+        if (rollNow && prepared) {
+          dice.presetCheck?.({ edge: rollEdge, expIndex, mod: rollMod });
+          try { await dice.executeActionCheck?.(); } finally { dice.presetCheck?.({}); }
+        } else notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`);
       }
       guideEvent('card');
-      return true;
+      return result;
     } catch (error) { notify(error.message, 'error'); return false; }
   }
 
@@ -465,7 +500,7 @@ export class CardHand {
       try {
         const result = await network.requestAction({ type: 'POWER_USE', actorId: token.id, name: card.name, targetId, mode });
         modal.remove();
-        if (result.damage) window.veilDiceRoller?.prepareCardDamage(token.id, result.targetId, result.damage.formula, window.veilDiceRoller.rollVisibility?.() === 'keeper', { type: result.damage.type });
+        if (result.damage) window.veilDiceRoller?.autoCardDamage(token.id, result.targetId, result.damage.formula, window.veilDiceRoller.rollVisibility?.() === 'keeper', { type: result.damage.type });
         notify(result.summary);
         const line = `🂠 ${token.name}: ${result.summary}`;
         network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
@@ -485,12 +520,19 @@ export class CardHand {
     const burnoutOnly = card.kind === 'effort' && (token?.effort || 0) === 0;
     const chooses = card.playable && (card.kind === 'archive' || (card.cost.open && card.cost.resolve)), available = token?.resolve?.current || 0;
     const { activeMapId: mapId, selectedTokenId: selectedId } = store.state;
+    // A card with a roll: Advantage, an Experience and a modifier, thrown at once (v2.36.0).
+    const experiences = token && card.roll && card.playable && !reference ? characterDetails(token).experiences : [];
+    const rollOptions = token && card.roll && card.playable && !reference && !KEEPER_KINDS.has(card.kind) ? `<fieldset class="card-roll-options"><legend>Tirada · ${e(card.roll.traitId)} DC ${card.roll.dc}</legend>
+      <div class="card-edge" role="radiogroup" aria-label="Ventaja">${[['disadvantage', 'Desventaja'], ['normal', 'Normal'], ['advantage', 'Ventaja']].map(([v, l]) => `<label><input type="radio" name="roll_edge" value="${v}"${v === 'normal' ? ' checked' : ''}> ${l}</label>`).join('')}</div>
+      ${experiences.length ? `<label class="dossier-field"><span>Experiencia${token.path === 'Sleeping' ? '' : ' (1 Hope)'}</span><select class="hud-input" name="roll_exp"><option value="">Ninguna</option>${experiences.map((x, i) => `<option value="${i}">${e(x.name)} (${e(x.bonus)})</option>`).join('')}</select></label>` : ''}
+      <label class="dossier-field"><span>Modificador</span><input class="hud-input" type="number" name="roll_mod" value="0" min="-10" max="10"></label></fieldset>` : '';
     const modal = tableDialog(card.name, `
       <div class="card-inspect">
         <div class="vf-card table-card-preview" aria-hidden="true">${cardFace(card)}</div>
         <div class="card-inspect-side">
           <p class="dossier-muted">${e(card.subtitle)}</p>
-          <details class="table-rule"${!card.playable ? ' open' : ''}><summary>Texto de la carta</summary><p class="card-inspect-text">${richText(card.text)}</p></details>
+          ${token || reference ? `<div class="card-chips">${cardChips(card, token).map(([tone, text]) => `<span class="card-chip ${e(tone)}">${e(text)}</span>`).join('')}</div><p class="card-inspect-summary">${e(cardSummary(card, token))}</p>` : ''}
+          <details class="table-rule"${!card.playable ? ' open' : ''}><summary>Texto completo</summary><p class="card-inspect-text">${richText(card.text)}</p></details>
           ${use ? `<p class="dossier-muted">${e(use.label)} · ${usedBy(token,use) ? 'Gastado' : 'Disponible'}</p>` : ''}
           ${card.kind === 'archive' ? '<p class="dossier-muted">Uncanny Power: gasta Resolve, tira un dado de Resolve por cada uno y suma Knowledge; el resultado es el nivel máximo que alcanzas. El Keeper gana 1 Fear por Resolve. Ignoras el coste de Hope y tiras Knowledge contra DC 10 + nivel.</p>' : ''}
           ${card.zone === 'vault' ? '<p class="dossier-muted">Esta carta está en el Vault. Tráela al Loadout con un Recall.</p>' : ''}
@@ -499,10 +541,11 @@ export class CardHand {
           ${KEEPER_KINDS.has(card.kind) ? `<p class="dossier-muted">Fear del Keeper: ${store.state.fear || 0}/12.${card.kind === 'adversary' ? ' Una criatura usa como mucho una Fear Ability por ciclo de Spotlight, más una Reaction defensiva.' : ''}</p>` : ''}
           ${card.playable && token && !reference && !KEEPER_KINDS.has(card.kind) && !['beardown','effort'].includes(card.kind) ? cardChoices(card,token,this.cardTarget(point)) : ''}
           ${burnoutOnly ? '<p class="dossier-muted">No te queda Effort: puedes usarla con Burnout. Pagas 1 HP, marcas 1 Stress y tu Stress máximo baja 1 hasta tu próxima Recovery.</p>' : card.kind === 'effort' && (token.effort || 0) < card.cost.effort ? `<p class="dossier-error">Hace falta ${card.cost.effort} Effort y tienes ${token.effort || 0}.</p>` : ''}
+          ${rollOptions}
           ${chooses ? `<label class="dossier-field"><span>Resolve que gastas (tienes ${available})</span><input class="hud-input" type="number" name="card_resolve" min="1" max="${Math.max(1, available)}" value="${Math.max(1, card.cost.resolve || 1)}" /></label>` : ''}
           <p class="dossier-error" role="alert"></p>
           ${card.kind === 'adversary' && !card.playable && !card.swarm && keeperView() ? '<button type="button" class="hud-btn" data-observe>Resolver el desencadenante en mesa</button>' : ''}
-          <footer class="dossier-footer">${card.zone === 'vault' && token ? '<button type="button" class="hud-btn hud-btn-primary" data-card-recall>Recall al Loadout</button>' : card.playable ? `<button type="button" class="hud-btn hud-btn-primary" data-card-play>Jugar · ${e(card.kind === 'archive' ? 'Uncanny Power' : costLabel(card.cost))}</button>` : ''}</footer>
+          <footer class="dossier-footer">${card.zone === 'vault' && token ? '<button type="button" class="hud-btn hud-btn-primary" data-card-recall>Recall al Loadout</button>' : card.playable ? `<button type="button" class="hud-btn hud-btn-primary" data-card-play>${card.roll ? 'Lanzar' : 'Usar'} · ${e(card.kind === 'archive' ? 'Uncanny Power' : costLabel(card.cost))}${card.roll ? ` · ${e(card.roll.traitId[0].toUpperCase() + card.roll.traitId.slice(1))} DC ${card.roll.dc}` : ''}</button>` : ''}</footer>
         </div>
       </div>`, 'card-inspect-dialog');
     const stillAvailable = () => {
@@ -523,7 +566,8 @@ export class CardHand {
         if (playButton.disabled || !stillAvailable()) return;
         const spent = chooses ? Math.max(1, Number(modal.querySelector('[name="card_resolve"]').value) || 1) : null;
         playButton.disabled = true;
-        if (await this.play(card, point, spent, { burnout: burnoutOnly, ...chosenCardOptions(modal) })) modal.remove(); else playButton.disabled = false;
+        const roll = { rollNow: true, rollEdge: modal.querySelector('[name=roll_edge]:checked')?.value || 'normal', expIndex: modal.querySelector('[name=roll_exp]')?.value ?? '', rollMod: Number(modal.querySelector('[name=roll_mod]')?.value) || 0 };
+        if (await this.play(card, point, spent, { burnout: burnoutOnly, ...roll, ...chosenCardOptions(modal) })) modal.remove(); else playButton.disabled = false;
       };
     }
     const observe = modal.querySelector('[data-observe]');

@@ -270,13 +270,24 @@ export class DiceRollerSidebar {
     this.selectTrait(this.selectedTraitId, { rollNow });
   }
 
+  // The options a card's window chose for its roll (v2.36.0): Advantage/Disadvantage, an
+  // Experience (its index in the sheet) and a modifier. Called with {} afterwards to reset.
+  presetCheck({ edge = 'normal', expIndex = '', mod = 0 } = {}) {
+    const q = s => this.container.querySelector(s);
+    q({ advantage: '#btn_roll_adv', disadvantage: '#btn_roll_dis' }[edge] || '#btn_roll_norm')?.click();
+    const select = q('#dice_experience_select');
+    if (select) { select.value = String(expIndex ?? ''); select.onchange?.(); if (expIndex === '' || expIndex == null) { const m = q('#dice_exp_mod'); if (m) m.value = 0; } }
+    const custom = q('#dice_custom_mod'); if (custom) custom.value = String(Number(mod) || 0);
+  }
+
   // Sets up the roll a card asks for (Trait and DC) and leaves it one click away.
-  prepareCheck({ tokenId, traitId, dc, playId = null, replyId = null }) {
+  prepareCheck({ tokenId, traitId, dc, playId = null, replyId = null, open = true }) {
     const actor = store.state.tokens.find(t => t.id === tokenId);
     if (!actor) return false;
     if (store.state.selectedTokenId !== tokenId) store.update({ selectedTokenId: tokenId });
     this.syncWithSelectedToken();
-    window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
+    // A roll thrown at once by a card (v2.36.0) does not open the dice panel.
+    if (open) window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
     this.container.querySelector('#tab_check_btn')?.click();
     this.selectTrait(traitId, { rollNow: false });
     const select = this.container.querySelector('#dice_dc_select');
@@ -288,11 +299,25 @@ export class DiceRollerSidebar {
     return true;
   }
 
-  prepareCardDamage(actorId, targetId, formula, secret, power = null) {
+  // A card's damage worked out and sent to the Keeper's window at once (v2.36.0): the dice are
+  // thrown, the impact calculated and the hit offered to the Keeper, who decides shields.
+  async autoCardDamage(actorId, targetId, formula, secret, power = null) {
+    if (!this.prepareCardDamage(actorId, targetId, formula, secret, power, { open: false })) return false;
+    // The dice of the roll that just landed must settle first: a new 3D throw waits for them.
+    const busy = () => !!window.VFDice3D?.status?.().rollPending;
+    for (let waited = 0; busy() && waited < 8000; waited += 200) await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 900));
+    await this.executeDamageCalc();
+    const apply = this.container.querySelector('#apply_dmg_to_target_btn');
+    if (apply && !apply.disabled) apply.onclick?.();
+    return true;
+  }
+
+  prepareCardDamage(actorId, targetId, formula, secret, power = null, { open = true } = {}) {
     const q = selector => this.container.querySelector(selector);
     store.update({ selectedTokenId: actorId });
     this.syncWithSelectedToken();
-    window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
+    if (open) window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } }));
     q('#tab_damage_btn')?.click();
     this.preparedWeapon = null; this.presetApplied = null; this.lastAttack = null;
     this.populateDamageTargets();
@@ -304,7 +329,7 @@ export class DiceRollerSidebar {
     for (const name of ['dmg_is_critical','dmg_is_direct','dmg_weapon_crushing','dmg_weapon_bleed']) if (q('#'+name)) q('#'+name).checked = false;
     q('#secret_roll').checked = !!secret;
     this.syncDamageMode();
-    notify('Daño preparado: elige el tipo impreso y calcula el impacto.');
+    if (open) notify('Daño preparado: elige el tipo impreso y calcula el impacto.');
     return true;
   }
 
@@ -1273,7 +1298,7 @@ export class DiceRollerSidebar {
       const record = resolutionLog(store, prepared.playId)?.resolution, power = record && POWER_DAMAGE[record.name];
       const target = power && store.state.tokens.find(t => t.id === record.targetIds?.[0]);
       if (target) setTimeout(() => {
-        this.prepareCardDamage(actor.id, target.id, power.formula(actor), this.rollVisibility() === 'keeper', power);
+        this.autoCardDamage(actor.id, target.id, power.formula(actor), this.rollVisibility() === 'keeper', power);
         if (power.heavy && /heavy/i.test(tokenInventory(target).items.map(i => [i.name, i.kind]).join(' '))) notify(power.heavy);
       }, 300);
     }
@@ -1457,7 +1482,7 @@ export class DiceRollerSidebar {
           await network.requestAction({ type: 'REACTION_PAY', actorId: shielded.id, name: 'Force Shield' }).catch(error => notify(error.message, 'error'));
           hit = false; roll.hit = false;
           const backlash = `${Math.max(1, Math.min(10, Number(shielded.proficiency) || 1))}d4`;
-          setTimeout(() => this.prepareCardDamage(shielded.id, attacker.id, backlash, this.rollVisibility() === 'keeper', { type: 'physical', tag: 'Kinetic' }), 400);
+          setTimeout(() => this.autoCardDamage(shielded.id, attacker.id, backlash, this.rollVisibility() === 'keeper', { type: 'physical', tag: 'Kinetic' }), 400);
         }
       }
       const card = {

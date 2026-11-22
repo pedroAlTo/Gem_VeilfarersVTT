@@ -1561,6 +1561,22 @@ export const PAIRS = [
   ["Lucky Streak · Ventaja a un aliado", "Lucky Streak · Advantage to an ally"],
   ["Unlucky Enemies · Desventaja al ataque de un enemigo", "Unlucky Enemies · Disadvantage on an enemy attack"],
   ["Haz primero una tirada de Dualidad: Lucky Break relanza uno de sus dados.", "Make a Duality Roll first: Lucky Break rerolls one of its dice."],
+  // V3 · Flujo de cartas (v2.36.0)
+  ["Texto completo", "Full text"],
+  ["Ver detalle", "See details"],
+  ["Daño preparado", "Damage prepared"],
+  ["El Keeper decide escudos y reacciones", "The Keeper decides shields and reactions"],
+  ["Abierta en la mesa", "Open at the table"],
+  ["El Keeper puede ajustarla o finalizarla", "The Keeper can adjust or finish it"],
+  ["Resuelta", "Resolved"],
+  ["Preparada", "Ready"],
+  ["Activa", "Active"],
+  ["Usada", "Used"],
+  ["Sin margen de Stress", "No Stress room"],
+  ["Efecto", "Effect"],
+  ["tirando…", "rolling…"],
+  ["pendiente", "pending"],
+  ["Modificador", "Modifier"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

@@ -1,6 +1,22 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.36.0', date: '2026-11-22', title: 'V3 · Cartas más sencillas: un gesto, apuntar en el mapa y la resolución en una tarjeta',
+    sections: [
+      { title: 'La mano', items: [
+        'Cada carta muestra un resumen de una línea en español (por ejemplo «Ataque a distancia · Presence DC 15 · Far · 2d8 Energy»). El texto completo de las reglas está en el detalle.',
+        'Cada carta dice su estado: Preparada, Activa (Kinetic Barrier con lo que le queda), Reacción, Usada, o lo que falta («Falta 1 Hope», «Sin Resolve»).',
+        'Al pasar el ratón, la carta se ve grande con su coste, su alcance, su tirada, su daño, el resumen y las reglas.',
+      ] },
+      { title: 'Usar una carta', items: [
+        'Un clic (o arrastrarla al mapa) la usa sola. Si tiene objetivo, se apunta en el mapa: se iluminan los objetivos válidos a su alcance y se toca uno. Si es un área, se ve el círculo y quién queda dentro; un clic la lanza. Esc cancela.',
+        'Doble clic abre sus opciones: objetivo de una lista, modo, Empower, Ventaja o Desventaja, una Experiencia y un modificador. El botón dice todo («Lanzar · 1 Hope · Presence DC 15»).',
+        'La tirada se hace sola, sin abrir el panel de dados. Si la carta hace daño y acierta, el daño se tira y llega a la ventana del Keeper, que decide escudos y reacciones (también Telekinetic Grasp y el retroceso de Force Shield).',
+        'Lo que pasa se sigue en una tarjeta junto a la mano: objetivo, coste, tirada, tiradas de los objetivos, efecto y si queda abierta para el Keeper, con «Ver detalle».',
+      ] },
+    ],
+  },
+  {
     version: '2.35.0', date: '2026-11-22', title: 'V3 · Lucky Break, Flux Field, Telekinetic Grasp y los modos de Mind-Slip',
     sections: [
       { title: 'Poderes', items: [
