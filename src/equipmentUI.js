@@ -419,7 +419,7 @@ export function mountEquipmentPanel(container, tokenId) {
 
     box.innerHTML = sanitizeHTML(`
       ${head(BLOCKS[0], inventory.weapons.length)}${list(inventory.weapons, weaponRow, BLOCKS[0].empty, 'weapons')}
-      ${head(BLOCKS[1], armor.length || (sheetArmor ? 1 : 0))}${sheetArmor ? `<div class="equip-list"><article class="equip-row"><div class="equip-main"><strong>${esc(sheetArmor)}</strong><span class="equip-stats"><b>${token.hp?.majorThreshold ?? '—'} / ${token.hp?.severeThreshold ?? '—'}</b> umbrales · <b>${token.armor?.current ?? 0} / ${token.armor?.max ?? 0}</b> Armor Slots</span><small>De la ficha importada. «Cambiar» la sustituye por una del catálogo.</small></div></article></div>` : list(armor, armorRow, BLOCKS[1].empty)}
+      ${head(BLOCKS[1], armor.length || (sheetArmor ? 1 : 0))}${sheetArmor ? `<div class="equip-list"><article class="equip-row">${equipmentThumbnail({name:sheetArmor})}<div class="equip-main"><strong>${esc(sheetArmor)}</strong><span class="equip-stats"><b>${token.hp?.majorThreshold ?? '—'} / ${token.hp?.severeThreshold ?? '—'}</b> umbrales · <b>${token.armor?.current ?? 0} / ${token.armor?.max ?? 0}</b> Armor Slots</span><small>De la ficha importada. «Cambiar» la sustituye por una del catálogo.</small></div></article></div>` : list(armor, armorRow, BLOCKS[1].empty)}
       ${head(BLOCKS[2], augments.length, ` <span class="equip-capacity ${over ? 'over' : ''}">· capacidad ${augments.length} / ${capacity}${over ? ` · −${over} Stress máx.` : ''}</span>`)}${list(augments, augmentRow, BLOCKS[2].empty)}
       ${head(BLOCKS[3], gear.length)}${list(gear, gearRow, BLOCKS[3].empty, 'items')}`);
 

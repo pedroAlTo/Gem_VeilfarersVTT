@@ -1,5 +1,5 @@
 import { store } from './state.js';
-import { dossierDialog } from './dossierDialog.js';
+import { tableDialog } from './dossierDialog.js';
 import { escapeHTML as e, notify } from './ui.js';
 import { printedChecks, printedPools } from './cardProcedures.js';
 import { currentArc } from './cardLimits.js';
@@ -64,16 +64,16 @@ export function openResolution(id) {
     field('Condición', '<vf-select name="condition">' + CONDITIONS.map(c => opt(c.name,c.name,ruleText.includes(c.name))).join('') + '</vf-select>') +
     field('Decisión de mesa', '<input name="note" maxlength="500">') +
     '<button type="button" class="hud-btn" data-effect="apply">Aplicar consecuencia</button></fieldset>' : '';
-  const modal = dossierDialog(record.name, '<div class="card-resolution"><p>' + e([actor?.name, ...names, record.outcome, record.conclusion].filter(Boolean).join(' · ')) + '</p>' +
+  const modal = tableDialog(record.name, '<div class="card-resolution"><p>' + e([actor?.name, ...names, record.outcome, record.conclusion].filter(Boolean).join(' · ')) + '</p>' +
     (record.roll ? '<p>' + e(record.roll.traitId + ' · DC ' + record.roll.dc + (record.total != null ? ' · Resultado ' + record.total : '')) + '</p>' : '') +
-    '<p class="card-inspect-text">' + e(ruleText).replaceAll('\n','<br>') + '</p>' +
+    '<details class="table-rule"><summary>Texto de la carta</summary><p class="card-inspect-text">' + e(ruleText).replaceAll('\n','<br>') + '</p></details>' +
     (record.notes?.length ? '<p>' + e(record.notes.join(' ')) + '</p>' : '') +
     (record.project ? '<p>Proyecto · ' + record.project + ' segmentos</p>' : '') +
     (applied ? '<ul>' + applied + '</ul>' : '') + (record.note ? '<p>' + e(record.note) + '</p>' : '') +
     replies + controls + '<p class="dossier-error" role="alert"></p><footer class="dossier-footer">' +
     (freeArc ? '<button class="hud-btn" data-effect="renew-arc">Renovar uso al cambiar de arco sin asignar</button>' : '') +
     (canRoll ? '<button class="hud-btn hud-btn-primary" data-roll>Preparar tirada vinculada</button>' : '') +
-    (editable ? '<button class="hud-btn" data-effect="' + (record.phase === 'roll' ? 'cancel' : 'finish') + '">' + (record.phase === 'roll' ? 'Cancelar resolución' : 'Finalizar') + '</button>' : '') + '</footer></div>');
+    (editable ? '<button class="hud-btn" data-effect="' + (record.phase === 'roll' ? 'cancel' : 'finish') + '">' + (record.phase === 'roll' ? 'Cancelar resolución' : 'Finalizar') + '</button>' : '') + '</footer></div>', 'card-resolution-dialog');
   const q = selector => modal.querySelector(selector);
   if (q('[data-roll]')) q('[data-roll]').onclick = () => {
     if (window.veilDiceRoller?.prepareCheck({ tokenId: actor.id, ...record.roll, playId: id })) modal.remove();

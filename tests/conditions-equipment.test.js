@@ -239,3 +239,27 @@ test('mixed damage uses each defence, rounds repeated types once and preserves t
   assert.deepEqual(critical.rolls, [8, 8, 8, 8, 4, 4]);
   assert.equal(critical.effectiveDamage, 36);
 });
+
+test('Vea’s existing inventory and an imported armor-only sheet render the packaged paintings', () => {
+  const item = (id, name, quantity) => ({ id, name, quantity, tier: 'Tier 1', use: '' });
+  const vest = 'Malla Táctica Balística', suit = 'Traje de Combate Blindado Orbital';
+  const legacy = { weapons: [weapon({ id: 'old-pistol', name: 'Pistola Cinética Militar', damage: '1d8', range: 'Short' })],
+    items: [item('v1', vest, '2'), item('s2', suit, '1'), item('v2', vest, '1')] };
+  const t = actor({ name: 'Vea Kaelen', inventory: structuredClone(legacy) });
+  store.state.tokens = [t];
+  const dossier = openDossier(t, () => {}, 'equipment');
+  const rows = [...dossier.querySelectorAll('.equip-row')];
+  assert.deepEqual(rows.map(r => r.querySelector('.equip-main strong').textContent), ['Pistola Cinética Militar', vest, suit, vest]);
+  const sources = rows.map(r => r.querySelector('img')?.getAttribute('src'));
+  assert.deepEqual(sources, ['/assets/equipment/objects/set-1.webp', '/assets/equipment/core_ar_tactical_weave.webp',
+    '/assets/equipment/core_ar_heavy_combat_suit.webp', '/assets/equipment/core_ar_tactical_weave.webp']);
+  assert.equal(rows[0].querySelector('img').style.top, '-100%');
+  assert.match(rows[0].textContent, /1d8/);
+  for (const src of new Set(sources)) assert.equal(readFileSync(new URL('../public' + src, import.meta.url)).toString('ascii', 8, 12), 'WEBP');
+  assert.deepEqual(store.state.tokens[0].inventory, legacy);
+  dossier.remove();
+  const imported = actor({ sourceCharacter: { format: 'character-sheet', document: { app: 'Veilfarers Character Sheet', fields: { name: 'Vea', armor_name: 'MALLA TACTICA BALISTICA' } } }, inventory: { weapons: [], items: [] } });
+  store.state.tokens = [imported];
+  const sheet = openDossier(imported, () => {}, 'equipment');
+  assert.equal(sheet.querySelector('.equip-row img')?.getAttribute('src'), sources[1]);
+});

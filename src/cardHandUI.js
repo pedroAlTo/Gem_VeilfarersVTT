@@ -4,7 +4,7 @@ import { store } from './state.js';
 import { guideEvent } from './onboarding.js';
 import { network } from './networkManager.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
-import { dossierDialog } from './dossierUI.js';
+import { tableDialog } from './dossierDialog.js';
 import { cardData, loadCardData } from './cardData.js';
 import { roundKey } from './combatState.js';
 import { bearDown } from './bearDown.js';
@@ -332,12 +332,13 @@ export class CardHand {
     const use = cardUse(card,store.state);
     const burnoutOnly = card.kind === 'effort' && (token?.effort || 0) === 0;
     const chooses = card.playable && (card.kind === 'archive' || (card.cost.open && card.cost.resolve)), available = token?.resolve?.current || 0;
-    const modal = dossierDialog(card.name, `
+    const { activeMapId: mapId, selectedTokenId: selectedId } = store.state;
+    const modal = tableDialog(card.name, `
       <div class="card-inspect">
-        <div class="vf-card vf-card-large">${cardFace(card, { large: true })}</div>
+        <div class="vf-card table-card-preview" aria-hidden="true">${cardFace(card)}</div>
         <div class="card-inspect-side">
           <p class="dossier-muted">${e(card.subtitle)}</p>
-          <p class="card-inspect-text">${richText(card.text)}</p>
+          <details class="table-rule"${!card.playable ? ' open' : ''}><summary>Texto de la carta</summary><p class="card-inspect-text">${richText(card.text)}</p></details>
           ${use ? `<p class="dossier-muted">${e(use.label)} · ${usedBy(token,use) ? 'Gastado' : 'Disponible'}</p>` : ''}
           ${card.kind === 'archive' ? '<p class="dossier-muted">Uncanny Power: gasta Resolve, tira un dado de Resolve por cada uno y suma Knowledge; el resultado es el nivel máximo que alcanzas. El Keeper gana 1 Fear por Resolve. Ignoras el coste de Hope y tiras Knowledge contra DC 10 + nivel.</p>' : ''}
           ${card.zone === 'vault' ? '<p class="dossier-muted">Esta carta está en el Vault. Tráela al Loadout con un Recall.</p>' : ''}
@@ -352,6 +353,14 @@ export class CardHand {
           <footer class="dossier-footer">${card.zone === 'vault' && token ? '<button type="button" class="hud-btn hud-btn-primary" data-card-recall>Recall al Loadout</button>' : card.playable ? `<button type="button" class="hud-btn hud-btn-primary" data-card-play>Jugar · ${e(card.kind === 'archive' ? 'Uncanny Power' : costLabel(card.cost))}</button>` : ''}</footer>
         </div>
       </div>`, 'card-inspect-dialog');
+    const stillAvailable = () => {
+      const available = KEEPER_KINDS.has(card.kind)
+        ? keeperView() && (!card.spotlight || store.state.selectedTokenId === selectedId)
+        : token && this.owner()?.id === token.id && this.tokenId === token.id && token.mapId === mapId;
+      if (available && store.state.activeMapId === mapId) return true;
+      modal.querySelector('[role=alert]').textContent = 'Ha cambiado el personaje o la escena. Vuelve a abrir la carta desde su mano.';
+      return false;
+    };
     const playButton = modal.querySelector('[data-card-play]');
     if (playButton) {
       if (card.reverse) playButton.textContent = card.chooseTrait ? 'Guardar atributo' : 'Usar Breaking Point';
@@ -359,15 +368,16 @@ export class CardHand {
       if (burnoutOnly) playButton.textContent = 'Usar con Burnout · 1 HP';
       if (card.kind === 'effort' && !burnoutOnly && (token.effort || 0) < card.cost.effort) playButton.disabled = true;
       playButton.onclick = async () => {
+        if (playButton.disabled || !stillAvailable()) return;
         const spent = chooses ? Math.max(1, Number(modal.querySelector('[name="card_resolve"]').value) || 1) : null;
         playButton.disabled = true;
         if (await this.play(card, point, spent, { burnout: burnoutOnly, ...chosenCardOptions(modal) })) modal.remove(); else playButton.disabled = false;
       };
     }
     const observe = modal.querySelector('[data-observe]');
-    if (observe) observe.onclick = async () => { if (await playKeeperMove(card,point)) modal.remove(); };
+    if (observe) observe.onclick = async () => { if (stillAvailable() && await playKeeperMove(card,point)) modal.remove(); };
     const recall = modal.querySelector('[data-card-recall]');
-    if (recall) recall.onclick = () => { modal.remove(); this.toggleDrawer(card.name, true); };
+    if (recall) recall.onclick = () => { if (stillAvailable()) { modal.remove(); this.toggleDrawer(card.name, true); } };
     return modal;
   }
 
@@ -511,13 +521,13 @@ export class CardFeed {
     if (!entry) return null;
     if (entry.playId && store.state.logs.some(row => row.resolution?.id === entry.playId)) return openResolution(entry.playId);
     const card = entry.card;
-    return dossierDialog(`${entry.actorName} usa ${card.name}`, `
+    return tableDialog(`${entry.actorName} usa ${card.name}`, `
       <div class="card-inspect">
-        <div class="vf-card vf-card-large">${cardFace(card, { large: true })}</div>
+        <div class="vf-card table-card-preview" aria-hidden="true">${cardFace(card)}</div>
         <div class="card-inspect-side">
           <p class="dossier-muted">Usada por <strong>${e(entry.actorName)}</strong>${entry.playerName ? ` (${e(entry.playerName)})` : ''} · ${e(card.subtitle)}</p>
           <p class="card-inspect-text"><strong>${e(entry.summary)}</strong>${entry.notes?.length ? `<br>${e(entry.notes.join(' '))}` : ''}</p>
-          <p class="card-inspect-text">${e(card.text).replace(/\n/g, '<br>')}</p>
+          <details class="table-rule"><summary>Texto de la carta</summary><p class="card-inspect-text">${richText(card.text)}</p></details>
         </div>
       </div>`, 'card-inspect-dialog');
   }

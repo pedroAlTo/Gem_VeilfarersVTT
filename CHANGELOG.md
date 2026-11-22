@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.9**.
-Paquete: `VeilFarers_VTT_v2.29.9.zip`.
+Versión actual del VTT: **v2.29.10**.
+Paquete: `VeilFarers_VTT_v2.29.10.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.10] — 2026-11-22
+
+Visión Ailurean, Resolve y equipo en mesa
+
+### En la mesa
+
+- Los Sleeper ven en la barra flotante el Resolve disponible, su máximo y el dado d4 o d6. Pueden gastarlo o recuperarlo junto al Effort.
+- Desde un personaje Ailurean, el mapa, los obstáculos y los efectos se ven en grises con un ligero tinte azul. Los personajes de otros jugadores conservan su color.
+- Las cartas, sus resoluciones y la elección de escudos se abren en un panel compacto que deja el mapa visible e interactivo.
+- La ficha reconoce los nombres antiguos, abreviados y bilingües del equipo ilustrado, incluida la armadura de fichas importadas.
 
 ## [2.29.9] — 2026-11-22
 

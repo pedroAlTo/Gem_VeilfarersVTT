@@ -4,6 +4,13 @@
 // in both languages, as the books print them. Book content (Powers, abilities, modules, names)
 // is not here: it is the text of the books.
 export const PAIRS = [
+  ['Texto de la carta', 'Card text'],
+  ['Gastar 1 dado de Resolve', 'Spend 1 Resolve die'], ['Recuperar 1 dado de Resolve', 'Regain 1 Resolve die'],
+  ['Sin escudos', 'No shields'], ['Confirmar escudos', 'Confirm shields'],
+  ['Ha cambiado el personaje o la escena. Vuelve a abrir la carta desde su mano.', 'The character or scene has changed. Reopen the card from their hand.'],
+  ['El impacto ha cambiado. Vuelve a calcular el daño.', 'The hit has changed. Recalculate the damage.'],
+  ['El objetivo ha salido de la escena.', 'The target has left the scene.'],
+  ['Han cambiado las defensas. Revisa el resultado actualizado.', 'Defenses have changed. Review the updated result.'],
   ['Elegir retrato', 'Choose portrait'], ['Cambiar retrato', 'Change portrait'], ['Retratos disponibles', 'Available portraits'],
   ['Género del retrato', 'Portrait gender'], ['Según los pronombres', 'Use pronouns'], ['Femenino', 'Feminine'], ['Masculino', 'Masculine'], ['Neutro', 'Neutral'],
   ['Colección', 'Collection'], ['Insignia de clase', 'Class insignia'], ['Sin insignia', 'No insignia'], ['Tripulación conocida', 'Named crew'],
@@ -1488,6 +1495,9 @@ export const PAIRS = [
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
 // it is itself in the dictionary (a Trait name, a label).
 export const PATTERNS = [
+  ['Escudos que gastas (disponibles: {_x})', 'Shields to spend ({_x} available)'],
+  ['Escudos · {_x}', 'Shields · {_x}'],
+  ['Daño a {_x}', 'Damage to {_x}'],
   ['TIRAR {trait} ({mod})', 'ROLL {trait} ({mod})'],
   ['CÓDIGO: {code}', 'CODE: {code}'],
   ['Umbrales: Menor {a} | Mayor {b} | Severo {c}', 'Thresholds: Minor {a} | Major {b} | Severe {c}'],

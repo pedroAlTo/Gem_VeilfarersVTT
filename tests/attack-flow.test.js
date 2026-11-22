@@ -426,3 +426,48 @@ test('the Keeper can open a new narrative arc from the log after clearing the or
   assert.deepEqual(store.state.tokens.find(t=>t.id===a.id).cardUses,{});
   assert.equal(container.querySelector('[data-new-arc]'),null);
 });
+
+test('a table panel leaves the map interactive and switching actors cannot play the old hand', async () => {
+  const { CardHand } = await import('../src/cardHandUI.js');
+  const { loadCardData } = await import('../src/cardData.js');
+  const { dossierDialog } = await import('../src/dossierDialog.js');
+  await loadCardData();
+  const { a, t } = scene({ attacker: { characterClass: 'Vanguard', hope: 6 }, target: { actorType: 'player', isPlayer: true } });
+  store.state.userRole = 'player'; store.state.claimedTokenId = a.id;
+  const bar = document.createElement('div'), mapControl = document.createElement('button');
+  document.body.append(bar, mapControl);
+  const hand = new CardHand(bar);
+  const card = hand.cards.find(c => c.name === 'Path to Nirvana');
+  const first = hand.inspect(card), panel = hand.inspect(card);
+  assert.equal(first.isConnected, false);
+  assert.equal(panel.querySelector('[role=dialog]').getAttribute('aria-modal'), 'false');
+  assert.equal(panel.querySelector('.table-rule').open, false);
+  panel.querySelector('[name=path_trait]').value = 'instinct';
+  mapControl.onclick = () => store.update({ selectedTokenId: t.id });
+  mapControl.focus(); mapControl.click();
+  assert.equal(document.activeElement, mapControl);
+  await panel.querySelector('[data-card-play]').onclick();
+  assert.ok(panel.isConnected); assert.match(panel.querySelector('[role=alert]').textContent, /cambiado/);
+  assert.equal(store.state.tokens.find(x => x.id === a.id).hope, 6);
+  assert.equal(store.state.tokens.find(x => x.id === t.id).effectClocks?.length || 0, 0);
+  const full = dossierDialog('Ficha', '');
+  assert.equal(full.querySelector('[role=dialog]').getAttribute('aria-modal'), 'true');
+  hand.unsubscribe();
+});
+
+test('the damage panel keeps its target, prevents duplicate prompts and refreshes a changed defense', async () => {
+  const { dice, q, t, live } = scene({ weapon: {} });
+  q('#dmg_formula').value = '1d8 Physical';
+  await dice.executeDamageCalc([8]);
+  const open = q('#apply_dmg_to_target_btn');
+  open.click(); open.click();
+  const panels = () => document.querySelectorAll('.damage-action-dialog');
+  assert.equal(panels().length, 1);
+  assert.equal(panels()[0].querySelector('[role=dialog]').getAttribute('aria-modal'), 'false');
+  store.updateToken(t.id, { hp: { ...t.hp, current: 5 } });
+  panels()[0].querySelector('#kdmg_apply').click();
+  assert.equal(live(t.id).hp.current, 5);
+  assert.equal(panels().length, 1); assert.match(panels()[0].textContent, /HP 4\/6/);
+  panels()[0].querySelector('#kdmg_apply').click();
+  assert.equal(live(t.id).hp.current, 4); assert.equal(panels().length, 0);
+});

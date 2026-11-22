@@ -6,7 +6,7 @@ import { attackPresentation, weaponImpactType } from './combatFX.js';
 import { throwExpression } from './damageRiders.js';
 import { guideEvent } from './onboarding.js';
 import { IMPACT_TYPES } from './encounterRules.js';
-import { dossierDialog } from './dossierUI.js';
+import { tableDialog } from './dossierDialog.js';
 // src/diceRoller.js
 // Authentic Veilfarers Dice Roller & Threshold Damage Calculator
 
@@ -1141,7 +1141,7 @@ export class DiceRollerSidebar {
 
   chooseRollContext(clocks) {
     return new Promise(resolve => {
-      const dlg = dossierDialog('¿Se aplica la ventaja del poder?', clocks.map(c => '<button class="hud-btn" data-clock="' + escapeHTML(c.id) + '">' + escapeHTML(c.name + ' · ' + CONTEXT_EDGES[c.name][1]) + '</button>').join('') + '<button class="hud-btn" data-clock="">Tirar sin este efecto</button>');
+      const dlg = tableDialog('¿Se aplica la ventaja del poder?', clocks.map(c => '<button class="hud-btn" data-clock="' + escapeHTML(c.id) + '">' + escapeHTML(c.name + ' · ' + CONTEXT_EDGES[c.name][1]) + '</button>').join('') + '<button class="hud-btn" data-clock="">Tirar sin este efecto</button>');
       const observer = new MutationObserver(() => { if (!dlg.isConnected) { observer.disconnect(); resolve(null); } });
       observer.observe(dlg.parentNode, { childList: true });
       dlg.querySelectorAll('[data-clock]').forEach(b => { b.onclick = () => { observer.disconnect(); dlg.remove(); resolve(b.dataset.clock || null); }; });
@@ -1791,14 +1791,14 @@ export class DiceRollerSidebar {
 
     // Apply button - Enabled for both Keeper and Token Owner Players
     const applyBtn = this.container.querySelector('#apply_dmg_to_target_btn');
-    let applied = false;
+    let applied = false, awaitingKeeper = false;
     // The damage stays open to Bear Down until it is applied: the same dice, plus the bonus.
     const pending = { checkId: this.lastAttack?.actorId === attackerId && this.lastAttack?.targetId === targetId && this.lastAttack?.hit ? this.lastAttack.checkId : null, targetId, actorId: attackerId, faces: dmgResult.rolls.slice(), bonus: bearDown, riders, extras, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, applied: false };
     this.lastDamage = pending; this.lastRollKind = 'damage';
     applyBtn.disabled = !targetToken;
     applyBtn.textContent = targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
     applyBtn.onclick = () => {
-      if (applied) return;
+      if (applied || awaitingKeeper) return;
       const canApply = () => {
         const attacker = store.state.tokens.find(t => t.id === attackerId);
         if (attackerId && (!attacker || lifeStage(attacker))) { notify('Este personaje no puede infligir daño ordinario.', 'error'); return false; }
@@ -1961,7 +1961,21 @@ export class DiceRollerSidebar {
         window.dispatchEvent(new CustomEvent('veil:attack-done', { detail: { attackerId, targetId: currentTarget.id } }));
         return;
       }
-      keeperDamageDialog(currentTarget, request, n => applyFinalDamage(n), { shields: spentShieldsChoice ?? (useArmor ? 1 : 0) });
+      awaitingKeeper = true;
+      keeperDamageDialog(currentTarget, request, n => {
+        awaitingKeeper = false;
+        const live = store.state.tokens.find(t => t.id === targetId);
+        if (!live || live.mapId !== damageMapId || store.state.activeMapId !== damageMapId) {
+          notify('El objetivo ha salido de la escena.', 'error'); return;
+        }
+        const before = options[n], now = planDamage(n).damagePayload;
+        if (before.newHp !== now.newHp || before.hpLoss !== now.hpLoss || before.newArmor !== now.newArmor || before.stressMark !== now.stressMark) {
+          notify('Han cambiado las defensas. Revisa el resultado actualizado.');
+          pending.apply();
+          return;
+        }
+        applyFinalDamage(n);
+      }, { shields: spentShieldsChoice ?? (useArmor ? 1 : 0), onCancel: () => { awaitingKeeper = false; } });
     };
     pending.apply = applyBtn.onclick;
   }
@@ -1975,7 +1989,7 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
   if (typeof document === 'undefined' || !document.body) { onApply(0); return; }
   const max = options.length - 1, start = Math.max(0, Math.min(max, shields));
   const describe = n => { const o = options[n]; return `Pierde ${o.hpLoss} HP · HP ${o.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}`; };
-  const modal = dossierDialog('⚔️ DAÑO A ' + targetToken.name, `
+  const modal = tableDialog('Daño a ' + targetToken.name, `
     <div class="kdmg">
       <div class="kdmg-head"><img src="${escapeHTML(actorPortrait(targetToken))}" alt="" />
         <div><strong>${escapeHTML(targetToken.name)}</strong><p class="dossier-muted">${escapeHTML(request.attackerName || 'Ataque')}: ${escapeHTML(String(request.raw))} de daño · ${escapeHTML(String(request.severity || ''))}</p></div></div>
@@ -1984,7 +1998,7 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
       <p class="kdmg-preview" id="kdmg_preview">${escapeHTML(describe(start))}</p>
     </div>
     <footer class="dossier-footer"><button class="hud-btn hud-btn-secondary" type="button" id="kdmg_cancel">Cancelar</button>
-      <button class="pab-apply-main" type="button" id="kdmg_apply">Aplicar daño</button></footer>`);
+      <button class="pab-apply-main" type="button" id="kdmg_apply">Aplicar daño</button></footer>`, 'damage-action-dialog');
   const slider = modal.querySelector('#kdmg_shields'), val = modal.querySelector('#kdmg_shields_val'), preview = modal.querySelector('#kdmg_preview');
   const chosen = () => Math.max(0, Math.min(max, parseInt(slider?.value || '0', 10)));
   if (slider) slider.oninput = () => { val.textContent = slider.value; preview.textContent = describe(chosen()); };
@@ -2008,34 +2022,18 @@ export function promptShieldMitigation(targetToken, incomingRawDamage, usable, o
     return;
   }
 
-  const modal = dossierDialog('🛡️ MITIGACIÓN CON ESCUDOS · ' + targetToken.name, `
-    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
-      <img src="${escapeHTML(actorPortrait(targetToken))}" style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid #00f3ff; object-fit: cover;" alt="" />
-      <div>
-        <h3 style="margin: 0; color: #fff; font-size: 15px;">${escapeHTML(targetToken.name)}</h3>
-        <p class="dossier-muted" style="margin: 2px 0 0;">¡Impacto entrante de ${incomingRawDamage} de daño!</p>
-      </div>
+  const modal = tableDialog('Escudos · ' + targetToken.name, `
+    <div class="kdmg">
+      <div class="kdmg-head"><img src="${escapeHTML(actorPortrait(targetToken))}" alt="" />
+        <p>Impacto de <strong>${escapeHTML(String(incomingRawDamage))}</strong> de daño</p></div>
+      <label class="dossier-field"><span>Escudos que gastas (disponibles: ${currentShields})</span>
+        <div class="kdmg-row"><input type="range" id="mitigate_shields_slider" min="0" max="${currentShields}" value="1" />
+          <b id="mitigate_shields_val">1</b></div></label>
     </div>
-    <p style="font-size: 12px; color: #cbd5e1; line-height: 1.4; margin-bottom: 12px;">
-      El portador cuenta con <strong>${currentShields} escudo${currentShields > 1 ? 's' : ''}</strong> disponible${currentShields > 1 ? 's' : ''}.
-      Selecciona cuántos escudos deseas gastar para absorber el impacto. A continuación se ejecutará la animación de impacto y se restará el daño al HP restante.
-    </p>
-
-    <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-radius: 6px; border: 1px solid rgba(0, 243, 255, 0.2); margin-bottom: 12px;">
-      <label class="dossier-field" style="margin: 0;">
-        <span>Escudos a gastar:</span>
-        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px;">
-          <input type="range" id="mitigate_shields_slider" min="0" max="${currentShields}" value="${Math.min(1, currentShields)}" style="flex: 1;" />
-          <span id="mitigate_shields_val" style="font-size: 16px; font-weight: bold; color: #00f3ff; min-width: 28px; text-align: center;">${Math.min(1, currentShields)}</span>
-        </div>
-      </label>
-    </div>
-
-    <footer class="dossier-footer" style="display: flex; justify-content: space-between; gap: 8px;">
-      <button class="hud-btn hud-btn-secondary" type="button" id="mitigate_zero_btn">Gastar 0 Escudos</button>
-      <button class="hud-btn hud-btn-primary" type="button" id="mitigate_confirm_btn">🛡️ Gastar Escudos y Aplicar</button>
-    </footer>
-  `);
+    <footer class="dossier-footer">
+      <button class="hud-btn hud-btn-secondary" type="button" id="mitigate_zero_btn">Sin escudos</button>
+      <button class="hud-btn hud-btn-primary" type="button" id="mitigate_confirm_btn">Confirmar escudos</button>
+    </footer>`, 'damage-action-dialog');
 
   const slider = modal.querySelector('#mitigate_shields_slider');
   const valText = modal.querySelector('#mitigate_shields_val');

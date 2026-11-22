@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.10', date: '2026-11-22', title: 'Visión Ailurean, Resolve y equipo en mesa',
+    sections: [
+      { title: 'En la mesa', items: [
+        'Los Sleeper ven en la barra flotante el Resolve disponible, su máximo y el dado d4 o d6. Pueden gastarlo o recuperarlo junto al Effort.',
+        'Desde un personaje Ailurean, el mapa, los obstáculos y los efectos se ven en grises con un ligero tinte azul. Los personajes de otros jugadores conservan su color.',
+        'Las cartas, sus resoluciones y la elección de escudos se abren en un panel compacto que deja el mapa visible e interactivo.',
+        'La ficha reconoce los nombres antiguos, abreviados y bilingües del equipo ilustrado, incluida la armadura de fichas importadas.',
+      ] },
+    ],
+  },
+  {
     version: '2.29.9', date: '2026-11-22', title: 'Bear Down, daño de Vanguard y usos por arco',
     sections: [
       { title: 'En la mesa', items: [
