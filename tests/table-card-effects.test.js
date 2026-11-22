@@ -421,3 +421,47 @@ test('Powers in effect do the sums: Kinetic Barrier, Velocity Surge, Aura of Cla
   play(e, 'caster', 'Eyes of Truth');
   assert.equal(contextualEdges(get(e, 'caster'), 'instinct').length, 1);
 });
+
+test('Mind-Slip modes: Stagger leaves an NPC Prone, Compel asks a Presence Reaction (DC 15), Field of Hesitation marks its zone', () => {
+  const s = table(withPower('Mind-Slip'), { ...hostile('foe'), x: 128 });
+  const stagger = play(s, 'caster', 'Mind-Slip', { targetIds: ['foe'], mode: 'Stagger' });
+  check(s, 'caster', { ...stagger.roll, forcedHope: 10, forcedFear: 6 }, { cardPlayId: stagger.id });
+  assert.ok(get(s, 'foe').conditions.includes('Prone'));
+  const c = table({ ...withPower('Mind-Slip'), hope: 6 }, { ...hostile('foe'), x: 128 });
+  const compel = play(c, 'caster', 'Mind-Slip', { targetIds: ['foe'], mode: 'Compel' });
+  check(c, 'caster', { ...compel.roll, forcedHope: 10, forcedFear: 6 }, { cardPlayId: compel.id });
+  const [reply] = resolutionLog(c, compel.id).resolution.replies;
+  assert.deepEqual([reply.actorId, reply.traitId, reply.dc], ['foe', 'presence', 15]);
+  check(c, 'foe', { traitId: 'presence', dc: 15, forcedD20: 2 }, { cardPlayId: compel.id, cardReplyId: reply.id });
+  assert.match(resolutionLog(c, compel.id).resolution.replies[0].consequence, /muévelo una banda/);
+  const f = table(withPower('Mind-Slip'));
+  const field = play(f, 'caster', 'Mind-Slip', { mode: 'Field of Hesitation' });
+  check(f, 'caster', { ...field.roll, forcedHope: 10, forcedFear: 6 }, { cardPlayId: field.id });
+  assert.equal(resolutionLog(f, field.id).resolution.area.reach, 'Very Close');
+});
+
+test('Flux Field and Telekinetic Grasp leave an action while they last', () => {
+  const s = table({ ...withPower('Flux Field'), stress: { current: 0, max: 6 } }, { ...actor('ally'), x: 128 }, { ...hostile('foe'), x: 192 });
+  const cast = play(s, 'caster', 'Flux Field', { mode: 'Unlucky Enemies' });
+  check(s, 'caster', { ...cast.roll, traitId: 'instinct', forcedHope: 10, forcedFear: 6 }, { cardPlayId: cast.id });
+  assert.deepEqual(get(s, 'caster').effectClocks.find(c => c.name === 'Flux Field').modes, ['Lucky Streak', 'Unlucky Enemies'], 'with Hope: both modes');
+  performGameAction({ type: 'POWER_USE', actorId: 'caster', name: 'Flux Field', mode: 'Lucky Streak', targetId: 'ally' }, s);
+  assert.equal(get(s, 'ally').pendingAdvantage, true);
+  assert.throws(() => performGameAction({ type: 'POWER_USE', actorId: 'caster', name: 'Flux Field', mode: 'Unlucky Enemies', targetId: 'foe' }, s), /esta ronda/);
+  const t = table(withPower('Telekinetic Grasp'), { ...hostile('foe'), x: 64 + 64 * 8 });
+  assert.throws(() => performGameAction({ type: 'POWER_USE', actorId: 'caster', name: 'Telekinetic Grasp', targetId: 'foe' }, t), /no está activo/);
+  const grasp = play(t, 'caster', 'Telekinetic Grasp');
+  check(t, 'caster', { ...grasp.roll, forcedHope: 8, forcedFear: 4 }, { cardPlayId: grasp.id });
+  const hurl = performGameAction({ type: 'POWER_USE', actorId: 'caster', name: 'Telekinetic Grasp', targetId: 'foe' }, t);
+  assert.deepEqual(hurl.damage, { formula: '2d6', type: 'void' });
+});
+
+test('Lucky Break rerolls a die of the latest roll: the outcome, the Hope and the Keeper Fear follow the new die', () => {
+  const s = table({ ...withPower('Lucky Break'), hope: 2, stress: { current: 0, max: 6 } });
+  const roll = check(s, 'caster', { traitId: 'agility', dc: 15, forcedHope: 3, forcedFear: 9 });
+  assert.equal(roll.dominance, 'Fear'); assert.equal(s.state.fear, 1); assert.equal(get(s, 'caster').hope, 2);
+  const lucky = performGameAction({ type: 'LUCKY_BREAK', actorId: 'caster', die: 'hope', face: 11 }, s);
+  assert.deepEqual([lucky.hopeVal, lucky.total, lucky.dominance, lucky.resultType], [11, 22, 'Hope', 'SUCCESS_WITH_HOPE']);
+  assert.deepEqual([get(s, 'caster').hope, get(s, 'caster').stress.current, s.state.fear], [3, 1, 0]);
+  assert.throws(() => performGameAction({ type: 'LUCKY_BREAK', actorId: 'caster', die: 'fear', face: 2 }, s), /ya se relanzó/);
+});

@@ -5,7 +5,7 @@ import { printedChecks, printedPools } from './cardProcedures.js';
 import { currentArc } from './cardLimits.js';
 import { throwDice } from './tableDice.js';
 import { CONDITIONS } from './conditions.js';
-import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog, areaRule, areaTargets, SELF_EFFECTS, POWER_DAMAGE } from './cardResolution.js';
+import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog, areaRule, areaTargets, SELF_EFFECTS, POWER_DAMAGE, CARD_MODES } from './cardResolution.js';
 import { PATH_TRAITS } from './statePowers.js';
 import { tokenInventory } from './equipment.js';
 
@@ -37,8 +37,9 @@ export function cardChoices(card, actor, picked) {
   const targets = rule ? field('Objetivo · ' + rule.reach, '<vf-select name="card_target">' + opt('', rule.object ? 'Sistema sin token' : 'Elige un objetivo') + options.map(t => opt(t.id, t.name, t.id === marked)).join('') + '</vf-select>') :
     '<details class="card-targets"' + (marked ? ' open' : '') + '><summary>Objetivos en la escena</summary>' + options.map(t => '<label><input type="checkbox" name="card_target" value="' + e(t.id) + '"' + (marked === t.id ? ' checked' : '') + '> ' + e(t.name) + '</label>').join('') + '</details>';
   const dcs = card.kind === 'archive' ? null : cardRollOptions(card);
+  const modes = CARD_MODES[card.name] ? field('Modo', '<vf-select name="card_mode">' + CARD_MODES[card.name].map((m, i) => opt(m, m, i === 0)).join('') + '</vf-select>') : '';
   const damage = POWER_DAMAGE[card.name] ? '<p class="dossier-muted">Si la tirada sale, se prepara el daño contra el objetivo: ' + e(POWER_DAMAGE[card.name].formula(actor)) + ' ' + e(POWER_DAMAGE[card.name].type) + ' (' + e(POWER_DAMAGE[card.name].tag) + '). ' + e(POWER_DAMAGE[card.name].heavy || '') + '</p>' : '';
-  return damage + (dcs ? field('Dificultad del sistema', '<vf-select name="card_dc">' + dcs.map(dc => opt(dc, 'DC ' + dc)).join('') + '</vf-select>') : '') + targets;
+  return modes + damage + (dcs ? field('Dificultad del sistema', '<vf-select name="card_dc">' + dcs.map(dc => opt(dc, 'DC ' + dc)).join('') + '</vf-select>') : '') + targets;
 }
 export function chosenCardOptions(modal) {
   const targetIds = [...modal.querySelectorAll('vf-select[name=card_target],input[name=card_target]:checked')].map(el => el.value).filter(Boolean);

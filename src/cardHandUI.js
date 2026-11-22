@@ -14,7 +14,7 @@ import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECAL
 
 import {cardUse,usedBy} from './cardLimits.js';
 import { cardChoices, chosenCardOptions, openResolution } from './cardResolutionUI.js';
-import { TARGET_RULES, SELF_EFFECTS, cardRollOptions, createResolution } from './cardResolution.js';
+import { TARGET_RULES, SELF_EFFECTS, CARD_MODES, SUSTAINED, eligible, cardRollOptions, createResolution } from './cardResolution.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { newId } from './persistence.js';
@@ -251,7 +251,8 @@ export class CardHand {
     if (card.kind === 'effort' && (token.effort || 0) < card.cost.effort) { this.inspect(card, point); return; }
     if (!card.playable) { this.inspect(card); return; }
     if (card.uncanny || card.kind === 'archive') { this.openUncanny(card, point); return; }
-    if (card.chooseTrait || card.reverse || TARGET_RULES[card.name] || SELF_EFFECTS[card.name]?.modes || card.name === 'Kinetic Blast' || cardRollOptions(card) || card.kind === 'archive' || (card.cost.open && card.cost.resolve)) { this.inspect(card, point); return; }
+    if (this.special(card, token, point)) return;
+    if (card.chooseTrait || card.reverse || TARGET_RULES[card.name] || SELF_EFFECTS[card.name]?.modes || CARD_MODES[card.name] || card.name === 'Kinetic Blast' || cardRollOptions(card) || card.kind === 'archive' || (card.cost.open && card.cost.resolve)) { this.inspect(card, point); return; }
     this.play(card, point);
   }
 
@@ -419,12 +420,67 @@ export class CardHand {
     return modal;
   }
 
+  // Cards with their own window (v2.35.0): Lucky Break rerolls a die of the latest roll; a
+  // sustained Power already active (Telekinetic Grasp, Flux Field) offers its action.
+  special(card, token, point = null) {
+    if (card.name === 'Lucky Break' && card.playable) { this.openLuckyBreak(token); return true; }
+    if (SUSTAINED[card.name] && token.effectClocks?.some(c => c.name === card.name)) { this.openPowerUse(card, token, point); return true; }
+    return false;
+  }
+
+  openLuckyBreak(token) {
+    const dice = window.veilDiceRoller, last = dice?.lastResult;
+    const usable = last && last.actorId === token.id && last.hopeVal != null && !last.keeperD20 && !last.luckyBreak;
+    const modal = tableDialog('Lucky Break', `<div class="kdmg">
+      <p>${usable ? `Tu última tirada: Hope <b>${last.hopeVal}</b> · Fear <b>${last.fearVal}</b> → ${last.total} contra DC ${last.dc} (${e(last.outcomeTitle || '')}).` : 'Haz primero una tirada de Dualidad: Lucky Break relanza uno de sus dados.'}</p>
+      <p class="dossier-muted">Marca 1 Stress y relanza un dado; te quedas con el nuevo resultado. Modo Personal o Vehículo (una Acción de la nave): el mismo relanzamiento.</p>
+      <p class="dossier-error" role="alert"></p></div>
+      <footer class="dossier-footer">${usable ? '<button type="button" class="hud-btn" data-lucky="fear">Relanzar Fear</button><button type="button" class="hud-btn hud-btn-primary" data-lucky="hope">Relanzar Hope</button>' : ''}</footer>`, 'damage-action-dialog');
+    modal.querySelectorAll('[data-lucky]').forEach(b => b.onclick = async () => {
+      modal.querySelectorAll('[data-lucky]').forEach(x => { x.disabled = true; });
+      try {
+        const die = b.dataset.lucky, [face] = await throwDice([{ qty: 1, sides: 12, role: die === 'hope' ? 'Hope' : 'Fear' }], { label: 'Lucky Break · ' + token.name, actor: token });
+        const result = await network.requestAction({ type: 'LUCKY_BREAK', actorId: token.id, die, face, visibility: dice?.rollVisibility?.() || 'table' });
+        modal.remove();
+        await dice?.applyBearDown?.(result);
+        notify(`Lucky Break: ${result.outcomeDesc}`);
+      } catch (err) { modal.querySelector('[role=alert]').textContent = err.message; modal.querySelectorAll('[data-lucky]').forEach(x => { x.disabled = false; }); }
+    });
+    return modal;
+  }
+
+  openPowerUse(card, token, point = null) {
+    const clock = token.effectClocks.find(c => c.name === card.name), rule = SUSTAINED[card.name], map = store.getActiveMap?.();
+    const flux = card.name === 'Flux Field', modes = clock?.modes || [];
+    const picked = this.cardTarget(point);
+    const options = store.state.tokens.filter(t => t.id !== token.id && t.mapId === token.mapId && !t.hidden && (!rule.reach || eligible(token, t, map, { reach: rule.reach, self: false })));
+    const modal = tableDialog(card.name, `<div class="kdmg">
+      <p>${flux ? `Activo: ${e(modes.join(' y '))}. Una vez por ronda.` : 'Lanzas el objeto enlazado como acción: (Proficiency)d6 Void contra el objetivo.'}</p>
+      ${flux ? `<label class="dossier-field"><span>Modo</span><vf-select class="hud-select" name="use_mode">${modes.map(m => `<option value="${e(m)}">${e(m === 'Lucky Streak' ? 'Lucky Streak · Ventaja a un aliado' : 'Unlucky Enemies · Desventaja al ataque de un enemigo')}</option>`).join('')}</vf-select></label>` : ''}
+      <label class="dossier-field"><span>Objetivo${rule.reach ? ' · ' + e(rule.reach) : ''}</span><vf-select class="hud-select" name="use_target"><option value="">Elige un objetivo</option>${options.map(t => `<option value="${e(t.id)}"${t.id === picked ? ' selected' : ''}>${e(t.name)}</option>`).join('')}</vf-select></label>
+      <p class="dossier-error" role="alert"></p></div>
+      <footer class="dossier-footer"><button type="button" class="hud-btn hud-btn-primary" data-use>${e(rule.label)}</button></footer>`, 'damage-action-dialog');
+    modal.querySelector('[data-use]').onclick = async () => {
+      const targetId = modal.querySelector('[name=use_target]').value, mode = modal.querySelector('[name=use_mode]')?.value;
+      try {
+        const result = await network.requestAction({ type: 'POWER_USE', actorId: token.id, name: card.name, targetId, mode });
+        modal.remove();
+        if (result.damage) window.veilDiceRoller?.prepareCardDamage(token.id, result.targetId, result.damage.formula, window.veilDiceRoller.rollVisibility?.() === 'keeper', { type: result.damage.type });
+        notify(result.summary);
+        const line = `🂠 ${token.name}: ${result.summary}`;
+        network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
+      } catch (err) { modal.querySelector('[role=alert]').textContent = err.message; }
+    };
+    return modal;
+  }
+
   inspect(card, point = null) {
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     // Reference cards of the deck (and the Powers of the catalog) are read without a character.
     const reference = card.zone === 'catalog' || card.zone === 'vault';
     if (!token && !KEEPER_KINDS.has(card.kind) && !reference) return;
     if (token && card.playable && (card.uncanny || card.kind === 'archive')) return this.openUncanny(card, point);
+    if (token && card.playable && !reference && this.special(card, token, point)) return null;
     const use = cardUse(card,store.state);
     const burnoutOnly = card.kind === 'effort' && (token?.effort || 0) === 0;
     const chooses = card.playable && (card.kind === 'archive' || (card.cost.open && card.cost.resolve)), available = token?.resolve?.current || 0;

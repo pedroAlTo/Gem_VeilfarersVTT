@@ -21,7 +21,7 @@ export const TARGET_RULES = {
   // Levels 1-3 that name one target (v2.32.0): chosen like an attack, at their printed range.
   'Stellar Lance': { who: 'creature', reach: 'Far', self: false },
   'Biological Scan': { who: 'creature', reach: 'Melee', self: false },
-  'Mind-Slip': { who: 'creature', reach: 'Close', self: false },
+  'Mind-Slip': { who: 'creature', reach: 'Close', self: false, object: true },
   'Emotional Manipulation': { who: 'creature', reach: 'Close', self: false },
   'Symbiotic Bond': { who: 'party', reach: 'Close', self: false },
 };
@@ -52,6 +52,18 @@ export function endSelfEffects(actor, { attack = false, domain = '', name = '' }
   const names = ending.map(([key]) => key), conditions = new Set(ending.map(([, rule]) => rule.condition));
   return { effectClocks: actor.effectClocks.filter(c => !names.includes(c.name)), conditions: (actor.conditions || []).filter(c => !conditions.has(c)), ended: names };
 }
+// Powers with modes chosen when they are played (v2.35.0).
+export const CARD_MODES = {
+  'Mind-Slip': ['Compel', 'Stagger', 'Field of Hesitation'],
+  'Flux Field': ['Lucky Streak', 'Unlucky Enemies'],
+};
+// Powers that, once cast, leave an action to use while they last (their clock on the caster):
+// Telekinetic Grasp hurls the tethered object; Flux Field, once per round, grants Advantage to an
+// ally's roll or imposes Disadvantage on an enemy's attack.
+export const SUSTAINED = {
+  'Telekinetic Grasp': { label: 'Lanzar el objeto', reach: 'Far' },
+  'Flux Field': { label: 'Usar Flux Field (1 / ronda)' },
+};
 // Area boons applied to everyone inside at once (no roll).
 export const AREA_BOONS = {
   'Inspiring Presence': token => ({ pendingCheckBonus: (Number(token.pendingCheckBonus) || 0) + 2 }),
@@ -288,7 +300,8 @@ export function completeCardRoll(store, record, roll, previous = null) {
     const reply = record.replies.find(r => r.id === record.replyId);
     const failed = !roll.isCritical && roll.total < roll.dc;
     // An area card applies its printed failure to whoever fails (once per reply).
-    const consequence = failed && record.area?.failure && reply && !reply.consequence ? applyAreaFailure(store, record, reply.actorId, roll) : '';
+    const target = reply && store.state.tokens.find(t => t.id === reply.actorId);
+    const consequence = !failed || !reply || reply.consequence ? '' : record.area?.failure ? applyAreaFailure(store, record, reply.actorId, roll) : record.replyFailure && target ? target.name + ': ' + record.replyFailure : '';
     updateResolution(store, record.id, { replies: record.replies.map(r => r.id === record.replyId ? { ...r, outcome: roll.outcomeTitle, total: roll.total, ...(consequence ? { consequence } : {}) } : r) });
     return;
   }
@@ -304,6 +317,32 @@ export function completeCardRoll(store, record, roll, previous = null) {
   if (previous && record.failureFearGained) store.addFear(-Math.min(record.failureFearGained, store.state.fear));
   const notes = [];
   if (success && SELF_EFFECTS[record.name]) notes.push(applySelfEffect(store, record.name, record.actorId, record.mode));
+  const extra = {};
+  // A sustained Power leaves its clock and its action (Flux Field: the mode, both with Hope).
+  if (success && SUSTAINED[record.name] && actor) {
+    const clock = newClock({ name: record.name, segments: 1, tick: 'manual', scene: true });
+    if (record.name === 'Flux Field') clock.modes = roll.dominance === 'Hope' || roll.isCritical ? [...CARD_MODES['Flux Field']] : [CARD_MODES['Flux Field'].includes(record.mode) ? record.mode : 'Lucky Streak'];
+    const live = store.state.tokens.find(t => t.id === actor.id);
+    store.updateToken(actor.id, { effectClocks: addClock((live.effectClocks || []).filter(c => c.name !== record.name), clock) });
+    notes.push(record.name === 'Flux Field' ? 'Flux Field activo (' + clock.modes.join(' y ') + '): toca la carta para usarlo, una vez por ronda.' : 'Objeto enlazado: toca la carta para lanzarlo como acción.');
+  }
+  // Mind-Slip: Stagger leaves an NPC Prone; Compel asks it a Presence Reaction Roll (DC 15) and
+  // the table moves it on a failure; Field of Hesitation marks its Very Close zone.
+  if (success && record.name === 'Mind-Slip') {
+    const target = record.targetIds.map(id => store.state.tokens.find(t => t.id === id)).find(Boolean);
+    const npc = target && target.isPlayer === false && !isPartyToken(target);
+    if (record.mode === 'Stagger' && target) {
+      if (npc) { store.updateToken(target.id, { conditions: normalizeConditions([...(target.conditions || []), 'Prone']) }); notes.push(target.name + ' queda Prone.'); }
+      else notes.push(target.name + ' queda Prone solo si su jugador lo acepta.');
+    } else if (record.mode === 'Compel' && target) {
+      if (npc) { extra.replies = [...(record.replies || []), { id: newId(), actorId: target.id, traitId: 'presence', dc: 15 }]; extra.replyFailure = 'muévelo una banda de alcance en la dirección que elija ' + (actor?.name || 'quien lanza') + '.'; notes.push(target.name + ' tira Presence contra DC 15.'); }
+      else notes.push(target.name + ' se mueve solo si su jugador lo acepta.');
+    } else if (record.mode === 'Field of Hesitation') {
+      const centre = target || actor, map = { gridSize: 64, gridScaleMeters: 2, ...(store.getActiveMap?.() || {}) };
+      if (centre) extra.area = { x: Math.round(centre.x), y: Math.round(centre.y), reach: 'Very Close', radius: Math.round(areaRadius(centre, map, 'Very Close')), failure: null };
+      notes.push('Campo de vacilación (Very Close, una escena): quien intente cruzarlo tira Presence contra DC 10; si falla, se queda fuera y pierde su Acción.');
+    }
+  }
   // An area Power whose effect lasts on everyone inside (Aura of Clarity, Protective Dome).
   if (success && record.area && CLOCK_BONUSES[record.name]) {
     const inside = record.targetIds.map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);
@@ -367,5 +406,5 @@ export function completeCardRoll(store, record, roll, previous = null) {
     store.updateToken(source.id, { resolve: { ...source.resolve, current: Math.min(source.resolve.max, source.resolve.current + record.refundResolve) } });
     notes.push('Uncanny Power recupera el Resolve de acceso.');
   }
-  updateResolution(store, record.id, { phase: 'ready', ...(clockId ? { clockId } : {}), ...outcome, failureFearGained, notes });
+  updateResolution(store, record.id, { phase: 'ready', ...(clockId ? { clockId } : {}), ...outcome, failureFearGained, notes, ...extra });
 }

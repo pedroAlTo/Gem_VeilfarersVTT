@@ -4,7 +4,7 @@ import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './eff
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects } from './cardResolution.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
@@ -139,7 +139,7 @@ function resolveGameAction(action, store) {
     const log = { sender: actor.name, type: 'LIFE', title: stage, details };
     store.addLog(log); return { actorId: actor.id, log };
   }
-  if (['CHECK', 'CARD_PLAY', 'UNCANNY_ACCESS', 'RESOLVE', 'EFFORT', 'STABILIZE'].includes(action.type)) requireActive(actor);
+  if (['CHECK', 'CARD_PLAY', 'UNCANNY_ACCESS', 'POWER_USE', 'LUCKY_BREAK', 'RESOLVE', 'EFFORT', 'STABILIZE'].includes(action.type)) requireActive(actor);
   if (action.type === 'STABILIZE') {
     const target = store.state.tokens.find(t => t.id === action.targetId);
     const stage = lifeStage(target);
@@ -161,7 +161,7 @@ function resolveGameAction(action, store) {
   }
   // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
   // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
-  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN' || action.type === 'UNCANNY_ACCESS' || action.type === 'ARCHIVE_EDIT' || action.type === 'REACTION_PAY') {
+  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN' || action.type === 'UNCANNY_ACCESS' || action.type === 'ARCHIVE_EDIT' || action.type === 'REACTION_PAY' || action.type === 'POWER_USE' || action.type === 'LUCKY_BREAK') {
     const data = cardData();
     if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
@@ -170,6 +170,74 @@ function resolveGameAction(action, store) {
     const apply = patch => store.updateToken(actor.id, patch);
     const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
     const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
+    // The action of a sustained Power (v2.35.0): Telekinetic Grasp hurls the object (its damage is
+    // prepared by the client against the target); Flux Field, once per round, Advantage for an
+    // ally's next roll or Disadvantage on an enemy's next attack.
+    if (action.type === 'POWER_USE') {
+      const name = String(action.name ?? ''), rule = SUSTAINED[name], clock = actor.effectClocks?.find(c => c.name === name);
+      if (!rule || !clock) throw new Error(name + ' no está activo.');
+      const map = store.getActiveMap?.(), target = store.state.tokens.find(t => t.id === action.targetId && t.mapId === actor.mapId && !t.hidden);
+      if (!target || target.id === actor.id) throw new Error('Elige un objetivo en la escena.');
+      let details, damage = null;
+      if (name === 'Telekinetic Grasp') {
+        if (!eligible(actor, target, map, { reach: rule.reach, self: false })) throw new Error('El objetivo está fuera de alcance (Far) o tras un muro.');
+        damage = { formula: Math.max(1, Math.min(10, Number(actor.proficiency) || 1)) + 'd6', type: 'void' };
+        details = `${actor.name} lanza el objeto enlazado contra ${target.name}: ${damage.formula} Void.`;
+        grantSpotlight(store, actor.id);
+      } else {
+        const mode = String(action.mode ?? ''), round = roundKey(map || {});
+        if (!(clock.modes || []).includes(mode)) throw new Error('Ese modo no está activo.');
+        if (clock.meleeRound === round) throw new Error('Flux Field ya se usó esta ronda.');
+        const ally = isPartyToken(target);
+        if (mode === 'Lucky Streak') {
+          if (!ally) throw new Error('Lucky Streak es para un aliado.');
+          store.updateToken(target.id, { pendingAdvantage: true });
+          details = `Flux Field · Lucky Streak: ${target.name} tiene Ventaja en su próxima tirada.`;
+        } else {
+          if (ally) throw new Error('Unlucky Enemies es para un enemigo.');
+          store.updateToken(target.id, { effectClocks: addClock(target.effectClocks, { ...newClock({ name: 'Flux Field · próximo ataque', segments: 1, tick: 'manual', scene: true }), edge: 'disadvantage', nextAttack: true }) });
+          details = `Flux Field · Unlucky Enemies: el próximo ataque de ${target.name} tiene Desventaja.`;
+        }
+        apply({ effectClocks: actor.effectClocks.map(c => c.id === clock.id ? { ...c, meleeRound: round } : c) });
+      }
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${name}`, details };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, summary: details, damage, targetId: target.id };
+    }
+    // Lucky Break (Void 2, Reaction, 1 Stress): reroll the Hope or the Fear die of your latest
+    // roll and keep the new result; the outcome, the Path payout and the Keeper's Fear follow it.
+    if (action.type === 'LUCKY_BREAK') {
+      if (!characterCards(actor, data).some(c => c.name === 'Lucky Break' && c.playable)) throw new Error('Lucky Break no está en la mano de ' + actor.name + '.');
+      if (!canPay(actor, { stress: 1 })) throw new Error(actor.name + ' no puede marcar Stress.');
+      const previous = lastRoll.get(rollKey);
+      if (!previous || previous.hopeVal == null || previous.keeperD20) throw new Error('Haz primero una tirada de Dualidad.');
+      if (previous.luckyBreak) throw new Error('Esa tirada ya se relanzó con Lucky Break.');
+      const die = action.die === 'fear' ? 'fear' : 'hope';
+      const face = validFaces([action.face], 1, 12) ? action.face : 1 + Math.floor(Math.random() * 12);
+      const hopeVal = die === 'hope' ? face : previous.hopeVal, fearVal = die === 'fear' ? face : previous.fearVal;
+      const total = previous.total - previous[die + 'Val'] + face, isCritical = hopeVal === fearVal;
+      const dominance = isCritical ? 'Hope' : hopeVal > fearVal ? 'Hope' : 'Fear', success = isCritical || total >= previous.dc;
+      const resultType = isCritical ? 'CRITICAL_SUCCESS' : `${success ? 'SUCCESS' : 'FAILURE'}_WITH_${dominance.toUpperCase()}`;
+      const fearGain = !isCritical && dominance === 'Fear' ? 1 : 0;
+      const result = { ...previous, hopeVal, fearVal, total, isCritical, dominance, resultType, fearGain, luckyBreak: { die, from: previous[die + 'Val'], to: face },
+        outcomeTitle: isCritical ? 'CRITICAL SUCCESS (Matching Faces)' : resultType.replaceAll('_', ' '),
+        outcomeDesc: `Lucky Break: el dado de ${die === 'hope' ? 'Hope' : 'Fear'} pasa de ${previous[die + 'Val']} a ${face}. ${success ? 'La tirada tiene éxito.' : 'La tirada falla.'}` };
+      if (previous.hitTarget !== undefined) result.hitTarget = success ? (previous.hitTarget || previous.attackTargetId || null) : null;
+      // The payout follows the new dice: Hope (Awakened) and the Keeper's Fear by the difference.
+      const patch = { stress: { ...actor.stress, current: (actor.stress?.current || 0) + 1 } };
+      const hopeOf = r => (r.isCritical || r.dominance === 'Hope' ? 1 : 0);
+      if (actor.path !== 'Sleeping') patch.hope = clamp((actor.hope || 0) + hopeOf(result) - hopeOf(previous), 6);
+      if (result.isCritical && !previous.isCritical) patch.stress = { ...patch.stress, current: Math.max(0, patch.stress.current - 1) };
+      apply(patch);
+      const fearDelta = fearGain - (previous.fearGain || 0);
+      if (fearDelta > 0) store.addFear(fearDelta); else if (fearDelta < 0) store.addFear(-Math.min(-fearDelta, store.state.fear));
+      const cast = cardToAmend(store, previous);
+      if (cast) completeCardRoll(store, cast, result, previous);
+      lastRoll.set(rollKey, result);
+      const log = { sender: actor.name, type: 'CHECK', title: `${actor.name}: Lucky Break · ${result.outcomeTitle}`, details: `${result.outcomeDesc} Total ${total} vs DC ${previous.dc}. Marca 1 Stress.${actor.path === 'Sleeping' && hopeOf(result) !== hopeOf(previous) ? ' Ajusta el Effort Track si cambia el dado mayor.' : ''}` };
+      store.addLog(log);
+      return { ...result, log };
+    }
     // A reaction Power used in the attack or damage window (v2.33.0): it pays its printed price
     // and leaves what lasts (the amount Impact Absorption keeps, Tactical Overwatch's Armor Slots).
     if (action.type === 'REACTION_PAY') {
@@ -366,7 +434,8 @@ function resolveGameAction(action, store) {
       resolution.notes = ['Proyecto iniciado. Marca el reloj al resolver cada fase de trabajo impresa.'];
     }
     if (result.failed) resolution.phase = 'done';
-    if (SELF_EFFECTS[card.name]) resolution.mode = String(action.mode ?? '').slice(0, 20);
+    if (SELF_EFFECTS[card.name] || CARD_MODES[card.name]) resolution.mode = String(action.mode ?? '').slice(0, 30);
+    if (CARD_MODES[card.name] && !CARD_MODES[card.name].includes(resolution.mode)) resolution.mode = CARD_MODES[card.name][0];
     if (area && !result.failed) {
       resolution.area = { x: Math.round(actor.x), y: Math.round(actor.y), reach: area.reach, radius: Math.round(areaRadius(actor, store.getActiveMap?.(), area.reach)), color: card.color || '#00f3ff', failure: area.failure };
       if (areaChecks && targets.length) resolution.replies = targets.map(t => ({ id: newId(), actorId: t.id, traitId: area.check.traitId, dc: area.check.dc }));
@@ -538,7 +607,7 @@ function resolveGameAction(action, store) {
     for (const c of integrityEnded) store.addLog({ sender: actor.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${actor.name}: el Integrity Die llega a 0 y «${c.name}» termina.` });
     const record = { id: newId(), actorId: actor.id, ...result,
       ...(cast ? { cardPlayId: cast.id, ...(cast.replyId ? { cardReplyId: cast.replyId } : {}) } : {}),
-      ...(ownAttack ? { hitTarget: hit ? target.id : null, mapId: store.state.activeMapId, pathId: state?.id || null, closedPath: !!action.closingId, damageRiders } : {}), ...(secret ? { visibility: 'keeper' } : {}) };
+      ...(ownAttack ? { hitTarget: hit ? target.id : null, attackTargetId: target.id, mapId: store.state.activeMapId, pathId: state?.id || null, closedPath: !!action.closingId, damageRiders } : {}), ...(secret ? { visibility: 'keeper' } : {}) };
     lastRoll.set(rollKey, record);
     const log = {
       sender: actor.name,

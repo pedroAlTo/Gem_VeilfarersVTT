@@ -1553,6 +1553,14 @@ export const PAIRS = [
   ["Reacción (pregunta al jugador)", "Reaction (ask the player)"],
   ["Ninguna", "None"],
   ["No la usa", "Does not use it"],
+  // V3 · Poderes sostenidos y Lucky Break (v2.35.0)
+  ["Relanzar Hope", "Reroll Hope"],
+  ["Relanzar Fear", "Reroll Fear"],
+  ["Lanzar el objeto", "Hurl the object"],
+  ["Usar Flux Field (1 / ronda)", "Use Flux Field (1 / round)"],
+  ["Lucky Streak · Ventaja a un aliado", "Lucky Streak · Advantage to an ally"],
+  ["Unlucky Enemies · Desventaja al ataque de un enemigo", "Unlucky Enemies · Disadvantage on an enemy attack"],
+  ["Haz primero una tirada de Dualidad: Lucky Break relanza uno de sus dados.", "Make a Duality Roll first: Lucky Break rerolls one of its dice."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

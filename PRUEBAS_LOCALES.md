@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.34.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.34.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.34.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.34.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.35.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.35.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.35.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.35.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -120,6 +120,9 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.34.0.zip**. Abre **AYUDA
 105. **(V3) Reacciones en el daño.** Con un personaje que tenga Impact Absorption, recibe un impacto Physical: en la ventana del Keeper elige la reacción en «Reacción»; el HP final cambia; al aplicar, marca 1 Stress y su próximo ataque suma lo absorbido. Con un aliado con Photon Shield a Close, la reducción es su Tier + 2.
 106. **(V3) Mejoras activas.** Juega Kinetic Barrier: la Evasion sube 1. Recibe un impacto Physical: la ventana de daño trae «Kinetic Barrier» elegida y el daño baja (y la resistencia lo reduce a la mitad); tras absorber 10 se disipa. Lanza Aura of Clarity con aliados cerca: tras el éxito, los umbrales de todos suben 1 y un Dazed no se les aplica. Lanza Protective Dome: los aliados a 2 casillas ganan +2 Evasion.
 107. **(V3) Próxima tirada.** Juega Silver Tongue y haz una tirada de Presence: suma tu Tier y, si el Hope sale 11, cuenta como 12. Juega Vector Calculus y tira Agility: suma tu nivel y el Hope mínimo es 11. Juega Velocity Surge (con éxito): tus tiradas de Agility suman +2.
+108. **(V3) Lucky Break.** Con Lucky Break en el Loadout, haz una tirada que salga con Fear; toca la carta: aparecen tus dados; «Relanzar Hope» tira un d12 3D, marca 1 Stress y el resultado cambia en el registro (y el Hope y el Fear del Keeper con él). Tras un ataque fallido, si el nuevo total alcanza la Evasion, el ataque pasa a impacto.
+109. **(V3) Flux Field y Telekinetic Grasp.** Lanza Flux Field (si sale con Hope, tienes los dos modos); toca la carta otra vez: elige Lucky Streak y un aliado (Ventaja en su próxima tirada); un segundo uso en la misma ronda se rechaza. Lanza Telekinetic Grasp; toca la carta, elige un enemigo a alcance Far: se prepara su daño Void.
+110. **(V3) Mind-Slip.** Lánzalo con Stagger sobre un NPC: queda Prone. Con Compel: aparece su tirada de Presence DC 15; si falla, la resolución dice que lo muevas una banda. Con Field of Hesitation: el círculo Very Close aparece en el mapa.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

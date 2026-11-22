@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.35.0', date: '2026-11-22', title: 'V3 · Lucky Break, Flux Field, Telekinetic Grasp y los modos de Mind-Slip',
+    sections: [
+      { title: 'Poderes', items: [
+        'Lucky Break: muestra los dados de tu última tirada y relanza el de Hope o el de Fear (dado 3D, 1 Stress). La mesa recalcula el total, el resultado, el Hope que ganas y el Fear del Keeper. Si era un ataque fallido que ahora alcanza la Evasion, pasa a impacto y se calcula el daño.',
+        'Flux Field: si sale la tirada, queda activo con el modo elegido (los dos con Hope). Tocando la carta, una vez por ronda: Lucky Streak da Ventaja a la próxima tirada de un aliado; Unlucky Enemies da Desventaja al próximo ataque de un enemigo.',
+        'Telekinetic Grasp: si sale, el objeto queda enlazado. Tocando la carta lo lanzas como acción contra un objetivo a alcance Far, y se prepara su daño, (Proficiency)d6 Void.',
+        'Mind-Slip pide su modo. Stagger: el NPC queda Prone. Compel: el NPC tira Presence contra DC 15 y, si falla, la resolución dice que lo muevas una banda. Field of Hesitation: marca la zona Very Close en el mapa con su regla.',
+      ] },
+    ],
+  },
+  {
     version: '2.34.0', date: '2026-11-22', title: 'V3 · Mejoras con números y modificadores de tirada',
     sections: [
       { title: 'Mejoras activas', items: [
