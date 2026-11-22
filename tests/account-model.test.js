@@ -71,6 +71,29 @@ test('a note the cloud rejects stays in this browser and the fallback is announc
   await assert.rejects(c.saveNote('room_1', { title: 'x' }), /offline/);
 });
 
+test('a character the cloud refuses stays listed after the next cloud read, until the cloud has it', async () => {
+  const { c, docs } = fakeAccount('u3');
+  const denied = Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' });
+  const save = c.dbAPI.setDoc;
+  c.dbAPI.setDoc = async () => { throw denied; };
+  const token = { name: 'Ilse Varn', characterClass: 'Mystic', path: 'Sleeping', species: 'Human', level: 1, isPlayer: true, actorType: 'player', hp: { current: 6, max: 6 }, stress: { current: 0, max: 6 }, traits: {} };
+  const id = await c.saveCharacter(token);
+  assert.equal(c.lastSaveTarget, 'local');
+  // The cloud can be read (it is empty): the character saved only here is not erased.
+  let list = await c.list('characters');
+  assert.deepEqual(list.map(row => [row.id, row.localOnly]), [[id, true]]);
+  list = await c.list('characters');
+  assert.equal(list.length, 1);
+  // Once the cloud accepts it, the cloud copy replaces the local one.
+  c.dbAPI.setDoc = save;
+  await c.saveCharacter(token);
+  list = await c.list('characters');
+  assert.deepEqual(list.map(row => [row.id, !!row.localOnly]), [[id, false]]);
+  assert.equal(docs.size, 1);
+  await c.removeCharacter(id);
+  assert.deepEqual(await c.list('characters'), []);
+});
+
 function fakeRoomService() {
   const docs = new Map(), writes = [];
   const service = new RoomService({ cloudAccount: {} });

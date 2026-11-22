@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.31.2', date: '2026-11-22', title: 'V3 · Archivo de personajes importados y creador sin pérdidas',
+    sections: [
+      { title: 'Mystic Sleeping', items: [
+        'Un Mystic Sleeping importado sin Dominios (o con la clase en español, «Místico») se reconoce y puede empezar su Archivo desde el mazo o desde la ficha.',
+        'La ventana de Uncanny Power tiene un botón «Gestionar el Archivo» que abre el mazo con el Archivo, también cuando está vacío.',
+      ] },
+      { title: 'Creador de personajes', items: [
+        'Desde el lobby (antes de entrar en una sala) el creador ya no ofrece «Crear y poner en la mesa»: esa mesa se sustituía al entrar en la sala y el personaje se perdía. Allí se guarda en la cuenta o se descarga la ficha, y se lleva a la mesa al entrar.',
+        'Un personaje que la nube no acepta y queda guardado solo en este navegador ya no desaparece de la biblioteca al volver a leerla: sigue en la lista hasta que la nube tenga una copia.',
+      ] },
+    ],
+  },
+  {
     version: '2.31.1', date: '2026-11-22', title: 'V3 · Archivo del Mystic Sleeping y Spellcast automático',
     sections: [
       { title: 'Archivo de Uncanny', items: [

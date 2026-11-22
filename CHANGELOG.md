@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.31.1**.
-Paquete: `VeilFarers_VTT_v2.31.1.zip`.
+Versión actual del VTT: **v2.31.2**.
+Paquete: `VeilFarers_VTT_v2.31.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.31.2] — 2026-11-22
+
+V3 · Archivo de personajes importados y creador sin pérdidas
+
+### Mystic Sleeping
+
+- Un Mystic Sleeping importado sin Dominios (o con la clase en español, «Místico») se reconoce y puede empezar su Archivo desde el mazo o desde la ficha.
+- La ventana de Uncanny Power tiene un botón «Gestionar el Archivo» que abre el mazo con el Archivo, también cuando está vacío.
+
+### Creador de personajes
+
+- Desde el lobby (antes de entrar en una sala) el creador ya no ofrece «Crear y poner en la mesa»: esa mesa se sustituía al entrar en la sala y el personaje se perdía. Allí se guarda en la cuenta o se descarga la ficha, y se lleva a la mesa al entrar.
+- Un personaje que la nube no acepta y queda guardado solo en este navegador ya no desaparece de la biblioteca al volver a leerla: sigue en la lista hasta que la nube tenga una copia.
 
 ## [2.31.1] — 2026-11-22
 

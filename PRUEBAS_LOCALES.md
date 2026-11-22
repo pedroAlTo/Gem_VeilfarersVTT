@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.31.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.31.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.31.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.31.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.31.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.31.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.31.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.31.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -112,6 +112,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.31.1.zip**. Abre **AYUDA
 97. **(V3) Equipado.** Lo equipado (armas en mano, armadura puesta, aumentos) se ve grande con todos sus datos; pasa el ratón por una etiqueta: aparece su regla. Enfunda un arma: pasa a «Llevas encima». Ponte otra armadura: la anterior queda encima y sus umbrales cambian; «Ponérmela» la vuelve a poner. Útiles y varios es una lista sencilla con cantidades.
 98. **(V3) Uncanny Power.** Con un Mystic Sleeping (Archivo «Lux 1, Neural 1, Neural 2», nivel 3), toca un Poder de nivel 2 de su mano: se abre la ventana con el Archivo. Gasta 1 Resolve y tira el acceso (dados 3D): baja el Resolve y el Keeper gana 1 Fear. Si llegas a 2, Manifestar prepara Knowledge contra DC 12; si solo llegas a 1, elige un Poder de nivel 1 sin volver a gastar. Prueba «Renunciar al acceso» y, con un Critical, que vuelve el Resolve.
 99. **(V3) Archivo del Mystic Sleeping.** Abre la ficha de un Mystic Sleeping de nivel 3 → pestaña Loadout: el Archivo muestra sus Dominios (los del creador). Añade Void 2: aparecen sus Poderes en la mano. Elige nivel 3: el botón se bloquea y explica que hacen falta dos Dominios a nivel 2. Quita un Dominio con la ×. Después, en Uncanny Power, pulsa Manifestar: se tira Knowledge contra DC 10 + nivel sin pulsar nada más.
+100. **(V3) Creador y Archivo importado.** En el lobby, con sesión iniciada, crea un personaje: al terminar solo se ofrece «Guardar en mi cuenta» (y descargar). Guárdalo, cierra el creador: aparece en tu biblioteca. Entra en una sala como Keeper y crea otro: «Crear y poner en la mesa» lo deja en la escena. Importa un Mystic Sleeping sin Dominios: su carta Uncanny Power → «Gestionar el Archivo» → añade un Dominio de nivel 1.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

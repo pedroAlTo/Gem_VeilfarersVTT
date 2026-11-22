@@ -520,7 +520,7 @@ export class VeilfarersLobbyGateway {
     document.getElementById('vf-btn-character-creator')?.addEventListener('click', async () => {
       try {
         const { openCharacterCreator } = await import('../../creator/creatorUI.js');
-        const dialog = await openCharacterCreator();
+        const dialog = await openCharacterCreator({ place: false });
         // Whatever was saved to the account while the creator was open shows up on closing it.
         new MutationObserver((_m, observer) => { if (!dialog.isConnected) { observer.disconnect(); this.loadCharacters(); } }).observe(document.body, { childList: true });
       } catch (err) { this.showHubError(`No se pudo abrir el creador: ${err?.message || err}`); }

@@ -197,3 +197,4 @@ html body .veil-modal-backdrop.table-action-panel.uncanny-dialog > .veil-modal-b
 .archive-chip button:hover, .archive-chip button:focus-visible { color: #fca5a5; }
 .archive-add { display: grid; gap: 6px; justify-items: start; }
 .archive-add .card-drawer-step { margin: 0; }
+.uncanny-manage { margin-top: 8px; }

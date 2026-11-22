@@ -124,7 +124,8 @@ export function giftCost(gift, sleeping = false) {
   if (/spend Hope\b/i.test(text(gift?.text)) && !cost.hope) cost.open = true;
   return cost;
 }
-export const isSleepingMystic = token => token?.path === 'Sleeping' && /mystic/i.test(text(token.characterClass));
+// The class may come only in the imported sheet, or in Spanish (Místico).
+export const isSleepingMystic = token => token?.path === 'Sleeping' && /m[yií]stic/i.test(`${text(token.characterClass)} ${text(fieldsOf(token).class)}`);
 // The subclass rank acquired: 0 Foundation, 1 Specialization, 2 Mastery.
 export const subclassRank = token => Math.max(Number(token?.advancement?.subclassUpgrades) || 0, /mastery/i.test(token?.subclassRank) ? 2 : /specialization/i.test(token?.subclassRank) ? 1 : 0);
 

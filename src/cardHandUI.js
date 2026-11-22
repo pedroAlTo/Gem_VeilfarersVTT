@@ -377,9 +377,11 @@ export class CardHand {
               ? `<button type="button" class="hud-btn" data-uncanny-cancel>Renunciar al acceso</button><button type="button" class="hud-btn hud-btn-primary" data-uncanny-cast ${chosen ? '' : 'disabled'}>Manifestar${chosen ? ` · Knowledge DC ${10 + chosen.level}` : ''}</button>`
               : `<button type="button" class="hud-btn hud-btn-primary" data-uncanny-roll ${available ? '' : 'disabled'}>${available ? 'Tirar el acceso' : 'Sin Resolve'}</button>`}</footer>
           </div>
-          <div class="uncanny-archive" aria-label="Archivo">${list || '<p class="dossier-muted">El Archivo no tiene Dominios desbloqueados: anótalos en la ficha (Studied Domains o Archivo).</p>'}</div>
+          <div class="uncanny-archive" aria-label="Archivo">${list || '<p class="dossier-muted">El Archivo está vacío: añade los Dominios desbloqueados del personaje.</p>'}<button type="button" class="hud-btn hud-btn-xs uncanny-manage" data-uncanny-archive>Gestionar el Archivo</button></div>
         </div>`);
       host.querySelectorAll('[data-uncanny-pick]').forEach(b => b.onclick = () => { chosenId = b.dataset.uncannyPick; draw(); });
+      // The Archive is managed in the deck (Domains and levels unlocked).
+      host.querySelector('[data-uncanny-archive]').onclick = () => { modal.remove(); this.toggleDrawer('', true); };
       const owned = () => { const t = liveToken(); if (t && t.mapId === store.state.activeMapId) return t; draw('Ha cambiado la escena. Vuelve a abrir Uncanny Power desde la mano.'); return null; };
       const rollButton = host.querySelector('[data-uncanny-roll]');
       if (rollButton) rollButton.onclick = async () => {

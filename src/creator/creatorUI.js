@@ -25,7 +25,10 @@ function loadDraft() {
   try { const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return saved && typeof saved === 'object' ? { ...freshState(), ...saved } : freshState(); } catch { return freshState(); }
 }
 
-export async function openCharacterCreator({ onCreated = () => {} } = {}) {
+// place: false in the lobby (no table yet). A token put there would be replaced by the room the
+// player then opens, and the draft would already be gone (user report, v2.31.2): the lobby saves
+// to the account or downloads the sheet instead.
+export async function openCharacterCreator({ onCreated = () => {}, place = true } = {}) {
   const { CREATOR_DATA: data } = await import('./creatorData.js');
   let state = loadDraft(), step = Math.min(firstIncompleteStep(state, data) || 9, 9);
   const modal = dossierDialog('CREADOR DE PERSONAJES', `
@@ -160,7 +163,7 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
     9: () => {
       const cls = classOf(state, data), text = (key, label, rows = 2) => `<label class="dossier-field"><span>${label}</span><textarea class="hud-input" data-field="${key}" rows="${rows}" maxlength="1000">${e(state[key])}</textarea></label>`;
       const pending = CREATOR_STEPS.filter(s => s.id < 9 && !isStepReady(state, s.id, data));
-      const canPlace = store.sessionRole !== 'player' && store.state.userRole === 'keeper';
+      const canPlace = place && store.sessionRole !== 'player' && store.state.userRole === 'keeper';
       const targets = canPlace ? store.state.tokens.filter(t => t.isPlayer !== false && t.actorType !== 'adversary') : [];
       const selectedArch = state.tokenArchetype || '';
       const avatarUrl = creatorPortrait();
@@ -189,8 +192,8 @@ export async function openCharacterCreator({ onCreated = () => {} } = {}) {
         <h4 class="dossier-label">TERMINAR</h4>
         <div class="creator-finish">
           ${canPlace ? `<button type="button" class="hud-btn hud-btn-primary" data-finish="token">Crear y poner en la mesa</button>
-          ${targets.length ? `<label class="dossier-field"><span>…o llevar la ficha a un token que ya existe</span><select class="hud-input" data-target><option value="">Elegir token</option>${targets.map(t => `<option value="${e(t.id)}">${e(t.name)}</option>`).join('')}</select></label><button type="button" class="hud-btn" data-finish="replace">Asignar a ese token</button>` : ''}` : '<p class="dossier-muted">El Keeper pone los personajes en la mesa. Descarga la ficha y envíasela, o impórtala cuando te asigne un token.</p>'}
-          ${account.user ? '<button type="button" class="hud-btn" data-finish="account" title="Guarda el personaje en tu biblioteca de la cuenta">Guardar en mi cuenta</button>' : ''}
+          ${targets.length ? `<label class="dossier-field"><span>…o llevar la ficha a un token que ya existe</span><select class="hud-input" data-target><option value="">Elegir token</option>${targets.map(t => `<option value="${e(t.id)}">${e(t.name)}</option>`).join('')}</select></label><button type="button" class="hud-btn" data-finish="replace">Asignar a ese token</button>` : ''}` : (place ? '<p class="dossier-muted">El Keeper pone los personajes en la mesa. Descarga la ficha y envíasela, o impórtala cuando te asigne un token.</p>' : '<p class="dossier-muted">Aún no estás en una mesa: guarda el personaje en tu cuenta (o descarga su ficha) y llévalo a la mesa al entrar en una sala.</p>')}
+          ${account.user ? `<button type="button" class="hud-btn ${canPlace ? '' : 'hud-btn-primary'}" data-finish="account" title="Guarda el personaje en tu biblioteca de la cuenta">Guardar en mi cuenta</button>` : ''}
           <button type="button" class="hud-btn" data-finish="download">Descargar ficha JSON</button>
         </div>`}`;
     },

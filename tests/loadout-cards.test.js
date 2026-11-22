@@ -348,4 +348,10 @@ test('the Uncanny Archive is managed from the deck: Domains up to the character 
   assert.deepEqual(archivePackages(noLux.token).sort(), [['Neural', 1], ['Void', 2]].sort());
   assert.equal(characterCards(noLux.token, data).some(c => c.kind === 'archive' && c.domain === 'Lux'), false);
   assert.throws(() => editArchive(character(), data, { op: 'add', domain: 'Lux', level: 1 }), /Mystic Sleeping/);
+  // An imported Mystic with no Archive (or its class in Spanish) can start one from the deck.
+  const imported = { ...mystic, characterClass: 'Místico', sourceCharacter: structuredClone(mystic.sourceCharacter) };
+  for (const [key, value] of Object.entries(fields(imported))) if (typeof value === 'string') fields(imported)[key] = value.replace(/Studied Domains[^\n]*/g, '');
+  assert.equal(isSleepingMystic(imported), true);
+  assert.deepEqual(archivePackages(imported), []);
+  assert.deepEqual(archivePackages(editArchive(imported, data, { op: 'add', domain: 'Social', level: 1 }).token), [['Social', 1]]);
 });
