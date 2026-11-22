@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.36.0**.
-Paquete: `VeilFarers_VTT_v2.36.0.zip`.
+Versión actual del VTT: **v2.37.0**.
+Paquete: `VeilFarers_VTT_v2.37.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.37.0] — 2026-11-22
+
+V3 · Las reacciones se iluminan al jugador que puede usarlas
+
+### Reacciones
+
+- Cuando se cumple el disparador de una reacción (Force Shield, Tactical Overwatch, Photon Shield, Impact Absorption, Mind Shield), en la pantalla del jugador que puede usarla la carta se ilumina («¡Úsala ahora!») y aparece un aviso con lo que conseguiría: «Usar · 1 Hope» o «Dejar pasar». Tocar la carta iluminada también la usa.
+- No hay tiempo de espera: el Keeper ve a quién se le ha iluminado y lo que responde. Si alguien no responde, decide el Keeper con sus botones de siempre.
+- En la ventana de daño del Keeper, la reacción que el jugador acepta queda elegida sola; el Keeper sigue aplicando el daño.
 
 ## [2.36.0] — 2026-11-22
 

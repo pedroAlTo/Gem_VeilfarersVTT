@@ -1577,6 +1577,10 @@ export const PAIRS = [
   ["tirando…", "rolling…"],
   ["pendiente", "pending"],
   ["Modificador", "Modifier"],
+  // V3 · Reacciones a los jugadores (v2.37.0)
+  ["Dejar pasar", "Let it pass"],
+  ["¡Úsala ahora!", "Use it now!"],
+  ["Reacciones avisadas a sus jugadores…", "Reactions offered to their players…"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

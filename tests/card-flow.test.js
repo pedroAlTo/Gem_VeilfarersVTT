@@ -37,3 +37,24 @@ test('a card says its state, and one click knows what the card needs', () => {
   assert.equal(quickPlan(card('Drone Whisper'), hero), 'dialog', 'it asks which DC');
   assert.deepEqual(cardChips(card('Stellar Lance'), hero).map(([k]) => k), ['cost', 'reach', 'roll', 'dmg']);
 });
+
+test('a reaction offer lights up for the player who controls the reactor and their answer reaches the Keeper', async () => {
+  const { store } = await import('../src/state.js');
+  const { sendOffer, closeOffer, liveFor, answer, receiveOffer } = await import('../src/reactionOffers.js');
+  store.state.tokens = [{ id: 'vea', name: 'Vea', isPlayer: true }, { id: 'other', name: 'Otro', isPlayer: true }];
+  store.state.userRole = 'player';
+  const answers = [];
+  const offerId = sendOffer({ name: 'Force Shield', reactors: [{ id: 'vea', name: 'Vea' }], text: 'Void Horror impacta a Harker', cost: '1 Hope' }, a => answers.push(a));
+  assert.ok(liveFor('vea', 'Force Shield'), 'lit on this screen');
+  assert.equal(liveFor('other', 'Force Shield'), null);
+  assert.ok(document.querySelector('.reaction-toast'));
+  answer(offerId, 'vea', true);
+  assert.deepEqual(answers, [{ reactorId: 'vea', use: true }]);
+  assert.equal(liveFor('vea', 'Force Shield'), null, 'answered: no longer lit');
+  assert.equal(document.querySelector('.reaction-toast'), null);
+  // An offer for somebody else's character is not shown.
+  receiveOffer({ offerId: 'x', name: 'Photon Shield', reactorIds: ['nobody'], text: '' });
+  assert.equal(liveFor('nobody', 'Photon Shield'), null);
+  closeOffer(offerId);
+  store.state.userRole = 'keeper';
+});

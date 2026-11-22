@@ -251,3 +251,17 @@ body.card-aiming #tactical_canvas { cursor: crosshair; }
 .card-roll-options { display: grid; gap: 6px; margin: 0; padding: 8px 10px; border: 1px solid rgba(34,211,238,.35); border-radius: 5px; }
 .card-roll-options legend { padding: 0 4px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .14em; color: #a5f3fc; text-transform: uppercase; }
 .card-edge { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+
+/* Reactions lit for the player who can use them (v2.37.0). */
+.card-hand-fan .vf-card[data-live-reaction] .vf-card-frame { box-shadow: 0 0 0 3px #f59e0b, 0 0 28px 8px rgba(245,158,11,.7); animation: reactionPulse 1.4s ease-in-out infinite; }
+.card-hand-fan .vf-card[data-live-reaction] { z-index: 55; }
+.card-hand-fan .vf-card[data-live-reaction] .vf-card-frame { transform: translateY(-40px) scale(1.12); }
+@keyframes reactionPulse { 50% { box-shadow: 0 0 0 3px #fbbf24, 0 0 40px 12px rgba(251,191,36,.85); } }
+.vf-card-status.react.live { background: #fbbf24; color: #2a1300; }
+.card-hand-fan .vf-card[data-live-reaction] .vf-card-status { opacity: 1; top: -76px; }
+.reaction-toasts { position: fixed; right: 16px; bottom: 230px; z-index: 1350; display: grid; gap: 8px; width: min(380px, calc(100vw - 24px)); }
+.reaction-toast { padding: 12px 14px; background: rgba(13,4,32,.97); border: 1px solid #f59e0b; border-radius: 5px; box-shadow: 0 0 24px rgba(245,158,11,.45); color: #e2e8f0; }
+.reaction-toast-label { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: #fbbf24; }
+.reaction-toast p { margin: 6px 0 10px; font-size: 13.5px; line-height: 1.45; }
+.reaction-toast footer { display: flex; justify-content: flex-end; gap: 6px; }
+.kdmg-answers { margin: 4px 0; font-size: 12px; color: #fde68a; }

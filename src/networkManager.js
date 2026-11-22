@@ -1216,6 +1216,9 @@ export class NetworkManager {
       this.ephemeral(data);
       this.broadcast(data);
     }
+    // A player's answer to a reaction offer: only for a character that player controls.
+    if (data.type === 'REACTION_ANSWER' && typeof data.offerId === 'string' && owns(String(data.reactorId)))
+      window.dispatchEvent(new CustomEvent('veil:reaction-answer', { detail: { offerId: data.offerId, reactorId: String(data.reactorId), use: data.use === true } }));
     if (data.type === 'MAP_LOAD_STATUS') {
       const member = this.members.get(senderId);
       const peerId = member?.id || data.memberId || data.peerId || senderId;
@@ -1242,6 +1245,11 @@ export class NetworkManager {
     if (data.type === 'ANNOUNCEMENT' && typeof data.text === 'string') window.dispatchEvent(new CustomEvent('veil:announcement', { detail: data.text.slice(0, 2000) }));
     if (data.type === 'PING' && finite(data.x) && finite(data.y))
       window.veilCanvas?.triggerPing(data.x, data.y, '#72d9f5');
+    // Reactions offered by the Keeper to the players who can use them (v2.37.0).
+    if (data.type === 'REACTION_OFFER' && typeof data.offerId === 'string' && Array.isArray(data.reactorIds))
+      window.dispatchEvent(new CustomEvent('veil:reaction-offer', { detail: { offerId: data.offerId.slice(0, 40), name: String(data.name || '').slice(0, 60), reactorIds: data.reactorIds.slice(0, 8).map(String), text: String(data.text || '').slice(0, 400), cost: String(data.cost || '').slice(0, 30) } }));
+    if (data.type === 'REACTION_CLOSED' && typeof data.offerId === 'string')
+      window.dispatchEvent(new CustomEvent('veil:reaction-closed', { detail: { offerId: data.offerId } }));
     if (data.type === 'TRANSMISSION' && data.handout)
       window.dispatchEvent(
         new CustomEvent('veil:incoming_transmission', { detail: { handout: data.handout } })

@@ -32,6 +32,7 @@ import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpre
 import { resolutionLog, POWER_DAMAGE } from './cardResolution.js';
 import { damageReactions, reduceComponents, reactorsFor, REACTIONS } from './powerReactions.js';
 import { thresholdBonus } from './powerEffects.js';
+import { sendOffer, closeOffer } from './reactionOffers.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -2054,10 +2055,19 @@ export function offerReaction(name, target, text) {
   if (!reactors.length || typeof document === 'undefined' || !document.body) return Promise.resolve(null);
   const cost = REACTIONS[name].cost.hope ? REACTIONS[name].cost.hope + ' Hope' : REACTIONS[name].cost.stress + ' Stress';
   return new Promise(resolve => {
-    const modal = tableDialog(name, `<div class="kdmg"><p>${escapeHTML(text)}</p><p class="dossier-muted">Reacción (${escapeHTML(cost)}). Pregunta al jugador si la usa.</p></div>
+    const modal = tableDialog(name, `<div class="kdmg"><p>${escapeHTML(text)}</p><p class="dossier-muted">Reacción (${escapeHTML(cost)}). La carta se ha iluminado a ${escapeHTML(reactors.map(r => r.name).join(', '))}; si no responde, decides tú.</p><p class="kdmg-answers" role="status"></p></div>
       <footer class="dossier-footer"><button class="hud-btn hud-btn-secondary" type="button" data-react="">No la usa</button>${reactors.map(r => `<button class="hud-btn hud-btn-primary" type="button" data-react="${escapeHTML(r.id)}">${escapeHTML(r.name)} la usa</button>`).join('')}</footer>`, 'damage-action-dialog');
-    let done = false;
-    const finish = id => { if (done) return; done = true; modal.remove(); resolve(reactors.find(r => r.id === id) || null); };
+    let done = false, offerId = null;
+    const declined = new Set();
+    const finish = id => { if (done) return; done = true; closeOffer(offerId); modal.remove(); resolve(reactors.find(r => r.id === id) || null); };
+    // The players who can use it see it lit on their screen (v2.37.0); their answer decides.
+    offerId = sendOffer({ name, reactors, text, cost }, ({ reactorId, use }) => {
+      if (use) { finish(reactorId); return; }
+      declined.add(reactorId);
+      const line = modal.querySelector('.kdmg-answers');
+      if (line) line.textContent = reactors.filter(r => declined.has(r.id)).map(r => r.name + ' la deja pasar').join(' · ');
+      if (declined.size >= reactors.length) finish('');
+    });
     modal.querySelectorAll('[data-react]').forEach(b => b.onclick = () => finish(b.dataset.react));
     new MutationObserver((_, obs) => { if (!modal.isConnected) { obs.disconnect(); finish(''); } }).observe(document.body, { childList: true });
   });
@@ -2097,11 +2107,25 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
   const pick = modal.querySelector('#kdmg_reaction');
   if (pick) pick.onchange = () => { ri = Number(pick.value); sync(); };
   sync();
+  // Each reaction lights up for its player (v2.37.0): «use it» selects it here; the Keeper
+  // still applies the damage, and decides if nobody answers.
+  const offers = [], said = [];
+  reactions.forEach((r, i) => {
+    if (r.free) return;
+    const rule = REACTIONS[r.name], cost = rule?.cost?.hope ? rule.cost.hope + ' Hope' : rule?.cost?.stress ? rule.cost.stress + ' Stress' : '';
+    offers.push(sendOffer({ name: r.name, reactors: [{ id: r.actorId, name: r.actorName }], text: `${request.attackerName || 'Un ataque'} daña a ${targetToken.name} (${request.raw}). ${r.label}.`, cost }, ({ use }) => {
+      said.push(`${r.actorName} ${use ? 'usa' : 'deja pasar'} ${r.name}`);
+      if (use && pick) { ri = i; pick.value = String(i); sync(); }
+      const line = modal.querySelector('#kdmg_answers'); if (line) line.textContent = said.join(' · ');
+    }));
+  });
+  if (offers.length) modal.querySelector('#kdmg_preview')?.insertAdjacentHTML('beforebegin', '<p class="kdmg-answers" id="kdmg_answers" role="status">Reacciones avisadas a sus jugadores…</p>');
   let done = false;
-  modal.querySelector('#kdmg_apply').onclick = () => { done = true; const n = chosen(); modal.remove(); onApply(n, ri); };
-  modal.querySelector('#kdmg_cancel').onclick = () => { done = true; modal.remove(); onCancel(); };
+  const close = () => offers.forEach(closeOffer);
+  modal.querySelector('#kdmg_apply').onclick = () => { done = true; close(); const n = chosen(); modal.remove(); onApply(n, ri); };
+  modal.querySelector('#kdmg_cancel').onclick = () => { done = true; close(); modal.remove(); onCancel(); };
   // Closing the window another way also cancels.
-  new MutationObserver((_, obs) => { if (!modal.isConnected) { obs.disconnect(); if (!done) { done = true; onCancel(); } } }).observe(document.body, { childList: true });
+  new MutationObserver((_, obs) => { if (!modal.isConnected) { obs.disconnect(); close(); if (!done) { done = true; onCancel(); } } }).observe(document.body, { childList: true });
 }
 
 export function promptShieldMitigation(targetToken, incomingRawDamage, usable, onConfirm) {

@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.37.0', date: '2026-11-22', title: 'V3 · Las reacciones se iluminan al jugador que puede usarlas',
+    sections: [
+      { title: 'Reacciones', items: [
+        'Cuando se cumple el disparador de una reacción (Force Shield, Tactical Overwatch, Photon Shield, Impact Absorption, Mind Shield), en la pantalla del jugador que puede usarla la carta se ilumina («¡Úsala ahora!») y aparece un aviso con lo que conseguiría: «Usar · 1 Hope» o «Dejar pasar». Tocar la carta iluminada también la usa.',
+        'No hay tiempo de espera: el Keeper ve a quién se le ha iluminado y lo que responde. Si alguien no responde, decide el Keeper con sus botones de siempre.',
+        'En la ventana de daño del Keeper, la reacción que el jugador acepta queda elegida sola; el Keeper sigue aplicando el daño.',
+      ] },
+    ],
+  },
+  {
     version: '2.36.0', date: '2026-11-22', title: 'V3 · Cartas más sencillas: un gesto, apuntar en el mapa y la resolución en una tarjeta',
     sections: [
       { title: 'La mano', items: [

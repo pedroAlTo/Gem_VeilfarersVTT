@@ -19,6 +19,7 @@ import { openSwarmAttack } from './swarmAttackUI.js';
 import { cardSummary } from './cardSummaries.js';
 import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode } from './cardFlow.js';
 import { characterDetails } from './characterImport.js';
+import { liveFor, liveReactions, answer as answerReaction } from './reactionOffers.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { newId } from './persistence.js';
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
@@ -151,7 +152,7 @@ export class CardHand {
     // While the rules data loads, the deck stays in sight (it is always visible).
     if (!data) { this.signature = ''; this.tokenId = null; this.root.classList.remove('hidden'); this.quickbar.classList.remove('with-hand'); this.root.innerHTML = sanitizeHTML(deckButton('Mazo: consulta todos los Poderes del juego')); this.root.querySelector('[data-open-vault]').onclick = () => this.toggleDrawer('', false, { catalogOnly: true }); return; }
     const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts });
-    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
+    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, liveReactions().map(o => o.offerId), store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token.id;
     const hand = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault'), n = hand.length;
@@ -166,7 +167,7 @@ export class CardHand {
     const title = token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
     this.root.innerHTML = sanitizeHTML(`
       <div class="card-hand-label"><span>${e(title)}</span></div>
-      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}">${statusBadge(cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`).join('')}</div>
+      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}"${liveFor(token.id, card.name) ? ' data-live-reaction="1"' : ''}>${statusBadge(liveFor(token.id, card.name) ? { cls: 'react live', text: '¡Úsala ahora!' } : cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`).join('')}</div>
       ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : deckButton('Mazo: consulta todos los Poderes')}`);
     this.layoutFan(n);
     this.bind();
@@ -191,6 +192,8 @@ export class CardHand {
     }
   }
 
+  refresh() { this.signature = ''; this.render(); }
+
   // One click uses the card with its defaults; a second click soon after opens its options
   // (user decision, v2.36.0). A drag past a few pixels lifts it to be dropped on the map.
   clicked(card) {
@@ -205,6 +208,9 @@ export class CardHand {
     if (KEEPER_KINDS.has(card.kind) || !card.playable) { this.use(card, point); return; }
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return;
+    // A reaction lit by the Keeper's offer: a click uses it (v2.37.0).
+    const offer = liveFor(token.id, card.name);
+    if (offer) { answerReaction(offer.offerId, token.id, true); return; }
     if (card.uncanny || card.kind === 'archive') { this.openUncanny(card, point); return; }
     if (this.special(card, token, point)) return;
     const plan = quickPlan(card, token);
