@@ -2,10 +2,14 @@ import extras from './extraEquipmentArt.json' with { type: 'json' };
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { equipmentNameAliases, equipmentNameKey } from './equipmentNames.js';
 
-const catalogIds = new Set([...EQUIPMENT_CATALOG.map(item => item.id), ...Object.values(extras)]);
+// The table's own entries have their paintings by id; the book items generated in v2.30.0
+// (ids «bk_…») are found by their English name, or share a painting of their family.
+const tableItems = EQUIPMENT_CATALOG.filter(item => !String(item.id).startsWith('bk_'));
+const bookItems = new Map(EQUIPMENT_CATALOG.filter(item => String(item.id).startsWith('bk_')).map(item => [item.id, item]));
+const catalogIds = new Set([...tableItems.map(item => item.id), ...Object.values(extras)]);
 const exactNames = new Map(Object.entries(extras).map(([name, id]) => [equipmentNameKey(name), id]));
 const aliases = new Map();
-for (const item of EQUIPMENT_CATALOG) {
+for (const item of tableItems) {
   for (const key of equipmentNameAliases(item.name)) if (!aliases.has(key)) aliases.set(key, item.id);
   for (const name of [item.name, ...item.name.split(' / ')]) exactNames.set(equipmentNameKey(name), item.id);
 }
@@ -33,6 +37,9 @@ const legacyEquipment = [
   ['rs_aug_hydraulic_muscle', 'Injerto Muscular Hidráulico', 'tt1-enhanced-muscles'],
   ['rs_aug_auto_adrenal_pump', 'Bomba Adrenal de Resucitación Táctica', 'core_gr_stim_injector'],
 ];
+// The catalog id an older inventory name stands for (v2.30.0: gear.js classifies those rows too).
+const legacyByName = new Map(legacyEquipment.map(([id, name]) => [equipmentNameKey(name), id]));
+export const legacyEquipmentId = name => legacyByName.get(equipmentNameKey(name)) || null;
 const legacyIds = new Map();
 for (const [id, name, artId = id] of legacyEquipment) {
   exactNames.set(equipmentNameKey(name), artId);
@@ -58,12 +65,22 @@ const objectSheets = [
 const objects = new Map(objectSheets.flatMap((sheet, index) => sheet.map((id, cell) => [id, { index, cell }])));
 // The picture of a piece of equipment, for a card: one image, or a cell of a 3 × 3 sheet.
 // item: a catalog entry or an inventory row (by catalogId, id or name). null if it has none.
+// A painting of the same family for a book item without its own (never changes its stats).
+const FAMILY_ART = {
+  weapons: { Melee: 'tt1-machete', Pistols: 'tt1-heavy-pistol', Rifles: 'tt1-hunting-rifle', 'Heavy Weapons': 'core_wp_rocket_launcher', '': 'tt1-heavy-pistol' },
+  armor: { Light: 'core_ar_tactical_weave', Medium: 'core_ar_composite_armor', Heavy: 'core_ar_riot_armor', '': 'core_ar_composite_armor' },
+  augmentations: { Sensory: 'tt1-optical-enhancement-basic', Neural: 'core_aug_memory_chip', Physical: 'tt1-enhanced-muscles', Combat: 'core_aug_combat_reflexes', Utility: 'tt1-tool-mount', House: 'core_aug_combat_precognition', Stealth: 'tt1-subdermal-camouflage', '': 'core_aug_memory_chip' },
+  gear: { 'Médico': 'tt1-medical-scanner', 'Supervivencia': 'tt1-radiation-chem-sensor', 'Herramientas': 'tt1-repair-kit', 'Tecnología': 'tt1-data-jack', 'Comunicaciones': 'tt1-communications-implant', 'Seguridad e infiltración': 'tt1-noise-dampener', 'Vigilancia': 'tt1-audio-suite', 'Intrusión': 'tt1-data-jack', 'Ciencia prohibida': 'tt1-shielded-receiver', 'Protección': 'tt1-low-profile-frame', 'Sustancias': 'core_gr_stim_injector', 'Personal y varios': 'core_gr_omnitool', '': 'core_gr_omnitool' },
+};
 export function equipmentPicture(item) {
   const explicit = [item?.catalogId, item?.id].map(id => legacyIds.get(id) || id).find(id => catalogIds.has(id));
   if (explicit) return pictureForId(explicit);
   const names = equipmentNameAliases(item?.name);
   const id = exactNames.get(names[0]) || names.map(name => exactNames.get(name) || aliases.get(name)).find(Boolean);
-  return pictureForId(id);
+  if (id) return pictureForId(id);
+  const book = bookItems.get(item?.catalogId) || bookItems.get(item?.id) || (item?.category ? item : null);
+  const family = book && FAMILY_ART[book.category];
+  return family ? pictureForId(family[book.family] || family['']) : null;
 }
 function pictureForId(id) {
   const object = objects.get(id);

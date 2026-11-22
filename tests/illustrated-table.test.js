@@ -32,7 +32,8 @@ test('Every first-level power resolves its own illustration', () => {
 test('Every table catalog item and all common Creator and drone gear resolve packaged art', () => {
   const common = [...data('creator/data/armor'), ...data('creator/data/weapons'), ...data('creator/data/humanInheritance').grafts, ...data('droneModules')].filter(x => (x.grade || x.tier).toLowerCase() === 'common');
   for (const item of [...common, ...EQUIPMENT_CATALOG]) {
-    const thumb = equipmentThumbnail({name:item.name});
+    // Catalog entries are looked up whole: the books' items (v2.30.0) may share a family painting.
+    const thumb = equipmentThumbnail(EQUIPMENT_CATALOG.includes(item) ? item : {name:item.name});
     assert.ok(thumb, item.name);
     checkImage(thumb.match(/src="([^"]+)"/)[1]);
   }

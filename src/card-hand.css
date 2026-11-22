@@ -153,3 +153,7 @@
 .card-targets label { display: inline-flex; gap: .3rem; align-items: center; margin: .25rem .75rem .25rem 0; }
 .card-resolution fieldset { min-width: 0; border: 1px solid #615379; }
 .card-resolution [hidden] { display: none; }
+
+/* The deck inside the character sheet (v2.30.0): in the flow of the sheet, no close button. */
+.card-drawer.card-drawer-embedded { position: static; width: auto; max-height: none; z-index: auto; box-shadow: none; animation: none; border-top-width: 1px; border-radius: 5px; }
+.card-drawer.card-drawer-embedded .card-drawer-close { display: none; }

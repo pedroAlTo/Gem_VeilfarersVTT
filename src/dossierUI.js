@@ -92,7 +92,7 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
   const hasBackground = pc;
   const modal = dossierDialog(pc ? 'ARCHIVO DE PERSONAJE' : 'ARCHIVO DE ADVERSARIO / PNJ', `
     <div class="dossier-hero">${portrait}<div><span class="dossier-eyebrow">${imported ? e(token.sourceCharacter.document.app + ' · ' + token.sourceCharacter.document.version) : 'ACTOR LOCAL · DATOS EDITABLES'}${pc ? ' · Nivel ' + e(token.level ?? 1) : ''}</span><h2>${e(token.name)}</h2><p>${e([token.species, token.characterClass, token.subclass, pc ? token.path : token.roleTag].filter(Boolean).join(' / '))}</p></div></div>
-    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn sheet-full" data-tab="source">JSON original</button>' : ''}<span class="dossier-view" role="group" aria-label="Detalle de la ficha"><button type="button" class="hud-btn" data-view="basic" title="Lo que se usa durante la partida">Básica</button><button type="button" class="hud-btn" data-view="full" title="Todos los campos, máximos y exportación">Completa</button></span><button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="font-weight:600;">💾 Guardar ficha</button></nav>
+    <nav class="dossier-tabs" aria-label="Secciones de ficha"><button class="hud-btn active" data-tab="stats">Ficha</button><button class="hud-btn" data-tab="reference">Rasgos</button>${hasBackground ? '<button class="hud-btn" data-tab="background">Vínculos</button>' : ''}${pc ? '<button class="hud-btn" data-tab="loadout">Loadout</button>' : ''}<button class="hud-btn" data-tab="equipment">Armas y equipo</button>${imported ? '<button class="hud-btn sheet-full" data-tab="source">JSON original</button>' : ''}<span class="dossier-view" role="group" aria-label="Detalle de la ficha"><button type="button" class="hud-btn" data-view="basic" title="Lo que se usa durante la partida">Básica</button><button type="button" class="hud-btn" data-view="full" title="Todos los campos, máximos y exportación">Completa</button></span><button class="hud-btn hud-btn-primary hud-btn-sm" type="submit" form="dossier_form" style="font-weight:600;">💾 Guardar ficha</button></nav>
     <form id="dossier_form">
       <div data-panel="stats">
         ${!pc && token.actorType !== 'drone' ? '<label class="dossier-field"><span>Descripción</span><textarea class="hud-input" name="description" rows="3" maxlength="10000">' + e(adversaryDescription(token)) + '</textarea></label>' : ''}
@@ -130,17 +130,28 @@ export function openDossier(token, openSettings, initialTab = 'stats') {
         <div class="dossier-connections">${d.connectionSlots.map(c => `<label class="dossier-field"><span>${e(c.label)}</span><textarea class="hud-input" name="${c.key}" rows="2" maxlength="2000">${e(c.value)}</textarea></label>`).join('')}</div>
         ${d.seeds.length ? `<h4 class="dossier-label">SEMILLAS DEL PERSONAJE</h4>${d.seeds.map(([k, v]) => narrative(k, v)).join('')}` : ''}
       </div>` : ''}
+      ${pc ? '<div data-panel="loadout" hidden></div>' : ''}
       <div data-panel="equipment" hidden></div>
       ${imported ? `<div data-panel="source" hidden><p class="dossier-muted">Original íntegro para consulta, incluidos campos de otras sendas. Exportar al creador conserva esos campos y actualiza los valores editables de esta ficha.</p><pre class="dossier-json">${e(JSON.stringify(token.sourceCharacter.document, null, 2))}</pre></div>` : ''}
       <p class="dossier-error" role="alert"></p>
       <footer class="dossier-footer">${token.actorType === 'drone' ? '<button type="button" class="hud-btn hud-btn-primary" id="dossier_drone" title="Grado, módulos, señal y complicaciones (Corebook, cap. 14)">Dron · módulos y señal</button>' : ''}${!pc ? '<button type="button" class="hud-btn" id="dossier_boss">Boss · estados</button>' : ''}${pc ? '<button type="button" class="hud-btn" id="dossier_level_up" title="Subida de nivel según el Corebook, cap. 12">Subir de nivel</button>' : ''}${pc && token.advancement?.refundSlots ? `<button type="button" class="hud-btn" id="dossier_respend" title="Slots devueltos por el Awakening">Gastar Slots devueltos (${token.advancement.refundSlots})</button>` : ''}${pc && token.path === 'Sleeping' ? '<button type="button" class="hud-btn" id="dossier_awaken" title="Awakening en juego: de Sleeping a Awakened (Corebook, cap. 7)">Despertar</button>' : ''}<button type="button" class="hud-btn" id="dossier_controls">Player controls</button><button type="button" class="hud-btn" id="dossier_token">Ajustes del token</button><button type="button" class="hud-btn" id="dossier_export">Exportar actor VTT</button>${imported ? '<button type="button" class="hud-btn" id="dossier_system">Exportar al creador</button>' : ''}<button class="hud-btn hud-btn-primary" type="submit">Guardar ficha</button></footer>
     </form>
   `);
+  // Loadout (v2.30.0): the character's deck (Loadout, Vault, Recall), as on the table, drawn
+  // the first time the tab is opened.
+  const mountLoadout = () => {
+    const panel = modal.querySelector('[data-panel="loadout"]');
+    if (!panel || panel.dataset.mounted) return;
+    panel.dataset.mounted = '1';
+    if (window.veilCardHand?.openLoadoutIn) window.veilCardHand.openLoadoutIn(panel, token.id);
+    else panel.innerHTML = sanitizeHTML('<p class="dossier-muted">El mazo se abre desde la mesa.</p>');
+  };
   modal.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => {
     modal.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b === button));
     modal.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== button.dataset.tab; });
+    if (button.dataset.tab === 'loadout') mountLoadout();
   });
-  modal.querySelector(`[data-tab="${['stats', 'reference', 'background', 'equipment', 'source'].includes(initialTab) && modal.querySelector(`[data-tab="${initialTab}"]`) ? initialTab : 'stats'}"]`)?.click();
+  modal.querySelector(`[data-tab="${['stats', 'reference', 'background', 'loadout', 'equipment', 'source'].includes(initialTab) && modal.querySelector(`[data-tab="${initialTab}"]`) ? initialTab : 'stats'}"]`)?.click();
   mountEquipmentPanel(modal.querySelector('[data-panel="equipment"]'), token.id);
   // Básica keeps what is used at the table; Completa adds identity, maximums, exports and tools.
   for (const name of ['actorName', 'characterClass', 'roleTag', 'subclass', 'species', 'community', 'level', 'hp_max', 'armor_max', 'stress_max', 'resolve_max', 'resolve_die', 'honedEdgeBonus'])

@@ -4,11 +4,18 @@
 // Corebook 12.06, ch. 10 (Natural Thresholds) and «Augmentation Systems».
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { newId } from './persistence.js';
+import { equipmentNameAliases } from './equipmentNames.js';
+import { legacyEquipmentId } from './equipmentArtwork.js';
 
 const fold = value => String(value ?? '').trim().toLowerCase();
 const byId = new Map(EQUIPMENT_CATALOG.map(item => [item.id, item]));
 const byName = new Map(EQUIPMENT_CATALOG.flatMap(item => [item.name, ...String(item.name).split(' / ')].map(name => [fold(name), item])));
-export const catalogEntry = row => byId.get(row?.catalogId) || byName.get(fold(row?.name)) || null;
+// An inventory row's catalog entry: by catalogId, by name, by the name it had in older
+// inventories (legacy list in equipmentArtwork) or by any of its aliases ("English / Español").
+const byAlias = new Map();
+for (const item of EQUIPMENT_CATALOG) for (const key of equipmentNameAliases(item.name)) if (!byAlias.has(key)) byAlias.set(key, item);
+export const catalogEntry = row => byId.get(row?.catalogId) || byName.get(fold(row?.name)) || byId.get(legacyEquipmentId(row?.name))
+  || equipmentNameAliases(row?.name).map(key => byAlias.get(key)).find(Boolean) || null;
 
 // The kind of an inventory row: its own `kind`, else what its catalog entry is.
 export function gearKind(row) {
@@ -86,11 +93,10 @@ export function installGear(token, inventory, item, id = newId()) {
   const after = structuredClone({ ...token, inventory });
   const row = { id, name: item.name, tier: item.tier || '', quantity: '1', use: item.use || item.benefit || item.features || '', catalogId: item.id, kind: item.category === 'armor' ? 'armor' : 'augment' };
   if (row.kind === 'armor') {
-    after.inventory.items = after.inventory.items.filter(r => gearKind(r) !== 'armor');
-    const level = Number(token.level || 1), extra = augmentArmor(after.inventory);
-    if (item.majorThreshold && item.severeThreshold) after.hp = { ...after.hp, majorThreshold: item.majorThreshold + level, severeThreshold: item.severeThreshold + level };
-    const max = (item.armorSlots || 0) + extra;
-    after.armor = { ...(after.armor || {}), current: max, max };
+    // The new armor is put on; the one worn until now stays carried (v2.30.0).
+    for (const r of after.inventory.items) if (gearKind(r) === 'armor') r.equipped = false;
+    row.equipped = true;
+    wearStats(after, token, item);
   } else {
     if (installedAugments(after.inventory).some(r => catalogEntry(r)?.id === item.id)) throw new Error(`${item.name} ya está instalado.`);
     applyEffects(after, AUGMENTS[item.id]?.effects, +1);
@@ -100,8 +106,36 @@ export function installGear(token, inventory, item, id = newId()) {
   return changes({ ...token, inventory }, after);
 }
 
-// Taking a piece off: armor leaves the natural thresholds and no Armor Slots of its own; an
-// augmentation's effects are undone. Any other row is just removed.
+// The armor worn: the one marked equipped. Rows from before v2.30.0 have no mark: then the first
+// unmarked armor is the one on and the rest are carried.
+export function wornArmor(inventory) {
+  const armors = (inventory?.items || []).filter(r => gearKind(r) === 'armor');
+  return armors.find(r => r.equipped === true) || armors.find(r => r.equipped === undefined) || null;
+}
+export const isWorn = (row, inventory) => !!row && wornArmor(inventory) === row;
+// Thresholds and Armor Slots of an armor (a catalog entry), or the natural ones with none.
+function wearStats(after, token, entry) {
+  const level = Number(token.level || 1), extra = augmentArmor(after.inventory);
+  if (entry && entry.majorThreshold && entry.severeThreshold) after.hp = { ...after.hp, majorThreshold: entry.majorThreshold + level, severeThreshold: entry.severeThreshold + level };
+  else { const [major, severe] = naturalThresholds(token); after.hp = { ...after.hp, majorThreshold: major + level, severeThreshold: severe + level }; }
+  const max = (entry?.armorSlots || 0) + extra;
+  after.armor = { ...(after.armor || {}), max, current: entry ? max : Math.min(max, after.armor?.current || 0) };
+}
+// Putting on a carried armor (rowId) or taking the worn one off (null): only one is worn.
+export function wearArmor(token, inventory, rowId) {
+  const after = structuredClone({ ...token, inventory });
+  const row = rowId ? after.inventory.items.find(r => r.id === rowId && gearKind(r) === 'armor') : null;
+  if (rowId && !row) throw new Error('Esa armadura ya no está en el inventario.');
+  for (const r of after.inventory.items) if (gearKind(r) === 'armor') r.equipped = r === row;
+  const entry = row && catalogEntry(row);
+  if (row && !entry) throw new Error(`${row.name} no está en el catálogo: sus umbrales se editan en la ficha.`);
+  wearStats(after, token, entry);
+  return changes({ ...token, inventory }, after);
+}
+
+// Taking a piece off: the worn armor leaves the natural thresholds and no Armor Slots of its
+// own (a carried one changes nothing); an augmentation's effects are undone. Any other row is
+// just removed.
 export function removeGear(token, inventory, rowId) {
   const all = [...inventory.weapons, ...inventory.items], row = all.find(r => r.id === rowId);
   if (!row) throw new Error('Eso ya no está en el inventario.');
@@ -109,11 +143,8 @@ export function removeGear(token, inventory, rowId) {
   after.inventory.weapons = after.inventory.weapons.filter(r => r.id !== rowId);
   after.inventory.items = after.inventory.items.filter(r => r.id !== rowId);
   const kind = inventory.weapons.includes(row) ? 'weapon' : gearKind(row);
-  if (kind === 'armor') {
-    const [major, severe] = naturalThresholds(token), level = Number(token.level || 1), max = augmentArmor(after.inventory);
-    after.hp = { ...after.hp, majorThreshold: major + level, severeThreshold: severe + level };
-    after.armor = { ...(after.armor || {}), max, current: Math.min(max, after.armor?.current || 0) };
-  } else if (kind === 'augment') applyEffects(after, augmentRule(row)?.effects, -1);
+  if (kind === 'armor') { if (wornArmor(inventory) === row) wearStats(after, token, null); }
+  else if (kind === 'augment') applyEffects(after, augmentRule(row)?.effects, -1);
   settleCapacity(token, inventory, after);
   return changes({ ...token, inventory }, after);
 }

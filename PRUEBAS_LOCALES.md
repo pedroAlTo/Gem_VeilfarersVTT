@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.10.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.29.10**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.29.10** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.29.10.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.30.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.30.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.30.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.30.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -107,6 +107,9 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.29.10.zip**. Abre **AYUD
 92. **(V3) El Keeper ve todos los tokens.** Con la niebla activada y la Visión GM apagada, en vista Keeper se ven todos los tokens, también los que están en zonas sin explorar (atenuados y con la marca de niebla). En vista jugador, esos tokens no aparecen.
 93. **(V3) Graduación de las ventanas.** Pon un lado de una ventana a 5 %, 25 %, 50 %, 75 % y 100 % y mira desde ese lado con un personaje: lo de detrás pasa de casi negro a limpio, poco a poco.
 94. **(V3) Luces y niebla.** Como jugador, con la niebla activada, enciende una luz en una sala que el grupo no ve: sigue en la niebla. Abre la puerta o mira por una ventana: se ve la parte iluminada (por la ventana, con la transparencia de tu lado; a 0 % nada).
+95. **(V3) Loadout en la ficha.** Como jugador y como Keeper, doble clic en un personaje Awakened → pestaña Loadout: se ven su Loadout y su Vault. Añade un Poder a tu alcance al Vault y haz Recall (Descanso largo) desde ahí: pasa al Loadout, y la mano de la mesa lo muestra igual. Con un Sleeping se ve su mano y el catálogo.
+96. **(V3) Catálogo de equipo.** En Armas y equipo → «+ Añadir»: filtra por tipo, por WT y por libro (marca los dos libros a la vez), con y sin «Solo lo que puedo usar». Busca «Plate Carrier», «Grappling Hook» o «Chameleon Skin». Al elegir uno se ven todas sus características antes de cogerlo.
+97. **(V3) Equipado.** Lo equipado (armas en mano, armadura puesta, aumentos) se ve grande con todos sus datos; pasa el ratón por una etiqueta: aparece su regla. Enfunda un arma: pasa a «Llevas encima». Ponte otra armadura: la anterior queda encima y sus umbrales cambian; «Ponérmela» la vuelve a poner. Útiles y varios es una lista sencilla con cantidades.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

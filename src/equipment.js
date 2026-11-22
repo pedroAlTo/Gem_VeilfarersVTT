@@ -30,11 +30,12 @@ export function validateInventory(value) {
       if (weapon && row && typeof row.tags === 'string') row.tags = parseTagInput(row.tags);
       if (weapon && row && 'tags' in row && !validTags(row.tags)) fail();
       // Items may say which catalog entry they are and what kind of gear (armor, augment, gear).
-      const optional = weapon ? ['tags', 'catalogId'] : ['catalogId', 'kind'];
+      const optional = weapon ? ['tags', 'catalogId', 'equipped'] : ['catalogId', 'kind', 'equipped'];
       if (!row || typeof row !== 'object' || Object.keys(row).some(k => !(k in lengths) && !optional.includes(k))) fail();
       for (const [key, max] of Object.entries(lengths)) if (typeof row[key] !== 'string' || row[key].length > max) fail();
       if ('catalogId' in row && (typeof row.catalogId !== 'string' || row.catalogId.length > 100)) fail();
       if ('kind' in row && !['armor', 'augment', 'gear'].includes(row.kind)) fail();
+      if ('equipped' in row && typeof row.equipped !== 'boolean') fail();
       if (!row.id.trim() || ids.has(row.id) || !row.name.trim()) fail(); ids.add(row.id);
       if (weapon ? !['base', 'final'].includes(row.damageMode) : !/^\d{1,6}$/.test(row.quantity)) fail();
     }
