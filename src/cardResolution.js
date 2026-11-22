@@ -102,15 +102,17 @@ function effectPatch(token, kind, value, condition, record) {
 export function adjudicateCard(store, id, { operation, kind, ids = [], value, condition, note = '' }) {
   if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') throw new Error('Solo el Keeper resuelve estas consecuencias.');
   const row = resolutionLog(store, id), record = row?.resolution;
-  if (!record || record.phase === 'done' || record.mapId !== store.state.activeMapId || store.state.rest) throw new Error('Esta resolución no está disponible en la escena actual.');
+  if (!record || record.mapId !== store.state.activeMapId || store.state.rest) throw new Error('Esta resolución no está disponible en la escena actual.');
   if (operation === 'renew-arc') {
     const actor = store.state.tokens.find(t => t.id === record.actorId);
     const use = cardUse({kind:'power',name:record.name,text:record.text},store.state);
-    if (!actor || use?.scopeId !== 'unassigned' || !usedBy(actor,use)) throw new Error('Este poder pertenece a un arco gestionado por la mesa.');
+    if (!actor || record.limit?.scopeId !== 'unassigned' || use?.scopeId !== 'unassigned' || !usedBy(actor,use)) throw new Error('Este poder pertenece a un arco gestionado por la mesa.');
     const cardUses = {...actor.cardUses}; delete cardUses[use.key];
     store.updateToken(actor.id,{cardUses});
+    store.addLog({type:'SESSION',sender:'Keeper',title:'Uso por arco renovado',details:actor.name + ' · ' + record.name});
     return;
   }
+  if (record.phase === 'done') throw new Error('Esta resolución ya está cerrada.');
   if (!['apply', 'finish', 'cancel'].includes(operation)) throw new Error('Operación inválida.');
   if (record.phase === 'roll' && operation !== 'cancel') throw new Error('Resuelve primero la tirada vinculada.');
   const comment = String(note).trim().slice(0, 500);
@@ -176,13 +178,31 @@ export function requestCardChecks(store, id, ids, check) {
   });
   updateResolution(store, id, { replies: [...old, ...additions] });
 }
-export function completeCardRoll(store, record, roll) {
+// Bear Down can revise the most recent roll only while its card is still on the table.
+// Look up the current version so replies made by other players are preserved.
+export function cardToAmend(store, previous) {
+  if (!previous.cardPlayId) return null;
+  const record = resolutionLog(store, previous.cardPlayId)?.resolution;
+  if (record?.phase !== 'ready' || record.mapId !== store.state.activeMapId) throw new Error('Esta resolución ya no admite Bear Down.');
+  if (!previous.cardReplyId) return record;
+  if (!record.replies?.some(r => r.id === previous.cardReplyId && r.outcome)) throw new Error('La tirada de objetivo ya cambió.');
+  return { ...record, replyId: previous.cardReplyId };
+}
+export function completeCardRoll(store, record, roll, previous = null) {
   if (record.replyId) {
     updateResolution(store, record.id, { replies: record.replies.map(r => r.id === record.replyId ? { ...r, outcome: roll.outcomeTitle, total: roll.total } : r) });
     return;
   }
   const actor = store.state.tokens.find(t => t.id === record.actorId);
   const success = roll.isCritical || roll.total >= roll.dc;
+  const outcome = { outcome: roll.outcomeTitle, resultType: roll.resultType, total: roll.total };
+  if (previous && success === (previous.isCritical || previous.total >= previous.dc)) {
+    updateResolution(store, record.id, outcome);
+    return;
+  }
+  // If Bear Down turns a failure into a success, take back only the card's actual
+  // extra Fear. The normal Fear-dominant payout still stands, including at the cap.
+  if (previous && record.failureFearGained) store.addFear(-Math.min(record.failureFearGained, store.state.fear));
   const notes = [];
   if (success) {
     const targets = record.targetIds.map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);
@@ -227,9 +247,12 @@ export function completeCardRoll(store, record, roll) {
     }
   }
   const failureFear = { 'Drone Whisper': 1, 'Cascading Upgrade': 3, 'Mass Deception': 2, 'Architect of Civilization': 6, 'Force Incarnate': 4 };
+  let failureFearGained = 0;
   if (!success && Object.hasOwn(failureFear, record.name)) {
+    const before = store.state.fear;
     store.addFear(failureFear[record.name]);
-    notes.push('Fear por el fallo del poder: +' + failureFear[record.name] + ' (máximo 12).');
+    failureFearGained = store.state.fear - before;
+    notes.push('Fear por el fallo del poder: +' + failureFearGained + ' (máximo 12).');
   }
   let clockId;
   if (success && record.project) clockId = store.addClock({ title: record.name + ' · ' + actor.name, segments: record.project, category: 'progress' }).id;
@@ -238,5 +261,5 @@ export function completeCardRoll(store, record, roll) {
     store.updateToken(source.id, { resolve: { ...source.resolve, current: Math.min(source.resolve.max, source.resolve.current + record.refundResolve) } });
     notes.push('Uncanny Power recupera el Resolve de acceso.');
   }
-  updateResolution(store, record.id, { phase: 'ready', ...(clockId ? { clockId } : {}), outcome: roll.outcomeTitle, resultType: roll.resultType, total: roll.total, notes });
+  updateResolution(store, record.id, { phase: 'ready', ...(clockId ? { clockId } : {}), ...outcome, failureFearGained, notes });
 }

@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.29.9', date: '2026-11-22', title: 'Bear Down, daño de Vanguard y usos por arco',
+    sections: [
+      { title: 'En la mesa', items: [
+        'Bear Down actualiza el resultado del poder o de la tirada solicitada al personaje. Al pasar de fallo a éxito se aplica el beneficio una sola vez y se conserva el Fear de la tirada de Dualidad.',
+        'Los dados extra del arma se suman una sola vez al primer golpe y a Breaking Point. El total mostrado y el daño aplicado usan las mismas cantidades.',
+        'En las escenas sin arco asignado, el Keeper puede iniciar un nuevo arco narrativo desde el registro y renovar los usos aunque haya cerrado o borrado la carta.',
+      ] },
+    ],
+  },
+  {
     version: '2.29.8', date: '2026-11-21', title: 'Poderes y movimientos en mesa',
     sections: [
       { title: 'Cartas', items: ['El registro conserva lanzador, objetivos, tirada y consecuencias. El Keeper puede pedir las tiradas impresas a los jugadores, preparar daño con escudos y aplicar recursos, condiciones y relojes. Los proyectos de dominio abren un reloj de campaña. Se guardan los límites de uso de 51 poderes.'] },

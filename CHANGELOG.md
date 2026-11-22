@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.29.8**.
-Paquete: `VeilFarers_VTT_v2.29.8.zip`.
+Versión actual del VTT: **v2.29.9**.
+Paquete: `VeilFarers_VTT_v2.29.9.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.29.9] — 2026-11-22
+
+Bear Down, daño de Vanguard y usos por arco
+
+### En la mesa
+
+- Bear Down actualiza el resultado del poder o de la tirada solicitada al personaje. Al pasar de fallo a éxito se aplica el beneficio una sola vez y se conserva el Fear de la tirada de Dualidad.
+- Los dados extra del arma se suman una sola vez al primer golpe y a Breaking Point. El total mostrado y el daño aplicado usan las mismas cantidades.
+- En las escenas sin arco asignado, el Keeper puede iniciar un nuevo arco narrativo desde el registro y renovar los usos aunque haya cerrado o borrado la carta.
 
 ## [2.29.8] — 2026-11-21
 

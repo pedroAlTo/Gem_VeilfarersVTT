@@ -4,7 +4,7 @@ import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './eff
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, completeCardRoll, projectSize, resolveImmediate, cardRollOptions } from './cardResolution.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
 import { finite } from './validation.js';
@@ -384,11 +384,15 @@ function resolveGameAction(action, store) {
     if (['agility','finesse'].includes(o.traitId) && actor.effectClocks?.some(c => c.name === 'Slipstream Jolt')) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.name !== 'Slipstream Jolt');
     if (!standalone) store.updateToken(actor.id, patch);
     if (guard) markMeleeDefense(store, target, guard);
+    // Resolve the normal payout before the card's additional Fear, so revising a
+    // failed cast cannot remove the Fear earned by the Duality roll at the cap.
+    if (result.fearGain) store.addFear(result.fearGain);
     if (cast) completeCardRoll(store, cast, result);
     if (action.attack && player) grantSpotlight(store, actor.id);
     for (const c of integrityEnded) store.addLog({ sender: actor.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${actor.name}: el Integrity Die llega a 0 y «${c.name}» termina.` });
-    if (result.fearGain) store.addFear(result.fearGain);
-    const record = { id: newId(), actorId: actor.id, ...result, ...(ownAttack ? { hitTarget: hit ? target.id : null, mapId: store.state.activeMapId, pathId: state?.id || null, closedPath: !!action.closingId, damageRiders } : {}), ...(secret ? { visibility: 'keeper' } : {}) };
+    const record = { id: newId(), actorId: actor.id, ...result,
+      ...(cast ? { cardPlayId: cast.id, ...(cast.replyId ? { cardReplyId: cast.replyId } : {}) } : {}),
+      ...(ownAttack ? { hitTarget: hit ? target.id : null, mapId: store.state.activeMapId, pathId: state?.id || null, closedPath: !!action.closingId, damageRiders } : {}), ...(secret ? { visibility: 'keeper' } : {}) };
     lastRoll.set(rollKey, record);
     const log = {
       sender: actor.name,
@@ -424,6 +428,7 @@ function resolveGameAction(action, store) {
       throw new Error('Make a check first, then use Bear Down before narrating its outcome.');
     if (actor.path !== 'Sleeping' || (actor.resolve?.current || 0) < 1)
       throw new Error('No Resolve available.');
+    const cast = cardToAmend(store, previous);
     // Bear Down spends any number of Resolve Dice and adds their total (Corebook ch. 7).
     const count = Math.max(1, Math.min(actor.resolve.current, Number.isInteger(action.count) ? action.count : 1));
     const sides = actor.resolve.dieType === 'd6' ? 6 : 4,
@@ -445,6 +450,7 @@ function resolveGameAction(action, store) {
       result.outcomeDesc = `Bear Down adds ${bonus} (${count}${actor.resolve.dieType || 'd4'}: ${dice.join(', ')}). ${success ? 'The check succeeds.' : 'The check still fails.'} Dominance and Path payout are unchanged.`;
     }
     result.bearDown = { count, dice, bonus };
+    if (cast) completeCardRoll(store, cast, result, previous);
     lastRoll.set(rollKey, result);
     const log = {
       sender: actor.name,

@@ -6,7 +6,7 @@ import { performGameAction } from '../src/gameActions.js';
 import { characterCards, keeperCards, powerCard, adversaryAbilities, playCard } from '../src/loadoutCards.js';
 import { resolutionLog, createResolution, adjudicateCard, requestCardChecks } from '../src/cardResolution.js';
 import { printedChecks, printedPools } from '../src/cardProcedures.js';
-import {beginCardSession,cardUse,resetCardUses} from '../src/cardLimits.js';
+import {beginCardSession,beginUnassignedArc,cardUse,resetCardUses} from '../src/cardLimits.js';
 import { activePath } from '../src/statePowers.js';
 import { getHoveredCondition, visibleConditions } from '../src/conditions.js';
 import { nextSpotlightRound, combatTransition, checkEdge, disciplinedDefense, markMeleeDefense, requireActive } from '../src/combatState.js';
@@ -126,6 +126,77 @@ test('both printed Skitter profiles qualify at 3 HP, require two distinct target
   assert.equal(hasSwarmTactics({...hostile('h'),name:'Swarm',featureNotes:'Unrelated Swarm'}),false);
   const stalker=loadAdversaries().find(e=>e.text.includes('Territorial Rage') && e.name.includes('APEX'));
   assert.equal(bloodiedAttack({...hostile('x'),featureNotes:stalker.text,hp:{current:2,max:6}}).attack,2);
+});
+
+test('Bear Down promotes an Uncanny Power once and only spends Resolve while the card is open', () => {
+  const mystic = actor('mystic', { path: 'Sleeping', characterClass: 'Mystic', sheetFields: { s_archive: 'Neural 2' }, resolve: { current: 4, max: 4, dieType: 'd4' } });
+  const s = table(mystic, hostile('foe'));
+  const cast = play(s, 'mystic', 'Synaptic Disruption', { targetIds: ['foe'] });
+  const roll = check(s, 'mystic', { ...cast.roll, forcedHope: 5, forcedFear: 4 }, { cardPlayId: cast.id });
+  const useResolve = () => performGameAction({ type: 'RESOLVE', actorId: 'mystic', count: 1, faces: [2] }, s);
+  assert.equal(roll.total, 10);
+  assert.deepEqual(visibleConditions(get(s, 'foe')), []);
+  assert.equal(useResolve().total, 12);
+  assert.equal(resolutionLog(s, cast.id).resolution.outcome, 'SUCCESS WITH HOPE');
+  assert.ok(visibleConditions(get(s, 'foe')).includes('Stunned'));
+  const clock = structuredClone(get(s, 'foe').effectClocks);
+  assert.equal(useResolve().total, 14);
+  assert.deepEqual(get(s, 'foe').effectClocks, clock);
+  assert.equal(resolutionLog(s, cast.id).resolution.total, 14);
+  adjudicateCard(s, cast.id, { operation: 'finish' });
+  assert.throws(useResolve, /Bear Down/);
+  assert.equal(get(s, 'mystic').resolve.current, 1);
+});
+
+test('Bear Down preserves other requested rolls and only revises the responder’s own result', () => {
+  const s = table(actor('caster'), actor('a', { path: 'Sleeping' }), actor('b', { path: 'Sleeping' }));
+  const record = createResolution({name:'Reacción',text:'DC 12 (Strength)'}, get(s,'caster'), [], null, 'reaction', scene.id);
+  s.addLog({ resolution: record });
+  const [rule] = printedChecks(record);
+  requestCardChecks(s, record.id, ['a','b'], rule);
+  const replies = () => resolutionLog(s, record.id).resolution.replies;
+  const [a,b] = replies();
+  check(s,'a',{...rule,forcedHope:6,forcedFear:3},{cardPlayId:record.id,cardReplyId:a.id});
+  check(s,'b',{...rule,forcedHope:9,forcedFear:4},{cardPlayId:record.id,cardReplyId:b.id});
+  const other = structuredClone(replies()[1]);
+  performGameAction({type:'RESOLVE',actorId:'a',count:1,faces:[3]},s);
+  assert.equal(replies()[0].outcome,'SUCCESS WITH HOPE'); assert.equal(replies()[0].total,13);
+  assert.deepEqual(replies()[1],other);
+  assert.equal(resolutionLog(s,record.id).resolution.outcome,undefined);
+});
+
+test('converting a failed spell restores only its extra Fear and respects the shared cap', () => {
+  for (const initial of [4,10,11,12]) {
+    const s = table(actor('mystic',{path:'Sleeping',characterClass:'Mystic',sheetFields:{s_archive:'Tech 1'}}));
+    const cast = play(s,'mystic','Drone Whisper');
+    s.state.fear = initial;
+    check(s,'mystic',{...cast.roll,forcedHope:3,forcedFear:5},{cardPlayId:cast.id});
+    assert.equal(s.state.fear,Math.min(12,initial+2));
+    performGameAction({type:'RESOLVE',actorId:'mystic',faces:[3]},s);
+    assert.equal(s.state.fear,Math.min(12,initial+1));
+    assert.equal(resolutionLog(s,cast.id).resolution.outcome,'SUCCESS WITH FEAR');
+  }
+});
+
+test('unassigned arc uses can be renewed after the resolution is finished or its record cleared', () => {
+  const name = 'Megascale Fabrication', s = table(withPower(name), actor('other'));
+  const cast = play(s, 'caster', name);
+  check(s, 'caster', {...cast.roll,forcedHope:8,forcedFear:4}, {cardPlayId:cast.id});
+  adjudicateCard(s, cast.id, {operation:'finish'});
+  const use = resolutionLog(s,cast.id).resolution.limit;
+  assert.ok(get(s,'caster').cardUses[use.key]);
+  adjudicateCard(s, cast.id, {operation:'renew-arc'});
+  assert.deepEqual(get(s,'caster').cardUses,{});
+  const namedKey = JSON.stringify(['story arc','chapter-2',name]);
+  const campaignKey = JSON.stringify(['campaign','campaign',name]);
+  for (const id of ['caster','other']) s.updateToken(id,{cardUses:{[use.key]:'story arc',[namedKey]:'story arc',[campaignKey]:'campaign'}});
+  s.state.logs = [];
+  s.sessionRole = 'player'; assert.throws(()=>beginUnassignedArc(s));
+  s.sessionRole = 'host'; s.state.arcs = [{id:'chapter-2',sceneIds:[scene.id]}];
+  assert.throws(()=>beginUnassignedArc(s));
+  s.state.arcs = [];
+  beginUnassignedArc(s);
+  for (const token of s.state.tokens) assert.deepEqual(token.cardUses,{[namedKey]:'story arc',[campaignKey]:'campaign'});
 });
 test('every Domain power, project, Resolve move and published bestiary profile reaches a table procedure',()=>{
   assert.equal(data.powers.length,147);assert.equal(data.resolveMoves.length,42);

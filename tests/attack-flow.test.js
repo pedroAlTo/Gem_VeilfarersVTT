@@ -393,3 +393,36 @@ test('Swarm Tactics from its card rolls two attacks and retains both shield deci
   assert.equal(store.state.logs.filter(row=>row.title==='Ataque · '+a.name).length,2);
   delete window.veilDiceRoller;
 });
+
+test('Burst Fire adds to the weapon once without repeating typed Vanguard damage', async () => {
+  const { dice, q, t, live } = scene({ weapon: { features: 'Burst Fire' } });
+  q('#dmg_formula').value = '1d8 Physical';
+  await dice.executeDamageCalc([8], {
+    extraFaces: [2],
+    riders: [
+      {label:'Primer golpe',branch:'Void',value:2},
+      {label:'Breaking Point',branch:'Void',value:3},
+    ],
+  });
+  assert.equal(dice.lastDamage.raw,15);
+  assert.equal(q('#dmg_raw_val').textContent,'15');
+  q('#apply_dmg_to_target_btn').click();
+  document.querySelector('#kdmg_apply').click();
+  assert.equal(live(t.id).hp.current,4);
+});
+
+test('the Keeper can open a new narrative arc from the log after clearing the original play', async () => {
+  const { CombatLogView } = await import('../src/combatLog.js');
+  const { a } = scene();
+  const key = JSON.stringify(['story arc','unassigned','Megascale Fabrication']);
+  store.updateToken(a.id,{cardUses:{[key]:'story arc'}});
+  store.update({arcs:[]});
+  const container = document.createElement('section');
+  document.body.append(container);
+  new CombatLogView(container);
+  container.querySelector('#clear_log_btn').click();
+  container.querySelector('[data-new-arc]').click();
+  document.querySelector('[data-renew]').click();
+  assert.deepEqual(store.state.tokens.find(t=>t.id===a.id).cardUses,{});
+  assert.equal(container.querySelector('[data-new-arc]'),null);
+});

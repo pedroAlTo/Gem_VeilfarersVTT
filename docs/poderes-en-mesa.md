@@ -1,4 +1,4 @@
-# Poderes y movimientos en mesa · 2.29.8
+# Poderes y movimientos en mesa · 2.29.9
 
 Se revisaron las 147 cartas de los siete dominios, los 42 movimientos de Resolve y los 57 perfiles que carga el bestiario. La fuente de cada procedimiento es la ficha que acompaña a la carta. Para las mecánicas comunes se usa el Corebook 12.06, capítulos 6, 7, 9, 10, 18 y 19.
 
@@ -8,7 +8,11 @@ Al inspeccionar una carta puedes elegir los objetivos de la escena. Arrastrarla 
 
 Una tirada solicitada aparece en el registro del jugador que controla su objetivo. Las opciones de dados incluyen también curación, reducciones y duración. Elige la línea de la ficha que corresponde al resultado obtenido. Las condiciones de ficción, los modos alternativos, la geometría de las áreas, las tiradas enfrentadas y el consentimiento requieren adjudicación de mesa. Los costes de mantenimiento se resuelven durante la fase que indica el proyecto.
 
-Los 51 poderes con un límite impreso de activación conservan sus usos en el personaje. El descanso largo completado renueva a sus participantes. El Keeper abre una nueva sesión de juego desde el registro y la pertenencia de la escena decide el arco. Un uso por campaña permanece gastado en esa campaña. El texto de cada carta conserva las excepciones y los costes condicionales.\n\n## Dominios
+Con **Bear Down** puedes cambiar el resultado de tu última tirada de poder o de una tirada que te haya solicitado el Keeper. Si el total alcanza la DC, la carta muestra el éxito y aplica el efecto correspondiente. El capítulo 7 del Corebook describe el gasto de Resolve antes de narrar el desenlace.
+
+Los 51 poderes con un límite impreso de activación conservan sus usos en el personaje. Al completar un descanso largo, sus participantes recuperan los poderes de ese descanso. El Keeper abre una nueva sesión de juego desde el registro. Si una escena pertenece a un arco, la mesa lleva sus usos por separado. En escenas sin arco asignado, **Nuevo arco narrativo** renueva los usos de todo el grupo y sigue disponible después de limpiar el registro. Un poder de un uso por campaña permanece gastado en esa campaña.
+
+## Dominios
 
 Cada fila indica la tirada de activación que ofrece la ficha digital y los controles derivados del procedimiento impreso. «Mesa» permite seleccionar objetivos, adjudicar efectos y guardar la decisión. Los costes variables, las alternativas y los costes posteriores se leen en el texto íntegro.
 

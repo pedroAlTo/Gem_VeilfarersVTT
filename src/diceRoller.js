@@ -1705,7 +1705,8 @@ export class DiceRollerSidebar {
     const extras = extrasPinned || damageExtras(feats, dmgResult.rolls, extraSides, extraFaces?.length ? facesRoller(extraFaces) : undefined);
     if (extras.bonus) {
       const components = dmgResult.components.map((part, i) => i ? part : { ...part, amount: part.amount + extras.bonus * mr });
-      const again = resolveDamage({ ...damageOptions, diceCount: 0, components });
+      // The resolved parts already contain the opening strike and Breaking Point.
+      const again = resolveDamage({ ...damageOptions, diceCount: 0, components, bonusComponents: [] });
       dmgResult = { ...dmgResult, ...again, rolls: dmgResult.rolls, flatModifier: dmgResult.flatModifier, baseDiceTotal: dmgResult.baseDiceTotal };
     }
     const devastating = isDirect || perHit ? 0 : devastatingExtra(feats, dmgResult.effectiveDamage, dmgResult.effectiveSevere);

@@ -2,6 +2,7 @@ import { store } from './state.js';
 import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e, notify } from './ui.js';
 import { printedChecks, printedPools } from './cardProcedures.js';
+import { currentArc } from './cardLimits.js';
 import { throwDice } from './tableDice.js';
 import { CONDITIONS } from './conditions.js';
 import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog } from './cardResolution.js';
@@ -44,7 +45,7 @@ export function openResolution(id) {
   const canRoll = record.roll && record.phase === 'roll' && here && actor && (keeper() || store.canEditToken(actor.id));
   const tokens = store.state.tokens.filter(t => t.mapId === record.mapId && (!t.hidden || keeper() && row.visibility === 'keeper'));
   const names = tokens.filter(t => record.targetIds.includes(t.id)).map(t => t.name);
-  const freeArc = editable && record.limit?.scopeId === 'unassigned' && actor?.cardUses?.[record.limit.key];
+  const freeArc = keeper() && here && !store.state.rest && !currentArc(store.state) && record.limit?.scopeId === 'unassigned' && actor?.cardUses?.[record.limit.key];
   const applied = record.applied.map(r => '<li>' + e(r.label) + '</li>').join('');
   const options = tokens.map(t => '<label><input type="checkbox" name="recipient" value="' + e(t.id) + '"' + (record.targetIds.includes(t.id) ? ' checked' : '') + '> ' + e(t.name) + '</label>').join('');
   const ruleText = String(record.text || '').replace(/\*\*/g, '');
