@@ -14,7 +14,7 @@ import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECAL
 
 import {cardUse,usedBy} from './cardLimits.js';
 import { cardChoices, chosenCardOptions, openResolution } from './cardResolutionUI.js';
-import { TARGET_RULES, cardRollOptions, createResolution } from './cardResolution.js';
+import { TARGET_RULES, SELF_EFFECTS, cardRollOptions, createResolution } from './cardResolution.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { newId } from './persistence.js';
@@ -251,11 +251,11 @@ export class CardHand {
     if (card.kind === 'effort' && (token.effort || 0) < card.cost.effort) { this.inspect(card, point); return; }
     if (!card.playable) { this.inspect(card); return; }
     if (card.uncanny || card.kind === 'archive') { this.openUncanny(card, point); return; }
-    if (card.chooseTrait || card.reverse || TARGET_RULES[card.name] || cardRollOptions(card) || card.kind === 'archive' || (card.cost.open && card.cost.resolve)) { this.inspect(card, point); return; }
+    if (card.chooseTrait || card.reverse || TARGET_RULES[card.name] || SELF_EFFECTS[card.name]?.modes || card.name === 'Kinetic Blast' || cardRollOptions(card) || card.kind === 'archive' || (card.cost.open && card.cost.resolve)) { this.inspect(card, point); return; }
     this.play(card, point);
   }
 
-  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, rollNow = false } = {}) {
+  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, mode, empower, rollNow = false } = {}) {
     if (KEEPER_KINDS.has(card.kind)) return this.playKeeper(card, point);
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return false;
@@ -279,7 +279,7 @@ export class CardHand {
         describe: v => ({ outcome: `${v.reduce((a, b) => a + b, 0)} turnos`, modifiers: `${dd.qty}d${dd.sides} [${v.join(', ')}]` }) }) : null;
       const effectFace = card.name === 'Emergency Repair' && card.kind !== 'archive'
         ? (await throwDice([{ qty: 1, sides: 8, role: 'Reparación' }], { label: card.name, actor: token }))[0] : undefined;
-      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
+      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, mode, empower, effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
       const detail = [result.summary, ...(result.notes || [])].join(' ');
       window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: result.failed ? 'NO SE MANIFIESTA' : result.outcomeTitle, modifiers: detail, details: detail });
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }

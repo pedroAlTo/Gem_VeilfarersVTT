@@ -4,7 +4,7 @@ import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './eff
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions } from './cardResolution.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
 import { finite } from './validation.js';
@@ -234,8 +234,26 @@ function resolveGameAction(action, store) {
     const use = cardUse(card,store.state);
     if (usedBy(actor,use)) throw new Error(card.name + ' ya está gastado (' + use.label + ').');
     const ids = action.targetIds ?? (action.targetId ? [action.targetId] : []);
-    const targets = cardTargets(actor, card, ids, store);
+    // An area around the caster («all enemies within Close range»): everyone inside is a target.
+    const area = areaRule(card);
+    const targets = area ? areaTargets(actor, area, store) : cardTargets(actor, card, ids, store);
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
+    const areaChecks = area?.check && !result.roll && !result.failed;
+    // Kinetic Blast (v2.32.0): spend 1 Hope (+ up to 2 to Empower) and the next melee attack carries it.
+    let kineticClock = null;
+    if (card.name === 'Kinetic Blast') {
+      const empower = Math.max(0, Math.min(2, Number.isInteger(action.empower) ? action.empower : 0));
+      if ((result.token.hope || 0) < empower) throw new Error('No hay Hope suficiente para Empower: hacen falta ' + (1 + empower) + '.');
+      result.token.hope -= empower;
+      kineticClock = { ...newClock({ name: 'Kinetic Blast', segments: 1, tick: 'manual', scene: true }), empower };
+      result.notes.push('Su próximo ataque cuerpo a cuerpo: al impactar, + Strength + 1d8' + (empower ? ' + ' + empower + '×(' + (actor.proficiency || 1) + 'd6) por Empower' : '') + ' de daño Physical (Kinetic).');
+    }
+    // Biological Scan: touching the target shows its HP and conditions at once.
+    if (card.name === 'Biological Scan' && targets[0]) {
+      const t = targets[0];
+      result.notes.push(`${t.name}: HP ${t.hp?.current ?? '?'} / ${t.hp?.max ?? '?'} · Stress ${t.stress?.current ?? 0} / ${t.stress?.max ?? 0} · estados: ${[...(t.conditions || []), ...(t.effectClocks || []).filter(c => c.condition).map(c => c.condition)].join(', ') || 'ninguno'}.`);
+    }
+    if (area && !result.failed) result.notes.push(`Área ${area.reach} alrededor de ${actor.name}: ${targets.map(t => t.name).join(', ') || 'nadie dentro'}.${areaChecks && targets.length ? ` Cada uno tira ${area.check.traitId} contra DC ${area.check.dc}.` : ''}`);
     // A card whose text sets a duration starts an effect clock on the character (Path to
     // Nirvana: Proficiency Spotlights; Rapid Regeneration: 1d4 turns).
     const choice = cardRollOptions(card);
@@ -270,6 +288,16 @@ function resolveGameAction(action, store) {
     }
     apply({ ...resources(result.token), ...(card.kind === 'archive' ? { uncanny: result.token.uncanny ?? null } : {}), ...(use && !result.failed ? {cardUses: {...actor.cardUses,[use.key]:use.scope}} : {}), ...(holder === actor ? immediate : {}) });
     if (holder !== actor && Object.keys(immediate).length) store.updateToken(holder.id, immediate);
+    // A Power that works on its caster without a roll (Temporal Cloak · Personal → Hidden).
+    if (SELF_EFFECTS[card.name] && !result.roll && !result.failed) result.notes.push(applySelfEffect(store, card.name, actor.id, String(action.mode ?? '')));
+    // Another Power of the Domain ends a self effect that says so (Temporal Cloak and Void).
+    const ended = card.domain && endSelfEffects(store.state.tokens.find(t => t.id === actor.id), { domain: card.domain, name: card.name });
+    if (ended) { store.updateToken(actor.id, { effectClocks: ended.effectClocks, conditions: ended.conditions }); result.notes.push('Termina ' + ended.ended.join(', ') + '.'); }
+    if (kineticClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock(live.effectClocks, kineticClock) }); }
+    if (area && AREA_BOONS[card.name] && !result.failed && !result.roll) {
+      for (const t of targets) store.updateToken(t.id, AREA_BOONS[card.name](store.state.tokens.find(x => x.id === t.id)));
+      result.notes.push('Cada aliado del área: +2 a su próxima tirada.');
+    }
     const effect = !result.roll && !result.failed && resolveImmediate(store, actor, targets, card, action.effectFace);
     if (effect) result.notes.push(effect);
     // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
@@ -289,6 +317,11 @@ function resolveGameAction(action, store) {
       resolution.notes = ['Proyecto iniciado. Marca el reloj al resolver cada fase de trabajo impresa.'];
     }
     if (result.failed) resolution.phase = 'done';
+    if (SELF_EFFECTS[card.name]) resolution.mode = String(action.mode ?? '').slice(0, 20);
+    if (area && !result.failed) {
+      resolution.area = { x: Math.round(actor.x), y: Math.round(actor.y), reach: area.reach, radius: Math.round(areaRadius(actor, store.getActiveMap?.(), area.reach)), color: card.color || '#00f3ff', failure: area.failure };
+      if (areaChecks && targets.length) resolution.replies = targets.map(t => ({ id: newId(), actorId: t.id, traitId: area.check.traitId, dc: area.check.dc }));
+    }
     if (card.kind === 'archive' && result.refundResolve) resolution.refundResolve = result.refundResolve;
     if (action.durationFaces) resolution.durationFaces = action.durationFaces.slice(0, 4);
     const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details, resolution };
@@ -407,10 +440,24 @@ function resolveGameAction(action, store) {
       }
       if (hit && /refused/i.test(state.name) && actor.traits?.[state.trait]) damageRiders.push({ id: 'disciplined-trait', label: state.trait, value: actor.traits[state.trait] });
     }
+    // Attacking ends the self effects that say so (Temporal Cloak).
+    const unveiled = ownAttack && endSelfEffects({ ...actor, effectClocks: patch.effectClocks || actor.effectClocks }, { attack: true });
+    if (unveiled) { patch.effectClocks = unveiled.effectClocks; patch.conditions = unveiled.conditions; }
+    // Kinetic Blast armed: this melee attack spends it; a hit adds its damage.
+    const kinetic = ownAttack && melee && actor.effectClocks?.find(c => c.name === 'Kinetic Blast');
+    if (kinetic) {
+      if (hit) {
+        damageRiders.push({ id: 'kinetic-blast', label: 'Kinetic Blast', dice: '1d8' });
+        if (actor.traits?.strength) damageRiders.push({ id: 'kinetic-blast-strength', label: 'Kinetic Blast · Strength', value: actor.traits.strength });
+        for (let i = 0; i < (kinetic.empower || 0); i++) damageRiders.push({ id: 'kinetic-empower-' + i, label: 'Kinetic Blast · Empower', dice: Math.max(1, Math.min(10, Number(actor.proficiency) || 1)) + 'd6' });
+      }
+      patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== kinetic.id);
+    }
     if (action.closingId) {
       if (hit) damageRiders.push(closingStrike(actor));
       patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== state.id);
     }
+    if (target && target.id !== actor.id && actor.effectClocks?.some(c => c.nextAttack)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAttack);
     if (['agility','finesse'].includes(o.traitId) && actor.effectClocks?.some(c => c.name === 'Slipstream Jolt')) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.name !== 'Slipstream Jolt');
     if (!standalone) store.updateToken(actor.id, patch);
     if (guard) markMeleeDefense(store, target, guard);

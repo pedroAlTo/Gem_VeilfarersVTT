@@ -1,6 +1,22 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.32.0', date: '2026-11-22', title: 'V3 · Poderes de área y resolución automática (niveles 1-3)',
+    sections: [
+      { title: 'Áreas', items: [
+        'Los Poderes que afectan a «todos los enemigos/aliados a alcance X» dibujan su círculo en el mapa alrededor de quien los lanza, visible para todos mientras la carta está abierta, y eligen solos a quien está dentro.',
+        'Si la carta pide una tirada de reacción (Blinding Flash: Instinct contra DC 10), cada objetivo la tiene pendiente; el Keeper puede tirar las de todos los adversarios a la vez. Quien falla recibe lo que dice la carta: Desventaja en su próximo ataque (se gasta al atacar) o el estado impreso.',
+        'Inspiring Presence da +2 a la próxima tirada de cada aliado del área.',
+      ] },
+      { title: 'Poderes con objetivo y efectos', items: [
+        'Stellar Lance, Biological Scan, Mind-Slip, Emotional Manipulation y Symbiotic Bond piden un objetivo a su alcance, como un ataque. Stellar Lance, si sale la tirada, prepara su daño (Proficiency×d8 Energy, Radiant) para que el Keeper lo decida.',
+        'Kinetic Blast (con Empower de hasta 2 Hope más) carga el próximo ataque cuerpo a cuerpo: al impactar suma Strength + 1d8 y (Proficiency)d6 por cada Hope de Empower.',
+        'Biological Scan muestra al momento el HP, el Stress y los estados del objetivo.',
+        'Temporal Cloak · Personal deja Hidden a quien lo lanza (también con Uncanny Power, si la tirada sale). Termina si ataca o usa otro Poder Void.',
+      ] },
+    ],
+  },
+  {
     version: '2.31.2', date: '2026-11-22', title: 'V3 · Archivo de personajes importados y creador sin pérdidas',
     sections: [
       { title: 'Mystic Sleeping', items: [

@@ -5,7 +5,7 @@ import { printedChecks, printedPools } from './cardProcedures.js';
 import { currentArc } from './cardLimits.js';
 import { throwDice } from './tableDice.js';
 import { CONDITIONS } from './conditions.js';
-import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog } from './cardResolution.js';
+import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog, areaRule, areaTargets, SELF_EFFECTS, POWER_DAMAGE } from './cardResolution.js';
 import { PATH_TRAITS } from './statePowers.js';
 import { tokenInventory } from './equipment.js';
 
@@ -21,18 +21,30 @@ export function cardChoices(card, actor, picked) {
     return field('Ataque de cierre', '<vf-select name="closing_weapon">' + opt('', 'Sin arma · Melee') + tokenInventory(actor).weapons.filter(w => w.damage && !/^n\/a$/i.test(w.damage)).map(w => opt(w.id, w.name)).join('') + '</vf-select>');
   }
   if (trait) return trait;
+  // A mode printed on the card (Temporal Cloak: Personal or Vehicle).
+  const self = SELF_EFFECTS[card.name];
+  if (self?.modes) return field('Modo', '<vf-select name="card_mode">' + self.modes.map(m => opt(m, m, m === self.when)).join('') + '</vf-select>') + '<p class="dossier-muted">' + e(self.when) + ': ' + e(self.note) + '</p>';
+  // Kinetic Blast: up to 2 more Hope to Empower the strike.
+  if (card.name === 'Kinetic Blast') return field('Empower · Hope adicional', '<vf-select name="card_empower">' + [0, 1, 2].map(n => opt(n, n ? `+${n} Hope · +${n}×(${actor.proficiency || 1}d6)` : 'Sin Empower', n === 0)).join('') + '</vf-select>') + '<p class="dossier-muted">Se aplica a tu próximo ataque cuerpo a cuerpo: si impacta, + Strength + 1d8 de daño.</p>';
+  const area = areaRule(card);
+  if (area) {
+    const inside = areaTargets(actor, area, store);
+    return '<p class="dossier-muted">Área ' + e(area.reach) + ' alrededor de ' + e(actor.name) + ': ' + e(inside.map(t => t.name).join(', ') || 'nadie dentro ahora') + '.' + (area.check ? ' Cada uno tira ' + e(area.check.traitId) + ' contra DC ' + area.check.dc + '.' : '') + '</p>';
+  }
   const rule = TARGET_RULES[card.name];
   const options = store.state.tokens.filter(t => eligible(actor, t, store.getActiveMap(), rule));
   const marked = options.find(t => t.id === picked)?.id || (rule?.self && options.some(t => t.id === actor.id) ? actor.id : '');
   const targets = rule ? field('Objetivo · ' + rule.reach, '<vf-select name="card_target">' + opt('', rule.object ? 'Sistema sin token' : 'Elige un objetivo') + options.map(t => opt(t.id, t.name, t.id === marked)).join('') + '</vf-select>') :
     '<details class="card-targets"' + (marked ? ' open' : '') + '><summary>Objetivos en la escena</summary>' + options.map(t => '<label><input type="checkbox" name="card_target" value="' + e(t.id) + '"' + (marked === t.id ? ' checked' : '') + '> ' + e(t.name) + '</label>').join('') + '</details>';
   const dcs = card.kind === 'archive' ? null : cardRollOptions(card);
-  return (dcs ? field('Dificultad del sistema', '<vf-select name="card_dc">' + dcs.map(dc => opt(dc, 'DC ' + dc)).join('') + '</vf-select>') : '') + targets;
+  const damage = POWER_DAMAGE[card.name] ? '<p class="dossier-muted">Si la tirada sale, se prepara el daño contra el objetivo: ' + e(POWER_DAMAGE[card.name].formula(actor)) + ' ' + e(POWER_DAMAGE[card.name].type) + ' (' + e(POWER_DAMAGE[card.name].tag) + '). ' + e(POWER_DAMAGE[card.name].heavy || '') + '</p>' : '';
+  return damage + (dcs ? field('Dificultad del sistema', '<vf-select name="card_dc">' + dcs.map(dc => opt(dc, 'DC ' + dc)).join('') + '</vf-select>') : '') + targets;
 }
 export function chosenCardOptions(modal) {
   const targetIds = [...modal.querySelectorAll('vf-select[name=card_target],input[name=card_target]:checked')].map(el => el.value).filter(Boolean);
   return { targetIds, trait: modal.querySelector('[name=path_trait]')?.value, weaponId: modal.querySelector('[name=closing_weapon]')?.value,
-    cardDC: Number(modal.querySelector('[name=card_dc]')?.value) || undefined };
+    cardDC: Number(modal.querySelector('[name=card_dc]')?.value) || undefined, mode: modal.querySelector('[name=card_mode]')?.value || undefined,
+    empower: modal.querySelector('[name=card_empower]') ? Number(modal.querySelector('[name=card_empower]').value) || 0 : undefined };
 }
 const status = { roll: 'Tirada pendiente', ready: 'Resolver en mesa', done: 'Ver resolución' };
 export const resolutionLabel = record => status[record.phase] || 'Ver carta';
@@ -56,8 +68,10 @@ export function openResolution(id) {
   const replies = (record.replies || []).map(r => {
     const t = tokens.find(t => t.id === r.actorId);
     const can = t && here && record.phase !== 'done' && !r.outcome && (keeper() || store.canEditToken(t.id));
-    return '<p>' + e([t?.name || 'Objetivo', r.traitId, 'DC ' + r.dc, r.outcome, r.total].filter(x => x != null).join(' · ')) + (can ? ' <button class="hud-btn" data-reply="' + e(r.id) + '">Tirar</button>' : '') + '</p>';
+    return '<p>' + e([t?.name || 'Objetivo', r.traitId, 'DC ' + r.dc, r.outcome, r.total, r.consequence].filter(x => x != null && x !== '').join(' · ')) + (can ? ' <button class="hud-btn" data-reply="' + e(r.id) + '">Tirar</button>' : '') + '</p>';
   }).join('');
+  // The Keeper rolls every pending reply of the adversaries at once (area Powers, v2.32.0).
+  const keeperReplies = keeper() && here && record.phase !== 'done' ? (record.replies || []).filter(r => !r.outcome && tokens.some(t => t.id === r.actorId && t.isPlayer === false)) : [];
   const controls = editable && record.phase === 'ready' ? '<fieldset><legend>Consecuencia según la ficha</legend><div class="card-targets">' + options + '</div>' + tools +
     field('Aplicar', '<vf-select name="kind">' + Object.entries(EFFECT_OPTIONS).map(([k,label]) => opt(k,label,k===preferred)).join('') + '</vf-select>') +
     field('Cantidad (+/−)', '<input name="amount" type="number" min="-100" max="100" value="1">') +
@@ -70,7 +84,8 @@ export function openResolution(id) {
     (record.notes?.length ? '<p>' + e(record.notes.join(' ')) + '</p>' : '') +
     (record.project ? '<p>Proyecto · ' + record.project + ' segmentos</p>' : '') +
     (applied ? '<ul>' + applied + '</ul>' : '') + (record.note ? '<p>' + e(record.note) + '</p>' : '') +
-    replies + controls + '<p class="dossier-error" role="alert"></p><footer class="dossier-footer">' +
+    (record.area ? '<p class="dossier-muted">Área ' + e(record.area.reach) + ' · ' + e(names.join(', ') || 'sin objetivos') + '</p>' : '') +
+    replies + (keeperReplies.length > 1 ? '<button class="hud-btn" data-reply-all>Tirar por los adversarios (' + keeperReplies.length + ')</button>' : '') + controls + '<p class="dossier-error" role="alert"></p><footer class="dossier-footer">' +
     (freeArc ? '<button class="hud-btn" data-effect="renew-arc">Renovar uso al cambiar de arco sin asignar</button>' : '') +
     (canRoll ? '<button class="hud-btn hud-btn-primary" data-roll>Preparar tirada vinculada</button>' : '') +
     (editable ? '<button class="hud-btn" data-effect="' + (record.phase === 'roll' ? 'cancel' : 'finish') + '">' + (record.phase === 'roll' ? 'Cancelar resolución' : 'Finalizar') + '</button>' : '') + '</footer></div>', 'card-resolution-dialog');
@@ -82,6 +97,15 @@ export function openResolution(id) {
   const fail = err => { q('[role=alert]').textContent = err.message; };
   if (q('[data-request]')) q('[data-request]').onclick = () => {
     try { requestCardChecks(store,id,chosen(),checks[Number(q('[name=printed_check]').value)]); modal.remove(); openResolution(id); } catch (err) { fail(err); }
+  };
+  if (q('[data-reply-all]')) q('[data-reply-all]').onclick = async () => {
+    const button = q('[data-reply-all]'); button.disabled = true;
+    const dice = window.veilDiceRoller;
+    for (const reply of keeperReplies) {
+      if (!dice?.prepareCheck({ tokenId: reply.actorId, traitId: reply.traitId, dc: reply.dc, playId: id, replyId: reply.id })) break;
+      await dice.executeActionCheck?.();
+    }
+    modal.remove(); openResolution(id);
   };
   for (const b of modal.querySelectorAll('[data-reply]')) b.onclick = () => {
     const reply = record.replies.find(r => r.id === b.dataset.reply);

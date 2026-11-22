@@ -29,6 +29,7 @@ import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
 import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
 import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses, damageDicePools, honedEdgeOf } from './equipment.js';
+import { resolutionLog, POWER_DAMAGE } from './cardResolution.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -285,7 +286,7 @@ export class DiceRollerSidebar {
     return true;
   }
 
-  prepareCardDamage(actorId, targetId, formula, secret) {
+  prepareCardDamage(actorId, targetId, formula, secret, power = null) {
     const q = selector => this.container.querySelector(selector);
     store.update({ selectedTokenId: actorId });
     this.syncWithSelectedToken();
@@ -296,7 +297,8 @@ export class DiceRollerSidebar {
     q('#dmg_target_select').value = targetId; q('#dmg_target_select').onchange?.();
     q('#dmg_weapon_select').value = ''; q('#dmg_delivery_tag').value = '';
     q('#dmg_formula').value = formula; q('#dmg_proficiency').value = 1; q('#dmg_honed').value = 0;
-    q('#dmg_damage_type').value = 'auto';
+    q('#dmg_damage_type').value = power?.type || 'auto';
+    if (power?.tag) q('#dmg_delivery_tag').value = power.tag;
     for (const name of ['dmg_is_critical','dmg_is_direct','dmg_weapon_crushing','dmg_weapon_bleed']) if (q('#'+name)) q('#'+name).checked = false;
     q('#secret_roll').checked = !!secret;
     this.syncDamageMode();
@@ -1263,6 +1265,16 @@ export class DiceRollerSidebar {
 
     // Every die is written out: a single "Mod" figure hid the d6 inside the Trait bonus.
     if (linked) this.preparedCard = null;
+    // A Power that deals damage on success (Stellar Lance…): its damage is prepared against the
+    // target at once, for the Keeper to decide like any hit (v2.32.0).
+    if (linked && !prepared.replyId && (result.isCritical || result.total >= result.dc)) {
+      const record = resolutionLog(store, prepared.playId)?.resolution, power = record && POWER_DAMAGE[record.name];
+      const target = power && store.state.tokens.find(t => t.id === record.targetIds?.[0]);
+      if (target) setTimeout(() => {
+        this.prepareCardDamage(actor.id, target.id, power.formula(actor), this.rollVisibility() === 'keeper', power);
+        if (power.heavy && /heavy/i.test(tokenInventory(target).items.map(i => [i.name, i.kind]).join(' '))) notify(power.heavy);
+      }, 300);
+    }
     const math = checkMath(result);
     // Overlay 3D results banner
     if (this.is3D && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
@@ -1428,6 +1440,8 @@ export class DiceRollerSidebar {
       const conditional = target.conditions?.includes('Incapacitated') && /\+1 on attacks against an Incapacitated target/i.test(weapon?.features || '') ? 1 : 0;
       const roll = rollAdversaryAttack({ attackModifier: (attacker.attackModifier ?? 0) + conditional + bloodiedAttack(attacker).attack, evasion, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces?.[0] ?? null, forcedD6: faces?.[1] ?? null });
       if (guard) markMeleeDefense(store,target,guard);
+      // A «Disadvantage on their next attack» is spent by this attack.
+      if (attacker.effectClocks?.some(c => c.nextAttack)) store.updateToken(attacker.id, { effectClocks: attacker.effectClocks.filter(c => !c.nextAttack) });
       hit = roll.hit; critical = roll.isCritical; total = roll.total;
       const card = {
         label: attackLabel, playerName: 'Keeper', tokenName: attacker.name, actorName: attacker.name, skill: 'Ataque',

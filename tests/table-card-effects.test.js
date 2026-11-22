@@ -270,3 +270,61 @@ test('Uncanny Power at the table: access first (Resolve Dice + Knowledge, Fear),
   assert.ok(move);
   assert.throws(() => performGameAction({ type: 'CARD_PLAY', actorId: 'mystic', cardId: move.id }, s), /ventana/);
 });
+
+test('an area Power around the caster: everyone inside rolls the printed Reaction and failing applies its consequence', () => {
+  const far = { ...hostile('far'), x: 64 + 64 * 9 }, near = { ...hostile('near'), x: 64 + 64 * 3 }, ally = { ...actor('ally'), x: 64, y: 64 + 64 * 2 };
+  const s = table(withPower('Blinding Flash'), near, far, ally);
+  const cast = play(s, 'caster', 'Blinding Flash');
+  const record = resolutionLog(s, cast.id).resolution;
+  assert.deepEqual(record.targetIds, ['near'], 'only the enemies within Close range');
+  assert.equal(record.area.reach, 'Close');
+  assert.ok(record.area.radius > 64 * 5);
+  assert.deepEqual(record.replies.map(r => [r.actorId, r.traitId, r.dc]), [['near', 'instinct', 10]]);
+  // The enemy fails its Instinct Reaction Roll (DC 10): Disadvantage on its next attack.
+  const reply = record.replies[0];
+  check(s, 'near', { traitId: 'instinct', dc: 10, forcedD20: 2 }, { cardPlayId: cast.id, cardReplyId: reply.id });
+  const after = resolutionLog(s, cast.id).resolution.replies[0];
+  assert.match(after.consequence, /Desventaja en su próximo ataque/);
+  const mark = get(s, 'near').effectClocks.find(c => c.nextAttack);
+  assert.equal(mark.edge, 'disadvantage');
+  assert.equal(checkEdge(get(s, 'near'), get(s, 'caster')).disadvantage, true, 'its next attack');
+  assert.equal(checkEdge(get(s, 'near'), null, false, false, 'instinct').disadvantage, false, 'not other rolls');
+});
+
+test('Temporal Cloak · Personal hides its caster until it attacks; the Vehicle mode stays with the table', () => {
+  const s = table(withPower('Temporal Cloak'), hostile('e'));
+  play(s, 'caster', 'Temporal Cloak', { mode: 'Personal' });
+  assert.ok(get(s, 'caster').conditions.includes('Hidden'));
+  assert.ok(get(s, 'caster').effectClocks.some(c => c.name === 'Temporal Cloak'));
+  check(s, 'caster', { traitId: 'agility', dc: 10 }, { targetId: 'e', attack: true });
+  assert.equal(get(s, 'caster').conditions.includes('Hidden'), false, 'attacking ends it');
+  assert.equal(get(s, 'caster').effectClocks.some(c => c.name === 'Temporal Cloak'), false);
+  const v = table(withPower('Temporal Cloak'));
+  const ship = play(v, 'caster', 'Temporal Cloak', { mode: 'Vehículo' });
+  assert.equal(get(v, 'caster').conditions.includes('Hidden'), false);
+  assert.match(ship.notes.join(' '), /lo resuelve la mesa/);
+});
+
+test('Kinetic Blast arms the next melee attack: Strength + 1d8, and Empower adds (Proficiency)d6 per extra Hope', () => {
+  const s = table(withPower('Kinetic Blast'), { ...hostile('e'), x: 128 });
+  play(s, 'caster', 'Kinetic Blast', { empower: 2 });
+  assert.equal(get(s, 'caster').hope, 3, '1 Hope + 2 to Empower');
+  assert.equal(get(s, 'caster').effectClocks.find(c => c.name === 'Kinetic Blast').empower, 2);
+  const hit = check(s, 'caster', { traitId: 'agility', dc: 5 }, { targetId: 'e', attack: true });
+  assert.deepEqual(hit.damageRiders.map(r => [r.id, r.dice || r.value]), [['kinetic-blast', '1d8'], ['kinetic-blast-strength', 1], ['kinetic-empower-0', '2d6'], ['kinetic-empower-1', '2d6']]);
+  assert.equal(get(s, 'caster').effectClocks.some(c => c.name === 'Kinetic Blast'), false, 'spent by the attack');
+  assert.throws(() => play(table({ ...withPower('Kinetic Blast'), hope: 1 }), 'caster', 'Kinetic Blast', { empower: 1 }), /Empower/);
+});
+
+test('Biological Scan reads its target at once; Inspiring Presence gives +2 to the next roll of the allies in Close range; Stellar Lance needs a target in Far range', () => {
+  const s = table(withPower('Biological Scan'), { ...hostile('e'), x: 128, hp: { current: 3, max: 6 }, conditions: ['Restrained'] });
+  const scan = play(s, 'caster', 'Biological Scan', { targetIds: ['e'] });
+  assert.match(scan.notes.join(' '), /e: HP 3 \/ 6 .*Restrained/);
+  const t = table(withPower('Inspiring Presence'), { ...actor('ally'), x: 64 + 64 * 3 }, { ...actor('away'), x: 64 + 64 * 12 });
+  play(t, 'caster', 'Inspiring Presence');
+  assert.deepEqual([get(t, 'ally').pendingCheckBonus, get(t, 'away').pendingCheckBonus], [2, undefined]);
+  const l = table(withPower('Stellar Lance'), { ...hostile('e'), x: 64 + 64 * 8 });
+  assert.throws(() => play(l, 'caster', 'Stellar Lance'), /objetivo/);
+  const lance = play(l, 'caster', 'Stellar Lance', { targetIds: ['e'] });
+  assert.deepEqual(lance.roll, { dc: 15, traitId: 'presence' });
+});

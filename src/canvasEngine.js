@@ -3031,6 +3031,7 @@ export class CanvasEngine {
       for (const tmpl of this.templates) {
         this.renderTemplate(overlay, tmpl, tmpl === this.activeTemplate);
       }
+      this.renderCardAreas(overlay, map);
       if (this.rulerStart && this.rulerCurrent) {
         this.renderRuler(overlay, this.rulerStart, this.rulerCurrent, map.gridSize || 64);
       }
@@ -4862,6 +4863,22 @@ export class CanvasEngine {
   }
 
   // --- Dynamic Area Templates with Rotate, Scale & Delete Handles ---
+  // The area of a Power around its caster (v2.32.0), drawn like the Area tool's circle while its
+  // resolution is open: everyone sees it, because the resolution is in the shared log.
+  renderCardAreas(ctx, map) {
+    const logs = store.state.logs || [];
+    for (let i = 0; i < Math.min(logs.length, 40); i++) {
+      const record = logs[i]?.resolution, area = record?.area;
+      if (!area || record.phase === 'done' || record.mapId !== map.id || (logs[i].visibility === 'keeper' && store.sessionRole === 'player')) continue;
+      this.renderTemplate(ctx, { id: 'area_' + record.id, type: 'circle', x: area.x, y: area.y, radius: area.radius, angle: 0 }, false);
+      ctx.save();
+      ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#e0fbff'; ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+      ctx.fillText(`${record.name} · ${area.reach}`, area.x, area.y - area.radius - 8);
+      ctx.restore();
+    }
+  }
+
   renderTemplate(ctx, tmpl, isSelected = true) {
     const map = store.getActiveMap();
     const gridSize = map.gridSize || 64;

@@ -122,6 +122,8 @@ export function validEffectClocks(v) {
     && (c.expiry === undefined || ['round','spotlight-end'].includes(c.expiry))
     && (c.seenSpotlight === undefined || typeof c.seenSpotlight === 'boolean')
     && (c.edge === undefined || ['advantage','disadvantage'].includes(c.edge))
+    && (c.nextAttack === undefined || typeof c.nextAttack === 'boolean')
+    && (c.empower === undefined || (Number.isInteger(c.empower) && c.empower >= 0 && c.empower <= 2))
     && (c.meleeRound === undefined || typeof c.meleeRound === 'string' && c.meleeRound.length <= 160)
     && (c.trait === undefined || PATH_TRAITS.includes(c.trait))
     && (c.scene === undefined || typeof c.scene === 'boolean') && (c.firstStrikeUsed === undefined || typeof c.firstStrikeUsed === 'boolean') && (c.die === undefined || /^d(4|6|8|10|12)$/.test(c.die))

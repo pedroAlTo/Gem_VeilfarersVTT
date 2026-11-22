@@ -17,7 +17,99 @@ export const TARGET_RULES = {
   'Emergency Repair': { who: 'machine', reach: 'Melee', self: true },
   'Synaptic Disruption': { who: 'creature', reach: 'Close', self: false },
   'Slipstream Jolt': { who: 'any', reach: 'Close', self: false, object: true },
+  // Levels 1-3 that name one target (v2.32.0): chosen like an attack, at their printed range.
+  'Stellar Lance': { who: 'creature', reach: 'Far', self: false },
+  'Biological Scan': { who: 'creature', reach: 'Melee', self: false },
+  'Mind-Slip': { who: 'creature', reach: 'Close', self: false },
+  'Emotional Manipulation': { who: 'creature', reach: 'Close', self: false },
+  'Symbiotic Bond': { who: 'party', reach: 'Close', self: false },
 };
+// Damage a Power deals when its Spellcast succeeds: the table prepares it against the target and
+// the Keeper decides it like any hit (formula, type and delivery tag as printed).
+export const POWER_DAMAGE = {
+  'Stellar Lance': { formula: actor => `${Math.max(1, Number(actor?.proficiency) || 1)}d8`, type: 'energy', tag: 'Radiant', heavy: 'Devastating contra armadura Heavy o Very Heavy.' },
+};
+// Effects on the caster when the Power works (v2.32.0): a condition on the token and a clock that
+// says what ends it. Temporal Cloak · Personal: Hidden; it ends if the caster attacks or uses
+// another Void Power. The Vehicle mode stays with the table (the ship is not a token here).
+export const SELF_EFFECTS = {
+  'Temporal Cloak': { modes: ['Personal', 'Vehículo'], when: 'Personal', condition: 'Hidden', endsOnAttack: true, endsOnDomain: 'Void',
+    note: 'casi invisible 10 minutos: Hidden y Ventaja en Agility para no ser detectado. Termina si ataca o usa otro Poder Void.' },
+};
+export function applySelfEffect(store, name, actorId, mode = '') {
+  const rule = SELF_EFFECTS[name], actor = store.state.tokens.find(t => t.id === actorId);
+  if (!rule || !actor) return '';
+  if (rule.modes && (mode || rule.when) !== rule.when) return name + ' · ' + mode + ': lo resuelve la mesa.';
+  const clocks = addClock((actor.effectClocks || []).filter(c => c.name !== name), newClock({ name, segments: 1, tick: 'manual', scene: true }));
+  store.updateToken(actor.id, { conditions: normalizeConditions([...(actor.conditions || []), rule.condition]), effectClocks: clocks });
+  return actor.name + ': ' + rule.note;
+}
+// What ends a self effect: an attack, or another Power of its Domain.
+export function endSelfEffects(actor, { attack = false, domain = '', name = '' } = {}) {
+  const ending = Object.entries(SELF_EFFECTS).filter(([key, rule]) => key !== name && actor?.effectClocks?.some(c => c.name === key) && ((attack && rule.endsOnAttack) || (domain && rule.endsOnDomain === domain)));
+  if (!ending.length) return null;
+  const names = ending.map(([key]) => key), conditions = new Set(ending.map(([, rule]) => rule.condition));
+  return { effectClocks: actor.effectClocks.filter(c => !names.includes(c.name)), conditions: (actor.conditions || []).filter(c => !conditions.has(c)), ended: names };
+}
+// Area boons applied to everyone inside at once (no roll).
+export const AREA_BOONS = {
+  'Inspiring Presence': token => ({ pendingCheckBonus: (Number(token.pendingCheckBonus) || 0) + 2 }),
+};
+// Powers whose area is around the caster (user request, v2.32.0): «all enemies within Close
+// range…». Everyone inside the circle is a target; a printed Reaction Roll is asked of each of
+// them, and the failure the card names is applied to whoever fails. A point chosen elsewhere
+// («Choose a point within…») is placed by the table, not here.
+const AREA_RX = /\b(you and )?(?:all|every|each)\s+(?:other\s+)?(enem(?:y|ies)|all(?:y|ies)|creatures?)\s+(?:within|in)\s+(melee|very close|close|far)\b/i;
+const AREA_METERS = { Melee: 1, 'Very Close': 5, Close: 10, Far: 25 };
+export function areaRule(card) {
+  const text = String(card?.text || '').replace(/\*+/g, '');
+  if (/choose a point/i.test(text)) return null;
+  const m = AREA_RX.exec(text);
+  if (!m) return null;
+  const reach = RANGE_BANDS.find(b => b.toLowerCase() === m[3].toLowerCase());
+  const who = /^enem/i.test(m[2]) ? 'enemies' : /^all/i.test(m[2]) ? 'allies' : 'creatures';
+  const check = /must (?:make|roll|succeed on)/i.test(text) ? printedChecks(card)[0] || null : null;
+  const condition = (clause = '') => CONDITIONS.map(c => c.name).find(name => new RegExp('\\b' + name + '\\b').test(clause)) || '';
+  const sentence = rx => (text.match(rx) || [''])[0];
+  const fear = sentence(/On (?:a )?Failure with Fear[^.]*\./i), fail = sentence(/On (?:a )?failure(?! with)[^.]*\./i);
+  return { reach, who, self: !!m[1] && who === 'allies', check,
+    failure: { condition: condition(fail), disadvantage: /Disadvantage on (?:their|its) next attack/i.test(fail), fearCondition: condition(fear),
+      until: /until the end of (?:their|its) next Spotlight/i.test(fear + fail) ? 'spotlight-end' : 'round' } };
+}
+// The circle drawn on the map: the band's metres from the caster's base (distances are measured
+// base to base), up to the centre of a standard target.
+export const areaRadius = (actor, map, reach) => ((AREA_METERS[reach] ?? 10) / (map?.gridScaleMeters || 2) + ((Number(actor?.size) || 1) + 1) / 2) * (map?.gridSize || 64);
+export function applyAreaFailure(store, record, targetId, roll) {
+  const target = store.state.tokens.find(t => t.id === targetId), f = record.area.failure;
+  if (!target) return '';
+  const said = [];
+  let clocks = target.effectClocks || [], conditions = target.conditions || [];
+  if (f.disadvantage) {
+    clocks = addClock(clocks, { ...newClock({ name: record.name + ' · próximo ataque', segments: 1, tick: 'manual', scene: true }), edge: 'disadvantage', nextAttack: true });
+    said.push('Desventaja en su próximo ataque');
+  }
+  const condition = roll.dominance === 'Fear' && f.fearCondition ? f.fearCondition : f.condition;
+  if (condition && pathImmune(target, condition)) said.push('inmune a ' + condition);
+  else if (['Dazed', 'Stunned'].includes(condition)) {
+    clocks = addClock(clocks, { ...newClock({ name: record.name, segments: 1, tick: 'manual', scene: true }), condition, expiry: f.until });
+    said.push(condition + (f.until === 'spotlight-end' ? ' hasta el final de su próximo Spotlight' : ' hasta el cambio de ronda'));
+  } else if (condition) {
+    conditions = normalizeConditions([...conditions, condition]);
+    said.push(condition);
+  }
+  if (!said.length) return '';
+  store.updateToken(target.id, { effectClocks: clocks, conditions });
+  return target.name + ': ' + said.join(' · ') + '.';
+}
+export function areaTargets(actor, rule, store) {
+  const map = store.getActiveMap?.();
+  return store.state.tokens.filter(t => {
+    if (t.inReserve || !eligible(actor, t, map, { reach: rule.reach, self: rule.self })) return false;
+    if (t.id === actor.id) return rule.self;
+    const ally = isPartyToken(t) === isPartyToken(actor);
+    return rule.who === 'creatures' || (rule.who === 'allies' ? ally : !ally);
+  });
+}
 export const eligible = (actor, target, map, rule = {}) => {
   if (!target || target.hidden || target.mapId !== actor.mapId || map?.id && map.id !== target.mapId) return false;
   if (rule.self === false && actor.id === target.id) return false;
@@ -190,7 +282,11 @@ export function cardToAmend(store, previous) {
 }
 export function completeCardRoll(store, record, roll, previous = null) {
   if (record.replyId) {
-    updateResolution(store, record.id, { replies: record.replies.map(r => r.id === record.replyId ? { ...r, outcome: roll.outcomeTitle, total: roll.total } : r) });
+    const reply = record.replies.find(r => r.id === record.replyId);
+    const failed = !roll.isCritical && roll.total < roll.dc;
+    // An area card applies its printed failure to whoever fails (once per reply).
+    const consequence = failed && record.area?.failure && reply && !reply.consequence ? applyAreaFailure(store, record, reply.actorId, roll) : '';
+    updateResolution(store, record.id, { replies: record.replies.map(r => r.id === record.replyId ? { ...r, outcome: roll.outcomeTitle, total: roll.total, ...(consequence ? { consequence } : {}) } : r) });
     return;
   }
   const actor = store.state.tokens.find(t => t.id === record.actorId);
@@ -204,6 +300,7 @@ export function completeCardRoll(store, record, roll, previous = null) {
   // extra Fear. The normal Fear-dominant payout still stands, including at the cap.
   if (previous && record.failureFearGained) store.addFear(-Math.min(record.failureFearGained, store.state.fear));
   const notes = [];
+  if (success && SELF_EFFECTS[record.name]) notes.push(applySelfEffect(store, record.name, record.actorId, record.mode));
   if (success) {
     const targets = record.targetIds.map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);
     if (record.name === 'Synaptic Disruption' && targets[0]) {

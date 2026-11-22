@@ -1,10 +1,27 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.31.2**.
-Paquete: `VeilFarers_VTT_v2.31.2.zip`.
+Versión actual del VTT: **v2.32.0**.
+Paquete: `VeilFarers_VTT_v2.32.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.32.0] — 2026-11-22
+
+V3 · Poderes de área y resolución automática (niveles 1-3)
+
+### Áreas
+
+- Los Poderes que afectan a «todos los enemigos/aliados a alcance X» dibujan su círculo en el mapa alrededor de quien los lanza, visible para todos mientras la carta está abierta, y eligen solos a quien está dentro.
+- Si la carta pide una tirada de reacción (Blinding Flash: Instinct contra DC 10), cada objetivo la tiene pendiente; el Keeper puede tirar las de todos los adversarios a la vez. Quien falla recibe lo que dice la carta: Desventaja en su próximo ataque (se gasta al atacar) o el estado impreso.
+- Inspiring Presence da +2 a la próxima tirada de cada aliado del área.
+
+### Poderes con objetivo y efectos
+
+- Stellar Lance, Biological Scan, Mind-Slip, Emotional Manipulation y Symbiotic Bond piden un objetivo a su alcance, como un ataque. Stellar Lance, si sale la tirada, prepara su daño (Proficiency×d8 Energy, Radiant) para que el Keeper lo decida.
+- Kinetic Blast (con Empower de hasta 2 Hope más) carga el próximo ataque cuerpo a cuerpo: al impactar suma Strength + 1d8 y (Proficiency)d6 por cada Hope de Empower.
+- Biological Scan muestra al momento el HP, el Stress y los estados del objetivo.
+- Temporal Cloak · Personal deja Hidden a quien lo lanza (también con Uncanny Power, si la tirada sale). Termina si ataca o usa otro Poder Void.
 
 ## [2.31.2] — 2026-11-22
 

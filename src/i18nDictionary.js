@@ -1541,6 +1541,14 @@ export const PAIRS = [
   // V3 · Archivo del Mystic Sleeping (v2.31.1)
   ["AÑADIR UN DOMINIO", "ADD A DOMAIN"],
   ["Vacío. Al crear el personaje se eligen dos Dominios de nivel 1.", "Empty. Two level 1 Domains are chosen at character creation."],
+  // V3 · Poderes de nivel 1-3 en la mesa (v2.32.0)
+  ["Tirar por los adversarios", "Roll for the adversaries"],
+  ["Gestionar el Archivo", "Manage the Archive"],
+  ["El Archivo está vacío: añade los Dominios desbloqueados del personaje.", "The Archive is empty: add the character's unlocked Domains."],
+  ["Empower · Hope adicional", "Empower · extra Hope"],
+  ["Sin Empower", "No Empower"],
+  ["Se aplica a tu próximo ataque cuerpo a cuerpo: si impacta, + Strength + 1d8 de daño.", "Applies to your next melee attack: on a hit, + Strength + 1d8 damage."],
+  ["Aún no estás en una mesa: guarda el personaje en tu cuenta (o descarga su ficha) y llévalo a la mesa al entrar en una sala.", "You are not at a table yet: save the character to your account (or download its sheet) and bring it to the table when you join a room."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
