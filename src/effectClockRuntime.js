@@ -46,6 +46,24 @@ export function endSceneEffects() {
   return ended;
 }
 
+export function endTemporaryArmor(sourceId) {
+  if (!isTable()) return 0;
+  let ended = 0;
+  const before = store.tableActing; store.tableActing = true;
+  try {
+    for (const token of store.state.tokens) {
+      const gone = (token.effectClocks || []).filter(c => c.tempArmor && c.sourceId === sourceId);
+      if (!gone.length) continue;
+      const extra = gone.reduce((n, c) => n + c.tempArmor, 0), armor = token.armor || { current: 0, max: 0 };
+      const max = Math.max(0, (armor.max || 0) - extra);
+      store.updateToken(token.id, { armor: { ...armor, max, current: Math.min(max, Math.max(0, (armor.current || 0) - extra)) }, effectClocks: token.effectClocks.filter(c => !gone.includes(c)) });
+      store.addLog({ sender: token.name, type: 'EFFECT', title: 'Fin de ' + gone[0].name, details: `${token.name}: terminan los ${extra} Armor Slots temporales.` });
+      ended++;
+    }
+  } finally { store.tableActing = before; }
+  return ended;
+}
+
 export function startEffectClocks() {
   let last = new Map(store.state.tokens.map(t => [t.id, t])), scene = store.state.activeMapId;
   store.subscribe((state, keys) => {
@@ -54,6 +72,8 @@ export function startEffectClocks() {
     for (const token of state.tokens) {
       const previous = last.get(token.id);
       if (!isTable() || !previous || previous.roundSpotlight === token.roundSpotlight || !token.hasSpotlight) continue;
+      // Tactical Overwatch: the temporary Armor Slots last until the start of the giver's Spotlight.
+      queueMicrotask(() => endTemporaryArmor(token.id));
       for (const clock of previous.effectClocks || []) {
         if (clock.tick !== 'spotlight') continue;
         const left = clock.segments - clock.filled - 1;

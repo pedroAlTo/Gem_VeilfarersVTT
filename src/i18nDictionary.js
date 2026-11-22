@@ -1549,6 +1549,10 @@ export const PAIRS = [
   ["Sin Empower", "No Empower"],
   ["Se aplica a tu próximo ataque cuerpo a cuerpo: si impacta, + Strength + 1d8 de daño.", "Applies to your next melee attack: on a hit, + Strength + 1d8 damage."],
   ["Aún no estás en una mesa: guarda el personaje en tu cuenta (o descarga su ficha) y llévalo a la mesa al entrar en una sala.", "You are not at a table yet: save the character to your account (or download its sheet) and bring it to the table when you join a room."],
+  // V3 · Reacciones en ataque y daño (v2.33.0)
+  ["Reacción (pregunta al jugador)", "Reaction (ask the player)"],
+  ["Ninguna", "None"],
+  ["No la usa", "Does not use it"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

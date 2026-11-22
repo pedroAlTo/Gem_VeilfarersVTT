@@ -30,6 +30,7 @@ import { cardData, loadCardData } from './cardData.js';
 import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
 import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpression, targetDefenses, damageDicePools, honedEdgeOf } from './equipment.js';
 import { resolutionLog, POWER_DAMAGE } from './cardResolution.js';
+import { damageReactions, reduceComponents, reactorsFor, REACTIONS } from './powerReactions.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -1431,7 +1432,10 @@ export class DiceRollerSidebar {
       audio.playDiceRoll();
       const melee = !swarm && (!weapon || weaponRangeBand(weapon) === 'Melee' || !weaponRangeBand(weapon) && band === 'Melee');
       const guard = melee && disciplinedDefense(target,attacker,map,store.state.tokens);
-      const edge = checkEdge(attacker, target, q('#dice_advantage').checked, q('#dice_disadvantage').checked || range.disadvantage || !!guard?.penalty);
+      // Tactical Overwatch: an ally in Close range may protect the target before the roll.
+      const overwatch = await offerReaction('Tactical Overwatch', target, `${attacker.name} ataca a ${target.name}: Ventaja en su defensa (el ataque tira con Desventaja) y +2 Armor Slots temporales.`);
+      if (overwatch) await network.requestAction({ type: 'REACTION_PAY', actorId: overwatch.id, name: 'Tactical Overwatch', targetId: target.id }).catch(error => notify(error.message, 'error'));
+      const edge = checkEdge(attacker, target, q('#dice_advantage').checked, q('#dice_disadvantage').checked || range.disadvantage || !!guard?.penalty || !!overwatch);
       const groups = [{ qty: 1, sides: 20, theme: 'vfNeutral', role: 'Attack' }];
       if (edge.advantage || edge.disadvantage) groups.push({ qty: 1, sides: 6, theme: 'vfNeutral', role: edge.advantage ? 'Advantage' : 'Disadvantage' });
       const attackLabel = `${attacker.name} · Ataque vs ${target.name}`;
@@ -1443,16 +1447,28 @@ export class DiceRollerSidebar {
       // A «Disadvantage on their next attack» is spent by this attack.
       if (attacker.effectClocks?.some(c => c.nextAttack)) store.updateToken(attacker.id, { effectClocks: attacker.effectClocks.filter(c => !c.nextAttack) });
       hit = roll.hit; critical = roll.isCritical; total = roll.total;
+      // Force Shield: once the hit is known, +3 Evasion can turn it into a miss; the attacker then
+      // takes (Proficiency)d4 Physical (Kinetic) from whoever raised the shield.
+      let shielded = null;
+      if (hit && !critical && total < evasion + 3) {
+        shielded = await offerReaction('Force Shield', target, `${attacker.name} impacta a ${target.name} con ${total} contra Evasion ${evasion}: con +3 (${evasion + 3}) el ataque falla y ${attacker.name} recibe daño.`);
+        if (shielded) {
+          await network.requestAction({ type: 'REACTION_PAY', actorId: shielded.id, name: 'Force Shield' }).catch(error => notify(error.message, 'error'));
+          hit = false; roll.hit = false;
+          const backlash = `${Math.max(1, Math.min(10, Number(shielded.proficiency) || 1))}d4`;
+          setTimeout(() => this.prepareCardDamage(shielded.id, attacker.id, backlash, this.rollVisibility() === 'keeper', { type: 'physical', tag: 'Kinetic' }), 400);
+        }
+      }
       const card = {
         label: attackLabel, playerName: 'Keeper', tokenName: attacker.name, actorName: attacker.name, skill: 'Ataque',
         modifiers: `d20 [${roll.d20}] ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6 [${roll.d6}]` : ''} = ${roll.total} vs Evasion ${evasion}`,
-        value: roll.total, total: roll.total, outcome: critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO',
+        value: roll.total, total: roll.total, outcome: critical ? 'CRÍTICO' : hit ? 'IMPACTO' : shielded ? 'FORCE SHIELD' : 'FALLO',
         rolls: [{ value: roll.d20, sides: 20, role: 'Attack' }, ...(roll.edge ? [{ value: roll.d6, sides: 6, role: roll.edge }] : [])], style: 'overlay'
       };
       this.announceRoll(card, { rolled3D: !!faces, secret: this.rollVisibility() === 'keeper' });
       detail = `d20 [${roll.d20}] ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6 [${roll.d6}]` : ''} = ${roll.total}.`;
       const secret = this.rollVisibility() === 'keeper';
-      const summary = `⚔️ ${attacker.name} ataca a ${target.name}: ${detail} vs Evasion ${evasion} → ${critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO'}`;
+      const summary = `⚔️ ${attacker.name} ataca a ${target.name}: ${detail} vs Evasion ${evasion}${shielded ? ` (+3 Force Shield de ${shielded.name})` : ''} → ${critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO'}`;
       store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'ROLL', sender: 'Keeper', title: `Ataque · ${attacker.name}`, details: summary });
       if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: attacker.name, text: summary, channel: 'table' }));
     }
@@ -1827,12 +1843,13 @@ export class DiceRollerSidebar {
       }
 
       // What this hit does with a number of shields spent (nothing is changed yet).
-      const planDamage = (spentShields = 0) => {
+      const planDamage = (spentShields = 0, reaction = null) => {
         const targetToken = store.state.tokens.find(t => t.id === targetId) || currentTarget;
 
         const currentDamage = resolveDamage({
           diceCount: 0,
-          components: dmgResult.components,
+          // A reaction Power (Photon Shield, Impact Absorption, Mind Shield) lowers the damage first.
+          components: reaction ? reduceComponents(dmgResult.components, reaction.amount, reaction.types) : dmgResult.components,
           targetToken,
           targetMajorThreshold: targetToken.hp.majorThreshold ?? major,
           targetSevereThreshold: targetToken.hp.severeThreshold ?? severe,
@@ -1891,12 +1908,12 @@ export class DiceRollerSidebar {
         return { targetToken, attacker, currentDamage, newHp, newArmor, hpLost, spentShields, armorAfter, withStress, withCondition, damagePayload };
       };
 
-      const applyFinalDamage = (spentShields = 0) => {
+      const applyFinalDamage = (spentShields = 0, reaction = null) => {
         if (applied || !canApply()) return;
         applied = true; pending.applied = true;
         applyBtn.disabled = true;
         applyBtn.textContent = 'DAMAGE APPLIED';
-        const { targetToken, attacker, currentDamage, newHp, hpLost, armorAfter, withStress, withCondition, damagePayload } = planDamage(spentShields);
+        const { targetToken, attacker, currentDamage, newHp, hpLost, armorAfter, withStress, withCondition, damagePayload } = planDamage(spentShields, reaction);
 
         if (store.sessionRole === 'player') {
           network.broadcast?.(damagePayload);
@@ -1967,7 +1984,10 @@ export class DiceRollerSidebar {
       // it. A connected player's hit goes to the Keeper with every option worked out.
       const maxShields = isDirect ? 0 : currentArmorNow;
       const options = Array.from({ length: Math.min(maxShields, 10) + 1 }, (_, n) => planDamage(n).damagePayload);
-      const request = { attackerName: damageOptions.attackerName, targetId: currentTarget.id, targetName: currentTarget.name, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, options, secret };
+      // Reaction Powers the target (or an ally) can use on this hit, each with its own options.
+      const reactions = isDirect ? [] : damageReactions({ target: currentTarget, attacker: store.state.tokens.find(t => t.id === attackerId), components: dmgResult.components, tokens: store.state.tokens, map: store.getActiveMap(), data: cardData() })
+        .map(r => { const most = planDamage(0, r).currentDamage.fullyProtected ? 0 : usableSlots(currentTarget); return { ...r, options: Array.from({ length: Math.min(most, 10) + 1 }, (_, n) => planDamage(n, r).damagePayload) }; });
+      const request = { attackerName: damageOptions.attackerName, targetId: currentTarget.id, targetName: currentTarget.name, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, options, reactions, secret };
       if (store.sessionRole === 'player') {
         applied = true; pending.applied = true; applyBtn.disabled = true; applyBtn.textContent = 'ENVIADO AL KEEPER';
         network.sendToHost?.({ type: 'DAMAGE_REQUEST', request });
@@ -1976,19 +1996,21 @@ export class DiceRollerSidebar {
         return;
       }
       awaitingKeeper = true;
-      keeperDamageDialog(currentTarget, request, n => {
+      keeperDamageDialog(currentTarget, request, (n, ri = -1) => {
+        const reaction = ri >= 0 ? reactions[ri] : null;
         awaitingKeeper = false;
         const live = store.state.tokens.find(t => t.id === targetId);
         if (!live || live.mapId !== damageMapId || store.state.activeMapId !== damageMapId) {
           notify('El objetivo ha salido de la escena.', 'error'); return;
         }
-        const before = options[n], now = planDamage(n).damagePayload;
+        const before = (reaction ? reaction.options : options)[n], now = planDamage(n, reaction).damagePayload;
         if (before.newHp !== now.newHp || before.hpLoss !== now.hpLoss || before.newArmor !== now.newArmor || before.stressMark !== now.stressMark) {
           notify('Han cambiado las defensas. Revisa el resultado actualizado.');
           pending.apply();
           return;
         }
-        applyFinalDamage(n);
+        applyFinalDamage(n, reaction);
+        if (reaction) network.requestAction({ type: 'REACTION_PAY', actorId: reaction.actorId, name: reaction.name, amount: reaction.amount }).catch(error => notify(error.message, 'error'));
       }, { shields: spentShieldsChoice ?? (useArmor ? 1 : 0), onCancel: () => { awaitingKeeper = false; } });
     };
     pending.apply = applyBtn.onclick;
@@ -1997,27 +2019,58 @@ export class DiceRollerSidebar {
 
 // The Keeper's window for damage to an NPC or adversary: how many shields it spends (each
 // option already worked out by the attacker) and Apply or Cancel. onApply(n) / onCancel().
+// A reaction Power the Keeper offers at the table (the player decides): resolves with the token
+// that uses it, or null. Nothing is offered when no one can use it.
+export function offerReaction(name, target, text) {
+  const reactors = reactorsFor(name, target, store.state.tokens, store.getActiveMap?.(), cardData());
+  if (!reactors.length || typeof document === 'undefined' || !document.body) return Promise.resolve(null);
+  const cost = REACTIONS[name].cost.hope ? REACTIONS[name].cost.hope + ' Hope' : REACTIONS[name].cost.stress + ' Stress';
+  return new Promise(resolve => {
+    const modal = tableDialog(name, `<div class="kdmg"><p>${escapeHTML(text)}</p><p class="dossier-muted">Reacción (${escapeHTML(cost)}). Pregunta al jugador si la usa.</p></div>
+      <footer class="dossier-footer"><button class="hud-btn hud-btn-secondary" type="button" data-react="">No la usa</button>${reactors.map(r => `<button class="hud-btn hud-btn-primary" type="button" data-react="${escapeHTML(r.id)}">${escapeHTML(r.name)} la usa</button>`).join('')}</footer>`, 'damage-action-dialog');
+    let done = false;
+    const finish = id => { if (done) return; done = true; modal.remove(); resolve(reactors.find(r => r.id === id) || null); };
+    modal.querySelectorAll('[data-react]').forEach(b => b.onclick = () => finish(b.dataset.react));
+    new MutationObserver((_, obs) => { if (!modal.isConnected) { obs.disconnect(); finish(''); } }).observe(document.body, { childList: true });
+  });
+}
+
 export function keeperDamageDialog(targetToken, request, onApply, { shields = 0, onCancel = () => {} } = {}) {
-  const options = Array.isArray(request?.options) && request.options.length ? request.options : null;
-  if (!options) return;
-  if (typeof document === 'undefined' || !document.body) { onApply(0); return; }
-  const max = options.length - 1, start = Math.max(0, Math.min(max, shields));
-  const describe = n => { const o = options[n]; return `Pierde ${o.hpLoss} HP · HP ${o.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}`; };
+  const base = Array.isArray(request?.options) && request.options.length ? request.options : null;
+  if (!base) return;
+  if (typeof document === 'undefined' || !document.body) { onApply(0, -1); return; }
+  // Reaction Powers (v2.33.0): each one has its own options, worked out by the attacker.
+  const reactions = (Array.isArray(request.reactions) ? request.reactions : []).filter(r => Array.isArray(r?.options) && r.options.length);
+  let ri = -1;
+  const set = () => (ri >= 0 ? reactions[ri].options : base), max = () => set().length - 1;
+  const describe = n => { const o = set()[Math.min(n, max())]; return `Pierde ${o.hpLoss} HP · HP ${o.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}`; };
+  const start = Math.max(0, Math.min(max(), shields));
   const modal = tableDialog('Daño a ' + targetToken.name, `
     <div class="kdmg">
       <div class="kdmg-head"><img src="${escapeHTML(actorPortrait(targetToken))}" alt="" />
         <div><strong>${escapeHTML(targetToken.name)}</strong><p class="dossier-muted">${escapeHTML(request.attackerName || 'Ataque')}: ${escapeHTML(String(request.raw))} de daño · ${escapeHTML(String(request.severity || ''))}</p></div></div>
-      ${max > 0 ? `<label class="dossier-field kdmg-shields"><span>Escudos a gastar (${max} disponible${max > 1 ? 's' : ''})</span>
-        <div class="kdmg-row"><input type="range" id="kdmg_shields" min="0" max="${max}" value="${start}" /><b id="kdmg_shields_val">${start}</b></div></label>` : '<p class="dossier-muted">Sin escudos disponibles para este impacto.</p>'}
+      ${reactions.length ? `<label class="dossier-field"><span>Reacción (pregunta al jugador)</span><vf-select class="hud-select" id="kdmg_reaction"><option value="-1">Ninguna</option>${reactions.map((r, i) => `<option value="${i}">${escapeHTML(r.label)}</option>`).join('')}</vf-select></label>` : ''}
+      <label class="dossier-field kdmg-shields" id="kdmg_shields_field"><span id="kdmg_shields_label"></span>
+        <div class="kdmg-row"><input type="range" id="kdmg_shields" min="0" max="${max()}" value="${start}" /><b id="kdmg_shields_val">${start}</b></div></label>
+      <p class="dossier-muted" id="kdmg_noshields">Sin escudos disponibles para este impacto.</p>
       <p class="kdmg-preview" id="kdmg_preview">${escapeHTML(describe(start))}</p>
     </div>
     <footer class="dossier-footer"><button class="hud-btn hud-btn-secondary" type="button" id="kdmg_cancel">Cancelar</button>
       <button class="pab-apply-main" type="button" id="kdmg_apply">Aplicar daño</button></footer>`, 'damage-action-dialog');
   const slider = modal.querySelector('#kdmg_shields'), val = modal.querySelector('#kdmg_shields_val'), preview = modal.querySelector('#kdmg_preview');
-  const chosen = () => Math.max(0, Math.min(max, parseInt(slider?.value || '0', 10)));
-  if (slider) slider.oninput = () => { val.textContent = slider.value; preview.textContent = describe(chosen()); };
+  const chosen = () => Math.max(0, Math.min(max(), parseInt(slider.value || '0', 10)));
+  const sync = () => {
+    slider.max = String(max()); if (chosen() !== Number(slider.value)) slider.value = String(chosen());
+    modal.querySelector('#kdmg_shields_field').hidden = max() < 1; modal.querySelector('#kdmg_noshields').hidden = max() >= 1;
+    modal.querySelector('#kdmg_shields_label').textContent = `Escudos a gastar (${max()} disponible${max() > 1 ? 's' : ''})`;
+    val.textContent = slider.value; preview.textContent = describe(chosen());
+  };
+  slider.oninput = sync;
+  const pick = modal.querySelector('#kdmg_reaction');
+  if (pick) pick.onchange = () => { ri = Number(pick.value); sync(); };
+  sync();
   let done = false;
-  modal.querySelector('#kdmg_apply').onclick = () => { done = true; const n = chosen(); modal.remove(); onApply(n); };
+  modal.querySelector('#kdmg_apply').onclick = () => { done = true; const n = chosen(); modal.remove(); onApply(n, ri); };
   modal.querySelector('#kdmg_cancel').onclick = () => { done = true; modal.remove(); onCancel(); };
   // Closing the window another way also cancels.
   new MutationObserver((_, obs) => { if (!modal.isConnected) { obs.disconnect(); if (!done) { done = true; onCancel(); } } }).observe(document.body, { childList: true });

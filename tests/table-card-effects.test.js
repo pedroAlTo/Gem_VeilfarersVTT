@@ -328,3 +328,43 @@ test('Biological Scan reads its target at once; Inspiring Presence gives +2 to t
   const lance = play(l, 'caster', 'Stellar Lance', { targetIds: ['e'] });
   assert.deepEqual(lance.roll, { dc: 15, traitId: 'presence' });
 });
+
+test('reaction Powers: who can use them, what they take off the damage and what they leave', async () => {
+  const { reactorsFor, damageReactions, reduceComponents } = await import('../src/powerReactions.js');
+  const hero = { ...actor('hero'), sheetFields: { a_pwr_1_n: 'Impact Absorption', a_pwr_2_n: 'Mind Shield' }, stress: { current: 0, max: 6 } };
+  const medic = { ...actor('medic'), x: 64 + 64 * 4, level: 5, sheetFields: { a_pwr_1_n: 'Photon Shield', a_pwr_2_n: 'Force Shield', a_pwr_3_n: 'Tactical Overwatch' } };
+  const far = { ...actor('far'), x: 64 + 64 * 20, sheetFields: { a_pwr_1_n: 'Photon Shield' } };
+  const foe = { ...hostile('foe'), featureNotes: 'Veil-Touched horror' };
+  const tokens = [hero, medic, far, foe];
+  setCardData(data);
+  assert.deepEqual(reactorsFor('Photon Shield', hero, tokens, scene, data).map(t => t.id), ['medic'], 'an ally in Close range, not the far one');
+  assert.deepEqual(reactorsFor('Impact Absorption', hero, tokens, scene, data).map(t => t.id), ['hero'], 'only the one hit');
+  assert.deepEqual(reactorsFor('Force Shield', hero, tokens, scene, data).map(t => t.id), [], 'Force Shield needs Very Close');
+  assert.deepEqual(reactorsFor('Photon Shield', foe, tokens, scene, data), [], 'never for the enemies');
+  assert.deepEqual(reactorsFor('Mind Shield', { ...hero, stress: { current: 6, max: 6 } }, tokens.map(t => t.id === 'hero' ? { ...t, stress: { current: 6, max: 6 } } : t), scene, data), [], 'Overwhelmed cannot pay Stress');
+  const physical = [{ amount: 9, types: ['physical', 'kinetic'] }, { amount: 4, types: ['neural'] }];
+  const found = damageReactions({ target: hero, attacker: foe, components: physical, tokens, map: scene, data, random: () => 0.5 });
+  const photon = found.find(r => r.name === 'Photon Shield'), impact = found.find(r => r.name === 'Impact Absorption'), mind = found.find(r => r.name === 'Mind Shield');
+  assert.equal(photon.amount, 8, 'Tier 2 + 2, doubled against a Veil-Touched creature');
+  assert.equal(impact.amount, 2 * 4 + 2, '(Proficiency 2)d6 + 2');
+  assert.equal(mind.amount, 8);
+  assert.deepEqual(reduceComponents(physical, impact.amount, impact.types).map(p => p.amount), [0, 4], 'Impact Absorption only touches Physical');
+  assert.deepEqual(reduceComponents(physical, mind.amount, mind.types).map(p => p.amount), [9, 0]);
+  assert.deepEqual(reduceComponents(physical, 11).map(p => p.amount), [0, 2]);
+  assert.equal(damageReactions({ target: hero, attacker: foe, components: [{ amount: 5, types: ['energy'] }], tokens, map: scene, data }).some(r => r.name !== 'Photon Shield'), false, 'no Physical or Neural, no Impact Absorption or Mind Shield');
+});
+
+test('paying a reaction: Impact Absorption keeps the amount for the next attack; Tactical Overwatch lends 2 Armor Slots', () => {
+  const s = table({ ...actor('hero'), sheetFields: { a_pwr_1_n: 'Impact Absorption' }, stress: { current: 0, max: 6 } }, { ...actor('medic'), x: 128, hope: 3, sheetFields: { a_pwr_1_n: 'Tactical Overwatch' } }, { ...hostile('foe'), x: 160 });
+  performGameAction({ type: 'REACTION_PAY', actorId: 'hero', name: 'Impact Absorption', amount: 7 }, s);
+  assert.equal(get(s, 'hero').stress.current, 1);
+  assert.equal(get(s, 'hero').effectClocks.find(c => c.name === 'Impact Absorption').absorbed, 7);
+  const hit = check(s, 'hero', { traitId: 'agility', dc: 5 }, { targetId: 'foe', attack: true });
+  assert.ok(hit.damageRiders.some(r => r.id === 'impact-absorption' && r.value === 7));
+  assert.equal(get(s, 'hero').effectClocks.some(c => c.name === 'Impact Absorption'), false);
+  performGameAction({ type: 'REACTION_PAY', actorId: 'medic', name: 'Tactical Overwatch', targetId: 'hero' }, s);
+  assert.equal(get(s, 'medic').hope, 2);
+  assert.deepEqual([get(s, 'hero').armor.current, get(s, 'hero').armor.max], [4, 5]);
+  assert.equal(get(s, 'hero').effectClocks.find(c => c.tempArmor).sourceId, 'medic');
+  assert.throws(() => performGameAction({ type: 'REACTION_PAY', actorId: 'hero', name: 'Photon Shield' }, s), /no está en el Loadout/);
+});

@@ -6,6 +6,7 @@ import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges } from './statePowers.js';
 import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
+import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions } from './conditions.js';
@@ -159,7 +160,7 @@ function resolveGameAction(action, store) {
   }
   // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
   // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
-  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN' || action.type === 'UNCANNY_ACCESS' || action.type === 'ARCHIVE_EDIT') {
+  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN' || action.type === 'UNCANNY_ACCESS' || action.type === 'ARCHIVE_EDIT' || action.type === 'REACTION_PAY') {
     const data = cardData();
     if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
@@ -168,6 +169,32 @@ function resolveGameAction(action, store) {
     const apply = patch => store.updateToken(actor.id, patch);
     const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
     const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
+    // A reaction Power used in the attack or damage window (v2.33.0): it pays its printed price
+    // and leaves what lasts (the amount Impact Absorption keeps, Tactical Overwatch's Armor Slots).
+    if (action.type === 'REACTION_PAY') {
+      const name = String(action.name ?? ''), rule = REACTIONS[name];
+      if (!rule || !holdsReaction(actor, name, data)) throw new Error('Esa reacción no está en el Loadout de ' + actor.name + '.');
+      if (!canPay(actor, rule.cost)) throw new Error(actor.name + ' no puede pagar ' + name + '.');
+      const patch = {};
+      if (rule.cost.hope) patch.hope = (actor.hope || 0) - rule.cost.hope;
+      if (rule.cost.stress) patch.stress = { ...actor.stress, current: (actor.stress?.current || 0) + rule.cost.stress };
+      const amount = Math.max(0, Math.min(200, Math.round(Number(action.amount) || 0)));
+      if (name === 'Impact Absorption' && amount) patch.effectClocks = addClock((actor.effectClocks || []).filter(c => c.name !== name), { ...newClock({ name, segments: 1, tick: 'manual', scene: true }), absorbed: amount });
+      apply(patch);
+      let details = `${actor.name} usa ${name} (${rule.cost.hope ? rule.cost.hope + ' Hope' : rule.cost.stress + ' Stress'}).`;
+      if (name === 'Impact Absorption' && amount) details += ` Absorbe ${amount}: su próximo ataque suma ${amount} al daño (o se mueve una banda más).`;
+      if (name === 'Tactical Overwatch') {
+        const target = store.state.tokens.find(t => t.id === action.targetId && t.mapId === actor.mapId);
+        if (!target) throw new Error('El aliado ya no está en la escena.');
+        const armor = target.armor || { current: 0, max: 0 };
+        store.updateToken(target.id, { armor: { ...armor, current: (armor.current || 0) + 2, max: (armor.max || 0) + 2 },
+          effectClocks: addClock(target.effectClocks, { ...newClock({ name, segments: 1, tick: 'manual', scene: true }), tempArmor: 2, sourceId: actor.id }) });
+        details += ` ${target.name}: Ventaja en su defensa y +2 Armor Slots temporales hasta el próximo Spotlight de ${actor.name}.`;
+      }
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${name}`, details };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, summary: details };
+    }
     if (action.type === 'ARCHIVE_EDIT') {
       const result = editArchive(actor, data, { op: action.op, domain: String(action.domain ?? ''), level: action.level });
       apply(sheet(result.token));
@@ -443,6 +470,12 @@ function resolveGameAction(action, store) {
     // Attacking ends the self effects that say so (Temporal Cloak).
     const unveiled = ownAttack && endSelfEffects({ ...actor, effectClocks: patch.effectClocks || actor.effectClocks }, { attack: true });
     if (unveiled) { patch.effectClocks = unveiled.effectClocks; patch.conditions = unveiled.conditions; }
+    // Impact Absorption: the amount absorbed goes into the next attack's damage.
+    const absorbed = ownAttack && actor.effectClocks?.find(c => c.name === 'Impact Absorption' && c.absorbed);
+    if (absorbed) {
+      if (hit) damageRiders.push({ id: 'impact-absorption', label: 'Impact Absorption', value: absorbed.absorbed });
+      patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== absorbed.id);
+    }
     // Kinetic Blast armed: this melee attack spends it; a hit adds its damage.
     const kinetic = ownAttack && melee && actor.effectClocks?.find(c => c.name === 'Kinetic Blast');
     if (kinetic) {

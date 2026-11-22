@@ -1,10 +1,25 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.32.0**.
-Paquete: `VeilFarers_VTT_v2.32.0.zip`.
+Versión actual del VTT: **v2.33.0**.
+Paquete: `VeilFarers_VTT_v2.33.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.33.0] — 2026-11-22
+
+V3 · Reacciones en el ataque y en la ventana de daño
+
+### Al atacar
+
+- Tactical Overwatch: cuando un adversario ataca a un personaje, si un aliado a alcance Close la tiene en su Loadout y 1 Hope, el Keeper ve el aviso. Si la usa, el ataque se tira con Desventaja y el objetivo gana 2 Armor Slots temporales hasta el próximo Spotlight de quien la usó.
+- Force Shield: si el ataque impacta pero +3 de Evasion lo haría fallar, se ofrece al objetivo o a un aliado a Very Close. Si la usa, el ataque falla y se prepara el daño de vuelta, (Proficiency)d4 Physical (Kinetic), contra el atacante.
+
+### En la ventana de daño
+
+- La ventana del Keeper tiene «Reacción»: Photon Shield (un aliado a Close resta su Tier + 2, el doble contra criaturas Veil-Touched), Impact Absorption (−(Proficiency)d6 + 2 al daño Physical) o Mind Shield (−(Proficiency)d6 al Neural). Cada opción muestra el HP final con sus escudos, y al aplicarla se cobra su coste.
+- Impact Absorption guarda lo absorbido: el próximo ataque de ese personaje lo suma al daño.
+- Solo aparecen las reacciones que el personaje tiene en el Loadout y puede pagar, y a su alcance.
 
 ## [2.32.0] — 2026-11-22
 
