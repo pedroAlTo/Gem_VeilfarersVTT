@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.31.0**.
-Paquete: `VeilFarers_VTT_v2.31.0.zip`.
+Versión actual del VTT: **v2.31.1**.
+Paquete: `VeilFarers_VTT_v2.31.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.31.1] — 2026-11-22
+
+V3 · Archivo del Mystic Sleeping y Spellcast automático
+
+### Archivo de Uncanny
+
+- El mazo y la pestaña Loadout de la ficha del Mystic Sleeping tienen su Archivo: los Dominios desbloqueados (Dominio + nivel) con sus Poderes, y un selector de Dominio y nivel para añadir uno o quitarlo.
+- Se aplican las reglas del Corebook: el nivel no puede superar el del personaje, y para investigar un nivel hacen falta dos Dominios distintos en el nivel anterior. Los Dominios elegidos al crear el personaje aparecen y se pueden corregir.
+
+### Uncanny Power
+
+- Al pulsar Manifestar se tira enseguida el Spellcast: dados de Dualidad + Knowledge contra DC 10 + nivel del Poder. Si se supera, el Poder queda listo para resolverse en la mesa.
 
 ## [2.31.0] — 2026-11-22
 

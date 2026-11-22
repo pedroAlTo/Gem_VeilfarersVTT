@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.31.1', date: '2026-11-22', title: 'V3 · Archivo del Mystic Sleeping y Spellcast automático',
+    sections: [
+      { title: 'Archivo de Uncanny', items: [
+        'El mazo y la pestaña Loadout de la ficha del Mystic Sleeping tienen su Archivo: los Dominios desbloqueados (Dominio + nivel) con sus Poderes, y un selector de Dominio y nivel para añadir uno o quitarlo.',
+        'Se aplican las reglas del Corebook: el nivel no puede superar el del personaje, y para investigar un nivel hacen falta dos Dominios distintos en el nivel anterior. Los Dominios elegidos al crear el personaje aparecen y se pueden corregir.',
+      ] },
+      { title: 'Uncanny Power', items: [
+        'Al pulsar Manifestar se tira enseguida el Spellcast: dados de Dualidad + Knowledge contra DC 10 + nivel del Poder. Si se supera, el Poder queda listo para resolverse en la mesa.',
+      ] },
+    ],
+  },
+  {
     version: '2.31.0', date: '2026-11-22', title: 'V3 · Uncanny Power del Mystic Sleeping, como dice el Corebook',
     sections: [
       { title: 'Uncanny Power', items: [

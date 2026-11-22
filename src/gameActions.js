@@ -19,7 +19,7 @@ import { handoffControl } from './drones.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear, wearArmor } from './gear.js';
-import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName, uncannyAccess, uncannyChoices } from './loadoutCards.js';
+import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName, uncannyAccess, uncannyChoices, editArchive } from './loadoutCards.js';
 const lastRoll = new Map();
 const closingStrike = actor => ({ id: 'breaking-point', branch: pathBranch(actor), label: 'Breaking Point' + (pathBranch(actor) ? ' · ' + pathBranch(actor) : ''), dice: Math.max(1, Math.min(10, actor.proficiency || 1)) + 'd6' });
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
@@ -159,7 +159,7 @@ function resolveGameAction(action, store) {
   }
   // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
   // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
-  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN' || action.type === 'UNCANNY_ACCESS') {
+  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN' || action.type === 'UNCANNY_ACCESS' || action.type === 'ARCHIVE_EDIT') {
     const data = cardData();
     if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
@@ -168,6 +168,13 @@ function resolveGameAction(action, store) {
     const apply = patch => store.updateToken(actor.id, patch);
     const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
     const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
+    if (action.type === 'ARCHIVE_EDIT') {
+      const result = editArchive(actor, data, { op: action.op, domain: String(action.domain ?? ''), level: action.level });
+      apply(sheet(result.token));
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Archivo`, details: result.summary };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, summary: result.summary, packages: result.packages };
+    }
     if (action.type === 'CARD_LEARN') {
       const result = learnPower(actor, data, String(action.name ?? ''));
       apply(sheet(result.token));

@@ -385,6 +385,39 @@ export function learnPower(source, data, name) {
   return { token, learned: power.n, summary: `${power.n} (${power.d}, nivel ${power.l}) entra en el Vault.` };
 }
 
+// The Uncanny Archive of a Sleeping Mystic (Corebook ch. 7), managed from the deck and the sheet:
+// a Domain-level package unlocks every Power of that Domain at exactly that level. The level
+// cannot exceed the character's; from level 2 on, two different Domains must already be unlocked
+// at the level below (Breadth requirement). The list is kept in `s_archive`; the creator's
+// «Studied Domains» line is folded into it the first time the Archive is edited.
+export const archiveText = packages => [...packages].sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0])).map(([d, l]) => `${d} ${l}`).join(', ');
+export function archiveRequirement(token, packages, domain, level) {
+  if (packages.some(([d, l]) => d === domain && l === level)) return `${domain} ${level} ya está en el Archivo.`;
+  if (level > (Number(token.level) || 1)) return `El nivel ${level} supera tu nivel de personaje (${Number(token.level) || 1}).`;
+  if (level >= 2 && new Set(packages.filter(([, l]) => l === level - 1).map(([d]) => d)).size < 2) return `Para investigar el nivel ${level} hacen falta dos Dominios distintos a nivel ${level - 1}.`;
+  return '';
+}
+export function editArchive(source, data, { op, domain, level }) {
+  if (!isSleepingMystic(source)) throw new Error('El Archivo es del Mystic Sleeping.');
+  const name = Object.keys(DOMAIN_COLORS).find(d => lower(d) === lower(domain)), lv = Number(level);
+  if (!name || !Number.isInteger(lv) || lv < 1 || lv > 10) throw new Error('Elige un Dominio y un nivel.');
+  const token = structuredClone(source), f = writable(token);
+  let packages = archivePackages(token);
+  if (op === 'add') {
+    const problem = archiveRequirement(token, packages, name, lv);
+    if (problem) throw new Error(problem);
+    if (!data.powers.some(p => p.d === name && p.l === lv)) throw new Error(`No hay Poderes de ${name} de nivel ${lv}.`);
+    packages = [...packages, [name, lv]];
+  } else if (op === 'remove') {
+    if (!packages.some(([d, l]) => d === name && l === lv)) throw new Error(`${name} ${lv} no está en el Archivo.`);
+    packages = packages.filter(([d, l]) => !(d === name && l === lv));
+  } else throw new Error('Operación desconocida.');
+  for (const key of Object.keys(f)) if (typeof f[key] === 'string' && /Studied Domains\s*[—-]/i.test(f[key])) f[key] = f[key].split('\n\n').filter(part => !/^\s*Studied Domains\s*[—-]/i.test(part)).join('\n\n').replace(/^.*Studied Domains\s*[—-].*$\n?/gim, '');
+  f.s_archive = archiveText(packages);
+  const count = data.powers.filter(p => p.d === name && p.l === lv).length;
+  return { token, packages, summary: op === 'add' ? `${name} ${lv} entra en el Archivo: ${count} Poderes más a través de Uncanny Power.` : `${name} ${lv} sale del Archivo.` };
+}
+
 // ---------------------------------------------------------------------------------------------
 // Sleeping: Bear Down and the Common Efforts (Corebook ch. 7), as cards. Their move names are
 // the ones the EFFORT action knows.

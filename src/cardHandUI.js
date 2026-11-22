@@ -10,7 +10,7 @@ import { roundKey } from './combatState.js';
 import { bearDown } from './bearDown.js';
 import { throwDice } from './tableDice.js';
 import { durationDice } from './effectClocks.js';
-import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups, uncannyChoices, hasImpossibleEfficiency, IMPOSSIBLE_EFFICIENCY } from './loadoutCards.js';
+import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups, uncannyChoices, hasImpossibleEfficiency, IMPOSSIBLE_EFFICIENCY, archivePackages, archiveRequirement, DOMAIN_COLORS } from './loadoutCards.js';
 
 import {cardUse,usedBy} from './cardLimits.js';
 import { cardChoices, chosenCardOptions, openResolution } from './cardResolutionUI.js';
@@ -255,7 +255,7 @@ export class CardHand {
     this.play(card, point);
   }
 
-  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC } = {}) {
+  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, rollNow = false } = {}) {
     if (KEEPER_KINDS.has(card.kind)) return this.playKeeper(card, point);
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return false;
@@ -287,7 +287,12 @@ export class CardHand {
       const effect = card.text.replace(/\s+/g, ' ').trim();
       const line = `🂠 ${playerName} (${token.name}) usa ${card.name} [${cardKindName(card.kind)}] — ${detail} Efecto: ${effect}`;
       network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
-      if (result.roll && !result.failed) { window.veilDiceRoller?.prepareCheck?.({ tokenId: token.id, ...result.roll, playId: result.id }); notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`); }
+      if (result.roll && !result.failed) {
+        // Uncanny Power rolls its Knowledge Spellcast at once (user decision, v2.31.1).
+        const prepared = window.veilDiceRoller?.prepareCheck?.({ tokenId: token.id, ...result.roll, playId: result.id });
+        if (rollNow && prepared) await window.veilDiceRoller.executeActionCheck?.();
+        else notify(`${card.name}: tirada preparada (${result.roll.traitId}, DC ${result.roll.dc}). Pulsa ROLL.`);
+      }
       guideEvent('card');
       return true;
     } catch (error) { notify(error.message, 'error'); return false; }
@@ -404,7 +409,7 @@ export class CardHand {
       if (cast) cast.onclick = async () => {
         if (!chosen || !owned() || busy) return;
         busy = true; cast.disabled = true;
-        if (await this.play(chosen, point, null, chosenCardOptions(modal))) { opened = null; modal.remove(); }
+        if (await this.play(chosen, point, null, { ...chosenCardOptions(modal), rollNow: true })) { opened = null; modal.remove(); }
         else { busy = false; cast.disabled = false; }
       };
     };
@@ -479,19 +484,58 @@ export class CardHand {
     const catalog = data.powers.filter(p => choice.domain === 'all' || p.d === choice.domain).sort((a, b) => a.d.localeCompare(b.d) || a.l - b.l || a.n.localeCompare(b.n));
     // In the sheet, a Sleeping character's own hand (Resolve Moves, Common Efforts…) comes first.
     const hand = this.embedded && live ? characterCards(live, data) : [];
+    const mystic = live && isSleepingMystic(live);
     drawer.innerHTML = sanitizeHTML(`
       <header class="card-drawer-head"><strong>MAZO · TODAS LAS CARTAS</strong><span style="flex:1"></span><button type="button" class="card-drawer-close" data-drawer-close aria-label="Cerrar el mazo">×</button></header>
-      <p class="card-drawer-step">${live ? `${e(live.name)} es Sleeping: no tiene Loadout ni Vault. Aquí puedes consultar todos los Poderes.` : 'Consulta todos los Poderes del juego. Selecciona un personaje Awakened en postura de jugador para gestionar su Loadout y su Vault.'}</p>
+      <p class="card-drawer-step">${mystic ? `${e(live.name)} es Mystic Sleeping: no tiene Loadout ni Vault. Su Archivo guarda los Dominios desbloqueados; sus Poderes se usan con Uncanny Power.` : live ? `${e(live.name)} es Sleeping: no tiene Loadout ni Vault. Aquí puedes consultar todos los Poderes.` : 'Consulta todos los Poderes del juego. Selecciona un personaje Awakened en postura de jugador para gestionar su Loadout y su Vault.'}</p>
+      ${mystic ? this.archiveHTML(live, data, choice) : ''}
       ${hand.length ? `<h4>MANO · ${hand.length}</h4><div class="card-drawer-row">${hand.map(c => `<button type="button" class="vf-card vf-card-mini" data-drawer-hand="${e(c.id)}" title="${e(c.name)}">${cardFace(c)}</button>`).join('')}</div>` : ''}
       ${deckKindChips(choice)}
       ${choice.kind === 'powers' ? `<div class="equip-chips" role="group" aria-label="Dominio">${['all', ...domains].map(d => `<button type="button" class="equip-chip ${choice.domain === d ? 'active' : ''}" data-drawer-domain="${e(d)}">${d === 'all' ? 'Todos' : e(d)}</button>`).join('')}</div>
       <h4>TODOS LOS PODERES · ${catalog.length}</h4>
       <div class="card-drawer-row card-drawer-catalog">${catalog.map(p => `<button type="button" class="vf-card vf-card-mini" data-drawer-catalog="${e(p.n)}" title="${e(p.n)} · ${e(p.d)} L${p.l}">${cardFace(powerCard(p, 'vault'))}</button>`).join('')}</div>` : referenceHTML(data, choice)}`);
     drawer.querySelector('[data-drawer-close]').onclick = () => drawer.remove();
+    if (mystic) this.bindArchive(drawer, live, choice, () => { const fresh = store.state.tokens.find(t => t.id === live.id); if (fresh && drawer.isConnected) this.drawCatalog(drawer, data, fresh, choice); });
     drawer.querySelectorAll('[data-drawer-hand]').forEach(b => b.onclick = () => { const card = hand.find(c => c.id === b.dataset.drawerHand); if (card) this.inspect(card); });
     drawer.querySelectorAll('[data-drawer-domain]').forEach(b => b.onclick = () => { choice.domain = b.dataset.drawerDomain; this.drawCatalog(drawer, data, live, choice); });
     drawer.querySelectorAll('[data-drawer-catalog]').forEach(b => b.onclick = () => { const p = data.powers.find(x => x.n === b.dataset.drawerCatalog); if (p) this.inspect(powerCard(p, 'vault')); });
     bindReference(drawer, data, choice, () => this.drawCatalog(drawer, data, live, choice), card => this.inspect(card));
+  }
+
+  // The Uncanny Archive (Sleeping Mystic): the unlocked Domain-level packages, and a Domain and a
+  // level to add one (level ≤ character level; from level 2, two Domains at the level below).
+  archiveHTML(live, data, choice) {
+    const packages = archivePackages(live), level = Number(live.level) || 1, domains = Object.keys(DOMAIN_COLORS);
+    choice.archiveDomain ||= domains.find(d => !packages.some(([x]) => x === d)) || domains[0];
+    choice.archiveLevel = Math.min(Math.max(1, Number(choice.archiveLevel) || 1), level);
+    const powersAt = (d, l) => data.powers.filter(p => p.d === d && p.l === l);
+    const problem = archiveRequirement(live, packages, choice.archiveDomain, choice.archiveLevel) || (powersAt(choice.archiveDomain, choice.archiveLevel).length ? '' : `No hay Poderes de ${choice.archiveDomain} de nivel ${choice.archiveLevel}.`);
+    const preview = powersAt(choice.archiveDomain, choice.archiveLevel);
+    const sorted = [...packages].sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]));
+    return `<section class="archive-manager" aria-label="Archivo de Uncanny">
+      <h4>ARCHIVO · ${packages.length} ${packages.length === 1 ? 'paquete' : 'paquetes'}</h4>
+      <div class="archive-packages">${sorted.map(([d, l]) => `<span class="archive-chip" style="--card-color:${e(DOMAIN_COLORS[d])}"><b>${e(d)} ${l}</b><small>${powersAt(d, l).length} Poderes</small><button type="button" data-archive-remove="${e(d)}|${l}" title="Quitar ${e(d)} ${l} del Archivo" aria-label="Quitar ${e(d)} ${l}">×</button></span>`).join('') || '<span class="dossier-muted">Vacío. Al crear el personaje se eligen dos Dominios de nivel 1.</span>'}</div>
+      <div class="archive-add">
+        <span class="dossier-label">AÑADIR UN DOMINIO</span>
+        <div class="equip-chips" role="group" aria-label="Dominio">${domains.map(d => `<button type="button" class="equip-chip ${choice.archiveDomain === d ? 'active' : ''}" data-archive-domain="${e(d)}" aria-pressed="${choice.archiveDomain === d}">${e(d)}</button>`).join('')}</div>
+        <div class="equip-chips" role="group" aria-label="Nivel">${Array.from({ length: level }, (_, i) => i + 1).map(l => `<button type="button" class="equip-chip ${choice.archiveLevel === l ? 'active' : ''}" data-archive-level="${l}" aria-pressed="${choice.archiveLevel === l}">Nivel ${l}</button>`).join('')}</div>
+        <p class="card-drawer-step">${problem ? `<span class="dossier-error">${e(problem)}</span>` : `${e(choice.archiveDomain)} ${choice.archiveLevel}: ${e(preview.map(p => p.n).join(' · '))}`}</p>
+        <button type="button" class="hud-btn hud-btn-primary" data-archive-add ${problem ? 'disabled' : ''}>Añadir ${e(choice.archiveDomain)} ${choice.archiveLevel} al Archivo</button>
+        <p class="dossier-error" role="alert" data-archive-error></p>
+      </div>
+    </section>`;
+  }
+
+  bindArchive(drawer, live, choice, redraw) {
+    const send = async action => {
+      try { const result = await network.requestAction({ type: 'ARCHIVE_EDIT', actorId: live.id, ...action }); notify(result.summary); redraw(); }
+      catch (err) { const box = drawer.querySelector('[data-archive-error]'); if (box) box.textContent = err.message; }
+    };
+    drawer.querySelectorAll('[data-archive-domain]').forEach(b => b.onclick = () => { choice.archiveDomain = b.dataset.archiveDomain; redraw(); });
+    drawer.querySelectorAll('[data-archive-level]').forEach(b => b.onclick = () => { choice.archiveLevel = Number(b.dataset.archiveLevel); redraw(); });
+    const add = drawer.querySelector('[data-archive-add]');
+    if (add) add.onclick = () => { if (!add.disabled) { add.disabled = true; send({ op: 'add', domain: choice.archiveDomain, level: choice.archiveLevel }); } };
+    drawer.querySelectorAll('[data-archive-remove]').forEach(b => b.onclick = () => { const [domain, level] = b.dataset.archiveRemove.split('|'); send({ op: 'remove', domain, level: Number(level) }); });
   }
 
   // catalogOnly (the Keeper's hand): no character, the whole catalog to read. A Sleeping

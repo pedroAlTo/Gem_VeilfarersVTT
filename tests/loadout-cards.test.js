@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { CREATOR_DATA as data } from '../src/creator/creatorData.js';
 import { freshState, setChoice, characterDomains, levelOnePowers, powerId, subclassList, equipmentChoices, buildSheetDocument } from '../src/creator/creatorModel.js';
 import { parseCharacterJSON } from '../src/characterImport.js';
-import { parseCost, parseRoll, costLabel, characterCards, playCard, recallPower, recallCost, loadoutNames, vaultNames, archivePackages, isSleepingMystic, uncannyAccess } from '../src/loadoutCards.js';
+import { parseCost, parseRoll, costLabel, characterCards, playCard, recallPower, recallCost, loadoutNames, vaultNames, archivePackages, isSleepingMystic, uncannyAccess, editArchive } from '../src/loadoutCards.js';
 
 function character({ path = 'Awakened', cls = 'scholar', ancestry = 'synthetic', mystic = null } = {}) {
   let s = freshState();
@@ -331,4 +331,21 @@ test('Sleeping hand displays an illustration for every card in the fan and enlar
     assert.ok(c.art.illustration && existsSync(new URL('../public' + c.art.illustration, import.meta.url)), c.name);
     for (const large of [false, true]) assert.ok(cardFace(c, { large }).includes('src="' + c.art.illustration + '"'), c.name);
   }
+});
+
+test('the Uncanny Archive is managed from the deck: Domains up to the character level, two Domains below to research a level', () => {
+  const mystic = { ...character({ path: 'Sleeping', cls: 'mystic', mystic: ['Lux', 'Neural'] }), level: 3 };
+  assert.deepEqual(archivePackages(mystic), [['Lux', 1], ['Neural', 1]]);
+  // Lux 1 + Neural 1 open any level 2 Domain.
+  const void2 = editArchive(mystic, data, { op: 'add', domain: 'void', level: 2 });
+  assert.deepEqual(archivePackages(void2.token).sort(), [['Lux', 1], ['Neural', 1], ['Void', 2]].sort());
+  assert.ok(characterCards(void2.token, data).some(c => c.kind === 'archive' && c.domain === 'Void' && c.level === 2));
+  assert.throws(() => editArchive(void2.token, data, { op: 'add', domain: 'Kinetic', level: 3 }), /dos Dominios distintos a nivel 2/);
+  assert.throws(() => editArchive(void2.token, data, { op: 'add', domain: 'Tech', level: 4 }), /supera tu nivel/);
+  assert.throws(() => editArchive(void2.token, data, { op: 'add', domain: 'Void', level: 2 }), /ya está en el Archivo/);
+  // The creator's Studied Domains can be removed too: the list lives in s_archive from then on.
+  const noLux = editArchive(void2.token, data, { op: 'remove', domain: 'Lux', level: 1 });
+  assert.deepEqual(archivePackages(noLux.token).sort(), [['Neural', 1], ['Void', 2]].sort());
+  assert.equal(characterCards(noLux.token, data).some(c => c.kind === 'archive' && c.domain === 'Lux'), false);
+  assert.throws(() => editArchive(character(), data, { op: 'add', domain: 'Lux', level: 1 }), /Mystic Sleeping/);
 });

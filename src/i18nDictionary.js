@@ -1538,6 +1538,9 @@ export const PAIRS = [
   ["Ningún Poder del Archivo llega a ese nivel: renuncia al acceso.", "No Archive Power is within that level: give up the access."],
   ["El Resolve y el Fear ya están gastados.", "The Resolve and Fear are already spent."],
   ["por encima de tu nivel", "above your level"],
+  // V3 · Archivo del Mystic Sleeping (v2.31.1)
+  ["AÑADIR UN DOMINIO", "ADD A DOMAIN"],
+  ["Vacío. Al crear el personaje se eligen dos Dominios de nivel 1.", "Empty. Two level 1 Domains are chosen at character creation."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

@@ -823,7 +823,7 @@ export class NetworkManager {
       throw new Error('El jugador asignado elige su último acto.');
     const { performGameAction } = await import('./gameActions.js');
     // Card rules data is fetched on demand; the table resolving a card makes sure it is there.
-    if (['CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS'].includes(action?.type)) await (await import('./cardData.js')).loadCardData();
+    if (['CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS', 'ARCHIVE_EDIT'].includes(action?.type)) await (await import('./cardData.js')).loadCardData();
     const result = performGameAction(action, this.store);
     if (result.log && result.log.visibility !== 'keeper') {
       const rollPayload = {
@@ -1188,7 +1188,7 @@ export class NetworkManager {
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
           // Card actions resolve here too: the table pays their costs (they were missing, so a
           // connected player's card was refused as "not assigned").
-          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL', 'GEAR_INSTALL', 'GEAR_REMOVE', 'GEAR_WEAR'].includes(data.action?.type)
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS', 'ARCHIVE_EDIT', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL', 'GEAR_INSTALL', 'GEAR_REMOVE', 'GEAR_WEAR'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
         const result = await this.performAction(data.action, this.members.get(senderId)?.id || senderId);
