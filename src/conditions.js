@@ -1,3 +1,4 @@
+import { activePath, pathTitle, pathBadge, pathImmune } from './statePowers.js';
 // Canonical text: Corebook 12.06, Chapter 10, Conditions → The Standard Conditions.
 export const CONDITION_SOURCE = 'Corebook 12.06 · Chapter 10 · Conditions → The Standard Conditions';
 export const CONDITIONS = [
@@ -173,9 +174,17 @@ export function conditionMarkers(values = []) {
   const list = normalizeConditions(values);
   return list.length <= 4 ? list : [...list.slice(0, 3), { more: list.length - 3 }];
 }
+function tokenMarkers(token) {
+  const state = activePath(token);
+  return conditionMarkers(state ? [pathTitle(state), ...visibleConditions(token)] : visibleConditions(token));
+}
+const pathSymbol = 'M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3zM12 8v8M8 12h8';
+export function visibleConditions(token) {
+  return normalizeConditions([...(token?.conditions || []), ...(token?.effectClocks || []).map(c => c.condition).filter(c => c && !pathImmune(token,c))]);
+}
 export function getHoveredCondition(token, cursorWorld, radius, zoom = 1) {
-  if (!token || !cursorWorld || !token.conditions?.length) return null;
-  const markers = conditionMarkers(token.conditions);
+  if (!token || !cursorWorld) return null;
+  const markers = tokenMarkers(token);
   if (!markers.length) return null;
   const scale = Math.max(1, Math.min(1.8, .9 / zoom));
   const markerX = token.x + radius + 13 * scale;
@@ -188,6 +197,8 @@ export function getHoveredCondition(token, cursorWorld, radius, zoom = 1) {
       if (marker.more) {
         return { label: `+${marker.more} adicionales`, name: 'Más estados', rule: 'Abre el panel de estados para consultar todos los marcadores activos.' };
       }
+      const state = activePath(token);
+      if (state && marker === pathTitle(state)) return { name: marker, label: pathBadge(state), rule: 'Ventaja con el atributo elegido e inmunidad a Stunned y Dazed. Breaking Point en el reverso de la carta.' };
       return conditionDefinition(marker) || { label: marker, name: marker, rule: 'Marcador personalizado de escena.' };
     }
   }
@@ -195,7 +206,7 @@ export function getHoveredCondition(token, cursorWorld, radius, zoom = 1) {
 }
 const canvasPaths = new Map();
 export function drawTokenConditions(ctx, token, radius, zoom = 1) {
-  const markers = conditionMarkers(token.conditions);
+  const markers = tokenMarkers(token);
   if (!markers.length) return;
   const scale = Math.max(1, Math.min(1.8, .9 / zoom));
   ctx.save(); ctx.translate(radius + 13 * scale, 0); ctx.scale(scale, scale);
@@ -206,7 +217,7 @@ export function drawTokenConditions(ctx, token, radius, zoom = 1) {
     if (marker.more) {
       ctx.fillStyle = '#fff1ce'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('+' + marker.more, 0, 0);
     } else {
-      const path = conditionDefinition(marker)?.path || customPath;
+      const path = /^(Nirvana|Disciplined) State$/.test(marker) ? pathSymbol : conditionDefinition(marker)?.path || customPath;
       if (!canvasPaths.has(path)) canvasPaths.set(path, new Path2D(path));
       ctx.scale(.52, .52); ctx.translate(-12, -12); ctx.lineWidth = 1.8; ctx.stroke(canvasPaths.get(path));
     }

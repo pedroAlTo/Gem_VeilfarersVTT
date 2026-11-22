@@ -1053,7 +1053,12 @@ class StateStore {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       ...entry
     };
-    const logs = [newEntry, ...this.state.logs].slice(0, 150);
+    const logs = [newEntry, ...this.state.logs];
+    // Keep paid checks and unanswered target rolls available through long sessions.
+    if (logs.length > 150) {
+      let index = logs.findLastIndex(row => row.resolution?.phase !== 'roll' && !row.resolution?.replies?.some(r => !r.outcome));
+      logs.splice(index <= 0 ? logs.length - 1 : index, 1);
+    }
     this.update({ logs });
   }
 

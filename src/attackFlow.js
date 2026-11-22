@@ -2,6 +2,7 @@
 // Evasion, and damage only on a hit. Pure rules; the dice panel drives it.
 import { TRAITS } from './rulesEngine.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
+import { equipmentNameAliases } from './equipmentNames.js';
 import { hasTag } from './weaponTags.js';
 
 // Range bands of the table (user ruling, 15 Nov 2026): Melee up to 1 m or an adjacent square
@@ -73,14 +74,6 @@ const bandFromText = value => {
   if (meters) return bandFromMeters(Number(meters[1].replace(',', '.')));
   return '';
 };
-const plainName = value => String(value ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-// A catalog weapon answers to its whole name, to the part in brackets and to each side of
-// "English / Español": "Slug Pistol" finds "Pistola Cinética Militar (Slug Pistol)".
-const nameAliases = value => {
-  const raw = String(value ?? '');
-  const parts = [raw, raw.replace(/\(.*?\)/g, ''), ...(raw.match(/\(([^)]*)\)/g) || []).map(x => x.slice(1, -1)), ...raw.replace(/\(.*?\)/g, '').split('/')];
-  return [...new Set(parts.map(plainName).filter(Boolean))];
-};
 // The band a weapon reaches: its own Range text (or the Trait text, when the range was written
 // there); when the sheet left it blank, the range of
 // the catalog weapon with the same name. '' means it is not known (the sheet should say it:
@@ -89,8 +82,8 @@ export function weaponRangeBand(weapon) {
   // Some imported sheets write the range with the Trait ("Agility · Melee").
   const own = bandFromText(weapon?.range) || bandFromText(weapon?.trait);
   if (own || !weapon?.name) return own;
-  const names = nameAliases(weapon.name);
-  const match = names.length && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && nameAliases(item.name).some(alias => names.includes(alias)));
+  const names = equipmentNameAliases(weapon.name);
+  const match = names.length && EQUIPMENT_CATALOG.find(item => item.category === 'weapons' && equipmentNameAliases(item.name).some(alias => names.includes(alias)));
   return (match && bandFromText(match.range)) || '';
 }
 

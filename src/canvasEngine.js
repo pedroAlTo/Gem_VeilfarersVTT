@@ -26,6 +26,7 @@ import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js'
 import { rangeBandFor, gapBandFor, tokenGapSquares, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
 import { drawEffectClocks } from './effectClocks.js';
 import { grantSpotlight } from './gameActions.js';
+import { monochromeViewer, keepsTokenColor, MonochromeLayers } from './ancestryVision.js';
 
 export const WATER_DEPTH_NAMES = [
   'Pond / Puddle (0-10cm)',
@@ -2964,24 +2965,6 @@ export class CanvasEngine {
       this.renderSensoryVision(ctx, sensoryTokens, activeTokens, now * 0.001, map.gridSize || 64);
     }
 
-    // Chromatic Vision (Ailurean High-Contrast Grayscale)
-    const selTok = activeTokens.find(t => t.id === state.selectedTokenId);
-    const isChromatic = selTok && (
-      selTok.visionMode === 'chromatic' ||
-      selTok.species?.toLowerCase() === 'ailurean' ||
-      selTok.roleTag?.toLowerCase().includes('ailurean') ||
-      selTok.isAilurean
-    );
-    if (isChromatic) {
-      if (this.canvas.style.filter !== 'grayscale(100%) contrast(1.15)') {
-        this.canvas.style.filter = 'grayscale(100%) contrast(1.15)';
-      }
-    } else {
-      if (this.canvas.style.filter && this.canvas.style.filter !== 'none') {
-        this.canvas.style.filter = 'none';
-      }
-    }
-
     // Render Walls and Doors (Keeper sees controllers/limitators; Players see clean bulkheads/doors)
     const isEditorMode = (state.userRole === 'keeper' && state.gmVision) || (state.userRole === 'keeper' && state.activeLayer === 'walls_lights');
     this.renderWalls(ctx, map.walls || [], isEditorMode);
@@ -3032,29 +3015,34 @@ export class CanvasEngine {
     }
 
     // 4. LAYER: TOKENS & OPERATIVES
+    const viewer = monochromeViewer(state, activeTokens, store.sessionRole, store.memberId || store.peerId);
+    const vision = viewer ? (this.monochromeLayers ||= new MonochromeLayers()) : null;
+    vision?.begin(ctx);
     if (state.layerVisibility.tokens !== false) {
-      this.renderTokens(ctx, map, now * 0.001);
+      this.renderTokens(ctx, map, now * 0.001, vision, viewer);
     }
 
     // 5. LAYER: OVERLAY & FX
+    const overlay = vision?.grey() || ctx;
     if (state.layerVisibility.overlay !== false) {
-      this.renderParticlesAndPings(ctx, dt, map.effects || []);
-      this.renderEffectMarkers(ctx, map.effects || []);
-      this.renderAttackTargeting(ctx, map, now * 0.001);
+      this.renderParticlesAndPings(overlay, dt, map.effects || []);
+      this.renderEffectMarkers(overlay, map.effects || []);
+      this.renderAttackTargeting(overlay, map, now * 0.001);
       for (const tmpl of this.templates) {
-        this.renderTemplate(ctx, tmpl, tmpl === this.activeTemplate);
+        this.renderTemplate(overlay, tmpl, tmpl === this.activeTemplate);
       }
       if (this.rulerStart && this.rulerCurrent) {
-        this.renderRuler(ctx, this.rulerStart, this.rulerCurrent, map.gridSize || 64);
+        this.renderRuler(overlay, this.rulerStart, this.rulerCurrent, map.gridSize || 64);
       }
       if (this.gridCalibStart && this.gridCalibCurrent) {
-        this.renderGridCalibrationGuide(ctx, this.gridCalibStart, this.gridCalibCurrent);
+        this.renderGridCalibrationGuide(overlay, this.gridCalibStart, this.gridCalibCurrent);
       }
-      this.renderRainOverlay(ctx, map, now * 0.001);
-      this.renderFogOverlay(ctx, map, now * 0.001);
+      this.renderRainOverlay(overlay, map, now * 0.001);
+      this.renderFogOverlay(overlay, map, now * 0.001);
     }
 
-    this.renderMovementPreview(ctx, map);
+    this.renderMovementPreview(overlay, map);
+    vision?.flush();
     ctx.restore();
 
     if (!this.draggedToken) this.renderMoveDistance(ctx, map, activeTokens);
@@ -3846,7 +3834,7 @@ export class CanvasEngine {
   }
 
   // --- Tokens Rendering ---
-  renderTokens(ctx, map, time) {
+  renderTokens(scene, map, time, vision = null, viewer = null) {
     const tokens = this.displayTokens();
     const state = store.getState();
     const gridSize = map.gridSize || 64;
@@ -3886,7 +3874,7 @@ export class CanvasEngine {
             this.lastKnownEnemyPositions.delete(tok.id);
           } else if (this.fog.isPointExplored(lastPos.x, lastPos.y, fullMapId)) {
             // Draw frozen last known position in the fog shroud
-            this.renderGhostToken(ctx, lastPos, gridSize, time);
+            this.renderGhostToken(vision?.grey() || scene, lastPos, gridSize, time);
           }
         }
         continue;
@@ -3895,6 +3883,7 @@ export class CanvasEngine {
       // Check if token is in any water zone
       const waterZone = (map.waterZones || []).find(w => pointInWater(tok.x, tok.y, w));
 
+      const ctx = !vision ? scene : keepsTokenColor(tok, viewer, store.memberId || store.peerId) ? vision.color() : vision.grey();
       ctx.save();
       ctx.translate(tok.x, tok.y);
 

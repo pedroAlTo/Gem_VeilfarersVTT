@@ -249,3 +249,9 @@ Orden de trabajo de la Fase 1:
 - UTF-8 estricto. Commit y push al terminar cada tarea.
 - Actualizar este archivo al final de cada sesión de trabajo.
 - **Documentación siempre al día (petición del usuario, 16 nov 2026)**: cada cambio de comportamiento se refleja en el mismo commit en `README.md` (sección "What is new in V2"), `PRUEBAS_LOCALES.md` (sección "V2 · qué comprobar") y, si toca cuentas o reglas, `FIREBASE_SETUP.md`. `npm run release:notes` escribe la versión en README y PRUEBAS_LOCALES; `release:check` (y por tanto `npm run build`) falla si no coincide.
+
+## v2.29.8 · Resolución de cartas en mesa
+
+La ficha y el registro conservan la carta, sus objetivos y la tirada vinculada en la campaña. Las decisiones sobre consentimiento, oposición, ficción y consecuencias alternativas corresponden a los participantes. El Keeper confirma el daño y los escudos individualmente. Un poder del Vanguard conserva el atributo y la Integridad en el token. El reverso Breaking Point se consume en una acción del propio personaje. Las dos fichas impresas de Swarm Tactics admiten el segundo objetivo con 3 HP incluidos.
+
+El inventario de poderes, movimientos y procedimientos revisados está en [Poderes en mesa](docs/poderes-en-mesa.md).

@@ -145,3 +145,11 @@
 
 .equip-object-picture { position:relative; display:inline-block; width:54px; height:54px; flex:none; overflow:hidden; border-radius:5px; }
 .equip-object-picture > img { position:absolute; width:300%; height:300%; max-width:none; max-height:none; }
+
+.vf-path-reverse { animation: vf-path-turn .35s ease-out; outline: 2px solid #ebc977; }
+@keyframes vf-path-turn { from { transform: perspective(650px) rotateY(88deg); } to { transform: perspective(650px) rotateY(0); } }
+@media (prefers-reduced-motion: reduce) { .vf-path-reverse { animation: none; } }
+.card-targets { margin-block: .55rem; }
+.card-targets label { display: inline-flex; gap: .3rem; align-items: center; margin: .25rem .75rem .25rem 0; }
+.card-resolution fieldset { min-width: 0; border: 1px solid #615379; }
+.card-resolution [hidden] { display: none; }

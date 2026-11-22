@@ -989,12 +989,17 @@ export class NetworkManager {
       const target = this.store.state.tokens.find(t => t.id === req.targetId);
       const valid = target && options.length && options.every(o => o && o.type === 'APPLY_DAMAGE' && o.targetId === target.id && owns(o.attackerId));
       if (!valid) { conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El daño no se pudo aplicar: el objetivo o el atacante ya no son válidos.' })); return; }
-      import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options }, n => {
+      import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options }, async n => {
         const chosen = options[n];
         // A one-use approval: the table applies a player's damage only after this window.
         const approval = `dmg_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
         (this.approvedDamage ||= new Set()).add(approval);
-        this.handleIncomingMessage(this.envelope({ ...chosen, type: 'APPLY_DAMAGE', approval }), senderId);
+        const applied = await this.handleIncomingMessage(this.envelope({ ...chosen, type: 'APPLY_DAMAGE', approval }), senderId);
+        this.approvedDamage.delete(approval);
+        if (!applied) {
+          conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El impacto ha cambiado. Vuelve a calcular el daño.' }));
+          return;
+        }
         conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: true, text: `Keeper: ${target.name} pierde ${chosen.hpLoss} HP${chosen.spentShields ? ` (${chosen.spentShields} escudo${chosen.spentShields > 1 ? 's' : ''})` : ''}.` }));
       }, { onCancel: () => conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: `El Keeper ha cancelado el daño a ${target.name}.` })) }));
       return;
@@ -1130,12 +1135,13 @@ export class NetworkManager {
           title: `DAMAGE APPLIED: ${target.name}`,
           details: logDetails
         });
+        return true;
       } catch (error) {
         conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', error: error.message }));
+        return false;
       } finally {
         this.syncAll();
       }
-      return;
     }
     if (data.type === 'TOKEN_UPDATE' || data.type === 'TOKEN_MOVE') {
       const conn = this.connections.get(senderId), sequenced = Number.isSafeInteger(data.sequence) && data.sequence > 0;
