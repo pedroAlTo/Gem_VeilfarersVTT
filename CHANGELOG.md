@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.30.0**.
-Paquete: `VeilFarers_VTT_v2.30.0.zip`.
+Versión actual del VTT: **v2.31.0**.
+Paquete: `VeilFarers_VTT_v2.31.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.31.0] — 2026-11-22
+
+V3 · Uncanny Power del Mystic Sleeping, como dice el Corebook
+
+### Uncanny Power
+
+- Al tocar un Poder del Archivo (o la carta Uncanny Power) se abre su ventana: a un lado el Archivo por niveles, con la DC de cada nivel, y al otro el Poder elegido con todas sus características.
+- Primero se gasta Resolve, uno o varios: se tira un dado de Resolve por cada uno, en 3D, y se suma Knowledge. El resultado, con tu nivel como máximo, es el nivel más alto al que llegas. El Keeper gana 1 Fear por Resolve.
+- Con el acceso abierto eliges el Poder: el que marcaste o cualquier otro del Archivo de ese nivel o menor. Si no llegas al que querías, ya no pierdes el Resolve: eliges otro. También puedes renunciar al acceso; el Resolve y el Fear quedan gastados.
+- Manifestar prepara la tirada de Spellcast de Knowledge contra DC 10 + nivel. Si la superas, el Poder se ejecuta en la mesa; con un Critical recuperas el Resolve gastado (el Fear se queda). Se ignora el coste de Hope y se paga el resto.
+- Impossible Efficiency (Mastery del Mind-Touched): una vez por sesión, dos dados por cada Resolve.
 
 ## [2.30.0] — 2026-11-22
 

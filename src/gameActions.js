@@ -19,7 +19,7 @@ import { handoffControl } from './drones.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear, wearArmor } from './gear.js';
-import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName } from './loadoutCards.js';
+import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName, uncannyAccess, uncannyChoices } from './loadoutCards.js';
 const lastRoll = new Map();
 const closingStrike = actor => ({ id: 'breaking-point', branch: pathBranch(actor), label: 'Breaking Point' + (pathBranch(actor) ? ' · ' + pathBranch(actor) : ''), dice: Math.max(1, Math.min(10, actor.proficiency || 1)) + 'd6' });
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
@@ -137,7 +137,7 @@ function resolveGameAction(action, store) {
     const log = { sender: actor.name, type: 'LIFE', title: stage, details };
     store.addLog(log); return { actorId: actor.id, log };
   }
-  if (['CHECK', 'CARD_PLAY', 'RESOLVE', 'EFFORT', 'STABILIZE'].includes(action.type)) requireActive(actor);
+  if (['CHECK', 'CARD_PLAY', 'UNCANNY_ACCESS', 'RESOLVE', 'EFFORT', 'STABILIZE'].includes(action.type)) requireActive(actor);
   if (action.type === 'STABILIZE') {
     const target = store.state.tokens.find(t => t.id === action.targetId);
     const stage = lifeStage(target);
@@ -159,7 +159,7 @@ function resolveGameAction(action, store) {
   }
   // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
   // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
-  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN') {
+  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN' || action.type === 'UNCANNY_ACCESS') {
     const data = cardData();
     if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
@@ -174,6 +174,26 @@ function resolveGameAction(action, store) {
       const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: nuevo Poder`, details: result.summary };
       store.addLog(log);
       return { id: newId(), actorId: actor.id, log, outcomeTitle: 'PODER AÑADIDO', summary: result.summary, learned: result.learned };
+    }
+    // Uncanny Power, step 1: the access roll (faces of the 3D dice when valid). It spends the
+    // Resolve, gives the Keeper the Fear and leaves the access open until a Power is chosen.
+    // `cancel` gives up an open access: nothing is refunded.
+    if (action.type === 'UNCANNY_ACCESS') {
+      if (action.cancel === true) {
+        if (!actor.uncanny) return { actorId: actor.id, summary: 'No hay ningún acceso abierto.' };
+        apply({ uncanny: null });
+        const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Uncanny Power`, details: `Renuncia al acceso de nivel ${actor.uncanny.access}. El Resolve y el Fear quedan gastados.` };
+        store.addLog(log);
+        return { actorId: actor.id, log, summary: log.details };
+      }
+      const result = uncannyAccess(actor, { spent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : 0, faces: Array.isArray(action.faces) ? action.faces.slice(0, 24) : null, efficiency: action.efficiency === true });
+      apply({ resolve: result.token.resolve, uncanny: result.token.uncanny, ...(action.efficiency === true ? { cardUses: result.token.cardUses } : {}) });
+      if (result.fear) store.addFear(result.fear);
+      const reach = uncannyChoices(characterCards(store.state.tokens.find(t => t.id === actor.id), data), result.access);
+      const details = [...result.notes, reach.length ? `Puede elegir: ${reach.map(c => `${c.name} (L${c.level})`).join(', ')}.` : 'Ningún Poder del Archivo está a su alcance.'].join(' ');
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Uncanny Power · acceso ${result.access}`, details };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, access: result.access, rolls: result.rolls, total: result.total, fear: result.fear, choices: reach.map(c => c.id), summary: details };
     }
     if (action.type === 'CARD_RECALL') {
       const result = recallPower(actor, data, String(action.name ?? ''), { mode: action.mode, replace: String(action.replace ?? '') });
@@ -241,12 +261,12 @@ function resolveGameAction(action, store) {
         ...(surge ? { stress: { ...recipient.stress, current: Math.max(0, recipient.stress.current - 1) } } : {}) };
       result.notes.push(holder.name + ': recupera 1 HP' + (surge ? ' y limpia 1 Stress (Surge).' : '.'));
     }
-    apply({ ...resources(result.token), ...(use && !result.failed ? {cardUses: {...actor.cardUses,[use.key]:use.scope}} : {}), ...(holder === actor ? immediate : {}) });
+    apply({ ...resources(result.token), ...(card.kind === 'archive' ? { uncanny: result.token.uncanny ?? null } : {}), ...(use && !result.failed ? {cardUses: {...actor.cardUses,[use.key]:use.scope}} : {}), ...(holder === actor ? immediate : {}) });
     if (holder !== actor && Object.keys(immediate).length) store.updateToken(holder.id, immediate);
     const effect = !result.roll && !result.failed && resolveImmediate(store, actor, targets, card, action.effectFace);
     if (effect) result.notes.push(effect);
     // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
-    if (ACTIVE_CARD_KINDS.has(card.kind) && !card.reaction && !card.passive && !card.guidedFeature && !projectSize(card)) grantSpotlight(store, actor.id);
+    if (ACTIVE_CARD_KINDS.has(card.kind) && !result.pending && !card.reaction && !card.passive && !card.guidedFeature && !projectSize(card)) grantSpotlight(store, actor.id);
     if (clock) {
       const live = store.state.tokens.find(t => t.id === holder.id);
       store.updateToken(live.id, { effectClocks: addClock(live.effectClocks, clock) });
@@ -262,7 +282,7 @@ function resolveGameAction(action, store) {
       resolution.notes = ['Proyecto iniciado. Marca el reloj al resolver cada fase de trabajo impresa.'];
     }
     if (result.failed) resolution.phase = 'done';
-    if (card.kind === 'archive') resolution.refundResolve = result.paid.resolve;
+    if (card.kind === 'archive' && result.refundResolve) resolution.refundResolve = result.refundResolve;
     if (action.durationFaces) resolution.durationFaces = action.durationFaces.slice(0, 4);
     const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details, resolution };
     store.addLog(log);

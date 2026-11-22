@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.31.0', date: '2026-11-22', title: 'V3 · Uncanny Power del Mystic Sleeping, como dice el Corebook',
+    sections: [
+      { title: 'Uncanny Power', items: [
+        'Al tocar un Poder del Archivo (o la carta Uncanny Power) se abre su ventana: a un lado el Archivo por niveles, con la DC de cada nivel, y al otro el Poder elegido con todas sus características.',
+        'Primero se gasta Resolve, uno o varios: se tira un dado de Resolve por cada uno, en 3D, y se suma Knowledge. El resultado, con tu nivel como máximo, es el nivel más alto al que llegas. El Keeper gana 1 Fear por Resolve.',
+        'Con el acceso abierto eliges el Poder: el que marcaste o cualquier otro del Archivo de ese nivel o menor. Si no llegas al que querías, ya no pierdes el Resolve: eliges otro. También puedes renunciar al acceso; el Resolve y el Fear quedan gastados.',
+        'Manifestar prepara la tirada de Spellcast de Knowledge contra DC 10 + nivel. Si la superas, el Poder se ejecuta en la mesa; con un Critical recuperas el Resolve gastado (el Fear se queda). Se ignora el coste de Hope y se paga el resto.',
+        'Impossible Efficiency (Mastery del Mind-Touched): una vez por sesión, dos dados por cada Resolve.',
+      ] },
+    ],
+  },
+  {
     version: '2.30.0', date: '2026-11-22', title: 'V3 · Loadout en la ficha y equipo completo de los dos libros',
     sections: [
       { title: 'Loadout en la ficha', items: [

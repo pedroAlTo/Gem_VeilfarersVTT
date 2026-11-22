@@ -1525,6 +1525,19 @@ export const PAIRS = [
   ["Enfundar", "Holster"],
   ["Arma enfundada.", "Weapon holstered."],
   ["Arma en la mano.", "Weapon in hand."],
+  // V3 · Uncanny Power en la mesa (v2.31.0)
+  ["Elige el Poder", "Choose the Power"],
+  ["Gasta Resolve y tira el acceso", "Spend Resolve and roll access"],
+  ["Spellcast de Knowledge", "Knowledge Spellcast"],
+  ["Tirar el acceso", "Roll access"],
+  ["Sin Resolve", "No Resolve"],
+  ["Renunciar al acceso", "Give up the access"],
+  ["Manifestar", "Manifest"],
+  ["Impossible Efficiency: 2 dados por Resolve (1 / sesión)", "Impossible Efficiency: 2 dice per Resolve (1 / session)"],
+  ["Puedes manifestar cualquier Poder del Archivo de ese nivel o menor.", "You can manifest any Archive Power of that level or lower."],
+  ["Ningún Poder del Archivo llega a ese nivel: renuncia al acceso.", "No Archive Power is within that level: give up the access."],
+  ["El Resolve y el Fear ya están gastados.", "The Resolve and Fear are already spent."],
+  ["por encima de tu nivel", "above your level"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

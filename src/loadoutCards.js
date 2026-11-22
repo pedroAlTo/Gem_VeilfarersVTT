@@ -125,6 +125,36 @@ export function giftCost(gift, sleeping = false) {
   return cost;
 }
 export const isSleepingMystic = token => token?.path === 'Sleeping' && /mystic/i.test(text(token.characterClass));
+// The subclass rank acquired: 0 Foundation, 1 Specialization, 2 Mastery.
+export const subclassRank = token => Math.max(Number(token?.advancement?.subclassUpgrades) || 0, /mastery/i.test(token?.subclassRank) ? 2 : /specialization/i.test(token?.subclassRank) ? 1 : 0);
+
+// Uncanny Power, step 1 (Corebook ch. 7, Sleeping Mystic): choose how many Resolve to spend, roll
+// one Resolve Die per Resolve and add Knowledge once. The result, capped by the character level,
+// is the highest Domain level reachable; the Keeper gains 1 Fear per Resolve. The access stays
+// open on the character (`uncanny`) until a Power is chosen or it is given up.
+// Impossible Efficiency (Mind-Touched Mastery, once per session): two dice per Resolve.
+export const IMPOSSIBLE_EFFICIENCY = JSON.stringify(['session', 'session', 'Impossible Efficiency']);
+export const hasImpossibleEfficiency = token => isSleepingMystic(token) && /mind.?touched/i.test(text(token.subclass)) && subclassRank(token) >= 2;
+export function uncannyAccess(source, { spent, faces = null, efficiency = false, random = Math.random } = {}) {
+  if (!isSleepingMystic(source)) throw new Error('Uncanny Power es del Mystic Sleeping.');
+  if (source.uncanny) throw new Error(`Ya tienes un acceso abierto (nivel ${source.uncanny.access}): elige un Poder o renuncia a él.`);
+  const count = Math.floor(Number(spent));
+  if (!(count >= 1)) throw new Error('Gasta al menos 1 Resolve.');
+  need(source.resolve?.current || 0, count, 'Resolve');
+  if (efficiency && !hasImpossibleEfficiency(source)) throw new Error('Impossible Efficiency es la Mastery del Mind-Touched.');
+  if (efficiency && Object.hasOwn(source.cardUses || {}, IMPOSSIBLE_EFFICIENCY)) throw new Error('Impossible Efficiency ya se usó esta sesión.');
+  const token = structuredClone(source), sides = token.resolve?.dieType === 'd6' ? 6 : 4, dice = count * (efficiency ? 2 : 1);
+  const rolls = Array.isArray(faces) && faces.length === dice && faces.every(v => Number.isInteger(v) && v >= 1 && v <= sides) ? faces.slice() : Array.from({ length: dice }, () => Math.floor(random() * sides) + 1);
+  const knowledge = Number(token.traits?.knowledge) || 0, total = rolls.reduce((n, v) => n + v, 0) + knowledge;
+  const access = Math.max(0, Math.min(total, Number(token.level) || 1));
+  token.resolve = { ...token.resolve, current: token.resolve.current - count };
+  token.uncanny = { access, spent: count };
+  if (efficiency) token.cardUses = { ...(token.cardUses || {}), [IMPOSSIBLE_EFFICIENCY]: 'session' };
+  const notes = [`Uncanny Power: ${count} Resolve${efficiency ? ' (Impossible Efficiency: 2 dados por Resolve)' : ''} → ${token.resolve.dieType || 'd4'} [${rolls.join(', ')}] + Knowledge ${knowledge} = ${total}; nivel accesible ${access}${total > access ? ' (máx. tu nivel)' : ''}. El Keeper gana ${count} Fear.`];
+  return { token, access, rolls, total, fear: count, notes, summary: `Uncanny Power · acceso nivel ${access}` };
+}
+// The Archive Powers an open access reaches (playable, level ≤ access).
+export const uncannyChoices = (cards, access) => cards.filter(c => c.kind === 'archive' && c.playable && c.level <= access);
 
 // Loadout and Vault as the sheet stores them.
 export function loadoutNames(token) {
@@ -183,7 +213,7 @@ export function characterCards(token, data, options = {}) {
     if (!moves.length) moves = ofClass.filter(m => !m.subclass || lower(m.subclass) === lower(token.subclass));
     for (const move of moves) {
       const cost = parseCost(move.cost, 'move');
-      cards.push({ id: `move:${slug(move.name)}`, kind: 'move', zone: 'loadout', name: move.name, subtitle: ['Resolve Move', move.subclass || move.class].filter(Boolean).join(' · '), color: cls?.color || '#fb923c', art: actionArt(move.name, classArt(cls)), costText: move.cost, cost, roll: null, rollText: cost.rolls ? `Tira ${token.resolve?.dieType || 'd4'} por Resolve` : '', rc: 0, text: text(move.text), playable: true });
+      cards.push({ id: `move:${slug(move.name)}`, kind: 'move', ...(isSleepingMystic(token) && /^uncanny power$/i.test(move.name) ? { uncanny: true } : {}), zone: 'loadout', name: move.name, subtitle: ['Resolve Move', move.subclass || move.class].filter(Boolean).join(' · '), color: cls?.color || '#fb923c', art: actionArt(move.name, classArt(cls)), costText: move.cost, cost, roll: null, rollText: cost.rolls ? `Tira ${token.resolve?.dieType || 'd4'} por Resolve` : '', rc: 0, text: text(move.text), playable: true });
     }
   }
   const pathFeature = sleeping ? rules?.effortFeature : rules?.hopeFeature;
@@ -191,7 +221,7 @@ export function characterCards(token, data, options = {}) {
   // The class and the subclass ranks actually acquired on this character.
   const branchList = sleeping ? cls?.sleepingSubclasses : cls?.awakenedSubclasses;
   const branch = branchList?.find(b => lower(b.name) === lower(token.subclass) || lower(token.subclass).startsWith(lower(b.name) + ' ('));
-  const rank = Math.max(Number(token.advancement?.subclassUpgrades) || 0, /mastery/i.test(token.subclassRank) ? 2 : /specialization/i.test(token.subclassRank) ? 1 : 0);
+  const rank = subclassRank(token);
   const features = [[rules?.classFeature, 'Clase'], [branch?.foundation, 'Foundation'], [rank >= 1 && branch?.specialization, 'Specialization'], [rank >= 2 && branch?.mastery, 'Mastery']];
   for (const [feature, tier] of features) {
     if (!feature?.name) continue;
@@ -251,21 +281,28 @@ export function playCard(source, card, { resolveSpent = null, random = Math.rand
   const token = structuredClone(source), cost = { ...card.cost }, notes = [];
   let fear = 0, roll = card.roll ? { ...card.roll } : null;
   const dieSides = token.resolve?.dieType === 'd6' ? 6 : 4, die = () => Math.floor(random() * dieSides) + 1;
+  if (card.uncanny) throw new Error('Uncanny Power se usa desde su ventana: tira el acceso y elige el Poder del Archivo.');
   if (card.kind === 'archive') {
-    // Uncanny Power: spend Resolve, roll that many Resolve Dice + Spellcast Trait for the
-    // level that can be reached; the Keeper gains 1 Fear per Resolve spent.
-    const spent = Math.max(1, Number(resolveSpent) || 1);
-    need(token.resolve?.current || 0, spent, 'Resolve');
-    const rolls = Array.from({ length: spent }, die), knowledge = token.traits?.knowledge ?? 0;
-    const access = Math.min(rolls.reduce((n, v) => n + v, 0) + knowledge, token.level || 1);
-    token.resolve = { ...token.resolve, current: token.resolve.current - spent }; fear = spent;
-    notes.push(`Uncanny Power: ${spent} Resolve → ${token.resolve.dieType || 'd4'} [${rolls.join(', ')}] + Knowledge ${knowledge} = nivel accesible ${access} (máx. tu nivel). El Keeper gana ${spent} Fear.`);
-    if (access < card.level) return { token, paid: { resolve: spent }, fear, roll: null, failed: true, summary: `${card.name} es de nivel ${card.level} y el acceso solo llega a ${access}. El Resolve queda gastado: puedes elegir otro Poder de nivel ${access} o menor.`, notes };
-    if (cost.stress) { if (overwhelmed(token)) throw new Error('Overwhelmed: no puedes pagar costes de Stress.'); token.stress = { ...token.stress, current: Math.min(token.stress.max ?? 6, (token.stress.current || 0) + cost.stress) }; }
+    // Uncanny Power (Corebook ch. 7): the access is rolled first (uncannyAccess) and stays open on
+    // the character; then a Power of the Archive at or below that level is chosen. Sending the
+    // Resolve with the card does both steps at once (older clients, tests).
+    let opened = null;
+    if (!token.uncanny) {
+      if (resolveSpent == null) throw new Error('Primero tira el acceso de Uncanny Power: gasta Resolve y mira hasta qué nivel llegas.');
+      opened = uncannyAccess(token, { spent: resolveSpent, random });
+      Object.assign(token, opened.token); fear = opened.fear; notes.push(...opened.notes);
+    }
+    const pending = token.uncanny;
+    if (card.level > pending.access) {
+      if (!opened) throw new Error(`${card.name} es de nivel ${card.level} y tu acceso llega a ${pending.access}: elige un Poder de nivel ${pending.access} o menor.`);
+      return { token, paid: { resolve: opened ? pending.spent : 0 }, fear, roll: null, failed: true, pending: true, summary: `${card.name} es de nivel ${card.level} y el acceso llega a ${pending.access}. El acceso sigue abierto: elige un Poder del Archivo de nivel ${pending.access} o menor.`, notes };
+    }
+    if (cost.stress) { if (overwhelmed(token)) throw new Error('Overwhelmed: no puedes pagar costes de Stress.'); need((token.stress?.max ?? 6) - (token.stress?.current || 0), cost.stress, 'margen de Stress'); token.stress = { ...token.stress, current: (token.stress.current || 0) + cost.stress }; }
     if (cost.hp) token.hp = { ...token.hp, current: Math.max(0, token.hp.current - cost.hp) };
+    token.uncanny = null;
     roll = { dc: 10 + card.level, traitId: 'knowledge' };
-    notes.push(`Ignora el coste de Hope. Acción completa. Spellcast de Knowledge contra DC ${roll.dc}. Con Critical Success recuperas el Resolve gastado.`);
-    return { token, paid: { resolve: spent, stress: cost.stress, hp: cost.hp }, fear, roll, summary: `${card.name} · Uncanny Power`, notes };
+    notes.push(`Acceso nivel ${pending.access}: ${card.name} (nivel ${card.level}). Ignora el coste de Hope. Acción completa. Spellcast de Knowledge contra DC ${roll.dc}; si la superas, el Poder se manifiesta. Con Critical Success recuperas los ${pending.spent} Resolve.`);
+    return { token, paid: { resolve: opened ? pending.spent : 0, stress: cost.stress, hp: cost.hp }, fear, roll, refundResolve: pending.spent, summary: `${card.name} · Uncanny Power`, notes };
   }
   if (/all remaining Hope/i.test(card.costText)) {
     const minimum = Number(/minimum (\d+)/i.exec(card.costText)?.[1] || 1);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { CREATOR_DATA as data } from '../src/creator/creatorData.js';
 import { freshState, setChoice, characterDomains, levelOnePowers, powerId, subclassList, equipmentChoices, buildSheetDocument } from '../src/creator/creatorModel.js';
 import { parseCharacterJSON } from '../src/characterImport.js';
-import { parseCost, parseRoll, costLabel, characterCards, playCard, recallPower, recallCost, loadoutNames, vaultNames, archivePackages, isSleepingMystic } from '../src/loadoutCards.js';
+import { parseCost, parseRoll, costLabel, characterCards, playCard, recallPower, recallCost, loadoutNames, vaultNames, archivePackages, isSleepingMystic, uncannyAccess } from '../src/loadoutCards.js';
 
 function character({ path = 'Awakened', cls = 'scholar', ancestry = 'synthetic', mystic = null } = {}) {
   let s = freshState();
@@ -81,10 +81,19 @@ test('Uncanny Power: Resolve Dice + Knowledge give the level reached, the Keeper
   assert.equal(played.token.resolve.current, 0); assert.equal(played.fear, 2);
   assert.deepEqual(played.roll, { dc: 11, traitId: 'knowledge' }); assert.equal(played.token.hope ?? 0, mystic.hope ?? 0, 'the Hope cost is ignored');
   assert.match(played.notes.join(' '), /nivel accesible 1/);
-  // A Power above the level reached does not manifest and the Resolve stays spent.
+  // Aiming above the level reached: the access stays open to choose another Power at or below it.
   const tooHigh = playCard(mystic, { ...card, level: 2 }, { resolveSpent: 1, random: () => 0 });
   assert.equal(tooHigh.failed, true); assert.equal(tooHigh.token.resolve.current, 1); assert.equal(tooHigh.fear, 1);
-  assert.throws(() => playCard({ ...mystic, resolve: { current: 0, max: 2, dieType: 'd4' } }, card), /No hay Resolve/);
+  assert.deepEqual(tooHigh.token.uncanny, { access: 1, spent: 1 });
+  const chosen = playCard(tooHigh.token, card);
+  assert.deepEqual([chosen.roll, chosen.fear, chosen.token.resolve.current, chosen.refundResolve, chosen.token.uncanny], [{ dc: 11, traitId: 'knowledge' }, 0, 1, 1, null]);
+  // Impossible Efficiency (Mind-Touched Mastery): two dice per Resolve, once per session.
+  const master = { ...mystic, subclass: 'Mind-Touched', subclassRank: 'Mastery', level: 4 };
+  const twice = uncannyAccess(master, { spent: 1, faces: [3, 4], efficiency: true });
+  assert.deepEqual([twice.rolls, twice.access, twice.fear], [[3, 4], 4, 1]);
+  assert.throws(() => uncannyAccess(twice.token.uncanny ? { ...twice.token, uncanny: null } : twice.token, { spent: 1, efficiency: true }), /esta sesión/);
+  assert.throws(() => uncannyAccess(mystic, { spent: 1, efficiency: true }), /Mastery del Mind-Touched/);
+  assert.throws(() => playCard({ ...mystic, resolve: { current: 0, max: 2, dieType: 'd4' } }, card, { resolveSpent: 1 }), /No hay Resolve/);
 });
 
 test('Recall moves a Power from the Vault to the Loadout: free in a Long Rest, its Recall Cost in Stress in a Short Rest, plus 1 Hope in a scene', () => {

@@ -131,6 +131,7 @@ test('both printed Skitter profiles qualify at 3 HP, require two distinct target
 test('Bear Down promotes an Uncanny Power once and only spends Resolve while the card is open', () => {
   const mystic = actor('mystic', { path: 'Sleeping', characterClass: 'Mystic', sheetFields: { s_archive: 'Neural 2' }, resolve: { current: 4, max: 4, dieType: 'd4' } });
   const s = table(mystic, hostile('foe'));
+  performGameAction({ type: 'UNCANNY_ACCESS', actorId: 'mystic', resolveSpent: 1, faces: [4] }, s);
   const cast = play(s, 'mystic', 'Synaptic Disruption', { targetIds: ['foe'] });
   const roll = check(s, 'mystic', { ...cast.roll, forcedHope: 5, forcedFear: 4 }, { cardPlayId: cast.id });
   const useResolve = () => performGameAction({ type: 'RESOLVE', actorId: 'mystic', count: 1, faces: [2] }, s);
@@ -168,6 +169,7 @@ test('Bear Down preserves other requested rolls and only revises the responderâ€
 test('converting a failed spell restores only its extra Fear and respects the shared cap', () => {
   for (const initial of [4,10,11,12]) {
     const s = table(actor('mystic',{path:'Sleeping',characterClass:'Mystic',sheetFields:{s_archive:'Tech 1'}}));
+    performGameAction({type:'UNCANNY_ACCESS',actorId:'mystic',resolveSpent:1,faces:[2]},s);
     const cast = play(s,'mystic','Drone Whisper');
     s.state.fear = initial;
     check(s,'mystic',{...cast.roll,forcedHope:3,forcedFear:5},{cardPlayId:cast.id});
@@ -233,4 +235,38 @@ test('field-wide rolls use the correct side and expire together at the round bou
   assert.equal(get(s,'ally').hp.current,6);assert.equal(get(s,'ally').stress.current,1);
   nextSpotlightRound(s);
   assert.equal(checkEdge(get(s,'ally')).advantage,false);assert.equal(checkEdge(get(s,'foe')).disadvantage,false);
+});
+
+test('Uncanny Power at the table: access first (Resolve Dice + Knowledge, Fear), then any Archive Power at or below it, then Knowledge vs 10 + level; a Critical returns the Resolve', () => {
+  const mystic = actor('mystic', { path: 'Sleeping', characterClass: 'Mystic', subclass: 'Mind-Touched', level: 3, sheetFields: { s_archive: 'Neural 1, Neural 2, Void 3' }, resolve: { current: 4, max: 4, dieType: 'd4' } });
+  const s = table(mystic, hostile('foe'));
+  s.state.fear = 0;
+  // No access open: the Archive card cannot be cast on its own.
+  assert.throws(() => play(s, 'mystic', 'Synaptic Disruption', { targetIds: ['foe'] }), /Primero tira el acceso/);
+  // 1 Resolve: d4 [1] + Knowledge 1 = 2 â†’ level 2 reachable, 1 Fear.
+  const access = performGameAction({ type: 'UNCANNY_ACCESS', actorId: 'mystic', resolveSpent: 1, faces: [1] }, s);
+  assert.deepEqual([access.access, s.state.fear, get(s, 'mystic').resolve.current], [2, 1, 3]);
+  assert.deepEqual(get(s, 'mystic').uncanny, { access: 2, spent: 1 });
+  const cards = characterCards(get(s, 'mystic'), data);
+  assert.ok(access.choices.length && access.choices.every(id => cards.find(c => c.id === id).level <= 2));
+  assert.throws(() => performGameAction({ type: 'UNCANNY_ACCESS', actorId: 'mystic', resolveSpent: 1 }, s), /acceso abierto/);
+  // A level 3 Power is out of reach; a level 2 one is cast with Knowledge vs DC 12, without new Resolve.
+  const high = cards.find(c => c.kind === 'archive' && c.level === 3 && c.playable);
+  assert.throws(() => performGameAction({ type: 'CARD_PLAY', actorId: 'mystic', cardId: high.id }, s), /tu acceso llega a 2/);
+  const cast = play(s, 'mystic', 'Synaptic Disruption', { targetIds: ['foe'] });
+  assert.deepEqual(cast.roll, { dc: 12, traitId: 'knowledge' });
+  assert.equal(get(s, 'mystic').uncanny, null);
+  assert.equal(get(s, 'mystic').resolve.current, 3);
+  check(s, 'mystic', { ...cast.roll, forcedHope: 5, forcedFear: 5 }, { cardPlayId: cast.id });
+  assert.equal(get(s, 'mystic').resolve.current, 4, 'the Critical returns the Resolve spent; the Fear stays');
+  assert.equal(s.state.fear, 1);
+  // Giving up an open access refunds nothing.
+  performGameAction({ type: 'UNCANNY_ACCESS', actorId: 'mystic', resolveSpent: 2, faces: [4, 4] }, s);
+  assert.equal(get(s, 'mystic').uncanny.access, 3, 'capped by the character level');
+  performGameAction({ type: 'UNCANNY_ACCESS', actorId: 'mystic', cancel: true }, s);
+  assert.deepEqual([get(s, 'mystic').uncanny, get(s, 'mystic').resolve.current, s.state.fear], [null, 2, 3]);
+  // The Uncanny Power Move card opens this procedure; it is not played as a plain Move.
+  const move = characterCards(get(s, 'mystic'), data).find(c => c.uncanny);
+  assert.ok(move);
+  assert.throws(() => performGameAction({ type: 'CARD_PLAY', actorId: 'mystic', cardId: move.id }, s), /ventana/);
 });

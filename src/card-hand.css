@@ -157,3 +157,31 @@
 /* The deck inside the character sheet (v2.30.0): in the flow of the sheet, no close button. */
 .card-drawer.card-drawer-embedded { position: static; width: auto; max-height: none; z-index: auto; box-shadow: none; animation: none; border-top-width: 1px; border-radius: 5px; }
 .card-drawer.card-drawer-embedded .card-drawer-close { display: none; }
+
+/* Uncanny Power (v2.31.0): the Archive to pick from, the steps and the open access. */
+html body .veil-modal-backdrop.table-action-panel.uncanny-dialog { width: min(640px, calc(100vw - 24px)); }
+html body .veil-modal-backdrop.table-action-panel.uncanny-dialog > .veil-modal-box { max-height: min(70dvh, 560px); }
+.uncanny-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.uncanny-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.uncanny-chosen { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; }
+.uncanny-chosen strong { color: #f8e7b0; font-size: 14px; }
+.uncanny-chosen p { margin: 4px 0 0; font-size: 12px; }
+.uncanny-main .dossier-footer { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 700px) { .uncanny-grid { grid-template-columns: 1fr; } html body .veil-modal-backdrop.table-action-panel.uncanny-dialog > .veil-modal-box { max-height: 46dvh; } }
+.uncanny-steps { display: flex; gap: 6px; list-style: none; margin: 0 0 8px; padding: 0; counter-reset: uncanny; flex-wrap: wrap; }
+.uncanny-steps li { counter-increment: uncanny; font-size: 12px; color: #94a3b8; padding: 3px 9px; border: 1px solid rgba(148,163,184,.3); border-radius: 5px; }
+.uncanny-steps li::before { content: counter(uncanny) " · "; }
+.uncanny-steps li.now { color: #f8e7b0; border-color: #d4a84b; background: rgba(212,168,75,.12); }
+.uncanny-steps li.done { color: #86efac; border-color: rgba(134,239,172,.4); }
+.uncanny-access { margin: 0 0 6px; padding: 8px 10px; border-radius: 5px; border: 1px solid #d4a84b; background: rgba(212,168,75,.12); color: #f8e7b0; font-size: 13px; }
+.uncanny-archive { max-height: 400px; overflow: auto; padding-right: 4px; }
+.uncanny-archive .card-drawer-group:first-child { margin-top: 0; }
+.uncanny-archive .card-drawer-group { margin: 6px 0 4px; }
+.uncanny-list { display: grid; grid-template-columns: 1fr; gap: 5px; }
+.uncanny-power { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 6px 8px; border-radius: 5px; border: 1px solid rgba(148,163,184,.3); border-left: 3px solid var(--card-color, #6d28d9); background: rgba(15,23,42,.6); color: #e2e8f0; cursor: pointer; font: inherit; }
+.uncanny-power strong { font-size: 13px; }
+.uncanny-power small { font-size: 11px; color: #94a3b8; }
+.uncanny-power:hover:not(:disabled) { border-color: #d4a84b; }
+.uncanny-power.active { border-color: #d4a84b; background: rgba(212,168,75,.16); box-shadow: 0 0 0 1px #d4a84b inset; }
+.uncanny-power:disabled { opacity: .4; cursor: not-allowed; }
+.uncanny-check { display: flex; gap: 6px; align-items: center; font-size: 13px; color: #e2e8f0; }

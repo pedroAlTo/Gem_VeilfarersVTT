@@ -10,7 +10,7 @@ import { roundKey } from './combatState.js';
 import { bearDown } from './bearDown.js';
 import { throwDice } from './tableDice.js';
 import { durationDice } from './effectClocks.js';
-import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups } from './loadoutCards.js';
+import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups, uncannyChoices, hasImpossibleEfficiency, IMPOSSIBLE_EFFICIENCY } from './loadoutCards.js';
 
 import {cardUse,usedBy} from './cardLimits.js';
 import { cardChoices, chosenCardOptions, openResolution } from './cardResolutionUI.js';
@@ -28,7 +28,8 @@ const affordable = (token, card) => {
   if (card.kind === 'effort') return (token.effort || 0) >= card.cost.effort || (token.effort || 0) === 0;
   if (usedBy(token,cardUse(card,store.state))) return false;
   const c = card.cost, stressRoom = (token.stress?.max ?? 6) - (token.stress?.current || 0);
-  if (card.kind === 'archive') return (token.resolve?.current || 0) >= 1 && c.stress <= stressRoom;
+  if (card.kind === 'archive') return (token.uncanny ? card.level <= token.uncanny.access : (token.resolve?.current || 0) >= 1) && c.stress <= stressRoom;
+  if (card.uncanny) return !!token.uncanny || (token.resolve?.current || 0) >= 1;
   return (token.hope || 0) >= c.hope && (token.effort || 0) >= c.effort && (token.resolve?.current || 0) >= c.resolve && c.stress <= stressRoom;
 };
 const pills = card => {
@@ -147,7 +148,7 @@ export class CardHand {
     // While the rules data loads, the deck stays in sight (it is always visible).
     if (!data) { this.signature = ''; this.tokenId = null; this.root.classList.remove('hidden'); this.quickbar.classList.remove('with-hand'); this.root.innerHTML = sanitizeHTML(deckButton('Mazo: consulta todos los Poderes del juego')); this.root.querySelector('[data-open-vault]').onclick = () => this.toggleDrawer('', false, { catalogOnly: true }); return; }
     const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts });
-    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
+    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token.id;
     const hand = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault'), n = hand.length;
@@ -249,6 +250,7 @@ export class CardHand {
     if (!token) return;
     if (card.kind === 'effort' && (token.effort || 0) < card.cost.effort) { this.inspect(card, point); return; }
     if (!card.playable) { this.inspect(card); return; }
+    if (card.uncanny || card.kind === 'archive') { this.openUncanny(card, point); return; }
     if (card.chooseTrait || card.reverse || TARGET_RULES[card.name] || cardRollOptions(card) || card.kind === 'archive' || (card.cost.open && card.cost.resolve)) { this.inspect(card, point); return; }
     this.play(card, point);
   }
@@ -324,11 +326,98 @@ export class CardHand {
     if (point) return tokenAtPoint(store.getTokensForActiveMap(), point, store.getActiveMap()?.gridSize || 64)?.id;
     return store.state.targetTokenId || undefined;
   }
+  // Uncanny Power (Sleeping Mystic, Corebook ch. 7), in the order it is played at the table:
+  // 1) look at the Archive and pick the Power you aim for; 2) spend Resolve (one or more): one
+  // Resolve Die per Resolve + Knowledge, thrown as 3D dice, sets the highest level reachable
+  // (capped by your level) and gives the Keeper 1 Fear per Resolve; 3) with the access open,
+  // keep that Power or pick any other at or below that level; 4) the Knowledge Spellcast Roll
+  // against DC 10 + level: if it succeeds the Power manifests; a Critical returns the Resolve.
+  openUncanny(selected = null, point = null) {
+    const data = cardData(), tokenId = this.tokenId, liveToken = () => store.state.tokens.find(t => t.id === tokenId);
+    if (!data || !liveToken()) return null;
+    let chosenId = selected?.kind === 'archive' ? selected.id : null, opened = null, busy = false;
+    const modal = tableDialog('Uncanny Power', '<div class="uncanny" data-uncanny></div>', 'card-inspect-dialog uncanny-dialog');
+    const host = modal.querySelector('[data-uncanny]');
+    const draw = (error = '') => {
+      const token = liveToken();
+      if (!token) { modal.remove(); return; }
+      const cards = characterCards(token, data).filter(c => c.kind === 'archive');
+      const pending = token.uncanny || opened, reach = pending ? uncannyChoices(cards, pending.access) : [];
+      if (pending && !reach.some(c => c.id === chosenId)) chosenId = reach[0]?.id || null;
+      if (!pending && !cards.some(c => c.id === chosenId && c.playable)) chosenId = cards.find(c => c.playable)?.id || null;
+      const chosen = cards.find(c => c.id === chosenId) || null;
+      const knowledge = Number(token.traits?.knowledge) || 0, sides = token.resolve?.dieType === 'd6' ? 6 : 4, level = Number(token.level) || 1, available = token.resolve?.current || 0;
+      const efficiency = hasImpossibleEfficiency(token) && !Object.hasOwn(token.cardUses || {}, IMPOSSIBLE_EFFICIENCY);
+      const levels = [...new Set(cards.map(c => c.level))].sort((a, b) => a - b);
+      const list = levels.map(l => `<h5 class="card-drawer-group">Nivel ${l} · DC ${10 + l}${l > level ? ' · por encima de tu nivel' : ''}</h5><div class="uncanny-list">${cards.filter(c => c.level === l).map(c => {
+        const off = !c.playable || (pending && c.level > pending.access);
+        const extra = [c.cost.stress && `${c.cost.stress} Stress`, c.cost.hp && `${c.cost.hp} HP`, !c.playable && (c.reaction ? 'Reaction' : 'Pasivo')].filter(Boolean).join(' · ');
+        return `<button type="button" class="uncanny-power ${c.id === chosenId ? 'active' : ''}" data-uncanny-pick="${e(c.id)}" style="--card-color:${e(c.color)}" ${off ? 'disabled' : ''} aria-pressed="${c.id === chosenId}"><strong>${e(c.name)}</strong><small>${e(c.domain)} · ${e(c.type.replace(/\s*\(.*$/, ''))}${extra ? ` · ${e(extra)}` : ''}</small></button>`;
+      }).join('')}</div>`).join('');
+      const need = chosen ? Math.max(0, chosen.level - knowledge) : 0;
+      host.innerHTML = sanitizeHTML(`
+        <ol class="uncanny-steps"><li class="${pending ? 'done' : 'now'}">Elige el Poder</li><li class="${pending ? 'done' : 'now'}">Gasta Resolve y tira el acceso</li><li class="${pending ? 'now' : ''}">Spellcast de Knowledge</li></ol>
+        ${pending ? `<p class="uncanny-access">Acceso abierto · <b>nivel ${pending.access}</b>. ${reach.length ? 'Puedes manifestar cualquier Poder del Archivo de ese nivel o menor.' : 'Ningún Poder del Archivo llega a ese nivel: renuncia al acceso.'} El Resolve y el Fear ya están gastados.</p>`
+          : `<p class="dossier-muted">Tira un ${sides === 6 ? 'd6' : 'd4'} por cada Resolve que gastes y suma Knowledge ${knowledge >= 0 ? '+' : ''}${knowledge}: el resultado (máx. tu nivel, ${level}) es el nivel más alto que alcanzas. El Keeper gana 1 Fear por Resolve. Después eliges el Poder: el que marcaste u otro de ese nivel o menor.</p>`}
+        <div class="uncanny-grid">
+          <div class="uncanny-main">
+            ${chosen ? `<div class="uncanny-chosen"><div class="vf-card table-card-preview" aria-hidden="true">${cardFace(chosen)}</div>
+              <div><strong>${e(chosen.name)}</strong><p class="dossier-muted">${e(chosen.domain)} · nivel ${chosen.level} → Spellcast de Knowledge contra <b>DC ${10 + chosen.level}</b>. Ignora el coste de Hope; pagas el resto (${e([chosen.cost.stress && `${chosen.cost.stress} Stress`, chosen.cost.hp && `${chosen.cost.hp} HP`].filter(Boolean).join(', ') || 'nada más')}).${!pending ? ` Para alcanzarlo necesitas ${chosen.level} en el acceso${need ? `: ${need} con los dados` : ''}.` : ''}</p></div></div>
+              <details class="table-rule"><summary>Texto del Poder</summary><p class="card-inspect-text">${richText(chosen.text)}</p></details>` : '<p class="dossier-muted">Elige un Poder del Archivo.</p>'}
+            ${pending && chosen ? cardChoices(chosen, token, this.cardTarget(point)) : ''}
+            ${!pending ? `<label class="dossier-field"><span>Resolve que gastas (tienes ${available})</span><input class="hud-input" type="number" name="uncanny_resolve" min="1" max="${Math.max(1, available)}" value="${Math.min(Math.max(1, need ? Math.ceil(need / ((sides + 1) / 2)) : 1), Math.max(1, available))}" /></label>
+              ${efficiency ? '<label class="uncanny-check"><input type="checkbox" name="uncanny_efficiency" /> Impossible Efficiency: 2 dados por Resolve (1 / sesión)</label>' : ''}` : ''}
+            <p class="dossier-error" role="alert">${e(error)}</p>
+            <footer class="dossier-footer">${pending
+              ? `<button type="button" class="hud-btn" data-uncanny-cancel>Renunciar al acceso</button><button type="button" class="hud-btn hud-btn-primary" data-uncanny-cast ${chosen ? '' : 'disabled'}>Manifestar${chosen ? ` · Knowledge DC ${10 + chosen.level}` : ''}</button>`
+              : `<button type="button" class="hud-btn hud-btn-primary" data-uncanny-roll ${available ? '' : 'disabled'}>${available ? 'Tirar el acceso' : 'Sin Resolve'}</button>`}</footer>
+          </div>
+          <div class="uncanny-archive" aria-label="Archivo">${list || '<p class="dossier-muted">El Archivo no tiene Dominios desbloqueados: anótalos en la ficha (Studied Domains o Archivo).</p>'}</div>
+        </div>`);
+      host.querySelectorAll('[data-uncanny-pick]').forEach(b => b.onclick = () => { chosenId = b.dataset.uncannyPick; draw(); });
+      const owned = () => { const t = liveToken(); if (t && t.mapId === store.state.activeMapId) return t; draw('Ha cambiado la escena. Vuelve a abrir Uncanny Power desde la mano.'); return null; };
+      const rollButton = host.querySelector('[data-uncanny-roll]');
+      if (rollButton) rollButton.onclick = async () => {
+        const t = owned(); if (!t || busy) return;
+        const spent = Math.max(1, Math.min(t.resolve?.current || 0, Math.floor(Number(host.querySelector('[name=uncanny_resolve]').value) || 1)));
+        const twice = !!host.querySelector('[name=uncanny_efficiency]')?.checked, count = spent * (twice ? 2 : 1);
+        busy = true; rollButton.disabled = true;
+        try {
+          const faces = await throwDice([{ qty: count, sides, role: 'Resolve' }], { label: 'Uncanny Power · acceso', actor: t,
+            describe: v => { const total = v.reduce((a, b) => a + b, 0) + knowledge; return { total, outcome: `Nivel ${Math.max(0, Math.min(total, level))}`, modifiers: `${count}d${sides} [${v.join(', ')}] + Knowledge ${knowledge}` }; } });
+          const result = await network.requestAction({ type: 'UNCANNY_ACCESS', actorId: t.id, resolveSpent: spent, faces, efficiency: twice });
+          opened = { access: result.access, spent };
+          const playerName = store.state.userName || store.state.playerName || 'Jugador';
+          const line = `🂠 ${playerName} (${t.name}) usa Uncanny Power — ${result.summary}`;
+          network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: t.name, text: line, channel: 'table' }));
+          busy = false; draw();
+        } catch (err) { busy = false; draw(err.message); }
+      };
+      const cancel = host.querySelector('[data-uncanny-cancel]');
+      if (cancel) cancel.onclick = async () => {
+        const t = owned(); if (!t || busy) return;
+        busy = true;
+        try { await network.requestAction({ type: 'UNCANNY_ACCESS', actorId: t.id, cancel: true }); opened = null; modal.remove(); }
+        catch (err) { busy = false; draw(err.message); }
+      };
+      const cast = host.querySelector('[data-uncanny-cast]');
+      if (cast) cast.onclick = async () => {
+        if (!chosen || !owned() || busy) return;
+        busy = true; cast.disabled = true;
+        if (await this.play(chosen, point, null, chosenCardOptions(modal))) { opened = null; modal.remove(); }
+        else { busy = false; cast.disabled = false; }
+      };
+    };
+    draw();
+    return modal;
+  }
+
   inspect(card, point = null) {
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     // Reference cards of the deck (and the Powers of the catalog) are read without a character.
     const reference = card.zone === 'catalog' || card.zone === 'vault';
     if (!token && !KEEPER_KINDS.has(card.kind) && !reference) return;
+    if (token && card.playable && (card.uncanny || card.kind === 'archive')) return this.openUncanny(card, point);
     const use = cardUse(card,store.state);
     const burnoutOnly = card.kind === 'effort' && (token?.effort || 0) === 0;
     const chooses = card.playable && (card.kind === 'archive' || (card.cost.open && card.cost.resolve)), available = token?.resolve?.current || 0;
