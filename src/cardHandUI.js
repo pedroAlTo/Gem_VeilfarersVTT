@@ -388,14 +388,18 @@ export class CardHand {
   drawCatalog(drawer, data, live, choice) {
     const domains = [...new Set(data.powers.map(p => p.d))];
     const catalog = data.powers.filter(p => choice.domain === 'all' || p.d === choice.domain).sort((a, b) => a.d.localeCompare(b.d) || a.l - b.l || a.n.localeCompare(b.n));
+    // In the sheet, a Sleeping character's own hand (Resolve Moves, Common Efforts…) comes first.
+    const hand = this.embedded && live ? characterCards(live, data) : [];
     drawer.innerHTML = sanitizeHTML(`
       <header class="card-drawer-head"><strong>MAZO · TODAS LAS CARTAS</strong><span style="flex:1"></span><button type="button" class="card-drawer-close" data-drawer-close aria-label="Cerrar el mazo">×</button></header>
       <p class="card-drawer-step">${live ? `${e(live.name)} es Sleeping: no tiene Loadout ni Vault. Aquí puedes consultar todos los Poderes.` : 'Consulta todos los Poderes del juego. Selecciona un personaje Awakened en postura de jugador para gestionar su Loadout y su Vault.'}</p>
+      ${hand.length ? `<h4>MANO · ${hand.length}</h4><div class="card-drawer-row">${hand.map(c => `<button type="button" class="vf-card vf-card-mini" data-drawer-hand="${e(c.id)}" title="${e(c.name)}">${cardFace(c)}</button>`).join('')}</div>` : ''}
       ${deckKindChips(choice)}
       ${choice.kind === 'powers' ? `<div class="equip-chips" role="group" aria-label="Dominio">${['all', ...domains].map(d => `<button type="button" class="equip-chip ${choice.domain === d ? 'active' : ''}" data-drawer-domain="${e(d)}">${d === 'all' ? 'Todos' : e(d)}</button>`).join('')}</div>
       <h4>TODOS LOS PODERES · ${catalog.length}</h4>
       <div class="card-drawer-row card-drawer-catalog">${catalog.map(p => `<button type="button" class="vf-card vf-card-mini" data-drawer-catalog="${e(p.n)}" title="${e(p.n)} · ${e(p.d)} L${p.l}">${cardFace(powerCard(p, 'vault'))}</button>`).join('')}</div>` : referenceHTML(data, choice)}`);
     drawer.querySelector('[data-drawer-close]').onclick = () => drawer.remove();
+    drawer.querySelectorAll('[data-drawer-hand]').forEach(b => b.onclick = () => { const card = hand.find(c => c.id === b.dataset.drawerHand); if (card) this.inspect(card); });
     drawer.querySelectorAll('[data-drawer-domain]').forEach(b => b.onclick = () => { choice.domain = b.dataset.drawerDomain; this.drawCatalog(drawer, data, live, choice); });
     drawer.querySelectorAll('[data-drawer-catalog]').forEach(b => b.onclick = () => { const p = data.powers.find(x => x.n === b.dataset.drawerCatalog); if (p) this.inspect(powerCard(p, 'vault')); });
     bindReference(drawer, data, choice, () => this.drawCatalog(drawer, data, live, choice), card => this.inspect(card));
@@ -403,13 +407,24 @@ export class CardHand {
 
   // catalogOnly (the Keeper's hand): no character, the whole catalog to read. A Sleeping
   // character also gets only the catalog: it has no Loadout or Vault.
+  // The same deck inside the character sheet (v2.30.0): Loadout and Vault of that character, for
+  // the player and the Keeper, with Recall and learning. A view of this hand bound to the sheet's
+  // character and drawn in `host`; the hand on the map keeps its own character and drawer.
+  openLoadoutIn(host, tokenId) {
+    host.querySelector('.card-drawer')?.remove();
+    const view = Object.create(this);
+    view.tokenId = tokenId; view.root = { parentElement: host }; view.embedded = true;
+    return view.toggleDrawer('', true);
+  }
+
   toggleDrawer(selected = '', forceOpen = false, { catalogOnly = false } = {}) {
-    const open = document.getElementById('card_deck_drawer');
+    const drawerId = this.embedded ? 'sheet_deck_drawer' : 'card_deck_drawer';
+    const open = this.embedded ? this.root.parentElement.querySelector('.card-drawer') : document.getElementById(drawerId);
     if (open) { open.remove(); if (!forceOpen) return null; }
     const token = catalogOnly ? null : store.state.tokens.find(t => t.id === this.tokenId);
     if (!token && !catalogOnly) return null;
     const drawer = document.createElement('section');
-    drawer.id = 'card_deck_drawer'; drawer.className = 'card-drawer'; drawer.setAttribute('aria-label', 'Mazo de cartas');
+    drawer.id = drawerId; drawer.className = `card-drawer${this.embedded ? ' card-drawer-embedded' : ''}`; drawer.setAttribute('aria-label', 'Mazo de cartas');
     this.root.parentElement.append(drawer);
     // learn: a Power of the catalog picked to add to the Vault. onlyMine: the catalog shows only
     // what this character can take (its Domains, up to its level); unticked, every Power.

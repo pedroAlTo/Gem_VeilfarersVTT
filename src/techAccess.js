@@ -77,9 +77,12 @@ export function gearProfile(item, data = null) {
   const features = Array.isArray(source.features) ? source.features.join(', ') : String(source.features ?? '');
   const rank = tierRank(source.tierRank ?? source.tier ?? item.tier);
   let family = '';
-  if (kind === 'weapon') family = familyFrom(WEAPON_FAMILY, source.id) || (creator && creator.category) || guessWeaponFamily({ ...item, ...source, features });
-  if (kind === 'armor') family = familyFrom(ARMOR_WEIGHT, source.id) || (creator && creator.category) || guessArmorWeight({ ...item, ...source, features });
-  if (kind === 'augment') family = familyFrom(AUGMENT_TYPE, source.id);
+  // The books' items (v2.30.0) carry their family; Rust & Steel's augment types count as the
+  // nearest Corebook type for Technology Access (interpretation: Sensory → Neural; Combat and
+  // Utility → Physical; House augments are not restricted by type).
+  if (kind === 'weapon') family = familyFrom(WEAPON_FAMILY, source.id) || source.family || (creator && creator.category) || guessWeaponFamily({ ...item, ...source, features });
+  if (kind === 'armor') family = familyFrom(ARMOR_WEIGHT, source.id) || source.family || (creator && creator.category) || guessArmorWeight({ ...item, ...source, features });
+  if (kind === 'augment') family = familyFrom(AUGMENT_TYPE, source.id) || ({ Sensory: 'Neural', Combat: 'Physical', Utility: 'Physical', House: '' }[source.family] ?? source.family ?? '');
   return { kind, rank, family, features, name: item.name || source.name };
 }
 

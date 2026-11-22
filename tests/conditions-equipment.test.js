@@ -131,58 +131,64 @@ test('unassigned players cannot prepare another token weapon; assigned players c
   el.querySelector('#dmg_target_select').value=t.id;dice.executeDamageCalc();assert.equal(el.querySelector('#apply_dmg_to_target_btn').disabled,false);
 });
 
-test('the equipment tab: four blocks, each «+ Añadir» opens the catalog filtered, armor through the table, ⋯ for edit and remove (v2.28.0)', async () => {
+test('the equipment tab (v2.30.0): three blocks, the equipped large, a filtered catalog that shows everything before taking it', async () => {
   const { openDossier } = await import('../src/dossierUI.js');
+  const { EQUIPMENT_CATALOG } = await import('../src/equipmentLibrary.js');
   const t = actor({ level: 2, inventory: { weapons: [weapon()], items: [{ id: 'kit', name: 'Medkit', tier: '', quantity: '2', use: 'Heals' }] } });
   store.state.tokens = [t]; store.state.selectedTokenId = t.id;
   const modal = openDossier(t, () => {}, 'equipment'), panel = modal.querySelector('[data-panel="equipment"]'), live = () => store.state.tokens[0];
   const click = selector => panel.querySelector(selector).click();
   const tick = () => new Promise(r => setTimeout(r, 0));
-  // What the character carries comes first, in four blocks; the catalog stays closed.
-  assert.deepEqual([...panel.querySelectorAll('.equip-block-head h4')].map(h => h.textContent.split('·')[0].trim()), ['ARMAS', 'ARMADURA', 'AUMENTOS', 'EQUIPO']);
-  assert.equal(panel.querySelector('[data-equip-panel]').hidden, true); assert.equal(panel.querySelectorAll('[data-equip-add]').length, 0);
-  // «+ Añadir» in the Armor block opens the catalog with armor only.
-  click('[data-equip-open="armor"]');
-  assert.equal(panel.querySelector('[data-equip-panel]').hidden, false);
-  const armorRows = panel.querySelectorAll('[data-equip-add]'); assert.ok(armorRows.length > 0 && armorRows.length <= 12);
-  armorRows[0].click(); await tick();
-  assert.equal(live().inventory.items.length, 2); assert.ok(live().armor.max >= 1, 'putting on armor sets its Armor Slots');
-  assert.equal(live().inventory.items.at(-1).kind, 'armor');
-  click('[data-equip-open="gear"]');
-  const search = panel.querySelector('[data-equip-search]'); search.value = 'zzzz-no-such-thing'; search.dispatchEvent(new Event('input'));
-  assert.match(panel.querySelector('[data-equip-results]').textContent, /Nada en el catálogo/);
-  click('[data-equip-close]'); assert.equal(panel.querySelector('[data-equip-panel]').hidden, true);
-  // Quantities change with one click and never go below zero.
-  click('[data-equip-qty="kit"][data-delta="1"]'); assert.equal(live().inventory.items[0].quantity, '3');
-  for (let i = 0; i < 5; i++) click('[data-equip-qty="kit"][data-delta="-1"]'); assert.equal(live().inventory.items[0].quantity, '0');
-  // Editing a weapon: from its «⋯».
+  // Three blocks by importance; the catalog stays closed.
+  assert.deepEqual([...panel.querySelectorAll('.eq-block-head h4')].map(h => h.textContent.split('·')[0].trim()), ['ARMAS Y ARMADURAS', 'AUMENTOS', 'ÚTILES Y VARIOS']);
+  assert.equal(panel.querySelector('[data-eq-catalog]').hidden, true);
+  // The weapon in hand is a large card with all its characteristics and its tags with their rule.
+  const card = panel.querySelector('.eq-card.eq-weapons');
+  assert.ok(card && card.querySelector('.eq-stats'), 'large card with its stats');
+  // The catalog: type, WT and book filters (several at once) and the item's whole sheet before taking it.
+  click('[data-eq-open="weapons,armor"]');
+  assert.equal(panel.querySelector('[data-eq-catalog]').hidden, false);
+  panel.querySelector('[data-eq-mine]').click();
+  click('[data-eq-type="weapons"]');
+  const rs = () => [...panel.querySelectorAll('[data-eq-pickid]')].map(b => EQUIPMENT_CATALOG.find(i => i.id === b.dataset.eqPickid));
+  assert.ok(rs().length > 0 && rs().every(i => i.category === 'armor'), 'only armor after leaving Armaduras on');
+  click('[data-eq-wt="2"]'); assert.ok(rs().every(i => i.category === 'armor' && i.wt === 2));
+  click('[data-eq-book="rust_and_steel"]'); assert.ok(rs().length > 0 && rs().every(i => i.source === 'rust_and_steel' && i.wt === 2));
+  click('[data-eq-book="core"]'); assert.ok(rs().some(i => i.source === 'core'), 'several books at once');
+  click('[data-eq-wt="2"]'); click('[data-eq-book="core"]'); click('[data-eq-book="rust_and_steel"]');
+  const pick = rs().find(i => i.armorSlots >= 3);
+  panel.querySelector(`[data-eq-pickid="${pick.id}"]`).click();
+  assert.match(panel.querySelector('[data-eq-pick]').textContent, /Armor Slots/, 'all its characteristics before taking it');
+  click('[data-eq-take]'); await tick();
+  assert.equal(live().inventory.items.find(i => i.kind === 'armor').catalogId, pick.id); assert.equal(live().armor.max, pick.armorSlots);
+  // A second armor is put on; the first stays carried, and can be put on again.
+  const second = rs().find(i => i.id !== pick.id && i.armorSlots && i.armorSlots !== pick.armorSlots);
+  panel.querySelector(`[data-eq-pickid="${second.id}"]`).click(); click('[data-eq-take]'); await tick();
+  assert.equal(live().inventory.items.filter(i => i.kind === 'armor').length, 2); assert.equal(live().armor.max, second.armorSlots);
+  const firstRow = live().inventory.items.find(i => i.catalogId === pick.id);
+  assert.equal(firstRow.equipped, false);
+  click(`[data-eq-wear="${firstRow.id}"]`); await tick();
+  assert.equal(live().armor.max, pick.armorSlots); assert.equal(live().inventory.items.find(i => i.catalogId === second.id).equipped, false);
+  click('[data-eq-close]'); assert.equal(panel.querySelector('[data-eq-catalog]').hidden, true);
+  // Weapons: put away and back in hand.
   const weaponId = live().inventory.weapons[0].id;
-  assert.equal(panel.querySelector(`[data-equip-edit="${weaponId}"]`), null, 'edit and remove wait behind ⋯');
+  click(`[data-eq-hand="${weaponId}"][data-on="0"]`); assert.equal(live().inventory.weapons[0].equipped, false);
+  assert.ok(panel.querySelector('.eq-row [data-eq-expand]'), 'carried weapons are compact rows');
+  click(`[data-eq-expand="${weaponId}"]`); assert.ok(panel.querySelector('.eq-row.open .eq-detail'), 'a carried row opens to show everything');
+  click(`[data-eq-hand="${weaponId}"][data-on="1"]`); assert.equal(live().inventory.weapons[0].equipped, true);
+  // Quantities, edit behind ⋯, a new entry saved only with a name, removing asks once.
+  click('[data-equip-qty="kit"][data-delta="1"]'); assert.equal(live().inventory.items.find(i => i.id === 'kit').quantity, '3');
   click(`[data-equip-menu="${weaponId}"]`); click(`[data-equip-edit="${weaponId}"]`);
   const form = panel.querySelector('[data-equip-form]');
-  form.querySelector('[data-field="name"]').value = 'Rifle del capitán'; form.querySelector('[data-field="range"]').value = 'Far'; form.querySelector('[data-field="damageMode"]').checked = true;
-  form.querySelector('[data-equip-save]').click();
-  assert.deepEqual([live().inventory.weapons[0].name, live().inventory.weapons[0].range, live().inventory.weapons[0].damageMode], ['Rifle del capitán', 'Far', 'final']);
-  // A new entry (from the Equipo catalog) is not saved until it has a name; cancelling leaves nothing.
-  click('[data-equip-open="gear"]'); click('[data-equip-custom="items"]'); assert.equal(live().inventory.items.length, 2);
-  click('[data-equip-save]');
-  assert.match(panel.querySelector('[data-equip-error]').textContent, /Ponle un nombre/); assert.equal(live().inventory.items.length, 2);
-  click('[data-equip-cancel]'); assert.equal(panel.querySelector('[data-equip-form]'), null);
-  click('[data-equip-open="gear"]'); click('[data-equip-custom="items"]');
+  form.querySelector('[data-field="name"]').value = 'Rifle del capitán'; form.querySelector('[data-equip-save]').click();
+  assert.equal(live().inventory.weapons[0].name, 'Rifle del capitán');
+  click('[data-eq-open="gear"]'); click('[data-eq-custom="items"]');
+  click('[data-equip-save]'); assert.match(panel.querySelector('[data-eq-error]').textContent, /Ponle un nombre/);
   panel.querySelector('[data-equip-form] [data-field="name"]').value = 'Cuerda'; click('[data-equip-save]');
   assert.equal(live().inventory.items.at(-1).name, 'Cuerda');
-  // Removing asks once on the same button, behind ⋯.
-  click('[data-equip-menu="kit"]');
-  click('[data-equip-remove="kit"]'); assert.equal(live().inventory.items.length, 3); assert.equal(panel.querySelector('[data-equip-remove="kit"]').textContent, '¿Quitar?');
-  click('[data-equip-remove="kit"]'); assert.equal(live().inventory.items.some(i => i.id === 'kit'), false);
-  // Taking the armor off leaves the natural thresholds (2 / 4 + level) and no Armor Slots of its own.
-  const armorId = live().inventory.items.find(i => i.kind === 'armor').id;
-  click(`[data-equip-menu="${armorId}"]`); click(`[data-equip-remove="${armorId}"]`); click(`[data-equip-remove="${armorId}"]`); await tick();
-  assert.equal(live().inventory.items.some(i => i.kind === 'armor'), false);
-  assert.deepEqual([live().hp.majorThreshold, live().hp.severeThreshold, live().armor.max], [4, 6, 0]);
-  assert.ok(panel.querySelector('[data-prepare-weapon]'), 'the weapon keeps its attack button');
-  // The full editor is the Keeper's only.
-  assert.equal(panel.querySelector('[data-equip-keeper]').hidden, store.state.userRole !== 'keeper' || store.sessionRole === 'player');
+  click('[data-equip-menu="kit"]'); click('[data-equip-remove="kit"]'); click('[data-equip-remove="kit"]');
+  assert.equal(live().inventory.items.some(i => i.id === 'kit'), false);
+  assert.equal(panel.querySelector('[data-eq-keeper]').hidden, store.state.userRole !== 'keeper' || store.sessionRole === 'player');
   modal.remove();
 });
 
@@ -248,8 +254,9 @@ test('Vea’s existing inventory and an imported armor-only sheet render the pac
   const t = actor({ name: 'Vea Kaelen', inventory: structuredClone(legacy) });
   store.state.tokens = [t];
   const dossier = openDossier(t, () => {}, 'equipment');
-  const rows = [...dossier.querySelectorAll('.equip-row')];
-  assert.deepEqual(rows.map(r => r.querySelector('.equip-main strong').textContent), ['Pistola Cinética Militar', vest, suit, vest]);
+  // v2.30.0: in hand / worn as large cards, carried as compact rows (the first unmarked armor is worn).
+  const rows = [...dossier.querySelectorAll('.eq-card, .eq-row')];
+  assert.deepEqual(rows.map(r => r.querySelector('strong').textContent), ['Pistola Cinética Militar', vest, suit, vest]);
   const sources = rows.map(r => r.querySelector('img')?.getAttribute('src'));
   assert.deepEqual(sources, ['/assets/equipment/objects/set-1.webp', '/assets/equipment/core_ar_tactical_weave.webp',
     '/assets/equipment/core_ar_heavy_combat_suit.webp', '/assets/equipment/core_ar_tactical_weave.webp']);
@@ -261,5 +268,40 @@ test('Vea’s existing inventory and an imported armor-only sheet render the pac
   const imported = actor({ sourceCharacter: { format: 'character-sheet', document: { app: 'Veilfarers Character Sheet', fields: { name: 'Vea', armor_name: 'MALLA TACTICA BALISTICA' } } }, inventory: { weapons: [], items: [] } });
   store.state.tokens = [imported];
   const sheet = openDossier(imported, () => {}, 'equipment');
-  assert.equal(sheet.querySelector('.equip-row img')?.getAttribute('src'), sources[1]);
+  assert.equal(sheet.querySelector('.eq-card img')?.getAttribute('src'), sources[1]);
+});
+
+test('the catalog has the personal equipment of both books, with Wealth Tier, book and family (v2.30.0)', async () => {
+  const { EQUIPMENT_CATALOG, wealthTier, filterEquipmentCatalog } = await import('../src/equipmentLibrary.js');
+  const { gearProfile } = await import('../src/techAccess.js');
+  const count = (source, category) => EQUIPMENT_CATALOG.filter(i => i.source === source && i.category === category).length;
+  assert.ok(EQUIPMENT_CATALOG.length > 550, `${EQUIPMENT_CATALOG.length} items`);
+  for (const category of ['weapons', 'armor', 'augmentations', 'gear']) assert.ok(count('core', category) > 0 && count('rust_and_steel', category) > 0, category);
+  assert.ok(count('rust_and_steel', 'weapons') >= 150 && count('rust_and_steel', 'gear') >= 100);
+  // Names from the books, also the Rust & Steel entries and the black market.
+  for (const name of ['Shock Baton', 'Plate Carrier', 'Tactical HUD Interface', 'Grappling Hook', 'Thermal Regulation Suit (TRS)', 'Chameleon Skin', 'Berserker Chip']) assert.ok(EQUIPMENT_CATALOG.some(i => i.name === name), name);
+  assert.deepEqual([wealthTier('1 Cr (WT1)'), wealthTier('4 Credits'), wealthTier('9 Cr'), wealthTier('16 Credits'), wealthTier('25 Credits'), wealthTier('0 Cr'), wealthTier('')], [1, 2, 3, 4, 5, 0, null]);
+  // Filters: several books, several WTs, several types at once.
+  const both = filterEquipmentCatalog({ sources: ['core', 'rust_and_steel'], categories: ['armor'], wts: [2, 3] });
+  assert.ok(both.length && both.every(i => i.category === 'armor' && [2, 3].includes(i.wt)));
+  assert.ok(new Set(both.map(i => i.source)).size === 2);
+  // Technology Access reads the family of a book item.
+  const carrier = EQUIPMENT_CATALOG.find(i => i.name === 'Plate Carrier');
+  assert.equal(gearProfile(carrier).family, carrier.family); assert.ok(['Light', 'Medium', 'Heavy'].includes(carrier.family));
+  assert.equal(gearProfile(EQUIPMENT_CATALOG.find(i => i.name === 'Tactical HUD Interface')).family, 'Neural', 'Sensory counts as Neural');
+});
+
+test('armor: one worn at a time, others carried; older inventories wear the first unmarked one (v2.30.0)', async () => {
+  const { installGear, wearArmor, removeGear, wornArmor } = await import('../src/gear.js');
+  const { EQUIPMENT_CATALOG } = await import('../src/equipmentLibrary.js');
+  const a = EQUIPMENT_CATALOG.find(i => i.name === 'Plate Carrier'), b = EQUIPMENT_CATALOG.find(i => i.name === 'Voidsuit (Combat)');
+  let t = { id: 'arm', name: 'Kael', isPlayer: true, level: 2, ancestry: 'Human', hp: { current: 6, max: 6, majorThreshold: 4, severeThreshold: 6 }, armor: { current: 0, max: 0 }, stress: { current: 0, max: 6 }, inventory: { weapons: [], items: [] } };
+  const apply = patch => { t = { ...t, ...patch }; };
+  apply(installGear(t, t.inventory, a, 'a')); apply(installGear(t, t.inventory, b, 'b'));
+  assert.equal(t.inventory.items.length, 2, 'putting on another keeps the first, carried');
+  assert.equal(wornArmor(t.inventory).id, 'b'); assert.equal(t.armor.max, b.armorSlots); assert.equal(t.hp.majorThreshold, b.majorThreshold + 2);
+  apply(wearArmor(t, t.inventory, 'a')); assert.equal(wornArmor(t.inventory).id, 'a'); assert.equal(t.armor.max, a.armorSlots);
+  apply(removeGear(t, t.inventory, 'b')); assert.equal(t.armor.max, a.armorSlots, 'removing a carried armor changes nothing');
+  apply(wearArmor(t, t.inventory, null)); assert.equal(wornArmor(t.inventory), null); assert.deepEqual([t.hp.majorThreshold, t.hp.severeThreshold, t.armor.max], [4, 6, 0]);
+  assert.equal(wornArmor({ items: [{ id: 'x', name: 'Plate Carrier' }, { id: 'y', name: 'Voidsuit (Combat)' }] }).id, 'x');
 });

@@ -18,7 +18,7 @@ import { cardData } from './cardData.js';
 import { handoffControl } from './drones.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
-import { installGear, removeGear } from './gear.js';
+import { installGear, removeGear, wearArmor } from './gear.js';
 import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName } from './loadoutCards.js';
 const lastRoll = new Map();
 const closingStrike = actor => ({ id: 'breaking-point', branch: pathBranch(actor), label: 'Breaking Point' + (pathBranch(actor) ? ' · ' + pathBranch(actor) : ''), dice: Math.max(1, Math.min(10, actor.proficiency || 1)) + 'd6' });
@@ -90,13 +90,16 @@ function resolveGameAction(action, store) {
   if (action.type === 'FTL') return resolveJump(store, actor, action, resolveGameAction);
   // Armor and augmentations: the table puts them on or takes them off and applies or undoes what
   // they change (thresholds, Armor Slots, Evasion, HP, Traits, over-capacity Stress).
-  if (action.type === 'GEAR_INSTALL' || action.type === 'GEAR_REMOVE') {
+  if (action.type === 'GEAR_INSTALL' || action.type === 'GEAR_REMOVE' || action.type === 'GEAR_WEAR') {
     const inventory = tokenInventory(actor);
     let patch, said;
     if (action.type === 'GEAR_INSTALL') {
       const item = EQUIPMENT_CATALOG.find(i => i.id === String(action.catalogId ?? ''));
       if (!item) throw new Error('Ese objeto no está en el catálogo.');
       patch = installGear(actor, inventory, item); said = `${item.category === 'armor' ? 'se pone' : 'instala'} ${item.name}`;
+    } else if (action.type === 'GEAR_WEAR') {
+      const rowId = action.rowId == null ? null : String(action.rowId), row = rowId && inventory.items.find(r => r.id === rowId);
+      patch = wearArmor(actor, inventory, rowId); said = row ? `se pone ${row.name}` : 'se quita la armadura';
     } else {
       const row = [...inventory.weapons, ...inventory.items].find(r => r.id === String(action.rowId ?? ''));
       patch = removeGear(actor, inventory, String(action.rowId ?? '')); said = `quita ${row?.name || 'un objeto'}`;

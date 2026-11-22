@@ -4,6 +4,9 @@
 
 import { tagsFromFeatures } from './weaponTags.js';
 import { newId } from './persistence.js';
+// Every other piece of personal equipment of both books, generated from System/ by
+// scripts/build-equipment-books.py (v2.30.0): weapons, armor, augmentations and gear.
+import BOOK_ITEMS from './equipmentBooks.json' with { type: 'json' };
 
 export const EQUIPMENT_SOURCES = [
   { id: 'all', name: 'Todas las fuentes' },
@@ -20,7 +23,7 @@ export const EQUIPMENT_CATEGORIES = [
   { id: 'drone_modules', name: '🤖 Módulos de Dron' }
 ];
 
-export const EQUIPMENT_CATALOG = [
+const TABLE_CATALOG = [
   // ==========================================
   // COREBOOK: LIGHT ARMOR
   // ==========================================
@@ -1507,13 +1510,35 @@ export const EQUIPMENT_CATALOG = [
   }
 ];
 
+// Wealth Tier of a price (Corebook, Wealth and Acquisition): the book's «(WTn)» when printed,
+// otherwise 1 / 4 / 9 / 16 / 25+ Credits → WT1…WT5; free (improvised) is WT0.
+export function wealthTier(cost) {
+  const printed = String(cost ?? '').match(/WT\s*(\d)/);
+  if (printed) return Number(printed[1]);
+  const credits = Number((String(cost ?? '').match(/\d+(?:\.\d+)?/) || [])[0]);
+  if (!Number.isFinite(credits)) return null;
+  if (credits <= 0) return 0;
+  return credits <= 1 ? 1 : credits <= 4 ? 2 : credits <= 9 ? 3 : credits <= 16 ? 4 : 5;
+}
+
+// The table's own entries (Spanish names, art, rules hooks) and every other book item.
+export const EQUIPMENT_CATALOG = [...TABLE_CATALOG, ...BOOK_ITEMS].map(item => ({ ...item, wt: item.wt ?? wealthTier(item.cost) }));
+export const BOOK_NAMES = { core: 'Corebook', rust_and_steel: 'Rust & Steel' };
+
+// filters: { source | sources: [], category | categories: [], wts: [numbers], query }.
 export function getEquipmentLibrary(filters = {}) {
   const { source, category, query } = filters;
+  const sources = Array.isArray(filters.sources) && filters.sources.length ? filters.sources : null;
+  const categories = Array.isArray(filters.categories) && filters.categories.length ? filters.categories : null;
+  const wts = Array.isArray(filters.wts) && filters.wts.length ? filters.wts.map(Number) : null;
   const q = (query || '').trim().toLowerCase();
 
   return EQUIPMENT_CATALOG.filter(item => {
     if (source && source !== 'all' && item.source !== source) return false;
+    if (sources && !sources.includes(item.source)) return false;
     if (category && category !== 'all' && item.category !== category) return false;
+    if (categories && !categories.includes(item.category)) return false;
+    if (wts && !wts.includes(item.wt)) return false;
     if (q) {
       const matchName = item.name.toLowerCase().includes(q);
       const matchFeatures = (item.features || item.use || item.benefit || '').toLowerCase().includes(q);
@@ -1546,7 +1571,9 @@ export function equipCatalogItem(inventory, catalogItem) {
       features: catalogItem.features || '',
       tags: Array.isArray(catalogItem.tags) ? catalogItem.tags : tagsFromFeatures(catalogItem.features),
       tier: catalogItem.tier || 'Tier 1',
-      ...(catalogItem.id ? { catalogId: String(catalogItem.id).slice(0, 100) } : {})
+      ...(catalogItem.id ? { catalogId: String(catalogItem.id).slice(0, 100) } : {}),
+      // In hand if fewer than two are (primary and secondary); otherwise carried (v2.30.0).
+      equipped: draft.weapons.filter(w => w.equipped !== false).length < 2
     });
   } else {
     // Armor, Gear, Augmentations, or Drone Modules

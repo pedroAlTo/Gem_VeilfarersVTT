@@ -1,6 +1,25 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.30.0', date: '2026-11-22', title: 'V3 · Loadout en la ficha y equipo completo de los dos libros',
+    sections: [
+      { title: 'Loadout en la ficha', items: [
+        'La ficha del personaje (doble clic en el token) tiene una pestaña Loadout, para el jugador y para el Keeper: el mismo mazo que en la mesa, con el Loadout, el Vault, el Recall (Descanso largo, corto o Escena activa), los Poderes a tu alcance para añadir al Vault y las cartas de Ancestry, Comunidad y Clases. Un personaje Sleeping ve su mano (Resolve Moves y Common Efforts) y el catálogo.',
+      ] },
+      { title: 'Equipo de los dos libros', items: [
+        'El catálogo pasa de 110 a unos 570 objetos: todas las armas, armaduras, aumentos y equipo personal del Corebook y de Rust & Steel, también los de las Casas y los del mercado negro (marcados como ilegales, con su Heat). No se incluyen armas de nave, mejoras de dron ni modificaciones de armas y armaduras.',
+        'Cada objeto lleva su libro, su nivel tecnológico, su Wealth Tier (WT) y su coste. Los que no tienen ilustración propia usan una de su familia.',
+      ] },
+      { title: 'Armas y equipo', items: [
+        'Tres bloques por importancia: Armas y Armaduras (el principal), Aumentos y Útiles y varios (una lista sencilla).',
+        'Lo equipado se ve grande y resaltado, con todas sus características: daño, Trait, alcance, Burden, umbrales y Armor Slots, nivel, WT, coste, libro, propiedades, beneficio e inconveniente… Lo que solo llevas encima es una fila compacta que se abre para verlo todo.',
+        'Las armas se equipan o se enfundan (dos en la mano al añadirlas). Puedes llevar varias armaduras, pero solo una puesta: ponerte otra deja la anterior encima, sin borrarla.',
+        'Las etiquetas (Stunning, Paired, Environmental…) muestran su regla al pasar el ratón o al enfocarlas.',
+        'Catálogo con filtros por tipo, por WT, por libro (varios a la vez) y «Solo lo que puedo usar». Al elegir un objeto ves todas sus características antes de cogerlo.',
+      ] },
+    ],
+  },
+  {
     version: '2.29.10', date: '2026-11-22', title: 'Visión Ailurean, Resolve y equipo en mesa',
     sections: [
       { title: 'En la mesa', items: [
