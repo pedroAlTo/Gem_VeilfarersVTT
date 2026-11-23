@@ -1581,6 +1581,9 @@ export const PAIRS = [
   ["Dejar pasar", "Let it pass"],
   ["¡Úsala ahora!", "Use it now!"],
   ["Reacciones avisadas a sus jugadores…", "Reactions offered to their players…"],
+  // V3 · Dron y Rapid Regeneration (v2.38.0)
+  ["No a través del dron", "Not through the drone"],
+  ["Reacción o acción", "Reaction or action"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.37.1**.
-Paquete: `VeilFarers_VTT_v2.37.1.zip`.
+Versión actual del VTT: **v2.38.0**.
+Paquete: `VeilFarers_VTT_v2.38.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.38.0] — 2026-11-23
+
+V3 · El dron en manos del jugador y Rapid Regeneration de doble uso
+
+### Dron (Neural Network Control)
+
+- Al seleccionar en el mapa un dron compartido del que tu personaje es tripulante, tomas su control al momento (gratis con señal Stable; 1 Stress con Unstable; no funciona con Lost) y tu personaje obtiene el foco.
+- Con el dron seleccionado, la mano es «Vía dron»: los Poderes que funcionan a través de un dron (sensores, señal, voz, hackeo, herramientas remotas, línea de visión, modos de vehículo) se usan desde el dron, con el alcance y los objetivos medidos desde él; los que necesitan tu cuerpo, tu toque, un aura o tu presencia aparecen como «No a través del dron» (Corebook, cap. 14).
+
+### Rapid Regeneration
+
+- Se usa como Poder normal sobre ti o un aliado a Very Close (+1 HP ahora y +1 por turno 1d4 turnos), también con Uncanny Power, y como reacción: cuando un personaje pierde HP, se ilumina a quien puede curarlo; al aceptar, se lanza sobre él.
 
 ## [2.37.1] — 2026-11-23
 

@@ -32,7 +32,7 @@ import { tokenInventory, weaponPreset, parseDamageExpression, resolveDamageExpre
 import { resolutionLog, POWER_DAMAGE } from './cardResolution.js';
 import { damageReactions, reduceComponents, reactorsFor, REACTIONS } from './powerReactions.js';
 import { thresholdBonus } from './powerEffects.js';
-import { sendOffer, closeOffer } from './reactionOffers.js';
+import { sendOffer, closeOffer, offerAfterDamage } from './reactionOffers.js';
 
 export class DiceRollerSidebar {
   constructor(containerElement) {
@@ -2002,6 +2002,8 @@ export class DiceRollerSidebar {
           title: `DAMAGE APPLIED: ${targetToken.name}`,
           details: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
         });
+        // Rapid Regeneration lights up for whoever can heal the character now (v2.38.0).
+        if (hpLost > 0 && store.sessionRole !== 'player') offerAfterDamage(targetToken.id);
         // The attack is over: the Ficha closes it and the tokens are deselected.
         window.dispatchEvent(new CustomEvent('veil:attack-done', { detail: { attackerId: attacker?.id || attackerId, targetId: targetToken.id } }));
       };

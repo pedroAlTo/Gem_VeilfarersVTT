@@ -11,7 +11,7 @@ import { TARGET_RULES, eligible, areaRule, areaTargets, areaRadius, resolutionLo
 import { cardSummary } from './cardSummaries.js';
 import { NEXT_ROLL, barrier } from './powerEffects.js';
 import { cardUse, usedBy } from './cardLimits.js';
-import { costLabel } from './loadoutCards.js';
+import { costLabel, DUAL_REACTIONS } from './loadoutCards.js';
 import { tokenAtPoint } from './playerActionBar.js';
 
 // ── State of a card in the hand ─────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ export function cardStatus(card, token, state = store.state) {
   if (usedBy(token, cardUse(card, state))) return { cls: 'no', text: 'Usada' };
   const reason = missing(card, token);
   if (reason) return { cls: 'no', text: reason };
-  if (card.reaction) return { cls: 'react', text: 'Reacción' };
+  if (card.reaction) return { cls: 'react', text: DUAL_REACTIONS.has(card.name) ? 'Reacción o acción' : 'Reacción' };
   return null;
 }
 export const statusBadge = status => status ? `<span class="vf-card-status ${e(status.cls)}">${e(status.text)}</span>` : '';

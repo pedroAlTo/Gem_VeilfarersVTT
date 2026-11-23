@@ -17,7 +17,8 @@ import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeSta
 import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
-import { handoffControl } from './drones.js';
+import { handoffControl, isDroneToken, droneSignal as signalOf } from './drones.js';
+import { droneCompatible } from './dronePowers.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear, wearArmor } from './gear.js';
@@ -155,6 +156,8 @@ function resolveGameAction(action, store) {
   if (action.type === 'DRONE_HANDOFF') {
     const result = handoffControl(store.state.tokens, actor.id, String(action.operatorId ?? ''));
     for (const token of result.tokens) { const before = store.state.tokens.find(t => t.id === token.id); if (before !== token) store.updateToken(token.id, token.id === actor.id ? { drone: token.drone } : { stress: token.stress }); }
+    // Taking the drone in hand happens on the operator's Spotlight (Corebook ch. 14): they get it.
+    grantSpotlight(store, String(action.operatorId ?? ''));
     const log = { sender: actor.name, type: 'DRONE', title: `${actor.name}: cambio de operador`, details: result.summary };
     store.addLog(log);
     return { id: newId(), actorId: actor.id, log, outcomeTitle: 'CONTROL DEL DRON', summary: result.summary };
@@ -342,9 +345,20 @@ function resolveGameAction(action, store) {
     const ids = action.targetIds ?? (action.targetId ? [action.targetId] : []);
     // An area around the caster («all enemies within Close range»): everyone inside is a target.
     const area = areaRule(card);
-    const targets = area ? areaTargets(actor, area, store) : cardTargets(actor, card, ids, store);
+    // A Power used through the drone the character operates: range, targets and line of sight are
+    // measured from the drone (Corebook ch. 14, «Domain Powers Through a Drone»).
+    let origin = actor, drone = null;
+    if (action.viaDroneId) {
+      drone = store.state.tokens.find(t => t.id === action.viaDroneId);
+      if (!isDroneToken(drone) || drone.drone?.operatorId !== actor.id) throw new Error('Ese dron no está bajo el control de ' + actor.name + '.');
+      if (signalOf(drone) === 'lost') throw new Error('Señal Lost: el dron no recibe órdenes.');
+      if (!droneCompatible(card)) throw new Error(card.name + ' no puede usarse a través de un dron: necesita tu cuerpo, tu toque o tu presencia.');
+      origin = { ...actor, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId };
+    }
+    const targets = area ? areaTargets(origin, area, store) : cardTargets(origin, card, ids, store);
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
     const areaChecks = area?.check && !result.roll && !result.failed;
+    if (drone) result.notes.push(`A través de ${drone.name}.`);
     // Kinetic Blast (v2.32.0): spend 1 Hope (+ up to 2 to Empower) and the next melee attack carries it.
     let kineticClock = null;
     if (card.name === 'Kinetic Blast') {
@@ -437,7 +451,7 @@ function resolveGameAction(action, store) {
     if (SELF_EFFECTS[card.name] || CARD_MODES[card.name]) resolution.mode = String(action.mode ?? '').slice(0, 30);
     if (CARD_MODES[card.name] && !CARD_MODES[card.name].includes(resolution.mode)) resolution.mode = CARD_MODES[card.name][0];
     if (area && !result.failed) {
-      resolution.area = { x: Math.round(actor.x), y: Math.round(actor.y), reach: area.reach, radius: Math.round(areaRadius(actor, store.getActiveMap?.(), area.reach)), color: card.color || '#00f3ff', failure: area.failure };
+      resolution.area = { x: Math.round(origin.x), y: Math.round(origin.y), reach: area.reach, radius: Math.round(areaRadius(origin, store.getActiveMap?.(), area.reach)), color: card.color || '#00f3ff', failure: area.failure };
       if (areaChecks && targets.length) resolution.replies = targets.map(t => ({ id: newId(), actorId: t.id, traitId: area.check.traitId, dc: area.check.dc }));
     }
     if (card.kind === 'archive' && result.refundResolve) resolution.refundResolve = result.refundResolve;

@@ -16,7 +16,7 @@ export const SUMMARIES = {
   // Synthesis
   'Biological Scan': 'Escaneo · toque · ves HP, Stress y estados · DC 10: toxinas y cibernética',
   'Environmental Adaptation': 'Mejora · 1 h · inmune a vacío, temperatura, toxinas o radiación',
-  'Rapid Regeneration': 'Reacción · aliado Very Close dañado · +1 HP y +1 HP por turno (1d4 turnos)',
+  'Rapid Regeneration': 'Curación · tú o aliado Very Close (o reacción al daño) · +1 HP y +1 por turno (1d4)',
   'Ecosystem Analysis': 'Mejora · 24 h · Ventaja en Instinct para sobrevivir y rastrear en la zona',
   'Symbiotic Bond': 'Vínculo · aliado Close · 1 h · si uno gasta Hope, el otro gana Ventaja (1 vez)',
   'Hostile Environment Mastery': 'Hechizo · Knowledge DC 15 · zona Close habitable 8 h (10 personas)',

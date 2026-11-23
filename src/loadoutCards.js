@@ -125,6 +125,8 @@ export function giftCost(gift, sleeping = false) {
   return cost;
 }
 // The class may come only in the imported sheet, or in Spanish (Místico).
+// Reactions that can also be played as an ordinary Power on a target (user decision, 23 Nov 2026).
+export const DUAL_REACTIONS = new Set(['Rapid Regeneration']);
 export const isSleepingMystic = token => token?.path === 'Sleeping' && /m[yií]stic/i.test(`${text(token.characterClass)} ${text(fieldsOf(token).class)}`);
 // The subclass rank acquired: 0 Foundation, 1 Specialization, 2 Mastery.
 export const subclassRank = token => Math.max(Number(token?.advancement?.subclassUpgrades) || 0, /mastery/i.test(token?.subclassRank) ? 2 : /specialization/i.test(token?.subclassRank) ? 1 : 0);
@@ -204,7 +206,7 @@ export function characterCards(token, data, options = {}) {
     for (const [domain, level] of archivePackages(token)) for (const power of data.powers.filter(p => p.d === domain && p.l === level)) {
       const card = powerCard(power, 'archive');
       // Uncanny Power cannot reproduce a Reaction or a Passive Power.
-      cards.push({ ...card, playable: card.playable && !card.reaction && !/project/i.test(card.type) });
+      cards.push({ ...card, playable: card.playable && (!card.reaction || DUAL_REACTIONS.has(card.name)) && !/project/i.test(card.type) });
     }
   }
   if (sleeping) {

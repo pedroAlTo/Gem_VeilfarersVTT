@@ -82,3 +82,25 @@ if (typeof window !== 'undefined') {
   window.addEventListener('veil:reaction-closed', event => dropOffer(event.detail?.offerId));
   window.addEventListener('veil:reaction-answer', event => answerReceived(event.detail || {}));
 }
+
+// Rapid Regeneration as a reaction (v2.38.0): after a character loses HP, it lights up for whoever
+// can use it (the target or an ally in Very Close, with it in the Loadout and 1 Hope). The first
+// to accept plays it on that character, paid and resolved by the table.
+export async function offerAfterDamage(targetId) {
+  const [{ reactorsFor }, { cardData }, { characterCards }] = await Promise.all([import('./powerReactions.js'), import('./cardData.js'), import('./loadoutCards.js')]);
+  const target = store.state.tokens.find(t => t.id === targetId), data = cardData();
+  if (!target || !data) return null;
+  const reactors = reactorsFor('Rapid Regeneration', target, store.state.tokens, store.getActiveMap?.(), data);
+  if (!reactors.length) return null;
+  let done = false;
+  const offerId = sendOffer({ name: 'Rapid Regeneration', reactors, text: `${target.name} acaba de perder HP. Rapid Regeneration: +1 HP ahora y +1 HP al empezar cada uno de sus próximos 1d4 turnos.`, cost: '1 Hope' }, async ({ reactorId, use }) => {
+    if (!use || done) return;
+    done = true; closeOffer(offerId);
+    const reactor = store.state.tokens.find(t => t.id === reactorId);
+    const card = reactor && characterCards(reactor, data).find(c => c.name === 'Rapid Regeneration' && c.playable);
+    if (!card) return;
+    try { await network.requestAction({ type: 'CARD_PLAY', actorId: reactor.id, cardId: card.id, targetIds: [target.id] }); }
+    catch (error) { (await import('./ui.js')).notify(error.message, 'error'); }
+  });
+  return offerId;
+}

@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.37.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.37.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.37.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.37.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.38.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.38.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.38.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.38.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -128,6 +128,9 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.37.1.zip**. Abre **AYUDA
 113. **(V3) Doble clic y tarjeta.** Doble clic en Stellar Lance: ventana con resumen, datos, objetivo, Ventaja/Normal/Desventaja, Experiencia y modificador; «Lanzar» tira con esas opciones. Tras cualquier carta, la tarjeta junto a la mano va marcando objetivo, coste, tirada y efecto; «Ver detalle» abre la resolución.
 114. **(V3) Reacción iluminada (dos navegadores).** Keeper en uno y el jugador de Vea en otro; Vea con Force Shield y Tactical Overwatch en el Loadout y Hope, a 2 casillas de Harker. El Keeper ataca a Harker: en la pantalla de Vea se ilumina Tactical Overwatch con su aviso; «Usar» → en la del Keeper el aviso se cierra y el ataque tira con Desventaja. Repite y que Vea pulse «Dejar pasar»: el Keeper lo ve y continúa. Si Vea no responde, el Keeper decide con sus botones. En un impacto a un personaje con Impact Absorption, su jugador ve la carta iluminada; al aceptarla, la ventana de daño del Keeper la deja elegida.
 115. **(V3) Recall pagando.** Con un Awakened con el Loadout lleno y cartas en el Vault, abre el mazo (en la mesa o en la ficha → Loadout). Elige «Escena activa», toca una carta del Vault y una del Loadout: el botón, justo debajo del Vault, dice «Recall X ⇄ Y · 1 Hope + tu Acción»; púlsalo: el Hope baja y las cartas cambian. Repite con «Descanso corto»: marca el Recall Cost en Stress. Sin Hope, el error aparece junto al botón.
+116. **(V3) Tomar el dron.** Con un dron con Neural Network Control y tu personaje registrado (Sesión → control del token), selecciona el dron como jugador: pasa a ser su operador sin ventana y tu personaje recibe el foco. Con señal Unstable, marca 1 Stress; con Lost, no lo toma.
+117. **(V3) Poderes vía dron.** Con el dron seleccionado, la mano dice «Vía dron · nombre»: Stellar Lance o Slipstream Jolt se lanzan con el alcance medido desde el dron (un enemigo lejos de ti pero cerca del dron es objetivo válido); Kinetic Blast o Blinding Flash aparecen como «No a través del dron».
+118. **(V3) Rapid Regeneration.** Clic en la carta: apunta a un aliado a Very Close y se cura +1 HP (y 1d4 turnos más). Después, que un adversario dañe a ese aliado: al jugador con Rapid Regeneration se le ilumina; «Usar» la lanza sobre el herido. Un Mystic Sleeping con Synthesis 1 puede lanzarla con Uncanny Power.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

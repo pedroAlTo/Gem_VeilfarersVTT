@@ -26,6 +26,8 @@ export const REACTIONS = {
   'Photon Shield': { when: 'damage', who: 'ally', reach: 'Close', cost: { stress: 1 } },
   'Impact Absorption': { when: 'damage', who: 'self', cost: { stress: 1 }, types: ['physical'] },
   'Mind Shield': { when: 'damage', who: 'self', cost: { stress: 1 }, types: ['neural'] },
+  // After HP damage to you or an ally in Very Close (it is also played as an ordinary Power).
+  'Rapid Regeneration': { when: 'after-damage', who: 'self-or-ally', reach: 'Very Close', cost: { hope: 1 } },
 };
 
 const overwhelmed = token => (token.stress?.current || 0) >= (token.stress?.max ?? 6);

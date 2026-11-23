@@ -465,3 +465,39 @@ test('Lucky Break rerolls a die of the latest roll: the outcome, the Hope and th
   assert.deepEqual([get(s, 'caster').hope, get(s, 'caster').stress.current, s.state.fear], [3, 1, 0]);
   assert.throws(() => performGameAction({ type: 'LUCKY_BREAK', actorId: 'caster', die: 'fear', face: 2 }, s), /ya se relanzó/);
 });
+
+test('a Power through the operated drone: only those that work through a drone, measured from the drone; taking the drone gives the Spotlight', async () => {
+  const { droneCompatible } = await import('../src/dronePowers.js');
+  const card = name => characterCards(withPower(name), data).find(c => c.name === name);
+  assert.equal(droneCompatible(card('Stellar Lance')), true);
+  assert.equal(droneCompatible(card('Kinetic Blast')), false, 'a melee strike needs the body');
+  assert.equal(droneCompatible(card('Blinding Flash')), false, 'an aura centred on the character');
+  const drone = { ...actor('dr'), actorType: 'drone', isPlayer: false, x: 64 + 64 * 12, drone: { grade: 'common', modules: ['neural-network-control'], signal: 'stable', operatorId: 'caster' } };
+  const foe = { ...hostile('foe'), x: 64 + 64 * 14 };
+  const s = table({ ...withPower('Slipstream Jolt'), hasSpotlight: false }, drone, foe);
+  s.setTokenSpotlight = (id, on) => s.updateToken(id, { hasSpotlight: on });
+  // From the caster, the foe is far beyond Close; from the drone, two squares away.
+  assert.throws(() => play(s, 'caster', 'Slipstream Jolt', { targetIds: ['foe'] }), /Close/);
+  const jolt = play(s, 'caster', 'Slipstream Jolt', { targetIds: ['foe'], viaDroneId: 'dr' });
+  assert.match(jolt.notes.join(' '), /A través de dr/);
+  assert.ok(get(s, 'foe').effectClocks.some(c => c.name === 'Slipstream Jolt'));
+  const t = table(withPower('Kinetic Blast'), drone);
+  assert.throws(() => play(t, 'caster', 'Kinetic Blast', { viaDroneId: 'dr' }), /no puede usarse a través de un dron/);
+  // Neural Network Control: a registered crew member takes the drone and its Spotlight.
+  const n = table({ ...actor('pilot'), hasSpotlight: false }, { ...drone, drone: { ...drone.drone, operatorId: 'other' } });
+  n.setTokenSpotlight = (id, on) => n.updateToken(id, { hasSpotlight: on });
+  performGameAction({ type: 'DRONE_HANDOFF', actorId: 'dr', operatorId: 'pilot' }, n);
+  assert.equal(get(n, 'dr').drone.operatorId, 'pilot');
+  assert.equal(get(n, 'pilot').hasSpotlight, true);
+});
+
+test('Rapid Regeneration is a Reaction and also an ordinary Power on a target, also through Uncanny Power', async () => {
+  const { reactorsFor } = await import('../src/powerReactions.js');
+  const mystic = actor('mystic', { path: 'Sleeping', characterClass: 'Mystic', sheetFields: { s_archive: 'Synthesis 1' } });
+  assert.equal(characterCards(mystic, data).find(c => c.name === 'Rapid Regeneration').playable, true);
+  const medic = { ...withPower('Rapid Regeneration', 'medic'), x: 128 }, hurt = actor('hurt');
+  assert.deepEqual(reactorsFor('Rapid Regeneration', hurt, [medic, hurt], scene, data).map(t => t.id), ['medic']);
+  const s = table(medic, { ...hurt, hp: { current: 3, max: 6 } });
+  play(s, 'medic', 'Rapid Regeneration', { targetIds: ['hurt'], durationFaces: [2] });
+  assert.equal(get(s, 'hurt').hp.current, 4, 'played on a target: +1 HP at once');
+});

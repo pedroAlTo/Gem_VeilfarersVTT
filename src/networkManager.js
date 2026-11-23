@@ -1005,6 +1005,7 @@ export class NetworkManager {
           conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El impacto ha cambiado. Vuelve a calcular el daño.' }));
           return;
         }
+        if (chosen.hpLoss > 0) import('./reactionOffers.js').then(m => m.offerAfterDamage(target.id)).catch(() => {});
         conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: true, text: `Keeper: ${target.name} pierde ${chosen.hpLoss} HP${chosen.spentShields ? ` (${chosen.spentShields} escudo${chosen.spentShields > 1 ? 's' : ''})` : ''}.` }));
       }, { onCancel: () => conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: `El Keeper ha cancelado el daño a ${target.name}.` })) }));
       return;

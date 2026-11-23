@@ -20,6 +20,8 @@ import { cardSummary } from './cardSummaries.js';
 import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode } from './cardFlow.js';
 import { characterDetails } from './characterImport.js';
 import { liveFor, liveReactions, answer as answerReaction } from './reactionOffers.js';
+import { droneCompatible } from './dronePowers.js';
+import { operatedDrone } from './droneControl.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { newId } from './persistence.js';
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
@@ -151,8 +153,12 @@ export class CardHand {
     }
     // While the rules data loads, the deck stays in sight (it is always visible).
     if (!data) { this.signature = ''; this.tokenId = null; this.root.classList.remove('hidden'); this.quickbar.classList.remove('with-hand'); this.root.innerHTML = sanitizeHTML(deckButton('Mazo: consulta todos los Poderes del juego')); this.root.querySelector('[data-open-vault]').onclick = () => this.toggleDrawer('', false, { catalogOnly: true }); return; }
-    const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts });
-    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, liveReactions().map(o => o.offerId), store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
+    // With the operated drone selected, the hand is the operator's, used through the drone (v2.38.0).
+    const drone = operatedDrone(token.id);
+    this.viaDroneId = drone?.id || null;
+    const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts })
+      .map(card => !drone ? card : droneCompatible(card) ? { ...card, viaDrone: drone.name } : { ...card, playable: false, droneBlocked: true });
+    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, liveReactions().map(o => o.offerId), drone?.id, drone?.x, drone?.y, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token.id;
     const hand = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault'), n = hand.length;
@@ -164,10 +170,10 @@ export class CardHand {
       this.root.querySelector('[data-open-sheet]').onclick = async () => { const { openDossier } = await import('./dossierUI.js'); openDossier(store.state.tokens.find(t => t.id === token.id), () => {}, 'stats'); };
       return;
     }
-    const title = token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
+    const title = drone ? `Vía dron · ${drone.name}` : token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
     this.root.innerHTML = sanitizeHTML(`
       <div class="card-hand-label"><span>${e(title)}</span></div>
-      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}"${liveFor(token.id, card.name) ? ' data-live-reaction="1"' : ''}>${statusBadge(liveFor(token.id, card.name) ? { cls: 'react live', text: '¡Úsala ahora!' } : cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`).join('')}</div>
+      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}"${liveFor(token.id, card.name) ? ' data-live-reaction="1"' : ''}>${statusBadge(liveFor(token.id, card.name) ? { cls: 'react live', text: '¡Úsala ahora!' } : card.droneBlocked ? { cls: 'no', text: 'No a través del dron' } : cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`).join('')}</div>
       ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : deckButton('Mazo: consulta todos los Poderes')}`);
     this.layoutFan(n);
     this.bind();
@@ -217,7 +223,9 @@ export class CardHand {
     if (plan === 'dialog') { this.inspect(card, point); return; }
     const options = { rollNow: true, ...(defaultMode(card) ? { mode: defaultMode(card) } : {}) };
     if (plan === 'play' || point) { this.play(card, point, null, options); return; }
-    startAim(card, token, plan, targetIds => this.play(card, null, null, { ...options, targetIds }));
+    const drone = this.viaDroneId && store.state.tokens.find(t => t.id === this.viaDroneId);
+    const origin = drone ? { ...token, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId } : token;
+    startAim(card, origin, plan, targetIds => this.play(card, null, null, { ...options, targetIds }));
   }
 
   // Click inspects; dragging past a few pixels lifts the card so it can be dropped on the map.
@@ -315,7 +323,7 @@ export class CardHand {
         describe: v => ({ outcome: `${v.reduce((a, b) => a + b, 0)} turnos`, modifiers: `${dd.qty}d${dd.sides} [${v.join(', ')}]` }) }) : null;
       const effectFace = card.name === 'Emergency Repair' && card.kind !== 'archive'
         ? (await throwDice([{ qty: 1, sides: 8, role: 'Reparación' }], { label: card.name, actor: token }))[0] : undefined;
-      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, mode, empower, effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
+      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, mode, empower, ...(this.viaDroneId ? { viaDroneId: this.viaDroneId } : {}), effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
       const detail = [result.summary, ...(result.notes || [])].join(' ');
       window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: result.failed ? 'NO SE MANIFIESTA' : result.outcomeTitle, modifiers: detail, details: detail });
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
