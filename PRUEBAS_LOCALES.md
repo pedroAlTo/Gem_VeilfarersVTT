@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.39.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.39.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.39.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.39.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.40.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.40.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.40.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.40.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -135,6 +135,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.39.0.zip**. Abre **AYUDA
 120. **(V3) Lucky Break y Bear Down iluminadas.** Tras una tirada de Dualidad de tu personaje, Lucky Break aparece iluminada («¡Úsala ahora!»); tras usarla o marcar el Stress máximo, se apaga. Un Sleeping con Resolve ve Bear Down iluminada tras su tirada o su daño.
 121. **(V3) Mano por tipos.** Con un personaje con Poderes y reacciones: encima de la mano aparecen Todas / Poderes / Reacciones (y Rasgos o Moves si los tiene) y «Usables». Elige Reacciones: solo quedan ellas. Marca «Usables» sin Hope: desaparecen las que cuestan Hope. Recarga: se mantiene la elección. Una reacción iluminada se ve aunque el filtro la oculte.
 122. **(V3) Bandeja del Keeper.** Como Keeper, lanza Blinding Flash con un adversario dentro: abajo a la izquierda aparece «Decisiones · 1» con «1 adversario(s) por tirar»; «Tirar adversarios» tira su Instinct y la fila pasa a «Lista para que decidas»; «Finalizar» la cierra y la bandeja desaparece. Marca «Auto» y repite: el adversario tira solo.
+123. **(V3) Special al usar un poder.** Doble clic en Spark of Hope con Vea al lado: escribe «Inspirado · +1 a la próxima» en «Estado Special» y usa la carta: Vea muestra el icono de estrella; al pasar el ratón se lee «Special · Inspirado…». Con Stellar Lance y un Special, el texto solo aparece en el objetivo si la tirada sale. Con Blinding Flash, solo en los adversarios que fallan su Instinct.
+124. **(V3) Special a mano.** Abre Estados de un token, escribe un texto en «Estado Special · texto libre» y pulsa «Añadir Special»: aparece en «Special y otros marcadores» y en el token; pulsa su × para quitarlo. Como Keeper, en la resolución de una carta elige «Aplicar estado Special (texto libre)», escribe el texto y aplícalo a los objetivos marcados.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

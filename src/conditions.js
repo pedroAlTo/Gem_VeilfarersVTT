@@ -159,8 +159,24 @@ export const CAMPAIGN_STATES = [
 
 export const ALL_CONDITIONS_AND_STATES = [...CONDITIONS, ...CAMPAIGN_STATES];
 
+// The Special state (v2.40.0, user request): free text written by the table, put on a token by
+// hand or by a Power (the effect the card describes, or just a note). Stored as «Special: text».
+export const SPECIAL_PREFIX = 'Special: ';
+export const SPECIAL_MAX = 80;
+const specialPath = 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5ZM9 12h6';
+export const isSpecial = name => /^special\s*:/i.test(String(name ?? ''));
+export const specialText = name => String(name ?? '').replace(/^special\s*:\s*/i, '').trim();
+// «Special: text» from free text (empty if there is nothing to write).
+export function specialState(text) {
+  const clean = String(text ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').replace(/^special\s*:\s*/i, '').trim().slice(0, SPECIAL_MAX);
+  return clean ? SPECIAL_PREFIX + clean : '';
+}
+
 const key = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-export function conditionDefinition(name) { return ALL_CONDITIONS_AND_STATES.find(c => key(c.name) === key(name) || key(c.label) === key(name)); }
+export function conditionDefinition(name) {
+  if (isSpecial(name)) { const text = specialText(name); return text ? { name: SPECIAL_PREFIX + text, label: 'Special · ' + text, rule: text + ' — Estado Special: texto libre de la mesa (efecto de un poder o anotación). Se retira a mano en Estados.', path: specialPath, special: true } : null; }
+  return ALL_CONDITIONS_AND_STATES.find(c => key(c.name) === key(name) || key(c.label) === key(name));
+}
 export function normalizeConditions(values = []) {
   const seen = new Set();
   return values.filter(v => typeof v === 'string' && v.trim()).map(v => conditionDefinition(v)?.name || v.trim()).filter(v => { const id = key(v); if (seen.has(id)) return false; seen.add(id); return true; });

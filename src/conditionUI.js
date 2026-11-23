@@ -5,7 +5,7 @@ import { escapeHTML as esc } from './ui.js';
 import { LIFE_STATES } from './combatState.js';
 import { renderLifeControls } from './lifeControls.js';
 import { damageNames } from './damageProtection.js';
-import { CONDITIONS, CAMPAIGN_STATES, CONDITION_SOURCE, conditionDefinition, conditionIcon, normalizeConditions } from './conditions.js';
+import { CONDITIONS, CAMPAIGN_STATES, CONDITION_SOURCE, conditionDefinition, conditionIcon, normalizeConditions, isSpecial, specialState, SPECIAL_MAX } from './conditions.js';
 
 export function conditionBadges(token) {
   return normalizeConditions(token.conditions).map(name => {
@@ -32,8 +32,9 @@ export function openConditions(tokenId) {
       <label>Tipo o etiqueta <vf-select data-defense-type>${damageNames.map(n => '<option>' + n + '</option>').join('')}</vf-select></label>
       <button type="button" class="hud-btn" data-add-defense>Añadir defensa</button></details>
     <article class="condition-rule" aria-live="polite" style="margin-top: 10px;"><strong data-rule-title>Selecciona una condición o estado para consultar su regla.</strong><p data-rule></p><small>${esc(CONDITION_SOURCE)}</small></article>
-    <h4 class="dossier-label">Otros marcadores</h4><div class="condition-custom-list" data-custom-list></div>
-    <form class="condition-custom"><label class="dossier-field">Marcador propio<input class="hud-input" data-custom maxlength="100" placeholder="Ej.: Herido · efecto de la escena"></label><button class="hud-btn" type="submit">Añadir</button></form>
+    <h4 class="dossier-label">Special y otros marcadores</h4><div class="condition-custom-list" data-custom-list></div>
+    <form class="condition-custom"><label class="dossier-field">Estado Special · texto libre<input class="hud-input" data-custom maxlength="${SPECIAL_MAX}" placeholder="Ej.: Marcado por la lanza · −1 Evasion"></label><button class="hud-btn" type="submit">Añadir Special</button></form>
+    <p class="dossier-muted">Un efecto de un poder que no está en la lista, o una simple anotación sobre el token. Se ve en el token con su icono; pasa el ratón para leerlo.</p>
     <p class="dossier-muted" data-permission></p><p class="dossier-error" role="alert"></p>`);
   const error = message => { modal.querySelector('.dossier-error').textContent = message; };
   const explain = name => {
@@ -72,9 +73,9 @@ export function openConditions(tokenId) {
     modal.querySelector('button[type=submit]').disabled = !editable;
     modal.querySelector('[data-permission]').textContent = editable ? (store.sessionRole === 'player' ? 'Los cambios se confirman al recibir la respuesta del Keeper.' : 'Los cambios se guardan al pulsar cada condición.') : 'Consulta: este token no está bajo tu control.';
     const list = modal.querySelector('[data-custom-list]'); list.replaceChildren();
-    active.filter(c => !conditionDefinition(c) && !LIFE_STATES.includes(c)).forEach(name => {
+    active.filter(c => (!conditionDefinition(c) || isSpecial(c)) && !LIFE_STATES.includes(c)).forEach(name => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'hud-btn';
-      button.textContent = name + (editable ? ' ×' : ''); button.onclick = () => editable ? apply(name) : explain(name); list.append(button);
+      button.textContent = (isSpecial(name) ? conditionDefinition(name).label : name) + (editable ? ' ×' : ''); button.onclick = () => editable ? apply(name) : explain(name); list.append(button);
     });
   }
   modal.querySelectorAll('[data-condition]').forEach(button => {
@@ -82,7 +83,7 @@ export function openConditions(tokenId) {
     button.onfocus = button.onpointerenter = () => explain(button.dataset.condition);
   });
   modal.querySelector('[data-add-defense]').onclick = () => apply(modal.querySelector('[data-defense-kind]').value + ': ' + modal.querySelector('[data-defense-type]').value, false);
-  modal.querySelector('form').onsubmit = async event => { event.preventDefault(); const input = modal.querySelector('[data-custom]'); if (await apply(input.value, false)) input.value = ''; };
+  modal.querySelector('form').onsubmit = async event => { event.preventDefault(); const input = modal.querySelector('[data-custom]'), state = specialState(input.value); if (!state) { error('Escribe el texto del estado Special.'); return; } if (await apply(state, false)) input.value = ''; };
   const unsubscribe = store.subscribe((_, keys) => { if (!modal.isConnected) { unsubscribe(); return; } if (keys.some(k => ['tokens', 'maps', 'userRole', 'isConnected', 'claimedTokenId'].includes(k))) refresh(); });
   const observer = new MutationObserver(() => { if (!modal.isConnected) { unsubscribe(); observer.disconnect(); } }); observer.observe(document.body, { childList: true });
   refresh(); return modal;

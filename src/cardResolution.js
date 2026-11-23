@@ -3,7 +3,7 @@ import { printedChecks } from './cardProcedures.js';
 import { newId } from './persistence.js';
 import { distanceInfo, RANGE_BANDS } from './attackFlow.js';
 import { cardDuration, helpsOthers, addClock, newClock, MAX_SEGMENTS } from './effectClocks.js';
-import { CONDITIONS, normalizeConditions } from './conditions.js';
+import { CONDITIONS, normalizeConditions, specialState } from './conditions.js';
 import { canReceiveHealing, LIFE_STATES } from './combatState.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { facesRoller } from './tableDice.js';
@@ -116,6 +116,18 @@ export function applyAreaFailure(store, record, targetId, roll) {
   store.updateToken(target.id, { effectClocks: clocks, conditions });
   return target.name + ': ' + said.join(' · ') + '.';
 }
+// Puts a Special state on these tokens (skips the ones that already have it or have 30 markers).
+export function applySpecial(store, state, holders) {
+  const named = [];
+  for (const holder of holders) {
+    const live = store.state.tokens.find(t => t.id === holder.id);
+    const current = normalizeConditions(live?.conditions);
+    if (!live || current.includes(state) || current.length >= 30) continue;
+    store.updateToken(live.id, { conditions: normalizeConditions([...current, state]) });
+    named.push(live.name);
+  }
+  return named.length ? named.join(', ') + ' · ' + state + '.' : '';
+}
 export function areaTargets(actor, rule, store) {
   const map = store.getActiveMap?.();
   return store.state.tokens.filter(t => {
@@ -176,8 +188,16 @@ export const EFFECT_OPTIONS = {
   note: 'Registrar decisión', hp: 'Cambiar HP finales', stress: 'Cambiar Stress', hope: 'Cambiar Hope',
   effort: 'Cambiar Effort', armor: 'Cambiar Armor Slots', condition: 'Aplicar condición', clear: 'Retirar condición',
   advantage: 'Ventaja en la siguiente tirada', bonus: 'Modificador a la siguiente tirada', clock: 'Iniciar reloj de efecto',
+  special: 'Aplicar estado Special (texto libre)',
 };
 function effectPatch(token, kind, value, condition, record) {
+  if (kind === 'special') {
+    const state = specialState(condition);
+    if (!state) throw new Error('Escribe el texto del estado Special.');
+    const current = normalizeConditions(token.conditions);
+    if (current.length >= 30) throw new Error('Máximo 30 condiciones por token.');
+    return { conditions: normalizeConditions([...current, state]) };
+  }
   if (kind === 'condition' || kind === 'clear') {
     if (!CONDITIONS.some(c => c.name === condition) || LIFE_STATES.includes(condition)) throw new Error('Elige una condición de la lista.');
     if (kind === 'condition' && pathImmune(token, condition)) throw new Error(token.name + ' es inmune a ' + condition + '.');
@@ -239,7 +259,7 @@ export function adjudicateCard(store, id, { operation, kind, ids = [], value, co
     return { target, patch: kind === 'note' ? null : effectPatch(target, kind, value, condition, record) };
   });
   for (const { target, patch } of changes) if (patch) store.updateToken(target.id, patch);
-  const label = [EFFECT_OPTIONS[kind], ['condition','clear'].includes(kind) ? condition : value, changes.map(c => c.target.name).join(', '), comment].filter(x => x != null && x !== '').join(' · ');
+  const label = [EFFECT_OPTIONS[kind], ['condition','clear'].includes(kind) ? condition : kind === 'special' ? specialState(condition) : value, changes.map(c => c.target.name).join(', '), comment].filter(x => x != null && x !== '').join(' · ');
   updateResolution(store, id, { applied: [...record.applied, { key: receipt, label }] });
 }
 
@@ -301,7 +321,9 @@ export function completeCardRoll(store, record, roll, previous = null) {
     const failed = !roll.isCritical && roll.total < roll.dc;
     // An area card applies its printed failure to whoever fails (once per reply).
     const target = reply && store.state.tokens.find(t => t.id === reply.actorId);
-    const consequence = !failed || !reply || reply.consequence ? '' : record.area?.failure ? applyAreaFailure(store, record, reply.actorId, roll) : record.replyFailure && target ? target.name + ': ' + record.replyFailure : '';
+    let consequence = !failed || !reply || reply.consequence ? '' : record.area?.failure ? applyAreaFailure(store, record, reply.actorId, roll) : record.replyFailure && target ? target.name + ': ' + record.replyFailure : '';
+    // The Special state of the play goes to whoever fails its reply.
+    if (failed && reply && !reply.consequence && record.special && target) consequence = [consequence, applySpecial(store, record.special, [target])].filter(Boolean).join(' ');
     updateResolution(store, record.id, { replies: record.replies.map(r => r.id === record.replyId ? { ...r, outcome: roll.outcomeTitle, total: roll.total, ...(consequence ? { consequence } : {}) } : r) });
     return;
   }
@@ -348,6 +370,12 @@ export function completeCardRoll(store, record, roll, previous = null) {
     const inside = record.targetIds.map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);
     for (const t of inside) store.updateToken(t.id, { effectClocks: addClock((t.effectClocks || []).filter(c => c.name !== record.name), newClock({ name: record.name, segments: 1, tick: 'manual', scene: true }, { source: actor?.name || '' })) });
     notes.push(record.name + ' en ' + (inside.map(t => t.name).join(', ') || 'nadie') + '.');
+  }
+  // The Special state of the play: on a success, to its targets (or to the caster without one).
+  if (success && record.special && !record.replies?.length && !(previous && record.specialApplied)) {
+    const holders = record.targetIds.map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);
+    const said = applySpecial(store, record.special, holders.length ? holders : [actor].filter(Boolean));
+    if (said) { notes.push(said); extra.specialApplied = true; }
   }
   if (success) {
     const targets = record.targetIds.map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);

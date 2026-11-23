@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.40.0', date: '2026-11-23', title: 'V3 · Estado Special: texto libre al usar poderes y como anotación',
+    sections: [
+      { title: 'Estado Special', items: [
+        'Nuevo estado «Special» con texto libre (hasta 80 caracteres), con su propio icono en el token; al pasar el ratón se lee el texto. Sirve para el efecto de un poder que no está en la lista de condiciones o como simple anotación.',
+        'Al usar un poder con doble clic, el campo «Estado Special (opcional)» deja ese texto en el objetivo (o en quien lo lanza si no hay objetivo): sin tirada, al momento; con tirada, solo si sale; en un área, a quien falle su tirada.',
+        'En Estados, «Añadir Special» lo pone a mano en cualquier token, y se quita con su ×. El Keeper también puede aplicarlo desde la resolución de una carta («Aplicar estado Special»).',
+      ] },
+    ],
+  },
+  {
     version: '2.39.0', date: '2026-11-23', title: 'V3 · Más reacciones iluminadas, la mano por tipos y la bandeja del Keeper',
     sections: [
       { title: 'Reacciones iluminadas', items: [

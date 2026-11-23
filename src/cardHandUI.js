@@ -328,7 +328,7 @@ export class CardHand {
     this.play(card, point);
   }
 
-  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, mode, empower, rollNow = false, rollEdge = 'normal', expIndex = '', rollMod = 0 } = {}) {
+  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, mode, empower, special, rollNow = false, rollEdge = 'normal', expIndex = '', rollMod = 0 } = {}) {
     if (KEEPER_KINDS.has(card.kind)) return this.playKeeper(card, point);
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return false;
@@ -352,7 +352,7 @@ export class CardHand {
         describe: v => ({ outcome: `${v.reduce((a, b) => a + b, 0)} turnos`, modifiers: `${dd.qty}d${dd.sides} [${v.join(', ')}]` }) }) : null;
       const effectFace = card.name === 'Emergency Repair' && card.kind !== 'archive'
         ? (await throwDice([{ qty: 1, sides: 8, role: 'Reparación' }], { label: card.name, actor: token }))[0] : undefined;
-      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, mode, empower, ...(this.viaDroneId ? { viaDroneId: this.viaDroneId } : {}), effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
+      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, mode, empower, ...(special ? { special } : {}), ...(this.viaDroneId ? { viaDroneId: this.viaDroneId } : {}), effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
       const detail = [result.summary, ...(result.notes || [])].join(' ');
       window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: result.failed ? 'NO SE MANIFIESTA' : result.outcomeTitle, modifiers: detail, details: detail });
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }

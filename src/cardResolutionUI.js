@@ -4,7 +4,7 @@ import { escapeHTML as e, notify } from './ui.js';
 import { printedChecks, printedPools } from './cardProcedures.js';
 import { currentArc } from './cardLimits.js';
 import { throwDice } from './tableDice.js';
-import { CONDITIONS } from './conditions.js';
+import { CONDITIONS, SPECIAL_MAX } from './conditions.js';
 import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog, areaRule, areaTargets, SELF_EFFECTS, POWER_DAMAGE, CARD_MODES } from './cardResolution.js';
 import { PATH_TRAITS } from './statePowers.js';
 import { tokenInventory } from './equipment.js';
@@ -12,7 +12,14 @@ import { tokenInventory } from './equipment.js';
 const opt = (value, label, selected = false) => '<option value="' + e(String(value)) + '"' + (selected ? ' selected' : '') + '>' + e(String(label)) + '</option>';
 const field = (label, html) => '<label class="dossier-field"><span>' + e(label) + '</span>' + html + '</label>';
 const keeper = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
+// A Special state written by the player, for any Power used from the hand (v2.40.0).
+const specialField = () => '<label class="dossier-field card-special"><span>Estado Special (opcional)</span><input class="hud-input" name="card_special" maxlength="' + SPECIAL_MAX + '" placeholder="Ej.: Marcado por la lanza · −1 Evasion" autocomplete="off"></label>' +
+  '<p class="dossier-muted">Texto libre que la carta deja en el objetivo (o en ti si no hay): sin tirada, al momento; con tirada, si sale; en un área, a quien falle. También sirve de anotación.</p>';
 export function cardChoices(card, actor, picked) {
+  const base = choicesFor(card, actor, picked);
+  return actor && !card.reverse && !card.chooseTrait ? base + specialField() : base;
+}
+function choicesFor(card, actor, picked) {
   if (!actor) return '';
   const trait = card.chooseTrait ? field('Atributo con Ventaja', '<vf-select name="path_trait" required>' + opt('', 'Elige un atributo') + PATH_TRAITS.map(t => opt(t, t[0].toUpperCase() + t.slice(1))).join('') + '</vf-select>') : '';
   if (card.reverse) {
@@ -45,7 +52,8 @@ export function chosenCardOptions(modal) {
   const targetIds = [...modal.querySelectorAll('vf-select[name=card_target],input[name=card_target]:checked')].map(el => el.value).filter(Boolean);
   return { targetIds, trait: modal.querySelector('[name=path_trait]')?.value, weaponId: modal.querySelector('[name=closing_weapon]')?.value,
     cardDC: Number(modal.querySelector('[name=card_dc]')?.value) || undefined, mode: modal.querySelector('[name=card_mode]')?.value || undefined,
-    empower: modal.querySelector('[name=card_empower]') ? Number(modal.querySelector('[name=card_empower]').value) || 0 : undefined };
+    empower: modal.querySelector('[name=card_empower]') ? Number(modal.querySelector('[name=card_empower]').value) || 0 : undefined,
+    special: modal.querySelector('[name=card_special]')?.value.trim() || undefined };
 }
 const status = { roll: 'Tirada pendiente', ready: 'Resolver en mesa', done: 'Ver resolución' };
 export const resolutionLabel = record => status[record.phase] || 'Ver carta';
@@ -77,6 +85,7 @@ export function openResolution(id) {
     field('Aplicar', '<vf-select name="kind">' + Object.entries(EFFECT_OPTIONS).map(([k,label]) => opt(k,label,k===preferred)).join('') + '</vf-select>') +
     field('Cantidad (+/−)', '<input name="amount" type="number" min="-100" max="100" value="1">') +
     field('Condición', '<vf-select name="condition">' + CONDITIONS.map(c => opt(c.name,c.name,ruleText.includes(c.name))).join('') + '</vf-select>') +
+    field('Texto del estado Special', '<input name="special_text" maxlength="' + SPECIAL_MAX + '" placeholder="Ej.: Marcado · −1 Evasion">') +
     field('Decisión de mesa', '<input name="note" maxlength="500">') +
     '<button type="button" class="hud-btn" data-effect="apply">Aplicar consecuencia</button></fieldset>' : '';
   const modal = tableDialog(record.name, '<div class="card-resolution"><p>' + e([actor?.name, ...names, record.outcome, record.conclusion].filter(Boolean).join(' · ')) + '</p>' +
@@ -132,6 +141,7 @@ export function openResolution(id) {
     if (!kind) return;
     q('[name=condition]').closest('label').hidden = !['condition','clear'].includes(kind);
     q('[name=amount]').closest('label').hidden = !['hp','armor','hope','effort','stress','bonus','clock'].includes(kind);
+    q('[name=special_text]').closest('label').hidden = kind !== 'special';
   };
   if (q('[name=kind]')) { q('[name=kind]').onchange = sync; sync(); }
   for (const btn of modal.querySelectorAll('[data-effect]')) btn.onclick = () => {
@@ -140,7 +150,7 @@ export function openResolution(id) {
       adjudicateCard(store, id, { operation: btn.dataset.effect, kind,
         ids: [...modal.querySelectorAll('[name=recipient]:checked')].map(el => el.value),
         value: q('[name=amount]')?.closest('label').hidden ? undefined : Number(q('[name=amount]')?.value),
-        condition: ['condition','clear'].includes(kind) ? q('[name=condition]').value : '', note: q('[name=note]')?.value });
+        condition: ['condition','clear'].includes(kind) ? q('[name=condition]').value : kind === 'special' ? q('[name=special_text]').value : '', note: q('[name=note]')?.value });
       modal.remove(); if (btn.dataset.effect === 'apply') openResolution(id); else notify('Resolución guardada.');
     } catch (err) { q('[role=alert]').textContent = err.message; }
   };

@@ -4,13 +4,13 @@ import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './eff
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible } from './cardResolution.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
 import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
 import { finite } from './validation.js';
-import { normalizeConditions } from './conditions.js';
+import { normalizeConditions, specialState, SPECIAL_PREFIX } from './conditions.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { resolveJump } from './starshipJump.js';
 import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES } from './combatState.js';
@@ -455,8 +455,18 @@ function resolveGameAction(action, store) {
       if (areaChecks && targets.length) resolution.replies = targets.map(t => ({ id: newId(), actorId: t.id, traitId: area.check.traitId, dc: area.check.dc }));
     }
     if (card.kind === 'archive' && result.refundResolve) resolution.refundResolve = result.refundResolve;
+    // The Special state written by the player (v2.40.0): without a roll it goes on at once to the
+    // targets (or the caster); with a roll, on a success; in an area with replies, to who fails.
+    const special = typeof action.special === 'string' ? specialState(action.special) : '';
+    if (special && !result.failed) {
+      resolution.special = special;
+      if (!result.roll && !resolution.replies?.length) {
+        const said = applySpecial(store, special, targets.length ? targets : [actor]);
+        if (said) { result.notes.push(said); resolution.specialApplied = true; }
+      } else result.notes.push(`Estado Special preparado: «${special.slice(SPECIAL_PREFIX.length)}»${resolution.replies?.length ? ' para quien falle su tirada.' : ' si la tirada sale.'}`);
+    }
     if (action.durationFaces) resolution.durationFaces = action.durationFaces.slice(0, 4);
-    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details, resolution };
+    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details: special ? [result.summary, ...result.notes].join(' ') : details, resolution };
     store.addLog(log);
     // The Keeper's table shows the card that was just used.
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('veil:card-played', { detail: { card, playId, actorId: actor.id, actorName: actor.name, playerName: String(action.playerName ?? '').slice(0, 80), summary: result.summary, notes: result.notes, failed: !!result.failed, at: Date.now() } }));

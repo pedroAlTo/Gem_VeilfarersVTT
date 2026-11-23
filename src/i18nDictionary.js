@@ -1597,6 +1597,18 @@ export const PAIRS = [
   ["Auto", "Auto"],
   ["Lista para que decidas", "Ready for your call"],
   ["Tirar automáticamente las tiradas de objetivo de los adversarios", "Automatically roll the adversaries' target rolls"],
+  // Special state (v2.40.0)
+  ["Estado Special (opcional)", "Special state (optional)"],
+  ["Ej.: Marcado por la lanza · −1 Evasion", "E.g.: Marked by the lance · −1 Evasion"],
+  ["Texto libre que la carta deja en el objetivo (o en ti si no hay): sin tirada, al momento; con tirada, si sale; en un área, a quien falle. También sirve de anotación.", "Free text the card leaves on the target (or on you if there is none): with no roll, at once; with a roll, if it succeeds; in an area, on whoever fails. It also works as a note."],
+  ["Aplicar estado Special (texto libre)", "Apply Special state (free text)"],
+  ["Texto del estado Special", "Special state text"],
+  ["Ej.: Marcado · −1 Evasion", "E.g.: Marked · −1 Evasion"],
+  ["Special y otros marcadores", "Special and other markers"],
+  ["Estado Special · texto libre", "Special state · free text"],
+  ["Añadir Special", "Add Special"],
+  ["Un efecto de un poder que no está en la lista, o una simple anotación sobre el token. Se ve en el token con su icono; pasa el ratón para leerlo.", "An effect of a Power that is not on the list, or just a note on the token. It shows on the token with its icon; hover to read it."],
+  ["Escribe el texto del estado Special.", "Write the text of the Special state."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1753,4 +1765,7 @@ export const PATTERNS = [
   ["Finalizar las {_x} listas", "Finish the {_x} ready ones"],
   ["+{_x} más en el registro de mesa", "+{_x} more in the table log"],
   ["{_x} tiradas pendientes", "{_x} pending rolls"],
+  ["Special · {_x}", "Special · {_x}"],
+  ["Estado Special preparado: «{_x}» si la tirada sale.", "Special state ready: «{_x}» if the roll succeeds."],
+  ["Estado Special preparado: «{_x}» para quien falle su tirada.", "Special state ready: «{_x}» for whoever fails their roll."],
 ];

@@ -510,3 +510,44 @@ test('Blinding Flash lights up for the characters in Close range of the enemy th
   assert.deepEqual(reactorsFor('Blinding Flash', near, [near, far, foe], scene, data), [], 'only against an enemy');
   assert.deepEqual(reactorsFor('Blinding Flash', foe, [{ ...near, hope: 0 }, foe], scene, data), [], 'it costs 1 Hope');
 });
+
+test('the Special state: free text put by a Power (at once, on a success or on whoever fails) and by hand', async () => {
+  const { specialState, conditionDefinition, isSpecial } = await import('../src/conditions.js');
+  assert.equal(specialState('  Marcado   por la lanza '), 'Special: Marcado por la lanza');
+  assert.equal(specialState('special: ya escrito'), 'Special: ya escrito');
+  assert.equal(specialState('   '), '');
+  assert.equal(specialState('x'.repeat(200)).length, 'Special: '.length + 80);
+  assert.equal(conditionDefinition('Special: Marcado').label, 'Special · Marcado');
+  assert.ok(isSpecial('special:  algo'));
+  // No roll: on the target at once.
+  const s = table(withPower('Spark of Hope'), { ...actor('ally'), x: 128 });
+  const spark = play(s, 'caster', 'Spark of Hope', { targetIds: ['ally'], special: 'Inspirado · +1 a la próxima' });
+  assert.equal(spark.roll, null);
+  assert.ok(get(s, 'ally').conditions.includes('Special: Inspirado · +1 a la próxima'));
+  assert.match(spark.notes.join(' '), /Special: Inspirado/);
+  assert.match(getHoveredCondition(get(s, 'ally'), { x: get(s, 'ally').x + 45, y: get(s, 'ally').y }, 32).label, /Special · Inspirado/);
+  // With a roll (Biological Scan, Knowledge DC 10) it waits for the roll.
+  const bio = table(withPower('Biological Scan'), { ...hostile('e'), x: 128 });
+  assert.match(play(bio, 'caster', 'Biological Scan', { targetIds: ['e'], special: 'Escaneado' }).notes.join(' '), /preparado/);
+  assert.deepEqual(get(bio, 'e').conditions, []);
+  // A roll: only on a success.
+  const l = table(withPower('Stellar Lance'), { ...hostile('e'), x: 64 + 64 * 4 });
+  const lance = play(l, 'caster', 'Stellar Lance', { targetIds: ['e'], special: 'Cegado por la luz' });
+  assert.deepEqual(get(l, 'e').conditions, []);
+  check(l, 'caster', { traitId: 'presence', dc: 15, forcedHope: 11, forcedFear: 6 }, { cardPlayId: lance.id });
+  assert.ok(get(l, 'e').conditions.includes('Special: Cegado por la luz'));
+  // An area: on whoever fails its reply.
+  const a = table(withPower('Blinding Flash'), { ...hostile('near'), x: 64 + 64 * 3 });
+  const flash = play(a, 'caster', 'Blinding Flash', { special: 'Deslumbrado' });
+  const reply = resolutionLog(a, flash.id).resolution.replies[0];
+  check(a, 'near', { traitId: 'instinct', dc: 10, forcedD20: 2, forcedHope: 2, forcedFear: 3 }, { cardPlayId: flash.id, cardReplyId: reply.id });
+  assert.ok(get(a, 'near').conditions.includes('Special: Deslumbrado'));
+  // The Keeper writes one from the resolution, and anyone from the Conditions action.
+  const k = table(withPower('Spark of Hope'), { ...actor('e'), x: 128 });
+  const play2 = play(k, 'caster', 'Spark of Hope', { targetIds: ['e'] });
+  adjudicateCard(k, play2.id, { operation: 'apply', kind: 'special', ids: ['e'], condition: 'Rastreado' });
+  assert.ok(get(k, 'e').conditions.includes('Special: Rastreado'));
+  assert.throws(() => adjudicateCard(k, play2.id, { operation: 'apply', kind: 'special', ids: ['e'], condition: '  ' }), /texto/);
+  performGameAction({ type: 'CONDITION', actorId: 'caster', name: 'Special: Concentrado', active: true }, k);
+  assert.ok(get(k, 'caster').conditions.includes('Special: Concentrado'));
+});
