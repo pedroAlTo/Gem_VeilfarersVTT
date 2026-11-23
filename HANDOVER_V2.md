@@ -44,6 +44,13 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 
 ## Pendiente para la revisión de reglas (erratas y desajustes)
 > **Los libros de `System/` no se editan en este proyecto.** El usuario lleva la corrección de los Corebook en otro chat, como proyecto aparte (15 nov 2026). Aquí solo se anota lo detectado y se ajusta el código de la VTT.
+- **Revisar los Poderes de reacción de nivel 1-2** (usuario, 23 nov 2026: *«tendré que revisar eso, debería haber al menos 1 poder directo en cada rama»*). El Corebook 12.06 (cap. 19) imprime 8 de los 36 Poderes de nivel 1-2 como *Ability (Reaction)*, y la VTT los usa tal cual:
+  - **Nivel 1 (5 de 21):** Force Shield y Tactical Overwatch (Kinetic), Blinding Flash (Lux), Mind Shield (Neural), Rapid Regeneration (Synthesis; en la VTT también se usa como Poder normal por regla de la casa, v2.38.0).
+  - **Nivel 2 (3 de 15):** Impact Absorption (Kinetic), Photon Shield (Lux), Lucky Break (Void).
+  - **Kinetic nivel 1:** 2 de sus 3 Poderes son reacciones; solo Kinetic Blast se usa en tu turno.
+  - **Lux:** en nivel 1-2, su única carta ofensiva es Blinding Flash, que es reacción; su ataque directo (Stellar Lance) es de nivel 3.
+  - **Daño directo en tu turno, nivel 1-2:** solo Kinetic Blast (Kinetic) y lanzar un objeto con Telekinetic Grasp (Neural).
+  - **Al decidir:** si alguno pasa a ser Poder directo, se cambia aquí su tipo y su regla en la mesa (`REACTIONS` en `src/powerReactions.js`, `DUAL_REACTIONS` en `src/loadoutCards.js` y el resumen en `src/cardSummaries.js`).
 - **Errata del Corebook** (cap. 9, *"Does the Keeper roll Duality Dice?"*, y referencias en cap. 10 y Keeper Critical Damage): corregir el texto en `System/` para que diga 1d20 + Ataque. En el código ya está unificado (v2.14.3): la tirada genérica de un adversario (`CHECK` con `isPlayer === false`) usa `rollAdversaryCheck()` de `attackFlow.js`, 1d20 + modificador.
 - **Corregir en el Corebook** (cap. 10, banda Melee: *"Many ranged weapons take penalties or are unusable at Melee"*): concretar la regla tal como la aplica la VTT desde v2.14.4: las armas a distancia largas atacan con Desventaja en Melee; las armas cortas (pistolas y similares) no tienen penalización. **Desde v2.17.6 (regla del usuario):** «arma corta» = arma de fuego con alcance máximo Close o Very Close; no tiene Desventaja a Close ni en Melee. Corregir también la banda Close (*"Pistols take a penalty"*), que la VTT ya no aplica.
 - El Stress por ronda de Bleeding no se automatiza (decisión 18: se aplica a mano).
