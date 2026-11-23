@@ -24,6 +24,7 @@ import { distanceInfo, rangeCheck, weaponRangeBand, weaponTraitId, rollAdversary
 import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { throwDice, facesRoller } from './tableDice.js';
+import { durationDice } from './effectClocks.js';
 import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, extraDiceNeeded, armorCut, applyArmorCut, armorCutNotes } from './weaponFeatures.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
@@ -302,6 +303,20 @@ export class DiceRollerSidebar {
 
   // A card's damage worked out and sent to the Keeper's window at once (v2.36.0): the dice are
   // thrown, the impact calculated and the hit offered to the Keeper, who decides shields.
+  async autoCardDuration(actor, record) {
+    const dd = durationDice(record);
+    if (!dd) return;
+    const busy = () => !!window.VFDice3D?.status?.().rollPending;
+    for (let waited = 0; busy() && waited < 8000; waited += 200) await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 900));
+    try {
+      const faces = await throwDice([{ qty: dd.qty, sides: dd.sides, role: 'Duración' }], { label: `${record.name} · duración`, actor,
+        describe: v => ({ outcome: `${v.reduce((a, b) => a + b, 0)} turnos`, modifiers: `${dd.qty}d${dd.sides} [${v.join(', ')}]` }) });
+      const result = await network.requestAction({ type: 'CARD_DURATION', actorId: actor.id, playId: record.id, faces });
+      if (result?.summary) notify(result.summary);
+    } catch (error) { notify(error.message, 'error'); }
+  }
+
   async autoCardDamage(actorId, targetId, formula, secret, power = null) {
     if (!this.prepareCardDamage(actorId, targetId, formula, secret, power, { open: false })) return false;
     // The dice of the roll that just landed must settle first: a new 3D throw waits for them.
@@ -1298,6 +1313,8 @@ export class DiceRollerSidebar {
     if (linked && !prepared.replyId && (result.isCritical || result.total >= result.dc)) {
       const record = resolutionLog(store, prepared.playId)?.resolution, power = record && POWER_DAMAGE[record.name];
       const target = power && store.state.tokens.find(t => t.id === record.targetIds?.[0]);
+      // A duration die thrown after the success (Rapid Regeneration: 1d4 turns), in 3D (v2.41.0).
+      if (record?.durationPending && !record.durationFaces) setTimeout(() => this.autoCardDuration(actor, record), 300);
       if (target) setTimeout(() => {
         this.autoCardDamage(actor.id, target.id, power.formula(actor), this.rollVisibility() === 'keeper', power);
         if (power.heavy && /heavy/i.test(tokenInventory(target).items.map(i => [i.name, i.kind]).join(' '))) notify(power.heavy);

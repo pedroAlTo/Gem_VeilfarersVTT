@@ -315,6 +315,27 @@ export function cardToAmend(store, previous) {
   if (!record.replies?.some(r => r.id === previous.cardReplyId && r.outcome)) throw new Error('La tirada de objetivo ya cambió.');
   return { ...record, replyId: previous.cardReplyId };
 }
+// The lasting effect of a card that succeeded: Rapid Regeneration heals its target now and leaves
+// its clock (+1 HP each time the target takes the Spotlight); other cards leave their clock on the
+// recipients. `faces` are the duration dice already thrown (random if missing).
+export function applyCardDuration(store, record, actor, faces = []) {
+  const targets = (record.targetIds || []).map(id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId)).filter(Boolean);
+  const duration = cardDuration(record, actor, facesRoller(faces));
+  if (!duration) return '';
+  if (record.name === 'Rapid Regeneration') {
+    const target = targets[0];
+    if (!target) return '';
+    if (!canReceiveHealing(target)) return target.name + ' necesita estabilizarse antes de curarse.';
+    const surge = duration.faces?.[0] === 4;
+    store.updateToken(target.id, { hp: { ...target.hp, current: Math.min(target.hp.max, target.hp.current + 1) },
+      ...(surge ? { stress: { ...target.stress, current: Math.max(0, target.stress.current - 1) } } : {}),
+      effectClocks: addClock(target.effectClocks, newClock(duration, { source: actor?.name || '' })) });
+    return target.name + ': +1 HP' + (surge ? ' y −1 Stress (Surge)' : '') + '. ' + duration.note + ' (+1 HP cada vez que toma el foco).';
+  }
+  const recipients = helpsOthers(record) && targets.length ? targets : [actor].filter(Boolean);
+  for (const holder of recipients) store.updateToken(holder.id, { effectClocks: addClock(store.state.tokens.find(t => t.id === holder.id).effectClocks, newClock(duration, { source: actor?.name || '' })) });
+  return 'Reloj «' + duration.name + '» en ' + recipients.map(t => t.name).join(', ') + ': ' + duration.note + '.';
+}
 export function completeCardRoll(store, record, roll, previous = null) {
   if (record.replyId) {
     const reply = record.replies.find(r => r.id === record.replyId);
@@ -401,21 +422,13 @@ export function completeCardRoll(store, record, roll, previous = null) {
         store.updateToken(token.id,patch);
       }
       notes.push('Aliados: +1 HP, −1 Stress y Ventaja. Adversarios: Desventaja hasta el cambio de ronda.');
-    } else if (record.name === 'Rapid Regeneration' && targets[0]) {
-      const target = targets[0];
-      if (canReceiveHealing(target)) {
-        const duration = cardDuration(record, actor, facesRoller(record.durationFaces || []));
-        if (duration) store.updateToken(target.id, { hp: { ...target.hp, current: Math.min(target.hp.max, target.hp.current + 1) },
-          ...(duration.faces?.[0] === 4 ? { stress: { ...target.stress, current: Math.max(0, target.stress.current - 1) } } : {}),
-          effectClocks: addClock(target.effectClocks, newClock(duration)) });
-      }
     } else {
-      const immediate = resolveImmediate(store, actor, targets, record);
+      const immediate = record.name === 'Rapid Regeneration' ? '' : resolveImmediate(store, actor, targets, record);
       if (immediate) notes.push(immediate);
       else if (!record.project) {
-        const duration = cardDuration(record, actor, facesRoller(record.durationFaces || []));
-        const recipients = helpsOthers(record) && record.targetIds.length ? targets : [actor];
-        if (duration) for (const holder of recipients) store.updateToken(holder.id, { effectClocks: addClock(holder.effectClocks, newClock(duration, { source: actor.name })) });
+        // A duration die thrown after the success (v2.41.0): the card waits for it (CARD_DURATION).
+        if (record.durationPending && !record.durationFaces) { extra.durationAwaiting = true; notes.push('Ahora se tira la duración.'); }
+        else { const said = applyCardDuration(store, record, actor, record.durationFaces || []); if (said) notes.push(said); }
       }
     }
   }

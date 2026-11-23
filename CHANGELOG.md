@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.40.0**.
-Paquete: `VeilFarers_VTT_v2.40.0.zip`.
+Versión actual del VTT: **v2.41.0**.
+Paquete: `VeilFarers_VTT_v2.41.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.41.0] — 2026-11-23
+
+V3 · Uncanny Power en un solo gesto y la duración después del éxito
+
+### Mystic Sleeping
+
+- Los Poderes del Archivo se usan como cualquier carta: un clic apunta (o se arrastra la carta al token) y todo lo demás es automático, sin ventanas. Se tira el acceso (dado de Resolve + Knowledge, con el mínimo Resolve que puede llegar al nivel del Poder), y si llega, la tirada de Knowledge contra DC 10 + nivel; si sale, el Poder se aplica solo: daño a la ventana del Keeper, mejora, estado o curación.
+- Si el acceso no llega al nivel, queda abierto para un Poder de nivel menor, como dice el Corebook. El doble clic sigue abriendo la ventana de Uncanny Power con todas las opciones.
+
+### Duración
+
+- En los Poderes con tirada y duración por dado (Rapid Regeneration: 1d4 turnos), el dado de duración se tira en 3D después del éxito, no antes. Rapid Regeneration cura +1 HP al momento y deja el reloj que cura +1 HP cada vez que el objetivo toma el foco.
 
 ## [2.40.0] — 2026-11-23
 

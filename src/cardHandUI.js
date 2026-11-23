@@ -246,7 +246,16 @@ export class CardHand {
     // A reaction lit by the Keeper's offer: a click uses it (v2.37.0).
     const offer = liveFor(token.id, card.name);
     if (offer) { answerReaction(offer.offerId, token.id, true); return; }
-    if (card.uncanny || card.kind === 'archive') { this.openUncanny(card, point); return; }
+    if (card.uncanny) { this.openUncanny(card, point); return; }
+    // An Archive Power of a Mystic Sleeping (v2.41.0): the same gesture as any Power. It is aimed
+    // (or dropped on its target) and then Uncanny Power runs by itself, with no window.
+    if (card.kind === 'archive') {
+      let plan = quickPlan(card, token);
+      if (plan === 'dialog') plan = 'play';
+      if (plan === 'play' || point) { this.uncannyCast(card, token, point); return; }
+      startAim(card, token, plan, targetIds => this.uncannyCast(card, token, null, targetIds));
+      return;
+    }
     if (this.special(card, token, point)) return;
     const plan = quickPlan(card, token);
     if (plan === 'dialog') { this.inspect(card, point); return; }
@@ -347,7 +356,8 @@ export class CardHand {
       const picked = this.cardTarget(point);
       const recipients = card.chooseTrait ? [] : targetIds ?? (picked ? [picked] : []);
       // A duration set by a die (Rapid Regeneration: 1d4 turns) is thrown here, as 3D dice.
-      const dd = durationDice(card);
+      // With a roll, the duration die is thrown after the success (v2.41.0).
+      const dd = card.roll || card.kind === 'archive' ? null : durationDice(card);
       const durationFaces = dd ? await throwDice([{ qty: dd.qty, sides: dd.sides, role: 'Duración' }], { label: `${card.name} · duración`, actor: token,
         describe: v => ({ outcome: `${v.reduce((a, b) => a + b, 0)} turnos`, modifiers: `${dd.qty}d${dd.sides} [${v.join(', ')}]` }) }) : null;
       const effectFace = card.name === 'Emergency Repair' && card.kind !== 'archive'
@@ -416,6 +426,41 @@ export class CardHand {
   // (capped by your level) and gives the Keeper 1 Fear per Resolve; 3) with the access open,
   // keep that Power or pick any other at or below that level; 4) the Knowledge Spellcast Roll
   // against DC 10 + level: if it succeeds the Power manifests; a Critical returns the Resolve.
+  // Uncanny Power in one go (v2.41.0, user decision): the access is thrown in 3D with the least
+  // Resolve that can reach the Power's level (1 Resolve Die each, + Knowledge); if it reaches, the
+  // Knowledge Spellcast (DC 10 + level) is thrown at once, and on a success the Power works by
+  // itself (damage to the Keeper's window, duration die, clock…). An access that falls short stays
+  // open for a lower Power, as the Corebook says.
+  async uncannyCast(card, token, point = null, targetIds) {
+    if (this.uncannyBusy) return false;
+    const live = () => store.state.tokens.find(t => t.id === token.id);
+    const sides = token.resolve?.dieType === 'd6' ? 6 : 4, knowledge = Number(token.traits?.knowledge) || 0, level = Number(token.level) || 1;
+    if (card.level > level) { notify(`${card.name} es de nivel ${card.level}: Uncanny Power llega como mucho a tu nivel (${level}).`, 'error'); return false; }
+    this.uncannyBusy = true;
+    try {
+      let access = live()?.uncanny?.access;
+      if (access == null) {
+        const available = live()?.resolve?.current || 0;
+        if (!available) throw new Error('Sin Resolve: Uncanny Power necesita al menos 1.');
+        const spent = Math.max(1, Math.min(available, Math.ceil((card.level - knowledge) / sides)));
+        const faces = await throwDice([{ qty: spent, sides, role: 'Resolve' }], { label: `Uncanny Power · ${card.name}`, actor: token,
+          describe: v => { const total = v.reduce((a, b) => a + b, 0) + knowledge; return { total, outcome: total >= card.level ? `Llega a ${card.name}` : `Acceso ${Math.max(0, Math.min(total, level))}: no llega`, modifiers: `${spent}d${sides} [${v.join(', ')}] + Knowledge ${knowledge} = ${total} · necesita ${card.level}` }; } });
+        const result = await network.requestAction({ type: 'UNCANNY_ACCESS', actorId: token.id, resolveSpent: spent, faces });
+        const playerName = store.state.userName || store.state.playerName || 'Jugador';
+        const line = `🂠 ${playerName} (${token.name}) usa Uncanny Power — ${result.summary}`;
+        network.sendChat({ text: line.slice(0, 1900), recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: token.name, text: line, channel: 'table' }));
+        access = result.access;
+      }
+      if (access < card.level) { notify(`Acceso nivel ${access}: no llega a ${card.name} (nivel ${card.level}). El acceso sigue abierto para un Poder del Archivo de nivel ${access} o menor.`, 'error'); return false; }
+      // The access dice settle before the Spellcast is thrown.
+      const busy = () => !!window.VFDice3D?.status?.().rollPending;
+      for (let waited = 0; busy() && waited < 8000; waited += 200) await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 600));
+      return await this.play(card, point, null, { rollNow: true, ...(targetIds ? { targetIds } : {}), ...(defaultMode(card) ? { mode: defaultMode(card) } : {}) });
+    } catch (err) { notify(err.message, 'error'); return false; }
+    finally { this.uncannyBusy = false; }
+  }
+
   openUncanny(selected = null, point = null) {
     const data = cardData(), tokenId = this.tokenId, liveToken = () => store.state.tokens.find(t => t.id === tokenId);
     if (!data || !liveToken()) return null;

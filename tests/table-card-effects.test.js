@@ -551,3 +551,30 @@ test('the Special state: free text put by a Power (at once, on a success or on w
   performGameAction({ type: 'CONDITION', actorId: 'caster', name: 'Special: Concentrado', active: true }, k);
   assert.ok(get(k, 'caster').conditions.includes('Special: Concentrado'));
 });
+
+test('Rapid Regeneration through Uncanny Power: access, Knowledge vs DC 11, then the duration die after the success heals now and on each Spotlight', () => {
+  const mystic = actor('mystic', { path: 'Sleeping', characterClass: 'Mystic', level: 3, traits: { knowledge: 1 }, sheetFields: { s_archive: 'Synthesis 1' }, resolve: { current: 3, max: 3, dieType: 'd4' } });
+  const s = table(mystic, { ...actor('hurt'), x: 128, hp: { current: 2, max: 6 } });
+  performGameAction({ type: 'UNCANNY_ACCESS', actorId: 'mystic', resolveSpent: 1, faces: [2] }, s);
+  const cast = play(s, 'mystic', 'Rapid Regeneration', { targetIds: ['hurt'] });
+  assert.deepEqual(cast.roll, { dc: 11, traitId: 'knowledge' });
+  let record = resolutionLog(s, cast.id).resolution;
+  assert.equal(record.durationPending, true, 'the duration waits for the success');
+  assert.throws(() => performGameAction({ type: 'CARD_DURATION', actorId: 'mystic', playId: cast.id, faces: [3] }, s), /no espera/);
+  check(s, 'mystic', { ...cast.roll, forcedHope: 7, forcedFear: 4 }, { cardPlayId: cast.id });
+  record = resolutionLog(s, cast.id).resolution;
+  assert.equal(record.durationAwaiting, true);
+  assert.equal(get(s, 'hurt').hp.current, 2, 'nothing until the duration is thrown');
+  const done = performGameAction({ type: 'CARD_DURATION', actorId: 'mystic', playId: cast.id, faces: [3] }, s);
+  assert.match(done.summary, /\+1 HP/);
+  const hurt = get(s, 'hurt'), clock = hurt.effectClocks.find(c => c.name === 'Rapid Regeneration');
+  assert.equal(hurt.hp.current, 3);
+  assert.equal(clock.segments, 3);
+  assert.equal(clock.perTick?.hp, 1);
+  assert.throws(() => performGameAction({ type: 'CARD_DURATION', actorId: 'mystic', playId: cast.id, faces: [3] }, s), /no espera/, 'once only');
+  // A failed Spellcast never asks for the duration.
+  performGameAction({ type: 'UNCANNY_ACCESS', actorId: 'mystic', resolveSpent: 1, faces: [2] }, s);
+  const miss = play(s, 'mystic', 'Rapid Regeneration', { targetIds: ['hurt'] });
+  check(s, 'mystic', { ...miss.roll, forcedHope: 2, forcedFear: 3 }, { cardPlayId: miss.id });
+  assert.ok(!resolutionLog(s, miss.id).resolution.durationAwaiting);
+});

@@ -1,10 +1,10 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
-import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './effectClocks.js';
+import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial } from './cardResolution.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
@@ -161,6 +161,20 @@ function resolveGameAction(action, store) {
     const log = { sender: actor.name, type: 'DRONE', title: `${actor.name}: cambio de operador`, details: result.summary };
     store.addLog(log);
     return { id: newId(), actorId: actor.id, log, outcomeTitle: 'CONTROL DEL DRON', summary: result.summary };
+  }
+  // The duration die of a card that succeeded (v2.41.0): thrown after the roll, in 3D, by whoever
+  // cast it; the table applies the clock (Rapid Regeneration: +1 HP now and each Spotlight).
+  if (action.type === 'CARD_DURATION') {
+    const row = resolutionLog(store, String(action.playId ?? '')), record = row?.resolution;
+    if (!record || record.actorId !== actor.id || record.phase !== 'ready' || !record.durationAwaiting || record.mapId !== store.state.activeMapId) throw new Error('Esta carta no espera su duración.');
+    const dd = durationDice(record);
+    if (!dd) throw new Error('Esta carta no tira duración.');
+    const faces = validFaces(action.faces, dd.qty, dd.sides) ? action.faces.slice() : Array.from({ length: dd.qty }, () => 1 + Math.floor(Math.random() * dd.sides));
+    const said = applyCardDuration(store, record, actor, faces);
+    updateResolution(store, record.id, { durationAwaiting: false, durationPending: false, durationFaces: faces, notes: [...(record.notes || []).filter(n => n !== 'Ahora se tira la duración.'), said].filter(Boolean) });
+    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + record.name + ' · duración', details: said };
+    store.addLog(log);
+    return { id: newId(), actorId: actor.id, log, summary: said, faces };
   }
   // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
   // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
@@ -466,6 +480,8 @@ function resolveGameAction(action, store) {
       } else result.notes.push(`Estado Special preparado: «${special.slice(SPECIAL_PREFIX.length)}»${resolution.replies?.length ? ' para quien falle su tirada.' : ' si la tirada sale.'}`);
     }
     if (action.durationFaces) resolution.durationFaces = action.durationFaces.slice(0, 4);
+    // With a roll, the duration die waits for the success (v2.41.0).
+    else if (result.roll && !result.failed && durationDice(card)) resolution.durationPending = true;
     const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details: special ? [result.summary, ...result.notes].join(' ') : details, resolution };
     store.addLog(log);
     // The Keeper's table shows the card that was just used.
