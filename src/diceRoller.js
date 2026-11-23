@@ -1460,6 +1460,10 @@ export class DiceRollerSidebar {
       const melee = !swarm && (!weapon || weaponRangeBand(weapon) === 'Melee' || !weaponRangeBand(weapon) && band === 'Melee');
       const guard = melee && disciplinedDefense(target,attacker,map,store.state.tokens);
       // Tactical Overwatch: an ally in Close range may protect the target before the roll.
+      // Blinding Flash: a character in Close range of the attacker may flash it before it attacks;
+      // the enemies in the area roll Instinct (DC 10) at once and a failure gives this attack Disadvantage.
+      const flash = await offerReaction('Blinding Flash', attacker, `${attacker.name} va a atacar a ${target.name}. Blinding Flash: los enemigos a alcance Close tiran Instinct DC 10; si fallan, Desventaja en su ataque.`);
+      if (flash) await castReaction(flash, 'Blinding Flash');
       const overwatch = await offerReaction('Tactical Overwatch', target, `${attacker.name} ataca a ${target.name}: Ventaja en su defensa (el ataque tira con Desventaja) y +2 Armor Slots temporales.`);
       if (overwatch) await network.requestAction({ type: 'REACTION_PAY', actorId: overwatch.id, name: 'Tactical Overwatch', targetId: target.id }).catch(error => notify(error.message, 'error'));
       const edge = checkEdge(attacker, target, q('#dice_advantage').checked, q('#dice_disadvantage').checked || range.disadvantage || !!guard?.penalty || !!overwatch);
@@ -1534,6 +1538,8 @@ export class DiceRollerSidebar {
 
   showResult(result) {
     this.lastRollKind = 'check';
+    // The hand lights the reactions this roll opens (Lucky Break, Bear Down; v2.39.0).
+    queueMicrotask(() => window.veilCardHand?.refresh?.());
     if (result.visibility === 'keeper' && (store.sessionRole === 'player' || store.state.userRole !== 'keeper')) return;
     guideEvent('roll');
     this.lastResult = result;
@@ -1854,6 +1860,7 @@ export class DiceRollerSidebar {
     // The damage stays open to Bear Down until it is applied: the same dice, plus the bonus.
     const pending = { checkId: this.lastAttack?.actorId === attackerId && this.lastAttack?.targetId === targetId && this.lastAttack?.hit ? this.lastAttack.checkId : null, targetId, actorId: attackerId, faces: dmgResult.rolls.slice(), bonus: bearDown, riders, extras, raw: dmgResult.rawDamage, severity: dmgResult.finalSeverity, applied: false };
     this.lastDamage = pending; this.lastRollKind = 'damage';
+    queueMicrotask(() => window.veilCardHand?.refresh?.());
     applyBtn.disabled = !targetToken;
     applyBtn.textContent = targetToken ? 'APPLY DAMAGE TO TARGET' : 'ELIGE UN OBJETIVO Y VUELVE A CALCULAR';
     applyBtn.onclick = () => {
@@ -2052,6 +2059,23 @@ export class DiceRollerSidebar {
 // option already worked out by the attacker) and Apply or Cancel. onApply(n) / onCancel().
 // A reaction Power the Keeper offers at the table (the player decides): resolves with the token
 // that uses it, or null. Nothing is offered when no one can use it.
+// A reaction that is a whole card (Blinding Flash): the table plays it for the character that
+// accepted and rolls at once the Reaction Rolls it asks of the adversaries.
+async function castReaction(reactor, name) {
+  try {
+    const { characterCards } = await import('./loadoutCards.js');
+    const live = store.state.tokens.find(t => t.id === reactor.id), card = live && characterCards(live, cardData()).find(c => c.name === name && c.playable);
+    if (!card) return;
+    const result = await network.requestAction({ type: 'CARD_PLAY', actorId: live.id, cardId: card.id });
+    const { resolutionLog } = await import('./cardResolution.js');
+    for (const reply of resolutionLog(store, result.id)?.resolution?.replies || []) {
+      const who = store.state.tokens.find(t => t.id === reply.actorId);
+      if (who?.isPlayer !== false) continue;
+      await network.requestAction({ type: 'CHECK', actorId: who.id, cardPlayId: result.id, cardReplyId: reply.id, options: { traitId: reply.traitId, dc: reply.dc } }).catch(() => {});
+    }
+  } catch (error) { notify(error.message, 'error'); }
+}
+
 export function offerReaction(name, target, text) {
   const reactors = reactorsFor(name, target, store.state.tokens, store.getActiveMap?.(), cardData());
   if (!reactors.length || typeof document === 'undefined' || !document.body) return Promise.resolve(null);

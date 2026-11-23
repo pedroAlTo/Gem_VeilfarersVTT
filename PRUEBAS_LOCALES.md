@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.38.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.38.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.38.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.38.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.39.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.39.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.39.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.39.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -131,6 +131,10 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.38.0.zip**. Abre **AYUDA
 116. **(V3) Tomar el dron.** Con un dron con Neural Network Control y tu personaje registrado (Sesión → control del token), selecciona el dron como jugador: pasa a ser su operador sin ventana y tu personaje recibe el foco. Con señal Unstable, marca 1 Stress; con Lost, no lo toma.
 117. **(V3) Poderes vía dron.** Con el dron seleccionado, la mano dice «Vía dron · nombre»: Stellar Lance o Slipstream Jolt se lanzan con el alcance medido desde el dron (un enemigo lejos de ti pero cerca del dron es objetivo válido); Kinetic Blast o Blinding Flash aparecen como «No a través del dron».
 118. **(V3) Rapid Regeneration.** Clic en la carta: apunta a un aliado a Very Close y se cura +1 HP (y 1d4 turnos más). Después, que un adversario dañe a ese aliado: al jugador con Rapid Regeneration se le ilumina; «Usar» la lanza sobre el herido. Un Mystic Sleeping con Synthesis 1 puede lanzarla con Uncanny Power.
+119. **(V3) Blinding Flash iluminada.** Harker con Blinding Flash y Hope, a 1-2 casillas de un adversario. El Keeper ataca con ese adversario: a Harker se le ilumina Blinding Flash; «Usar» → se paga 1 Hope, el adversario tira Instinct DC 10 y, si falla, su ataque tira con Desventaja.
+120. **(V3) Lucky Break y Bear Down iluminadas.** Tras una tirada de Dualidad de tu personaje, Lucky Break aparece iluminada («¡Úsala ahora!»); tras usarla o marcar el Stress máximo, se apaga. Un Sleeping con Resolve ve Bear Down iluminada tras su tirada o su daño.
+121. **(V3) Mano por tipos.** Con un personaje con Poderes y reacciones: encima de la mano aparecen Todas / Poderes / Reacciones (y Rasgos o Moves si los tiene) y «Usables». Elige Reacciones: solo quedan ellas. Marca «Usables» sin Hope: desaparecen las que cuestan Hope. Recarga: se mantiene la elección. Una reacción iluminada se ve aunque el filtro la oculte.
+122. **(V3) Bandeja del Keeper.** Como Keeper, lanza Blinding Flash con un adversario dentro: abajo a la izquierda aparece «Decisiones · 1» con «1 adversario(s) por tirar»; «Tirar adversarios» tira su Instinct y la fila pasa a «Lista para que decidas»; «Finalizar» la cierra y la bandeja desaparece. Marca «Auto» y repite: el adversario tira solo.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

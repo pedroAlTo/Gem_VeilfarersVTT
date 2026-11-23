@@ -7,7 +7,7 @@ import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { tableDialog } from './dossierDialog.js';
 import { cardData, loadCardData } from './cardData.js';
 import { roundKey } from './combatState.js';
-import { bearDown } from './bearDown.js';
+import { bearDown, bearDownTarget } from './bearDown.js';
 import { throwDice } from './tableDice.js';
 import { durationDice } from './effectClocks.js';
 import { characterCards, keeperCards, costLabel, CARD_KINDS, cardKindName, RECALL_MODES, recallCost, loadoutNames, loadoutCap, isSleepingMystic, powerCard, powersInReach, catalogGroups, uncannyChoices, hasImpossibleEfficiency, IMPOSSIBLE_EFFICIENCY, archivePackages, archiveRequirement, DOMAIN_COLORS } from './loadoutCards.js';
@@ -25,6 +25,25 @@ import { operatedDrone } from './droneControl.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { newId } from './persistence.js';
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
+// Reactions this screen can see open by itself (v2.39.0): Lucky Break after the character's own
+// Duality roll (not rerolled yet), Bear Down after its roll or while its damage is still open.
+const HAND_GROUPS = [['all', 'Todas'], ['powers', 'Poderes'], ['reactions', 'Reacciones'], ['traits', 'Rasgos'], ['moves', 'Moves']];
+const groupTest = {
+  all: () => true,
+  powers: c => ['power', 'archive'].includes(c.kind) || !!c.uncanny,
+  reactions: c => !!c.reaction || c.name === 'Lucky Break' || c.kind === 'beardown',
+  traits: c => ['feature', 'ancestry', 'community', 'augment'].includes(c.kind),
+  moves: c => ['move', 'effort', 'beardown'].includes(c.kind) && !c.uncanny,
+};
+function savePrefs(hand) { try { localStorage.setItem('veil.hand.view', JSON.stringify({ group: hand.group, onlyUsable: !!hand.onlyUsable })); } catch {} }
+function loadPrefs() { try { return JSON.parse(localStorage.getItem('veil.hand.view') || '{}') || {}; } catch { return {}; } }
+function localLive(card, token) {
+  if (!card.playable) return false;
+  const dice = typeof window !== 'undefined' ? window.veilDiceRoller : null, last = dice?.lastResult;
+  if (card.name === 'Lucky Break') return dice?.lastRollKind === 'check' && !!last && last.actorId === token.id && last.hopeVal != null && !last.keeperD20 && !last.luckyBreak && (token.stress?.current || 0) < (token.stress?.max ?? 6);
+  if (card.kind === 'beardown') return (token.resolve?.current || 0) > 0 && !!bearDownTarget(token.id, dice);
+  return false;
+}
 const keeperView = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
 
 const DRAG_START = 9; // pixels the pointer must travel before a click becomes a drag
@@ -116,6 +135,7 @@ function bindReference(drawer, data, choice, redraw, inspect) {
 export class CardHand {
   constructor(quickbar) {
     this.quickbar = quickbar; this.signature = ''; this.cards = []; this.tokenId = null;
+    const prefs = loadPrefs(); this.group = prefs.group || 'all'; this.onlyUsable = !!prefs.onlyUsable;
     this.root = document.createElement('div');
     this.root.id = 'card_hand_root'; this.root.className = 'card-hand hidden';
     quickbar.parentElement.append(this.root);
@@ -158,10 +178,16 @@ export class CardHand {
     this.viaDroneId = drone?.id || null;
     const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts })
       .map(card => !drone ? card : droneCompatible(card) ? { ...card, viaDrone: drone.name } : { ...card, playable: false, droneBlocked: true });
-    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, liveReactions().map(o => o.offerId), drone?.id, drone?.x, drone?.y, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
+    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, this.group, this.onlyUsable, liveReactions().map(o => o.offerId), window.veilDiceRoller?.lastResult?.id, window.veilDiceRoller?.lastRollKind, !!window.veilDiceRoller?.lastDamage?.applied, drone?.id, drone?.x, drone?.y, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token.id;
-    const hand = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault'), n = hand.length;
+    // The hand by kind, and only what can be used now (v2.39.0). Lit reactions always show.
+    const held = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault');
+    const lit = card => !!(liveFor(token.id, card.name) || localLive(card, token));
+    const usable = card => card.playable && affordable(token, card) && cardStatus(card, token)?.cls !== 'no';
+    const groups = HAND_GROUPS.filter(([id]) => id === 'all' || held.some(c => groupTest[id](c)));
+    if (!groups.some(([id]) => id === this.group)) this.group = 'all';
+    const hand = held.filter(c => lit(c) || (groupTest[this.group](c) && (!this.onlyUsable || usable(c)))), n = hand.length;
     this.root.classList.remove('hidden'); this.quickbar.classList.add('with-hand');
     if (!cards.length) {
       // Say why instead of showing nothing: the sheet has no class, ancestry or Powers to read.
@@ -172,14 +198,17 @@ export class CardHand {
     }
     const title = drone ? `Vía dron · ${drone.name}` : token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
     this.root.innerHTML = sanitizeHTML(`
-      <div class="card-hand-label"><span>${e(title)}</span></div>
-      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}"${liveFor(token.id, card.name) ? ' data-live-reaction="1"' : ''}>${statusBadge(liveFor(token.id, card.name) ? { cls: 'react live', text: '¡Úsala ahora!' } : card.droneBlocked ? { cls: 'no', text: 'No a través del dron' } : cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`).join('')}</div>
+      <div class="card-hand-label"><span>${e(title)}</span>${groups.length > 2 || this.onlyUsable ? `<span class="card-hand-groups" role="group" aria-label="Tipo de carta">${groups.map(([id, label]) => `<button type="button" class="${this.group === id ? 'active' : ''}" data-hand-group="${id}" aria-pressed="${this.group === id}">${label}</button>`).join('')}</span>` : ''}<button type="button" class="card-hand-usable ${this.onlyUsable ? 'active' : ''}" data-hand-usable aria-pressed="${!!this.onlyUsable}" title="Mostrar solo las cartas que puedes usar ahora">Usables</button></div>
+      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}"${liveFor(token.id, card.name) || localLive(card, token) ? ' data-live-reaction="1"' : ''}>${statusBadge(liveFor(token.id, card.name) || localLive(card, token) ? { cls: 'react live', text: '¡Úsala ahora!' } : card.droneBlocked ? { cls: 'no', text: 'No a través del dron' } : cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`).join('')}</div>
       ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : deckButton('Mazo: consulta todos los Poderes')}`);
     this.layoutFan(n);
     this.bind();
   }
 
   bind() {
+    this.root.querySelectorAll('[data-hand-group]').forEach(b => b.onclick = () => { this.group = b.dataset.handGroup; savePrefs(this); this.refresh(); });
+    const usableToggle = this.root.querySelector('[data-hand-usable]');
+    if (usableToggle) usableToggle.onclick = () => { this.onlyUsable = !this.onlyUsable; savePrefs(this); this.refresh(); };
     const vault = this.root.querySelector('[data-open-vault]');
     if (vault) vault.onclick = () => this.toggleDrawer();
     for (const node of this.root.querySelectorAll('.vf-card')) {

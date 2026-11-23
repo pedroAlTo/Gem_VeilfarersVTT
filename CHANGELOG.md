@@ -1,10 +1,28 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.38.0**.
-Paquete: `VeilFarers_VTT_v2.38.0.zip`.
+Versión actual del VTT: **v2.39.0**.
+Paquete: `VeilFarers_VTT_v2.39.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.39.0] — 2026-11-23
+
+V3 · Más reacciones iluminadas, la mano por tipos y la bandeja del Keeper
+
+### Reacciones iluminadas
+
+- Blinding Flash: cuando un adversario va a atacar, a los personajes que la tienen y están a Close de él se les ilumina. Al usarla, la mesa la lanza, tira el Instinct DC 10 de los adversarios del área y, si fallan, ese ataque va con Desventaja.
+- Lucky Break se ilumina justo después de tu propia tirada de Dualidad (si puedes marcar el Stress) y Bear Down cuando hay una tirada o un daño tuyo al que sumar Resolve.
+
+### La mano
+
+- Pestañas por tipo encima de la mano: Todas, Poderes, Reacciones, Rasgos y Moves (solo las que tienen cartas). «Usables» deja solo las cartas que puedes usar ahora mismo. Las reacciones iluminadas se ven siempre. Se recuerda tu elección.
+
+### Keeper
+
+- Bandeja «Decisiones» junto a la barra de herramientas: las cartas de la escena que aún esperan algo (la tirada de quien la lanza, las tiradas de los objetivos o tu decisión), con «Tirar adversarios», «Abrir» y «Finalizar» (y «Finalizar las N listas»).
+- Con «Auto» marcado, la mesa tira sola las tiradas de objetivo de los adversarios en cuanto aparecen; tú sigues decidiendo las consecuencias que no son automáticas.
 
 ## [2.38.0] — 2026-11-23
 

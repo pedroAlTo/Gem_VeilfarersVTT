@@ -501,3 +501,12 @@ test('Rapid Regeneration is a Reaction and also an ordinary Power on a target, a
   play(s, 'medic', 'Rapid Regeneration', { targetIds: ['hurt'], durationFaces: [2] });
   assert.equal(get(s, 'hurt').hp.current, 4, 'played on a target: +1 HP at once');
 });
+
+test('Blinding Flash lights up for the characters in Close range of the enemy that attacks', async () => {
+  const { reactorsFor } = await import('../src/powerReactions.js');
+  const near = { ...withPower('Blinding Flash', 'near'), x: 128 }, far = { ...withPower('Blinding Flash', 'far'), x: 64 + 64 * 20 };
+  const foe = { ...hostile('foe'), x: 192 };
+  assert.deepEqual(reactorsFor('Blinding Flash', foe, [near, far, foe], scene, data).map(t => t.id), ['near']);
+  assert.deepEqual(reactorsFor('Blinding Flash', near, [near, far, foe], scene, data), [], 'only against an enemy');
+  assert.deepEqual(reactorsFor('Blinding Flash', foe, [{ ...near, hope: 0 }, foe], scene, data), [], 'it costs 1 Hope');
+});

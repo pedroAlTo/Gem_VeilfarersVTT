@@ -1584,6 +1584,19 @@ export const PAIRS = [
   // V3 · Dron y Rapid Regeneration (v2.38.0)
   ["No a través del dron", "Not through the drone"],
   ["Reacción o acción", "Reaction or action"],
+  // Card hand groups and Keeper decision tray (v2.39.0)
+  ["Todas", "All"],
+  ["Reacciones", "Reactions"],
+  ["Usables", "Usable"],
+  ["Mostrar solo las cartas que puedes usar ahora", "Show only the cards you can use now"],
+  ["Tipo de carta", "Card type"],
+  ["Decisiones pendientes", "Pending decisions"],
+  ["Tirar adversarios", "Roll adversaries"],
+  ["Abrir", "Open"],
+  ["Finalizar", "Finish"],
+  ["Auto", "Auto"],
+  ["Lista para que decidas", "Ready for your call"],
+  ["Tirar automáticamente las tiradas de objetivo de los adversarios", "Automatically roll the adversaries' target rolls"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -1733,4 +1746,11 @@ export const PATTERNS = [
   ["Los jugadores no pueden recibir el estado de la partida: {_x}", "Players cannot receive the game state: {_x}"],
   ["Intensidad ({_x}% de oscuridad eliminada)", "Intensity ({_x}% of darkness removed)"],
   ["Teñido ({_x}%)", "Tint ({_x}%)"],
+  ["Decisiones · {_x}", "Decisions · {_x}"],
+  ["Esperando la tirada de {_x}", "Waiting for {_x}'s roll"],
+  ["{_x} adversario(s) por tirar", "{_x} adversary(ies) to roll"],
+  ["{_x} personaje(s) por tirar", "{_x} character(s) to roll"],
+  ["Finalizar las {_x} listas", "Finish the {_x} ready ones"],
+  ["+{_x} más en el registro de mesa", "+{_x} more in the table log"],
+  ["{_x} tiradas pendientes", "{_x} pending rolls"],
 ];

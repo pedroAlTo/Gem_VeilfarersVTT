@@ -266,3 +266,29 @@ body.card-aiming #tactical_canvas { cursor: crosshair; }
 .reaction-toast footer { display: flex; justify-content: flex-end; gap: 6px; }
 .kdmg-answers { margin: 4px 0; font-size: 12px; color: #fde68a; }
 .card-drawer-recallbar { margin: 6px 0 4px; padding: 8px 10px; border: 1px solid rgba(253,230,138,.35); border-radius: 5px; background: rgba(253,230,138,.05); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+
+/* The hand by kind (v2.39.0). */
+.card-hand-label:has(.card-hand-groups, .card-hand-usable) { flex-wrap: wrap; justify-content: center; row-gap: 5px; width: max-content; max-width: min(360px, calc(100vw - 24px)); align-self: center; }
+.card-hand-label:has(.card-hand-groups) > span:first-child { flex-basis: 100%; text-align: center; }
+.card-hand-label > span:first-child { white-space: nowrap; }
+.card-hand-groups { display: inline-flex; gap: 2px; margin-left: 4px; }
+.card-hand-groups button, .card-hand-usable { all: unset; cursor: pointer; padding: 4px 7px; border: 1px solid rgba(192,132,252,.35); border-radius: 4px; font: 700 9px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #c4b5fd; background: rgba(13,4,32,.85); }
+.card-hand-groups button:hover, .card-hand-usable:hover { border-color: #c084fc; color: #ede9fe; }
+.card-hand-groups button.active, .card-hand-usable.active { border-color: #22d3ee; color: #a5f3fc; background: rgba(34,211,238,.12); }
+
+/* The Keeper's decision tray (v2.39.0). */
+.keeper-tray { position: fixed; left: 84px; bottom: 132px; z-index: 60; width: min(320px, calc(100vw - 96px)); padding: 6px 8px; border: 1px solid rgba(192,132,252,.45); border-radius: 8px; background: rgba(13,4,32,.92); box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #ede9fe; font: 12px/1.35 'Chakra Petch', system-ui, sans-serif; }
+.keeper-tray header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.keeper-tray-toggle { all: unset; cursor: pointer; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 10px; color: #c4b5fd; }
+.keeper-tray-toggle:hover { color: #ede9fe; }
+.keeper-tray-auto { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #a5f3fc; cursor: pointer; }
+.keeper-tray ol { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.keeper-tray li { display: grid; gap: 3px; padding: 6px; border-radius: 6px; background: rgba(76,29,149,.25); border-left: 2px solid #c084fc; }
+.keeper-tray-name { font-weight: 700; }
+.keeper-tray-name small { font-weight: 400; color: #c4b5fd; }
+.keeper-tray-status { color: #a5f3fc; font-size: 11px; }
+.keeper-tray-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.keeper-tray-actions .hud-btn, .keeper-tray-close-all { padding: 3px 8px; font-size: 10px; }
+.keeper-tray-close-all { margin-top: 6px; width: 100%; }
+.keeper-tray-more { margin: 4px 0 0; font-size: 10px; color: #c4b5fd; }
+@media (max-width: 720px) { .keeper-tray { left: 12px; width: calc(100vw - 24px); bottom: 150px; } }

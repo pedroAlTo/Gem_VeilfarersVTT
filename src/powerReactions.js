@@ -28,6 +28,8 @@ export const REACTIONS = {
   'Mind Shield': { when: 'damage', who: 'self', cost: { stress: 1 }, types: ['neural'] },
   // After HP damage to you or an ally in Very Close (it is also played as an ordinary Power).
   'Rapid Regeneration': { when: 'after-damage', who: 'self-or-ally', reach: 'Very Close', cost: { hope: 1 } },
+  // An enemy within Close range of the caster makes an attack (the reach is measured to the enemy).
+  'Blinding Flash': { when: 'enemy-attack', who: 'near-enemy', reach: 'Close', cost: { hope: 1 } },
 };
 
 const overwhelmed = token => (token.stress?.current || 0) >= (token.stress?.max ?? 6);
@@ -42,7 +44,9 @@ export const holdsReaction = (token, name, data) => !!data && characterCards(tok
 // Who can use a reaction for this target now.
 export function reactorsFor(name, target, tokens, map, data) {
   const rule = REACTIONS[name];
-  if (!rule || !target || !isPartyToken(target)) return [];
+  // For most reactions the target is the one protected (a character); for Blinding Flash it is the
+  // enemy that attacks, and every character in Close range of it may answer.
+  if (!rule || !target || (rule.who === 'near-enemy' ? isPartyToken(target) : !isPartyToken(target))) return [];
   return tokens.filter(t => {
     if (t.mapId !== target.mapId || t.hidden || t.inReserve || !isPartyToken(t) || t.isPlayer === false) return false;
     if (rule.who === 'self' && t.id !== target.id) return false;
