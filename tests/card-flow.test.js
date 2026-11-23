@@ -58,3 +58,37 @@ test('a reaction offer lights up for the player who controls the reactor and the
   closeOffer(offerId);
   store.state.userRole = 'keeper';
 });
+
+test('aiming a Power works like an attack: the dropped token is marked, a second touch casts, and the pointer carries the Domain emblem', async () => {
+  const { store } = await import('../src/state.js');
+  const { startAim, stopAim, domainEmblem, emblemNode } = await import('../src/cardFlow.js');
+  assert.deepEqual(domainEmblem(card('Stellar Lance')), { src: '/assets/cards/domain-lux-flag.png', glow: '#fde047' });
+  assert.equal(domainEmblem({ name: 'Second Wind', kind: 'effort' }), null);
+  assert.ok(emblemNode(card('Kinetic Blast')).querySelector('img').src.endsWith('domain-kinetic-flag.png'));
+  const canvas = document.createElement('canvas'); document.body.append(canvas);
+  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 600 });
+  const marks = [];
+  window.veilCanvas = { canvas, screenToWorld: (x, y) => ({ x, y }), setAttackTarget: (a, b) => marks.push([a, b]), requestRender() {} };
+  store.getActiveMap = () => ({ id: 'm', gridSize: 64, gridScaleMeters: 2 });
+  store.state.tokens = [{ id: 'h', name: 'Harker', mapId: 'm', x: 64, y: 64, size: 1, isPlayer: true }, { id: 'e', name: 'Raider', mapId: 'm', x: 64 + 64 * 4, y: 64, size: 1, isPlayer: false, actorType: 'adversary' }];
+  store.getTokensForActiveMap = () => store.state.tokens;
+  let cast = null;
+  startAim(card('Stellar Lance'), store.state.tokens[0], 'aim', ids => { cast = ids; }, { preselect: 'e' });
+  assert.equal(window.veilCardAim.markedId, 'e', 'the token it was dropped on is marked');
+  assert.deepEqual(marks.at(-1), ['h', 'e'], 'with the attack line');
+  assert.match(document.getElementById('card_aim_banner').textContent, /toca otra vez el objetivo para lanzar/);
+  assert.ok(document.querySelector('.card-emblem-cursor.aiming'));
+  assert.equal(cast, null, 'nothing is cast yet');
+  canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { clientX: 320, clientY: 64, button: 0 }));
+  assert.deepEqual(cast, ['e'], 'the second touch on it casts');
+  assert.equal(window.veilCardAim, null);
+  assert.deepEqual(marks.at(-1), [null, null]);
+  assert.equal(document.querySelector('.card-emblem-cursor'), null);
+  // A plain click first marks, then casts.
+  cast = null;
+  startAim(card('Stellar Lance'), store.state.tokens[0], 'aim', ids => { cast = ids; });
+  const touch = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { clientX: 320, clientY: 64, button: 0 }));
+  touch(); assert.equal(cast, null); assert.equal(window.veilCardAim.markedId, 'e');
+  touch(); assert.deepEqual(cast, ['e']);
+  stopAim();
+});

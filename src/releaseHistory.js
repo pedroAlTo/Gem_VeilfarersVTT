@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.42.0', date: '2026-11-23', title: 'V3 · Apuntar un poder como un ataque, con el emblema del dominio',
+    sections: [
+      { title: 'Apuntar poderes', items: [
+        'Al arrastrar un Poder, el cursor lleva el emblema de su Dominio, brillando en su color (Tech, Synthesis, Social, Neural, Kinetic, Void, Lux). Mientras apuntas, el emblema sigue al cursor.',
+        'Al soltarlo sobre un token, ese token queda marcado (anillo de color, línea y distancia), igual que en un ataque. Tocarlo otra vez lanza el Poder; tocar otro objetivo válido cambia la marca. Esc cancela.',
+        'Con un clic en la carta pasa lo mismo: el primer toque en el mapa marca y el segundo lanza. Un área se ve al soltarla y se lanza con un toque en el mapa.',
+      ] },
+    ],
+  },
+  {
     version: '2.41.0', date: '2026-11-23', title: 'V3 · Uncanny Power en un solo gesto y la duración después del éxito',
     sections: [
       { title: 'Mystic Sleeping', items: [

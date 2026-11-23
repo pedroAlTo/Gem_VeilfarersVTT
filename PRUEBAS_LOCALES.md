@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.41.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.41.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.41.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.41.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.42.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.42.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.42.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.42.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -139,6 +139,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.41.0.zip**. Abre **AYUDA
 124. **(V3) Special a mano.** Abre Estados de un token, escribe un texto en «Estado Special · texto libre» y pulsa «Añadir Special»: aparece en «Special y otros marcadores» y en el token; pulsa su × para quitarlo. Como Keeper, en la resolución de una carta elige «Aplicar estado Special (texto libre)», escribe el texto y aplícalo a los objetivos marcados.
 125. **(V3) Uncanny Power en un gesto.** Mystic Sleeping con Synthesis 1 en el Archivo y Resolve: arrastra Rapid Regeneration sobre un aliado a Very Close (o clic y toca al aliado). Sin ventanas: se tira el d4 de acceso, después Knowledge contra DC 11 y, si sale, el d4 de duración; el aliado gana +1 HP y un reloj que cura +1 HP cada vez que toma el foco. Si el Knowledge falla, no se tira la duración. Doble clic en la carta: se abre la ventana de Uncanny Power de siempre.
 126. **(V3) Ataque y mejora vía Uncanny.** Con un Poder de ataque del Archivo (p. ej. Synaptic Disruption) o una mejora (Kinetic Barrier con Kinetic 1-2): un clic y objetivo, o soltar en el token; el acceso, la tirada y el efecto o el daño a la ventana del Keeper salen solos.
+127. **(V3) Arrastrar un Poder.** Arrastra Stellar Lance desde la mano: el cursor muestra el emblema de Lux brillando. Suéltalo sobre un enemigo a su alcance: queda marcado con un anillo, la línea y la distancia, y el aviso dice «toca otra vez el objetivo para lanzar». Tócalo otra vez: se paga y se tira. Suelta sobre un token fuera de alcance: aviso de objetivo no válido y sigues apuntando. Con un Poder del Archivo de un Mystic Sleeping, lo mismo antes de tirar el acceso.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

@@ -13,6 +13,7 @@ import { NEXT_ROLL, barrier } from './powerEffects.js';
 import { cardUse, usedBy } from './cardLimits.js';
 import { costLabel, DUAL_REACTIONS } from './loadoutCards.js';
 import { tokenAtPoint } from './playerActionBar.js';
+import { distanceInfo } from './attackFlow.js';
 
 // ── State of a card in the hand ─────────────────────────────────────────────────────────────
 function missing(card, token) {
@@ -95,6 +96,39 @@ export function quickPlan(card, token) {
   return 'play';
 }
 
+// ── The Domain emblem under the pointer (v2.42.0) ───────────────────────────────────────────
+// Dragging a Power, or aiming it, the pointer carries its Domain's emblem, glowing in its colour.
+const DOMAINS = ['tech', 'synthesis', 'social', 'neural', 'kinetic', 'void', 'lux'];
+const GLOW = { tech: '#22d3ee', synthesis: '#4ade80', social: '#fb7185', neural: '#c084fc', kinetic: '#f87171', void: '#a78bfa', lux: '#fde047' };
+export function domainEmblem(card) {
+  const domain = String(card?.domain || '').toLowerCase();
+  return DOMAINS.includes(domain) ? { src: `/assets/cards/domain-${domain}-flag.png`, glow: GLOW[domain] } : null;
+}
+export function emblemNode(card) {
+  const emblem = domainEmblem(card);
+  if (!emblem || typeof document === 'undefined') return null;
+  const node = document.createElement('div');
+  node.className = 'card-emblem-cursor';
+  node.style.setProperty('--glow', emblem.glow);
+  const img = document.createElement('img'); img.src = emblem.src; img.alt = ''; node.append(img);
+  return node;
+}
+let follower = null, followMove = null;
+function followPointer(card) {
+  unfollow();
+  follower = emblemNode(card);
+  if (!follower) return;
+  follower.classList.add('aiming');
+  document.body.append(follower);
+  followMove = event => { follower.style.left = `${event.clientX}px`; follower.style.top = `${event.clientY}px`; follower.hidden = false; };
+  follower.hidden = true;
+  window.addEventListener('pointermove', followMove, true);
+}
+function unfollow() {
+  if (followMove) window.removeEventListener('pointermove', followMove, true);
+  follower?.remove(); follower = null; followMove = null;
+}
+
 // ── Aim on the map ───────────────────────────────────────────────────────────────────────────
 let aim = null;
 const banner = text => {
@@ -111,11 +145,15 @@ export function stopAim() {
   for (const type of ['click', 'dblclick', 'mousedown', 'mouseup', 'pointerup', 'contextmenu']) canvas?.removeEventListener(type, swallow, true);
   document.getElementById('card_aim_banner')?.remove();
   document.body.classList.remove('card-aiming');
+  if (aim.markedId) window.veilCanvas?.setAttackTarget?.(null, null);
+  unfollow();
   aim = null; window.veilCardAim = null;
   window.veilCanvas?.requestRender?.();
 }
-// plan: 'aim' or 'area'. onConfirm(targetIds) plays the card.
-export function startAim(card, token, plan, onConfirm) {
+// plan: 'aim' or 'area'. onConfirm(targetIds) plays the card. Like an attack (v2.42.0): the first
+// touch on a token marks it (the line and the distance on the map); touching it again casts.
+// `preselect`: the token the card was dropped on, already marked.
+export function startAim(card, token, plan, onConfirm, { preselect = null } = {}) {
   stopAim();
   const canvas = window.veilCanvas?.canvas || document.getElementById('tactical_canvas');
   const map = store.getActiveMap?.() || {};
@@ -125,9 +163,20 @@ export function startAim(card, token, plan, onConfirm) {
   const reach = area?.reach || rule?.reach || '';
   window.veilCardAim = { casterId: token.id, area: !!area, reach, radius: reach ? areaRadius(token, map, reach) : 0, validIds: valid.map(t => t.id), color: card.color || '#00f3ff' };
   const optional = !area && rule?.object;
-  if (area) banner(`<b>${e(card.name)}</b> · Área ${e(reach)} alrededor de ${e(token.name)} · ${valid.length ? `${valid.length} dentro: ${e(valid.map(t => t.name).join(', '))}` : 'nadie dentro'} · <kbd>Clic</kbd> en el mapa para lanzar · <kbd>Esc</kbd> cancela`);
-  else banner(`Apuntando · <b>${e(card.name)}</b>${reach ? ` · alcance ${e(reach)}` : ''} · ${valid.length ? 'toca un objetivo iluminado' : 'no hay objetivos válidos a tu alcance'}${optional ? ' · <kbd>Enter</kbd>: sin objetivo' : ''} · <kbd>Esc</kbd> cancela`);
+  const say = () => {
+    if (area) banner(`<b>${e(card.name)}</b> · Área ${e(reach)} alrededor de ${e(token.name)} · ${valid.length ? `${valid.length} dentro: ${e(valid.map(t => t.name).join(', '))}` : 'nadie dentro'} · <kbd>Clic</kbd> en el mapa para lanzar · <kbd>Esc</kbd> cancela`);
+    else if (aim?.markedId) {
+      const marked = store.state.tokens.find(t => t.id === aim.markedId), gap = marked && distanceInfo(token, marked, map);
+      banner(`<b>${e(card.name)}</b> · Objetivo: <b>${e(marked?.name || '')}</b>${gap ? ` · ${e(gap.band)} · ${gap.meters.toFixed(1)} m` : ''} · <b>toca otra vez el objetivo para lanzar</b> · <kbd>Esc</kbd> cancela`);
+    } else banner(`Apuntando · <b>${e(card.name)}</b>${reach ? ` · alcance ${e(reach)}` : ''} · ${valid.length ? 'toca un objetivo iluminado' : 'no hay objetivos válidos a tu alcance'}${optional ? ' · <kbd>Enter</kbd>: sin objetivo' : ''} · <kbd>Esc</kbd> cancela`);
+  };
   const confirm = ids => { stopAim(); onConfirm(ids); };
+  const mark = target => {
+    aim.markedId = target.id;
+    window.veilCardAim = { ...window.veilCardAim, markedId: target.id };
+    window.veilCanvas?.setAttackTarget?.(token.id, target.id);
+    say(); window.veilCanvas?.requestRender?.();
+  };
   const onDown = event => {
     if (event.button === 2) { event.preventDefault(); event.stopImmediatePropagation(); stopAim(); return; }
     const engine = window.veilCanvas;
@@ -138,10 +187,12 @@ export function startAim(card, token, plan, onConfirm) {
     const target = tokenAtPoint(store.getTokensForActiveMap(), world, map.gridSize || 64, { includeHidden: false });
     if (!target) return;
     if (!window.veilCardAim?.validIds.includes(target.id)) { notify(`${target.name} no es un objetivo válido para ${card.name}${reach ? ` (alcance ${reach})` : ''}.`, 'error'); return; }
-    confirm([target.id]);
+    if (aim.markedId === target.id) confirm([target.id]);
+    else mark(target);
   };
   const onKey = event => {
     if (event.key === 'Escape') { event.preventDefault(); stopAim(); }
+    else if (event.key === 'Enter' && aim?.markedId) { event.preventDefault(); confirm([aim.markedId]); }
     else if (event.key === 'Enter' && (area || optional)) { event.preventDefault(); confirm(area ? valid.map(t => t.id) : []); }
   };
   const swallow = event => { event.preventDefault(); event.stopImmediatePropagation(); };
@@ -149,7 +200,11 @@ export function startAim(card, token, plan, onConfirm) {
   window.addEventListener('keydown', onKey, true);
   for (const type of ['click', 'dblclick', 'mousedown', 'mouseup', 'pointerup', 'contextmenu']) canvas.addEventListener(type, swallow, true);
   document.body.classList.add('card-aiming');
-  aim = { card, tokenId: token.id, canvas, onDown, onKey, swallow };
+  aim = { card, tokenId: token.id, canvas, onDown, onKey, swallow, markedId: null };
+  followPointer(card);
+  const dropped = !area && preselect && store.state.tokens.find(t => t.id === preselect);
+  if (dropped && valid.some(t => t.id === dropped.id)) mark(dropped);
+  else { if (dropped && dropped.id !== token.id) notify(`${dropped.name} no es un objetivo válido para ${card.name}${reach ? ` (alcance ${reach})` : ''}.`, 'error'); say(); }
   window.veilCanvas?.requestRender?.();
 }
 

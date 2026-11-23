@@ -17,7 +17,7 @@ import { cardChoices, chosenCardOptions, openResolution } from './cardResolution
 import { TARGET_RULES, SELF_EFFECTS, CARD_MODES, SUSTAINED, eligible, cardRollOptions, createResolution } from './cardResolution.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { cardSummary } from './cardSummaries.js';
-import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode } from './cardFlow.js';
+import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode, emblemNode } from './cardFlow.js';
 import { characterDetails } from './characterImport.js';
 import { liveFor, liveReactions, answer as answerReaction } from './reactionOffers.js';
 import { droneCompatible } from './dronePowers.js';
@@ -249,21 +249,24 @@ export class CardHand {
     if (card.uncanny) { this.openUncanny(card, point); return; }
     // An Archive Power of a Mystic Sleeping (v2.41.0): the same gesture as any Power. It is aimed
     // (or dropped on its target) and then Uncanny Power runs by itself, with no window.
+    // Dropped on a token (v2.42.0): the token is marked, as with an attack, and touching it again
+    // casts the Power; an area is shown and a touch on the map casts it.
+    const dropped = point ? this.cardTarget(point) : null;
     if (card.kind === 'archive') {
       let plan = quickPlan(card, token);
       if (plan === 'dialog') plan = 'play';
-      if (plan === 'play' || point) { this.uncannyCast(card, token, point); return; }
-      startAim(card, token, plan, targetIds => this.uncannyCast(card, token, null, targetIds));
+      if (plan === 'play') { this.uncannyCast(card, token, point); return; }
+      startAim(card, token, plan, targetIds => this.uncannyCast(card, token, null, targetIds), { preselect: dropped });
       return;
     }
     if (this.special(card, token, point)) return;
     const plan = quickPlan(card, token);
     if (plan === 'dialog') { this.inspect(card, point); return; }
     const options = { rollNow: true, ...(defaultMode(card) ? { mode: defaultMode(card) } : {}) };
-    if (plan === 'play' || point) { this.play(card, point, null, options); return; }
+    if (plan === 'play') { this.play(card, point, null, options); return; }
     const drone = this.viaDroneId && store.state.tokens.find(t => t.id === this.viaDroneId);
     const origin = drone ? { ...token, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId } : token;
-    startAim(card, origin, plan, targetIds => this.play(card, null, null, { ...options, targetIds }));
+    startAim(card, origin, plan, targetIds => this.play(card, null, null, { ...options, targetIds }), { preselect: dropped });
   }
 
   // Click inspects; dragging past a few pixels lifts the card so it can be dropped on the map.
@@ -274,7 +277,9 @@ export class CardHand {
     const move = event => {
       if (!ghost && Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) < DRAG_START) return;
       if (!ghost) {
-        ghost = document.createElement('div'); ghost.className = 'vf-card vf-card-ghost'; ghost.innerHTML = sanitizeHTML(cardFace(card));
+        // A Power travels as its Domain's emblem, glowing (v2.42.0); other cards as the card.
+        ghost = emblemNode(card);
+        if (!ghost) { ghost = document.createElement('div'); ghost.className = 'vf-card vf-card-ghost'; ghost.innerHTML = sanitizeHTML(cardFace(card)); }
         document.body.append(ghost); node.classList.add('dragging'); viewport?.classList.add('card-drop-target');
       }
       ghost.style.left = `${event.clientX}px`; ghost.style.top = `${event.clientY}px`;

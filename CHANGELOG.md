@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.41.0**.
-Paquete: `VeilFarers_VTT_v2.41.0.zip`.
+Versión actual del VTT: **v2.42.0**.
+Paquete: `VeilFarers_VTT_v2.42.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.42.0] — 2026-11-23
+
+V3 · Apuntar un poder como un ataque, con el emblema del dominio
+
+### Apuntar poderes
+
+- Al arrastrar un Poder, el cursor lleva el emblema de su Dominio, brillando en su color (Tech, Synthesis, Social, Neural, Kinetic, Void, Lux). Mientras apuntas, el emblema sigue al cursor.
+- Al soltarlo sobre un token, ese token queda marcado (anillo de color, línea y distancia), igual que en un ataque. Tocarlo otra vez lanza el Poder; tocar otro objetivo válido cambia la marca. Esc cancela.
+- Con un clic en la carta pasa lo mismo: el primer toque en el mapa marca y el segundo lanza. Un área se ve al soltarla y se lanza con un toque en el mapa.
 
 ## [2.41.0] — 2026-11-23
 

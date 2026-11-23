@@ -4880,6 +4880,11 @@ export class CanvasEngine {
         const r = ((t.size || 1) * grid) / 2 + 6;
         ctx.save(); ctx.strokeStyle = aim.area ? `rgba(248,113,113,${pulse})` : `rgba(52,211,153,${pulse})`; ctx.lineWidth = 4; ctx.shadowColor = aim.area ? '#f87171' : '#34d399'; ctx.shadowBlur = 12;
         ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        // The marked target (v2.42.0): a second, steady ring in the card's colour.
+        if (id === aim.markedId) {
+          ctx.save(); ctx.strokeStyle = aim.color || '#00f3ff'; ctx.lineWidth = 5; ctx.shadowColor = aim.color || '#00f3ff'; ctx.shadowBlur = 22; ctx.setLineDash([]);
+          ctx.beginPath(); ctx.arc(t.x, t.y, r + 9, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
       }
     }
     const logs = store.state.logs || [];
