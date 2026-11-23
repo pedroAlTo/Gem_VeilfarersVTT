@@ -265,3 +265,4 @@ body.card-aiming #tactical_canvas { cursor: crosshair; }
 .reaction-toast p { margin: 6px 0 10px; font-size: 13.5px; line-height: 1.45; }
 .reaction-toast footer { display: flex; justify-content: flex-end; gap: 6px; }
 .kdmg-answers { margin: 4px 0; font-size: 12px; color: #fde68a; }
+.card-drawer-recallbar { margin: 6px 0 4px; padding: 8px 10px; border: 1px solid rgba(253,230,138,.35); border-radius: 5px; background: rgba(253,230,138,.05); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }

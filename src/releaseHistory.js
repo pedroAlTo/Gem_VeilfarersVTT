@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.37.1', date: '2026-11-23', title: 'V3 · El Recall del mazo, a la vista',
+    sections: [
+      { title: 'Mazo', items: [
+        'El botón Recall estaba al final del mazo, debajo del catálogo de todos los Poderes, y no se veía al elegir una carta del Vault. Ahora está justo debajo del Vault, con el momento elegido y su coste, y dice qué entra y qué sale («Recall Spark of Hope ⇄ Blinding Flash · 1 Hope + tu Acción»). Los errores (falta de Hope, de margen de Stress…) aparecen ahí mismo.',
+      ] },
+    ],
+  },
+  {
     version: '2.37.0', date: '2026-11-22', title: 'V3 · Las reacciones se iluminan al jugador que puede usarlas',
     sections: [
       { title: 'Reacciones', items: [

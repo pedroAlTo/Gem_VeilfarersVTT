@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.37.0**.
-Paquete: `VeilFarers_VTT_v2.37.0.zip`.
+Versión actual del VTT: **v2.37.1**.
+Paquete: `VeilFarers_VTT_v2.37.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.37.1] — 2026-11-23
+
+V3 · El Recall del mazo, a la vista
+
+### Mazo
+
+- El botón Recall estaba al final del mazo, debajo del catálogo de todos los Poderes, y no se veía al elegir una carta del Vault. Ahora está justo debajo del Vault, con el momento elegido y su coste, y dice qué entra y qué sale («Recall Spark of Hope ⇄ Blinding Flash · 1 Hope + tu Acción»). Los errores (falta de Hope, de margen de Stress…) aparecen ahí mismo.
 
 ## [2.37.0] — 2026-11-22
 

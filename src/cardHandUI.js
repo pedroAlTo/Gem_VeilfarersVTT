@@ -700,14 +700,15 @@ export class CardHand {
         <p class="card-drawer-step">${e(step)}</p>
         <h4>LOADOUT · ${loadout.length}/${cap}</h4><div class="card-drawer-row">${loadout.map(c => mini(c, 'loadout')).join('') || '<p class="dossier-muted">Sin Poderes preparados.</p>'}</div>
         <h4>VAULT · ${vault.length}</h4><div class="card-drawer-row">${vault.map(c => mini(c, 'vault')).join('') || '<p class="dossier-muted">Vacío.</p>'}</div>
+        <div class="card-drawer-foot card-drawer-recallbar"><span class="dossier-muted">${e(RECALL_MODES[choice.mode].name)}: ${e(RECALL_MODES[choice.mode].text)}</span><button type="button" class="hud-btn hud-btn-primary" data-drawer-recall ${picked && (!full || choice.replace) ? '' : 'disabled'}>${picked ? `Recall ${e(picked.name)}${choice.replace ? ` ⇄ ${e(choice.replace)}` : ''}${price ? ` · ${e(price)}` : ''}` : 'Recall · elige una carta del Vault'}</button></div>
+        <p class="dossier-error" role="alert" data-drawer-error></p>
         ${deckKindChips(choice)}
         ${choice.kind !== 'powers' ? referenceHTML(data, choice) : `<h4>TODOS LOS PODERES · ${catalog.length}</h4>
         <div class="card-drawer-catalog-filters"><label class="equip-check"><input type="checkbox" data-drawer-mine ${choice.onlyMine ? 'checked' : ''} /> Solo los de mi acceso (tus Dominios, hasta tu nivel)</label>
           <div class="equip-chips" role="group" aria-label="Dominio">${['all', ...domains].map(d => `<button type="button" class="equip-chip ${choice.domain === d ? 'active' : ''}" data-drawer-domain="${e(d)}">${d === 'all' ? 'Todos' : e(d)}</button>`).join('')}</div></div>
         <div class="card-drawer-row card-drawer-catalog">${catalog.map(catalogCard).join('') || '<p class="dossier-muted">No hay Poderes nuevos a tu alcance ahora mismo. Desmarca la casilla para verlos todos.</p>'}</div>`}
         ${choice.kind === 'powers' && choice.learn ? `<div class="card-drawer-learn"><span>${e(choice.learn)}: ${learnable ? 'puedes añadirlo a tu Vault.' : known.has(choice.learn.toLowerCase()) ? 'ya lo conoces.' : 'fuera de tu acceso (otro Dominio o nivel superior).'}</span><button type="button" class="hud-btn hud-btn-xs" data-drawer-read>Leer</button><button type="button" class="hud-btn hud-btn-xs hud-btn-primary" data-drawer-learn ${learnable ? '' : 'disabled'}>Añadir al Vault</button></div>` : ''}
-        <p class="dossier-error" role="alert" data-drawer-error></p>
-        <footer class="card-drawer-foot"><span class="dossier-muted">${e(RECALL_MODES[choice.mode].text)}</span><button type="button" class="hud-btn hud-btn-primary" data-drawer-recall ${picked && (!full || choice.replace) ? '' : 'disabled'}>Recall${price ? ` · ${e(price)}` : ''}</button></footer>`);
+`);
       drawer.querySelector('[data-drawer-close]').onclick = () => drawer.remove();
       drawer.querySelectorAll('[data-drawer-mode]').forEach(b => b.onclick = () => { choice.mode = b.dataset.drawerMode; draw(); });
       drawer.querySelectorAll('[data-drawer-vault]').forEach(b => b.onclick = () => { choice.vault = choice.vault === b.dataset.drawerVault ? '' : b.dataset.drawerVault; draw(); });
