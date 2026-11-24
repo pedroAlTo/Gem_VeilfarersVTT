@@ -12,6 +12,7 @@ import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeath
 import { drawTokenGauge } from './tokenVitals.js';
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
+import { healedTokens } from './healFX.js';
 import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
 import { isPartyToken } from './tokenPermissions.js';
@@ -25,7 +26,7 @@ import { notify, confirmAction } from './ui.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { rangeBandFor, gapBandFor, tokenGapSquares, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
 import { drawEffectClocks } from './effectClocks.js';
-import { grantSpotlight } from './gameActions.js';
+import { grantActorSpotlight } from './gameActions.js';
 import { monochromeViewer, keepsTokenColor, MonochromeLayers } from './ancestryVision.js';
 
 export const WATER_DEPTH_NAMES = [
@@ -209,7 +210,7 @@ export class CanvasEngine {
     this.cancelWaterDrawing();
     if (this.currentCampaignId !== campaignId) {
       this.templates = []; this.pings = []; this.activeTemplate = null;
-      this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear(); this.fx.combat.clear();
+      this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear(); this.fx.combat.clear(); this.fx.heal?.clear();
       for (const name of ['draggedToken', 'draggedWall', 'draggedLight', 'draggedSwitch', 'draggedEffect', 'draggedWater', 'draggedTemplate', 'preDragSnapshot']) this[name] = null;
     }
     this.currentCampaignId = campaignId;
@@ -705,7 +706,7 @@ export class CanvasEngine {
     const previous = this.lastMoveDistance;
     const continued = previous?.tokenId === tok.id && previous.mapId === map.id && previous.keyboard && previous.expires > performance.now();
     this.showMoveDistance(tok.id, map.id, (continued ? previous.distance : 0) + stepDistance, true);
-    if (store.sessionRole !== 'player' && state.userRole === 'player') grantSpotlight(store, tok.id);
+    if (store.sessionRole !== 'player' && state.userRole === 'player') grantActorSpotlight(store, tok.id);
     if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId: tok.id, x, y });
     return true;
   }
@@ -776,6 +777,22 @@ export class CanvasEngine {
     this.freehand = new FreehandTool(this, store, network, notify);
     this.mapClipboard = new MapClipboard(store, network, this, notify);
     this.tokenUnsubscribe = store.subscribe(() => this.reconcileTokenDrag());
+    // A token healed shows a small green effect (v2.43.1): on every screen, for tokens it can see.
+    let healTokens = store.state.tokens, healMap = store.state.activeMapId;
+    this.healUnsubscribe = store.subscribe((state, keys) => {
+      if (Array.isArray(keys) && !keys.includes('tokens') && !keys.includes('activeMapId')) return;
+      const sameScene = state.activeMapId === healMap;
+      const healed = sameScene ? healedTokens(healTokens, state.tokens, state.activeMapId) : [];
+      healTokens = state.tokens; healMap = state.activeMapId;
+      if (!healed.length) return;
+      const map = store.getActiveMap(), grid = map?.gridSize || 64, visible = store.getTokensForActiveMap();
+      for (const h of healed) {
+        const token = state.tokens.find(t => t.id === h.id);
+        if (state.userRole !== 'keeper' && (!token || token.hidden || !this.isTokenVisibleToPlayers(token, visible, map))) continue;
+        this.fx.heal.add({ x: h.x, y: h.y, diameter: h.size * grid, amount: h.amount });
+      }
+      this.requestRender?.();
+    });
     const waterContext = s => JSON.stringify([s.campaignId,s.activeMapId,s.activeTool,s.waterDrawMode,s.userRole,s.activeLayer,s.layerVisibility.water,s.layerLocked.water]);
     let previousWaterContext = waterContext(store.state);
     this.waterUnsubscribe = store.subscribe(state => {
@@ -2043,7 +2060,7 @@ export class CanvasEngine {
         // The Keeper's own Player view: a move is the player's active action (a connected
         // player's move gets it from the table when the patch arrives).
         if (accepted && !isBlocked && (moved || distance > 0)) this.showMoveDistance(tokenId, map.id, distance);
-        if (accepted && moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantSpotlight(store, tokenId);
+        if (accepted && moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantActorSpotlight(store, tokenId);
         if (accepted && store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId, x: finalX, y: finalY });
       }
 

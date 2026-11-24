@@ -1,6 +1,64 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.43.4', date: '2026-11-24', title: 'V3 · Fondos ilustrados y logo de Veilfarers',
+    sections: [
+      { title: 'Portada', items: [
+        'La cuadrícula violeta del fondo se sustituye por ilustraciones: la tripulación al completo (estilo cómic) detrás de la pantalla de acceso y el combate con la enorme bestia mecánica, teñido de violeta, detrás de la selección de sala. Un velo oscuro mantiene los paneles en primer plano.',
+        'En la selección de sala, «Crear partida» lleva ahora el abordaje y «Tus partidas» el mundo bioluminiscente; «Unirme» sigue con la sala del reactor.',
+        'El logo real de Veilfarers (en versión clara para fondo oscuro, con la A azul) aparece en la pantalla de acceso, en la cabecera del inicio y en la cabecera de la mesa.',
+      ] },
+    ],
+  },
+  {
+    version: '2.43.3', date: '2026-11-24', title: 'V3 · Ilustraciones en el acceso y en el inicio',
+    sections: [
+      { title: 'Portada', items: [
+        'La pantalla de acceso muestra la cámara de la luz violeta detrás de «Portal táctico».',
+        'En el inicio, «Crear partida» lleva la batalla en tonos violeta; «Unirme», la tripulación ante el reactor; y «Tus partidas», la tripulación al completo de fondo. Un velo violeta mantiene el texto legible, también en el móvil.',
+      ] },
+    ],
+  },
+  {
+    version: '2.43.2', date: '2026-11-24', title: 'V3 · Actuar de cualquier modo da el foco, con sus efectos',
+    sections: [
+      { title: 'Foco', items: [
+        'Un jugador toma el foco al actuar de cualquier modo, no solo con «Tomar foco»: al mover su personaje, al atacar, al usar una carta activa y ahora también con cualquier tirada de acción (una tirada de atributo). Mover el dron que opera da el foco a su operador. Las tiradas de reacción que pide una carta (resistir un área, Mind-Slip) y las reacciones no lo dan.',
+        'Todas esas formas de tomar el foco aplican lo mismo que el botón: Rapid Regeneration cura y su reloj avanza, los relojes de efecto por foco avanzan y terminan los Armor Slots temporales de Tactical Overwatch.',
+      ] },
+    ],
+  },
+  {
+    version: '2.43.1', date: '2026-11-24', title: 'V3 · Rapid Regeneration cura en cada nuevo foco, y la curación se ve en el token',
+    sections: [
+      { title: 'Efectos por foco', items: [
+        'Rapid Regeneration (y cualquier efecto que avanza al tomar el foco) ya no espera a que el Keeper pulse «Nueva ronda»: cura +1 HP cada vez que el objetivo toma el foco después de que lo haya tenido otro, como dice la carta («al empezar cada uno de sus próximos Spotlights»). Quitar y volver a poner el foco al mismo token sin que nadie más lo tenga no cuenta, para que no se repita la curación.',
+      ] },
+      { title: 'Curación visible', items: [
+        'Cuando un token se cura aparece un pequeño efecto: resplandor y anillo verdes, una cruz y «+N HP» que suben sobre el token. Lo ven todos los que ven el token; con «Reducir animaciones» no se mueve.',
+      ] },
+    ],
+  },
+  {
+    version: '2.43.0', date: '2026-11-24', title: 'V3 · Plan de UX, fases 0 y 1: entrar y elegir personaje en pocos clics',
+    sections: [
+      { title: 'Entrar', items: [
+        'Inicio en modo Básico con tres acciones: «Crear partida» (un clic: crea la sala, entra como Keeper y copia el enlace de invitación), «Unirme» con el código y «Continuar» en tu última partida. Debajo, todas tus partidas en una lista (Keeper o Jugador). El modo Avanzado mantiene los paneles de siempre.',
+        'Con un enlace de invitación ya no hace falta cuenta: «¿Te han invitado?» pide solo tu nombre (el código viene rellenado) y entras en la partida. Desde Cuenta, «Guardar con Google» conserva esa sesión como cuenta. Requiere activar el acceso Anónimo en Firebase (FIREBASE_SETUP.md).',
+        'El Keeper, mientras no ha entrado nadie, ve «Invita a tus jugadores» con el enlace, el código y «Copiar enlace». El botón de la cabecera se llama ahora «🔗 Invitar».',
+      ] },
+      { title: 'Elegir personaje', items: [
+        'Sin personaje, la Ficha ofrece los diez pregenerados de Hearts in the Void (nivel 1, Sleeping, con sus rasgos, experiencias, arma y armadura del libro), «Mis personajes» y «Crear personaje». Un clic y el personaje está en la mesa y es tuyo. Nada obliga a elegir: el Keeper puede seguir asignando tokens.',
+      ] },
+      { title: 'Reglas', items: [
+        'La armadura cambia la Evasión como dice el Corebook: Flexible +1, Heavy −1, Very Heavy y Massive −2; y el Vanguard suma Unbroken Focus (+1 sin armadura Heavy). Se aplica al crear el personaje y al ponerse o quitarse armadura, solo por la diferencia, sin descuadrar personajes anteriores.',
+      ] },
+      { title: 'Calidad', items: [
+        '«npm run test:clicks» recorre en el navegador las acciones habituales y comprueba los clics de cada una: entrar 2, tirada 2, ataque 4 (meta 3), poder con objetivo 3, poder del Archivo 3, elegir pregenerado 1, reacción 1.',
+      ] },
+    ],
+  },
+  {
     version: '2.42.0', date: '2026-11-23', title: 'V3 · Apuntar un poder como un ataque, con el emblema del dominio',
     sections: [
       { title: 'Apuntar poderes', items: [

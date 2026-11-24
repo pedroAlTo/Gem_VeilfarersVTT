@@ -1,4 +1,5 @@
 import { CombatFX, drawFireArea } from './combatFX.js';
+import { HealFX } from './healFX.js';
 import { drawBlackHole } from './surfaceFX.js';
 // src/fxEngine.js
 // High-Performance AAA Tactical FX & Particle Simulation Engine for VeilVTT
@@ -9,6 +10,7 @@ import { drawBlackHole } from './surfaceFX.js';
 export class FXEngine {
   constructor() {
     this.combat = new CombatFX();
+    this.heal = new HealFX();
     this.particles = [];
     this.lightningBolts = [];
     this.shockwaves = [];
@@ -1140,6 +1142,7 @@ export class FXEngine {
   updateAndRender(ctx, dt, mapEffects = [], viewport = null) {
     const combatOptions = { quality: this.quality, reducedMotion: !!this.reducedMotion?.matches, viewport };
     this.combat.render(ctx, dt, combatOptions);
+    this.heal.render(ctx, dt, combatOptions);
     for (const effect of mapEffects) if (effect.type === 'fire') drawFireArea(ctx, effect, this.combat.time, combatOptions);
 
     // 0. Update persistent map effect emitters (always run to purge deleted effects)

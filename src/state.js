@@ -168,6 +168,10 @@ class StateStore {
       const previous = new Map(this.state.tokens.map(t => [t.id, t]));
       const map = this.getActiveMap();
       partialState = { ...partialState, tokens: partialState.tokens.map(t => combatTransition(previous.get(t.id), t, map)) };
+      // Who took the Spotlight last on this scene: a character's next Spotlight is the next time it
+      // takes it after somebody else (effect clocks such as Rapid Regeneration advance then).
+      const gained = map && partialState.tokens.find(t => t.mapId === map.id && t.hasSpotlight && !previous.get(t.id)?.hasSpotlight);
+      if (gained && map.lastSpotlightId !== gained.id) partialState.maps = (partialState.maps || this.state.maps).map(m => m.id === map.id ? { ...m, lastSpotlightId: gained.id } : m);
     }
     Object.assign(this.state, partialState);
     this.notify(Object.keys(partialState));

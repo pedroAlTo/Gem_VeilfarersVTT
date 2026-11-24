@@ -98,6 +98,7 @@ export function parseCharacterJSON(input) {
     avatarUrl: text(f.avatarUrl || doc.avatarUrl), portraitOverride: f.portrait_override === true, tokenArchetype: text(f.token_archetype),
     level: number(f.level, 'Nivel', 1, 100), proficiency: number(f.prof, 'Proficiency', 1, 100),
     evasion: number(f.evasion, 'Evasion', 0, 100),
+    ...(f.armor_evasion !== undefined && f.armor_evasion !== '' ? { armorEvasion: number(f.armor_evasion, 'Evasion de armadura', -10, 10) } : {}),
     traits: Object.fromEntries(TRAIT_IDS.map(k => [k, number(f[`tr_${k}`], k, -100, 100)])),
     hp, armor, stress, hope: hope.current, effort: effort.current, resolve,
     hopeMax: hope.max, effortMax: effort.max,

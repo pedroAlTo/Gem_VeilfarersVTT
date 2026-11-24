@@ -38,6 +38,12 @@ export function grantSpotlight(store, tokenId) {
   const before = store.tableActing; store.tableActing = true;
   try { return store.setTokenSpotlight(tokenId, true) !== false; } finally { store.tableActing = before; }
 }
+// Whoever acts takes the Spotlight (v2.43.2, user decision): moving a drone is its operator acting.
+export function grantActorSpotlight(store, tokenId) {
+  const token = store.state.tokens.find(t => t.id === tokenId);
+  const operatorId = token?.actorType === 'drone' ? token.drone?.operatorId : '';
+  return grantSpotlight(store, operatorId || tokenId);
+}
 export const ACTIVE_CARD_KINDS = new Set(['power', 'archive', 'move', 'feature']);
 
 export function performGameAction(action, store = defaultStore) {
@@ -643,7 +649,10 @@ function resolveGameAction(action, store) {
     // failed cast cannot remove the Fear earned by the Duality roll at the cap.
     if (result.fearGain) store.addFear(result.fearGain);
     if (cast) completeCardRoll(store, cast, result);
-    if (action.attack && player) grantSpotlight(store, actor.id);
+    // Acting takes the Spotlight (v2.43.2, user decision): any action roll of a player, attack or
+    // not, with what a new Spotlight brings (effect clocks such as Rapid Regeneration). A Reaction
+    // Roll a card asks for (an area, Mind-Slip) does not.
+    if (player && !standalone && !action.cardReplyId) grantActorSpotlight(store, actor.id);
     for (const c of integrityEnded) store.addLog({ sender: actor.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${actor.name}: el Integrity Die llega a 0 y «${c.name}» termina.` });
     const record = { id: newId(), actorId: actor.id, ...result,
       ...(cast ? { cardPlayId: cast.id, ...(cast.replyId ? { cardReplyId: cast.replyId } : {}) } : {}),

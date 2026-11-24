@@ -23,7 +23,8 @@
         <div class="fx-cell fx-cell-brand">
           <span class="fx-num">01</span>
           <div class="vf-brand-header">
-            <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
+            <img class="vf-brand-logo" src="/assets/brand/veilfarers-logo-light.png" alt="Veilfarers" width="1200" height="298" />
+            <div class="vf-brand-badge"><span class="badge-dot">●</span> TERMINAL DE ACCESO TÁCTICO</div>
             <h1>PORTAL TÁCTICO</h1>
             <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
           </div>
@@ -62,6 +63,16 @@
           <span class="guest-icon">🚀</span> Entrar como Invitado / Modo Local
         </button>
 
+        <!-- ¿TE HAN INVITADO? Entrar a una partida solo con un nombre (V3) -->
+        <form id="vf-invite-form" class="vf-invite-form" autocomplete="off">
+          <div class="vf-divider"><span>¿TE HAN INVITADO?</span></div>
+          <div class="vf-invite-row">
+            <input type="text" id="vf-invite-name" placeholder="Tu nombre en la mesa" maxlength="40" autocomplete="nickname" aria-label="Tu nombre en la mesa" />
+            <input type="text" id="vf-invite-code" placeholder="Código de invitación" autocomplete="off" aria-label="Código de invitación" />
+          </div>
+          <button type="submit" id="vf-btn-invite-join" class="vf-btn vf-btn-primary">Entrar a la partida</button>
+        </form>
+
         <div id="vf-auth-spinner" class="vf-auth-spinner hidden">
           <span class="auth-loading-dot"></span>
           <span id="vf-auth-spinner-msg">Verificando credenciales con el servidor...</span>
@@ -78,7 +89,7 @@
           <div class="vf-hub-logo">
             <div class="hub-brand-title">
               <span class="hub-brand-glyph">✦</span>
-              <h2>VEILFARERS // CENTRO DE MANDO</h2>
+              <h2><img class="vf-hub-brandmark" src="/assets/brand/veilfarers-logo-light-sm.png" alt="Veilfarers" width="420" height="104" /> <span>CENTRO DE MANDO</span></h2>
             </div>
             <!-- Identificador de Usuario y Correo de Inicio de Sesión -->
             <div class="vf-user-identity-box">
@@ -106,6 +117,42 @@
         </header>
 
         <p id="vf-hub-error" class="vf-hub-error" role="alert" hidden></p>
+
+        <!-- INICIO RÁPIDO: crear, unirse o continuar con un clic (Plan de UX V3, fase 1) -->
+        <section id="vf-quick-start" class="vf-quick-start" aria-label="Inicio rápido">
+          <button type="button" id="vf-quick-create" class="vf-quick-action vf-quick-create">
+            <span class="quick-icon">⚡</span>
+            <span class="quick-title">CREAR PARTIDA</span>
+            <span class="quick-hint">Diriges tú (Keeper). El enlace de invitación se copia solo.</span>
+          </button>
+          <div class="vf-quick-action vf-quick-join">
+            <span class="quick-icon">⌖</span>
+            <span class="quick-title">UNIRME</span>
+            <div class="vf-join-code-box">
+              <div class="room-input-container">
+                <input type="text" id="vf-join-code-input" placeholder="Código de invitación (ej: VEI-8H2FA)" autocomplete="off" aria-label="Código de invitación" />
+                <button type="button" id="vf-btn-join-code" class="vf-btn vf-btn-primary">
+                  <span>Unirse</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <button type="button" id="vf-quick-continue" class="vf-quick-action vf-quick-continue" hidden>
+            <span class="quick-icon">↻</span>
+            <span class="quick-title">CONTINUAR</span>
+            <span class="quick-hint" id="vf-quick-continue-name"></span>
+          </button>
+        </section>
+        <!-- BÁSICO: tus partidas en una sola lista -->
+        <section id="vf-quick-rooms" class="vf-quick-rooms" aria-label="Tus partidas">
+          <h3><span class="panel-icon">🛰️</span> TUS PARTIDAS</h3>
+          <div id="vf-quick-rooms-list" class="vf-rooms-list">
+            <div class="vf-room-loading">Cargando tus partidas...</div>
+          </div>
+          <button type="button" id="vf-btn-join-vtt" class="vf-btn vf-btn-secondary vf-quick-local">
+            <span class="btn-launch-text">Mesa local sin conexión</span>
+          </button>
+        </section>
 
         <!-- DOS BOTONES GRANDES HERO: ENTRAR COMO JUGADOR vs KEEPER -->
         <div class="vf-hero-role-selector">
@@ -148,22 +195,6 @@
                 <div class="vf-room-loading">Cargando salas conectadas...</div>
               </div>
 
-              <!-- Unirse con código nuevo -->
-              <div class="vf-join-code-box">
-                <h4 class="vf-subheading"><span class="icon">⌖</span> UNIRSE A UNA NUEVA SALA</h4>
-                <div class="room-input-container">
-                  <span class="room-input-icon">🔑</span>
-                  <input type="text" id="vf-join-code-input" placeholder="Código de invitación (ej: VEI-8H2FA)" autocomplete="off" />
-                  <button type="button" id="vf-btn-join-code" class="vf-btn vf-btn-primary">
-                    <span>Unirse</span>
-                  </button>
-                </div>
-              </div>
-              <button type="button" id="vf-btn-join-vtt" class="vf-btn vf-btn-launch" style="width: 100%; margin-top: 14px;">
-                <span class="btn-launch-icon">🚀</span>
-                <span class="btn-launch-text">ENTRAR DIRECTO A LA MESA VTT</span>
-                <span class="btn-launch-glow"></span>
-              </button>
             </section>
 
             <section id="vf-vault-section" class="vf-hub-panel vault-panel">
@@ -245,7 +276,7 @@
         <div class="header-left">
           <div class="brand-badge">
             <div class="brand-logo-icon">✦</div>
-            <span class="brand-title">VEILFARERS</span>
+            <span class="brand-title"><img class="brand-logo-img" src="/assets/brand/veilfarers-logo-light-sm.png" alt="Veilfarers" width="420" height="104" /></span>
             <span class="brand-version">CANON 12.06</span>
           </div>
 

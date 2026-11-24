@@ -6,6 +6,8 @@ import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { newId } from './persistence.js';
 import { equipmentNameAliases } from './equipmentNames.js';
 import { legacyEquipmentId } from './equipmentArtwork.js';
+import { armorEvasionMod } from './armorEvasion.js';
+export { armorEvasionMod };
 
 const fold = value => String(value ?? '').trim().toLowerCase();
 const byId = new Map(EQUIPMENT_CATALOG.map(item => [item.id, item]));
@@ -75,7 +77,7 @@ function applyEffects(token, effects, sign) {
 const augmentArmor = inventory => installedAugments(inventory).reduce((n, row) => n + (augmentRule(row)?.effects?.armorMax || 0), 0);
 
 // The token fields that changed between two copies (only those gear touches).
-const FIELDS = ['inventory', 'hp', 'armor', 'evasion', 'traits', 'stress'];
+const FIELDS = ['inventory', 'hp', 'armor', 'evasion', 'armorEvasion', 'traits', 'stress'];
 const changes = (before, after) => Object.fromEntries(FIELDS.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map(k => [k, after[k]]));
 
 // Over-capacity follows the augments and the traits: maximum Stress moves by the difference.
@@ -113,8 +115,12 @@ export function wornArmor(inventory) {
   return armors.find(r => r.equipped === true) || armors.find(r => r.equipped === undefined) || null;
 }
 export const isWorn = (row, inventory) => !!row && wornArmor(inventory) === row;
-// Thresholds and Armor Slots of an armor (a catalog entry), or the natural ones with none.
+// Thresholds and Armor Slots of an armor (a catalog entry), or the natural ones with none. Evasion
+// moves by the difference with what the armor worn before gave (`armorEvasion`, 0 if unknown).
 function wearStats(after, token, entry) {
+  const mod = armorEvasionMod(entry?.features, token);
+  if (Number.isFinite(Number(token.evasion))) after.evasion = Number(token.evasion) + mod - (Number(token.armorEvasion) || 0);
+  after.armorEvasion = mod;
   const level = Number(token.level || 1), extra = augmentArmor(after.inventory);
   if (entry && entry.majorThreshold && entry.severeThreshold) after.hp = { ...after.hp, majorThreshold: entry.majorThreshold + level, severeThreshold: entry.severeThreshold + level };
   else { const [major, severe] = naturalThresholds(token); after.hp = { ...after.hp, majorThreshold: major + level, severeThreshold: severe + level }; }

@@ -153,3 +153,64 @@ test('the lobby library is the signed-in user\'s own: it lists, imports and dele
     assert.ok(!source.includes('character_vault') && !source.includes('firebase/database'));
   } finally { Object.assign(account, { list: original.list, saveCharacter: original.save, removeCharacter: original.remove }); globalThis.confirm = confirmBefore; }
 });
+
+test('Plan de UX V3: Básico starts with Crear partida, Unirme and Continuar, and one list of games', () => {
+  const gateway = new VeilfarersLobbyGateway();
+  gateway.setLobbyMode('basic');
+  for (const id of ['vf-quick-create', 'vf-join-code-input', 'vf-btn-join-code', 'vf-quick-continue', 'vf-quick-rooms-list', 'vf-btn-join-vtt'])
+    assert.equal(document.getElementById(id)?.closest('.fx-advanced, .vf-hub-section-view, .vf-hero-role-selector'), null, id + ' visible in Básico');
+  const css = read('../src/vtt-integration/styles/lobby-fates.css');
+  assert.match(css, /\[data-lobby-mode='basic'\] \.vf-hero-role-selector,\s*#vf-lobby-gateway\[data-lobby-mode='basic'\] \.vf-hub-section-view \{ display: none; \}/);
+  // One list: the rooms you run and the ones you play, the last one first and in «Continuar».
+  gateway.currentUser = { uid: 'u1', displayName: 'Ana' };
+  localStorage.setItem('veil.room.active.u1', 'r2');
+  gateway.renderQuickRooms([{ id: 'r1', name: 'Mi campaña', ownerUid: 'u1' }], [{ id: 'r2', name: 'La de Pedro' }]);
+  const rows = [...document.querySelectorAll('#vf-quick-rooms-list .btn-quick-enter')].map(b => [b.dataset.roomId, b.dataset.role]);
+  assert.deepEqual(rows, [['r2', 'player'], ['r1', 'keeper']]);
+  const cont = document.getElementById('vf-quick-continue');
+  assert.equal(cont.hidden, false);
+  assert.deepEqual([cont.dataset.roomId, cont.dataset.role], ['r2', 'player']);
+  assert.match(document.getElementById('vf-quick-continue-name').textContent, /La de Pedro · Jugador/);
+  // Without an account there is no online room to create: it says why and where to play.
+  gateway.currentUser = { uid: 'guest_1' };
+  gateway.quickCreate();
+  assert.match(document.getElementById('vf-hub-error').textContent, /inicia sesión/);
+});
+
+test('Plan de UX V3: invited with a link, the code is filled in and only a name is asked for', async () => {
+  globalThis.location = dom.window.location;
+  dom.window.location.hash = 'roomInvite=VEI-8H2FA';
+  document.getElementById('vf-invite-code').value = '';
+  const gateway = new VeilfarersLobbyGateway();
+  assert.equal(document.getElementById('vf-invite-code').value, 'VEI-8H2FA');
+  assert.equal(document.getElementById('vf-auth-screen').dataset.invited, 'true');
+  await gateway.joinWithoutAccount('  ', 'VEI-8H2FA');
+  assert.match(document.getElementById('vf-auth-error').textContent, /nombre/);
+  await gateway.joinWithoutAccount('Ana', '');
+  assert.match(document.getElementById('vf-auth-error').textContent, /código/);
+  dom.window.location.hash = '';
+});
+
+test('the sign-in and the start screens carry the four illustrations (v2.43.3)', async () => {
+  const { existsSync, statSync } = await import('node:fs');
+  const css = read('../src/vtt-integration/styles/lobby-fates.css');
+  for (const name of ['vault', 'battle', 'reactor', 'crew', 'abyss', 'boarding']) {
+    const file = new URL(`../public/assets/lobby/${name}.webp`, import.meta.url);
+    assert.ok(existsSync(file), name + '.webp in public/assets/lobby');
+    assert.ok(statSync(file).size < 260 * 1024, name + ' stays light');
+    assert.ok(css.includes(`url('/assets/lobby/${name}.webp')`), name + ' used by the lobby stylesheet');
+  }
+});
+
+test('the real Veilfarers logo replaces the text title on the sign-in, the start screen and the table header (v2.43.4)', async () => {
+  const { existsSync } = await import('node:fs');
+  for (const file of ['veilfarers-logo-light.png', 'veilfarers-logo-light-sm.png', 'veilfarers-logo.png']) assert.ok(existsSync(new URL('../public/assets/brand/' + file, import.meta.url)), file);
+  new VeilfarersLobbyGateway();
+  assert.equal(document.querySelector('#vf-auth-screen .vf-brand-logo').getAttribute('alt'), 'Veilfarers');
+  assert.equal(document.querySelector('#vf-hub-screen .vf-hub-brandmark').getAttribute('alt'), 'Veilfarers');
+  assert.match(indexHtml, /<span class="brand-title"><img class="brand-logo-img" src="\/assets\/brand\/veilfarers-logo-light-sm.png" alt="Veilfarers"/);
+  // The violet grid is gone: the page background is an illustration.
+  const css = read('../src/vtt-integration/styles/lobby-fates.css');
+  assert.ok(!/linear-gradient\(var\(--fx-line\) 1px, transparent 1px\)/.test(css), 'no grid');
+  assert.match(css, /#vf-lobby-gateway:has\(#vf-hub-screen:not\(\.hidden\)\)::before/);
+});

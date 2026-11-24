@@ -139,6 +139,18 @@ export class CloudAccount {
     }
     throw new Error('El acceso con Google necesita la configuración de Firebase.');
   }
+  // An anonymous session (entered with only a name, V3) kept as a Google account: the same uid,
+  // so the room seat, the characters and the notes stay.
+  async linkWithGoogle() {
+    const a = this.authAPI || (await this.init()).authAPI;
+    const user = this.auth?.currentUser;
+    if (!user?.isAnonymous) throw new Error('Esta sesión ya es una cuenta.');
+    const provider = new a.GoogleAuthProvider();
+    const credential = await a.linkWithPopup(user, provider);
+    this.setFirebaseUser(credential.user, true);
+    this.publishUser();
+    return credential.user;
+  }
   async resetPassword(email) { await this.init(); await this.authAPI.sendPasswordResetEmail(this.auth, email.trim()); }
   async signOut() {
     if (this.signingOut) return;

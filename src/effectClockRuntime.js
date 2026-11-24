@@ -71,13 +71,16 @@ export function startEffectClocks() {
     if (Array.isArray(keys) && !keys.includes('tokens')) return;
     for (const token of state.tokens) {
       const previous = last.get(token.id);
-      if (!isTable() || !previous || previous.roundSpotlight === token.roundSpotlight || !token.hasSpotlight) continue;
+      if (!isTable() || !previous || previous.hasSpotlight || !token.hasSpotlight) continue;
       // Tactical Overwatch: the temporary Armor Slots last until the start of the giver's Spotlight.
       queueMicrotask(() => endTemporaryArmor(token.id));
+      // The Spotlight clocks this Spotlight advanced (combatTransition marked them).
       for (const clock of previous.effectClocks || []) {
         if (clock.tick !== 'spotlight') continue;
-        const left = clock.segments - clock.filled - 1;
-        const details = left ? `${clock.name} · ${left} / ${clock.segments} pendientes.` : `Fin de ${clock.name}.`;
+        const now = (token.effectClocks || []).find(c => c.id === clock.id);
+        if (now && now.filled === clock.filled) continue;
+        const left = now ? now.segments - now.filled : 0, healed = clock.perTick?.hp ? ` ${token.name} recupera ${clock.perTick.hp} HP.` : '';
+        const details = (left ? `${clock.name} · ${left} / ${clock.segments} pendientes.` : `Fin de ${clock.name}.`) + healed;
         queueMicrotask(() => { if (!left) notify(details); store.addLog({ sender: token.name, type: 'EFFECT', title: clock.name, details }); });
       }
     }

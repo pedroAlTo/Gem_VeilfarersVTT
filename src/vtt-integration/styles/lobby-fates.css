@@ -27,17 +27,31 @@
   align-items: safe center;
 }
 
-/* Retícula fina sobre un fondo plano, con un único foco de color profundo. */
+/* Page background (v2.43.4, user request: illustrations instead of the violet grid): the whole
+   crew, comic-book style, behind the sign-in; the fight with the huge machine-beast behind the
+   room selection (tinted violet by multiplying, it is line art on a light ground); under a dark
+   violet veil so the panels stay the focus. */
 #vf-lobby-gateway::before {
-  background-image:
-    linear-gradient(var(--fx-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--fx-line) 1px, transparent 1px),
-    radial-gradient(ellipse 70% 60% at 50% 0%, var(--fx-deep) 0%, transparent 70%);
-  background-size: 96px 96px, 96px 96px, 100% 100%;
-  background-position: center top;
-  opacity: 0.55;
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 50%, rgba(13, 4, 32, 0.25) 0%, rgba(13, 4, 32, 0.65) 100%),
+    linear-gradient(180deg, rgba(13, 4, 32, 0.35) 0%, rgba(42, 11, 92, 0.25) 60%, rgba(13, 4, 32, 0.55) 100%),
+    url('/assets/lobby/crew.webp') center 60% / cover no-repeat,
+    var(--fx-bg);
+  opacity: 1;
   position: fixed;
 }
+#vf-lobby-gateway:has(#vf-hub-screen:not(.hidden))::before {
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 45%, rgba(13, 4, 32, 0) 0%, rgba(13, 4, 32, 0.45) 100%),
+    linear-gradient(160deg, #a78bfa 0%, #7c3aed 50%, #4c1d95 100%),
+    url('/assets/lobby/battle.webp') center 40% / cover no-repeat,
+    var(--fx-bg);
+  background-blend-mode: normal, multiply, normal, normal;
+}
+/* The Veilfarers logo (light version for the dark portal). */
+#vf-lobby-gateway .vf-brand-logo { display: block; width: min(100%, 340px); height: auto; margin: 0 0 18px; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.6)); }
+#vf-lobby-gateway .vf-hub-brandmark { height: 26px; width: auto; vertical-align: middle; margin-right: 10px; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6)); }
+#vf-lobby-gateway .hub-brand-title h2 { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px; }
 #vf-lobby-gateway::after { display: none; }
 
 /* ---- Piezas comunes ------------------------------------------------------ */
@@ -170,7 +184,11 @@
   flex-direction: column;
   justify-content: space-between;
   border-right: 1px solid var(--fx-line-strong);
-  background: linear-gradient(160deg, rgba(42, 11, 92, 0.75) 0%, rgba(13, 4, 32, 0) 70%);
+  /* Illustration (v2.43.3): the vault opening, under a violet veil that keeps the title legible. */
+  background:
+    linear-gradient(0deg, rgba(13, 4, 32, 0.96) 0%, rgba(13, 4, 32, 0.72) 38%, rgba(42, 11, 92, 0.25) 70%, rgba(13, 4, 32, 0.35) 100%),
+    url('/assets/lobby/vault.webp') 62% center / cover no-repeat,
+    #0d0420;
 }
 #vf-lobby-gateway .vf-brand-header { display: block; text-align: left; margin: 0; }
 #vf-lobby-gateway .vf-brand-badge {
@@ -591,6 +609,68 @@
 #vf-lobby-gateway[data-lobby-mode='basic'] .fx-advanced { display: none !important; }
 #vf-lobby-gateway[data-lobby-mode='advanced'] .panel-hint { display: none; }
 
+/* ---- Inicio rápido: Crear partida · Unirme · Continuar (V3) ---------------- */
+
+#vf-lobby-gateway .vf-quick-start {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  border-bottom: 1px solid var(--fx-line-strong);
+}
+#vf-lobby-gateway .vf-quick-action {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 28px 26px;
+  min-height: 132px;
+  color: var(--fx-text);
+}
+#vf-lobby-gateway .vf-quick-action + .vf-quick-action { border-left: 1px solid var(--fx-line-strong); }
+#vf-lobby-gateway button.vf-quick-action { cursor: pointer; transition: background-color 0.15s; }
+#vf-lobby-gateway button.vf-quick-action:hover,
+#vf-lobby-gateway button.vf-quick-action:focus-visible { background: rgba(109, 40, 217, 0.22); }
+#vf-lobby-gateway button.vf-quick-action:focus-visible { outline: 2px solid var(--fx-accent); outline-offset: -4px; }
+/* Illustrations (v2.43.3) under a violet veil: the boarding action for Crear partida (v2.43.4), the reactor crew for
+   Unirme, the bioluminescent world behind Tus partidas (v2.43.4). The veil is darkest where the
+   text is. */
+#vf-lobby-gateway .vf-quick-create {
+  /* A light, line-art illustration: tinted violet by multiplying, darkest under the text. */
+  background:
+    linear-gradient(90deg, rgba(26, 6, 64, 0.95) 0%, rgba(42, 11, 92, 0.8) 45%, rgba(109, 40, 217, 0.35) 100%),
+    url('/assets/lobby/boarding.webp') 60% 45% / cover no-repeat, #2a0b5c;
+  box-shadow: inset 0 3px 0 var(--fx-accent);
+}
+#vf-lobby-gateway .vf-quick-join {
+  background:
+    linear-gradient(90deg, rgba(13, 4, 32, 0.95) 0%, rgba(13, 4, 32, 0.82) 50%, rgba(13, 4, 32, 0.45) 100%),
+    url('/assets/lobby/reactor.webp') 60% 40% / cover no-repeat, #0d0420;
+}
+#vf-lobby-gateway button.vf-quick-create:hover, #vf-lobby-gateway button.vf-quick-create:focus-visible {
+  background:
+    linear-gradient(90deg, rgba(42, 11, 92, 0.9) 0%, rgba(76, 29, 149, 0.6) 45%, rgba(139, 92, 246, 0.2) 100%),
+    url('/assets/lobby/boarding.webp') 60% 45% / cover no-repeat, #2a0b5c;
+}
+#vf-lobby-gateway .vf-quick-rooms {
+  background:
+    linear-gradient(180deg, rgba(13, 4, 32, 0.9) 0%, rgba(13, 4, 32, 0.95) 100%),
+    url('/assets/lobby/abyss.webp') center 55% / cover no-repeat, #0d0420;
+}
+#vf-lobby-gateway .vf-quick-action[hidden] { display: none; }
+#vf-lobby-gateway .quick-icon { font-size: 18px; color: var(--fx-accent); line-height: 1; }
+#vf-lobby-gateway .quick-title { font-family: var(--fx-sans); font-size: clamp(16px, 1.6vw, 21px); font-weight: 500; letter-spacing: 0.3em; color: #fff; }
+#vf-lobby-gateway .quick-hint { font-size: 13px; line-height: 1.5; color: var(--fx-dim); }
+#vf-lobby-gateway .vf-quick-join .vf-join-code-box { margin: 4px 0 0; }
+#vf-lobby-gateway .vf-quick-rooms { padding: 22px 28px 26px; }
+#vf-lobby-gateway .vf-quick-rooms h3 { margin: 0 0 12px; font-family: var(--fx-mono); font-size: 11px; font-weight: 400; letter-spacing: 0.22em; color: var(--fx-light); }
+#vf-lobby-gateway .vf-quick-room-role { font-family: var(--fx-mono); font-size: 10px; letter-spacing: 0.18em; color: var(--fx-accent); margin-right: 10px; }
+#vf-lobby-gateway .vf-quick-local { margin-top: 14px; }
+/* Básico: inicio rápido y una sola lista. Avanzado: además, los papeles y los paneles de siempre. */
+#vf-lobby-gateway[data-lobby-mode='basic'] .vf-hero-role-selector,
+#vf-lobby-gateway[data-lobby-mode='basic'] .vf-hub-section-view { display: none; }
+#vf-lobby-gateway[data-lobby-mode='advanced'] .vf-quick-rooms { display: none; }
+
 /* ---- Pantallas estrechas -------------------------------------------------- */
 
 @media (max-width: 860px) {
@@ -601,6 +681,7 @@
   #vf-lobby-gateway .vf-brand-header h1 { letter-spacing: 0.22em; }
   #vf-lobby-gateway .vf-hero-role-selector,
   #vf-lobby-gateway .vf-hub-grid { grid-template-columns: 1fr; }
+  #vf-lobby-gateway .vf-quick-action + .vf-quick-action { border-left: 0; border-top: 1px solid var(--fx-line-strong); }
   #vf-lobby-gateway .vf-hero-role-card + .vf-hero-role-card,
   #vf-lobby-gateway .vf-hub-panel + .vf-hub-panel { border-left: 0; border-top: 1px solid var(--fx-line-strong); }
   #vf-lobby-gateway .vf-hub-topbar,
@@ -640,3 +721,15 @@
 #vf-lobby-gateway .vf-hub-error[hidden] { display: none; }
 #vf-lobby-gateway .vf-room-error p { color: #fecdd3; }
 #vf-lobby-gateway .vf-room-error .vf-btn { margin-top: 12px; padding: 9px 16px; font-size: 11px; }
+
+/* ---- ¿Te han invitado? Entrar solo con un nombre (V3) ---------------------- */
+#vf-lobby-gateway .vf-invite-form { display: grid; gap: 10px; margin-top: 18px; }
+#vf-lobby-gateway .vf-invite-form .vf-divider { margin: 0 0 4px; }
+#vf-lobby-gateway .vf-invite-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#vf-lobby-gateway .vf-invite-row input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 14px; background: transparent; border: 1px solid var(--fx-line-strong); color: var(--fx-text); font: inherit; font-size: 14px; }
+#vf-lobby-gateway .vf-invite-row input:focus-visible { outline: 2px solid var(--fx-accent); outline-offset: 1px; }
+/* With an invitation link, the invited form comes first. */
+#vf-lobby-gateway #vf-auth-screen[data-invited='true'] .vf-invite-form { order: -1; margin: 0 0 18px; padding: 14px; border: 1px solid var(--fx-accent); background: rgba(109, 40, 217, 0.18); }
+#vf-lobby-gateway #vf-auth-screen[data-invited='true'] .fx-cell-access { display: flex; flex-direction: column; }
+@media (max-width: 860px) { #vf-lobby-gateway .vf-invite-row { grid-template-columns: 1fr; } }
+#vf-lobby-gateway .hub-brand-glyph { display: none; }

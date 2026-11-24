@@ -778,6 +778,7 @@ async function setupSessionPersistence() {
     const { account } = await import('./cloudAccount.js');
     const { startGameRecording } = await import('./gameRecord.js');
     startGameRecording({ rooms, store, account });
+    import('./keeperInvite.js').then(({ mountKeeperInvite }) => { window.veilKeeperInvite = mountKeeperInvite(rooms); }).catch(() => {});
     let invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
     // An invitation link is used once: it opens the rooms window and leaves the address, so a
     // later sign-in or token refresh does not open it again.
@@ -785,7 +786,13 @@ async function setupSessionPersistence() {
     // of the sign-in); once signed in, the person goes straight into the room.
     const clearInvitation = () => { try { const url = new URL(location.href); url.searchParams.delete('roomInvite'); const hash = new URLSearchParams(url.hash.slice(1)); hash.delete('roomInvite'); url.hash = hash.toString(); history.replaceState(null, '', url); } catch {} };
     const useInvitation = () => {
-      if (!account.user) { const box = document.getElementById('vf-join-code-input'); if (box) box.value = invitation; return; }
+      if (!account.user) {
+        // Without a session the code waits in both boxes; the invited form asks only for a name (V3).
+        for (const id of ['vf-join-code-input', 'vf-invite-code']) { const box = document.getElementById(id); if (box) box.value = invitation; }
+        document.getElementById('vf-auth-screen')?.setAttribute('data-invited', 'true');
+        document.getElementById('vf-invite-name')?.focus();
+        return;
+      }
       const code = invitation; invitation = '';
       clearInvitation();
       if (window.veilLobby?.joinWithCode) window.veilLobby.joinWithCode(code); else openSessionLobby(code);

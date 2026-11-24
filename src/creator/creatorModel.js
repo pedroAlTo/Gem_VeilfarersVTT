@@ -2,6 +2,7 @@
 // (creator wizard + sheet bridge): same nine steps, same choices, same sheet format, so
 // the result goes through the VTT importer like any other sheet. Pure functions; the data
 // (src/creator/data/*.json) is passed in so it can be loaded on demand.
+import { armorEvasionMod } from '../armorEvasion.js';
 
 export const CREATOR_STEPS = [
   { id: 1, label: 'Ancestry' }, { id: 2, label: 'Community' }, { id: 3, label: 'Path, Class y Subclass' },
@@ -197,7 +198,8 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
   const appearance = [state.appearance && `Appearance: ${clean(state.appearance)}`, state.voice && `Voice: ${clean(state.voice)}`].filter(Boolean).join('\n');
   const access = cls.technologyAccess?.tiers?.find(t => Number(t.rank) === 1);
 
-  const hp = Number(rules.hp) || 6, evasion = Number(rules.evasion) || 10;
+  const armorEvasion = armorEvasionMod(armor?.features, { characterClass: cls.name });
+  const hp = Number(rules.hp) || 6, evasion = (Number(rules.evasion) || 10) + armorEvasion;
   // Corebook ch. 8: six Stress slots, seven for Synthetics.
   const stress = anc.id === 'synthetic' ? 7 : 6;
   // Thresholds are armor + level; without armor 2 / 4, or 4 / 6 for naturally armored ancestries.
@@ -217,7 +219,7 @@ export function buildSheetDocument(state, data, { characterId = '', now = new Da
     s_honed: sleeping ? 'HONED EDGE +0 DAMAGE' : '', s_resolve_die: 'd4', s_anchor: sleeping ? clean(state.anchor) : '',
     s_learned_moves: startingResolveMoves(state, data).map(moveText).join('\n\n'),
     class_proficiencies: clean(access?.summary), tech_access: '1',
-    evasion: String(evasion), thr_major: String(major), thr_severe: String(severe),
+    evasion: String(evasion), armor_evasion: String(armorEvasion), thr_major: String(major), thr_severe: String(severe),
     wealth: '1', kit_class: (rules.items || []).join(' · '), kit_personal: clean(state.kit),
     a_domain_ref: sleeping ? '' : [domains.join(' & '), state.veilAlignment && `Veil Alignment — ${state.veilAlignment}`].filter(Boolean).join(' · '),
     a_loadout_cap: sleeping ? '' : '5', a_vault: '',

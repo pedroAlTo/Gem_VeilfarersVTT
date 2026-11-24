@@ -77,6 +77,7 @@ export function validateCampaign(data) {
   }
   for (const m of data.maps) {
     if (m.spotlightRound !== undefined) assert(Number.isSafeInteger(m.spotlightRound) && m.spotlightRound >= 1, 'Invalid Spotlight round.');
+    if (m.lastSpotlightId !== undefined) assert(typeof m.lastSpotlightId === 'string' && m.lastSpotlightId.length <= 200, 'Invalid Spotlight holder.');
     validateEnvironment(m.environment);
     if (m.drawings !== undefined) {
       assert(Array.isArray(m.drawings) && m.drawings.length <= 500, 'Invalid drawings.');
@@ -250,7 +251,7 @@ export function validateActor(t) {
 
   for (const key of ['majorThreshold', 'severeThreshold']) if (t.hp[key] !== undefined && t.hp[key] !== null) assert(finite(t.hp[key], 0, 10000), 'Invalid damage thresholds.');
   if (t.hp.majorThreshold !== undefined && t.hp.severeThreshold !== undefined && t.hp.majorThreshold !== null && t.hp.severeThreshold !== null) assert(t.hp.severeThreshold >= t.hp.majorThreshold, 'Severe debe ser igual o mayor que Major.');
-  for (const key of ['level', 'proficiency', 'evasion', 'attackModifier', 'honedEdgeBonus']) if (t[key] !== undefined && t[key] !== null) assert(finite(t[key], key === 'attackModifier' ? -100 : 0, 100), `Invalid ${key}.`);
+  for (const key of ['level', 'proficiency', 'evasion', 'attackModifier', 'honedEdgeBonus', 'armorEvasion']) if (t[key] !== undefined && t[key] !== null) assert(finite(t[key], ['attackModifier', 'armorEvasion'].includes(key) ? -100 : 0, 100), `Invalid ${key}.`);
   for (const key of ['species', 'community', 'characterClass', 'subclass', 'roleTag', 'path', 'damageExpression', 'attackRange', 'featureNotes', 'description']) {
     if (t[key] === null) delete t[key];
     else if (t[key] !== undefined) {

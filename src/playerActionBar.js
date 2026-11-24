@@ -32,6 +32,7 @@ import { cardData } from './cardData.js';
 import { characterCards } from './loadoutCards.js';
 import { network } from './networkManager.js';
 import { toggleSpotlight } from './spotlight.js';
+import { PREGENS, pregenSheet } from './pregens.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -65,6 +66,24 @@ export function tokenAtPoint(tokens, world, gridSize, { exclude = '', includeHid
 // The selection logic, without the DOM. `pick` is { trait, exp }; a tap is
 // { kind: 'trait' | 'exp' | 'edge', id }. Returns the new pick and, when the tap rolls, the roll.
 export const EMPTY_PICK = Object.freeze({ trait: null, exp: null });
+// The panel of a player without a character (V3): the ten pregens of Hearts in the Void, the
+// player's own characters and the creator.
+function choosePanelHTML(taken) {
+  return `<section class="pab-choose" aria-label="Elige tu personaje">
+    <h4 class="pab-choose-title">Elige tu personaje</h4>
+    <p class="pab-empty">Elige uno listo para jugar, trae uno tuyo o pide al Keeper que te asigne un token.</p>
+    <div class="pab-pregens" role="list">${PREGENS.map(p => `<button type="button" role="listitem" class="pab-pregen" data-pab-pregen="${e(p.id)}" ${taken.has(p.name) ? 'disabled aria-disabled="true" title="Ya está en la mesa"' : ''}><b data-no-i18n>${e(p.name)}</b><small>${e(p.blurb)}</small></button>`).join('')}</div>
+    <p class="pab-choose-source">Pregenerados de <i>Hearts in the Void</i> · nivel 1, Sleeping.</p>
+    <div class="pab-choose-more"><button type="button" class="hud-btn" data-pab-mine>Mis personajes</button><button type="button" class="hud-btn" data-pab-create>Crear personaje</button></div>
+  </section>`;
+}
+export async function pregenToken(id) {
+  const pregen = PREGENS.find(p => p.id === id);
+  if (!pregen) throw new Error('Ese personaje no existe.');
+  const [{ CREATOR_DATA }, { parseCharacterJSON }] = await Promise.all([import('./creator/creatorData.js'), import('./characterImport.js')]);
+  return parseCharacterJSON(pregenSheet(pregen, CREATOR_DATA)).token;
+}
+
 export function tapPick(pick, tap) {
   const cur = pick || EMPTY_PICK;
   if (tap.kind === 'trait') {
@@ -146,7 +165,15 @@ export class PlayerActionBar {
       if (this.keeperAttack) return; // the Keeper is aiming with an adversary (startKeeperAttack)
       this.edgeKey = '';
       this.stopTargeting(false); document.body.classList.remove('pab-hope-pending');
-      if (this.signature !== 'empty') { this.signature = 'empty'; this.tokenId = null; this.root.innerHTML = sanitizeHTML('<p class="pab-empty">Aún no tienes personaje. Pide al Keeper que te asigne uno o importa tu ficha desde SESIONES.</p>'); }
+      // No character yet (V3): pick one ready to play, bring one of yours or make one. Nothing
+      // forces the choice (HANDOVER §1): the Keeper can still assign a token at any time.
+      const taken = store.state.tokens.filter(t => t.isPlayer !== false).map(t => t.name).join('|');
+      const signature = 'empty:' + taken;
+      if (this.signature !== signature) {
+        this.signature = signature; this.tokenId = null;
+        this.root.innerHTML = sanitizeHTML(choosePanelHTML(new Set(store.state.tokens.filter(t => t.isPlayer !== false).map(t => t.name))));
+        this.bindChoose();
+      }
       return;
     }
     // The target marked for an attack: if either token moves, the distance is worked out again.
@@ -229,6 +256,25 @@ export class PlayerActionBar {
     this.root.querySelectorAll('[data-pab-prepare]').forEach(b => { b.onclick = () => this.prepare(b.dataset.pabPrepare); });
     this.root.querySelector('[data-pab-clear]')?.addEventListener('click', () => { this.result = null; this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-panel]')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } })));
+  }
+
+  bindChoose() {
+    this.root.querySelectorAll('[data-pab-pregen]').forEach(button => {
+      button.onclick = async () => {
+        if (button.disabled) return;
+        this.root.querySelectorAll('[data-pab-pregen]').forEach(b => { b.disabled = true; });
+        try {
+          const token = await pregenToken(button.dataset.pabPregen);
+          const { useCharacter } = await import('./accountUI.js');
+          await useCharacter(token);
+          notify(`${token.name} está en la mesa.`);
+        } catch (error) { notify(error.message, 'error'); this.signature = ''; this.render(); }
+      };
+    });
+    const mine = this.root.querySelector('[data-pab-mine]');
+    if (mine) mine.onclick = async () => { const { openAccount } = await import('./accountUI.js'); openAccount({ tab: 'characters' }); };
+    const create = this.root.querySelector('[data-pab-create]');
+    if (create) create.onclick = async () => { const { openCharacterCreator } = await import('./creator/creatorUI.js'); openCharacterCreator(); };
   }
 
   targetHint(t) {
