@@ -591,6 +591,44 @@
 #vf-lobby-gateway[data-lobby-mode='basic'] .fx-advanced { display: none !important; }
 #vf-lobby-gateway[data-lobby-mode='advanced'] .panel-hint { display: none; }
 
+/* ---- Inicio rápido: Crear partida · Unirme · Continuar (V3) ---------------- */
+
+#vf-lobby-gateway .vf-quick-start {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  border-bottom: 1px solid var(--fx-line-strong);
+}
+#vf-lobby-gateway .vf-quick-action {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 28px 26px;
+  min-height: 132px;
+  color: var(--fx-text);
+}
+#vf-lobby-gateway .vf-quick-action + .vf-quick-action { border-left: 1px solid var(--fx-line-strong); }
+#vf-lobby-gateway button.vf-quick-action { cursor: pointer; transition: background-color 0.15s; }
+#vf-lobby-gateway button.vf-quick-action:hover,
+#vf-lobby-gateway button.vf-quick-action:focus-visible { background: rgba(109, 40, 217, 0.22); }
+#vf-lobby-gateway button.vf-quick-action:focus-visible { outline: 2px solid var(--fx-accent); outline-offset: -4px; }
+#vf-lobby-gateway .vf-quick-create { background: linear-gradient(180deg, rgba(109, 40, 217, 0.5) 0%, rgba(42, 11, 92, 0.55) 100%); box-shadow: inset 0 3px 0 var(--fx-accent); }
+#vf-lobby-gateway .vf-quick-action[hidden] { display: none; }
+#vf-lobby-gateway .quick-icon { font-size: 18px; color: var(--fx-accent); line-height: 1; }
+#vf-lobby-gateway .quick-title { font-family: var(--fx-sans); font-size: clamp(16px, 1.6vw, 21px); font-weight: 500; letter-spacing: 0.3em; color: #fff; }
+#vf-lobby-gateway .quick-hint { font-size: 13px; line-height: 1.5; color: var(--fx-dim); }
+#vf-lobby-gateway .vf-quick-join .vf-join-code-box { margin: 4px 0 0; }
+#vf-lobby-gateway .vf-quick-rooms { padding: 22px 28px 26px; }
+#vf-lobby-gateway .vf-quick-rooms h3 { margin: 0 0 12px; font-family: var(--fx-mono); font-size: 11px; font-weight: 400; letter-spacing: 0.22em; color: var(--fx-light); }
+#vf-lobby-gateway .vf-quick-room-role { font-family: var(--fx-mono); font-size: 10px; letter-spacing: 0.18em; color: var(--fx-accent); margin-right: 10px; }
+#vf-lobby-gateway .vf-quick-local { margin-top: 14px; }
+/* Básico: inicio rápido y una sola lista. Avanzado: además, los papeles y los paneles de siempre. */
+#vf-lobby-gateway[data-lobby-mode='basic'] .vf-hero-role-selector,
+#vf-lobby-gateway[data-lobby-mode='basic'] .vf-hub-section-view { display: none; }
+#vf-lobby-gateway[data-lobby-mode='advanced'] .vf-quick-rooms { display: none; }
+
 /* ---- Pantallas estrechas -------------------------------------------------- */
 
 @media (max-width: 860px) {
@@ -601,6 +639,7 @@
   #vf-lobby-gateway .vf-brand-header h1 { letter-spacing: 0.22em; }
   #vf-lobby-gateway .vf-hero-role-selector,
   #vf-lobby-gateway .vf-hub-grid { grid-template-columns: 1fr; }
+  #vf-lobby-gateway .vf-quick-action + .vf-quick-action { border-left: 0; border-top: 1px solid var(--fx-line-strong); }
   #vf-lobby-gateway .vf-hero-role-card + .vf-hero-role-card,
   #vf-lobby-gateway .vf-hub-panel + .vf-hub-panel { border-left: 0; border-top: 1px solid var(--fx-line-strong); }
   #vf-lobby-gateway .vf-hub-topbar,
@@ -640,3 +679,14 @@
 #vf-lobby-gateway .vf-hub-error[hidden] { display: none; }
 #vf-lobby-gateway .vf-room-error p { color: #fecdd3; }
 #vf-lobby-gateway .vf-room-error .vf-btn { margin-top: 12px; padding: 9px 16px; font-size: 11px; }
+
+/* ---- ¿Te han invitado? Entrar solo con un nombre (V3) ---------------------- */
+#vf-lobby-gateway .vf-invite-form { display: grid; gap: 10px; margin-top: 18px; }
+#vf-lobby-gateway .vf-invite-form .vf-divider { margin: 0 0 4px; }
+#vf-lobby-gateway .vf-invite-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#vf-lobby-gateway .vf-invite-row input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 14px; background: transparent; border: 1px solid var(--fx-line-strong); color: var(--fx-text); font: inherit; font-size: 14px; }
+#vf-lobby-gateway .vf-invite-row input:focus-visible { outline: 2px solid var(--fx-accent); outline-offset: 1px; }
+/* With an invitation link, the invited form comes first. */
+#vf-lobby-gateway #vf-auth-screen[data-invited='true'] .vf-invite-form { order: -1; margin: 0 0 18px; padding: 14px; border: 1px solid var(--fx-accent); background: rgba(109, 40, 217, 0.18); }
+#vf-lobby-gateway #vf-auth-screen[data-invited='true'] .fx-cell-access { display: flex; flex-direction: column; }
+@media (max-width: 860px) { #vf-lobby-gateway .vf-invite-row { grid-template-columns: 1fr; } }

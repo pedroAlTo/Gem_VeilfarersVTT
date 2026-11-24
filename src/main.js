@@ -785,7 +785,13 @@ async function setupSessionPersistence() {
     // of the sign-in); once signed in, the person goes straight into the room.
     const clearInvitation = () => { try { const url = new URL(location.href); url.searchParams.delete('roomInvite'); const hash = new URLSearchParams(url.hash.slice(1)); hash.delete('roomInvite'); url.hash = hash.toString(); history.replaceState(null, '', url); } catch {} };
     const useInvitation = () => {
-      if (!account.user) { const box = document.getElementById('vf-join-code-input'); if (box) box.value = invitation; return; }
+      if (!account.user) {
+        // Without a session the code waits in both boxes; the invited form asks only for a name (V3).
+        for (const id of ['vf-join-code-input', 'vf-invite-code']) { const box = document.getElementById(id); if (box) box.value = invitation; }
+        document.getElementById('vf-auth-screen')?.setAttribute('data-invited', 'true');
+        document.getElementById('vf-invite-name')?.focus();
+        return;
+      }
       const code = invitation; invitation = '';
       clearInvitation();
       if (window.veilLobby?.joinWithCode) window.veilLobby.joinWithCode(code); else openSessionLobby(code);

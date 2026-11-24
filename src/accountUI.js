@@ -97,6 +97,7 @@ export function openAccount(options = {}) {
     </div>
     <button class="hud-btn hud-btn-primary" id="account_preferences" style="margin-top: 12px; width: 100%;">Guardar todos los parámetros</button>
     </section>
+    ${account.user?.isAnonymous ? '<div class="session-actions account-footer"><p class="dossier-muted">Has entrado solo con tu nombre. Guárdalo en una cuenta de Google para volver desde otro dispositivo sin perder tu sitio ni tus personajes.</p><button class="hud-btn hud-btn-primary" id="account_link_google">Guardar con Google</button></div>' : ''}
     <div class="session-actions account-footer"><button class="hud-btn hud-btn-danger" id="account_signout">Cerrar sesión</button></div>
     <p class="dossier-error" role="alert"></p>
   ` : `
@@ -284,6 +285,8 @@ export function openAccount(options = {}) {
     run(refresh);
     modal.querySelector('#account_import').onclick = () => openCharacterImport({ onImport: async entries => { for (const x of entries) await account.saveCharacter(x.token); await refresh(); return entries.length; } });
     modal.querySelector('#account_save_actor').onclick = () => run(async () => { const token = store.getSelectedToken(); if (!token || (store.sessionRole === 'player' && !store.canEditToken(token.id))) throw new Error('Select a character you control first.'); await account.saveCharacter(token); await refresh(); notify('Personaje guardado en tu cuenta.'); });
+    const link = modal.querySelector('#account_link_google');
+    if (link) link.onclick = () => run(async () => { await account.linkWithGoogle(); modal.remove(); notify('Cuenta guardada con Google: conservas tu sitio y tus personajes.'); });
     modal.querySelector('#account_signout').onclick = () => run(async () => {
       if (network.roomController?.room) await network.roomController.leave();
       await account.signOut();

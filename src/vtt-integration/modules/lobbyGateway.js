@@ -5,7 +5,9 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
-  signOut
+  signOut,
+  signInAnonymously,
+  updateProfile
 } from "firebase/auth";
 import { getFirebaseAuthInstance, getFirebaseDatabaseInstance } from './firebaseClient.js';
 
@@ -174,6 +176,16 @@ export class VeilfarersLobbyGateway {
           <span class="guest-icon">🚀</span> Entrar como Invitado / Modo Local
         </button>
 
+        <!-- ¿TE HAN INVITADO? Entrar a una partida solo con un nombre (V3) -->
+        <form id="vf-invite-form" class="vf-invite-form" autocomplete="off">
+          <div class="vf-divider"><span>¿TE HAN INVITADO?</span></div>
+          <div class="vf-invite-row">
+            <input type="text" id="vf-invite-name" placeholder="Tu nombre en la mesa" maxlength="40" autocomplete="nickname" aria-label="Tu nombre en la mesa" />
+            <input type="text" id="vf-invite-code" placeholder="Código de invitación" autocomplete="off" aria-label="Código de invitación" />
+          </div>
+          <button type="submit" id="vf-btn-invite-join" class="vf-btn vf-btn-primary">Entrar a la partida</button>
+        </form>
+
         <div id="vf-auth-spinner" class="vf-auth-spinner hidden">
           <span class="auth-loading-dot"></span>
           <span id="vf-auth-spinner-msg">Verificando credenciales con el servidor...</span>
@@ -219,6 +231,42 @@ export class VeilfarersLobbyGateway {
 
         <p id="vf-hub-error" class="vf-hub-error" role="alert" hidden></p>
 
+        <!-- INICIO RÁPIDO: crear, unirse o continuar con un clic (Plan de UX V3, fase 1) -->
+        <section id="vf-quick-start" class="vf-quick-start" aria-label="Inicio rápido">
+          <button type="button" id="vf-quick-create" class="vf-quick-action vf-quick-create">
+            <span class="quick-icon">⚡</span>
+            <span class="quick-title">CREAR PARTIDA</span>
+            <span class="quick-hint">Diriges tú (Keeper). El enlace de invitación se copia solo.</span>
+          </button>
+          <div class="vf-quick-action vf-quick-join">
+            <span class="quick-icon">⌖</span>
+            <span class="quick-title">UNIRME</span>
+            <div class="vf-join-code-box">
+              <div class="room-input-container">
+                <input type="text" id="vf-join-code-input" placeholder="Código de invitación (ej: VEI-8H2FA)" autocomplete="off" aria-label="Código de invitación" />
+                <button type="button" id="vf-btn-join-code" class="vf-btn vf-btn-primary">
+                  <span>Unirse</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <button type="button" id="vf-quick-continue" class="vf-quick-action vf-quick-continue" hidden>
+            <span class="quick-icon">↻</span>
+            <span class="quick-title">CONTINUAR</span>
+            <span class="quick-hint" id="vf-quick-continue-name"></span>
+          </button>
+        </section>
+        <!-- BÁSICO: tus partidas en una sola lista -->
+        <section id="vf-quick-rooms" class="vf-quick-rooms" aria-label="Tus partidas">
+          <h3><span class="panel-icon">🛰️</span> TUS PARTIDAS</h3>
+          <div id="vf-quick-rooms-list" class="vf-rooms-list">
+            <div class="vf-room-loading">Cargando tus partidas...</div>
+          </div>
+          <button type="button" id="vf-btn-join-vtt" class="vf-btn vf-btn-secondary vf-quick-local">
+            <span class="btn-launch-text">Mesa local sin conexión</span>
+          </button>
+        </section>
+
         <!-- DOS BOTONES GRANDES HERO: ENTRAR COMO JUGADOR vs KEEPER -->
         <div class="vf-hero-role-selector">
           <button type="button" id="role-btn-player" class="vf-hero-role-card active">
@@ -260,22 +308,6 @@ export class VeilfarersLobbyGateway {
                 <div class="vf-room-loading">Cargando salas conectadas...</div>
               </div>
 
-              <!-- Unirse con código nuevo -->
-              <div class="vf-join-code-box">
-                <h4 class="vf-subheading"><span class="icon">⌖</span> UNIRSE A UNA NUEVA SALA</h4>
-                <div class="room-input-container">
-                  <span class="room-input-icon">🔑</span>
-                  <input type="text" id="vf-join-code-input" placeholder="Código de invitación (ej: VEI-8H2FA)" autocomplete="off" />
-                  <button type="button" id="vf-btn-join-code" class="vf-btn vf-btn-primary">
-                    <span>Unirse</span>
-                  </button>
-                </div>
-              </div>
-              <button type="button" id="vf-btn-join-vtt" class="vf-btn vf-btn-launch" style="width: 100%; margin-top: 14px;">
-                <span class="btn-launch-icon">🚀</span>
-                <span class="btn-launch-text">ENTRAR DIRECTO A LA MESA VTT</span>
-                <span class="btn-launch-glow"></span>
-              </button>
             </section>
 
             <section id="vf-vault-section" class="vf-hub-panel vault-panel">
@@ -442,6 +474,21 @@ export class VeilfarersLobbyGateway {
       }
     });
 
+    // An invitation link (#roomInvite=CODE) fills the code and puts the invited form first.
+    try {
+      const invite = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
+      if (invite) {
+        for (const id of ['vf-invite-code', 'vf-join-code-input']) { const box = document.getElementById(id); if (box && !box.value) box.value = invite; }
+        document.getElementById('vf-auth-screen')?.setAttribute('data-invited', 'true');
+        setTimeout(() => document.getElementById('vf-invite-name')?.focus(), 0);
+      }
+    } catch {}
+    // Invited (V3): a name and the code are enough; no account is created.
+    document.getElementById('vf-invite-form')?.addEventListener('submit', event => {
+      event.preventDefault();
+      this.joinWithoutAccount(document.getElementById('vf-invite-name')?.value, document.getElementById('vf-invite-code')?.value);
+    });
+
     // Sign Out / Desconectar
     document.getElementById('vf-btn-logout')?.addEventListener('click', async () => {
       try {
@@ -500,6 +547,13 @@ export class VeilfarersLobbyGateway {
         e.preventDefault();
         this.joinWithCode(e.target.value);
       }
+    });
+
+    // Inicio rápido (V3): crear con un clic y volver a la última partida.
+    document.getElementById('vf-quick-create')?.addEventListener('click', () => this.quickCreate());
+    document.getElementById('vf-quick-continue')?.addEventListener('click', event => {
+      const { roomId, role } = event.currentTarget.dataset;
+      if (roomId) this.enterRoomTarget(roomId, role || 'player');
     });
 
     // Crear nueva sala (Keeper)
@@ -632,6 +686,7 @@ export class VeilfarersLobbyGateway {
 
     this.renderPlayerRooms(playerRooms);
     this.renderKeeperRooms(keeperRooms);
+    this.renderQuickRooms(keeperRooms, playerRooms);
     if (listError) this.renderRoomsError(listError, !playerRooms.length);
   }
 
@@ -681,6 +736,34 @@ export class VeilfarersLobbyGateway {
     if (!el) return;
     el.textContent = message || '';
     el.hidden = !message;
+  }
+
+  // Básico (V3): every game of this account in one list, and «Continuar» for the last one.
+  renderQuickRooms(keeperRooms = [], playerRooms = []) {
+    const el = document.getElementById('vf-quick-rooms-list');
+    let remembered = '';
+    try { remembered = this.currentUser?.uid ? localStorage.getItem(`veil.room.active.${this.currentUser.uid}`) || '' : ''; } catch {}
+    const all = [...keeperRooms.map(r => ({ ...r, role: 'keeper' })), ...playerRooms.filter(r => r.id !== 'mesa-principal').map(r => ({ ...r, role: 'player' }))];
+    const last = all.find(r => r.id === remembered);
+    const cont = document.getElementById('vf-quick-continue');
+    if (cont) {
+      cont.hidden = !last;
+      if (last) { cont.dataset.roomId = last.id; cont.dataset.role = last.role; }
+      const label = document.getElementById('vf-quick-continue-name');
+      if (label) label.textContent = last ? `${last.name || last.id} · ${last.role === 'keeper' ? 'Keeper' : 'Jugador'}` : '';
+    }
+    if (!el) return;
+    if (!all.length) {
+      el.innerHTML = `<div class="vf-room-empty"><p>${this.hasCloudAccount() ? 'Todavía no tienes partidas. Crea una o únete con un código.' : 'Sin cuenta no hay partidas online. Inicia sesión para crearlas o unirte, o juega en la Mesa local.'}</p></div>`;
+      return;
+    }
+    all.sort((a, b) => (b.id === remembered) - (a.id === remembered));
+    el.innerHTML = all.map(r => `
+      <div class="vf-room-card${r.role === 'keeper' ? ' is-keeper' : ''}">
+        <div class="vf-room-info"><strong class="vf-room-name"><span class="vf-quick-room-role">${r.role === 'keeper' ? 'KEEPER' : 'JUGADOR'}</span>${escapeHtml(r.name || r.id)}</strong></div>
+        <div class="vf-room-actions"><button type="button" class="vf-btn vf-btn-primary vf-btn-sm btn-quick-enter" data-room-id="${escapeHtml(r.id)}" data-role="${r.role}">Entrar</button></div>
+      </div>`).join('');
+    el.querySelectorAll('.btn-quick-enter').forEach(btn => { btn.onclick = () => this.enterRoomTarget(btn.dataset.roomId, btn.dataset.role); });
   }
 
   renderPlayerRooms(rooms) {
@@ -797,6 +880,29 @@ export class VeilfarersLobbyGateway {
     }, 'No se pudo abrir la sala');
   }
 
+  // Entering a game with only a name (V3, user decision of 24 Nov 2026): an anonymous Firebase
+  // session holds the seat in the room; the account can be kept later by linking it to Google.
+  // With an invitation link, main.js joins as soon as the session exists; a typed code joins here.
+  async joinWithoutAccount(name, code) {
+    const who = String(name || '').trim().slice(0, 40), invite = String(code || '').trim();
+    if (!who) return this.showError('Escribe tu nombre para la mesa.');
+    if (!invite) return this.showError('Escribe el código de invitación que te ha pasado el Keeper.');
+    if (!this.auth) this.auth = getFirebaseAuthInstance();
+    if (!this.auth) return this.showError('La conexión con el servidor no está disponible. Juega en la Mesa local o inténtalo más tarde.');
+    const viaLink = typeof location !== 'undefined' && /roomInvite=/.test(location.hash + location.search);
+    this.inviteName = who;
+    this.setAuthBusy(true, 'Entrando en la partida...');
+    try {
+      const credential = this.currentUser?.isAnonymous ? { user: this.currentUser } : await signInAnonymously(this.auth);
+      await updateProfile(credential.user, { displayName: who }).catch(() => {});
+      this.setAuthBusy(false);
+      if (!viaLink) this.joinWithCode(invite);
+    } catch (err) {
+      this.setAuthBusy(false);
+      this.showError(this.friendlyAuthError(err));
+    }
+  }
+
   joinWithCode(code) {
     const trimmed = String(code || '').trim();
     if (!trimmed) {
@@ -810,7 +916,7 @@ export class VeilfarersLobbyGateway {
         roomId: trimmed,
         currentUser: {
           uid: this.currentUser?.uid || 'guest_' + Date.now(),
-          displayName: this.currentUser?.displayName || 'Viajero',
+          displayName: this.currentUser?.displayName || this.inviteName || 'Viajero',
           role: 'player'
         },
         activeCharId: null
@@ -818,8 +924,33 @@ export class VeilfarersLobbyGateway {
     }
     this.runRoomAction(async rooms => {
       const { retryUntilConnected } = await import('../../connectRetryUI.js');
-      await retryUntilConnected(() => rooms.join(trimmed, this.currentUser?.displayName || 'Viajero'), { label: 'Entrando con la invitación', onCancel: () => { this.showHubScreen(); this.loadRoomsList(); } });
+      await retryUntilConnected(() => rooms.join(trimmed, this.currentUser?.displayName || this.inviteName || 'Viajero'), { label: 'Entrando con la invitación', onCancel: () => { this.showHubScreen(); this.loadRoomsList(); } });
     }, 'No se pudo entrar con ese código');
+  }
+
+  // One click (V3): a room with an automatic name (renamed later from Salas), the Keeper inside
+  // and the invitation link copied. Without an account there is no online room: the local table.
+  quickCreate() {
+    if (!this.hasCloudAccount()) {
+      this.showHubError('Para crear una partida online e invitar a otros, inicia sesión (Google o correo). Sin cuenta puedes jugar en la Mesa local sin conexión.');
+      return;
+    }
+    const who = this.currentUser?.displayName || (this.currentUser?.email ? this.currentUser.email.split('@')[0] : '');
+    const day = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    this.createNewRoom(`${who ? `Partida de ${who}` : 'Nueva partida'} · ${day}`);
+  }
+
+  // The invitation of a room just created: the link is copied and said in a notice.
+  async shareInvite(room) {
+    const code = room?.inviteCode;
+    if (!code || typeof location === 'undefined') return;
+    const link = `${location.origin}${location.pathname}#roomInvite=${encodeURIComponent(code)}`;
+    let copied = false;
+    try { await navigator.clipboard.writeText(link); copied = true; } catch {}
+    try {
+      const { notify } = await import('../../ui.js');
+      notify(copied ? `Enlace de invitación copiado. Código: ${code}` : `Comparte el código de invitación: ${code}`);
+    } catch {}
   }
 
   createNewRoom(name) {
@@ -837,7 +968,7 @@ export class VeilfarersLobbyGateway {
         activeCharId: null
       });
     }
-    this.runRoomAction(rooms => rooms.create(trimmed), 'No se pudo crear la sala');
+    this.runRoomAction(async rooms => { const room = await rooms.create(trimmed); this.shareInvite(room); }, 'No se pudo crear la sala');
   }
 
   // The library is the signed-in user's own (Firestore users/{uid}/characters); nobody else
@@ -950,6 +1081,9 @@ export class VeilfarersLobbyGateway {
     }
     if (code.includes('invalid-email')) {
       return 'El formato del correo electrónico no es válido.';
+    }
+    if (code.includes('operation-not-allowed') || code.includes('admin-restricted-operation')) {
+      return 'El acceso sin cuenta no está activado en este servidor (Firebase → Authentication → Anónimo). Entra con Google o con correo.';
     }
     if (code.includes('popup-closed-by-user')) {
       return 'Acceso cancelado: Se ha cerrado la ventana de Google.';
