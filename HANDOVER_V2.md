@@ -41,6 +41,7 @@ Infraestructura: Netlify + Firebase (Auth, Firestore) + Cloudinary.
 20. **Catálogo de Poderes** (17 nov 2026): todos los Poderes se ven en el cajón del mazo; cada personaje solo puede tomar los de su acceso (sus Dominios hasta su nivel).
 21. **Mazo siempre disponible** (17 nov 2026): el icono del mazo se ve siempre junto a las cartas (Keeper, Sleeping, ficha sin cartas, sin personaje) para poder consultar cualquier Poder; no ocultarlo.
 16. **Guía de primer uso** (17 nov 2026, aprobada por el usuario): lista de pasos por papel (jugador / Keeper) cuyos pasos se marcan **solo al hacer la acción real** en la mesa, nunca con un botón «Siguiente». Se puede minimizar, saltar pasos, cerrar y reabrir desde la ayuda.
+22. **Plan de UX V3** (24 nov 2026, aprobado): acciones del jugador en 3 clics o menos, crear y unirse muy simple, cartas/acciones/efectos automáticos, armas que aplican sus features, todo acorde al canon. Plan, diagnóstico y orden de fases en `PLAN_UX_V3.md`; seguirlo fase a fase. Aprobado para la Fase 1: unirse con enlace solo con un nombre (sesión anónima de Firebase) y personajes pregenerados de *Hearts in the Void*.
 
 ## Pendiente para la revisión de reglas (erratas y desajustes)
 > **Los libros de `System/` no se editan en este proyecto.** El usuario lleva la corrección de los Corebook en otro chat, como proyecto aparte (15 nov 2026). Aquí solo se anota lo detectado y se ajusta el código de la VTT.
