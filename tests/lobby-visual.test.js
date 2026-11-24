@@ -190,3 +190,14 @@ test('Plan de UX V3: invited with a link, the code is filled in and only a name 
   assert.match(document.getElementById('vf-auth-error').textContent, /código/);
   dom.window.location.hash = '';
 });
+
+test('the sign-in and the start screens carry the four illustrations (v2.43.3)', async () => {
+  const { existsSync, statSync } = await import('node:fs');
+  const css = read('../src/vtt-integration/styles/lobby-fates.css');
+  for (const name of ['vault', 'battle', 'reactor', 'crew']) {
+    const file = new URL(`../public/assets/lobby/${name}.webp`, import.meta.url);
+    assert.ok(existsSync(file), name + '.webp in public/assets/lobby');
+    assert.ok(statSync(file).size < 260 * 1024, name + ' stays light');
+    assert.ok(css.includes(`url('/assets/lobby/${name}.webp')`), name + ' used by the lobby stylesheet');
+  }
+});

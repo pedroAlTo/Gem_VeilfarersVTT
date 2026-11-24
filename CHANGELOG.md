@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.43.2**.
-Paquete: `VeilFarers_VTT_v2.43.2.zip`.
+Versión actual del VTT: **v2.43.3**.
+Paquete: `VeilFarers_VTT_v2.43.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.43.3] — 2026-11-24
+
+V3 · Ilustraciones en el acceso y en el inicio
+
+### Portada
+
+- La pantalla de acceso muestra la cámara de la luz violeta detrás de «Portal táctico».
+- En el inicio, «Crear partida» lleva la batalla en tonos violeta; «Unirme», la tripulación ante el reactor; y «Tus partidas», la tripulación al completo de fondo. Un velo violeta mantiene el texto legible, también en el móvil.
 
 ## [2.43.2] — 2026-11-24
 

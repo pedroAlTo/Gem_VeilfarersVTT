@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.43.3', date: '2026-11-24', title: 'V3 · Ilustraciones en el acceso y en el inicio',
+    sections: [
+      { title: 'Portada', items: [
+        'La pantalla de acceso muestra la cámara de la luz violeta detrás de «Portal táctico».',
+        'En el inicio, «Crear partida» lleva la batalla en tonos violeta; «Unirme», la tripulación ante el reactor; y «Tus partidas», la tripulación al completo de fondo. Un velo violeta mantiene el texto legible, también en el móvil.',
+      ] },
+    ],
+  },
+  {
     version: '2.43.2', date: '2026-11-24', title: 'V3 · Actuar de cualquier modo da el foco, con sus efectos',
     sections: [
       { title: 'Foco', items: [
