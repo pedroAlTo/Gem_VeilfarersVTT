@@ -1178,6 +1178,9 @@ export class NetworkManager {
         this.store.tableActing = true;
         try {
           if (!this.store.updateToken(token.id, partial)) throw new Error('Cambio rechazado. Revisa el foco de la ronda y el Fear disponible.');
+          // Moving a drone is its operator acting: the operator takes the Spotlight (v2.43.2).
+          const operator = token.actorType === 'drone' && ('x' in partial || 'y' in partial) && (partial.x !== token.x || partial.y !== token.y) && this.store.state.tokens.find(t => t.id === token.drone?.operatorId);
+          if (operator && !operator.hasSpotlight && operator.isPlayer !== false) this.store.setTokenSpotlight(operator.id, true);
         } finally { this.store.tableActing = before; }
       } catch (error) {
         conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', sequence: data.sequence, error: error.message }));

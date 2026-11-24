@@ -26,7 +26,7 @@ import { notify, confirmAction } from './ui.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { rangeBandFor, gapBandFor, tokenGapSquares, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
 import { drawEffectClocks } from './effectClocks.js';
-import { grantSpotlight } from './gameActions.js';
+import { grantActorSpotlight } from './gameActions.js';
 import { monochromeViewer, keepsTokenColor, MonochromeLayers } from './ancestryVision.js';
 
 export const WATER_DEPTH_NAMES = [
@@ -706,7 +706,7 @@ export class CanvasEngine {
     const previous = this.lastMoveDistance;
     const continued = previous?.tokenId === tok.id && previous.mapId === map.id && previous.keyboard && previous.expires > performance.now();
     this.showMoveDistance(tok.id, map.id, (continued ? previous.distance : 0) + stepDistance, true);
-    if (store.sessionRole !== 'player' && state.userRole === 'player') grantSpotlight(store, tok.id);
+    if (store.sessionRole !== 'player' && state.userRole === 'player') grantActorSpotlight(store, tok.id);
     if (store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId: tok.id, x, y });
     return true;
   }
@@ -2060,7 +2060,7 @@ export class CanvasEngine {
         // The Keeper's own Player view: a move is the player's active action (a connected
         // player's move gets it from the table when the patch arrives).
         if (accepted && !isBlocked && (moved || distance > 0)) this.showMoveDistance(tokenId, map.id, distance);
-        if (accepted && moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantSpotlight(store, tokenId);
+        if (accepted && moved && store.sessionRole !== 'player' && store.state.userRole === 'player') grantActorSpotlight(store, tokenId);
         if (accepted && store.sessionRole !== 'player') network.broadcast({ type: 'TOKEN_MOVE', tokenId, x: finalX, y: finalY });
       }
 

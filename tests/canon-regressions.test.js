@@ -354,3 +354,24 @@ for (const shields of [0, 1]) {
     assert.equal(get(target).armor.current, 2 - shields);
   });
 }
+
+test('acting takes the Spotlight and brings what a new Spotlight brings: a roll heals with Rapid Regeneration, a Reaction Roll does not, moving a drone gives it to its operator', async () => {
+  const { newClock, addClock } = await import('../src/effectClocks.js');
+  const { grantActorSpotlight } = await import('../src/gameActions.js');
+  const medic = character('Medic2'), patient = character('Patient2', { hp: { current: 3, max: 8 } });
+  store.updateToken(patient.id, { effectClocks: addClock([], newClock({ name: 'Rapid Regeneration', segments: 3, tick: 'spotlight', perTick: { hp: 1 } })) });
+  store.setTokenSpotlight(medic.id, true);
+  const hp = () => get(patient).hp.current;
+  // A plain Trait roll of the patient: it takes the Spotlight and heals.
+  performGameAction({ type: 'CHECK', actorId: patient.id, options: { traitId: 'agility', dc: 10, forcedHope: 6, forcedFear: 2 } }, store);
+  assert.equal(get(patient).hasSpotlight, true); assert.equal(hp(), 4);
+  // The medic acts, then the patient moves (the table grants the Spotlight on a move): heals again.
+  performGameAction({ type: 'CHECK', actorId: medic.id, options: { traitId: 'agility', dc: 10, forcedHope: 6, forcedFear: 2 } }, store);
+  assert.equal(get(patient).hasSpotlight, false);
+  store.updateToken(patient.id, { x: get(patient).x + 64 }); grantActorSpotlight(store, patient.id);
+  assert.equal(hp(), 5);
+  // A drone moved by the medic gives the Spotlight to the medic.
+  const drone = store.addToken({ name: 'Mosca', actorType: 'drone', isPlayer: false, x: 0, y: 0, drone: { grade: 'common', modules: [], signal: 'stable', operatorId: medic.id } });
+  grantActorSpotlight(store, drone.id);
+  assert.equal(get(medic).hasSpotlight, true);
+});

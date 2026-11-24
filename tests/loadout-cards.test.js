@@ -297,7 +297,7 @@ test('a card with a duration puts its clock on the player, or on the marked ally
   assert.deepEqual(regenToken.effectClocks, []);
 });
 
-test('finishing an active action gives the player the Spotlight; a Reaction or a plain roll does not', async () => {
+test('finishing an active action gives the player the Spotlight (any action roll since v2.43.2); a Reaction or a Reaction Roll does not', async () => {
   const { performGameAction, grantSpotlight } = await import('../src/gameActions.js');
   const { setCardData } = await import('../src/cardData.js');
   setCardData(data);
@@ -307,7 +307,8 @@ test('finishing an active action gives the player the Spotlight; a Reaction or a
     updateToken(id, patch) { Object.assign(this.state.tokens.find(t => t.id === id), patch); return true; }, addFear() {}, addLog() {},
     setTokenSpotlight(id, on) { spot.push([id, on]); Object.assign(this.state.tokens.find(t => t.id === id), { hasSpotlight: on }); return true; } };
   performGameAction({ type: 'CHECK', actorId: 'tok_s', options: { traitId: 'agility', dc: 10, forcedHope: 6, forcedFear: 2 } }, store);
-  assert.deepEqual(spot, [], 'a plain Trait roll is not an attack');
+  assert.deepEqual(spot, [['tok_s', true]], 'acting in any way takes the Spotlight: a Trait roll too (user decision, 24 Nov 2026)');
+  hero.hasSpotlight = false; spot.length = 0;
   performGameAction({ type: 'CHECK', actorId: 'tok_s', attack: true, options: { traitId: 'agility', dc: 10, forcedHope: 6, forcedFear: 2 } }, store);
   assert.deepEqual(spot, [['tok_s', true]], 'an attack gives the Spotlight');
   hero.hasSpotlight = false; spot.length = 0;

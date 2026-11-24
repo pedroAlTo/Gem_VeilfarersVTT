@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.43.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.43.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.43.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.43.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.43.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.43.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -147,6 +147,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.1.zip**. Abre **AYUDA
 132. **(V3) Evasión por armadura.** Pon a un personaje un Frontier Vest (Flexible): Evasión +1. Cámbialo por Salvage Armor (Heavy): queda en base −1. Quítatela: vuelve a la base. Marcus «Wall» Steele tiene Evasión 8, Shadow 13 y Rourke 13, como en el libro.
 133. **(V3) Rapid Regeneration en cada foco.** Lanza Rapid Regeneration sobre un aliado herido (+1 HP y su reloj). Dale el foco al aliado: +1 HP y el reloj avanza. Quítaselo y vuelve a dárselo: no cura. Dale el foco a otro personaje y luego otra vez al aliado (misma ronda, sin «Nueva ronda»): +1 HP. Al terminar el reloj, aviso de fin.
 134. **(V3) Curación visible.** Cada vez que un token gana HP (Rapid Regeneration, Emergency Repair, un descanso o subir HP en la ficha), aparece sobre él «+N HP» con una cruz y un anillo verdes durante algo más de un segundo, también en la pantalla de los jugadores si ven el token.
+135. **(V3) Actuar da el foco.** Con Rapid Regeneration activa en Vea y el foco en otro personaje: Vea hace una tirada de atributo desde su Ficha → toma el foco y cura +1 HP (efecto verde). Dale el foco a otro; Vea se mueve por el mapa → lo toma y cura otra vez. Un adversario lanza un área que pide a Vea una tirada de reacción: esa tirada no le da el foco. Un jugador que mueve su dron (Neural Network Control) recibe el foco.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

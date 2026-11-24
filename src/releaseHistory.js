@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.43.2', date: '2026-11-24', title: 'V3 · Actuar de cualquier modo da el foco, con sus efectos',
+    sections: [
+      { title: 'Foco', items: [
+        'Un jugador toma el foco al actuar de cualquier modo, no solo con «Tomar foco»: al mover su personaje, al atacar, al usar una carta activa y ahora también con cualquier tirada de acción (una tirada de atributo). Mover el dron que opera da el foco a su operador. Las tiradas de reacción que pide una carta (resistir un área, Mind-Slip) y las reacciones no lo dan.',
+        'Todas esas formas de tomar el foco aplican lo mismo que el botón: Rapid Regeneration cura y su reloj avanza, los relojes de efecto por foco avanzan y terminan los Armor Slots temporales de Tactical Overwatch.',
+      ] },
+    ],
+  },
+  {
     version: '2.43.1', date: '2026-11-24', title: 'V3 · Rapid Regeneration cura en cada nuevo foco, y la curación se ve en el token',
     sections: [
       { title: 'Efectos por foco', items: [

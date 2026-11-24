@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.43.1**.
-Paquete: `VeilFarers_VTT_v2.43.1.zip`.
+Versión actual del VTT: **v2.43.2**.
+Paquete: `VeilFarers_VTT_v2.43.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.43.2] — 2026-11-24
+
+V3 · Actuar de cualquier modo da el foco, con sus efectos
+
+### Foco
+
+- Un jugador toma el foco al actuar de cualquier modo, no solo con «Tomar foco»: al mover su personaje, al atacar, al usar una carta activa y ahora también con cualquier tirada de acción (una tirada de atributo). Mover el dron que opera da el foco a su operador. Las tiradas de reacción que pide una carta (resistir un área, Mind-Slip) y las reacciones no lo dan.
+- Todas esas formas de tomar el foco aplican lo mismo que el botón: Rapid Regeneration cura y su reloj avanza, los relojes de efecto por foco avanzan y terminan los Armor Slots temporales de Tactical Overwatch.
 
 ## [2.43.1] — 2026-11-24
 
