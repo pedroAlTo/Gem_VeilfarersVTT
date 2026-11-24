@@ -156,3 +156,16 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-focus:hover:not(:disabled) { background: rgba(180, 110, 16, .55); }
 .pab-focus.is-on { background: linear-gradient(180deg, #ffd56a, #e0a12a); border-color: #fff1b8; color: #2a1600; box-shadow: 0 0 14px rgba(255, 196, 70, .75), inset 0 0 6px rgba(255, 255, 255, .5); }
 .pab-focus:disabled { opacity: .5; cursor: default; }
+
+/* Choosing a character (V3): ready-to-play pregens, your own characters, or the creator. */
+.pab-choose { display: grid; gap: 10px; }
+.pab-choose-title { margin: 4px 0 0; font: 700 11px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: var(--cyan-pearl, #00f3ff); }
+.pab-pregens { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.pab-pregen { all: unset; box-sizing: border-box; display: grid; gap: 3px; min-height: 44px; padding: 8px 10px; border: 1px solid rgba(192,132,252,.35); background: rgba(13,4,32,.6); cursor: pointer; }
+.pab-pregen b { font-size: 12.5px; color: #ede9fe; }
+.pab-pregen small { font-size: 11px; line-height: 1.35; color: var(--text-dim, #a5a3c4); }
+.pab-pregen:hover:not([disabled]), .pab-pregen:focus-visible { border-color: #22d3ee; background: rgba(34,211,238,.1); }
+.pab-pregen:focus-visible { outline: 2px solid #22d3ee; outline-offset: 1px; }
+.pab-pregen[disabled] { opacity: .45; cursor: default; }
+.pab-choose-source { margin: 0; font-size: 11px; color: var(--text-dim, #a5a3c4); }
+.pab-choose-more { display: flex; flex-wrap: wrap; gap: 6px; }

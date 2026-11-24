@@ -127,6 +127,10 @@ const JOURNEYS = [
     s.updateToken(vea, { x: u.x - 64, y: u.y });
     s.update({ userRole: 'player', claimedTokenId: unit, selectedTokenId: unit });
   }, ids)],
+  ['Elegir personaje (pregenerado)', 1, 1, async j => {
+    await j.click('[data-pab-pregen="spark"]');
+    await j.until(() => { const s = window.__s, t = s.state.tokens.find(x => /Spark/.test(x.name)); return !!t && s.state.claimedTokenId === t.id; }, null, 'Spark en la mesa y asignada');
+  }, true, async page => page.evaluate(() => window.__s.update({ claimedTokenId: null, selectedTokenId: null }))],
   ['Reacción iluminada', 1, 1, async j => {
     await j.click('.reaction-toast [data-use]');
     await j.until(() => window.__answered === true, null, 'la respuesta al Keeper');
