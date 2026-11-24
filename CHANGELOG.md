@@ -1,10 +1,32 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.42.0**.
-Paquete: `VeilFarers_VTT_v2.42.0.zip`.
+Versión actual del VTT: **v2.43.0**.
+Paquete: `VeilFarers_VTT_v2.43.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.43.0] — 2026-11-24
+
+V3 · Plan de UX, fases 0 y 1: entrar y elegir personaje en pocos clics
+
+### Entrar
+
+- Inicio en modo Básico con tres acciones: «Crear partida» (un clic: crea la sala, entra como Keeper y copia el enlace de invitación), «Unirme» con el código y «Continuar» en tu última partida. Debajo, todas tus partidas en una lista (Keeper o Jugador). El modo Avanzado mantiene los paneles de siempre.
+- Con un enlace de invitación ya no hace falta cuenta: «¿Te han invitado?» pide solo tu nombre (el código viene rellenado) y entras en la partida. Desde Cuenta, «Guardar con Google» conserva esa sesión como cuenta. Requiere activar el acceso Anónimo en Firebase (FIREBASE_SETUP.md).
+- El Keeper, mientras no ha entrado nadie, ve «Invita a tus jugadores» con el enlace, el código y «Copiar enlace». El botón de la cabecera se llama ahora «🔗 Invitar».
+
+### Elegir personaje
+
+- Sin personaje, la Ficha ofrece los diez pregenerados de Hearts in the Void (nivel 1, Sleeping, con sus rasgos, experiencias, arma y armadura del libro), «Mis personajes» y «Crear personaje». Un clic y el personaje está en la mesa y es tuyo. Nada obliga a elegir: el Keeper puede seguir asignando tokens.
+
+### Reglas
+
+- La armadura cambia la Evasión como dice el Corebook: Flexible +1, Heavy −1, Very Heavy y Massive −2; y el Vanguard suma Unbroken Focus (+1 sin armadura Heavy). Se aplica al crear el personaje y al ponerse o quitarse armadura, solo por la diferencia, sin descuadrar personajes anteriores.
+
+### Calidad
+
+- «npm run test:clicks» recorre en el navegador las acciones habituales y comprueba los clics de cada una: entrar 2, tirada 2, ataque 4 (meta 3), poder con objetivo 3, poder del Archivo 3, elegir pregenerado 1, reacción 1.
 
 ## [2.42.0] — 2026-11-23
 

@@ -56,6 +56,12 @@ como una versión con su entrada en `src/releaseHistory.js`, `PRUEBAS_LOCALES.md
 
 Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 
+## Estado
+
+- **Fase 0** hecha en v2.43.0 (`npm run test:clicks`).
+- **Fase 1** hecha en v2.43.0: inicio con Crear/Unirme/Continuar, entrar con enlace solo con un nombre, tarjeta de invitación del Keeper, pregenerados de *Hearts in the Void* en la Ficha. De paso, Evasión por features de armadura (canon). Falta la prueba online real con dos navegadores (PRUEBAS 128-132).
+- **Siguiente:** Fase 4 (armas según sus features).
+
 ## Decisiones
 
 - Fase 1 aprobada: unirse con enlace sin cuenta y pregenerados de *Hearts in the Void* (24 nov 2026).

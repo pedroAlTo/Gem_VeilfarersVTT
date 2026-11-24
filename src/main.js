@@ -778,6 +778,7 @@ async function setupSessionPersistence() {
     const { account } = await import('./cloudAccount.js');
     const { startGameRecording } = await import('./gameRecord.js');
     startGameRecording({ rooms, store, account });
+    import('./keeperInvite.js').then(({ mountKeeperInvite }) => { window.veilKeeperInvite = mountKeeperInvite(rooms); }).catch(() => {});
     let invitation = new URLSearchParams(location.hash.slice(1)).get('roomInvite') || new URLSearchParams(location.search).get('roomInvite');
     // An invitation link is used once: it opens the rooms window and leaves the address, so a
     // later sign-in or token refresh does not open it again.

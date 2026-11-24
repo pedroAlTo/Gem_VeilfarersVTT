@@ -300,3 +300,14 @@ body.card-aiming #tactical_canvas { cursor: crosshair; }
 .card-emblem-cursor.aiming { width: 34px; transform: translate(14px, 10px); }
 @keyframes card-emblem-glow { from { filter: drop-shadow(0 0 4px var(--glow)) drop-shadow(0 0 10px var(--glow)); } to { filter: drop-shadow(0 0 8px var(--glow)) drop-shadow(0 0 24px var(--glow)) brightness(1.15); } }
 @media (prefers-reduced-motion: reduce) { .card-emblem-cursor { animation: none; transition: none; } }
+
+/* «Invita a tus jugadores» (V3): the Keeper's invitation while nobody has joined. */
+.keeper-invite { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); z-index: 70; width: min(520px, calc(100vw - 24px)); padding: 12px 14px; border: 1px solid #fde68a; border-radius: 8px; background: rgba(13,4,32,.95); box-shadow: 0 10px 30px rgba(0,0,0,.5); color: #ede9fe; font: 13px/1.45 system-ui, sans-serif; }
+.keeper-invite header { display: flex; align-items: center; justify-content: space-between; }
+.keeper-invite strong { font: 700 11px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; color: #fde68a; }
+.keeper-invite p { margin: 8px 0; color: #c4b5fd; }
+.keeper-invite-close { all: unset; cursor: pointer; padding: 2px 8px; font-size: 18px; color: #c4b5fd; }
+.keeper-invite-close:hover, .keeper-invite-close:focus-visible { color: #fff; }
+.keeper-invite-link { display: flex; gap: 6px; }
+.keeper-invite-link input { flex: 1; min-width: 0; }
+.keeper-invite-code { font-size: 12px; }
