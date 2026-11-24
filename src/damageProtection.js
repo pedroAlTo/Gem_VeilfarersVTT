@@ -1,3 +1,4 @@
+import { resists } from './powerEffects.js';
 // Corebook 12.06, Sacred System Bible §5. Only a declared, active defence applies.
 export const damageNames = ['Physical', 'Energy', 'Void', 'Neural', 'Kinetic', 'Ballistic', 'Blunt', 'Impact', 'Plasma', 'Laser', 'Arc', 'Thermal', 'Fire', 'Cold', 'Sonic', 'Radiant', 'Radiation', 'Lightning', 'Corrosive', 'Acid', 'Toxic', 'Chemical', 'Poison', 'Psionic', 'Shock', 'Explosive'];
 const lower = value => String(value || '').trim().toLowerCase();
@@ -13,7 +14,8 @@ export function hitTypes(type, weapon, formula, tag = '') {
 }
 
 export function damageProtection(token, types) {
-  let resistant = false;
+  // A Power in effect (Kinetic Barrier: Resistance to Physical).
+  let resistant = [...types].some(type => resists(token, type));
   for (const name of token?.conditions || []) {
     const active = lower(name);
     if (types.has('physical')) {

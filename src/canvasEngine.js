@@ -3031,6 +3031,7 @@ export class CanvasEngine {
       for (const tmpl of this.templates) {
         this.renderTemplate(overlay, tmpl, tmpl === this.activeTemplate);
       }
+      this.renderCardAreas(overlay, map);
       if (this.rulerStart && this.rulerCurrent) {
         this.renderRuler(overlay, this.rulerStart, this.rulerCurrent, map.gridSize || 64);
       }
@@ -4862,6 +4863,43 @@ export class CanvasEngine {
   }
 
   // --- Dynamic Area Templates with Rotate, Scale & Delete Handles ---
+  // The area of a Power around its caster (v2.32.0), drawn like the Area tool's circle while its
+  // resolution is open: everyone sees it, because the resolution is in the shared log.
+  renderCardAreas(ctx, map) {
+    // A card being aimed (v2.36.0): its reach around the caster and a ring on each valid target.
+    const aim = typeof window !== 'undefined' ? window.veilCardAim : null;
+    if (aim) {
+      const caster = store.state.tokens.find(t => t.id === aim.casterId), grid = map.gridSize || 64, pulse = 0.55 + 0.45 * Math.sin(Date.now() / 260);
+      if (caster && aim.radius && (aim.area || aim.reach !== 'Far')) {
+        if (aim.area) this.renderTemplate(ctx, { id: 'aim', type: 'circle', x: caster.x, y: caster.y, radius: aim.radius, angle: 0 }, true);
+        else { ctx.save(); ctx.setLineDash([12, 8]); ctx.strokeStyle = 'rgba(167,139,250,.85)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(caster.x, caster.y, aim.radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      }
+      for (const id of aim.validIds || []) {
+        const t = store.state.tokens.find(x => x.id === id && x.mapId === map.id);
+        if (!t) continue;
+        const r = ((t.size || 1) * grid) / 2 + 6;
+        ctx.save(); ctx.strokeStyle = aim.area ? `rgba(248,113,113,${pulse})` : `rgba(52,211,153,${pulse})`; ctx.lineWidth = 4; ctx.shadowColor = aim.area ? '#f87171' : '#34d399'; ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        // The marked target (v2.42.0): a second, steady ring in the card's colour.
+        if (id === aim.markedId) {
+          ctx.save(); ctx.strokeStyle = aim.color || '#00f3ff'; ctx.lineWidth = 5; ctx.shadowColor = aim.color || '#00f3ff'; ctx.shadowBlur = 22; ctx.setLineDash([]);
+          ctx.beginPath(); ctx.arc(t.x, t.y, r + 9, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+      }
+    }
+    const logs = store.state.logs || [];
+    for (let i = 0; i < Math.min(logs.length, 40); i++) {
+      const record = logs[i]?.resolution, area = record?.area;
+      if (!area || record.phase === 'done' || record.mapId !== map.id || (logs[i].visibility === 'keeper' && store.sessionRole === 'player')) continue;
+      this.renderTemplate(ctx, { id: 'area_' + record.id, type: 'circle', x: area.x, y: area.y, radius: area.radius, angle: 0 }, false);
+      ctx.save();
+      ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#e0fbff'; ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+      ctx.fillText(`${record.name} · ${area.reach}`, area.x, area.y - area.radius - 8);
+      ctx.restore();
+    }
+  }
+
   renderTemplate(ctx, tmpl, isSelected = true) {
     const map = store.getActiveMap();
     const gridSize = map.gridSize || 64;

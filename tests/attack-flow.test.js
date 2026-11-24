@@ -359,10 +359,11 @@ test('the hand selects an attribute, turns the live card, then links a targeted 
   assert.match(inspect('Breaking Point').textContent,/after any multipliers/);
   const spell = inspect('Synaptic Disruption');
   spell.querySelector('[name=card_target]').value=t.id;
+  // Since v2.36.0 the card's window throws the roll at once (Presence, linked to the play).
   await spell.querySelector('[data-card-play]').onclick();
-  assert.equal(dice.preparedCard.traitId,'presence'); const id=dice.preparedCard.playId;
-  await dice.executeActionCheck();
-  const entry = store.state.logs.find(row=>row.resolution?.id===id);
+  const entry = store.state.logs.find(row=>row.resolution?.name==='Synaptic Disruption'), id = entry.resolution.id;
+  assert.equal(entry.resolution.roll.traitId,'presence'); assert.ok(entry.resolution.outcome, 'rolled');
+  assert.equal(dice.preparedCard, null);
   assert.equal(entry.resolution.phase,'ready');assert.deepEqual(entry.resolution.targetIds,[t.id]);
   store.state.userRole='keeper';
   const panel = openResolution(id);

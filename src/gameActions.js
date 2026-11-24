@@ -1,25 +1,28 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
-import { cardDuration, newClock, addClock, tickClocks, helpsOthers } from './effectClocks.js';
+import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
-import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions } from './cardResolution.js';
+import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
+import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
+import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
 import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
 import { finite } from './validation.js';
-import { normalizeConditions } from './conditions.js';
+import { normalizeConditions, specialState, SPECIAL_PREFIX } from './conditions.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { resolveJump } from './starshipJump.js';
 import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES } from './combatState.js';
 import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
-import { handoffControl } from './drones.js';
+import { handoffControl, isDroneToken, droneSignal as signalOf } from './drones.js';
+import { droneCompatible } from './dronePowers.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear, wearArmor } from './gear.js';
-import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName } from './loadoutCards.js';
+import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName, uncannyAccess, uncannyChoices, editArchive } from './loadoutCards.js';
 const lastRoll = new Map();
 const closingStrike = actor => ({ id: 'breaking-point', branch: pathBranch(actor), label: 'Breaking Point' + (pathBranch(actor) ? ' · ' + pathBranch(actor) : ''), dice: Math.max(1, Math.min(10, actor.proficiency || 1)) + 'd6' });
 const clamp = (n, max) => Math.max(0, Math.min(max, n));
@@ -137,7 +140,7 @@ function resolveGameAction(action, store) {
     const log = { sender: actor.name, type: 'LIFE', title: stage, details };
     store.addLog(log); return { actorId: actor.id, log };
   }
-  if (['CHECK', 'CARD_PLAY', 'RESOLVE', 'EFFORT', 'STABILIZE'].includes(action.type)) requireActive(actor);
+  if (['CHECK', 'CARD_PLAY', 'UNCANNY_ACCESS', 'POWER_USE', 'LUCKY_BREAK', 'RESOLVE', 'EFFORT', 'STABILIZE'].includes(action.type)) requireActive(actor);
   if (action.type === 'STABILIZE') {
     const target = store.state.tokens.find(t => t.id === action.targetId);
     const stage = lifeStage(target);
@@ -153,13 +156,29 @@ function resolveGameAction(action, store) {
   if (action.type === 'DRONE_HANDOFF') {
     const result = handoffControl(store.state.tokens, actor.id, String(action.operatorId ?? ''));
     for (const token of result.tokens) { const before = store.state.tokens.find(t => t.id === token.id); if (before !== token) store.updateToken(token.id, token.id === actor.id ? { drone: token.drone } : { stress: token.stress }); }
+    // Taking the drone in hand happens on the operator's Spotlight (Corebook ch. 14): they get it.
+    grantSpotlight(store, String(action.operatorId ?? ''));
     const log = { sender: actor.name, type: 'DRONE', title: `${actor.name}: cambio de operador`, details: result.summary };
     store.addLog(log);
     return { id: newId(), actorId: actor.id, log, outcomeTitle: 'CONTROL DEL DRON', summary: result.summary };
   }
+  // The duration die of a card that succeeded (v2.41.0): thrown after the roll, in 3D, by whoever
+  // cast it; the table applies the clock (Rapid Regeneration: +1 HP now and each Spotlight).
+  if (action.type === 'CARD_DURATION') {
+    const row = resolutionLog(store, String(action.playId ?? '')), record = row?.resolution;
+    if (!record || record.actorId !== actor.id || record.phase !== 'ready' || !record.durationAwaiting || record.mapId !== store.state.activeMapId) throw new Error('Esta carta no espera su duración.');
+    const dd = durationDice(record);
+    if (!dd) throw new Error('Esta carta no tira duración.');
+    const faces = validFaces(action.faces, dd.qty, dd.sides) ? action.faces.slice() : Array.from({ length: dd.qty }, () => 1 + Math.floor(Math.random() * dd.sides));
+    const said = applyCardDuration(store, record, actor, faces);
+    updateResolution(store, record.id, { durationAwaiting: false, durationPending: false, durationFaces: faces, notes: [...(record.notes || []).filter(n => n !== 'Ahora se tira la duración.'), said].filter(Boolean) });
+    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + record.name + ' · duración', details: said };
+    store.addLog(log);
+    return { id: newId(), actorId: actor.id, log, summary: said, faces };
+  }
   // The card hand: playing a card pays its printed cost; a Recall moves a Power from the Vault
   // to the Loadout. The Keeper's table resolves both, so costs cannot be skipped by a client.
-  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN') {
+  if (action.type === 'CARD_PLAY' || action.type === 'CARD_RECALL' || action.type === 'CARD_LEARN' || action.type === 'UNCANNY_ACCESS' || action.type === 'ARCHIVE_EDIT' || action.type === 'REACTION_PAY' || action.type === 'POWER_USE' || action.type === 'LUCKY_BREAK') {
     const data = cardData();
     if (!data) throw new Error('Las cartas aún se están cargando. Inténtalo de nuevo en un momento.');
     if (actor.isPlayer === false) throw new Error('Solo los personajes jugadores tienen mano de cartas.');
@@ -168,12 +187,143 @@ function resolveGameAction(action, store) {
     const apply = patch => store.updateToken(actor.id, patch);
     const sheet = token => ({ ...(token.sourceCharacter ? { sourceCharacter: token.sourceCharacter } : {}), ...(token.sheetFields ? { sheetFields: token.sheetFields } : {}) });
     const resources = token => ({ hope: token.hope || 0, effort: token.effort || 0, stress: token.stress, resolve: token.resolve, hp: token.hp });
+    // The action of a sustained Power (v2.35.0): Telekinetic Grasp hurls the object (its damage is
+    // prepared by the client against the target); Flux Field, once per round, Advantage for an
+    // ally's next roll or Disadvantage on an enemy's next attack.
+    if (action.type === 'POWER_USE') {
+      const name = String(action.name ?? ''), rule = SUSTAINED[name], clock = actor.effectClocks?.find(c => c.name === name);
+      if (!rule || !clock) throw new Error(name + ' no está activo.');
+      const map = store.getActiveMap?.(), target = store.state.tokens.find(t => t.id === action.targetId && t.mapId === actor.mapId && !t.hidden);
+      if (!target || target.id === actor.id) throw new Error('Elige un objetivo en la escena.');
+      let details, damage = null;
+      if (name === 'Telekinetic Grasp') {
+        if (!eligible(actor, target, map, { reach: rule.reach, self: false })) throw new Error('El objetivo está fuera de alcance (Far) o tras un muro.');
+        damage = { formula: Math.max(1, Math.min(10, Number(actor.proficiency) || 1)) + 'd6', type: 'void' };
+        details = `${actor.name} lanza el objeto enlazado contra ${target.name}: ${damage.formula} Void.`;
+        grantSpotlight(store, actor.id);
+      } else {
+        const mode = String(action.mode ?? ''), round = roundKey(map || {});
+        if (!(clock.modes || []).includes(mode)) throw new Error('Ese modo no está activo.');
+        if (clock.meleeRound === round) throw new Error('Flux Field ya se usó esta ronda.');
+        const ally = isPartyToken(target);
+        if (mode === 'Lucky Streak') {
+          if (!ally) throw new Error('Lucky Streak es para un aliado.');
+          store.updateToken(target.id, { pendingAdvantage: true });
+          details = `Flux Field · Lucky Streak: ${target.name} tiene Ventaja en su próxima tirada.`;
+        } else {
+          if (ally) throw new Error('Unlucky Enemies es para un enemigo.');
+          store.updateToken(target.id, { effectClocks: addClock(target.effectClocks, { ...newClock({ name: 'Flux Field · próximo ataque', segments: 1, tick: 'manual', scene: true }), edge: 'disadvantage', nextAttack: true }) });
+          details = `Flux Field · Unlucky Enemies: el próximo ataque de ${target.name} tiene Desventaja.`;
+        }
+        apply({ effectClocks: actor.effectClocks.map(c => c.id === clock.id ? { ...c, meleeRound: round } : c) });
+      }
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${name}`, details };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, summary: details, damage, targetId: target.id };
+    }
+    // Lucky Break (Void 2, Reaction, 1 Stress): reroll the Hope or the Fear die of your latest
+    // roll and keep the new result; the outcome, the Path payout and the Keeper's Fear follow it.
+    if (action.type === 'LUCKY_BREAK') {
+      if (!characterCards(actor, data).some(c => c.name === 'Lucky Break' && c.playable)) throw new Error('Lucky Break no está en la mano de ' + actor.name + '.');
+      if (!canPay(actor, { stress: 1 })) throw new Error(actor.name + ' no puede marcar Stress.');
+      const previous = lastRoll.get(rollKey);
+      if (!previous || previous.hopeVal == null || previous.keeperD20) throw new Error('Haz primero una tirada de Dualidad.');
+      if (previous.luckyBreak) throw new Error('Esa tirada ya se relanzó con Lucky Break.');
+      const die = action.die === 'fear' ? 'fear' : 'hope';
+      const face = validFaces([action.face], 1, 12) ? action.face : 1 + Math.floor(Math.random() * 12);
+      const hopeVal = die === 'hope' ? face : previous.hopeVal, fearVal = die === 'fear' ? face : previous.fearVal;
+      const total = previous.total - previous[die + 'Val'] + face, isCritical = hopeVal === fearVal;
+      const dominance = isCritical ? 'Hope' : hopeVal > fearVal ? 'Hope' : 'Fear', success = isCritical || total >= previous.dc;
+      const resultType = isCritical ? 'CRITICAL_SUCCESS' : `${success ? 'SUCCESS' : 'FAILURE'}_WITH_${dominance.toUpperCase()}`;
+      const fearGain = !isCritical && dominance === 'Fear' ? 1 : 0;
+      const result = { ...previous, hopeVal, fearVal, total, isCritical, dominance, resultType, fearGain, luckyBreak: { die, from: previous[die + 'Val'], to: face },
+        outcomeTitle: isCritical ? 'CRITICAL SUCCESS (Matching Faces)' : resultType.replaceAll('_', ' '),
+        outcomeDesc: `Lucky Break: el dado de ${die === 'hope' ? 'Hope' : 'Fear'} pasa de ${previous[die + 'Val']} a ${face}. ${success ? 'La tirada tiene éxito.' : 'La tirada falla.'}` };
+      if (previous.hitTarget !== undefined) result.hitTarget = success ? (previous.hitTarget || previous.attackTargetId || null) : null;
+      // The payout follows the new dice: Hope (Awakened) and the Keeper's Fear by the difference.
+      const patch = { stress: { ...actor.stress, current: (actor.stress?.current || 0) + 1 } };
+      const hopeOf = r => (r.isCritical || r.dominance === 'Hope' ? 1 : 0);
+      if (actor.path !== 'Sleeping') patch.hope = clamp((actor.hope || 0) + hopeOf(result) - hopeOf(previous), 6);
+      if (result.isCritical && !previous.isCritical) patch.stress = { ...patch.stress, current: Math.max(0, patch.stress.current - 1) };
+      apply(patch);
+      const fearDelta = fearGain - (previous.fearGain || 0);
+      if (fearDelta > 0) store.addFear(fearDelta); else if (fearDelta < 0) store.addFear(-Math.min(-fearDelta, store.state.fear));
+      const cast = cardToAmend(store, previous);
+      if (cast) completeCardRoll(store, cast, result, previous);
+      lastRoll.set(rollKey, result);
+      const log = { sender: actor.name, type: 'CHECK', title: `${actor.name}: Lucky Break · ${result.outcomeTitle}`, details: `${result.outcomeDesc} Total ${total} vs DC ${previous.dc}. Marca 1 Stress.${actor.path === 'Sleeping' && hopeOf(result) !== hopeOf(previous) ? ' Ajusta el Effort Track si cambia el dado mayor.' : ''}` };
+      store.addLog(log);
+      return { ...result, log };
+    }
+    // A reaction Power used in the attack or damage window (v2.33.0): it pays its printed price
+    // and leaves what lasts (the amount Impact Absorption keeps, Tactical Overwatch's Armor Slots).
+    if (action.type === 'REACTION_PAY') {
+      const name = String(action.name ?? ''), rule = REACTIONS[name];
+      // Kinetic Barrier absorbs from its pool; at 0 it dissipates (and its Evasion and Resistance go).
+      if (name === 'Kinetic Barrier') {
+        const wall = barrier(actor);
+        if (!wall) throw new Error('La barrera ya no está.');
+        const used = Math.max(0, Math.min(wall.left, Math.round(Number(action.amount) || 0))), left = wall.left - used;
+        apply({ effectClocks: left > 0 ? actor.effectClocks.map(c => c.id === wall.clock.id ? { ...c, absorbed: left } : c) : actor.effectClocks.filter(c => c.id !== wall.clock.id) });
+        const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Kinetic Barrier`, details: `Absorbe ${used} de daño.${left > 0 ? ` Quedan ${left}.` : ' La barrera se disipa.'}` };
+        store.addLog(log);
+        return { id: newId(), actorId: actor.id, log, summary: log.details };
+      }
+      if (!rule || !holdsReaction(actor, name, data)) throw new Error('Esa reacción no está en el Loadout de ' + actor.name + '.');
+      if (!canPay(actor, rule.cost)) throw new Error(actor.name + ' no puede pagar ' + name + '.');
+      const patch = {};
+      if (rule.cost.hope) patch.hope = (actor.hope || 0) - rule.cost.hope;
+      if (rule.cost.stress) patch.stress = { ...actor.stress, current: (actor.stress?.current || 0) + rule.cost.stress };
+      const amount = Math.max(0, Math.min(200, Math.round(Number(action.amount) || 0)));
+      if (name === 'Impact Absorption' && amount) patch.effectClocks = addClock((actor.effectClocks || []).filter(c => c.name !== name), { ...newClock({ name, segments: 1, tick: 'manual', scene: true }), absorbed: amount });
+      apply(patch);
+      let details = `${actor.name} usa ${name} (${rule.cost.hope ? rule.cost.hope + ' Hope' : rule.cost.stress + ' Stress'}).`;
+      if (name === 'Impact Absorption' && amount) details += ` Absorbe ${amount}: su próximo ataque suma ${amount} al daño (o se mueve una banda más).`;
+      if (name === 'Tactical Overwatch') {
+        const target = store.state.tokens.find(t => t.id === action.targetId && t.mapId === actor.mapId);
+        if (!target) throw new Error('El aliado ya no está en la escena.');
+        const armor = target.armor || { current: 0, max: 0 };
+        store.updateToken(target.id, { armor: { ...armor, current: (armor.current || 0) + 2, max: (armor.max || 0) + 2 },
+          effectClocks: addClock(target.effectClocks, { ...newClock({ name, segments: 1, tick: 'manual', scene: true }), tempArmor: 2, sourceId: actor.id }) });
+        details += ` ${target.name}: Ventaja en su defensa y +2 Armor Slots temporales hasta el próximo Spotlight de ${actor.name}.`;
+      }
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: ${name}`, details };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, summary: details };
+    }
+    if (action.type === 'ARCHIVE_EDIT') {
+      const result = editArchive(actor, data, { op: action.op, domain: String(action.domain ?? ''), level: action.level });
+      apply(sheet(result.token));
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Archivo`, details: result.summary };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, summary: result.summary, packages: result.packages };
+    }
     if (action.type === 'CARD_LEARN') {
       const result = learnPower(actor, data, String(action.name ?? ''));
       apply(sheet(result.token));
       const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: nuevo Poder`, details: result.summary };
       store.addLog(log);
       return { id: newId(), actorId: actor.id, log, outcomeTitle: 'PODER AÑADIDO', summary: result.summary, learned: result.learned };
+    }
+    // Uncanny Power, step 1: the access roll (faces of the 3D dice when valid). It spends the
+    // Resolve, gives the Keeper the Fear and leaves the access open until a Power is chosen.
+    // `cancel` gives up an open access: nothing is refunded.
+    if (action.type === 'UNCANNY_ACCESS') {
+      if (action.cancel === true) {
+        if (!actor.uncanny) return { actorId: actor.id, summary: 'No hay ningún acceso abierto.' };
+        apply({ uncanny: null });
+        const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Uncanny Power`, details: `Renuncia al acceso de nivel ${actor.uncanny.access}. El Resolve y el Fear quedan gastados.` };
+        store.addLog(log);
+        return { actorId: actor.id, log, summary: log.details };
+      }
+      const result = uncannyAccess(actor, { spent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : 0, faces: Array.isArray(action.faces) ? action.faces.slice(0, 24) : null, efficiency: action.efficiency === true });
+      apply({ resolve: result.token.resolve, uncanny: result.token.uncanny, ...(action.efficiency === true ? { cardUses: result.token.cardUses } : {}) });
+      if (result.fear) store.addFear(result.fear);
+      const reach = uncannyChoices(characterCards(store.state.tokens.find(t => t.id === actor.id), data), result.access);
+      const details = [...result.notes, reach.length ? `Puede elegir: ${reach.map(c => `${c.name} (L${c.level})`).join(', ')}.` : 'Ningún Poder del Archivo está a su alcance.'].join(' ');
+      const log = { sender: actor.name, type: 'CARD', title: `${actor.name}: Uncanny Power · acceso ${result.access}`, details };
+      store.addLog(log);
+      return { id: newId(), actorId: actor.id, log, access: result.access, rolls: result.rolls, total: result.total, fear: result.fear, choices: reach.map(c => c.id), summary: details };
     }
     if (action.type === 'CARD_RECALL') {
       const result = recallPower(actor, data, String(action.name ?? ''), { mode: action.mode, replace: String(action.replace ?? '') });
@@ -207,8 +357,47 @@ function resolveGameAction(action, store) {
     const use = cardUse(card,store.state);
     if (usedBy(actor,use)) throw new Error(card.name + ' ya está gastado (' + use.label + ').');
     const ids = action.targetIds ?? (action.targetId ? [action.targetId] : []);
-    const targets = cardTargets(actor, card, ids, store);
+    // An area around the caster («all enemies within Close range»): everyone inside is a target.
+    const area = areaRule(card);
+    // A Power used through the drone the character operates: range, targets and line of sight are
+    // measured from the drone (Corebook ch. 14, «Domain Powers Through a Drone»).
+    let origin = actor, drone = null;
+    if (action.viaDroneId) {
+      drone = store.state.tokens.find(t => t.id === action.viaDroneId);
+      if (!isDroneToken(drone) || drone.drone?.operatorId !== actor.id) throw new Error('Ese dron no está bajo el control de ' + actor.name + '.');
+      if (signalOf(drone) === 'lost') throw new Error('Señal Lost: el dron no recibe órdenes.');
+      if (!droneCompatible(card)) throw new Error(card.name + ' no puede usarse a través de un dron: necesita tu cuerpo, tu toque o tu presencia.');
+      origin = { ...actor, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId };
+    }
+    const targets = area ? areaTargets(origin, area, store) : cardTargets(origin, card, ids, store);
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
+    const areaChecks = area?.check && !result.roll && !result.failed;
+    if (drone) result.notes.push(`A través de ${drone.name}.`);
+    // Kinetic Blast (v2.32.0): spend 1 Hope (+ up to 2 to Empower) and the next melee attack carries it.
+    let kineticClock = null;
+    if (card.name === 'Kinetic Blast') {
+      const empower = Math.max(0, Math.min(2, Number.isInteger(action.empower) ? action.empower : 0));
+      if ((result.token.hope || 0) < empower) throw new Error('No hay Hope suficiente para Empower: hacen falta ' + (1 + empower) + '.');
+      result.token.hope -= empower;
+      kineticClock = { ...newClock({ name: 'Kinetic Blast', segments: 1, tick: 'manual', scene: true }), empower };
+      result.notes.push('Su próximo ataque cuerpo a cuerpo: al impactar, + Strength + 1d8' + (empower ? ' + ' + empower + '×(' + (actor.proficiency || 1) + 'd6) por Empower' : '') + ' de daño Physical (Kinetic).');
+    }
+    // Powers spent «when making a roll» are armed for the next matching roll; Powers that only
+    // give a contextual Advantage for the scene leave their clock (Eyes of Truth).
+    let armedClock = null;
+    if (NEXT_ROLL[card.name]) {
+      armedClock = newClock({ name: card.name, segments: 1, tick: 'manual', scene: true });
+      result.notes.push(`Preparado para tu próxima tirada de ${NEXT_ROLL[card.name].traits.join(' o ')}: +${NEXT_ROLL[card.name].bonus(actor)} (${NEXT_ROLL[card.name].note}).`);
+    } else if (CONTEXT_EDGES[card.name] && !SELF_EFFECTS[card.name] && !cardDuration(card, actor, () => 1) && !result.roll) {
+      armedClock = newClock({ name: card.name, segments: 1, tick: 'manual', scene: true });
+      result.notes.push(`Ventaja en ${CONTEXT_EDGES[card.name][0]} · ${CONTEXT_EDGES[card.name][1]} durante la escena.`);
+    }
+    // Biological Scan: touching the target shows its HP and conditions at once.
+    if (card.name === 'Biological Scan' && targets[0]) {
+      const t = targets[0];
+      result.notes.push(`${t.name}: HP ${t.hp?.current ?? '?'} / ${t.hp?.max ?? '?'} · Stress ${t.stress?.current ?? 0} / ${t.stress?.max ?? 0} · estados: ${[...(t.conditions || []), ...(t.effectClocks || []).filter(c => c.condition).map(c => c.condition)].join(', ') || 'ninguno'}.`);
+    }
+    if (area && !result.failed) result.notes.push(`Área ${area.reach} alrededor de ${actor.name}: ${targets.map(t => t.name).join(', ') || 'nadie dentro'}.${areaChecks && targets.length ? ` Cada uno tira ${area.check.traitId} contra DC ${area.check.dc}.` : ''}`);
     // A card whose text sets a duration starts an effect clock on the character (Path to
     // Nirvana: Proficiency Spotlights; Rapid Regeneration: 1d4 turns).
     const choice = cardRollOptions(card);
@@ -241,12 +430,23 @@ function resolveGameAction(action, store) {
         ...(surge ? { stress: { ...recipient.stress, current: Math.max(0, recipient.stress.current - 1) } } : {}) };
       result.notes.push(holder.name + ': recupera 1 HP' + (surge ? ' y limpia 1 Stress (Surge).' : '.'));
     }
-    apply({ ...resources(result.token), ...(use && !result.failed ? {cardUses: {...actor.cardUses,[use.key]:use.scope}} : {}), ...(holder === actor ? immediate : {}) });
+    apply({ ...resources(result.token), ...(card.kind === 'archive' ? { uncanny: result.token.uncanny ?? null } : {}), ...(use && !result.failed ? {cardUses: {...actor.cardUses,[use.key]:use.scope}} : {}), ...(holder === actor ? immediate : {}) });
     if (holder !== actor && Object.keys(immediate).length) store.updateToken(holder.id, immediate);
+    // A Power that works on its caster without a roll (Temporal Cloak · Personal → Hidden).
+    if (SELF_EFFECTS[card.name] && !result.roll && !result.failed) result.notes.push(applySelfEffect(store, card.name, actor.id, String(action.mode ?? '')));
+    // Another Power of the Domain ends a self effect that says so (Temporal Cloak and Void).
+    const ended = card.domain && endSelfEffects(store.state.tokens.find(t => t.id === actor.id), { domain: card.domain, name: card.name });
+    if (ended) { store.updateToken(actor.id, { effectClocks: ended.effectClocks, conditions: ended.conditions }); result.notes.push('Termina ' + ended.ended.join(', ') + '.'); }
+    if (armedClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock((live.effectClocks || []).filter(c => c.name !== armedClock.name), armedClock) }); }
+    if (kineticClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock(live.effectClocks, kineticClock) }); }
+    if (area && AREA_BOONS[card.name] && !result.failed && !result.roll) {
+      for (const t of targets) store.updateToken(t.id, AREA_BOONS[card.name](store.state.tokens.find(x => x.id === t.id)));
+      result.notes.push('Cada aliado del área: +2 a su próxima tirada.');
+    }
     const effect = !result.roll && !result.failed && resolveImmediate(store, actor, targets, card, action.effectFace);
     if (effect) result.notes.push(effect);
     // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
-    if (ACTIVE_CARD_KINDS.has(card.kind) && !card.reaction && !card.passive && !card.guidedFeature && !projectSize(card)) grantSpotlight(store, actor.id);
+    if (ACTIVE_CARD_KINDS.has(card.kind) && !result.pending && !card.reaction && !card.passive && !card.guidedFeature && !projectSize(card)) grantSpotlight(store, actor.id);
     if (clock) {
       const live = store.state.tokens.find(t => t.id === holder.id);
       store.updateToken(live.id, { effectClocks: addClock(live.effectClocks, clock) });
@@ -262,9 +462,27 @@ function resolveGameAction(action, store) {
       resolution.notes = ['Proyecto iniciado. Marca el reloj al resolver cada fase de trabajo impresa.'];
     }
     if (result.failed) resolution.phase = 'done';
-    if (card.kind === 'archive') resolution.refundResolve = result.paid.resolve;
+    if (SELF_EFFECTS[card.name] || CARD_MODES[card.name]) resolution.mode = String(action.mode ?? '').slice(0, 30);
+    if (CARD_MODES[card.name] && !CARD_MODES[card.name].includes(resolution.mode)) resolution.mode = CARD_MODES[card.name][0];
+    if (area && !result.failed) {
+      resolution.area = { x: Math.round(origin.x), y: Math.round(origin.y), reach: area.reach, radius: Math.round(areaRadius(origin, store.getActiveMap?.(), area.reach)), color: card.color || '#00f3ff', failure: area.failure };
+      if (areaChecks && targets.length) resolution.replies = targets.map(t => ({ id: newId(), actorId: t.id, traitId: area.check.traitId, dc: area.check.dc }));
+    }
+    if (card.kind === 'archive' && result.refundResolve) resolution.refundResolve = result.refundResolve;
+    // The Special state written by the player (v2.40.0): without a roll it goes on at once to the
+    // targets (or the caster); with a roll, on a success; in an area with replies, to who fails.
+    const special = typeof action.special === 'string' ? specialState(action.special) : '';
+    if (special && !result.failed) {
+      resolution.special = special;
+      if (!result.roll && !resolution.replies?.length) {
+        const said = applySpecial(store, special, targets.length ? targets : [actor]);
+        if (said) { result.notes.push(said); resolution.specialApplied = true; }
+      } else result.notes.push(`Estado Special preparado: «${special.slice(SPECIAL_PREFIX.length)}»${resolution.replies?.length ? ' para quien falle su tirada.' : ' si la tirada sale.'}`);
+    }
     if (action.durationFaces) resolution.durationFaces = action.durationFaces.slice(0, 4);
-    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details, resolution };
+    // With a roll, the duration die waits for the success (v2.41.0).
+    else if (result.roll && !result.failed && durationDice(card)) resolution.durationPending = true;
+    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details: special ? [result.summary, ...result.notes].join(' ') : details, resolution };
     store.addLog(log);
     // The Keeper's table shows the card that was just used.
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('veil:card-played', { detail: { card, playId, actorId: actor.id, actorName: actor.name, playerName: String(action.playerName ?? '').slice(0, 80), summary: result.summary, notes: result.notes, failed: !!result.failed, at: Date.now() } }));
@@ -305,6 +523,18 @@ function resolveGameAction(action, store) {
     const guard = melee && disciplinedDefense(target, actor, store.getActiveMap?.(), store.state.tokens);
     const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty, o.traitId);
     const keeperRoll = !player;
+    // Powers in effect (Velocity Surge +2 Agility) and those armed for this roll (Silver Tongue,
+    // Vector Calculus: a bonus and a Hope die that counts higher).
+    const surge = player ? rollBonus(actor, o.traitId) : 0, armed = player ? armedRoll(actor, o.traitId) : null;
+    const powerNotes = [];
+    if (surge) powerNotes.push(`+${surge} por Poderes activos`);
+    let forcedHope = o.forcedHope;
+    if (armed) {
+      const face = Number.isFinite(Number(forcedHope)) ? Math.max(1, Math.min(12, Math.round(Number(forcedHope)))) : 1 + Math.floor(Math.random() * 12);
+      forcedHope = armed.rule.hope(face);
+      powerNotes.push(`${armed.clock.name}: +${armed.rule.bonus(actor)}${forcedHope !== face ? ` · Hope ${face} cuenta como ${forcedHope}` : ''}`);
+    }
+    const powerMod = surge + (armed ? armed.rule.bonus(actor) : 0);
     const result = keeperRoll ? rollAdversaryCheck({
       actorName: actor.name,
       modifier: (actor.attackModifier ?? 0) + (o.customMod || 0) + (actor.pendingCheckBonus || 0),
@@ -327,13 +557,15 @@ function resolveGameAction(action, store) {
       useResolve: !!resolve,
       resolveDieType: actor.resolve?.dieType || 'd4',
       experienceMod: exp,
-      customMod: (o.customMod || 0) + (actor.pendingCheckBonus || 0),
-      forcedHope: o.forcedHope,
+      customMod: (o.customMod || 0) + (actor.pendingCheckBonus || 0) + powerMod,
+      forcedHope,
       forcedFear: o.forcedFear,
       forcedAdv: o.forcedAdv,
       forcedResolve: o.forcedResolve,
     });
     const patch = { pendingCheckBonus: 0, pendingAdvantage: false };
+    if (armed) patch.effectClocks = (actor.effectClocks || []).filter(c => c.id !== armed.clock.id);
+    if (powerNotes.length) result.outcomeDesc = `${result.outcomeDesc || ''} ${powerNotes.join('. ')}.`.trim();
     if (resolve) patch.resolve = { ...actor.resolve, current: actor.resolve.current - 1 };
     if (player && !sleeping) {
       patch.hope = clamp(
@@ -380,10 +612,30 @@ function resolveGameAction(action, store) {
       }
       if (hit && /refused/i.test(state.name) && actor.traits?.[state.trait]) damageRiders.push({ id: 'disciplined-trait', label: state.trait, value: actor.traits[state.trait] });
     }
+    // Attacking ends the self effects that say so (Temporal Cloak).
+    const unveiled = ownAttack && endSelfEffects({ ...actor, effectClocks: patch.effectClocks || actor.effectClocks }, { attack: true });
+    if (unveiled) { patch.effectClocks = unveiled.effectClocks; patch.conditions = unveiled.conditions; }
+    // Impact Absorption: the amount absorbed goes into the next attack's damage.
+    const absorbed = ownAttack && actor.effectClocks?.find(c => c.name === 'Impact Absorption' && c.absorbed);
+    if (absorbed) {
+      if (hit) damageRiders.push({ id: 'impact-absorption', label: 'Impact Absorption', value: absorbed.absorbed });
+      patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== absorbed.id);
+    }
+    // Kinetic Blast armed: this melee attack spends it; a hit adds its damage.
+    const kinetic = ownAttack && melee && actor.effectClocks?.find(c => c.name === 'Kinetic Blast');
+    if (kinetic) {
+      if (hit) {
+        damageRiders.push({ id: 'kinetic-blast', label: 'Kinetic Blast', dice: '1d8' });
+        if (actor.traits?.strength) damageRiders.push({ id: 'kinetic-blast-strength', label: 'Kinetic Blast · Strength', value: actor.traits.strength });
+        for (let i = 0; i < (kinetic.empower || 0); i++) damageRiders.push({ id: 'kinetic-empower-' + i, label: 'Kinetic Blast · Empower', dice: Math.max(1, Math.min(10, Number(actor.proficiency) || 1)) + 'd6' });
+      }
+      patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== kinetic.id);
+    }
     if (action.closingId) {
       if (hit) damageRiders.push(closingStrike(actor));
       patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== state.id);
     }
+    if (target && target.id !== actor.id && actor.effectClocks?.some(c => c.nextAttack)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAttack);
     if (['agility','finesse'].includes(o.traitId) && actor.effectClocks?.some(c => c.name === 'Slipstream Jolt')) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.name !== 'Slipstream Jolt');
     if (!standalone) store.updateToken(actor.id, patch);
     if (guard) markMeleeDefense(store, target, guard);
@@ -395,7 +647,7 @@ function resolveGameAction(action, store) {
     for (const c of integrityEnded) store.addLog({ sender: actor.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${actor.name}: el Integrity Die llega a 0 y «${c.name}» termina.` });
     const record = { id: newId(), actorId: actor.id, ...result,
       ...(cast ? { cardPlayId: cast.id, ...(cast.replyId ? { cardReplyId: cast.replyId } : {}) } : {}),
-      ...(ownAttack ? { hitTarget: hit ? target.id : null, mapId: store.state.activeMapId, pathId: state?.id || null, closedPath: !!action.closingId, damageRiders } : {}), ...(secret ? { visibility: 'keeper' } : {}) };
+      ...(ownAttack ? { hitTarget: hit ? target.id : null, attackTargetId: target.id, mapId: store.state.activeMapId, pathId: state?.id || null, closedPath: !!action.closingId, damageRiders } : {}), ...(secret ? { visibility: 'keeper' } : {}) };
     lastRoll.set(rollKey, record);
     const log = {
       sender: actor.name,

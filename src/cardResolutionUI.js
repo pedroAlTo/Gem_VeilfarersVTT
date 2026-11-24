@@ -4,15 +4,22 @@ import { escapeHTML as e, notify } from './ui.js';
 import { printedChecks, printedPools } from './cardProcedures.js';
 import { currentArc } from './cardLimits.js';
 import { throwDice } from './tableDice.js';
-import { CONDITIONS } from './conditions.js';
-import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog } from './cardResolution.js';
+import { CONDITIONS, SPECIAL_MAX } from './conditions.js';
+import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog, areaRule, areaTargets, SELF_EFFECTS, POWER_DAMAGE, CARD_MODES } from './cardResolution.js';
 import { PATH_TRAITS } from './statePowers.js';
 import { tokenInventory } from './equipment.js';
 
 const opt = (value, label, selected = false) => '<option value="' + e(String(value)) + '"' + (selected ? ' selected' : '') + '>' + e(String(label)) + '</option>';
 const field = (label, html) => '<label class="dossier-field"><span>' + e(label) + '</span>' + html + '</label>';
 const keeper = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
+// A Special state written by the player, for any Power used from the hand (v2.40.0).
+const specialField = () => '<label class="dossier-field card-special"><span>Estado Special (opcional)</span><input class="hud-input" name="card_special" maxlength="' + SPECIAL_MAX + '" placeholder="Ej.: Marcado por la lanza · −1 Evasion" autocomplete="off"></label>' +
+  '<p class="dossier-muted">Texto libre que la carta deja en el objetivo (o en ti si no hay): sin tirada, al momento; con tirada, si sale; en un área, a quien falle. También sirve de anotación.</p>';
 export function cardChoices(card, actor, picked) {
+  const base = choicesFor(card, actor, picked);
+  return actor && !card.reverse && !card.chooseTrait ? base + specialField() : base;
+}
+function choicesFor(card, actor, picked) {
   if (!actor) return '';
   const trait = card.chooseTrait ? field('Atributo con Ventaja', '<vf-select name="path_trait" required>' + opt('', 'Elige un atributo') + PATH_TRAITS.map(t => opt(t, t[0].toUpperCase() + t.slice(1))).join('') + '</vf-select>') : '';
   if (card.reverse) {
@@ -21,18 +28,32 @@ export function cardChoices(card, actor, picked) {
     return field('Ataque de cierre', '<vf-select name="closing_weapon">' + opt('', 'Sin arma · Melee') + tokenInventory(actor).weapons.filter(w => w.damage && !/^n\/a$/i.test(w.damage)).map(w => opt(w.id, w.name)).join('') + '</vf-select>');
   }
   if (trait) return trait;
+  // A mode printed on the card (Temporal Cloak: Personal or Vehicle).
+  const self = SELF_EFFECTS[card.name];
+  if (self?.modes) return field('Modo', '<vf-select name="card_mode">' + self.modes.map(m => opt(m, m, m === self.when)).join('') + '</vf-select>') + '<p class="dossier-muted">' + e(self.when) + ': ' + e(self.note) + '</p>';
+  // Kinetic Blast: up to 2 more Hope to Empower the strike.
+  if (card.name === 'Kinetic Blast') return field('Empower · Hope adicional', '<vf-select name="card_empower">' + [0, 1, 2].map(n => opt(n, n ? `+${n} Hope · +${n}×(${actor.proficiency || 1}d6)` : 'Sin Empower', n === 0)).join('') + '</vf-select>') + '<p class="dossier-muted">Se aplica a tu próximo ataque cuerpo a cuerpo: si impacta, + Strength + 1d8 de daño.</p>';
+  const area = areaRule(card);
+  if (area) {
+    const inside = areaTargets(actor, area, store);
+    return '<p class="dossier-muted">Área ' + e(area.reach) + ' alrededor de ' + e(actor.name) + ': ' + e(inside.map(t => t.name).join(', ') || 'nadie dentro ahora') + '.' + (area.check ? ' Cada uno tira ' + e(area.check.traitId) + ' contra DC ' + area.check.dc + '.' : '') + '</p>';
+  }
   const rule = TARGET_RULES[card.name];
   const options = store.state.tokens.filter(t => eligible(actor, t, store.getActiveMap(), rule));
   const marked = options.find(t => t.id === picked)?.id || (rule?.self && options.some(t => t.id === actor.id) ? actor.id : '');
   const targets = rule ? field('Objetivo · ' + rule.reach, '<vf-select name="card_target">' + opt('', rule.object ? 'Sistema sin token' : 'Elige un objetivo') + options.map(t => opt(t.id, t.name, t.id === marked)).join('') + '</vf-select>') :
     '<details class="card-targets"' + (marked ? ' open' : '') + '><summary>Objetivos en la escena</summary>' + options.map(t => '<label><input type="checkbox" name="card_target" value="' + e(t.id) + '"' + (marked === t.id ? ' checked' : '') + '> ' + e(t.name) + '</label>').join('') + '</details>';
   const dcs = card.kind === 'archive' ? null : cardRollOptions(card);
-  return (dcs ? field('Dificultad del sistema', '<vf-select name="card_dc">' + dcs.map(dc => opt(dc, 'DC ' + dc)).join('') + '</vf-select>') : '') + targets;
+  const modes = CARD_MODES[card.name] ? field('Modo', '<vf-select name="card_mode">' + CARD_MODES[card.name].map((m, i) => opt(m, m, i === 0)).join('') + '</vf-select>') : '';
+  const damage = POWER_DAMAGE[card.name] ? '<p class="dossier-muted">Si la tirada sale, se prepara el daño contra el objetivo: ' + e(POWER_DAMAGE[card.name].formula(actor)) + ' ' + e(POWER_DAMAGE[card.name].type) + ' (' + e(POWER_DAMAGE[card.name].tag) + '). ' + e(POWER_DAMAGE[card.name].heavy || '') + '</p>' : '';
+  return modes + damage + (dcs ? field('Dificultad del sistema', '<vf-select name="card_dc">' + dcs.map(dc => opt(dc, 'DC ' + dc)).join('') + '</vf-select>') : '') + targets;
 }
 export function chosenCardOptions(modal) {
   const targetIds = [...modal.querySelectorAll('vf-select[name=card_target],input[name=card_target]:checked')].map(el => el.value).filter(Boolean);
   return { targetIds, trait: modal.querySelector('[name=path_trait]')?.value, weaponId: modal.querySelector('[name=closing_weapon]')?.value,
-    cardDC: Number(modal.querySelector('[name=card_dc]')?.value) || undefined };
+    cardDC: Number(modal.querySelector('[name=card_dc]')?.value) || undefined, mode: modal.querySelector('[name=card_mode]')?.value || undefined,
+    empower: modal.querySelector('[name=card_empower]') ? Number(modal.querySelector('[name=card_empower]').value) || 0 : undefined,
+    special: modal.querySelector('[name=card_special]')?.value.trim() || undefined };
 }
 const status = { roll: 'Tirada pendiente', ready: 'Resolver en mesa', done: 'Ver resolución' };
 export const resolutionLabel = record => status[record.phase] || 'Ver carta';
@@ -56,12 +77,15 @@ export function openResolution(id) {
   const replies = (record.replies || []).map(r => {
     const t = tokens.find(t => t.id === r.actorId);
     const can = t && here && record.phase !== 'done' && !r.outcome && (keeper() || store.canEditToken(t.id));
-    return '<p>' + e([t?.name || 'Objetivo', r.traitId, 'DC ' + r.dc, r.outcome, r.total].filter(x => x != null).join(' · ')) + (can ? ' <button class="hud-btn" data-reply="' + e(r.id) + '">Tirar</button>' : '') + '</p>';
+    return '<p>' + e([t?.name || 'Objetivo', r.traitId, 'DC ' + r.dc, r.outcome, r.total, r.consequence].filter(x => x != null && x !== '').join(' · ')) + (can ? ' <button class="hud-btn" data-reply="' + e(r.id) + '">Tirar</button>' : '') + '</p>';
   }).join('');
+  // The Keeper rolls every pending reply of the adversaries at once (area Powers, v2.32.0).
+  const keeperReplies = keeper() && here && record.phase !== 'done' ? (record.replies || []).filter(r => !r.outcome && tokens.some(t => t.id === r.actorId && t.isPlayer === false)) : [];
   const controls = editable && record.phase === 'ready' ? '<fieldset><legend>Consecuencia según la ficha</legend><div class="card-targets">' + options + '</div>' + tools +
     field('Aplicar', '<vf-select name="kind">' + Object.entries(EFFECT_OPTIONS).map(([k,label]) => opt(k,label,k===preferred)).join('') + '</vf-select>') +
     field('Cantidad (+/−)', '<input name="amount" type="number" min="-100" max="100" value="1">') +
     field('Condición', '<vf-select name="condition">' + CONDITIONS.map(c => opt(c.name,c.name,ruleText.includes(c.name))).join('') + '</vf-select>') +
+    field('Texto del estado Special', '<input name="special_text" maxlength="' + SPECIAL_MAX + '" placeholder="Ej.: Marcado · −1 Evasion">') +
     field('Decisión de mesa', '<input name="note" maxlength="500">') +
     '<button type="button" class="hud-btn" data-effect="apply">Aplicar consecuencia</button></fieldset>' : '';
   const modal = tableDialog(record.name, '<div class="card-resolution"><p>' + e([actor?.name, ...names, record.outcome, record.conclusion].filter(Boolean).join(' · ')) + '</p>' +
@@ -70,7 +94,8 @@ export function openResolution(id) {
     (record.notes?.length ? '<p>' + e(record.notes.join(' ')) + '</p>' : '') +
     (record.project ? '<p>Proyecto · ' + record.project + ' segmentos</p>' : '') +
     (applied ? '<ul>' + applied + '</ul>' : '') + (record.note ? '<p>' + e(record.note) + '</p>' : '') +
-    replies + controls + '<p class="dossier-error" role="alert"></p><footer class="dossier-footer">' +
+    (record.area ? '<p class="dossier-muted">Área ' + e(record.area.reach) + ' · ' + e(names.join(', ') || 'sin objetivos') + '</p>' : '') +
+    replies + (keeperReplies.length > 1 ? '<button class="hud-btn" data-reply-all>Tirar por los adversarios (' + keeperReplies.length + ')</button>' : '') + controls + '<p class="dossier-error" role="alert"></p><footer class="dossier-footer">' +
     (freeArc ? '<button class="hud-btn" data-effect="renew-arc">Renovar uso al cambiar de arco sin asignar</button>' : '') +
     (canRoll ? '<button class="hud-btn hud-btn-primary" data-roll>Preparar tirada vinculada</button>' : '') +
     (editable ? '<button class="hud-btn" data-effect="' + (record.phase === 'roll' ? 'cancel' : 'finish') + '">' + (record.phase === 'roll' ? 'Cancelar resolución' : 'Finalizar') + '</button>' : '') + '</footer></div>', 'card-resolution-dialog');
@@ -82,6 +107,15 @@ export function openResolution(id) {
   const fail = err => { q('[role=alert]').textContent = err.message; };
   if (q('[data-request]')) q('[data-request]').onclick = () => {
     try { requestCardChecks(store,id,chosen(),checks[Number(q('[name=printed_check]').value)]); modal.remove(); openResolution(id); } catch (err) { fail(err); }
+  };
+  if (q('[data-reply-all]')) q('[data-reply-all]').onclick = async () => {
+    const button = q('[data-reply-all]'); button.disabled = true;
+    const dice = window.veilDiceRoller;
+    for (const reply of keeperReplies) {
+      if (!dice?.prepareCheck({ tokenId: reply.actorId, traitId: reply.traitId, dc: reply.dc, playId: id, replyId: reply.id })) break;
+      await dice.executeActionCheck?.();
+    }
+    modal.remove(); openResolution(id);
   };
   for (const b of modal.querySelectorAll('[data-reply]')) b.onclick = () => {
     const reply = record.replies.find(r => r.id === b.dataset.reply);
@@ -107,6 +141,7 @@ export function openResolution(id) {
     if (!kind) return;
     q('[name=condition]').closest('label').hidden = !['condition','clear'].includes(kind);
     q('[name=amount]').closest('label').hidden = !['hp','armor','hope','effort','stress','bonus','clock'].includes(kind);
+    q('[name=special_text]').closest('label').hidden = kind !== 'special';
   };
   if (q('[name=kind]')) { q('[name=kind]').onchange = sync; sync(); }
   for (const btn of modal.querySelectorAll('[data-effect]')) btn.onclick = () => {
@@ -115,7 +150,7 @@ export function openResolution(id) {
       adjudicateCard(store, id, { operation: btn.dataset.effect, kind,
         ids: [...modal.querySelectorAll('[name=recipient]:checked')].map(el => el.value),
         value: q('[name=amount]')?.closest('label').hidden ? undefined : Number(q('[name=amount]')?.value),
-        condition: ['condition','clear'].includes(kind) ? q('[name=condition]').value : '', note: q('[name=note]')?.value });
+        condition: ['condition','clear'].includes(kind) ? q('[name=condition]').value : kind === 'special' ? q('[name=special_text]').value : '', note: q('[name=note]')?.value });
       modal.remove(); if (btn.dataset.effect === 'apply') openResolution(id); else notify('Resolución guardada.');
     } catch (err) { q('[role=alert]').textContent = err.message; }
   };

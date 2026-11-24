@@ -1,6 +1,194 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.42.0', date: '2026-11-23', title: 'V3 · Apuntar un poder como un ataque, con el emblema del dominio',
+    sections: [
+      { title: 'Apuntar poderes', items: [
+        'Al arrastrar un Poder, el cursor lleva el emblema de su Dominio, brillando en su color (Tech, Synthesis, Social, Neural, Kinetic, Void, Lux). Mientras apuntas, el emblema sigue al cursor.',
+        'Al soltarlo sobre un token, ese token queda marcado (anillo de color, línea y distancia), igual que en un ataque. Tocarlo otra vez lanza el Poder; tocar otro objetivo válido cambia la marca. Esc cancela.',
+        'Con un clic en la carta pasa lo mismo: el primer toque en el mapa marca y el segundo lanza. Un área se ve al soltarla y se lanza con un toque en el mapa.',
+      ] },
+    ],
+  },
+  {
+    version: '2.41.0', date: '2026-11-23', title: 'V3 · Uncanny Power en un solo gesto y la duración después del éxito',
+    sections: [
+      { title: 'Mystic Sleeping', items: [
+        'Los Poderes del Archivo se usan como cualquier carta: un clic apunta (o se arrastra la carta al token) y todo lo demás es automático, sin ventanas. Se tira el acceso (dado de Resolve + Knowledge, con el mínimo Resolve que puede llegar al nivel del Poder), y si llega, la tirada de Knowledge contra DC 10 + nivel; si sale, el Poder se aplica solo: daño a la ventana del Keeper, mejora, estado o curación.',
+        'Si el acceso no llega al nivel, queda abierto para un Poder de nivel menor, como dice el Corebook. El doble clic sigue abriendo la ventana de Uncanny Power con todas las opciones.',
+      ] },
+      { title: 'Duración', items: [
+        'En los Poderes con tirada y duración por dado (Rapid Regeneration: 1d4 turnos), el dado de duración se tira en 3D después del éxito, no antes. Rapid Regeneration cura +1 HP al momento y deja el reloj que cura +1 HP cada vez que el objetivo toma el foco.',
+      ] },
+    ],
+  },
+  {
+    version: '2.40.0', date: '2026-11-23', title: 'V3 · Estado Special: texto libre al usar poderes y como anotación',
+    sections: [
+      { title: 'Estado Special', items: [
+        'Nuevo estado «Special» con texto libre (hasta 80 caracteres), con su propio icono en el token; al pasar el ratón se lee el texto. Sirve para el efecto de un poder que no está en la lista de condiciones o como simple anotación.',
+        'Al usar un poder con doble clic, el campo «Estado Special (opcional)» deja ese texto en el objetivo (o en quien lo lanza si no hay objetivo): sin tirada, al momento; con tirada, solo si sale; en un área, a quien falle su tirada.',
+        'En Estados, «Añadir Special» lo pone a mano en cualquier token, y se quita con su ×. El Keeper también puede aplicarlo desde la resolución de una carta («Aplicar estado Special»).',
+      ] },
+    ],
+  },
+  {
+    version: '2.39.0', date: '2026-11-23', title: 'V3 · Más reacciones iluminadas, la mano por tipos y la bandeja del Keeper',
+    sections: [
+      { title: 'Reacciones iluminadas', items: [
+        'Blinding Flash: cuando un adversario va a atacar, a los personajes que la tienen y están a Close de él se les ilumina. Al usarla, la mesa la lanza, tira el Instinct DC 10 de los adversarios del área y, si fallan, ese ataque va con Desventaja.',
+        'Lucky Break se ilumina justo después de tu propia tirada de Dualidad (si puedes marcar el Stress) y Bear Down cuando hay una tirada o un daño tuyo al que sumar Resolve.',
+      ] },
+      { title: 'La mano', items: [
+        'Pestañas por tipo encima de la mano: Todas, Poderes, Reacciones, Rasgos y Moves (solo las que tienen cartas). «Usables» deja solo las cartas que puedes usar ahora mismo. Las reacciones iluminadas se ven siempre. Se recuerda tu elección.',
+      ] },
+      { title: 'Keeper', items: [
+        'Bandeja «Decisiones» junto a la barra de herramientas: las cartas de la escena que aún esperan algo (la tirada de quien la lanza, las tiradas de los objetivos o tu decisión), con «Tirar adversarios», «Abrir» y «Finalizar» (y «Finalizar las N listas»).',
+        'Con «Auto» marcado, la mesa tira sola las tiradas de objetivo de los adversarios en cuanto aparecen; tú sigues decidiendo las consecuencias que no son automáticas.',
+      ] },
+    ],
+  },
+  {
+    version: '2.38.0', date: '2026-11-23', title: 'V3 · El dron en manos del jugador y Rapid Regeneration de doble uso',
+    sections: [
+      { title: 'Dron (Neural Network Control)', items: [
+        'Al seleccionar en el mapa un dron compartido del que tu personaje es tripulante, tomas su control al momento (gratis con señal Stable; 1 Stress con Unstable; no funciona con Lost) y tu personaje obtiene el foco.',
+        'Con el dron seleccionado, la mano es «Vía dron»: los Poderes que funcionan a través de un dron (sensores, señal, voz, hackeo, herramientas remotas, línea de visión, modos de vehículo) se usan desde el dron, con el alcance y los objetivos medidos desde él; los que necesitan tu cuerpo, tu toque, un aura o tu presencia aparecen como «No a través del dron» (Corebook, cap. 14).',
+      ] },
+      { title: 'Rapid Regeneration', items: [
+        'Se usa como Poder normal sobre ti o un aliado a Very Close (+1 HP ahora y +1 por turno 1d4 turnos), también con Uncanny Power, y como reacción: cuando un personaje pierde HP, se ilumina a quien puede curarlo; al aceptar, se lanza sobre él.',
+      ] },
+    ],
+  },
+  {
+    version: '2.37.1', date: '2026-11-23', title: 'V3 · El Recall del mazo, a la vista',
+    sections: [
+      { title: 'Mazo', items: [
+        'El botón Recall estaba al final del mazo, debajo del catálogo de todos los Poderes, y no se veía al elegir una carta del Vault. Ahora está justo debajo del Vault, con el momento elegido y su coste, y dice qué entra y qué sale («Recall Spark of Hope ⇄ Blinding Flash · 1 Hope + tu Acción»). Los errores (falta de Hope, de margen de Stress…) aparecen ahí mismo.',
+      ] },
+    ],
+  },
+  {
+    version: '2.37.0', date: '2026-11-22', title: 'V3 · Las reacciones se iluminan al jugador que puede usarlas',
+    sections: [
+      { title: 'Reacciones', items: [
+        'Cuando se cumple el disparador de una reacción (Force Shield, Tactical Overwatch, Photon Shield, Impact Absorption, Mind Shield), en la pantalla del jugador que puede usarla la carta se ilumina («¡Úsala ahora!») y aparece un aviso con lo que conseguiría: «Usar · 1 Hope» o «Dejar pasar». Tocar la carta iluminada también la usa.',
+        'No hay tiempo de espera: el Keeper ve a quién se le ha iluminado y lo que responde. Si alguien no responde, decide el Keeper con sus botones de siempre.',
+        'En la ventana de daño del Keeper, la reacción que el jugador acepta queda elegida sola; el Keeper sigue aplicando el daño.',
+      ] },
+    ],
+  },
+  {
+    version: '2.36.0', date: '2026-11-22', title: 'V3 · Cartas más sencillas: un gesto, apuntar en el mapa y la resolución en una tarjeta',
+    sections: [
+      { title: 'La mano', items: [
+        'Cada carta muestra un resumen de una línea en español (por ejemplo «Ataque a distancia · Presence DC 15 · Far · 2d8 Energy»). El texto completo de las reglas está en el detalle.',
+        'Cada carta dice su estado: Preparada, Activa (Kinetic Barrier con lo que le queda), Reacción, Usada, o lo que falta («Falta 1 Hope», «Sin Resolve»).',
+        'Al pasar el ratón, la carta se ve grande con su coste, su alcance, su tirada, su daño, el resumen y las reglas.',
+      ] },
+      { title: 'Usar una carta', items: [
+        'Un clic (o arrastrarla al mapa) la usa sola. Si tiene objetivo, se apunta en el mapa: se iluminan los objetivos válidos a su alcance y se toca uno. Si es un área, se ve el círculo y quién queda dentro; un clic la lanza. Esc cancela.',
+        'Doble clic abre sus opciones: objetivo de una lista, modo, Empower, Ventaja o Desventaja, una Experiencia y un modificador. El botón dice todo («Lanzar · 1 Hope · Presence DC 15»).',
+        'La tirada se hace sola, sin abrir el panel de dados. Si la carta hace daño y acierta, el daño se tira y llega a la ventana del Keeper, que decide escudos y reacciones (también Telekinetic Grasp y el retroceso de Force Shield).',
+        'Lo que pasa se sigue en una tarjeta junto a la mano: objetivo, coste, tirada, tiradas de los objetivos, efecto y si queda abierta para el Keeper, con «Ver detalle».',
+      ] },
+    ],
+  },
+  {
+    version: '2.35.0', date: '2026-11-22', title: 'V3 · Lucky Break, Flux Field, Telekinetic Grasp y los modos de Mind-Slip',
+    sections: [
+      { title: 'Poderes', items: [
+        'Lucky Break: muestra los dados de tu última tirada y relanza el de Hope o el de Fear (dado 3D, 1 Stress). La mesa recalcula el total, el resultado, el Hope que ganas y el Fear del Keeper. Si era un ataque fallido que ahora alcanza la Evasion, pasa a impacto y se calcula el daño.',
+        'Flux Field: si sale la tirada, queda activo con el modo elegido (los dos con Hope). Tocando la carta, una vez por ronda: Lucky Streak da Ventaja a la próxima tirada de un aliado; Unlucky Enemies da Desventaja al próximo ataque de un enemigo.',
+        'Telekinetic Grasp: si sale, el objeto queda enlazado. Tocando la carta lo lanzas como acción contra un objetivo a alcance Far, y se prepara su daño, (Proficiency)d6 Void.',
+        'Mind-Slip pide su modo. Stagger: el NPC queda Prone. Compel: el NPC tira Presence contra DC 15 y, si falla, la resolución dice que lo muevas una banda. Field of Hesitation: marca la zona Very Close en el mapa con su regla.',
+      ] },
+    ],
+  },
+  {
+    version: '2.34.0', date: '2026-11-22', title: 'V3 · Mejoras con números y modificadores de tirada',
+    sections: [
+      { title: 'Mejoras activas', items: [
+        'Kinetic Barrier: mientras dura, +1 Evasion, resistencia a daño Physical y una barrera que absorbe hasta 10 de daño. En la ventana de daño aparece ya elegida; cuando se gasta, se disipa.',
+        'Velocity Surge: si sale la tirada, +2 a las tiradas de Agility durante la escena.',
+        'Aura of Clarity: si sale, tú y los aliados a alcance Close sumáis +1 a los umbrales de daño y sois inmunes a Frightened y Dazed.',
+        'Protective Dome: si sale, quien está en la zona Very Close gana +2 Evasion.',
+        'Eyes of Truth y Temporal Cloak dan su Ventaja contextual (Instinct para percibir; Agility para no ser detectado) en el panel de dados.',
+      ] },
+      { title: 'Para la próxima tirada', items: [
+        'Silver Tongue: la próxima tirada de Presence suma tu Tier y un 11 en el dado de Hope cuenta como 12.',
+        'Vector Calculus: la próxima tirada de Agility o Finesse suma tu nivel y un 10 o menos en el dado de Hope cuenta como 11.',
+      ] },
+    ],
+  },
+  {
+    version: '2.33.0', date: '2026-11-22', title: 'V3 · Reacciones en el ataque y en la ventana de daño',
+    sections: [
+      { title: 'Al atacar', items: [
+        'Tactical Overwatch: cuando un adversario ataca a un personaje, si un aliado a alcance Close la tiene en su Loadout y 1 Hope, el Keeper ve el aviso. Si la usa, el ataque se tira con Desventaja y el objetivo gana 2 Armor Slots temporales hasta el próximo Spotlight de quien la usó.',
+        'Force Shield: si el ataque impacta pero +3 de Evasion lo haría fallar, se ofrece al objetivo o a un aliado a Very Close. Si la usa, el ataque falla y se prepara el daño de vuelta, (Proficiency)d4 Physical (Kinetic), contra el atacante.',
+      ] },
+      { title: 'En la ventana de daño', items: [
+        'La ventana del Keeper tiene «Reacción»: Photon Shield (un aliado a Close resta su Tier + 2, el doble contra criaturas Veil-Touched), Impact Absorption (−(Proficiency)d6 + 2 al daño Physical) o Mind Shield (−(Proficiency)d6 al Neural). Cada opción muestra el HP final con sus escudos, y al aplicarla se cobra su coste.',
+        'Impact Absorption guarda lo absorbido: el próximo ataque de ese personaje lo suma al daño.',
+        'Solo aparecen las reacciones que el personaje tiene en el Loadout y puede pagar, y a su alcance.',
+      ] },
+    ],
+  },
+  {
+    version: '2.32.0', date: '2026-11-22', title: 'V3 · Poderes de área y resolución automática (niveles 1-3)',
+    sections: [
+      { title: 'Áreas', items: [
+        'Los Poderes que afectan a «todos los enemigos/aliados a alcance X» dibujan su círculo en el mapa alrededor de quien los lanza, visible para todos mientras la carta está abierta, y eligen solos a quien está dentro.',
+        'Si la carta pide una tirada de reacción (Blinding Flash: Instinct contra DC 10), cada objetivo la tiene pendiente; el Keeper puede tirar las de todos los adversarios a la vez. Quien falla recibe lo que dice la carta: Desventaja en su próximo ataque (se gasta al atacar) o el estado impreso.',
+        'Inspiring Presence da +2 a la próxima tirada de cada aliado del área.',
+      ] },
+      { title: 'Poderes con objetivo y efectos', items: [
+        'Stellar Lance, Biological Scan, Mind-Slip, Emotional Manipulation y Symbiotic Bond piden un objetivo a su alcance, como un ataque. Stellar Lance, si sale la tirada, prepara su daño (Proficiency×d8 Energy, Radiant) para que el Keeper lo decida.',
+        'Kinetic Blast (con Empower de hasta 2 Hope más) carga el próximo ataque cuerpo a cuerpo: al impactar suma Strength + 1d8 y (Proficiency)d6 por cada Hope de Empower.',
+        'Biological Scan muestra al momento el HP, el Stress y los estados del objetivo.',
+        'Temporal Cloak · Personal deja Hidden a quien lo lanza (también con Uncanny Power, si la tirada sale). Termina si ataca o usa otro Poder Void.',
+      ] },
+    ],
+  },
+  {
+    version: '2.31.2', date: '2026-11-22', title: 'V3 · Archivo de personajes importados y creador sin pérdidas',
+    sections: [
+      { title: 'Mystic Sleeping', items: [
+        'Un Mystic Sleeping importado sin Dominios (o con la clase en español, «Místico») se reconoce y puede empezar su Archivo desde el mazo o desde la ficha.',
+        'La ventana de Uncanny Power tiene un botón «Gestionar el Archivo» que abre el mazo con el Archivo, también cuando está vacío.',
+      ] },
+      { title: 'Creador de personajes', items: [
+        'Desde el lobby (antes de entrar en una sala) el creador ya no ofrece «Crear y poner en la mesa»: esa mesa se sustituía al entrar en la sala y el personaje se perdía. Allí se guarda en la cuenta o se descarga la ficha, y se lleva a la mesa al entrar.',
+        'Un personaje que la nube no acepta y queda guardado solo en este navegador ya no desaparece de la biblioteca al volver a leerla: sigue en la lista hasta que la nube tenga una copia.',
+      ] },
+    ],
+  },
+  {
+    version: '2.31.1', date: '2026-11-22', title: 'V3 · Archivo del Mystic Sleeping y Spellcast automático',
+    sections: [
+      { title: 'Archivo de Uncanny', items: [
+        'El mazo y la pestaña Loadout de la ficha del Mystic Sleeping tienen su Archivo: los Dominios desbloqueados (Dominio + nivel) con sus Poderes, y un selector de Dominio y nivel para añadir uno o quitarlo.',
+        'Se aplican las reglas del Corebook: el nivel no puede superar el del personaje, y para investigar un nivel hacen falta dos Dominios distintos en el nivel anterior. Los Dominios elegidos al crear el personaje aparecen y se pueden corregir.',
+      ] },
+      { title: 'Uncanny Power', items: [
+        'Al pulsar Manifestar se tira enseguida el Spellcast: dados de Dualidad + Knowledge contra DC 10 + nivel del Poder. Si se supera, el Poder queda listo para resolverse en la mesa.',
+      ] },
+    ],
+  },
+  {
+    version: '2.31.0', date: '2026-11-22', title: 'V3 · Uncanny Power del Mystic Sleeping, como dice el Corebook',
+    sections: [
+      { title: 'Uncanny Power', items: [
+        'Al tocar un Poder del Archivo (o la carta Uncanny Power) se abre su ventana: a un lado el Archivo por niveles, con la DC de cada nivel, y al otro el Poder elegido con todas sus características.',
+        'Primero se gasta Resolve, uno o varios: se tira un dado de Resolve por cada uno, en 3D, y se suma Knowledge. El resultado, con tu nivel como máximo, es el nivel más alto al que llegas. El Keeper gana 1 Fear por Resolve.',
+        'Con el acceso abierto eliges el Poder: el que marcaste o cualquier otro del Archivo de ese nivel o menor. Si no llegas al que querías, ya no pierdes el Resolve: eliges otro. También puedes renunciar al acceso; el Resolve y el Fear quedan gastados.',
+        'Manifestar prepara la tirada de Spellcast de Knowledge contra DC 10 + nivel. Si la superas, el Poder se ejecuta en la mesa; con un Critical recuperas el Resolve gastado (el Fear se queda). Se ignora el coste de Hope y se paga el resto.',
+        'Impossible Efficiency (Mastery del Mind-Touched): una vez por sesión, dos dados por cada Resolve.',
+      ] },
+    ],
+  },
+  {
     version: '2.30.0', date: '2026-11-22', title: 'V3 · Loadout en la ficha y equipo completo de los dos libros',
     sections: [
       { title: 'Loadout en la ficha', items: [

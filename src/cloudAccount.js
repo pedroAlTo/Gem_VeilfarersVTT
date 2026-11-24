@@ -35,6 +35,15 @@ export function cleanPreferences(values = {}) {
     return [k, !!v];
   }));
 }
+// Saves the cloud refused, kept in this browser apart from the cloud cache (v2.31.2).
+const localOnlyKey = (kind, uid) => `veil_${kind}_${uid}_local`;
+function readLocalOnly(kind, uid) {
+  try { const rows = JSON.parse(localStorage.getItem(localOnlyKey(kind, uid)) || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; }
+}
+function writeLocalOnly(kind, uid, rows) {
+  try { if (rows.length) localStorage.setItem(localOnlyKey(kind, uid), JSON.stringify(rows)); else localStorage.removeItem(localOnlyKey(kind, uid)); } catch {}
+}
+
 export class CloudAccount {
   constructor() {
     this.user = null; this.listeners = new Set(); this.epoch = 0;
@@ -167,7 +176,12 @@ export class CloudAccount {
     try {
       const result = await d.getDocsFromServer(d.collection(this.db, 'users', uid, kind));
       if (epoch !== this.epoch) throw new Error('Account changed. Reopen your library.');
-      const items = result.docs.map(doc => ({ ...doc.data(), id: doc.id })).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      const server = result.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      // Entries that could only be saved in this browser (the cloud refused the write) are kept
+      // until the cloud has an entry at least as recent: reading the cloud must not erase them.
+      const pending = readLocalOnly(kind, uid).filter(entry => !server.some(row => row.id === entry.id && (row.updatedAt || 0) >= (entry.updatedAt || 0)));
+      writeLocalOnly(kind, uid, pending);
+      const items = [...server.filter(row => !pending.some(entry => entry.id === row.id)), ...pending.map(entry => ({ ...entry, localOnly: true }))].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
       try { localStorage.setItem(`veil_${kind}_${uid}`, JSON.stringify(items)); } catch {}
       return items;
     } catch (err) {
@@ -207,9 +221,10 @@ export class CloudAccount {
       if (isPerm) {
         console.warn('Firestore permission denied; saving character locally in account cache.');
         this.reportLocalFallback('characters');
+        writeLocalOnly('characters', uid, [entry, ...readLocalOnly('characters', uid).filter(c => c.id !== id)]);
         try {
           const list = (await this.list('characters')).filter(c => c.id !== id);
-          list.unshift(entry);
+          list.unshift({ ...entry, localOnly: true });
           localStorage.setItem(`veil_characters_${uid}`, JSON.stringify(list));
         } catch {}
         return id;
@@ -219,6 +234,7 @@ export class CloudAccount {
   }
   async removeCharacter(id) {
     const uid = await this.identity();
+    writeLocalOnly('characters', uid, readLocalOnly('characters', uid).filter(c => c.id !== id));
     try {
       await this.dbAPI.deleteDoc(this.dbAPI.doc(this.db, 'users', uid, 'characters', id));
     } catch (err) {

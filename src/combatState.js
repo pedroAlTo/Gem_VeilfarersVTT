@@ -47,7 +47,9 @@ export function checkEdge(actor, target, advantage = false, disadvantage = false
     (!!trait && ['knowledge','instinct'].includes(trait) && actor?.effectClocks?.some(c => c.condition === 'Dazed') && !pathImmune(actor, 'Dazed'));
   const jolt = ['agility', 'finesse'].includes(trait) && actor?.effectClocks?.some(c => c.name === 'Slipstream Jolt');
   const field = actor?.effectClocks?.find(c => c.name === 'Global Stimulus Field');
-  return netEdge(advantage || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
+  // «Disadvantage on their next attack» (Blinding Flash…): only an attack, and it is spent by it.
+  const nextAttack = !!target && actor?.effectClocks?.some(c => c.nextAttack && c.edge === 'disadvantage');
+  return netEdge(advantage || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
 }
 
 export const roundKey = (map = {}) => `${map.id}/${map.spotlightRound || 1}`;

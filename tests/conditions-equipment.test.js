@@ -48,10 +48,10 @@ test('condition controls persist and synchronize without changing hidden visibil
   await modal.querySelector('[data-condition="Hidden"]').onclick();await modal.querySelector('[data-condition="Bleeding"]').onclick();
   assert.deepEqual(store.state.tokens[0].conditions,['Hidden','Bleeding']);assert.equal(store.state.tokens[0].hidden,false);assert.equal(store.state.tokens[0].hp.current,originalHP);
   const custom=modal.querySelector('[data-custom]'); custom.value='Herido';await modal.querySelector('form').onsubmit(new Event('submit',{bubbles:true,cancelable:true}));
-  assert.deepEqual(store.state.tokens[0].conditions,['Hidden','Bleeding','Herido']);
+  assert.deepEqual(store.state.tokens[0].conditions,['Hidden','Bleeding','Special: Herido']);
   await modal.querySelector('[data-condition="Hidden"]').onclick();assert.ok(!store.state.tokens[0].conditions.includes('Hidden'));
-  const n=new NetworkManager();assert.deepEqual(n.snapshotFor('guest').tokens[0].conditions,['Bleeding','Herido']);
-  assert.deepEqual(store.serializeCampaign().tokens[0].conditions,['Bleeding','Herido']);
+  const n=new NetworkManager();assert.deepEqual(n.snapshotFor('guest').tokens[0].conditions,['Bleeding','Special: Herido']);
+  assert.deepEqual(store.serializeCampaign().tokens[0].conditions,['Bleeding','Special: Herido']);
   store.update({userRole:'player'});store.state.claimedTokenId=null;
   modal.querySelector('[data-condition="Stunned"]').click();assert.ok(!store.state.tokens[0].conditions.includes('Stunned'));assert.match(modal.querySelector('[data-rule]').textContent,/Cannot take any action/);
   n.disconnect();

@@ -157,3 +157,146 @@
 /* The deck inside the character sheet (v2.30.0): in the flow of the sheet, no close button. */
 .card-drawer.card-drawer-embedded { position: static; width: auto; max-height: none; z-index: auto; box-shadow: none; animation: none; border-top-width: 1px; border-radius: 5px; }
 .card-drawer.card-drawer-embedded .card-drawer-close { display: none; }
+
+/* Uncanny Power (v2.31.0): the Archive to pick from, the steps and the open access. */
+html body .veil-modal-backdrop.table-action-panel.uncanny-dialog { width: min(640px, calc(100vw - 24px)); }
+html body .veil-modal-backdrop.table-action-panel.uncanny-dialog > .veil-modal-box { max-height: min(70dvh, 560px); }
+.uncanny-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.uncanny-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.uncanny-chosen { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; }
+.uncanny-chosen strong { color: #f8e7b0; font-size: 14px; }
+.uncanny-chosen p { margin: 4px 0 0; font-size: 12px; }
+.uncanny-main .dossier-footer { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 700px) { .uncanny-grid { grid-template-columns: 1fr; } html body .veil-modal-backdrop.table-action-panel.uncanny-dialog > .veil-modal-box { max-height: 46dvh; } }
+.uncanny-steps { display: flex; gap: 6px; list-style: none; margin: 0 0 8px; padding: 0; counter-reset: uncanny; flex-wrap: wrap; }
+.uncanny-steps li { counter-increment: uncanny; font-size: 12px; color: #94a3b8; padding: 3px 9px; border: 1px solid rgba(148,163,184,.3); border-radius: 5px; }
+.uncanny-steps li::before { content: counter(uncanny) " · "; }
+.uncanny-steps li.now { color: #f8e7b0; border-color: #d4a84b; background: rgba(212,168,75,.12); }
+.uncanny-steps li.done { color: #86efac; border-color: rgba(134,239,172,.4); }
+.uncanny-access { margin: 0 0 6px; padding: 8px 10px; border-radius: 5px; border: 1px solid #d4a84b; background: rgba(212,168,75,.12); color: #f8e7b0; font-size: 13px; }
+.uncanny-archive { max-height: 400px; overflow: auto; padding-right: 4px; }
+.uncanny-archive .card-drawer-group:first-child { margin-top: 0; }
+.uncanny-archive .card-drawer-group { margin: 6px 0 4px; }
+.uncanny-list { display: grid; grid-template-columns: 1fr; gap: 5px; }
+.uncanny-power { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 6px 8px; border-radius: 5px; border: 1px solid rgba(148,163,184,.3); border-left: 3px solid var(--card-color, #6d28d9); background: rgba(15,23,42,.6); color: #e2e8f0; cursor: pointer; font: inherit; }
+.uncanny-power strong { font-size: 13px; }
+.uncanny-power small { font-size: 11px; color: #94a3b8; }
+.uncanny-power:hover:not(:disabled) { border-color: #d4a84b; }
+.uncanny-power.active { border-color: #d4a84b; background: rgba(212,168,75,.16); box-shadow: 0 0 0 1px #d4a84b inset; }
+.uncanny-power:disabled { opacity: .4; cursor: not-allowed; }
+.uncanny-check { display: flex; gap: 6px; align-items: center; font-size: 13px; color: #e2e8f0; }
+
+/* The Uncanny Archive in the deck and the sheet (v2.31.1). */
+.archive-manager { display: grid; gap: 8px; margin: 4px 0 12px; padding: 10px; border: 1px solid rgba(212,168,75,.35); border-radius: 5px; background: rgba(212,168,75,.05); }
+.archive-manager h4 { margin: 0; }
+.archive-packages { display: flex; flex-wrap: wrap; gap: 6px; }
+.archive-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 9px; border-radius: 5px; border: 1px solid rgba(148,163,184,.35); border-left: 4px solid var(--card-color, #6d28d9); background: rgba(15,23,42,.6); color: #e2e8f0; }
+.archive-chip b { font-size: 13px; }
+.archive-chip small { color: #94a3b8; font-size: 11px; }
+.archive-chip button { all: unset; cursor: pointer; padding: 0 6px; color: #94a3b8; font-size: 15px; line-height: 1; }
+.archive-chip button:hover, .archive-chip button:focus-visible { color: #fca5a5; }
+.archive-add { display: grid; gap: 6px; justify-items: start; }
+.archive-add .card-drawer-step { margin: 0; }
+.uncanny-manage { margin-top: 8px; }
+
+/* The card flow (v2.36.0): summary on the card, state badge, large preview on hover, aiming on
+   the map and the resolution card beside the hand. */
+.vf-card-text.summary { font: 700 8.5px/1.3 Inter, system-ui, sans-serif; color: #1b1420; }
+.vf-card { position: relative; }
+.vf-card-status { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); z-index: 5; white-space: nowrap; padding: 3px 8px; border-radius: 10px; font: 800 8px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.vf-card-status.ready { background: #22d3ee; color: #062a33; }
+.vf-card-status.active { background: #34d399; color: #052e1f; }
+.vf-card-status.react { background: #f59e0b; color: #2a1300; }
+.vf-card-status.no { background: #475569; color: #e2e8f0; }
+.card-hand-fan .vf-card:hover .vf-card-status { opacity: 0; }
+
+.card-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.card-chip { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font: 700 11px/1.2 Inter, system-ui, sans-serif; border: 1px solid rgba(148,163,184,.4); background: rgba(15,23,42,.7); color: #e2e8f0; }
+.card-chip.cost { border-color: #fbbf24; color: #fde68a; } .card-chip.roll { border-color: #22d3ee; color: #a5f3fc; }
+.card-chip.reach { border-color: #a78bfa; color: #ddd6fe; } .card-chip.dmg { border-color: #f87171; color: #fecaca; }
+.card-inspect-summary { margin: 0; font-size: 13px; line-height: 1.4; color: #f8fafc; font-weight: 600; }
+
+.card-preview { position: fixed; z-index: 1300; width: min(500px, calc(100vw - 24px)); display: grid; grid-template-columns: 180px 1fr; gap: 14px; padding: 14px; background: rgba(13,4,32,.96); border: 1px solid rgba(192,132,252,.55); border-radius: 5px; box-shadow: 0 12px 34px rgba(0,0,0,.65); pointer-events: none; animation: cardPreviewIn .14s ease-out; }
+@keyframes cardPreviewIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.card-preview-face { --w: 180px; --h: 252px; cursor: default; }
+.card-preview-face .vf-card-text { font-size: 8px; }
+.card-preview-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card-preview-title { font: 700 15px/1.2 'Chakra Petch', system-ui, sans-serif; letter-spacing: .06em; color: #fde68a; text-transform: uppercase; }
+.card-preview-status { align-self: flex-start; padding: 3px 8px; border-radius: 10px; font: 800 9px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.card-preview-status.ready { background: #22d3ee; color: #062a33; } .card-preview-status.active { background: #34d399; color: #052e1f; }
+.card-preview-status.react { background: #f59e0b; color: #2a1300; } .card-preview-status.no { background: #475569; color: #e2e8f0; }
+.card-preview-summary { margin: 0; font-size: 14px; line-height: 1.4; font-weight: 600; color: #f8fafc; }
+.card-preview-rules { margin: 0; font-size: 11.5px; line-height: 1.45; color: #94a3b8; max-height: 120px; overflow: hidden; }
+.card-preview-hint { margin: 0; padding: 6px 9px; border: 1px solid rgba(253,230,138,.5); border-radius: 4px; font: 700 11px/1.3 'Chakra Petch', system-ui, sans-serif; letter-spacing: .06em; color: #fde68a; }
+.card-preview-hint b { color: #00f3ff; }
+@media (max-width: 700px) { .card-preview { display: none; } }
+
+.card-aim-banner { position: fixed; top: calc(var(--fb-top, 60px) + 6px); left: 50%; transform: translateX(-50%); z-index: 1300; max-width: calc(100vw - 24px); padding: 8px 14px; background: rgba(13,4,32,.95); border: 1px solid #a78bfa; border-radius: 5px; font: 700 12px/1.35 'Chakra Petch', system-ui, sans-serif; letter-spacing: .05em; color: #e9d5ff; box-shadow: 0 6px 20px rgba(0,0,0,.5); text-align: center; }
+.card-aim-banner b { color: #fde68a; } .card-aim-banner kbd { font: inherit; color: #00f3ff; }
+body.card-aiming #tactical_canvas { cursor: crosshair; }
+
+.card-tracker { position: fixed; z-index: 1250; width: min(380px, calc(100vw - 24px)); padding: 10px 12px 12px; background: rgba(13,4,32,.96); border: 1px solid rgba(192,132,252,.55); border-radius: 5px; box-shadow: 0 10px 30px rgba(0,0,0,.6); color: #e2e8f0; }
+.card-tracker header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.card-tracker header strong { flex: 1; font: 700 14px/1.2 'Chakra Petch', system-ui, sans-serif; letter-spacing: .06em; color: #fde68a; text-transform: uppercase; }
+.card-tracker header span { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .14em; color: #c084fc; text-transform: uppercase; }
+.card-tracker-close { all: unset; cursor: pointer; padding: 0 4px; font-size: 18px; color: #94a3b8; } .card-tracker-close:hover { color: #f8fafc; }
+.card-tracker-steps { list-style: none; margin: 0; padding: 0; }
+.card-tracker-steps li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(148,163,184,.15); font-size: 13px; line-height: 1.35; }
+.card-tracker-steps li:last-child { border-bottom: 0; }
+.card-tracker-steps i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 11px; background: #34d399; color: #052e1f; }
+.card-tracker-steps li.wait i { background: #f59e0b; color: #2a1300; } .card-tracker-steps li.fail i { background: #f87171; color: #2a0a0a; }
+.card-tracker-steps small { display: block; color: #94a3b8; font-size: 11.5px; margin-top: 2px; }
+.card-tracker footer { display: flex; justify-content: flex-end; margin-top: 6px; }
+
+.card-roll-options { display: grid; gap: 6px; margin: 0; padding: 8px 10px; border: 1px solid rgba(34,211,238,.35); border-radius: 5px; }
+.card-roll-options legend { padding: 0 4px; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .14em; color: #a5f3fc; text-transform: uppercase; }
+.card-edge { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+
+/* Reactions lit for the player who can use them (v2.37.0). */
+.card-hand-fan .vf-card[data-live-reaction] .vf-card-frame { box-shadow: 0 0 0 3px #f59e0b, 0 0 28px 8px rgba(245,158,11,.7); animation: reactionPulse 1.4s ease-in-out infinite; }
+.card-hand-fan .vf-card[data-live-reaction] { z-index: 55; }
+.card-hand-fan .vf-card[data-live-reaction] .vf-card-frame { transform: translateY(-40px) scale(1.12); }
+@keyframes reactionPulse { 50% { box-shadow: 0 0 0 3px #fbbf24, 0 0 40px 12px rgba(251,191,36,.85); } }
+.vf-card-status.react.live { background: #fbbf24; color: #2a1300; }
+.card-hand-fan .vf-card[data-live-reaction] .vf-card-status { opacity: 1; top: -76px; }
+.reaction-toasts { position: fixed; right: 16px; bottom: 230px; z-index: 1350; display: grid; gap: 8px; width: min(380px, calc(100vw - 24px)); }
+.reaction-toast { padding: 12px 14px; background: rgba(13,4,32,.97); border: 1px solid #f59e0b; border-radius: 5px; box-shadow: 0 0 24px rgba(245,158,11,.45); color: #e2e8f0; }
+.reaction-toast-label { font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: #fbbf24; }
+.reaction-toast p { margin: 6px 0 10px; font-size: 13.5px; line-height: 1.45; }
+.reaction-toast footer { display: flex; justify-content: flex-end; gap: 6px; }
+.kdmg-answers { margin: 4px 0; font-size: 12px; color: #fde68a; }
+.card-drawer-recallbar { margin: 6px 0 4px; padding: 8px 10px; border: 1px solid rgba(253,230,138,.35); border-radius: 5px; background: rgba(253,230,138,.05); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+
+/* The hand by kind (v2.39.0). */
+.card-hand-label:has(.card-hand-groups, .card-hand-usable) { flex-wrap: wrap; justify-content: center; row-gap: 5px; width: max-content; max-width: min(360px, calc(100vw - 24px)); align-self: center; }
+.card-hand-label:has(.card-hand-groups) > span:first-child { flex-basis: 100%; text-align: center; }
+.card-hand-label > span:first-child { white-space: nowrap; }
+.card-hand-groups { display: inline-flex; gap: 2px; margin-left: 4px; }
+.card-hand-groups button, .card-hand-usable { all: unset; cursor: pointer; padding: 4px 7px; border: 1px solid rgba(192,132,252,.35); border-radius: 4px; font: 700 9px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #c4b5fd; background: rgba(13,4,32,.85); }
+.card-hand-groups button:hover, .card-hand-usable:hover { border-color: #c084fc; color: #ede9fe; }
+.card-hand-groups button.active, .card-hand-usable.active { border-color: #22d3ee; color: #a5f3fc; background: rgba(34,211,238,.12); }
+
+/* The Keeper's decision tray (v2.39.0). */
+.keeper-tray { position: fixed; left: 84px; bottom: 132px; z-index: 60; width: min(320px, calc(100vw - 96px)); padding: 6px 8px; border: 1px solid rgba(192,132,252,.45); border-radius: 8px; background: rgba(13,4,32,.92); box-shadow: 0 8px 24px rgba(0,0,0,.45); color: #ede9fe; font: 12px/1.35 'Chakra Petch', system-ui, sans-serif; }
+.keeper-tray header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.keeper-tray-toggle { all: unset; cursor: pointer; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 10px; color: #c4b5fd; }
+.keeper-tray-toggle:hover { color: #ede9fe; }
+.keeper-tray-auto { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #a5f3fc; cursor: pointer; }
+.keeper-tray ol { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.keeper-tray li { display: grid; gap: 3px; padding: 6px; border-radius: 6px; background: rgba(76,29,149,.25); border-left: 2px solid #c084fc; }
+.keeper-tray-name { font-weight: 700; }
+.keeper-tray-name small { font-weight: 400; color: #c4b5fd; }
+.keeper-tray-status { color: #a5f3fc; font-size: 11px; }
+.keeper-tray-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.keeper-tray-actions .hud-btn, .keeper-tray-close-all { padding: 3px 8px; font-size: 10px; }
+.keeper-tray-close-all { margin-top: 6px; width: 100%; }
+.keeper-tray-more { margin: 4px 0 0; font-size: 10px; color: #c4b5fd; }
+@media (max-width: 720px) { .keeper-tray { left: 12px; width: calc(100vw - 24px); bottom: 150px; } }
+
+/* The Domain emblem under the pointer while a Power is dragged or aimed (v2.42.0). */
+.card-emblem-cursor { position: fixed; z-index: 2147483600; pointer-events: none; width: 46px; transform: translate(-50%, -50%) scale(1.05); transition: transform .12s ease; filter: drop-shadow(0 0 6px var(--glow)) drop-shadow(0 0 16px var(--glow)); animation: card-emblem-glow 1.1s ease-in-out infinite alternate; }
+.card-emblem-cursor img { display: block; width: 100%; height: auto; }
+.card-emblem-cursor.over-board { transform: translate(-50%, -50%) scale(.9); }
+.card-emblem-cursor.aiming { width: 34px; transform: translate(14px, 10px); }
+@keyframes card-emblem-glow { from { filter: drop-shadow(0 0 4px var(--glow)) drop-shadow(0 0 10px var(--glow)); } to { filter: drop-shadow(0 0 8px var(--glow)) drop-shadow(0 0 24px var(--glow)) brightness(1.15); } }
+@media (prefers-reduced-motion: reduce) { .card-emblem-cursor { animation: none; transition: none; } }
