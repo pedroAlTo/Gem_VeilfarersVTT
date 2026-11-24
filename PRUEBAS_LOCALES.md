@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.43.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.43.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.43.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.1.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.43.1**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.43.1** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.43.1.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -145,6 +145,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.0.zip**. Abre **AYUDA
 130. **(V3) Invitación del Keeper.** Crea una sala: aparece «Invita a tus jugadores» con el enlace y el código; «Copiar enlace» lo copia. Al entrar el primer jugador, o al cerrarla con ×, desaparece (no vuelve en esa sala). En la cabecera, «🔗 Invitar» copia el enlace.
 131. **(V3) Elegir pregenerado.** Como jugador sin personaje, la Ficha muestra los diez pregenerados de Hearts in the Void. Un clic en Spark: aparece en el mapa, asignado a ti, con HP 7, Evasión 9, Slug Pistol, tres Experiencias +2 y sus cartas. Un pregenerado ya en la mesa sale desactivado. «Mis personajes» abre tu biblioteca y «Crear personaje», el creador.
 132. **(V3) Evasión por armadura.** Pon a un personaje un Frontier Vest (Flexible): Evasión +1. Cámbialo por Salvage Armor (Heavy): queda en base −1. Quítatela: vuelve a la base. Marcus «Wall» Steele tiene Evasión 8, Shadow 13 y Rourke 13, como en el libro.
+133. **(V3) Rapid Regeneration en cada foco.** Lanza Rapid Regeneration sobre un aliado herido (+1 HP y su reloj). Dale el foco al aliado: +1 HP y el reloj avanza. Quítaselo y vuelve a dárselo: no cura. Dale el foco a otro personaje y luego otra vez al aliado (misma ronda, sin «Nueva ronda»): +1 HP. Al terminar el reloj, aviso de fin.
+134. **(V3) Curación visible.** Cada vez que un token gana HP (Rapid Regeneration, Emergency Repair, un descanso o subir HP en la ficha), aparece sobre él «+N HP» con una cruz y un anillo verdes durante algo más de un segundo, también en la pantalla de los jugadores si ven el token.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

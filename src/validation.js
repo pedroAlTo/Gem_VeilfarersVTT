@@ -77,6 +77,7 @@ export function validateCampaign(data) {
   }
   for (const m of data.maps) {
     if (m.spotlightRound !== undefined) assert(Number.isSafeInteger(m.spotlightRound) && m.spotlightRound >= 1, 'Invalid Spotlight round.');
+    if (m.lastSpotlightId !== undefined) assert(typeof m.lastSpotlightId === 'string' && m.lastSpotlightId.length <= 200, 'Invalid Spotlight holder.');
     validateEnvironment(m.environment);
     if (m.drawings !== undefined) {
       assert(Array.isArray(m.drawings) && m.drawings.length <= 500, 'Invalid drawings.');

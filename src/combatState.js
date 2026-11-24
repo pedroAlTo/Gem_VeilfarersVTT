@@ -78,7 +78,11 @@ export function combatTransition(previous, next, map) {
   if (character(next) && previous.hp?.current > 0 && next.hp?.current === 0) {
     next = { ...next, ...lifePatch(next, 'Dying'), lifeRollRound: null };
   }
-  if (map && next.mapId === map.id && !previous.hasSpotlight && next.hasSpotlight && next.roundSpotlight !== roundKey(map)) {
+  // A new Spotlight (v2.43.1, user report): the first one of the round, or taking it back after
+  // somebody else held it (the Spotlight is dynamic, Corebook 12.06). Turning the marker off and on
+  // again with nobody in between is not a new Spotlight, so it cannot replay healing.
+  const newSpotlight = map && (next.roundSpotlight !== roundKey(map) || (!!map.lastSpotlightId && map.lastSpotlightId !== next.id));
+  if (map && next.mapId === map.id && !previous.hasSpotlight && next.hasSpotlight && newSpotlight) {
     next = { ...next, roundSpotlight: roundKey(map) };
     if (next.effectClocks?.some(c => c.expiry === 'spotlight-end')) next.effectClocks = next.effectClocks.map(c => c.expiry === 'spotlight-end' ? { ...c, seenSpotlight:true } : c);
     if (next.effectClocks?.some(c => c.tick === 'spotlight')) {

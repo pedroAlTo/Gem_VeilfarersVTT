@@ -94,3 +94,19 @@ test('durationDice: only a duration set by a die is thrown by the player', async
   assert.equal(d.segments, 3);
   assert.ok(validFaces([1, 4], 2, 4)); assert.ok(!validFaces([5], 1, 4)); assert.ok(!validFaces([1], 2, 4));
 });
+
+test('a token healed shows a small green effect: who went up in HP, on the same scene', async () => {
+  const { healedTokens, HealFX } = await import('../src/healFX.js');
+  const before = [{ id: 'a', mapId: 'm', x: 10, y: 10, hp: { current: 3 } }, { id: 'b', mapId: 'm', x: 0, y: 0, hp: { current: 5 } }, { id: 'c', mapId: 'other', x: 0, y: 0, hp: { current: 1 } }];
+  const after = [{ ...before[0], hp: { current: 4 } }, { ...before[1], hp: { current: 2 } }, { ...before[2], hp: { current: 6 } }];
+  assert.deepEqual(healedTokens(before, after, 'm'), [{ id: 'a', x: 10, y: 10, size: 1, amount: 1 }], 'damage and other scenes do not count');
+  const fx = new HealFX();
+  assert.equal(fx.add({ x: 10, y: 10, diameter: 64, amount: 1 }), true);
+  assert.equal(fx.add({ x: 10, y: 10, diameter: 64, amount: 0 }), false);
+  const calls = [];
+  const ctx = new Proxy({}, { get: (_, k) => ['createRadialGradient'].includes(k) ? () => ({ addColorStop() {} }) : typeof k === 'string' && /^(save|restore|beginPath|arc|fill|stroke|fillRect|fillText|strokeText)$/.test(k) ? (...a) => calls.push([k, ...a]) : undefined, set: () => true });
+  fx.render(ctx, 0.1);
+  assert.ok(calls.some(([k, text]) => k === 'fillText' && text === '+1 HP'));
+  fx.render(ctx, 2);
+  assert.equal(fx.bursts.length, 0, 'it fades out');
+});

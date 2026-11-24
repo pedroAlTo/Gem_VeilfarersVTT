@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.43.0**.
-Paquete: `VeilFarers_VTT_v2.43.0.zip`.
+Versión actual del VTT: **v2.43.1**.
+Paquete: `VeilFarers_VTT_v2.43.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.43.1] — 2026-11-24
+
+V3 · Rapid Regeneration cura en cada nuevo foco, y la curación se ve en el token
+
+### Efectos por foco
+
+- Rapid Regeneration (y cualquier efecto que avanza al tomar el foco) ya no espera a que el Keeper pulse «Nueva ronda»: cura +1 HP cada vez que el objetivo toma el foco después de que lo haya tenido otro, como dice la carta («al empezar cada uno de sus próximos Spotlights»). Quitar y volver a poner el foco al mismo token sin que nadie más lo tenga no cuenta, para que no se repita la curación.
+
+### Curación visible
+
+- Cuando un token se cura aparece un pequeño efecto: resplandor y anillo verdes, una cruz y «+N HP» que suben sobre el token. Lo ven todos los que ven el token; con «Reducir animaciones» no se mueve.
 
 ## [2.43.0] — 2026-11-24
 

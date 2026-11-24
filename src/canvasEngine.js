@@ -12,6 +12,7 @@ import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeath
 import { drawTokenGauge } from './tokenVitals.js';
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
+import { healedTokens } from './healFX.js';
 import { FogOfWarEngine } from './fogEngine.js';
 import { store } from './state.js';
 import { isPartyToken } from './tokenPermissions.js';
@@ -209,7 +210,7 @@ export class CanvasEngine {
     this.cancelWaterDrawing();
     if (this.currentCampaignId !== campaignId) {
       this.templates = []; this.pings = []; this.activeTemplate = null;
-      this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear(); this.fx.combat.clear();
+      this.fx.particles = []; this.fx.lightningBolts = []; this.fx.shockwaves = []; this.fx.voidRifts = []; this.fx.emitterTimers.clear(); this.fx.combat.clear(); this.fx.heal?.clear();
       for (const name of ['draggedToken', 'draggedWall', 'draggedLight', 'draggedSwitch', 'draggedEffect', 'draggedWater', 'draggedTemplate', 'preDragSnapshot']) this[name] = null;
     }
     this.currentCampaignId = campaignId;
@@ -776,6 +777,22 @@ export class CanvasEngine {
     this.freehand = new FreehandTool(this, store, network, notify);
     this.mapClipboard = new MapClipboard(store, network, this, notify);
     this.tokenUnsubscribe = store.subscribe(() => this.reconcileTokenDrag());
+    // A token healed shows a small green effect (v2.43.1): on every screen, for tokens it can see.
+    let healTokens = store.state.tokens, healMap = store.state.activeMapId;
+    this.healUnsubscribe = store.subscribe((state, keys) => {
+      if (Array.isArray(keys) && !keys.includes('tokens') && !keys.includes('activeMapId')) return;
+      const sameScene = state.activeMapId === healMap;
+      const healed = sameScene ? healedTokens(healTokens, state.tokens, state.activeMapId) : [];
+      healTokens = state.tokens; healMap = state.activeMapId;
+      if (!healed.length) return;
+      const map = store.getActiveMap(), grid = map?.gridSize || 64, visible = store.getTokensForActiveMap();
+      for (const h of healed) {
+        const token = state.tokens.find(t => t.id === h.id);
+        if (state.userRole !== 'keeper' && (!token || token.hidden || !this.isTokenVisibleToPlayers(token, visible, map))) continue;
+        this.fx.heal.add({ x: h.x, y: h.y, diameter: h.size * grid, amount: h.amount });
+      }
+      this.requestRender?.();
+    });
     const waterContext = s => JSON.stringify([s.campaignId,s.activeMapId,s.activeTool,s.waterDrawMode,s.userRole,s.activeLayer,s.layerVisibility.water,s.layerLocked.water]);
     let previousWaterContext = waterContext(store.state);
     this.waterUnsubscribe = store.subscribe(state => {

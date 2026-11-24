@@ -1823,4 +1823,5 @@ export const PATTERNS = [
   ["{_x} · Keeper", "{_x} · Keeper"],
   ["{_x} · Jugador", "{_x} · Player"],
   ["{_x} está en la mesa.", "{_x} is at the table."],
+  ["{_x} recupera {_y} HP.", "{_x} recovers {_y} HP."],
 ];

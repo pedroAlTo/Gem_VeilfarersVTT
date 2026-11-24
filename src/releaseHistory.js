@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.43.1', date: '2026-11-24', title: 'V3 · Rapid Regeneration cura en cada nuevo foco, y la curación se ve en el token',
+    sections: [
+      { title: 'Efectos por foco', items: [
+        'Rapid Regeneration (y cualquier efecto que avanza al tomar el foco) ya no espera a que el Keeper pulse «Nueva ronda»: cura +1 HP cada vez que el objetivo toma el foco después de que lo haya tenido otro, como dice la carta («al empezar cada uno de sus próximos Spotlights»). Quitar y volver a poner el foco al mismo token sin que nadie más lo tenga no cuenta, para que no se repita la curación.',
+      ] },
+      { title: 'Curación visible', items: [
+        'Cuando un token se cura aparece un pequeño efecto: resplandor y anillo verdes, una cruz y «+N HP» que suben sobre el token. Lo ven todos los que ven el token; con «Reducir animaciones» no se mueve.',
+      ] },
+    ],
+  },
+  {
     version: '2.43.0', date: '2026-11-24', title: 'V3 · Plan de UX, fases 0 y 1: entrar y elegir personaje en pocos clics',
     sections: [
       { title: 'Entrar', items: [
