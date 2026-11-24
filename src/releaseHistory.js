@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.43.4', date: '2026-11-24', title: 'V3 · Fondos ilustrados y logo de Veilfarers',
+    sections: [
+      { title: 'Portada', items: [
+        'La cuadrícula violeta del fondo se sustituye por ilustraciones: la tripulación al completo (estilo cómic) detrás de la pantalla de acceso y el combate con la enorme bestia mecánica, teñido de violeta, detrás de la selección de sala. Un velo oscuro mantiene los paneles en primer plano.',
+        'En la selección de sala, «Crear partida» lleva ahora el abordaje y «Tus partidas» el mundo bioluminiscente; «Unirme» sigue con la sala del reactor.',
+        'El logo real de Veilfarers (en versión clara para fondo oscuro, con la A azul) aparece en la pantalla de acceso, en la cabecera del inicio y en la cabecera de la mesa.',
+      ] },
+    ],
+  },
+  {
     version: '2.43.3', date: '2026-11-24', title: 'V3 · Ilustraciones en el acceso y en el inicio',
     sections: [
       { title: 'Portada', items: [

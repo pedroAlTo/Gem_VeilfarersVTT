@@ -167,3 +167,5 @@ body {background:radial-gradient(ellipse at 72% 4%,#21132f66,transparent 55%),#0
 /* Foco in the character bar (v2.27.5): gold and in view; lit while the token has the spotlight. */
 #token_quickbar_root .qb-focus-btn { border-color: #d8a74a !important; background: rgba(120, 72, 8, .45) !important; color: #ffd98a !important; font-weight: 700 !important; }
 #token_quickbar_root .qb-focus-btn.is-on { background: linear-gradient(180deg, #ffd56a, #e0a12a) !important; border-color: #fff1b8 !important; color: #2a1600 !important; box-shadow: 0 0 12px rgba(255, 196, 70, .75); }
+/* The Veilfarers logo in the table header (v2.43.4). */
+.brand-title .brand-logo-img { display: block; height: 20px; width: auto; filter: drop-shadow(0 1px 4px rgba(0,0,0,.6)); }

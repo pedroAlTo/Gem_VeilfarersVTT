@@ -137,7 +137,8 @@ export class VeilfarersLobbyGateway {
         <div class="fx-cell fx-cell-brand">
           <span class="fx-num">01</span>
           <div class="vf-brand-header">
-            <div class="vf-brand-badge"><span class="badge-dot">●</span> VEILFARERS // TERMINAL DE ACCESO TÁCTICO</div>
+            <img class="vf-brand-logo" src="/assets/brand/veilfarers-logo-light.png" alt="Veilfarers" width="1200" height="298" />
+            <div class="vf-brand-badge"><span class="badge-dot">●</span> TERMINAL DE ACCESO TÁCTICO</div>
             <h1>PORTAL TÁCTICO</h1>
             <p>Vault de Operativos, Campañas Persistentes y Mesa Virtual</p>
           </div>
@@ -202,7 +203,7 @@ export class VeilfarersLobbyGateway {
           <div class="vf-hub-logo">
             <div class="hub-brand-title">
               <span class="hub-brand-glyph">✦</span>
-              <h2>VEILFARERS // CENTRO DE MANDO</h2>
+              <h2><img class="vf-hub-brandmark" src="/assets/brand/veilfarers-logo-light-sm.png" alt="Veilfarers" width="420" height="104" /> <span>CENTRO DE MANDO</span></h2>
             </div>
             <!-- Identificador de Usuario y Correo de Inicio de Sesión -->
             <div class="vf-user-identity-box">

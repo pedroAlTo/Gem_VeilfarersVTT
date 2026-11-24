@@ -27,17 +27,31 @@
   align-items: safe center;
 }
 
-/* Retícula fina sobre un fondo plano, con un único foco de color profundo. */
+/* Page background (v2.43.4, user request: illustrations instead of the violet grid): the whole
+   crew, comic-book style, behind the sign-in; the fight with the huge machine-beast behind the
+   room selection (tinted violet by multiplying, it is line art on a light ground); under a dark
+   violet veil so the panels stay the focus. */
 #vf-lobby-gateway::before {
-  background-image:
-    linear-gradient(var(--fx-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--fx-line) 1px, transparent 1px),
-    radial-gradient(ellipse 70% 60% at 50% 0%, var(--fx-deep) 0%, transparent 70%);
-  background-size: 96px 96px, 96px 96px, 100% 100%;
-  background-position: center top;
-  opacity: 0.55;
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 50%, rgba(13, 4, 32, 0.25) 0%, rgba(13, 4, 32, 0.65) 100%),
+    linear-gradient(180deg, rgba(13, 4, 32, 0.35) 0%, rgba(42, 11, 92, 0.25) 60%, rgba(13, 4, 32, 0.55) 100%),
+    url('/assets/lobby/crew.webp') center 60% / cover no-repeat,
+    var(--fx-bg);
+  opacity: 1;
   position: fixed;
 }
+#vf-lobby-gateway:has(#vf-hub-screen:not(.hidden))::before {
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 45%, rgba(13, 4, 32, 0) 0%, rgba(13, 4, 32, 0.45) 100%),
+    linear-gradient(160deg, #a78bfa 0%, #7c3aed 50%, #4c1d95 100%),
+    url('/assets/lobby/battle.webp') center 40% / cover no-repeat,
+    var(--fx-bg);
+  background-blend-mode: normal, multiply, normal, normal;
+}
+/* The Veilfarers logo (light version for the dark portal). */
+#vf-lobby-gateway .vf-brand-logo { display: block; width: min(100%, 340px); height: auto; margin: 0 0 18px; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.6)); }
+#vf-lobby-gateway .vf-hub-brandmark { height: 26px; width: auto; vertical-align: middle; margin-right: 10px; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6)); }
+#vf-lobby-gateway .hub-brand-title h2 { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px; }
 #vf-lobby-gateway::after { display: none; }
 
 /* ---- Piezas comunes ------------------------------------------------------ */
@@ -618,14 +632,14 @@
 #vf-lobby-gateway button.vf-quick-action:hover,
 #vf-lobby-gateway button.vf-quick-action:focus-visible { background: rgba(109, 40, 217, 0.22); }
 #vf-lobby-gateway button.vf-quick-action:focus-visible { outline: 2px solid var(--fx-accent); outline-offset: -4px; }
-/* Illustrations (v2.43.3) under a violet veil: the battle for Crear partida, the reactor crew for
-   Unirme, the whole crew behind Tus partidas. The veil is darkest where the text is. */
+/* Illustrations (v2.43.3) under a violet veil: the boarding action for Crear partida (v2.43.4), the reactor crew for
+   Unirme, the bioluminescent world behind Tus partidas (v2.43.4). The veil is darkest where the
+   text is. */
 #vf-lobby-gateway .vf-quick-create {
   /* A light, line-art illustration: tinted violet by multiplying, darkest under the text. */
   background:
-    linear-gradient(90deg, #1a0640 0%, #2a0b5c 45%, #6d28d9 100%),
-    url('/assets/lobby/battle.webp') 70% 35% / cover no-repeat, #2a0b5c;
-  background-blend-mode: multiply, normal;
+    linear-gradient(90deg, rgba(26, 6, 64, 0.95) 0%, rgba(42, 11, 92, 0.8) 45%, rgba(109, 40, 217, 0.35) 100%),
+    url('/assets/lobby/boarding.webp') 60% 45% / cover no-repeat, #2a0b5c;
   box-shadow: inset 0 3px 0 var(--fx-accent);
 }
 #vf-lobby-gateway .vf-quick-join {
@@ -635,14 +649,13 @@
 }
 #vf-lobby-gateway button.vf-quick-create:hover, #vf-lobby-gateway button.vf-quick-create:focus-visible {
   background:
-    linear-gradient(90deg, #2a0b5c 0%, #4c1d95 45%, #8b5cf6 100%),
-    url('/assets/lobby/battle.webp') 70% 35% / cover no-repeat, #2a0b5c;
-  background-blend-mode: multiply, normal;
+    linear-gradient(90deg, rgba(42, 11, 92, 0.9) 0%, rgba(76, 29, 149, 0.6) 45%, rgba(139, 92, 246, 0.2) 100%),
+    url('/assets/lobby/boarding.webp') 60% 45% / cover no-repeat, #2a0b5c;
 }
 #vf-lobby-gateway .vf-quick-rooms {
   background:
     linear-gradient(180deg, rgba(13, 4, 32, 0.9) 0%, rgba(13, 4, 32, 0.95) 100%),
-    url('/assets/lobby/crew.webp') center 45% / cover no-repeat, #0d0420;
+    url('/assets/lobby/abyss.webp') center 55% / cover no-repeat, #0d0420;
 }
 #vf-lobby-gateway .vf-quick-action[hidden] { display: none; }
 #vf-lobby-gateway .quick-icon { font-size: 18px; color: var(--fx-accent); line-height: 1; }
@@ -719,3 +732,4 @@
 #vf-lobby-gateway #vf-auth-screen[data-invited='true'] .vf-invite-form { order: -1; margin: 0 0 18px; padding: 14px; border: 1px solid var(--fx-accent); background: rgba(109, 40, 217, 0.18); }
 #vf-lobby-gateway #vf-auth-screen[data-invited='true'] .fx-cell-access { display: flex; flex-direction: column; }
 @media (max-width: 860px) { #vf-lobby-gateway .vf-invite-row { grid-template-columns: 1fr; } }
+#vf-lobby-gateway .hub-brand-glyph { display: none; }

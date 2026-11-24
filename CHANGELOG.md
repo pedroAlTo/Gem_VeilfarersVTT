@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.43.3**.
-Paquete: `VeilFarers_VTT_v2.43.3.zip`.
+Versión actual del VTT: **v2.43.4**.
+Paquete: `VeilFarers_VTT_v2.43.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.43.4] — 2026-11-24
+
+V3 · Fondos ilustrados y logo de Veilfarers
+
+### Portada
+
+- La cuadrícula violeta del fondo se sustituye por ilustraciones: la tripulación al completo (estilo cómic) detrás de la pantalla de acceso y el combate con la enorme bestia mecánica, teñido de violeta, detrás de la selección de sala. Un velo oscuro mantiene los paneles en primer plano.
+- En la selección de sala, «Crear partida» lleva ahora el abordaje y «Tus partidas» el mundo bioluminiscente; «Unirme» sigue con la sala del reactor.
+- El logo real de Veilfarers (en versión clara para fondo oscuro, con la A azul) aparece en la pantalla de acceso, en la cabecera del inicio y en la cabecera de la mesa.
 
 ## [2.43.3] — 2026-11-24
 
