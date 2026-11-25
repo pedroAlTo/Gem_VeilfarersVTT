@@ -12,7 +12,7 @@ export function dossierDialog(title, body, className = '') {
   modal.onkeydown = event => {
     if (event.key === 'Escape') { event.stopPropagation(); close(); }
     if (!panel && event.key === 'Tab') {
-      const items = [...modal.querySelectorAll('button, input, textarea, [tabindex="0"]')].filter(x => !x.disabled && x.getClientRects().length);
+      const items = [...modal.querySelectorAll('button, input, textarea, select, a[href], summary, [tabindex="0"]')].filter(x => !x.disabled && x.getClientRects().length);
       const first = items[0], last = items.at(-1);
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }

@@ -14,6 +14,7 @@ import './connect.css';
 import './playerActionBar.css';
 import './diceDock.css';
 import './groupMenu.css';
+import './a11y.css';
 import { startTranslation } from './i18n.js';
 import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';

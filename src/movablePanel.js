@@ -2,6 +2,7 @@
 // like any element of the table (no grip). A press without moving stays a normal click; past a
 // few pixels it is a drag and that click does not fire. The place is remembered on this browser
 // as a fraction of the map area (it survives a resize); a double click with Alt puts it back.
+import { zoomOf } from './uiScale.js';
 const KEY = name => `veil.panel.${name}`;
 const read = name => { try { return JSON.parse(localStorage.getItem(KEY(name)) || 'null'); } catch { return null; } };
 const write = (name, value) => { try { if (value) localStorage.setItem(KEY(name), JSON.stringify(value)); else localStorage.removeItem(KEY(name)); } catch {} };
@@ -20,10 +21,12 @@ export function makeMovable(el, name, { area, root = null } = {}) {
   // Puts the element at a viewport point (its top-left corner), clamped inside the area.
   const place = (vx, vy) => {
     const node = target(), b = box(); if (!node || !b) return null;
-    const w = node.offsetWidth, h = node.offsetHeight;
+    const own = node.getBoundingClientRect(), w = own.width, h = own.height;
     const x = Math.max(b.left, Math.min(b.right - Math.min(w, b.width), vx)), y = Math.max(b.top, Math.min(b.bottom - Math.min(h, b.height), vy));
-    const parent = (node.offsetParent || node.parentElement).getBoundingClientRect();
-    Object.assign(node.style, { position: 'absolute', left: `${Math.round(x - parent.left)}px`, top: `${Math.round(y - parent.top)}px`, right: 'auto', bottom: 'auto', transform: 'none', margin: '0' });
+    const holder = node.offsetParent || node.parentElement, parent = holder.getBoundingClientRect();
+    // Ajustes → Tamaño: zoom scales `left` and `top` (the node's own and its ancestors').
+    const z = zoomOf(node);
+    Object.assign(node.style, { position: 'absolute', left: `${Math.round((x - parent.left) / z)}px`, top: `${Math.round((y - parent.top) / z)}px`, right: 'auto', bottom: 'auto', transform: 'none', margin: '0' });
     node.classList.add('is-moved');
     return { fx: b.width ? (x - b.left) / b.width : 0, fy: b.height ? (y - b.top) / b.height : 0 };
   };

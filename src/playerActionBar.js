@@ -16,7 +16,9 @@ import { openActorPortrait } from './portraitPicker.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
-import { normalizeConditions, conditionDefinition, visibleConditions } from './conditions.js';
+import { normalizeConditions, conditionDefinition, visibleConditions, conditionIcon } from './conditions.js';
+import { whatNow, conditionLines } from './whatNow.js';
+import { tableDialog } from './dossierDialog.js';
 import { openConditions } from './conditionUI.js';
 import { checkEdge, lifeStage, helplessTarget, rangedTargetBlock, fearSource } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus, weaponTraitId } from './attackFlow.js';
@@ -113,7 +115,7 @@ export function sheetStats(token, armorName = '') {
   const others = [];
   if (token.pendingAdvantage) others.push('Ventaja preparada');
   if (Number(token.pendingCheckBonus)) others.push(`${sign(Number(token.pendingCheckBonus))} a la próxima tirada`);
-  for (const name of normalizeConditions(token.conditions || [])) others.push(conditionDefinition(name)?.label || name);
+  // The conditions are listed below with icon and what they do (statusHTML, v2.56.0).
   return {
     evasion: token.evasion ?? 10,
     thresholds: [token.hp?.majorThreshold, token.hp?.severeThreshold].map(v => (v ?? '—')),
@@ -129,7 +131,7 @@ export function sheetStats(token, armorName = '') {
 }
 
 // The shortcuts of the player's bar, said by «?» (v2.48.0).
-export const SHORTCUTS_HELP = 'Atajos: 1–9 atacar con el arma de ese lugar (0 desarmado) · Enter ataca al objetivo marcado · F tomar foco · flechas mueven tu personaje · Esc cancela.';
+export const SHORTCUTS_HELP = 'Atajos: T anillo de acciones sobre el enemigo más cercano (otra vez, el siguiente; flechas y Enter dentro) · 1–9 atacar con el arma de ese lugar (0 desarmado) · Enter ataca al objetivo marcado · F tomar foco · flechas mueven tu personaje · ? qué puedo hacer · Esc cancela.';
 
 export class PlayerActionBar {
   constructor(parent) {
@@ -202,7 +204,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, actorPortrait(token), store.canEditToken(token.id), stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait, !!w.spent, !!w.charged]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result, this.lastAttackCtx, this.areaQueue]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, actorPortrait(token), store.canEditToken(token.id), stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait, !!w.spent, !!w.charged]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result, this.lastAttackCtx, this.areaQueue, visibleConditions(token), token.stress]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -227,6 +229,7 @@ export class PlayerActionBar {
       <header class="pab-head">${store.canEditToken(token.id) ? `<button type="button" class="actor-portrait-button pab-portrait-button" data-pab-portrait title="Cambiar retrato" aria-label="Cambiar retrato"><img src="${e(actorPortrait(token))}" alt=""></button>` : ''}<div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
         <button type="button" class="pab-focus ${token.hasSpotlight ? 'is-on' : ''}" data-pab-focus aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tienes el foco · pulsa para quitarlo' : 'Tomar el foco'}" ${store.canEditToken(token.id) ? '' : 'disabled'}>✨ ${token.hasSpotlight ? 'Con el foco' : 'Tomar foco'}</button></header>
       ${this.statsHTML(stats)}
+      ${this.statusHTML(token)}
       ${stage ? '<button type="button" class="hud-btn" data-pab-life>' + e(stage) + ' · <span>Ver estado del personaje</span></button>' : ''}
       <div class="pab-row">
         <span class="pab-label">Tirar</span>
@@ -255,6 +258,8 @@ export class PlayerActionBar {
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
       ${this.result ? this.resultRow() : ''}`);
     this.root.querySelector('[data-pab-portrait]')?.addEventListener('click', () => openActorPortrait(token.id));
+    this.root.querySelector('[data-pab-help]')?.addEventListener('click', () => this.openHelp());
+    this.root.querySelector('[data-pab-conditions]')?.addEventListener('click', () => openConditions(token.id));
     this.root.querySelector('[data-pab-focus]')?.addEventListener('click', () => { if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } });
     if (stage) {
       this.root.querySelector('[data-pab-life]').onclick = () => openConditions(token.id);
@@ -330,6 +335,20 @@ export class PlayerActionBar {
       <span class="pab-prepare"><button type="button" class="hud-btn hud-btn-xs" data-pab-prepare="short" ${r.current >= r.max ? 'disabled' : ''} title="Descanso corto con Prepare: recupera 1 Resolve">Prepare +1</button><button type="button" class="hud-btn hud-btn-xs" data-pab-prepare="long" ${r.current >= r.max ? 'disabled' : ''} title="Descanso largo con Prepare: Resolve al máximo">Prepare · lleno</button></span></div>`;
     const pips = Array.from({ length: Math.max(0, Number(r.max) || 0) }, (_, i) => `<i class="pab-res ${shape} ${i < (Number(r.current) || 0) ? 'on' : ''}"></i>`).join('');
     return `<div class="pab-cell pab-resolve" title="Resolve ${e(r.current)} / ${e(r.max)} (${e(r.die)})"><span>Resolve ${e(r.die)}</span><span class="pab-res-row" role="meter" aria-label="Resolve" aria-valuemin="0" aria-valuemax="${e(r.max)}" aria-valuenow="${e(r.current)}">${pips || '<b data-no-i18n>0</b>'}</span>${controls}</div>`;
+  }
+
+  // The character's conditions with icon and words (v2.56.0, fase 6), and «¿Qué puedo hacer?».
+  statusHTML(token) {
+    const lines = conditionLines(token);
+    const chips = lines.map(c => `<li class="pab-condition" title="${e(c.effect)}">${conditionIcon(c.name)}<span><b>${e(c.label)}</b><small>${e(c.effect)}</small></span></li>`).join('');
+    return `<div class="pab-status">${lines.length ? `<ul class="pab-conditions" aria-label="Condiciones de ${e(token.name || '')}">${chips}</ul>` : ''}
+      <div class="pab-status-actions">${lines.length ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-conditions>Condiciones</button>' : ''}<button type="button" class="hud-btn hud-btn-xs pab-help" data-pab-help aria-haspopup="dialog">¿Qué puedo hacer?</button></div></div>`;
+  }
+  openHelp() {
+    const token = store.state.tokens.find(t => t.id === this.tokenId);
+    const { can, limits, how } = whatNow(token, { tokens: store.state.tokens, cards: window.veilCardHand?.tokenId === token?.id ? window.veilCardHand.cards : null });
+    const list = (title, items) => items.length ? `<h4 class="dossier-label">${e(title)}</h4><ul class="what-now-list">${items.map(i => `<li>${e(i)}</li>`).join('')}</ul>` : '';
+    tableDialog(`¿Qué puedo hacer? · ${token?.name || ''}`, `${list('Ahora puedes', can)}${list('Te limita', limits)}${list('Cómo', how)}`, 'what-now-dialog');
   }
 
   statsHTML(st) {
@@ -658,7 +677,8 @@ export class PlayerActionBar {
     }
     if (key === 'Enter' && this.targeting?.targetId && this.targeting.preview?.allowed) { event.preventDefault(); this.confirmAttack('normal'); return true; }
     if ((key === 'f' || key === 'F') && !event.shiftKey && !token.hasSpotlight) { event.preventDefault(); if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } return true; }
-    if (key === '?') { event.preventDefault(); notify(SHORTCUTS_HELP); return true; }
+    if (key === '?') { event.preventDefault(); this.openHelp(); return true; }
+    if ((key === 't' || key === 'T') && !this.targeting && window.veilActionRing?.cycle) { event.preventDefault(); window.veilActionRing.cycle(); return true; }
     return false;
   }
 

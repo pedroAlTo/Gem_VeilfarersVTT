@@ -67,7 +67,8 @@ test('the Ficha tab reads defense, resources and pending effects from the token'
   assert.deepEqual(awake.path, { label: 'HOPE', current: 3, max: 6 });
   assert.equal(awake.resolve, null);
   assert.deepEqual(awake.others.slice(0, 2), ['Ventaja preparada', '+2 a la próxima tirada']);
-  assert.equal(awake.others.length, 3);
+  // The conditions (Vulnerable) are in the status list, with icon and what they do (v2.56.0).
+  assert.equal(awake.others.length, 2);
   const sleeper = sheetStats({ path: 'Sleeping', effort: 2, resolve: { current: 1, max: 3, dieType: 'd6' } });
   assert.deepEqual(sleeper.path, { label: 'EFFORT', current: 2, max: 6 });
   assert.deepEqual(sleeper.resolve, { current: 1, max: 3, die: 'd6' });

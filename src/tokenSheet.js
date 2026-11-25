@@ -96,7 +96,7 @@ export class TokenHUD {
         <div class="token-quickbar glass-panel tok-qb-compact">
           <!-- Token Avatar & Name -->
           <div class="tok-qb-avatar-group">
-            <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" />
+            <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" alt="" />
             <div class="tok-qb-meta">
               <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
               <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
@@ -138,7 +138,7 @@ export class TokenHUD {
       <div class="token-quickbar glass-panel tok-qb-expanded">
         <!-- Token Header / Avatar -->
         <div class="tok-qb-avatar-group">
-          <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" />
+          <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" alt="" />
           <div class="tok-qb-meta">
             <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
@@ -623,7 +623,7 @@ export class TokenHUD {
             <!-- Left Column: Portrait & Identity -->
             <div class="sheet-col-left">
               <div class="sheet-avatar-frame">
-                <img src="${escapeHTML(actorPortrait(token))}" id="sheet_avatar_preview" class="sheet-avatar-img" />
+                <img src="${escapeHTML(actorPortrait(token))}" id="sheet_avatar_preview" class="sheet-avatar-img" alt="Retrato de ${escapeHTML(token.name || '')}" />
               </div>
 
               <div class="form-group" style="margin-top: 10px;">

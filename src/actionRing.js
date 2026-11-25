@@ -30,10 +30,18 @@ export function ringOptions(actor, target, map = {}, cards = []) {
   return [...attacks, ...cards.map(c => ({ kind: 'card', id: c.id, name: c.name, detail: c.costLabel || '', ok: true, why: '' }))];
 }
 
+// The enemies the keyboard can pick (v2.56.0, fase 6): visible, on the scene, nearest first.
+export function ringTargets(actor, tokens = [], map = {}) {
+  if (!actor) return [];
+  return tokens.filter(t => t.mapId === actor.mapId && t.id !== actor.id && !t.inReserve && !t.hidden && !isPartyToken(t) && !(t.hp && t.hp.current <= 0 && t.isPlayer === false))
+    .map(t => ({ t, d: distanceInfo(actor, t, map).meters })).sort((a, b) => a.d - b.d).map(x => x.t);
+}
+
 export function mountActionRing({ bar, hand } = {}) {
   if (typeof document === 'undefined') return null;
   let ring = null, down = null;
-  const close = () => { ring?.remove(); ring = null; };
+  let returnFocus = null, cycled = -1;
+  const close = () => { const had = !!ring; ring?.remove(); ring = null; if (had && returnFocus?.isConnected) returnFocus.focus?.(); returnFocus = null; };
   const open = target => {
     close();
     const actor = ringActor(), map = store.getActiveMap?.() || {}, engine = window.veilCanvas;
@@ -55,6 +63,18 @@ export function mountActionRing({ bar, hand } = {}) {
       <button type="button" class="action-ring-close" style="transform:translate(-50%, ${size + 36}px)" data-ring-close aria-label="Cerrar">×</button>`);
     document.body.append(ring);
     ring.querySelector('[data-ring-close]').onclick = close;
+    // Keyboard (v2.56.0): the first option takes the focus; the arrows move round the ring.
+    returnFocus = document.activeElement;
+    const items = [...ring.querySelectorAll('[data-ring-id], [data-ring-close]')];
+    (items.find(b => !b.getAttribute('aria-disabled') && b.dataset.ringId !== undefined) || items[0])?.focus();
+    ring.onkeydown = event => {
+      const i = items.indexOf(document.activeElement);
+      if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) {
+        event.preventDefault(); event.stopPropagation();
+        items[(i + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1) + items.length) % items.length]?.focus();
+      }
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
+    };
     ring.querySelectorAll('[data-ring-id]').forEach(b => b.onclick = () => {
       const option = options.find(o => o.kind === b.dataset.ringKind && o.id === b.dataset.ringId);
       if (!option) return;
@@ -86,5 +106,16 @@ export function mountActionRing({ bar, hand } = {}) {
     store.subscribe(() => { if (ring && !ringActor()) close(); });
   };
   attach();
-  return { open, close, get element() { return ring; } };
+  // T (v2.56.0): the ring on the nearest enemy; again, the next one.
+  const cycle = () => {
+    const actor = ringActor(), map = store.getActiveMap?.() || {};
+    const list = ringTargets(actor, store.state.tokens, map);
+    if (!list.length) { notify('No hay enemigos visibles en la escena.'); return null; }
+    cycled = (cycled + 1) % list.length;
+    const target = list[cycled];
+    window.veilCanvas?.setAttackTarget?.(actor.id, target.id);
+    open(target);
+    return target;
+  };
+  return { open, close, cycle, get element() { return ring; } };
 }

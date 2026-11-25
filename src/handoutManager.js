@@ -167,7 +167,7 @@ export class HandoutManager {
               <input type="file" id="doc_image_file" accept="image/*" class="hud-file-input" style="max-width: 200px;" />
             </div>
             <div id="doc_image_preview_box" style="margin-top: 6px; ${existingDoc?.imageUrl ? '' : 'display: none;'}">
-              <img src="${existingDoc?.imageUrl || ''}" id="doc_image_preview" style="max-height: 140px; border-radius: 4px; border: 1px solid var(--border-glass);" />
+              <img src="${existingDoc?.imageUrl || ''}" id="doc_image_preview" alt="Vista previa de la imagen del dossier" style="max-height: 140px; border-radius: 4px; border: 1px solid var(--border-glass);" />
             </div>
           </div>
 
@@ -276,7 +276,7 @@ export class HandoutManager {
 
           ${doc.imageUrl ? `
             <div class="transmission-image-frame">
-              <img src="${doc.imageUrl}" class="transmission-attached-img" />
+              <img src="${doc.imageUrl}" class="transmission-attached-img" alt="Imagen adjunta del dossier" />
             </div>
           ` : ''}
 

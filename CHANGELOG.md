@@ -1,10 +1,34 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.55.0**.
-Paquete: `VeilFarers_VTT_v2.55.0.zip`.
+Versión actual del VTT: **v2.56.0**.
+Paquete: `VeilFarers_VTT_v2.56.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.56.0] — 2026-11-25
+
+V3 · Accesibilidad: «¿Qué puedo hacer?», tamaño, táctil y teclado (Fase 6)
+
+### ¿Qué puedo hacer?
+
+- Nuevo botón «¿Qué puedo hacer?» en la barra del personaje (o la tecla ?): dice lo que puedes hacer ahora (tirar, atacar con cada arma lista, recargar, las cartas que puedes pagar, tomar el foco, moverte), lo que te limita (cada condición con lo que hace en la mesa, Hope a 0, Stress lleno) y cómo hacerlo.
+- Las condiciones del personaje se ven en la barra con su icono, su nombre y lo que hacen («Restringido: no puedes moverte; Desventaja en Agility y Strength…»), con un botón a Condiciones.
+
+### Tamaño y pantallas táctiles
+
+- Ajustes → Tamaño: Compacto, Normal, Grande o Muy grande. Crecen la cabecera, las herramientas, el panel lateral, la barra del personaje, las ventanas y los menús; el mapa conserva su zoom. Se recuerda en este navegador.
+- En pantallas táctiles todos los botones miden al menos 44 px; la barra rápida reparte sus valores en dos filas para que no se pisen, y el aviso «Sin cartas» va encima de la barra.
+
+### Teclado
+
+- T abre el anillo de acciones sobre el enemigo visible más cercano (otra vez, el siguiente); las flechas recorren el anillo, Enter elige y Esc lo cierra. Con 1–9, Enter, F y las flechas se juega sin ratón.
+- Foco visible en todos los controles; las ventanas mantienen el foco dentro también en desplegables y enlaces.
+
+### Más
+
+- Retratos e imágenes con texto alternativo. Con «reducir movimiento» del sistema, las animaciones se detienen.
+- Contraste revisado: todos los textos de la barra, la cabecera y el panel superan el nivel AA.
 
 ## [2.55.0] — 2026-11-25
 

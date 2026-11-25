@@ -129,7 +129,7 @@ export class SceneManager {
                     <div style="display: flex; gap: 6px; overflow-x: auto; margin-top: 4px; padding-bottom: 2px;">
                       ${arcImages.map(img => `
                         <div class="arc-img-thumb" style="position: relative; flex-shrink: 0; width: 44px; height: 44px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(0,243,255,0.3);">
-                          <img src="${e(img.url)}" title="${e(img.name || 'Imagen de arco')}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" onclick="window.open('${e(img.url)}', '_blank')" />
+                          <img src="${e(img.url)}" title="${e(img.name || 'Imagen de arco')}" alt="${e(img.name || 'Imagen de arco')}" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" onclick="window.open('${e(img.url)}', '_blank')" />
                           ${isKeeper ? `<button class="hud-btn hud-btn-danger detach-img-btn" data-arc-id="${arc.id}" data-img-id="${img.id}" style="position: absolute; top: 0; right: 0; padding: 0 3px; font-size: 8px; line-height: 1;">✕</button>` : ''}
                         </div>
                       `).join('')}

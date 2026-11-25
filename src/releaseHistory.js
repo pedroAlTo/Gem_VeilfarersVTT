@@ -1,6 +1,27 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.56.0', date: '2026-11-25', title: 'V3 · Accesibilidad: «¿Qué puedo hacer?», tamaño, táctil y teclado (Fase 6)',
+    sections: [
+      { title: '¿Qué puedo hacer?', items: [
+        'Nuevo botón «¿Qué puedo hacer?» en la barra del personaje (o la tecla ?): dice lo que puedes hacer ahora (tirar, atacar con cada arma lista, recargar, las cartas que puedes pagar, tomar el foco, moverte), lo que te limita (cada condición con lo que hace en la mesa, Hope a 0, Stress lleno) y cómo hacerlo.',
+        'Las condiciones del personaje se ven en la barra con su icono, su nombre y lo que hacen («Restringido: no puedes moverte; Desventaja en Agility y Strength…»), con un botón a Condiciones.',
+      ] },
+      { title: 'Tamaño y pantallas táctiles', items: [
+        'Ajustes → Tamaño: Compacto, Normal, Grande o Muy grande. Crecen la cabecera, las herramientas, el panel lateral, la barra del personaje, las ventanas y los menús; el mapa conserva su zoom. Se recuerda en este navegador.',
+        'En pantallas táctiles todos los botones miden al menos 44 px; la barra rápida reparte sus valores en dos filas para que no se pisen, y el aviso «Sin cartas» va encima de la barra.',
+      ] },
+      { title: 'Teclado', items: [
+        'T abre el anillo de acciones sobre el enemigo visible más cercano (otra vez, el siguiente); las flechas recorren el anillo, Enter elige y Esc lo cierra. Con 1–9, Enter, F y las flechas se juega sin ratón.',
+        'Foco visible en todos los controles; las ventanas mantienen el foco dentro también en desplegables y enlaces.',
+      ] },
+      { title: 'Más', items: [
+        'Retratos e imágenes con texto alternativo. Con «reducir movimiento» del sistema, las animaciones se detienen.',
+        'Contraste revisado: todos los textos de la barra, la cabecera y el panel superan el nivel AA.',
+      ] },
+    ],
+  },
+  {
     version: '2.55.0', date: '2026-11-25', title: 'V3 · Frightened con su fuente',
     sections: [
       { title: 'Frightened', items: [

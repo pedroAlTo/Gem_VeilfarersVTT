@@ -4,6 +4,7 @@
 // The right panel can be pinned (always shown) or tucked away: then it slides in, quickly and
 // smoothly, while the pointer is at the right edge or over it.
 import './settingsMenu.css';
+import { UI_SCALES, uiScale, applyUiScale, zoomOf } from './uiScale.js';
 import { FONT_SETS, applyFontSet, currentFontSet } from './fontSets.js';
 import { audio } from './audioEngine.js';
 import { escapeHTML as e } from './ui.js';
@@ -62,6 +63,7 @@ export function mountSettingsMenu() {
       <button type="button" class="settings-item" data-settings="help">Ayuda<small>Guía, versión y cambios</small></button>
       <div class="settings-row"><span>Idioma</span><span data-settings-lang></span></div>
       <div class="settings-row"><span>Fuentes</span><span class="settings-seg" role="group" aria-label="Fuentes">${Object.entries(FONT_SETS).map(([id, set]) => `<button type="button" data-font-set="${id}" title="${e(set.note)}">${id.toUpperCase()} · ${e(set.name)}</button>`).join('')}</span></div>
+      <div class="settings-row"><span>Tamaño</span><span class="settings-seg" role="group" aria-label="Tamaño de la interfaz">${UI_SCALES.map(s => `<button type="button" data-ui-scale="${s.value}" title="${Math.round(s.value * 100)} %">${e(s.label)}</button>`).join('')}</span></div>
       <div class="settings-row"><span>Panel lateral</span><span class="settings-seg" role="group" aria-label="Panel lateral"><button type="button" data-panel-mode="pinned">Fijo</button><button type="button" data-panel-mode="auto">Se oculta</button></span></div>
     </div>`;
   // Before the account button, after the save state.
@@ -72,10 +74,11 @@ export function mountSettingsMenu() {
     pop.querySelector('[data-settings-sound]').textContent = audio.muted ? 'Silenciado · pulsa para activarlo' : 'Activado · pulsa para silenciarlo';
     pop.querySelectorAll('[data-font-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fontSet === currentFontSet())));
     pop.querySelectorAll('[data-panel-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.panelMode === panelMode)));
+    pop.querySelectorAll('[data-ui-scale]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.uiScale) === uiScale())));
   };
   // The header clips what overflows it: the menu is placed on the page, under its button.
   document.body.append(pop);
-  const place = () => { const r = button.getBoundingClientRect(); pop.style.top = `${Math.round(r.bottom + 8)}px`; pop.style.right = `${Math.round(window.innerWidth - r.right)}px`; };
+  const place = () => { const r = button.getBoundingClientRect(), z = zoomOf(pop); pop.style.top = `${Math.round((r.bottom + 8) / z)}px`; pop.style.right = `${Math.round((window.innerWidth - r.right) / z)}px`; };
   const toggle = show => { pop.hidden = !show; button.setAttribute('aria-expanded', String(show)); if (show) { place(); paint(); } };
   window.addEventListener('resize', () => { if (!pop.hidden) place(); });
   button.onclick = event => { event.stopPropagation(); toggle(pop.hidden); };
@@ -91,10 +94,13 @@ export function mountSettingsMenu() {
     }
     const font = event.target.closest('[data-font-set]')?.dataset.fontSet;
     if (font) { applyFontSet(font); paint(); window.dispatchEvent(new Event('resize')); return; }
+    const scale = event.target.closest('[data-ui-scale]')?.dataset.uiScale;
+    if (scale) { applyUiScale(Number(scale)); paint(); place(); return; }
     const mode = event.target.closest('[data-panel-mode]')?.dataset.panelMode;
     if (mode) { setPanelMode(mode); paint(); }
   });
   applyFontSet(currentFontSet());
+  applyUiScale(uiScale());
   mountSidebarAuto();
   setPanelMode(panelMode);
   return wrap;
