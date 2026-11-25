@@ -1,6 +1,6 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
-import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice } from './effectClocks.js';
+import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice, tierOf } from './effectClocks.js';
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
@@ -45,6 +45,9 @@ export function grantActorSpotlight(store, tokenId) {
   return grantSpotlight(store, operatorId || tokenId);
 }
 export const ACTIVE_CARD_KINDS = new Set(['power', 'archive', 'move', 'feature']);
+// Who has Sneak Attack: every Scoundrel (the Awakened Shadow Operative and the Sleeping The Quiet
+// Network both print it, Corebook 12.06).
+export const sneakAttacker = token => /scoundrel/i.test(String(token?.characterClass || ''));
 
 export function performGameAction(action, store = defaultStore) {
   const before = store.tableActing;
@@ -618,9 +621,13 @@ function resolveGameAction(action, store) {
       }
       if (hit && /refused/i.test(state.name) && actor.traits?.[state.trait]) damageRiders.push({ id: 'disciplined-trait', label: state.trait, value: actor.traits[state.trait] });
     }
-    // Attacking ends the self effects that say so (Temporal Cloak).
+    // Sneak Attack (Scoundrel, Awakened and Sleeping): an attack with Advantage that hits deals
+    // +1d6 once (2d6 at Tier 2, 3d6 at Tier 3); more sources of Advantage add nothing.
+    if (hit && edge.advantage && sneakAttacker(actor)) damageRiders.push({ id: 'sneak-attack', label: 'Sneak Attack', dice: tierOf(actor.level) + 'd6' });
+    // Attacking ends the self effects that say so (Temporal Cloak) and breaks Hidden.
     const unveiled = ownAttack && endSelfEffects({ ...actor, effectClocks: patch.effectClocks || actor.effectClocks }, { attack: true });
     if (unveiled) { patch.effectClocks = unveiled.effectClocks; patch.conditions = unveiled.conditions; }
+    if (ownAttack && (patch.conditions || actor.conditions || []).includes('Hidden')) patch.conditions = (patch.conditions || actor.conditions).filter(c => c !== 'Hidden');
     // Impact Absorption: the amount absorbed goes into the next attack's damage.
     const absorbed = ownAttack && actor.effectClocks?.find(c => c.name === 'Impact Absorption' && c.absorbed);
     if (absorbed) {

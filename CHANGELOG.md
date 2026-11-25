@@ -1,10 +1,25 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.43.4**.
-Paquete: `VeilFarers_VTT_v2.43.4.zip`.
+Versión actual del VTT: **v2.43.5**.
+Paquete: `VeilFarers_VTT_v2.43.5.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.43.5] — 2026-11-25
+
+V3 · Sneak Attack y The Quiet Network por separado; atacar desde el sigilo da Ventaja
+
+### Cartas de clase
+
+- Los rasgos de clase que el Corebook imprime juntos salen ahora como cartas separadas: el Scoundrel Sleeping tiene «Sneak Attack» y «The Quiet Network»; el Awakened, «Shadow Operative» y «Sneak Attack»; la Vanguardia Sleeping, «Trained Body», «Unbroken Focus» y «The Refusal»; el Piloto Awakened, «Stellar Instinct» y «Pilot Surge Die». Las partes pasivas (Sneak Attack, Trained Body, Pilot Surge Die) se muestran como pasivas y no se juegan.
+- El resumen de Sneak Attack queda en lo que hace: «ataque con Ventaja que impacta: +1d6 de daño» (2d6 en Tier 2, 3d6 en Tier 3, una vez por ataque).
+- Los nombres que el libro escribe con la etiqueta pegada («Off the Record (Passive).») se muestran limpios; la etiqueta pasa al tipo de la carta.
+
+### Sigilo
+
+- Atacar estando Hidden o invisible da Ventaja, tanto a los personajes como a los adversarios del Keeper. Al atacar se pierde Hidden.
+- Sneak Attack se suma solo: si un Scoundrel impacta con un ataque con Ventaja (por estar oculto o por cualquier otra fuente), el daño lleva +{Tier}d6 de Sneak Attack.
 
 ## [2.43.4] — 2026-11-24
 

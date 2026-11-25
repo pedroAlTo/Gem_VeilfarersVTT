@@ -1494,6 +1494,8 @@ export class DiceRollerSidebar {
       if (guard) markMeleeDefense(store,target,guard);
       // A «Disadvantage on their next attack» is spent by this attack.
       if (attacker.effectClocks?.some(c => c.nextAttack)) store.updateToken(attacker.id, { effectClocks: attacker.effectClocks.filter(c => !c.nextAttack) });
+      // Attacking breaks Hidden (the Advantage it gave was counted in checkEdge).
+      if (store.state.tokens.find(t => t.id === attacker.id)?.conditions?.includes('Hidden')) store.updateToken(attacker.id, { conditions: store.state.tokens.find(t => t.id === attacker.id).conditions.filter(c => c !== 'Hidden') });
       hit = roll.hit; critical = roll.isCritical; total = roll.total;
       // Force Shield: once the hit is known, +3 Evasion can turn it into a miss; the attacker then
       // takes (Proficiency)d4 Physical (Kinetic) from whoever raised the shield.

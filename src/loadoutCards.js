@@ -226,15 +226,18 @@ export function characterCards(token, data, options = {}) {
   const branch = branchList?.find(b => lower(b.name) === lower(token.subclass) || lower(token.subclass).startsWith(lower(b.name) + ' ('));
   const rank = subclassRank(token);
   const features = [[rules?.classFeature, 'Clase'], [branch?.foundation, 'Foundation'], [rank >= 1 && branch?.specialization, 'Specialization'], [rank >= 2 && branch?.mastery, 'Mastery']];
-  for (const [feature, tier] of features) {
+  for (const [whole, tier] of features) for (let feature of (tier === 'Clase' ? splitFeature(whole, sleeping ? 'sleeping' : 'awakened') : [whole])) {
     if (!feature?.name) continue;
-    const description = text(feature.desc || feature.text), passive = /passive/i.test(feature.type || '');
+    // «Off the Record (Passive).»: the printed tag goes out of the name and into the card.
+    const tagged = /\((passive|reaction)\)\.?\s*$/i.exec(feature.name)?.[1] || '';
+    feature = { ...feature, name: feature.name.replace(/\s*\((?:passive|reaction|action)\)\.?\s*$/i, '').replace(/\.\s*$/, ''), type: [feature.type, tagged && tagged[0].toUpperCase() + tagged.slice(1).toLowerCase()].filter(Boolean).join(' · ') };
+    const description = text(feature.desc || feature.text), passive = /passive/i.test(feature.type || '') || PASSIVE_PARTS.has(lower(feature.name));
     // Multi-option class features have conditional costs paid when the printed option is chosen.
     const price = /^(?:spend|mark) (\d+ (?:Hope|Effort|Stress))\b/i.exec(description)?.[1] || '';
     cards.push({ id: 'class-rule:' + slug(feature.name), kind: 'feature', zone: 'innate', name: feature.name,
       subtitle: [branch && tier !== 'Clase' ? branch.name : cls.name, tier, feature.type].filter(Boolean).join(' · '),
       art: classArt(cls), color: cls.color, costText: price || '—', cost: parseCost(price), roll: null, rollText: '', rc: 0,
-      text: description, reaction: /reaction/i.test(feature.type || ''), guidedFeature: true, passive, playable: true });
+      text: description, reaction: /reaction/i.test(feature.type || ''), guidedFeature: true, passive, playable: !passive });
   }
   // One card per Gift that is used (it has a moment, a price or a limit); passive Gifts are
   // always on and stay on the sheet.
@@ -256,6 +259,25 @@ export function characterCards(token, data, options = {}) {
   return cards.map(card => pathCard(card, token));
 }
 
+// Class Features the books print as several named abilities (v2.43.5, user report: «Sneak Attack
+// and The Quiet Network in the same place»): each one is its own card. Only these, by name and
+// path; other features keep one card (their bold headings are rules, not separate abilities).
+export const SPLIT_FEATURES = { awakened: ['shadow operative', 'stellar instinct'], sleeping: ['the quiet network', 'unbroken focus'] };
+export function splitFeature(feature, path = 'awakened') {
+  if (!feature?.name || !SPLIT_FEATURES[path]?.includes(lower(feature.name))) return [feature];
+  const body = text(feature.desc || feature.text).replace(/\n-{3,}\s*$/, '').trim();
+  const parts = [...body.matchAll(/(?:^|\n)\s*\*\*([^*\n]{2,80}?)\.?\*\*\.?\s*([\s\S]*?)(?=\n\s*\*\*[^*\n]{2,80}?\*\*|$)/g)];
+  if (parts.length < 2) return [feature];
+  return parts.map(([, head, rest]) => {
+    const name = head.replace(/\s*\(.*?\)\s*$/, '').replace(/\s*[—-]\s*(Reaction|Action|Passive)$/i, '').trim();
+    const kind = /reaction/i.test(head) ? 'Reaction' : /passive/i.test(head) ? 'Passive' : '';
+    const limit = (head.match(/\((.*?)\)/) || [])[1] || '';
+    return { name, text: rest.trim(), type: [kind, limit].filter(Boolean).join(' · '), part: true };
+  });
+}
+// Always-on abilities among those parts: they apply by themselves and are not played.
+const PASSIVE_PARTS = new Set(['sneak attack', 'trained body', 'pilot surge die']);
+
 // The deck's reference catalog besides the Powers (user request, 18 Nov 2026): every Ancestry
 // Gift, every Community benefit and the class cards, Awakened and Sleeping, grouped by class.
 // Read-only cards (they are consulted, not played from here).
@@ -264,11 +286,11 @@ export function catalogGroups(data) {
   const ancestry = (data.ancestries || []).map(a => ({ group: a.name, cards: (a.gifts || []).map(g => read({ id: `cat:ancestry:${a.id}:${slug(g.name)}`, kind: 'ancestry', name: g.name, subtitle: `Ancestry · ${a.name}`, color: a.color || '#94a3b8', art: cornerArt('ancestry', a.id), costText: usableGift(g) ? costLabel(giftCost(g)) : 'Pasivo', cost: giftCost(g), text: text(g.text), limit: giftLimit(g) })) }));
   const community = (data.communities || []).filter(c => c.feature).map(c => ({ group: c.name, cards: [read({ id: `cat:community:${c.id}`, kind: 'community', name: c.feature.name, subtitle: `Background · ${c.name}`, color: c.color || '#94a3b8', art: cornerArt('community', c.id), costText: '—', cost: parseCost(''), text: text(c.feature.text) })] }));
   const feature = (cls, f, label, path) => f && read({ id: `cat:${path}:${cls.id}:${slug(f.name)}`, kind: 'feature', name: f.name.replace(/\s*\(.*?\)\s*$/, ''), subtitle: `${cls.name} · ${label}`, color: cls.color || '#c084fc', art: classArt(cls), costText: (f.name.match(/\((.*?)\)/) || [])[1] || '—', cost: parseCost(f.name), text: text(f.text) });
-  const awakened = (data.classes || []).map(cls => ({ group: cls.name, cards: [feature(cls, cls.hopeFeature, 'Hope Feature', 'aw'), feature(cls, cls.classFeature, 'Class Feature', 'aw')].filter(Boolean) }));
+  const awakened = (data.classes || []).map(cls => ({ group: cls.name, cards: [feature(cls, cls.hopeFeature, 'Hope Feature', 'aw'), ...splitFeature(cls.classFeature, 'awakened').map(f => feature(cls, f, 'Class Feature', 'aw'))].filter(Boolean) }));
   const sleeping = (data.classes || []).filter(c => c.sleepingRules).map(cls => {
     const r = cls.sleepingRules;
     const moves = (data.resolveMoves || []).filter(m => lower(m.class) === lower(cls.name)).map(m => read({ id: `cat:move:${slug(m.class)}:${slug(m.name)}`, kind: 'move', name: m.name, subtitle: ['Resolve Move', m.subclass || m.class].filter(Boolean).join(' · '), color: cls.color || '#fb923c', art: actionArt(m.name, classArt(cls)), costText: m.cost, cost: parseCost(m.cost, 'move'), text: text(m.text) }));
-    return { group: cls.name, cards: [feature(cls, r.effortFeature, 'Effort Feature', 'sl'), feature(cls, r.classFeature, 'Class Feature', 'sl'), ...moves].filter(Boolean) };
+    return { group: cls.name, cards: [feature(cls, r.effortFeature, 'Effort Feature', 'sl'), ...splitFeature(r.classFeature, 'sleeping').map(f => feature(cls, f, 'Class Feature', 'sl')), ...moves].filter(Boolean) };
   });
   return { ancestry, community, awakened, sleeping };
 }

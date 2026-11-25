@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.4.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.43.4**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.43.4** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.43.4.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.5.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.43.5**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.43.5** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.43.5.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -150,6 +150,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.43.4.zip**. Abre **AYUDA
 135. **(V3) Actuar da el foco.** Con Rapid Regeneration activa en Vea y el foco en otro personaje: Vea hace una tirada de atributo desde su Ficha → toma el foco y cura +1 HP (efecto verde). Dale el foco a otro; Vea se mueve por el mapa → lo toma y cura otra vez. Un adversario lanza un área que pide a Vea una tirada de reacción: esa tirada no le da el foco. Un jugador que mueve su dron (Neural Network Control) recibe el foco.
 136. **(V3) Ilustraciones.** Pantalla de acceso: tras «Portal táctico» se ve la cámara con la luz violeta y el título se lee bien. Inicio (Básico): «Crear partida» con la batalla teñida de violeta, «Unirme» con la sala del reactor y «Tus partidas» con la tripulación de fondo. En un móvil, las celdas se apilan y el texto sigue siendo legible.
 137. **(V3) Fondos y logo.** Pantalla de acceso: de fondo, la tripulación al completo en estilo cómic (sin cuadrícula); el logo de Veilfarers encima de «Portal táctico». Selección de sala: de fondo, el combate con la bestia mecánica en violeta; «Crear partida» con el abordaje, «Unirme» con el reactor y «Tus partidas» con el mundo bioluminiscente; en la cabecera, el logo y «Centro de mando». En la mesa, el logo sustituye al texto VEILFARERS arriba a la izquierda (pulsarlo sigue llevando al inicio).
+138. **(V3) Sneak Attack, The Quiet Network y sigilo.** Elegir a «Shadow» Val Corrigan en la Ficha: en la mano salen «Sneak Attack» (pasiva, no se juega) y «The Quiet Network» como cartas distintas, y «Off the Record» sin «(Passive).» en el nombre. Una Vanguardia Sleeping (Rourke) tiene «Trained Body», «Unbroken Focus» y «The Refusal» por separado. Poner Hidden a Shadow y atacar a un enemigo: la tirada lleva Ventaja sin marcarla, Hidden desaparece al atacar y, si impacta, el daño suma «Sneak Attack 1d6». Sin Hidden ni Ventaja, no lo suma. Un adversario Hidden que ataca también tira con Ventaja y deja de estar oculto.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

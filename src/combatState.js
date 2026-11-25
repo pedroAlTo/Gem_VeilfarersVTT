@@ -49,7 +49,10 @@ export function checkEdge(actor, target, advantage = false, disadvantage = false
   const field = actor?.effectClocks?.find(c => c.name === 'Global Stimulus Field');
   // «Disadvantage on their next attack» (Blinding Flash…): only an attack, and it is spent by it.
   const nextAttack = !!target && actor?.effectClocks?.some(c => c.nextAttack && c.edge === 'disadvantage');
-  return netEdge(advantage || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
+  // Attacking from stealth (v2.43.5, user note): a Hidden or invisible attacker has Advantage
+  // (Corebook ch. 10: Hidden gives Advantage on the next attack; a Hidden attacker surprises).
+  const unseen = !!target && conditions.some(c => c === 'Hidden' || /invisib/i.test(c));
+  return netEdge(advantage || unseen || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
 }
 
 export const roundKey = (map = {}) => `${map.id}/${map.spotlightRound || 1}`;

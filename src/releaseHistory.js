@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.43.5', date: '2026-11-25', title: 'V3 · Sneak Attack y The Quiet Network por separado; atacar desde el sigilo da Ventaja',
+    sections: [
+      { title: 'Cartas de clase', items: [
+        'Los rasgos de clase que el Corebook imprime juntos salen ahora como cartas separadas: el Scoundrel Sleeping tiene «Sneak Attack» y «The Quiet Network»; el Awakened, «Shadow Operative» y «Sneak Attack»; la Vanguardia Sleeping, «Trained Body», «Unbroken Focus» y «The Refusal»; el Piloto Awakened, «Stellar Instinct» y «Pilot Surge Die». Las partes pasivas (Sneak Attack, Trained Body, Pilot Surge Die) se muestran como pasivas y no se juegan.',
+        'El resumen de Sneak Attack queda en lo que hace: «ataque con Ventaja que impacta: +1d6 de daño» (2d6 en Tier 2, 3d6 en Tier 3, una vez por ataque).',
+        'Los nombres que el libro escribe con la etiqueta pegada («Off the Record (Passive).») se muestran limpios; la etiqueta pasa al tipo de la carta.',
+      ] },
+      { title: 'Sigilo', items: [
+        'Atacar estando Hidden o invisible da Ventaja, tanto a los personajes como a los adversarios del Keeper. Al atacar se pierde Hidden.',
+        'Sneak Attack se suma solo: si un Scoundrel impacta con un ataque con Ventaja (por estar oculto o por cualquier otra fuente), el daño lleva +{Tier}d6 de Sneak Attack.',
+      ] },
+    ],
+  },
+  {
     version: '2.43.4', date: '2026-11-24', title: 'V3 · Fondos ilustrados y logo de Veilfarers',
     sections: [
       { title: 'Portada', items: [

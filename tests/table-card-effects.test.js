@@ -578,3 +578,31 @@ test('Rapid Regeneration through Uncanny Power: access, Knowledge vs DC 11, then
   check(s, 'mystic', { ...miss.roll, forcedHope: 2, forcedFear: 3 }, { cardPlayId: miss.id });
   assert.ok(!resolutionLog(s, miss.id).resolution.durationAwaiting);
 });
+
+test('Sneak Attack and The Quiet Network are separate cards; attacking from stealth has Advantage and a Scoundrel adds Sneak Attack', async () => {
+  const { PREGENS, pregenSheet } = await import('../src/pregens.js');
+  const { parseCharacterJSON } = await import('../src/characterImport.js');
+  const shadow = parseCharacterJSON(pregenSheet(PREGENS.find(p => p.id === 'shadow'), data)).token;
+  const cards = characterCards(shadow, data).filter(c => c.kind === 'feature');
+  const sneak = cards.find(c => c.name === 'Sneak Attack'), network = cards.find(c => c.name === 'The Quiet Network');
+  assert.ok(sneak && network, 'two cards');
+  assert.ok(!/Quiet Network/.test(sneak.text) && !/Sneak Attack/.test(network.text), 'each with its own text');
+  assert.equal(sneak.passive, true); assert.equal(sneak.playable, false, 'Sneak Attack applies by itself');
+  assert.equal(network.playable, true); assert.match(network.subtitle, /once per session/);
+  // Hidden or invisible: Advantage on an attack (not on other rolls).
+  const hidden = { ...actor('h'), conditions: ['Hidden'] };
+  assert.equal(checkEdge(hidden, actor('t')).advantage, true);
+  assert.equal(checkEdge(hidden, null, false, false, 'agility').advantage, false);
+  assert.equal(checkEdge({ ...actor('i'), conditions: ['Special: Invisible'] }, actor('t')).advantage, true);
+  // A Hidden Scoundrel hits: Advantage, Sneak Attack (+1d6 at Tier 1) and Hidden is broken.
+  const s = table(actor('rogue', { characterClass: 'Scoundrel', level: 1, conditions: ['Hidden'] }), { ...hostile('e'), x: 128, evasion: 5 });
+  const hit = check(s, 'rogue', { forcedHope: 6, forcedFear: 2 }, { attack: true, targetId: 'e' });
+  assert.equal(hit.advVal, 3, 'the Advantage die is rolled');
+  assert.deepEqual(hit.damageRiders.map(r => [r.id, r.dice]), [['sneak-attack', '1d6']]);
+  assert.equal(get(s, 'rogue').conditions.includes('Hidden'), false, 'attacking breaks Hidden');
+  // Without Advantage, no Sneak Attack; another class never has it.
+  const plain = check(s, 'rogue', { forcedHope: 6, forcedFear: 2 }, { attack: true, targetId: 'e' });
+  assert.deepEqual(plain.damageRiders, []);
+  const t = table(actor('fighter', { characterClass: 'Soldier', conditions: ['Hidden'] }), { ...hostile('e'), x: 128, evasion: 5 });
+  assert.deepEqual(check(t, 'fighter', { forcedHope: 6, forcedFear: 2 }, { attack: true, targetId: 'e' }).damageRiders, []);
+});
