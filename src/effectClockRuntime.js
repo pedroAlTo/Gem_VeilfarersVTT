@@ -39,7 +39,12 @@ export function endSceneEffects() {
     for (const token of store.state.tokens) {
       const gone = (token.effectClocks || []).filter(c => c.scene);
       if (!gone.length) continue;
-      store.updateToken(token.id, { effectClocks: token.effectClocks.filter(c => !c.scene) });
+      // What a Power gave for the scene goes with it (v2.52.0): temporary Armor Slots and weapons.
+      const armorBack = gone.reduce((n, c) => n + (c.tempArmor && !c.sourceId ? c.tempArmor : 0), 0), weaponsGone = gone.map(c => c.grantWeapon).filter(Boolean);
+      const patch = { effectClocks: token.effectClocks.filter(c => !c.scene) };
+      if (armorBack && token.armor) { const max = Math.max(0, (token.armor.max || 0) - armorBack); patch.armor = { ...token.armor, max, current: Math.min(max, Math.max(0, (token.armor.current || 0) - armorBack)) }; }
+      if (weaponsGone.length && token.inventory?.weapons) patch.inventory = { ...token.inventory, weapons: token.inventory.weapons.filter(w => !weaponsGone.includes(w.id)) };
+      store.updateToken(token.id, patch);
       for (const c of gone) { ended++; store.addLog({ sender: token.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${token.name}: «${c.name}» termina al acabar la escena.` }); }
     }
   } finally { store.tableActing = before; }
@@ -80,7 +85,10 @@ export function startEffectClocks() {
         const now = (token.effectClocks || []).find(c => c.id === clock.id);
         if (now && now.filled === clock.filled) continue;
         const left = now ? now.segments - now.filled : 0, healed = clock.perTick?.hp ? ` ${token.name} recupera ${clock.perTick.hp} HP.` : '';
-        const details = (left ? `${clock.name} · ${left} / ${clock.segments} pendientes.` : `Fin de ${clock.name}.`) + healed;
+        // Weapon effects (v2.45.0): Continuous marks Stress; Melting asks its Reaction Roll now.
+        const strained = clock.perTick?.stress ? ` ${token.name} marca ${clock.perTick.stress} Stress.` : '';
+        const melting = clock.melting ? ` ${token.name} tira Strength contra CD ${clock.dc || 10}: si falla, recibe ${(clock.die || 'd6').replace(/^d/, '1d')} de daño Energy; si acierta, la mitad (con umbrales y Armor Slots).` : '';
+        const details = (left ? `${clock.name} · ${left} / ${clock.segments} pendientes.` : `Fin de ${clock.name}.`) + healed + strained + melting;
         queueMicrotask(() => { if (!left) notify(details); store.addLog({ sender: token.name, type: 'EFFECT', title: clock.name, details }); });
       }
     }

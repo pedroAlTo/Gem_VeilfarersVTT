@@ -78,6 +78,8 @@ const bandFromText = value => {
 // there); when the sheet left it blank, the range of
 // the catalog weapon with the same name. '' means it is not known (the sheet should say it:
 // the attack then warns that no distance limit applies).
+// A melee attack: a Melee weapon, a weapon without a range used at Melee, or a blow at Melee.
+export const isMeleeAttack = (weapon, band) => weapon ? weaponRangeBand(weapon) === 'Melee' || (!weaponRangeBand(weapon) && band === 'Melee') : band === 'Melee';
 export function weaponRangeBand(weapon) {
   // Some imported sheets write the range with the Trait ("Agility · Melee").
   const own = bandFromText(weapon?.range) || bandFromText(weapon?.trait);
@@ -119,13 +121,15 @@ export function rangeCheck(weapon, band) {
 }
 
 // Weapon properties that change the attack roll (Corebook ch. 13), read from the weapon's tags:
-// Reliable +1 always; Accurate +1 and Smart Scope +2 at Far or Very Far.
+// Reliable +1 always; Accurate +1 and Smart Scope +2 at Far or Very Far. Scatter (Rust & Steel
+// 12.06): +1 at Very Close (and in Melee, closer still), −1 at Close or beyond.
 export function weaponAttackBonus(weapon, band = '') {
   const far = band === 'Far' || band === 'Extreme', parts = [];
   if (weapon && hasTag(weapon, 'reliable')) parts.push(['Reliable', 1]);
   if (weapon && far && hasTag(weapon, 'accurate')) parts.push(['Accurate', 1]);
   if (weapon && far && hasTag(weapon, 'smart-scope')) parts.push(['Smart Scope', 2]);
-  return { bonus: parts.reduce((sum, [, n]) => sum + n, 0), notes: parts.map(([name, n]) => `${name} +${n}`) };
+  if (weapon && band && hasTag(weapon, 'scatter')) parts.push(['Scatter', band === 'Melee' || band === 'Very Close' ? 1 : -1]);
+  return { bonus: parts.reduce((sum, [, n]) => sum + n, 0), notes: parts.map(([name, n]) => `${name} ${n < 0 ? '−' + -n : '+' + n}`) };
 }
 // Reach (Corebook): a Melee weapon may attack at Very Close.
 const hasReach = weapon => !!weapon && hasTag(weapon, 'reach');

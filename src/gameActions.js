@@ -1,25 +1,31 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
-import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice } from './effectClocks.js';
-import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice, tierOf } from './effectClocks.js';
+import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS, damageTypeOf } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration } from './cardResolution.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration, procedureZone, applyHeal } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
-import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
+import { weaponRangeBand, rollAdversaryCheck, distanceInfo, rangeCheck, isMeleeAttack } from './attackFlow.js';
 import { finite } from './validation.js';
-import { normalizeConditions, specialState, SPECIAL_PREFIX } from './conditions.js';
+import { normalizeConditions, specialState, SPECIAL_PREFIX, visibleConditions } from './conditions.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { resolveJump } from './starshipJump.js';
-import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES } from './combatState.js';
+import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES, helplessTarget, rangedTargetBlock } from './combatState.js';
 import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
 import { handoffControl, isDroneToken, droneSignal as signalOf } from './drones.js';
 import { droneCompatible } from './dronePowers.js';
 import { tokenInventory, validateInventory } from './equipment.js';
+import { weaponAttackEdge, afterAttackStress, weaponDamageRiders, weaponReadiness, afterShot, FOLLOW_UPS, wielderEvasion, areaProcedure, zoneTargets } from './weaponFeatures.js';
+import { npcSave } from './weaponAftermath.js';
+import { rollCalc } from './logCalc.js';
+import { PROCEDURES, procedureFor } from './powerProcedures.js';
+import { hasTag } from './weaponTags.js';
+import { droneEvasion } from './drones.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear, wearArmor } from './gear.js';
 import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName, uncannyAccess, uncannyChoices, editArchive } from './loadoutCards.js';
@@ -45,6 +51,11 @@ export function grantActorSpotlight(store, tokenId) {
   return grantSpotlight(store, operatorId || tokenId);
 }
 export const ACTIVE_CARD_KINDS = new Set(['power', 'archive', 'move', 'feature']);
+// The cards that are Powers (casting one ends Vanish).
+const POWER_KINDS = new Set(['power', 'archive']);
+// Who has Sneak Attack: every Scoundrel (the Awakened Shadow Operative and the Sleeping The Quiet
+// Network both print it, Corebook 12.06).
+export const sneakAttacker = token => /scoundrel/i.test(String(token?.characterClass || ''));
 
 export function performGameAction(action, store = defaultStore) {
   const before = store.tableActing;
@@ -93,10 +104,124 @@ function resolveGameAction(action, store) {
     if (actor.isPlayer !== false && LIFE_STATES.includes(name)) throw new Error('Utiliza los controles de progreso y estabilización.');
     const conditions = action.active ? normalizeConditions([...current, name]) : current.filter(c => c !== name);
     if (conditions.length > 30) throw new Error('Máximo 30 condiciones por token.');
-    store.updateToken(actor.id, { conditions });
+    // Frightened names its source (v2.55.0): a token of the same scene, or none (a reminder only).
+    const patch = { conditions };
+    if (name === 'Frightened' && action.active && action.sourceId !== undefined) {
+      const source = action.sourceId ? store.state.tokens.find(t => t.id === String(action.sourceId) && t.mapId === actor.mapId && t.id !== actor.id) : null;
+      if (action.sourceId && !source) throw new Error('La fuente del miedo no está en esta escena.');
+      patch.frightenedBy = source?.id || null;
+    }
+    store.updateToken(actor.id, patch);
     return { actorId: actor.id, conditions };
   }
   if (action.type === 'FTL') return resolveJump(store, actor, action, resolveGameAction);
+  // A second target or a second attack after an attack (v2.46.0): Automatic, Salvo Fire, Arc,
+  // Cleave, Quick. The table checks the attack, the weapon, the distances and pays the Stress;
+  // Automatic and Salvo Fire compare the same attack total with the new target's Evasion.
+  if (action.type === 'WEAPON_FOLLOWUP') {
+    requireActive(actor);
+    const kind = String(action.kind ?? ''), rule = FOLLOW_UPS[kind];
+    if (!rule) throw new Error('Propiedad de arma desconocida.');
+    const record = lastRoll.get(rollKey);
+    if (!record || record.id !== action.checkId || !record.attackTargetId || record.mapId !== store.state.activeMapId) throw new Error('Ese ataque ya no está pendiente.');
+    const weapon = tokenInventory(actor).weapons.find(w => w.id === String(action.weaponId ?? ''));
+    if (!weapon || !hasTag(weapon, kind)) throw new Error(`El arma no tiene ${rule.label}.`);
+    if ((record.followUps || []).includes(kind)) throw new Error(`${rule.label} ya se usó en este ataque.`);
+    if (rule.hit && !record.hitTarget) throw new Error(`${rule.label} necesita un impacto.`);
+    if (rule.melee && weaponRangeBand(weapon) !== 'Melee') throw new Error('Cleave es de un arma Melee.');
+    // A new attack needs the weapon ready (Reload, Charge-Up) before anything is paid.
+    if (rule.attack && !weaponReadiness(weapon).ready) throw new Error(weaponReadiness(weapon).reason);
+    const map = store.getActiveMap?.() || {}, primary = store.state.tokens.find(t => t.id === record.attackTargetId);
+    const target = store.state.tokens.find(t => t.id === String(action.targetId ?? '') && t.mapId === actor.mapId && !t.inReserve);
+    if (!primary || !target) throw new Error('El objetivo ya no está en la escena.');
+    if (rule.sameTarget && target.id !== primary.id) throw new Error('Quick ataca otra vez al mismo objetivo.');
+    if (rule.other && (target.id === primary.id || target.id === actor.id)) throw new Error('Elige otro objetivo distinto del primero.');
+    const order = ['Melee', 'Very Close', 'Close', 'Far', 'Extreme'];
+    if (rule.near && order.indexOf(distanceInfo(primary, target, map).band) > order.indexOf(rule.near)) throw new Error(`${rule.label}: el segundo objetivo debe estar a ${rule.near} del primero.`);
+    if ((rule.same || rule.attack) && !rule.sameTarget) {
+      const reach = rangeCheck(weapon, distanceInfo(actor, target, map).band);
+      if (!reach.allowed) throw new Error(reach.reason || 'Fuera del alcance del arma.');
+    }
+    const patch = {};
+    if (rule.stress) {
+      const stress = actor.stress || { current: 0, max: 0 };
+      if (stress.max > 0 && (stress.current || 0) + rule.stress > stress.max) throw new Error(`${rule.label} cuesta ${rule.stress} Stress y no queda ninguno libre.`);
+      patch.stress = { ...stress, current: (stress.current || 0) + rule.stress };
+    }
+    if (Object.keys(patch).length) store.updateToken(actor.id, patch);
+    record.followUps = [...(record.followUps || []), kind];
+    const out = { kind, targetId: target.id, primaryId: primary.id, critical: !!record.isCritical, total: record.total };
+    if (rule.same) {
+      const melee = weaponRangeBand(weapon) === 'Melee';
+      out.evasion = droneEvasion(target) + wielderEvasion(tokenInventory(target).weapons, { melee }).mod;
+      out.hit = !!record.isCritical || record.total >= out.evasion || helplessTarget(target);
+    }
+    const said = rule.same ? `${record.total} contra la Evasion ${out.evasion} de ${target.name}: ${out.hit ? 'impacta' : 'falla'}` : rule.half ? `${target.name} recibe la mitad del daño, sin tirada` : rule.sameTarget ? `segundo ataque contra ${target.name}` : `otro ataque contra ${target.name}`;
+    store.addLog({ sender: actor.name, type: 'EFFECT', title: `${rule.label} · ${weapon.name}`, details: `${said}${rule.stress ? ` (marca ${rule.stress} Stress)` : ''}.` });
+    if (actor.isPlayer !== false) grantActorSpotlight(store, actor.id);
+    return out;
+  }
+  // Areas and Psionic (v2.46.0). «save»: Explosive, Area (band), Dispersal Wave and Psionic have no
+  // attack roll: every creature in the zone makes its Reaction Roll (an NPC here, with the d20s the
+  // client threw in 3D; a character's player rolls it and chooses). «attack»: Spray and Waveform
+  // compare the attack just made with the Evasion of everyone else in the cone.
+  if (action.type === 'WEAPON_AREA') {
+    requireActive(actor);
+    const inventory = tokenInventory(actor), weapon = inventory.weapons.find(w => w.id === String(action.weaponId ?? ''));
+    const procedure = areaProcedure(weapon);
+    if (!weapon || !procedure) throw new Error('Esa arma no tiene un área ni es Psionic.');
+    const map = store.getActiveMap?.() || {}, distance = (a, b) => distanceInfo(a, b, map);
+    if (procedure.mode === 'attack') {
+      const record = lastRoll.get(rollKey);
+      if (!record || record.id !== action.checkId || !record.attackTargetId || record.mapId !== store.state.activeMapId) throw new Error('Ese ataque ya no está pendiente.');
+      if (record.cone) throw new Error(`${procedure.label} ya se resolvió en este ataque.`);
+      record.cone = true;
+      const primary = store.state.tokens.find(t => t.id === record.attackTargetId);
+      const melee = weaponRangeBand(weapon) === 'Melee';
+      const items = zoneTargets(store.state.tokens, actor, primary, procedure, distance).filter(t => t.id !== primary.id).map(t => {
+        const evasion = droneEvasion(t) + wielderEvasion(tokenInventory(t).weapons, { melee }).mod;
+        return { targetId: t.id, name: t.name, evasion, share: record.isCritical || record.total >= evasion ? 1 : 0 };
+      });
+      store.addLog({ sender: actor.name, type: 'EFFECT', title: `${procedure.label} · ${weapon.name}`, details: items.length ? `${record.total} contra ${items.map(i => `${i.name} (Evasion ${i.evasion}: ${i.share ? 'impacta' : 'falla'})`).join(', ')}.` : 'Nadie más en el cono.' });
+      return { kind: procedure.kind, label: procedure.label, mode: 'attack', critical: !!record.isCritical, items };
+    }
+    const readiness = weaponReadiness(weapon);
+    if (!readiness.ready) throw new Error(readiness.reason);
+    const impact = store.state.tokens.find(t => t.id === String(action.targetId ?? '') && t.mapId === actor.mapId && !t.inReserve);
+    if (!impact) throw new Error('El objetivo ya no está en la escena.');
+    const reach = rangeCheck(weapon, distanceInfo(actor, impact, map).band);
+    if (!reach.allowed) throw new Error(reach.reason || 'Fuera del alcance del arma.');
+    const faces = (Array.isArray(action.faces) ? action.faces : []).slice(0, 30).filter(f => Number.isInteger(f) && f >= 1 && f <= 20);
+    const items = zoneTargets(store.state.tokens, actor, impact, procedure, distance).map(t => {
+      if (t.isPlayer !== false || isPartyToken(t)) return { targetId: t.id, name: t.name, share: null, player: true };
+      const { trait, roll, failed } = npcSave(t, procedure, [faces.shift()]);
+      return { targetId: t.id, name: t.name, share: failed ? 1 : procedure.success, math: `${trait[0].toUpperCase() + trait.slice(1)} ${roll.total} vs CD ${procedure.dc}`, failed };
+    });
+    const shot = afterShot(weapon);
+    const patch = shot.spent !== weapon.spent || shot.charged !== weapon.charged ? { inventory: { ...inventory, weapons: inventory.weapons.map(w => w.id === weapon.id ? shot : w) } } : {};
+    if (Object.keys(patch).length) store.updateToken(actor.id, patch);
+    if (actor.isPlayer !== false) grantActorSpotlight(store, actor.id);
+    const share = s => s === 1 ? 'daño completo' : s === 0.5 ? 'la mitad' : 'sin daño';
+    const trait = procedure.traits.map(t => t[0].toUpperCase() + t.slice(1)).join(' o ');
+    const areaLines = items.map(i => i.player ? `${i.name} tira ${trait} contra CD ${procedure.dc} y elige` : `${i.name}: ${i.math} → ${i.failed ? 'falla' : 'resiste'}, ${share(i.share)}`);
+    store.addLog({ sender: actor.name, ...(secret ? { visibility: 'keeper' } : {}), type: 'EFFECT', title: `${procedure.label} · ${weapon.name}`,
+      details: areaLines.join(' · ') + '.', calc: [`${procedure.label}: ${procedure.around ? `todos a ${procedure.around} de ${impact.name}` : procedure.cone ? `cono ${procedure.cone}` : impact.name}`, `Reaction Roll: ${trait} contra CD ${procedure.dc} (falla: daño completo; acierta: ${share(procedure.success)})`, ...areaLines] });
+    return { kind: procedure.kind, label: procedure.label, mode: 'save', dc: procedure.dc, traits: procedure.traits, success: procedure.success, impactId: impact.id, items };
+  }
+  // Reload or charge a weapon (v2.45.0): an Action, so it takes the Spotlight.
+  if (action.type === 'WEAPON_READY') {
+    requireActive(actor);
+    const inventory = tokenInventory(actor), weapon = inventory.weapons.find(w => w.id === String(action.weaponId ?? ''));
+    if (!weapon) throw new Error('El arma ya no pertenece al personaje.');
+    const readiness = weaponReadiness(weapon);
+    if (readiness.ready) throw new Error(`${weapon.name} ya está lista para atacar.`);
+    const ready = readiness.mode === 'reload' ? { ...weapon, spent: false } : { ...weapon, charged: true };
+    store.updateToken(actor.id, { inventory: { ...inventory, weapons: inventory.weapons.map(w => w.id === weapon.id ? ready : w) } });
+    if (actor.isPlayer !== false) grantActorSpotlight(store, actor.id);
+    const said = readiness.mode === 'reload' ? `recarga ${weapon.name}` : `carga ${weapon.name}: podrá disparar en un Spotlight posterior`;
+    store.addLog({ sender: actor.name, type: 'GEAR', title: `${actor.name} ${said}`, details: `${readiness.action} (una Acción).` });
+    return { actorId: actor.id, weaponId: weapon.id, mode: readiness.mode };
+  }
   // Armor and augmentations: the table puts them on or takes them off and applies or undoes what
   // they change (thresholds, Armor Slots, Evasion, HP, Traits, over-capacity Stress).
   if (action.type === 'GEAR_INSTALL' || action.type === 'GEAR_REMOVE' || action.type === 'GEAR_WEAR') {
@@ -170,6 +295,23 @@ function resolveGameAction(action, store) {
   }
   // The duration die of a card that succeeded (v2.41.0): thrown after the roll, in 3D, by whoever
   // cast it; the table applies the clock (Rapid Regeneration: +1 HP now and each Spotlight).
+  // The healing dice of a Power procedure (v2.49.0), thrown in 3D by the caster's screen.
+  if (action.type === 'CARD_EFFECT') {
+    const row = resolutionLog(store, String(action.playId ?? '')), record = row?.resolution;
+    if (!record || record.actorId !== actor.id || !Array.isArray(record.effectPending) || !record.effectPending.length || record.mapId !== store.state.activeMapId) throw new Error('Esta carta no espera su curación.');
+    const calc = [];
+    const said = record.effectPending.map((heal, i) => {
+      const [qty, sides] = String(heal.dice).split('d').map(Number);
+      const faces = Array.isArray(action.faces?.[i]) && validFaces(action.faces[i], qty, sides) ? action.faces[i] : Array.from({ length: qty }, () => 1 + Math.floor(Math.random() * sides));
+      calc.push(`${heal.dice}: [${faces.join(', ')}] = ${faces.reduce((a, b) => a + b, 0)} HP${heal.stress ? ` y −${heal.stress} Stress` : ''}`);
+      return applyHeal(store, record, heal, faces.reduce((a, b) => a + b, 0));
+    }).filter(Boolean).join(' ');
+    calc.push(said);
+    updateResolution(store, record.id, { effectPending: null, notes: [...(record.notes || []).filter(n => n !== 'Ahora se tira la curación.'), said].filter(Boolean) });
+    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + record.name + ' · curación', details: said, calc };
+    store.addLog(log);
+    return { id: newId(), actorId: actor.id, log, summary: said };
+  }
   if (action.type === 'CARD_DURATION') {
     const row = resolutionLog(store, String(action.playId ?? '')), record = row?.resolution;
     if (!record || record.actorId !== actor.id || record.phase !== 'ready' || !record.durationAwaiting || record.mapId !== store.state.activeMapId) throw new Error('Esta carta no espera su duración.');
@@ -364,7 +506,8 @@ function resolveGameAction(action, store) {
     if (usedBy(actor,use)) throw new Error(card.name + ' ya está gastado (' + use.label + ').');
     const ids = action.targetIds ?? (action.targetId ? [action.targetId] : []);
     // An area around the caster («all enemies within Close range»): everyone inside is a target.
-    const area = areaRule(card);
+    const mode = String(action.mode ?? '').slice(0, 30), procedure = procedureFor(card.name, mode);
+    const area = areaRule(card, mode);
     // A Power used through the drone the character operates: range, targets and line of sight are
     // measured from the drone (Corebook ch. 14, «Domain Powers Through a Drone»).
     let origin = actor, drone = null;
@@ -375,8 +518,26 @@ function resolveGameAction(action, store) {
       if (!droneCompatible(card)) throw new Error(card.name + ' no puede usarse a través de un dron: necesita tu cuerpo, tu toque o tu presencia.');
       origin = { ...actor, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId };
     }
-    const targets = area ? areaTargets(origin, area, store) : cardTargets(origin, card, ids, store);
+    let targets;
+    if (area) {
+      targets = areaTargets(origin, area, store);
+      // «Up to three creatures»: the most wounded first (Cellular Reconstruction · Distributed).
+      // (Lightbridge: the most stressed first.)
+      const need = t => area.most === 'stress' ? (t.stress?.current || 0) : (t.hp?.max || 0) - (t.hp?.current || 0);
+      if (area.max) targets = [...targets].sort((a, b) => need(b) - need(a)).slice(0, area.max);
+    } else if (procedure?.zone && procedure.zone.shape !== 'around') {
+      // A point, a cone or a line: aimed at a token within its reach.
+      const center = store.state.tokens.find(t => t.id === ids[0]);
+      if (!center || !eligible(origin, center, store.getActiveMap?.(), { reach: procedure.zone.reach, self: false })) throw new Error(`Elige ${procedure.zone.shape === 'point' ? 'el punto (un token)' : 'la dirección (un token)'} de ${card.name} a alcance ${procedure.zone.reach}.`);
+      targets = procedureZone(origin, procedure.zone, center, store);
+    } else targets = cardTargets(origin, card, ids, store);
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
+    // A mode that costs more than the printed first cost (Cellular Reconstruction · Distributed: 2 Hope).
+    const extraHope = Math.max(0, (procedure?.cost?.hope || 0) - (card.cost?.hope || 0));
+    if (extraHope && !result.failed) {
+      if ((result.token.hope || 0) < extraHope) throw new Error(`${card.name} · ${procedure.mode} cuesta ${procedure.cost.hope} Hope.`);
+      result.token.hope -= extraHope;
+    }
     const areaChecks = area?.check && !result.roll && !result.failed;
     if (drone) result.notes.push(`A través de ${drone.name}.`);
     // Kinetic Blast (v2.32.0): spend 1 Hope (+ up to 2 to Empower) and the next melee attack carries it.
@@ -441,7 +602,8 @@ function resolveGameAction(action, store) {
     // A Power that works on its caster without a roll (Temporal Cloak · Personal → Hidden).
     if (SELF_EFFECTS[card.name] && !result.roll && !result.failed) result.notes.push(applySelfEffect(store, card.name, actor.id, String(action.mode ?? '')));
     // Another Power of the Domain ends a self effect that says so (Temporal Cloak and Void).
-    const ended = card.domain && endSelfEffects(store.state.tokens.find(t => t.id === actor.id), { domain: card.domain, name: card.name });
+    // (Vanish: casting any Power ends it.)
+    const ended = (card.domain || POWER_KINDS.has(card.kind)) && endSelfEffects(store.state.tokens.find(t => t.id === actor.id), { domain: card.domain || '', name: card.name, power: POWER_KINDS.has(card.kind) });
     if (ended) { store.updateToken(actor.id, { effectClocks: ended.effectClocks, conditions: ended.conditions }); result.notes.push('Termina ' + ended.ended.join(', ') + '.'); }
     if (armedClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock((live.effectClocks || []).filter(c => c.name !== armedClock.name), armedClock) }); }
     if (kineticClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock(live.effectClocks, kineticClock) }); }
@@ -449,6 +611,8 @@ function resolveGameAction(action, store) {
       for (const t of targets) store.updateToken(t.id, AREA_BOONS[card.name](store.state.tokens.find(x => x.id === t.id)));
       result.notes.push('Cada aliado del área: +2 a su próxima tirada.');
     }
+    // Silenced (v2.53.0, fase 5): the book does not mark which Powers are verbal, so the table says it.
+    if (POWER_KINDS.has(card.kind) && visibleConditions(actor).includes('Silenced')) result.notes.push(`${actor.name} está Silenced: si este Poder necesita voz (componente verbal), no puede lanzarse; el Keeper decide.`);
     const effect = !result.roll && !result.failed && resolveImmediate(store, actor, targets, card, action.effectFace);
     if (effect) result.notes.push(effect);
     // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
@@ -469,6 +633,8 @@ function resolveGameAction(action, store) {
     }
     if (result.failed) resolution.phase = 'done';
     if (SELF_EFFECTS[card.name] || CARD_MODES[card.name]) resolution.mode = String(action.mode ?? '').slice(0, 30);
+    // «Choose two» (v2.52.0): the options the player marked (the defaults otherwise).
+    if (PROCEDURES[card.name]?.choose && Array.isArray(action.choices)) resolution.choices = action.choices.filter(c => typeof c === 'string' && Object.hasOwn(PROCEDURES[card.name].choose.options, c)).slice(0, 4);
     if (CARD_MODES[card.name] && !CARD_MODES[card.name].includes(resolution.mode)) resolution.mode = CARD_MODES[card.name][0];
     if (area && !result.failed) {
       resolution.area = { x: Math.round(origin.x), y: Math.round(origin.y), reach: area.reach, radius: Math.round(areaRadius(origin, store.getActiveMap?.(), area.reach)), color: card.color || '#00f3ff', failure: area.failure };
@@ -487,7 +653,7 @@ function resolveGameAction(action, store) {
     }
     if (action.durationFaces) resolution.durationFaces = action.durationFaces.slice(0, 4);
     // With a roll, the duration die waits for the success (v2.41.0).
-    else if (result.roll && !result.failed && durationDice(card)) resolution.durationPending = true;
+    else if (result.roll && !result.failed && durationDice(card) && !PROCEDURES[card.name]) resolution.durationPending = true;
     const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details: special ? [result.summary, ...result.notes].join(' ') : details, resolution };
     store.addLog(log);
     // The Keeper's table shows the card that was just used.
@@ -522,12 +688,22 @@ function resolveGameAction(action, store) {
     if (action.closingId && (!ownAttack || !state || state.id !== action.closingId)) throw new Error('Breaking Point requiere el estado activo y una acción propia.');
     const weapon = ownAttack && action.weaponId ? tokenInventory(actor).weapons.find(w => w.id === action.weaponId) : null;
     if (ownAttack && action.weaponId && !weapon) throw new Error('El arma ya no pertenece al personaje.');
+    // Reload and Charge-Up: a spent or uncharged weapon cannot attack until an Action readies it.
+    const readiness = weaponReadiness(weapon);
+    if (!readiness.ready) throw new Error(readiness.reason);
     const context = o.contextId && contextualEdges(actor,o.traitId).find(c => c.id === o.contextId);
     if (o.contextId && !context) throw new Error('Ese efecto contextual ya no está activo para el atributo.');
     if (action.closingId && (target.hidden || target.mapId !== store.state.activeMapId)) throw new Error('El objetivo de Breaking Point ya no está en la escena.');
     const melee = ownAttack && (!weapon || weaponRangeBand(weapon) === 'Melee');
     const guard = melee && disciplinedDefense(target, actor, store.getActiveMap?.(), store.state.tokens);
-    const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty, o.traitId);
+    // Heavy (Rust & Steel 12.06): Strength below +1 attacks with Disadvantage.
+    const heavy = weapon ? weaponAttackEdge(weapon, actor) : null;
+    // The target's conditions (v2.53.0, fase 5): a Hidden target cannot be shot at; a Prone one
+    // gives a ranged attack Advantage; an Incapacitated one is hit automatically.
+    const ranged = !!target && !isMeleeAttack(weapon, distanceInfo(actor, target, store.getActiveMap?.() || {}).band);
+    const hiddenBlock = target && target.id !== actor.id ? rangedTargetBlock(target, ranged) : '';
+    if (hiddenBlock) throw new Error(hiddenBlock);
+    const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty || !!heavy?.disadvantage, o.traitId, { ranged, reaction: !!action.cardReplyId });
     const keeperRoll = !player;
     // Powers in effect (Velocity Surge +2 Agility) and those armed for this roll (Silver Tongue,
     // Vector Calculus: a bonus and a Hope die that counts higher).
@@ -601,6 +777,15 @@ function resolveGameAction(action, store) {
     }
     if (player && result.isCritical)
       patch.stress = { ...actor.stress, current: Math.max(0, (actor.stress?.current || 0) - 1) };
+    // The weapon's cost after the roll: High-Recoil (Strength 0 or lower) and Unstable (Failure
+    // with Fear) mark Stress; Volatile and Catastrophic are recalled.
+    const recoil = weapon ? afterAttackStress(weapon, actor, result) : null;
+    if (recoil?.stress) {
+      const before = patch.stress || actor.stress || { current: 0, max: 0 };
+      patch.stress = { ...before, current: before.max > 0 ? Math.min(before.max, (before.current || 0) + recoil.stress) : (before.current || 0) + recoil.stress };
+    }
+    const weaponNotes = [...(heavy?.notes || []), ...(recoil?.notes || []).map(n => n + '.')];
+    if (weaponNotes.length) result.outcomeDesc = `${result.outcomeDesc || ''} ${weaponNotes.join(' ')}`.trim();
     // Integrity Die (Path to Nirvana, Disciplined State): each roll with Fear lowers it by 1, never
     // on matching dice; at 0 the state ends.
     let integrityEnded = [];
@@ -608,7 +793,12 @@ function resolveGameAction(action, store) {
       const ticked = tickClocks(actor.effectClocks, { kind: 'fear' });
       patch.effectClocks = ticked.list; integrityEnded = ticked.expired;
     }
-    const hit = ownAttack && (result.isCritical || result.total >= o.dc);
+    const helpless = ownAttack && helplessTarget(target);
+    const hit = ownAttack && (result.isCritical || result.total >= o.dc || helpless);
+    if (helpless && !result.isCritical && result.total < o.dc) {
+      weaponNotes.push(`${target.name} está Incapacitated: el ataque impacta automáticamente.`);
+      result.outcomeDesc = `${result.outcomeDesc || ''} ${weaponNotes.at(-1)}`.trim();
+    }
     const damageRiders = [];
     if (state && melee) {
       const opening = firstStrikeRider(actor, weapon);
@@ -618,9 +808,21 @@ function resolveGameAction(action, store) {
       }
       if (hit && /refused/i.test(state.name) && actor.traits?.[state.trait]) damageRiders.push({ id: 'disciplined-trait', label: state.trait, value: actor.traits[state.trait] });
     }
-    // Attacking ends the self effects that say so (Temporal Cloak).
+    // Sneak Attack (Scoundrel, Awakened and Sleeping): an attack with Advantage that hits deals
+    // +1d6 once (2d6 at Tier 2, 3d6 at Tier 3); more sources of Advantage add nothing.
+    if (hit && edge.advantage && sneakAttacker(actor)) damageRiders.push({ id: 'sneak-attack', label: 'Sneak Attack', dice: tierOf(actor.level) + 'd6' });
+    // The weapon's own damage on a hit: Scatter +2 up close, Disruptor +1 die against a machine.
+    if (hit && weapon) damageRiders.push(...weaponDamageRiders(weapon, { band: distanceInfo(actor, target, store.getActiveMap?.() || {}).band, target, held: tokenInventory(actor).weapons }));
+    // The shot spends a Reload weapon and the charge of a Charge-Up one.
+    const shot = weapon && afterShot(weapon);
+    if (shot && (shot.spent !== weapon.spent || shot.charged !== weapon.charged)) {
+      const inventory = tokenInventory(actor);
+      patch.inventory = { ...inventory, weapons: inventory.weapons.map(w => w.id === weapon.id ? shot : w) };
+    }
+    // Attacking ends the self effects that say so (Temporal Cloak) and breaks Hidden.
     const unveiled = ownAttack && endSelfEffects({ ...actor, effectClocks: patch.effectClocks || actor.effectClocks }, { attack: true });
     if (unveiled) { patch.effectClocks = unveiled.effectClocks; patch.conditions = unveiled.conditions; }
+    if (ownAttack && (patch.conditions || actor.conditions || []).includes('Hidden')) patch.conditions = (patch.conditions || actor.conditions).filter(c => c !== 'Hidden');
     // Impact Absorption: the amount absorbed goes into the next attack's damage.
     const absorbed = ownAttack && actor.effectClocks?.find(c => c.name === 'Impact Absorption' && c.absorbed);
     if (absorbed) {
@@ -642,6 +844,16 @@ function resolveGameAction(action, store) {
       patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== state.id);
     }
     if (target && target.id !== actor.id && actor.effectClocks?.some(c => c.nextAttack)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAttack);
+    // Stagger and Disorienting: the next action of any kind has Disadvantage and spends them
+    // (a Reaction Roll is not an action). So does the plain Dazed condition (v2.53.0).
+    if (!action.cardReplyId && actor.effectClocks?.some(c => c.nextAction)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAction);
+    if (!action.cardReplyId && (patch.conditions || actor.conditions || []).includes('Dazed')) patch.conditions = (patch.conditions || actor.conditions).filter(c => c !== 'Dazed');
+    // Brittle on the target: this Physical hit deals +1d6 and Brittle ends.
+    const brittle = hit && target?.effectClocks?.find(c => c.brittle);
+    if (brittle && (!weapon || damageTypeOf(weapon) === 'physical')) {
+      damageRiders.push({ id: 'brittle', label: 'Brittle', dice: '1d6' });
+      store.updateToken(target.id, { effectClocks: target.effectClocks.filter(c => c.id !== brittle.id) });
+    }
     if (['agility','finesse'].includes(o.traitId) && actor.effectClocks?.some(c => c.name === 'Slipstream Jolt')) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.name !== 'Slipstream Jolt');
     if (!standalone) store.updateToken(actor.id, patch);
     if (guard) markMeleeDefense(store, target, guard);
@@ -663,8 +875,10 @@ function resolveGameAction(action, store) {
       ...(secret ? { visibility: 'keeper' } : {}),
       type: 'CHECK',
       title: `${actor.name}: ${result.outcomeTitle}`,
-      details: `${checkMath(result)} vs DC ${result.dc}. ${result.pathPayout}`,
+      details: `${checkMath(result)} vs DC ${result.dc}. ${result.pathPayout}${weaponNotes.length ? ' ' + weaponNotes.join(' ') : ''}`,
       resultType: result.resultType,
+      // The full calculation, shown under «Ver cálculo» (v2.51.0).
+      calc: rollCalc({ ...result, attack: !!ownAttack }, [...(edge.advantage ? ['Ventaja por: ' + (o.hasAdvantage ? 'elegida' : 'efectos o condiciones')] : []), ...(edge.disadvantage ? ['Desventaja por: ' + (o.hasDisadvantage ? 'elegida o alcance' : 'efectos, condiciones o el arma')] : []), ...powerNotes, ...weaponNotes]),
     };
     store.addLog(log);
     return { ...record, log };

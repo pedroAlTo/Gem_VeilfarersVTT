@@ -14,6 +14,8 @@ import { cardUse, usedBy } from './cardLimits.js';
 import { costLabel, DUAL_REACTIONS } from './loadoutCards.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { distanceInfo } from './attackFlow.js';
+import { PATH_TRAITS } from './statePowers.js';
+import { PROCEDURES } from './powerProcedures.js';
 
 // ── State of a card in the hand ─────────────────────────────────────────────────────────────
 function missing(card, token) {
@@ -89,11 +91,29 @@ export function hidePreview() { clearTimeout(previewTimer); document.getElementB
 // 'dialog': it has choices that cannot be guessed; 'aim': a target on the map; 'area': an area
 // around the caster to confirm; 'play': nothing else, it is played at once.
 export function quickPlan(card, token) {
-  if (card.chooseTrait || card.reverse || card.kind === 'beardown' || cardRollOptions(card) || (card.cost?.open && card.cost?.resolve)) return 'dialog';
+  if (card.chooseTrait || card.reverse || card.kind === 'beardown' || cardRollOptions(card) || (card.cost?.open && card.cost?.resolve) || PROCEDURES[card.name]?.choose) return 'dialog';
   if (card.kind === 'effort' && (token.effort || 0) < (card.cost?.effort || 0)) return 'dialog';
   if (areaRule(card)) return 'area';
   if (TARGET_RULES[card.name]) return 'aim';
   return 'play';
+}
+
+// Básico (v2.48.0, Plan de UX V3, fase 2): the choices a card would ask in its window, taken by
+// the table so one click plays it. A state that names a Trait takes the character's best of the
+// three (Agility, Instinct, Strength); a move with an open Resolve cost spends its minimum; Drone
+// Whisper and System Jackknife use the table's DC (the dice panel's, 15 unless changed). Breaking
+// Point (it closes an action) and Bear Down keep their own place. null: it still needs its window.
+export function basicDefaults(card, token, { dc = 15 } = {}) {
+  if (!card || !token || card.reverse || card.kind === 'beardown') return null;
+  if (card.kind === 'effort' && (token.effort || 0) < (card.cost?.effort || 0)) return null;
+  const options = {};
+  let resolveSpent = null;
+  if (card.chooseTrait) options.trait = PATH_TRAITS.reduce((best, t) => ((Number(token.traits?.[t]) || 0) > (Number(token.traits?.[best]) || 0) ? t : best), PATH_TRAITS[0]);
+  const dcs = cardRollOptions(card);
+  if (dcs) options.cardDC = dcs.includes(Number(dc)) ? Number(dc) : 15;
+  if (card.cost?.open && card.cost?.resolve) resolveSpent = card.cost.resolve;
+  const plan = areaRule(card) ? 'area' : TARGET_RULES[card.name] ? 'aim' : 'play';
+  return { plan, options, resolveSpent };
 }
 
 // ── The Domain emblem under the pointer (v2.42.0) ───────────────────────────────────────────

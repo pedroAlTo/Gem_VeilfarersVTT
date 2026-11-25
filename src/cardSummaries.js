@@ -48,6 +48,8 @@ export const SUMMARIES = {
   // Void
   'Slipstream Jolt': 'Objetivo Close · Desventaja en su próxima tirada de Agility o Finesse',
   'Temporal Cloak': 'Mejora · 10 min · Oculto · Ventaja en Agility para no ser visto',
+  // Vanish (v2.50.0, user decision): it resolves by itself.
+  'Vanish': 'Resolve 1 · sin tirada · obtienes el estado Oculto (Hidden): Ventaja en tu próximo ataque; se va al atacar o lanzar un Poder',
   'Vector Calculus': 'Próxima tirada · Agility o Finesse +nivel · Hope 10 o menos = 11',
   'Lucky Break': 'Reacción · relanza el Hope o el Fear de tu última tirada',
   'Spatial Shift': 'Movimiento · teletransporte a Close (la nave, a Far) · sin tirada',
@@ -72,6 +74,15 @@ export const SUMMARIES = {
   'Second Wind': 'Esfuerzo · −2 Stress',
   'Seize the Moment': 'Esfuerzo · tras un éxito, una consecuencia favorable extra',
   'Bear Down': 'Resolve · suma dados de Resolve a tu última tirada o daño',
+  // Class Features split in named abilities (v2.43.5).
+  'Sneak Attack': 'Pasivo · ataque con Ventaja que impacta: +{T}d6 de daño (una vez por ataque)',
+  'The Quiet Network': 'Una vez por sesión · un contacto local: reunión, refugio, oportunidad o servicio',
+  'Shadow Operative': 'Ventaja en tiradas de sigilo · 1/sesión, repite una Agility fallida para esquivar',
+  'Trained Body': 'Pasivo · golpes desarmados Melee d6 (d8 en Tier 2, d10 en Tier 3) con Strength o Agility',
+  'Unbroken Focus': '+1 Evasión sin armadura Heavy · 1/escena, 1 Effort: no marcas un Stress',
+  'The Refusal': 'Reacción · 1/escena, 1 Effort · Desventaja a un Poder o Ventaja a su tirada de reacción (Close)',
+  'Stellar Instinct': '+2 a Finesse (Pilot/Navigate) · 1/sesión, repite un dado de Dualidad al fallar',
+  'Pilot Surge Die': 'Pasivo · al gastar Hope en un rasgo de Pilot, suma d6 (d8 Tier 2, d10 Tier 3)',
   'Uncanny Power': 'Resolve · tira el acceso y lanza un Poder del Archivo',
 };
 

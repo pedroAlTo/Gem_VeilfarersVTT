@@ -1,4 +1,5 @@
 import { tagLabel, weaponTagList } from './weaponTags.js';
+import { tagInfo } from './weaponGlossary.js';
 const tagLine = row => weaponTagList(row).map(tagLabel).join(', ');
 import { store } from './state.js';
 import { dossierDialog } from './dossierUI.js';
@@ -306,10 +307,21 @@ const entryOf = row => catalogEntry(row) || {};
 const bookName = source => Object.fromEntries(BOOKS)[source] || '';
 const featureList = text => String(text || '').split(/,\s*(?![^()]*\))/).map(s => s.trim()).filter(Boolean);
 
-// Tags: chips that show their rule in a popup on hover or focus.
+// Tags: chips that show their rule in a popup on hover or focus. A weapon's tag also says what the
+// table does with it (Plan de UX V3, fase 4): a mark on the chip and a line in the popup.
+const MODE_MARK = { auto: '⚙', partial: '◐', reminder: '🔔', info: '' };
 function tagsHTML(item) {
   const weapon = item.category === 'weapons' || item.damage !== undefined && !item.armorSlots;
-  const labels = weapon ? weaponTagList(item).map(t => [tagLabel(t), tagRule(t)]) : featureList(item.features).map(f => [f, ruleOf(f)]);
+  if (weapon) {
+    const tags = weaponTagList(item).map(tagInfo);
+    if (!tags.length) return '';
+    return `<span class="eq-tags">${tags.map(t => {
+      const rule = t.rule || tagRule(t.id);
+      // Game data (names, the book's rule) is never machine-translated; what the table does is.
+      return `<span class="eq-tag eq-tag-${t.mode}" tabindex="0">${MODE_MARK[t.mode] ? `<i aria-hidden="true">${MODE_MARK[t.mode]}</i>` : ''}<span data-no-i18n>${esc(t.label)}</span><span class="eq-tag-pop" role="tooltip"><b data-no-i18n>${esc(t.label)}</b>${rule ? `<span data-no-i18n>${esc(rule)}</span>` : 'Sin regla en el glosario: aplícala según su texto.'}${t.book ? `<small data-no-i18n>${esc(t.book)}</small>` : ''}<em class="eq-tag-use eq-use-${t.mode}"><strong>${esc(t.modeLabel)}</strong>${t.table ? `<span>${esc(t.table)}</span>` : ''}</em></span></span>`;
+    }).join('')}</span>`;
+  }
+  const labels = featureList(item.features).map(f => [f, ruleOf(f)]);
   if (!labels.length) return '';
   return `<span class="eq-tags">${labels.map(([label, rule]) => `<span class="eq-tag" tabindex="0">${esc(label)}${rule ? `<span class="eq-tag-pop" role="tooltip"><b>${esc(label)}</b>${esc(rule)}</span>` : ''}</span>`).join('')}</span>`;
 }

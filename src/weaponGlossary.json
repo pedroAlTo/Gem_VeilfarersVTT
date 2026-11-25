@@ -1,0 +1,737 @@
+{
+ "accurate": {
+  "name": "Accurate",
+  "book": "Corebook 12.06",
+  "rule": "Gain +1 on attack rolls made at Far or Very Far range."
+ },
+ "adaptive": {
+  "name": "Adaptive",
+  "book": "Corebook 12.06",
+  "rule": "Once per scene, change this weapon’s damage type to Physical, Energy, Void, or Neural until changed again."
+ },
+ "agony": {
+  "name": "Agony",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "After HP or Stress loss, the target makes an Instinct Reaction Roll, DC 15. On failure apply the Core Stunned condition. A target immune to pain ignores this property."
+ },
+ "anchoring": {
+  "name": "Anchoring",
+  "book": "Rust & Steel 12.06",
+  "rule": "On a hit, the target cannot take Move actions on their next Spotlight unless they succeed on a Strength Reaction Roll against the weapon's Feature DC."
+ },
+ "anti-psionic": {
+  "name": "Anti-Psionic",
+  "book": "Rust & Steel 12.06",
+  "rule": "Add +1d6 Neural damage against a target with a printed Veil-Touched or Veil-Aligned trait, or a target that has activated a Domain Power since the end of its previous Spotlight. While the weapon is drawn, the wielder has Advantage on Instinct and Presence Reaction Rolls against Domain Powers; it grants no immunity and does not alter ordinary Neural attacks."
+ },
+ "anti-tech": {
+  "name": "Anti-Tech",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Target classification only: the item's Disabling effect may target Synthetics, drones, augmentations, and exposed devices. It grants no additional damage."
+ },
+ "anti-vehicle": {
+  "name": "Anti-Vehicle",
+  "book": "Rust & Steel 12.06",
+  "rule": "Deals double damage to vehicles and structures. Deals normal damage to personnel."
+ },
+ "arc": {
+  "name": "Arc",
+  "book": "Rust & Steel 12.06",
+  "rule": "On a successful hit, the attack arcs to a second target within Very Close range of the first. The second target takes half damage (rounded down)."
+ },
+ "arcing-shot": {
+  "name": "Arcing Shot",
+  "book": "Corebook 12.06",
+  "rule": "Ignore cover when there is a clear vertical or indirect trajectory to the target."
+ },
+ "area": {
+  "name": "Area",
+  "book": "Corebook 12.06",
+  "rule": "The effect applies to every creature in its listed area, including allies, rather than to a single target."
+ },
+ "area-band": {
+  "name": "Area",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "On detonation or activation, every creature in the printed band makes an Agility Reaction Roll against the item's Feature DC. Failure takes the listed damage or effect in full; success takes half damage and no secondary Condition. Total Cover blocks it."
+ },
+ "armor-eating": {
+  "name": "Armor-Eating",
+  "book": "Rust & Steel 12.06",
+  "rule": "The first time each round this item causes HP loss with Acid- or Corrosive-tagged Energy damage, reduce the target's maximum Armor Slots by 1, minimum 0, until Repair All Armor. Additional damage from this item that round does not reduce it again. The Very Close acid zone lingers for 2 rounds under the Lingering procedure above."
+ },
+ "armor-piercing": {
+  "name": "Armor Piercing",
+  "book": "Corebook 12.06",
+  "rule": "Reduce the target’s maximum Armor Slots by the listed rating until its next Long Rest. Multiple applications stack."
+ },
+ "assassination": {
+  "name": "Assassination",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "An attack against an unaware target has Advantage. On a hit, add one normal weapon damage die and make the target Dazed. A Critical Success doubles the normal pool before this one extra die; damage is never tripled."
+ },
+ "attachment": {
+  "name": "Attachment",
+  "book": "Rust & Steel 12.06",
+  "rule": "This is not a standalone weapon; it attaches to a rifle or carbine with appropriate rail space. The combined weight increases the base weapon's Burden by the amount listed."
+ },
+ "automatic": {
+  "name": "Automatic",
+  "book": "Corebook 12.06",
+  "rule": "After a successful attack, mark 1 Stress to apply the same attack result to a second valid target within range and Very Close of the primary target. Roll damage separately."
+ },
+ "biometric": {
+  "name": "Biometric",
+  "book": "Rust & Steel 12.06",
+  "rule": "The weapon fires only for a registered user. Reprogramming it takes an Action, suitable access, and a Knowledge (Tech) Roll, DC 15. Any success adds or removes one registered user. Failure with Hope changes nothing. Failure with Fear leaves it locked until Downtime repair and alerts the registered owner only if an established network connection exists."
+ },
+ "black-hole": {
+  "name": "Black Hole",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "On detonation, every creature within Very Close range makes a Strength Reaction Roll, DC 15. On failure it is pulled to the center and takes 4d6 Void damage; on success it holds position and takes half. Unattended ordinary objects in the zone are destroyed."
+ },
+ "blast": {
+  "name": "Blast",
+  "book": "Rust & Steel 12.06",
+  "rule": "Blast and Area (band) mean the Core Explosive procedure in the printed band: every creature there makes an Agility Reaction Roll against the item's Feature DC; failure takes the printed damage or effect in full, success takes half damage and no secondary Condition, and Total Cover blocks it."
+ },
+ "bleed": {
+  "name": "Bleeding",
+  "book": "Rust & Steel 12.06",
+  "rule": "The target gains the Core Bleeding condition: mark 1 Stress at the end of each round until First Aid or any healing effect stops it."
+ },
+ "breaching": {
+  "name": "Breaching",
+  "book": "Rust & Steel 12.06",
+  "rule": "Designed to defeat structural barriers. Ignores Hardness of doors, walls, and similar obstacles up to Tier 3. Against Tier 4 structures, deals half damage. Tier 5 (bunker-grade) structures require specialized charges."
+ },
+ "brittle": {
+  "name": "Brittle",
+  "book": "Corebook 12.06",
+  "rule": "A target that loses HP is left Brittle: the next instance of Physical damage it takes deals +1d6 damage, then Brittle ends. This is not the Vulnerable condition and does not grant Advantage."
+ },
+ "brutal": {
+  "name": "Brutal",
+  "book": "Rust & Steel 12.06",
+  "rule": "Brutal means Core Devastating."
+ },
+ "burst-fire": {
+  "name": "Burst Fire",
+  "book": "Corebook 12.06",
+  "rule": "Whenever a damage die rolls its maximum value, roll one additional die of the same size and add it. Additional dice do not explode again."
+ },
+ "catastrophic": {
+  "name": "Catastrophic",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "On Failure with Fear while using the item, it becomes Broken and detonates. The user and every creature within Very Close range make Agility Reaction Rolls, DC 15, taking 3d6 Energy damage on failure or half on success. Matching dice remain Critical Success."
+ },
+ "charge": {
+  "name": "Charge",
+  "book": "Rust & Steel 12.06",
+  "rule": "Charge means Charge-Up only when the item prints Charge-Up; ordinary references to a battery charge are not a property."
+ },
+ "charge-up": {
+  "name": "Charge-Up",
+  "book": "Rust & Steel 12.06",
+  "rule": "Spend one Action to charge the weapon. It may fire on a later Spotlight. The charge ends after the shot, if the wielder takes HP damage, or if the weapon leaves the wielder's control."
+ },
+ "cleave": {
+  "name": "Cleave",
+  "book": "Corebook 12.06",
+  "rule": "After a successful Melee hit, immediately make one additional attack against a different target within this weapon’s reach."
+ },
+ "collapsible": {
+  "name": "Collapsible",
+  "book": "Rust & Steel 12.06",
+  "rule": "The weapon can fold down to approximately datapad size. While collapsed, it gains the [CR] Concealable property. Deploying or collapsing it is part of a weapon swap when the fiction permits; otherwise it is a Maneuver."
+ },
+ "concealable": {
+  "name": "Concealable",
+  "book": "Corebook 12.06",
+  "rule": "While concealed on the body, this weapon does not count toward Burden. A routine search finds it only on a successful Instinct Roll, DC 15."
+ },
+ "cone": {
+  "name": "Cone",
+  "book": "Rust & Steel 12.06",
+  "rule": "Cone uses the Spray procedure: choose a Very Close cone within the weapon's printed range, make one attack Roll, compare it with every creature's Evasion, and roll damage once for every target hit; allies are valid targets."
+ },
+ "continuous": {
+  "name": "Continuous",
+  "book": "Corebook 12.06",
+  "rule": "The target marks 1 Stress at the start of its next Spotlight."
+ },
+ "crushing": {
+  "name": "Crushing",
+  "book": "Corebook 12.06",
+  "rule": "The hit ignores one Armor Slot. Its base type is Physical unless stated."
+ },
+ "curse": {
+  "name": "Curse",
+  "book": "Rust & Steel 12.06",
+  "rule": "Curse is a portrayal marker unless the table has adopted Chapter 18's complete Corruption module. By itself it causes no resource loss, compulsion, memory loss, or mechanical penalty."
+ },
+ "cursed": {
+  "name": "Cursed",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "This weapon has a Precursor curse. See Chapter 18 for curse mechanics."
+ },
+ "cutting": {
+  "name": "Cutting",
+  "book": "Corebook 12.06",
+  "rule": "Armor Slots cannot be spent to reduce this instance of damage."
+ },
+ "defensive": {
+  "name": "Defensive",
+  "book": "Rust & Steel 12.06",
+  "rule": "While wielding this weapon, gain +1 Evasion against Melee attacks."
+ },
+ "deployable-cover": {
+  "name": "Deployable Cover",
+  "book": "Corebook 12.06",
+  "rule": "Deploy a one-way energy wall approximately 5 m × 3 m. It grants Total Cover (Chapter 10) from one side and has 10 HP and 6 Armor Slots. It lasts for the scene or until destroyed."
+ },
+ "devastating": {
+  "name": "Devastating",
+  "book": "Corebook 12.06",
+  "rule": "When damage equals or exceeds the target’s Severe Threshold, the hit marks 1 additional HP."
+ },
+ "disabling": {
+  "name": "Disabling",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "After the item causes HP loss to a Synthetic, drone, augmentation, or exposed device, its operator makes a Knowledge (Tech) Reaction Roll, DC 15. On failure one fictionally exposed device goes offline until an Action and Knowledge (Tech), DC 15, restores it. Against an unaugmented organic target it has no extra effect."
+ },
+ "discriminating": {
+  "name": "Discriminating",
+  "book": "Rust & Steel 12.06",
+  "rule": "The mine contains sensors that can distinguish between targets based on programmed parameters: IFF transponder codes, thermal signatures, species identification, or other criteria. The mine only detonates when valid targets enter its trigger radius; it ignores invalid targets."
+ },
+ "disintegrate": {
+  "name": "Disintegrate",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "A target reduced to 0 HP becomes Dying normally. If it later dies before stabilization, no recoverable body remains. This property never skips Dying, Final, or the player's Death Move choice."
+ },
+ "disintegrating": {
+  "name": "Disintegrating",
+  "book": "Corebook 12.06",
+  "rule": "When any damage die rolls its maximum value, the target's player chooses one fictionally exposed carried item to go offline or reduces maximum Armor Slots by 1 until Repair All Armor; for an NPC, the Keeper chooses. Restore an offline item with suitable tools during a Short or Long Rest and a successful Knowledge (Tech) Roll, DC 15. A target reduced to 0 HP becomes Dying normally. If it later dies before stabilization, no recoverable body remains. This never skips Final or the voluntary Death Move."
+ },
+ "disorienting": {
+  "name": "Disorienting",
+  "book": "Corebook 12.06",
+  "rule": "The affected creature is Dazed (Chapter 10)."
+ },
+ "dispersal-wave": {
+  "name": "Dispersal Wave",
+  "book": "Corebook 12.06",
+  "rule": "The effect fills a Close-range cone. Each creature in the cone makes a Presence Reaction Roll, DC 15; on failure it suffers the weapon’s listed effect. Resistance: Presence vs DC 15."
+ },
+ "disruptor": {
+  "name": "Disruptor",
+  "book": "Rust & Steel 12.06",
+  "rule": "Against a Synthetic, drone, or exposed electronic device, roll one additional normal damage die. Against other targets, use the printed damage without modification. If the hit causes HP loss to a Synthetic or drone, one fictionally exposed device goes offline until the end of its next Spotlight."
+ },
+ "disturbing": {
+  "name": "Disturbing",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Legal, origin, and portrayal classifications only. They have no unstated mechanical effect."
+ },
+ "emp": {
+  "name": "EMP",
+  "book": "Rust & Steel 12.06",
+  "rule": "On hit, resolve the complete EMP pulse procedure in Chapter 5 against every exposed electronic device, augmentation user, drone, vehicle, and Synthetic within Very Close range. Friendly and hostile systems are affected equally."
+ },
+ "energy": {
+  "name": "Energy",
+  "book": "Corebook 12.06",
+  "rule": "This is an Energy weapon. Energy damage treats the target’s Major and Severe Thresholds as 2 lower. The damage line remains the authoritative damage type."
+ },
+ "energy-surge": {
+  "name": "Energy Surge",
+  "book": "Corebook 12.06",
+  "rule": "Deal +1d6 Energy damage and the target marks 1 Stress."
+ },
+ "entangling": {
+  "name": "Entangling",
+  "book": "Corebook 12.06",
+  "rule": "After a hit causes HP or Stress loss, the target makes a Strength Reaction Roll against the weapon's Feature DC. On failure it becomes Restrained under the normal Core condition. Resistance: Strength vs Feature DC."
+ },
+ "entrapping": {
+  "name": "Entrapping",
+  "book": "Corebook 12.06",
+  "rule": "On a hit, the target chooses Strength or Knowledge (Tech) and makes a Reaction Roll against the weapon's Feature DC. On failure it becomes Incapacitated. The condition clears as Chapter 10 defines it. Resistance: Strength or Knowledge (Tech) vs Feature DC."
+ },
+ "existence": {
+  "name": "Existence",
+  "book": "Corebook 12.06",
+  "rule": "This is a descriptive Precursor tag, not an independent effect. The item entry must define its exact trigger, target, effect, duration, and end condition before use; without that complete entry, Existence has no mechanical effect."
+ },
+ "explosive": {
+  "name": "Explosive",
+  "book": "Corebook 12.06",
+  "rule": "This is a delivery procedure, not a damage line: the item’s own listed damage is what lands. Every creature within Very Close of the impact point makes an Agility Reaction Roll against the item’s Feature DC. On a failure it takes the item’s listed damage in full; on a success, half. Total Cover blocks the blast. Resistance: Agility vs Feature DC."
+ },
+ "finesse": {
+  "name": "Finesse",
+  "book": "Rust & Steel 12.06",
+  "rule": "Finesse confirms that the attack may use the Finesse Trait even where the fiction would otherwise require Strength. It grants no numeric bonus and never means Agility."
+ },
+ "forbidden": {
+  "name": "Forbidden",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Legal, origin, and portrayal classifications only. They have no unstated mechanical effect."
+ },
+ "fragile": {
+  "name": "Fragile",
+  "book": "Rust & Steel 12.06",
+  "rule": "When a printed degradation trigger occurs under the adopted Condition Track, this weapon degrades two steps instead of one. If that optional module is inactive, Fragile has no mechanical effect."
+ },
+ "garrote": {
+  "name": "Garrote",
+  "book": "Rust & Steel 12.06",
+  "rule": "This weapon may attack only a target that is unaware of the wielder or Restrained by the wielder. Against an unaware target the attack has Advantage; on a hit add one normal weapon damage die. Matching dice alone create a Critical Success and use the normal player or Keeper critical procedure."
+ },
+ "genocide": {
+  "name": "Genocide",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Legal and narrative classification only. It grants no mechanical targeting or damage effect unless a campaign device defines a complete, consent-safe procedure."
+ },
+ "guided": {
+  "name": "Guided",
+  "book": "Corebook 12.06",
+  "rule": "You may attack a target you are aware of within range without direct line of sight. Guided attacks ignore cover except a completely sealed barrier or other Total Cover that leaves no viable path."
+ },
+ "heavy": {
+  "name": "Heavy",
+  "book": "Rust & Steel 12.06",
+  "rule": "Heavy on a personal weapon requires Strength +1 or higher; otherwise its attacks have Disadvantage. It has no naval effect and is distinct from a Heavy armor weight tag."
+ },
+ "high-recoil": {
+  "name": "High-Recoil",
+  "book": "Rust & Steel 12.06",
+  "rule": "If the wielder has Strength 0 or lower, they suffer 1 Stress after firing."
+ },
+ "horrifying": {
+  "name": "Horrifying",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "The first time each scene a creature sees this item cause HP loss, it makes a Presence Reaction Roll, DC 15. On failure it marks 1 Stress. A creature rolls at most once per Horrifying item per scene."
+ },
+ "ignite": {
+  "name": "Ignite",
+  "book": "Corebook 12.06",
+  "rule": "A target that loses HP is On Fire. The condition itself works exactly as Chapter 10 defines it."
+ },
+ "indirect": {
+  "name": "Indirect",
+  "book": "Rust & Steel 12.06",
+  "rule": "An Indirect personal weapon can target enemies without direct line of sight when the shooter has a spotter, personal tracking data, or established knowledge of the target's location. The attack still rolls against Evasion. Personal tracking data is not a Sensor Lock, does not create one, and does not grant Sensor Lock's Advantage."
+ },
+ "intimidating": {
+  "name": "Intimidating",
+  "book": "Rust & Steel 12.06",
+  "rule": "Grants +1 on Presence Rolls made for social interaction to threaten, coerce, or frighten while visibly wielding this weapon."
+ },
+ "irradiating": {
+  "name": "Irradiating",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "After Energy damage with the Radiation tag causes HP loss, the target makes a Strength Reaction Roll, DC 15. On failure it becomes Poisoned until a Knowledge (Medicine) Roll, DC 20, during a Long Rest or Tier 2+ medical care clears it. The impacted Very Close zone remains contaminated until decontaminated with an Action and Knowledge (Tech), DC 15."
+ },
+ "jamming": {
+  "name": "Jamming",
+  "book": "Rust & Steel 12.06",
+  "rule": "Creates a field that blocks wireless communications, radio, data transmission, remote detonation signals. Creatures within the zone cannot communicate with creatures outside except by voice. Remote-controlled devices within the zone cannot receive commands."
+ },
+ "knockdown": {
+  "name": "Knockdown",
+  "book": "Rust & Steel 12.06",
+  "rule": "On a hit, the target chooses Agility or Strength and makes a Reaction Roll: DC 10 for a Tier 1-2 weapon, or DC 15 for a Tier 3-4 weapon. On failure, the target is Prone."
+ },
+ "lethal-toxin": {
+  "name": "Lethal Toxin",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "After a hit causes HP loss, an organic target makes a Strength Reaction Roll, DC 15. On failure it becomes Incapacitated and Poisoned. A second failed Reaction while both conditions remain makes it Dying; stabilize normally at DC 15. Synthetics are immune. Matching dice remain Critical Success."
+ },
+ "lightweight": {
+  "name": "Lightweight",
+  "book": "Corebook 12.06",
+  "rule": "This weapon does not count toward Burden. A one-handed Lightweight weapon may be used comfortably in the off hand, but does not grant an extra attack."
+ },
+ "linear": {
+  "name": "Linear",
+  "book": "Rust & Steel 12.06",
+  "rule": "The charge cuts a line no longer than Very Close range instead of creating a blast. The plasma jet creates one opening along that declared line."
+ },
+ "lingering": {
+  "name": "Lingering",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "The impacted zone remains hazardous for N rounds; an unnumbered Lingering lasts until the end of the next round. Entering or beginning a Spotlight there repeats the normal Area Reaction against half the printed damage dice, rounded down to at least one die. Resolve it at most once per Spotlight and mark remaining rounds visibly."
+ },
+ "loud": {
+  "name": "Loud",
+  "book": "Rust & Steel 12.06",
+  "rule": "Firing this weapon alerts every creature in the current scene and in one adjacent accessible zone. It cannot accept a silencer. Creatures farther away notice it only when the fiction has an unobstructed acoustic or sensor path."
+ },
+ "massive": {
+  "name": "Massive",
+  "book": "Corebook 12.06",
+  "rule": "The wielder suffers -1 Evasion. On a hit, roll one additional normal damage die and discard the lowest normal damage die before totaling damage."
+ },
+ "melting": {
+  "name": "Melting",
+  "book": "Rust & Steel 12.06",
+  "rule": "After a hit causes HP loss, place one Melting marker on the target. At the start of that target's next Spotlight, it makes a Strength Reaction Roll against the weapon's Feature DC. On failure, roll one normal die of the weapon's printed damage and apply it as Energy damage with the same Fire, Thermal, Acid, or Corrosive tag; on success, apply half that roll. Then clear the marker."
+ },
+ "messy": {
+  "name": "Messy",
+  "book": "Corebook 12.06",
+  "rule": "This weapon leaves unmistakable residue, damage, or biological evidence. Concealing that a confrontation occurred is normally impossible without extensive cleanup."
+ },
+ "mind-link": {
+  "name": "Mind Link",
+  "book": "Corebook 12.06",
+  "rule": "This Psionic weapon may target a creature the wielder is aware of within range even without line of sight."
+ },
+ "mind-lock": {
+  "name": "Mind-Lock",
+  "book": "Corebook 12.06",
+  "rule": "When this weapon causes a target to mark Stress, that target makes a Presence Reaction Roll against the weapon’s Feature DC. On a failure, it may only Move on its next Spotlight. Resistance: Presence vs Feature DC."
+ },
+ "mounted-or-crew-served": {
+  "name": "Mounted or Crew-Served",
+  "book": "Rust & Steel 12.06",
+  "rule": "This weapon operates in one of two modes:"
+ },
+ "neural-link": {
+  "name": "Neural-Link",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Requires a neural-interface augmentation. Without one, attacks with the item have Disadvantage. It grants no extra Action and never controls its user."
+ },
+ "non-lethal": {
+  "name": "Non-Lethal",
+  "book": "Rust & Steel 12.06",
+  "rule": "This weapon cannot reduce a target below 1 HP. Targets reduced to 1 HP by Non-Lethal weapons are Incapacitated (unconscious or helpless) but not dying."
+ },
+ "obscuring": {
+  "name": "Obscuring",
+  "book": "Rust & Steel 12.06",
+  "rule": "The grenade creates a cloud of dense smoke (or similar obscurant) that fills its blast radius. Creatures inside the cloud have total concealment from creatures outside, and vice versa. Attacks through or within the cloud suffer Disadvantage. Creatures without alternative senses (thermal, sonar, etc.) are effectively blind while inside."
+ },
+ "one-shot": {
+  "name": "One-Shot",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "The item or payload is expended after the Action resolves, whether it succeeds or fails. Replenishment requires a new item or Downtime reload; matched dice do not change consumption."
+ },
+ "one-use": {
+  "name": "One-Use",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "The item or payload is expended after the Action resolves, whether it succeeds or fails. Replenishment requires a new item or Downtime reload; matched dice do not change consumption."
+ },
+ "overcharge": {
+  "name": "Overcharge",
+  "book": "Rust & Steel 12.06",
+  "rule": "Before making an attack, you can mark 1 Stress to add +1d6 to damage if you hit. If you miss, the weapon degrades one step on the adopted Condition Track; if that optional module is inactive, it goes offline until an Action and Knowledge (Tech) Roll, DC 10, restores it."
+ },
+ "overheating": {
+  "name": "Overheating",
+  "book": "Corebook 12.06",
+  "rule": "After each attack, roll d6. On 1-2, either mark 1 Stress to force cooling or spend an Action cooling before the weapon can attack again."
+ },
+ "paired": {
+  "name": "Paired",
+  "book": "Corebook 12.06",
+  "rule": "When wielding two weapons that both have Paired, add the listed Paired bonus from one of them to the damage of an attack made with either weapon. Only one Paired bonus applies per attack."
+ },
+ "penetrating": {
+  "name": "Penetrating",
+  "book": "Rust & Steel 12.06",
+  "rule": "The projectile passes through targets and cover. If the attack hits, the projectile continues in a straight line and may strike additional targets behind the first. Roll separate attack rolls for each target in the line of fire (up to 3 targets). Each subsequent target takes -1d6 damage as the projectile loses energy."
+ },
+ "persistent": {
+  "name": "Persistent",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "This is Lingering (3 rounds). It uses the same Area Reaction, once-per-Spotlight limit, and visible duration marker."
+ },
+ "phasing": {
+  "name": "Phasing",
+  "book": "Corebook 12.06",
+  "rule": "The weapon deals Void damage, ignores cover on ranged attacks, and ignores one Armor Slot on a hit. Its Void damage also applies the normal -4 Threshold Penetration. A Void Ward cancels the Penetration but not the ignored Armor Slot unless it explicitly cancels the whole feature."
+ },
+ "plague": {
+  "name": "Plague",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Descriptive payload class only. The specific item must define exposure, Reaction Roll, DC, effect, duration, and treatment; otherwise this tag has no mechanical effect."
+ },
+ "poison": {
+  "name": "Poison",
+  "book": "Corebook 12.06",
+  "rule": "When the attack causes HP loss, the target marks 1 Stress. A Poison (Special) item replaces this effect with its own text."
+ },
+ "power-hungry": {
+  "name": "Power-Hungry",
+  "book": "Rust & Steel 12.06",
+  "rule": "The weapon requires significant power to operate. Options include:"
+ },
+ "powerful": {
+  "name": "Powerful",
+  "book": "Corebook 12.06",
+  "rule": "This weapon’s listed damage die is one size larger than the standard die for its chassis. The damage line already includes this increase."
+ },
+ "precursor": {
+  "name": "Precursor",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Legal, origin, and portrayal classifications only. They have no unstated mechanical effect."
+ },
+ "probability-shift": {
+  "name": "Probability Shift",
+  "book": "Corebook 12.06",
+  "rule": "After rolling the attack, you may reroll both Duality Dice. You must use the new result."
+ },
+ "prototype": {
+  "name": "Prototype",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Legal, origin, and portrayal classifications only. They have no unstated mechanical effect."
+ },
+ "psionic": {
+  "name": "Psionic",
+  "book": "Corebook 12.06",
+  "rule": "This weapon makes no attack roll against Evasion. Instead the target makes a Presence Reaction Roll against the item’s Feature DC; on a failure it takes the weapon’s damage in full, and on a success it takes none. Wards and effects that block Veil contact block the attack outright. Resistance: Presence vs Feature DC."
+ },
+ "pull": {
+  "name": "Pull",
+  "book": "Rust & Steel 12.06",
+  "rule": "After blast damage resolves, every creature that failed the Blast Reaction moves to the center of the zone and becomes Prone. A creature that succeeded does not move and makes no second Roll."
+ },
+ "quick": {
+  "name": "Quick",
+  "book": "Corebook 12.06",
+  "rule": "After attacking, mark 1 Stress to immediately make a second attack against the same target."
+ },
+ "range": {
+  "name": "Range",
+  "book": "Rust & Steel 12.06",
+  "rule": "Range sets that personal weapon's maximum range to the named Core band."
+ },
+ "reach": {
+  "name": "Reach",
+  "book": "Corebook 12.06",
+  "rule": "This Melee weapon may attack a target at the listed distance, normally Very Close, without entering Melee range."
+ },
+ "reality-shift": {
+  "name": "Reality Shift",
+  "book": "Corebook 12.06",
+  "rule": "After a hit but before damage is rolled, the wielder chooses Physical, Energy, Void, or Neural for that hit. This changes only the canonical type; tags, dice, Penetration, Conditions, and every other property remain as printed."
+ },
+ "reliable": {
+  "name": "Reliable",
+  "book": "Corebook 12.06",
+  "rule": "Gain +1 on all attack rolls made with this weapon."
+ },
+ "reload": {
+  "name": "Reload",
+  "book": "Corebook 12.06",
+  "rule": "After each shot, spend an Action reloading before the weapon can attack again."
+ },
+ "restricted": {
+  "name": "Restricted",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "Legal, origin, and portrayal classifications only. They have no unstated mechanical effect."
+ },
+ "returning": {
+  "name": "Returning",
+  "book": "Rust & Steel 12.06",
+  "rule": "If thrown, the weapon returns to the user's hand at the end of the current Spotlight. If a barrier blocks the path, it stops at that barrier; calling it from a clear path later is a Maneuver."
+ },
+ "salvo-fire": {
+  "name": "Salvo Fire",
+  "book": "Corebook 12.06",
+  "rule": "After a successful attack, mark 1 Stress to apply the same attack result to a second target within Close of the primary target. Roll damage separately."
+ },
+ "scatter": {
+  "name": "Scatter",
+  "book": "Rust & Steel 12.06",
+  "rule": "At Very Close range, attack rolls gain +1 and damage rolls gain +2. At Close range or beyond, attack rolls suffer -1."
+ },
+ "scope": {
+  "name": "Scope",
+  "book": "Rust & Steel 12.06",
+  "rule": "When you spend an Action to Aim before firing this weapon, gain +2 to the attack roll instead of the standard +1. Additionally, reduce range penalties by one band (a penalty for firing at Very Far is treated as Far, Far as Close, and so on)."
+ },
+ "self-repairing": {
+  "name": "Self-Repairing",
+  "book": "Rust & Steel 12.06",
+  "rule": "During any Long Rest, this weapon automatically improves one step on the adopted Condition Track, to a minimum of Worn; it cannot self-repair from Broken. If that optional module is inactive, this property has no mechanical effect."
+ },
+ "sensor-block": {
+  "name": "Sensor-Block",
+  "book": "Rust & Steel 12.06",
+  "rule": "In addition to visual obscurement, this smoke blocks thermal imaging, radar, and most electronic sensors. Creatures with technological augmented senses (cybernetic eyes, sensor suites) gain no benefit against this obscurement."
+ },
+ "set": {
+  "name": "Set",
+  "book": "Rust & Steel 12.06",
+  "rule": "When an enemy enters this weapon's reach during their movement, you may make an immediate attack against them as a Reaction. If this attack hits, add +1d6 to damage."
+ },
+ "shaped": {
+  "name": "Shaped",
+  "book": "Rust & Steel 12.06",
+  "rule": "The explosive force is directed in a specific direction rather than expanding spherically. Creatures and objects behind the charge (the target side) take full damage. Creatures and objects in front of or beside the charge take no damage from the blast (though secondary effects like debris may still apply)."
+ },
+ "shield": {
+  "name": "Shield",
+  "book": "Rust & Steel 12.06",
+  "rule": "This item can be used with class features and abilities that reference shields. It provides partial cover (+2 to Evasion) against ranged attacks from one direction while wielded."
+ },
+ "shield-piercing": {
+  "name": "Shield Piercing",
+  "book": "Corebook 12.06",
+  "rule": "Only half of the target’s available Armor Slots, rounded down, may be spent against this hit."
+ },
+ "shred": {
+  "name": "Shred",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "After the attack causes HP loss, reduce the target's maximum Armor Slots by 1 until Repair All Armor and apply Bleeding to an organic target. A single hit applies this once."
+ },
+ "shredding": {
+  "name": "Shredding",
+  "book": "Corebook 12.06",
+  "rule": "When the attack causes HP loss, reduce the target’s maximum Armor Slots by 1 until the armor is repaired during Downtime."
+ },
+ "silent": {
+  "name": "Silent",
+  "book": "Corebook 12.06",
+  "rule": "Using this weapon creates no report or muzzle flash and does not automatically break stealth or alert creatures beyond the immediate victim."
+ },
+ "singularity": {
+  "name": "Singularity",
+  "book": "Corebook 12.06",
+  "rule": "Choose a point at Far range. Creatures within Close of it make a Strength Reaction Roll against the item’s Feature DC; on a failure they are pulled toward the point and Restrained (Chapter 10). Resistance: Strength vs Feature DC."
+ },
+ "smart": {
+  "name": "Smart",
+  "book": "Rust & Steel 12.06",
+  "rule": "The missile has onboard targeting AI and its attack has Advantage against a moving vehicle. When targeted, that vehicle's operator may use their Reaction and make a Finesse (Pilot/Navigate) Roll, DC 20; success cancels that Advantage. The attack still rolls against Evasion and never hits automatically. This personal/vehicle guidance is not a starship Sensor Lock."
+ },
+ "smart-scope": {
+  "name": "Smart Scope",
+  "book": "Corebook 12.06",
+  "rule": "Gain +2 on attack rolls at Far or Very Far range."
+ },
+ "spray": {
+  "name": "Spray",
+  "book": "Rust & Steel 12.06",
+  "rule": "Instead of targeting a single enemy, your attack affects all creatures in a cone (Very Close range, 60-degree arc). Roll once; apply the result to all targets in the cone."
+ },
+ "stable": {
+  "name": "Stable",
+  "book": "Corebook 12.06",
+  "rule": "This weapon ignores Overheating and other sustained-use malfunctions unless a rule explicitly overrides Stable."
+ },
+ "stagger": {
+  "name": "Stagger",
+  "book": "Corebook 12.06",
+  "rule": "A target damaged by this weapon has Disadvantage on its next action."
+ },
+ "structural": {
+  "name": "Structural",
+  "book": "Rust & Steel 12.06",
+  "rule": "Designed to destroy buildings, bridges, and infrastructure. When placed on load-bearing elements (support columns, foundation points, key structural members), the charge causes catastrophic structural failure in addition to direct blast damage. A properly placed structural charge can collapse a small building, drop a bridge span, or seal a tunnel."
+ },
+ "stun": {
+  "name": "Stun",
+  "book": "Rust & Steel 12.06",
+  "rule": "Stun means Core Stunning."
+ },
+ "stunning": {
+  "name": "Stunning",
+  "book": "Corebook 12.06",
+  "rule": "A damaged target makes a Strength Reaction Roll against the item’s Feature DC. On a failure it is Stunned (Chapter 10). Resistance: Strength vs Feature DC."
+ },
+ "stunning-on-crit": {
+  "name": "Stunning on crit",
+  "book": "Corebook 12.06",
+  "rule": "On a Critical Hit, the target is Stunned (Chapter 10)."
+ },
+ "sundering": {
+  "name": "Sundering",
+  "book": "Rust & Steel 12.06",
+  "rule": "After a Critical Success attack causes HP loss, the target's player chooses one: a fictionally exposed held shield goes offline, or maximum Armor Slots fall by 2, minimum 0, until Repair All Armor. Restore an offline ordinary shield during a Short or Long Rest with suitable tools and Knowledge (Tech), DC 15. A signature or bonded shield goes offline rather than being destroyed."
+ },
+ "suppressive": {
+  "name": "Suppressive",
+  "book": "Corebook 12.06",
+  "rule": "Mark 1 Stress. Every creature within Close of the target has Disadvantage on attacks until the end of its next Spotlight. This rides along with a normal attack; it is not the Suppress action (Chapter 10), which costs your whole Spotlight but hobbles every action in the area rather than attacks alone."
+ },
+ "sustained-fire": {
+  "name": "Sustained Fire",
+  "book": "Rust & Steel 12.06",
+  "rule": "After you hit a target, you may maintain the beam. On your next Spotlight, if you have not moved, the target remains within range, and it does not have total cover, spend your Action to deal the same rolled damage to that target without a new attack roll. You may continue maintaining the beam under the same conditions."
+ },
+ "system-shock": {
+  "name": "System Shock",
+  "book": "Corebook 12.06",
+  "rule": "Against Synthetics and machines, deal normal damage. Against organic targets, deal only 1d4 Stress. If any damage die rolls its maximum and the attack causes HP or Stress loss, the target's player chooses one fictionally exposed electronic device; it goes offline until an Action and a Knowledge (Tech) Roll, DC 10, restores it. The Keeper chooses for an NPC. This damage-die trigger never alters the Duality result."
+ },
+ "taser-charge": {
+  "name": "Taser Charge",
+  "book": "Corebook 12.06",
+  "rule": "The target makes a Strength Reaction Roll against the item’s Feature DC. On a failure it is Stunned (Chapter 10). Resistance: Strength vs Feature DC."
+ },
+ "temporal": {
+  "name": "Temporal",
+  "book": "Rust & Steel 12.06",
+  "rule": "Once per scene after making a nonmatching attack Roll with this weapon, reroll the Hope die and use the new face. The reroll may create a Critical Success. A matched result is already a Critical Success and cannot be rerolled by this property."
+ },
+ "thermal": {
+  "name": "Thermal",
+  "book": "Rust & Steel 12.06",
+  "rule": "A damaged target makes a Strength Reaction Roll against the weapon's Feature DC. On failure, apply the Core On Fire condition."
+ },
+ "thrown": {
+  "name": "Thrown",
+  "book": "Rust & Steel 12.06",
+  "rule": "Thrown permits a Finesse or Instinct ranged attack to the named band. After resolution the weapon lies in the target's zone and may be retrieved as part of a later Action after reaching it."
+ },
+ "torture": {
+  "name": "Torture",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "This weapon is designed to cause maximum pain. Evidence of its use generates additional Heat (+1) and may constitute a war crime."
+ },
+ "two-handed": {
+  "name": "Two-Handed",
+  "book": "Rust & Steel 12.06",
+  "rule": "Two-Handed requires both hands; while either hand is occupied by another object, the weapon cannot attack."
+ },
+ "unraveling": {
+  "name": "Unraveling",
+  "book": "Corebook 12.06",
+  "rule": "When any damage die rolls its maximum value, a player target chooses one Class or Ancestry Feature to suppress until the end of the scene; the Keeper chooses for an NPC. The target keeps control of all decisions and cannot lose its Path resource engine."
+ },
+ "unstable": {
+  "name": "Unstable",
+  "book": "Rust & Steel 12.06",
+  "rule": "On a Failure with Fear attack with the weapon, the wielder marks 1 Stress. The weapon also degrades one step on the adopted Condition Track; if that optional module is inactive, it goes offline until an Action and Knowledge (Tech) Roll, DC 10, restores it. Matching dice remain Critical Success."
+ },
+ "untraceable": {
+  "name": "Untraceable",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "This weapon leaves no ballistic evidence. Shots cannot be traced to the weapon."
+ },
+ "unwieldy": {
+  "name": "Unwieldy",
+  "book": "Rust & Steel 12.06",
+  "rule": "Attacks with this weapon take -2 unless the wielder spent an Action to brace it after their previous Spotlight and has not moved since. The brace ends after the weapon attacks or the wielder moves."
+ },
+ "vibration": {
+  "name": "Vibration",
+  "book": "Corebook 12.06",
+  "rule": "Armor Slots cannot be spent to reduce this instance of damage."
+ },
+ "volatile": {
+  "name": "Volatile",
+  "book": "Rust & Steel 12.06 · Forbidden",
+  "rule": "On Failure with Fear while attacking, the weapon overheats and cannot attack until an Action cools it. The wielder makes an Agility Reaction Roll, DC 10; on failure take 1d6 Energy damage with the Fire tag. Matching dice never trigger it."
+ },
+ "waveform": {
+  "name": "Waveform",
+  "book": "Corebook 12.06",
+  "rule": "The attack affects every creature in a Close-range cone. Roll once and compare the result with each target's Evasion."
+ }
+}

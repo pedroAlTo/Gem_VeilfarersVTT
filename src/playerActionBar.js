@@ -16,10 +16,13 @@ import { openActorPortrait } from './portraitPicker.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
-import { normalizeConditions, conditionDefinition } from './conditions.js';
+import { normalizeConditions, conditionDefinition, visibleConditions } from './conditions.js';
 import { openConditions } from './conditionUI.js';
-import { checkEdge, lifeStage } from './combatState.js';
+import { checkEdge, lifeStage, helplessTarget, rangedTargetBlock, fearSource } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus, weaponTraitId } from './attackFlow.js';
+import { weaponAttackEdge, wielderEvasion, ignoresLineOfSight, weaponReadiness, availableFollowUps, FOLLOW_UPS, areaProcedure, zoneTargets } from './weaponFeatures.js';
+import { throwDice } from './tableDice.js';
+import { isAdvanced, setTableMode } from './tableMode.js';
 import { hasSwarmTactics } from './adversaryPassives.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { proceduralAttack } from './adversaryWeapons.js';
@@ -125,6 +128,9 @@ export function sheetStats(token, armorName = '') {
   };
 }
 
+// The shortcuts of the player's bar, said by «?» (v2.48.0).
+export const SHORTCUTS_HELP = 'Atajos: 1–9 atacar con el arma de ese lugar (0 desarmado) · Enter ataca al objetivo marcado · F tomar foco · flechas mueven tu personaje · Esc cancela.';
+
 export class PlayerActionBar {
   constructor(parent) {
     this.root = document.createElement('section');
@@ -141,13 +147,21 @@ export class PlayerActionBar {
       clearTimeout(this.doneTimer);
       this.doneTimer = setTimeout(() => {
         if (this.targeting) return; // a new attack has already started
-        this.keeperAttack = false; this.result = null; this.signature = '';
+        // A second target, a second attack or the rest of an area still to come: the result stays
+        // (applied) with their buttons; × closes it (v2.46.0).
+        const more = this.followUps().length > 0 || !!this.areaQueue?.items?.some(i => !i.done);
+        this.keeperAttack = false; this.result = more && this.result ? { ...this.result, applied: true } : null; this.signature = '';
+        if (!more) this.areaQueue = null;
         window.veilCanvas?.setAttackTarget?.(null, null);
         store.update({ selectedTokenId: null, targetTokenId: null });
         this.render();
       }, 1200);
     });
     window.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (this.targeting) this.stopTargeting(); else if (this.pick.trait || this.pick.exp !== null) { this.pick = EMPTY_PICK; this.render(); } });
+    // Keyboard shortcuts (v2.48.0, Plan de UX V3, fase 2): 1–9 attack with the weapon in that place
+    // of the bar (0 unarmed), Enter attacks the marked target, F takes the Spotlight, ? lists them.
+    // In the capture phase: Enter on a marked target attacks before it would open the table chat.
+    window.addEventListener('keydown', event => this.shortcut(event), true);
     this.render();
   }
 
@@ -188,7 +202,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, actorPortrait(token), store.canEditToken(token.id), stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, actorPortrait(token), store.canEditToken(token.id), stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait, !!w.spent, !!w.charged]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result, this.lastAttackCtx, this.areaQueue]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -227,10 +241,15 @@ export class PlayerActionBar {
       ${this.optionsOpen ? `<div class="pab-options">
         <label class="pab-dc">DC <select data-pab-dc>${[5, 10, 12, 15, 18, 20, 25, 30].map(v => `<option value="${v}" ${String(v) === String(dc) ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <button type="button" class="hud-btn hud-btn-xs" data-pab-panel>Más opciones de tirada</button>
+        <button type="button" class="hud-btn hud-btn-xs" data-pab-keys title="${e(SHORTCUTS_HELP)}">Atajos <kbd>?</kbd></button>
+        <button type="button" class="hud-btn hud-btn-xs" data-pab-mode aria-pressed="${isAdvanced()}" title="Básico: la mesa elige lo habitual (Lucky Break relanza el dado más bajo). Avanzado: te pregunta y muestra todas las opciones.">Modo: ${isAdvanced() ? 'Avanzado' : 'Básico'}</button>
       </div>` : ''}
       <div class="pab-row">
         <span class="pab-label">Atacar</span>
-        <div class="pab-buttons">${weapons.length ? weapons.map(w => `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}"><b>${e(w.name)}</b><span data-no-i18n>${e(weaponRangeBand(w) || '—')}</span></button>`).join('')
+        <div class="pab-buttons">${weapons.length ? weapons.map((w, i) => { const ready = weaponReadiness(w), kbd = i < 9 ? `<kbd class="pab-key" aria-hidden="true">${i + 1}</kbd>` : '';
+          // Reload / Charge-Up (v2.45.0): a spent or uncharged weapon offers its Action instead.
+          return ready.ready ? `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}">${kbd}<b>${e(w.name)}</b><span data-no-i18n>${e(weaponRangeBand(w) || '—')}</span></button>`
+            : `<button type="button" class="pab-weapon pab-weapon-unready" data-pab-ready="${e(w.id)}" title="${e(ready.reason)}"><b>${e(w.name)}</b><span>${e(ready.action)}</span></button>`; }).join('')
           : `<button type="button" class="pab-weapon ${this.targeting?.weaponId === '' ? 'active' : ''}" data-pab-weapon="" title="Sin armas: ataque desarmado (Melee)"><b>Desarmado</b><span>Melee</span></button>`}</div>
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
@@ -244,17 +263,23 @@ export class PlayerActionBar {
     this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.tap({ kind: 'trait', id: b.dataset.pabTrait }); });
     this.root.querySelectorAll('[data-pab-exp]').forEach(b => { b.onclick = () => this.tap({ kind: 'exp', id: Number(b.dataset.pabExp) }); });
     this.root.querySelectorAll('[data-pab-weapon]').forEach(b => { b.onclick = () => (this.targeting?.weaponId === b.dataset.pabWeapon ? this.stopTargeting() : this.startTargeting(b.dataset.pabWeapon)); });
+    this.root.querySelectorAll('[data-pab-ready]').forEach(b => { b.onclick = () => network.requestAction({ type: 'WEAPON_READY', actorId: token.id, weaponId: b.dataset.pabReady, playerName: store.state.userName || '', tokenName: token.name })
+      .then(r => { notify(r.mode === 'reload' ? 'Arma recargada (una Acción).' : 'Arma cargada: podrá disparar en un Spotlight posterior.'); this.signature = ''; this.render(); }).catch(error => notify(error.message, 'error')); });
     this.root.querySelector('[data-pab-options]').onclick = () => { this.optionsOpen = !this.optionsOpen; this.render(); };
+    this.root.querySelector('[data-pab-keys]')?.addEventListener('click', () => notify(SHORTCUTS_HELP));
+    this.root.querySelector('[data-pab-mode]')?.addEventListener('click', () => { const mode = setTableMode(isAdvanced() ? 'basic' : 'advanced'); notify(mode === 'advanced' ? 'Modo Avanzado: la mesa te pregunta antes y muestra todas las opciones.' : 'Modo Básico: la mesa elige lo habitual con menos clics.'); this.signature = ''; this.render(); });
     this.root.querySelectorAll('[data-pab-edge]').forEach(b => { b.onclick = () => this.tap({ kind: 'edge', id: b.dataset.pabEdge }); });
     this.root.querySelector('[data-pab-dc]')?.addEventListener('change', event => { const panel = document.getElementById('dice_dc_select'); if (panel) { panel.value = event.target.value; panel.dispatchEvent(new Event('change')); } this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-apply]')?.addEventListener('click', () => this.applyDamage());
     this.root.querySelectorAll('[data-pab-attack-edge]').forEach(b => { b.onclick = () => this.confirmAttack(b.dataset.pabAttackEdge); });
     this.root.querySelector('[data-pab-shields]')?.addEventListener('click', () => document.querySelector('#dmg_mitigate_btn')?.click());
     this.root.querySelectorAll('[data-pab-rider]').forEach(b => { b.onclick = () => this.useRider(b.dataset.pabRider); });
+    this.root.querySelectorAll('[data-pab-follow]').forEach(b => { b.onclick = () => this.startFollowUp(b.dataset.pabFollow); });
+    this.root.querySelectorAll('[data-pab-area]').forEach(b => { b.onclick = () => this.areaDamage(b.dataset.pabArea, Number(b.dataset.share)); });
     this.root.querySelectorAll('[data-pab-bear-step]').forEach(b => { b.onclick = () => { this.bearCount = Math.max(1, (this.bearCount || 1) + Number(b.dataset.pabBearStep)); this.signature = ''; this.render(); }; });
     this.root.querySelector('[data-pab-bear]')?.addEventListener('click', () => this.useBearDown());
     this.root.querySelectorAll('[data-pab-prepare]').forEach(b => { b.onclick = () => this.prepare(b.dataset.pabPrepare); });
-    this.root.querySelector('[data-pab-clear]')?.addEventListener('click', () => { this.result = null; this.signature = ''; this.render(); });
+    this.root.querySelector('[data-pab-clear]')?.addEventListener('click', () => { this.result = null; this.areaQueue = null; this.lastAttackCtx = null; this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-panel]')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'dice' } })));
   }
 
@@ -278,6 +303,12 @@ export class PlayerActionBar {
   }
 
   targetHint(t) {
+    // A second target with no new roll (Automatic, Salvo Fire, Arc): one more touch confirms it.
+    if (t.followUp) return `<div class="pab-hint pab-target" role="status">
+      <div><span>${e(t.followUp)}:</span> <b data-no-i18n>${e(t.name)}</b> · <span data-no-i18n>${e(t.band)} · ${e(t.meters.toFixed(1))} m</span></div>
+      ${t.reasons.map(r => `<div class="pab-reason"><span>${e(r)}</span></div>`).join('')}
+      <div class="pab-confirm"><span>Toca otra vez el objetivo para confirmarlo</span> · <span>Esc para cancelar</span></div>
+    </div>`;
     const edge = { adv: ['adv', 'Con Ventaja'], dis: ['dis', 'Con Desventaja'], normal: ['normal', 'Tirada normal'] }[t.edge || 'normal'];
     return `<div class="pab-hint pab-target" role="status">
       <div><span>Objetivo:</span> <b data-no-i18n>${e(t.name)}</b> · <span data-no-i18n>${e(t.band)} · ${e(t.meters.toFixed(1))} m</span>${t.blocked ? ' · <span>Línea de tiro bloqueada</span>' : ''}</div>
@@ -407,11 +438,11 @@ export class PlayerActionBar {
     box.querySelectorAll('[data-pab-attack-edge]').forEach(b => { b.onclick = () => this.confirmAttack(b.dataset.pabAttackEdge); });
   }
 
-  startTargeting(weaponId) {
+  startTargeting(weaponId, followUp = null) {
     this.stopTargeting(false);
     const canvas = window.veilCanvas?.canvas || document.getElementById('tactical_canvas');
     if (!canvas) return;
-    this.targeting = { weaponId };
+    this.targeting = { weaponId, ...(followUp ? { followUp } : {}) };
     if (document.getElementById('main_right_sidebar')?.classList.contains('open')) { this.reopenDrawer = true; document.getElementById('sidebar_close_btn')?.click(); }
     // Captured before the map's own handler, so the touch picks a target instead of panning.
     this.onPick = event => {
@@ -422,9 +453,12 @@ export class PlayerActionBar {
       const target = tokenAtPoint(store.getTokensForActiveMap(), world, map.gridSize || 64, { exclude: this.tokenId, includeHidden: store.sessionRole !== 'player' });
       if (!target) return;
       event.preventDefault(); event.stopImmediatePropagation();
+      // A second target must be another one (Automatic, Salvo Fire, Arc, Cleave).
+      const follow = this.targeting.followUp;
+      if (follow && FOLLOW_UPS[follow.kind]?.other && target.id === follow.primaryId) { notify(`${FOLLOW_UPS[follow.kind].label}: elige otro objetivo distinto del primero.`, 'error'); return; }
       // First touch marks the target (the map draws the line and the distance); a second
       // touch on the same token attacks it.
-      if (this.targeting.targetId !== target.id) { this.markTarget(target); return; }
+      if (this.targeting.targetId !== target.id) { follow && !FOLLOW_UPS[follow.kind]?.attack ? this.markFollowTarget(target) : this.markTarget(target); return; }
       // Out of reach (a melee weapon at a distance): no attack, the sheet already says why.
       if (this.targeting.preview && !this.targeting.preview.allowed) { notify(this.targeting.preview.reasons[0] || 'Fuera de alcance.', 'error'); return; }
       this.confirmAttack('normal');
@@ -455,13 +489,26 @@ export class PlayerActionBar {
     const gear = await window.veilDiceRoller?.gearCheck?.(token, { weapon }).catch(() => null) || { disadvantage: false, text: '' };
     if (this.targeting !== targeting || targeting.targetId !== target.id) return;
     const roller = token.actorType === 'drone' ? store.state.tokens.find(t => t.id === token.drone?.operatorId) : token;
-    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage, weaponTraitId(weapon));
+    // The weapon's properties, said before the roll (Plan de UX V3, fase 4): Heavy, the defender's
+    // weapons (Massive, Defensive), what the player decides first (Unwieldy, Overcharge…).
+    const heavy = weaponAttackEdge(token.actorType === 'drone' ? null : weapon, roller);
+    const melee = weapon ? weaponRangeBand(weapon) === 'Melee' || (!weaponRangeBand(weapon) && gap.band === 'Melee') : gap.band === 'Melee';
+    const held = wielderEvasion(tokenInventory(target).weapons, { melee });
+    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage || heavy.disadvantage, weaponTraitId(weapon), { ranged: !melee });
+    // The target's conditions (v2.53.0): Hidden blocks a ranged attack; Prone gives it Advantage;
+    // Incapacitated is hit automatically.
+    const hiddenBlock = rangedTargetBlock(target, !melee);
+    const targetNotes = [hiddenBlock, !melee && !hiddenBlock && visibleConditions(target).includes('Prone') ? `${target.name} está Prone: Ventaja al atacarle a distancia.` : '',
+      helplessTarget(target) ? `${target.name} está Incapacitated: el ataque impacta automáticamente.` : '',
+      fearSource(roller) === target.id ? `${roller.name} está Frightened de ${target.name}: Desventaja contra él.` : ''];
     const props = weaponAttackBonus(weapon, gap.band), type = damageTypeOf(weapon || ''), pen = penetrationFor(type);
     const reasons = [check.disadvantage || !check.allowed ? check.reason : '',
       props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',
-      pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
+      ...heavy.notes, held.notes.length ? `Evasion de ${target.name}: ${held.notes.join(', ')}.` : '', ...heavy.ahead,
+      gap.blocked && ignoresLineOfSight(weapon) ? 'El arma no necesita línea de tiro.' : '',
+      ...targetNotes, pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
     if (lifeStage(roller)) reasons.unshift('El personaje no puede atacar en este estado.');
-    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed && !lifeStage(roller), edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
+    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked && !ignoresLineOfSight(weapon), allowed: check.allowed && !lifeStage(roller) && !hiddenBlock, edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
     if (this.keeperAttack) this.keeperPanel();
     this.signature = ''; this.render();
   }
@@ -471,10 +518,13 @@ export class PlayerActionBar {
     if (this.onPick && canvas) canvas.removeEventListener('pointerdown', this.onPick, true);
     this.onPick = null;
     if (!this.targeting) return;
-    if (this.targeting.targetId && !keepMark) window.veilCanvas?.setAttackTarget?.(null, null);
+    // Cleared first (v2.53.0): clearing the mark updates the store, which redraws this bar.
+    const marked = this.targeting.targetId;
+    this.targeting = null;
+    if (marked && !keepMark) window.veilCanvas?.setAttackTarget?.(null, null);
     if (!keepMark) this.keeperAttack = false;
     document.getElementById('keeper_attack_panel')?.remove();
-    this.targeting = null; document.body.classList.remove('pab-targeting');
+    document.body.classList.remove('pab-targeting');
     if (redraw) this.render();
   }
 
@@ -501,6 +551,8 @@ export class PlayerActionBar {
       <div class="pab-result-text"><b>${e(r.outcome || '—')}</b> <span>${e(r.targetName)}</span>${hit ? ` · <span>${e(r.raw)} de daño · ${e(r.severity)} · ${e(r.loss)}</span>` : ''}</div>
       ${(r.notes || []).length ? `<ul class="pab-notes">${r.notes.map(n => `<li>${e(n)}</li>`).join('')}</ul>` : ''}
       ${hit && !r.applied ? this.ridersHTML() : ''}
+      ${this.followHTML()}
+      ${this.areaHTML()}
       ${this.resultRange ? `<div class="pab-range ${this.resultRange.penalty ? 'penalty' : ''}">Distancia: <span data-no-i18n>${e(this.resultRange.band)} · ${e(this.resultRange.meters.toFixed(1))} m</span>${this.resultRange.penalty ? ` · ${e(this.resultRange.penalty)}` : ''}</div>` : ''}
       <div class="pab-result-actions">${hit && !r.applied ? `<button type="button" class="pab-apply-main" data-pab-apply ${r.canApply ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span>${store.sessionRole === 'player' ? 'Enviar daño al Keeper' : 'Aplicar daño'}</span>${r.loss ? `<b>${e(r.loss)}</b>` : ''}</button>` : ''}${hit && r.shields && !r.applied ? '<button type="button" class="hud-btn hud-btn-xs" data-pab-shields>Escudos</button>' : ''}${r.applied ? `<span class="pab-applied">${r.sent ? 'Enviado al Keeper: él decide' : 'Daño aplicado'}</span>` : ''}<button type="button" class="pab-more" data-pab-clear aria-label="Quitar el resultado">×</button></div>
     </div>`;
@@ -569,21 +621,188 @@ export class PlayerActionBar {
     document.getElementById('apply_dmg_to_target_btn')?.click();
     setTimeout(() => { if (this.result) { this.result = this.readResult(this.result.targetName); this.render(); } }, 400);
   }
+  // Plan de UX V3, fase 2 (user decision, 25 Nov 2026): a hit's damage goes to the Keeper's window
+  // by itself, with no «Enviar daño» click. The button stays only while the player can still add
+  // to the damage: Bear Down (Resolve left) or an effect that rides on it (Combat Surge…).
+  canAddToDamage() {
+    const token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!token || !store.canEditToken(token.id)) return false;
+    const resolve = token.path === 'Sleeping' && (token.resolve?.current || 0) > 0;
+    return resolve || this.riders().some(r => r.enough);
+  }
+  autoApply() {
+    if (!this.result?.canApply || this.result.applied || this.canAddToDamage()) return false;
+    this.applyDamage();
+    return true;
+  }
+
+  shortcut(event) {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return false;
+    const active = document.activeElement;
+    if (active && (/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) || active.isContentEditable || active.closest?.('vf-select,.orbital-listbox'))) return false;
+    if (document.querySelector('.dossier-backdrop, .veil-modal-backdrop') || window.veilCardAim) return false;
+    const token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!token || !store.canEditToken(token.id) || lifeStage(token)) return false;
+    const key = event.key;
+    if (/^[0-9]$/.test(key)) {
+      const n = Number(key), weapons = this.weapons || [];
+      const weapon = n === 0 ? null : weapons[n - 1];
+      if (n > 0 && !weapon) return false;
+      if (n === 0 && weapons.length) return false;
+      event.preventDefault();
+      const ready = weaponReadiness(weapon);
+      if (!ready.ready) { notify(ready.reason, 'error'); return true; }
+      this.startTargeting(weapon?.id || '');
+      if (this.targeting) notify(`${weapon?.name || 'Desarmado'}: toca el objetivo (Enter ataca al marcado, Esc cancela).`);
+      return true;
+    }
+    if (key === 'Enter' && this.targeting?.targetId && this.targeting.preview?.allowed) { event.preventDefault(); this.confirmAttack('normal'); return true; }
+    if ((key === 'f' || key === 'F') && !event.shiftKey && !token.hasSpotlight) { event.preventDefault(); if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } return true; }
+    if (key === '?') { event.preventDefault(); notify(SHORTCUTS_HELP); return true; }
+    return false;
+  }
+
+  // The action ring chose the weapon and the target (v2.47.0): the attack goes at once, no edge.
+  attackFromRing(weaponId, target) {
+    const actor = store.state.tokens.find(t => t.id === store.state.claimedTokenId);
+    if (!actor || !target) return;
+    if (this.tokenId !== actor.id) { store.update({ selectedTokenId: actor.id }); this.signature = ''; this.render(); }
+    this.stopTargeting(false);
+    this.swallowUntil = performance.now() + 700;
+    window.veilCanvas?.setAttackTarget?.(actor.id, target.id);
+    this.attack(weaponId, target, 'normal');
+  }
 
   // The marked target is attacked: a second touch on it (no edge), or Advantage/Disadvantage.
   confirmAttack(edge = 'normal') {
     const t = this.targeting, target = t && store.state.tokens.find(x => x.id === t.targetId);
     if (!t || !target) return;
     if (t.preview && !t.preview.allowed) { notify(t.preview.reasons[0] || 'Fuera de alcance.', 'error'); return; }
-    const chosen = t.weaponId;
+    const chosen = t.weaponId, follow = t.followUp;
     this.swallowUntil = performance.now() + 700;
     this.stopTargeting(true, { keepMark: true });
+    if (follow) { this.resolveFollowUp(follow, chosen, target, edge); return; }
     this.attack(chosen, target, edge, t.closingId);
   }
 
-  async attack(weaponId, target, edge = 'normal', closingId = null) {
+  // ── Areas and Psionic (v2.46.0) ───────────────────────────────────────────────────────────────
+  // Explosive, Area, Dispersal Wave, Psionic: the d20s of the NPCs in the zone are thrown in 3D and
+  // the table resolves their Reaction Rolls; each creature then takes its share of one damage roll.
+  async areaSave(weaponId, target, procedure) {
+    const token = store.state.tokens.find(t => t.id === this.tokenId), dice = window.veilDiceRoller;
+    if (!token || !dice) return;
+    const map = store.getActiveMap?.() || {};
+    const zone = zoneTargets(store.getTokensForActiveMap?.() || store.state.tokens, token, target, procedure, (a, b) => distanceInfo(a, b, map));
+    const npcs = zone.filter(t => t.isPlayer === false && t.actorType !== 'player');
+    const faces = npcs.length ? await throwDice([{ qty: npcs.length, sides: 20, role: 'Reaction' }], { label: `${procedure.label} · ${npcs.map(n => n.name).join(', ')}`, actor: token }).catch(() => []) : [];
+    let out;
+    try { out = await network.requestAction({ type: 'WEAPON_AREA', actorId: token.id, weaponId, targetId: target.id, faces, visibility: dice.rollVisibility?.() || 'table', playerName: store.state.userName || '', tokenName: token.name }); }
+    catch (error) { notify(error.message, 'error'); window.veilCanvas?.setAttackTarget?.(null, null); return; }
+    this.lastAttackCtx = null;
+    this.areaQueue = { label: out.label, weaponId, actorId: token.id, critical: false, raw: null, save: out, items: out.items.map(i => ({ ...i, done: i.share === 0 })) };
+    const summary = out.items.map(i => i.player ? `${i.name}: tira ${out.traits.join(' o ')} contra CD ${out.dc}` : `${i.name}: ${i.math} → ${i.failed ? 'falla' : 'resiste'}`);
+    this.result = { targetName: target.name, outcome: out.label, notes: summary, raw: '', severity: '', loss: '', canApply: false, shields: false, applied: false, sent: false };
+    this.signature = ''; this.render();
+  }
+  areaHTML() {
+    const q = this.areaQueue;
+    if (!q?.items?.length) return '';
+    const share = s => (s === 1 ? 'completo' : s === 0.5 ? 'mitad' : 'sin daño');
+    const rows = q.items.map(i => {
+      if (i.done) return `<li class="done"><b data-no-i18n>${e(i.name)}</b> · ${i.share === 0 ? 'sin daño' : 'hecho'}</li>`;
+      // A character's player rolled the Reaction Roll: whoever applies chooses the result.
+      if (i.share === null) return `<li><b data-no-i18n>${e(i.name)}</b> <button type="button" class="hud-btn hud-btn-xs" data-pab-area="${e(i.targetId)}" data-share="1">Falla: completo</button><button type="button" class="hud-btn hud-btn-xs" data-pab-area="${e(i.targetId)}" data-share="${q.save?.success ?? 0}">Resiste: ${share(q.save?.success ?? 0)}</button></li>`;
+      return `<li><b data-no-i18n>${e(i.name)}</b> <button type="button" class="hud-btn hud-btn-xs" data-pab-area="${e(i.targetId)}" data-share="${i.share}">Daño ${share(i.share)}</button></li>`;
+    }).join('');
+    return `<div class="pab-area${this.pendingDamage() ? ' waiting' : ''}"><span class="pab-label" data-no-i18n>${e(q.label)}</span>${this.pendingDamage() ? '<span class="pab-wait">Aplica antes el daño de este impacto.</span>' : ''}<ul>${rows}</ul></div>`;
+  }
+  // One creature of the zone takes its share: the weapon's damage is rolled once (the first time)
+  // and the same total goes to everyone, in full or half, against each one's thresholds.
+  async areaDamage(targetId, share) {
+    const q = this.areaQueue, dice = window.veilDiceRoller, item = q?.items.find(i => i.targetId === targetId);
+    if (!q || !dice || !item || item.done) return;
+    if (this.pendingDamage()) { notify('Aplica antes el daño de este impacto.'); return; }
+    if (!(share > 0)) { item.done = true; item.share = 0; this.signature = ''; this.render(); return; }
+    if (q.raw === null) {
+      // The first one rolls the weapon's dice (in 3D); everyone else takes that same total.
+      if (share === 1) {
+        await dice.followUpDamage(q.actorId, q.weaponId, targetId, { critical: q.critical });
+        q.raw = Number(dice.lastDamage?.raw) || 0;
+      } else {
+        await dice.followUpDamage(q.actorId, q.weaponId, targetId, { critical: q.critical });
+        q.raw = Number(dice.lastDamage?.raw) || 0;
+        await dice.followUpDamage(q.actorId, q.weaponId, targetId, { amount: Math.floor(q.raw * share) });
+      }
+    } else await dice.followUpDamage(q.actorId, q.weaponId, targetId, { amount: Math.floor(q.raw * share) });
+    item.done = true; item.share = share;
+    this.resultRange = null;
+    this.result = this.readResult(item.name);
+    this.result.notes = [`${q.label}: ${share === 1 ? 'daño completo' : 'la mitad'} (${Math.floor(q.raw * share)} de ${q.raw}).`, ...(this.result.notes || [])];
+    this.signature = ''; this.render(); this.watchDamage(); this.autoApply();
+  }
+
+  // ── A second target or a second attack (v2.46.0) ─────────────────────────────────────────────
+  // What the weapon offers after this attack: Automatic, Salvo Fire, Arc, Cleave, Quick.
+  followUps() {
+    const ctx = this.lastAttackCtx, token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!ctx || ctx.followUp || !ctx.weaponId || !ctx.checkId || !token || token.id !== ctx.actorId) return [];
+    const weapon = tokenInventory(token).weapons.find(w => w.id === ctx.weaponId);
+    return availableFollowUps(weapon, { hit: ctx.hit, melee: weaponRangeBand(weapon) === 'Melee', used: ctx.used || [] });
+  }
+  // The damage of the hit is applied first: the panel holds one damage at a time.
+  pendingDamage() { return !!(this.result && this.result.raw !== '' && !this.result.applied); }
+  followHTML() {
+    const list = this.followUps(), wait = this.pendingDamage();
+    return list.length ? `<div class="pab-riders pab-follow">${wait ? '<span class="pab-wait">Aplica antes el daño de este impacto.</span>' : ''}${list.map(f => `<button type="button" class="hud-btn hud-btn-xs" ${wait ? 'disabled' : ''} data-pab-follow="${e(f.id)}" title="${e(f.label)}: ${e(f.action)}${f.stress ? ` (${f.stress} Stress)` : ''}"><span data-no-i18n>${e(f.label)}</span> · ${e(f.action)}${f.stress ? ` · <span data-no-i18n>${f.stress} Stress</span>` : ''}</button>`).join('')}</div>` : '';
+  }
+  startFollowUp(kind) {
+    const ctx = this.lastAttackCtx, rule = FOLLOW_UPS[kind];
+    if (!ctx || !rule) return;
+    const follow = { kind, checkId: ctx.checkId, primaryId: ctx.targetId, raw: ctx.raw || Number(this.result?.raw) || 0 };
+    // Quick: again the same target, at once.
+    if (rule.sameTarget) { const target = store.state.tokens.find(t => t.id === ctx.targetId); if (target) this.resolveFollowUp(follow, ctx.weaponId, target, 'normal'); return; }
+    this.startTargeting(ctx.weaponId, follow);
+    if (this.targeting) notify(`${rule.label}: toca el segundo objetivo${rule.near ? ` (a ${rule.near} de ${store.state.tokens.find(t => t.id === ctx.targetId)?.name || 'el primero'})` : ''}. Esc cancela.`);
+  }
+  markFollowTarget(target) {
+    const token = store.state.tokens.find(t => t.id === this.tokenId), primary = store.state.tokens.find(t => t.id === this.targeting.followUp.primaryId);
+    const map = store.getActiveMap?.() || {}, gap = distanceInfo(primary || token, target, map), rule = FOLLOW_UPS[this.targeting.followUp.kind];
+    this.targeting.targetId = target.id;
+    window.veilCanvas?.setAttackTarget?.(this.tokenId, target.id);
+    const reasons = [rule.half ? `Recibe la mitad del daño (${Math.floor((this.targeting.followUp.raw || 0) / 2)}), sin tirada.` : 'El mismo resultado del ataque contra su Evasion; el daño se tira aparte.', rule.stress ? `Cuesta ${rule.stress} Stress.` : ''].filter(Boolean);
+    this.targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, allowed: true, edge: 'normal', reasons, followUp: `${rule.label} · ${rule.action}` };
+    this.signature = ''; this.render();
+  }
+  async resolveFollowUp(follow, weaponId, target, edge = 'normal') {
+    const token = store.state.tokens.find(t => t.id === this.tokenId), dice = window.veilDiceRoller, ctx = this.lastAttackCtx, rule = FOLLOW_UPS[follow.kind];
+    if (!token || !dice || !ctx || !rule) return;
+    let out;
+    try {
+      out = await network.requestAction({ type: 'WEAPON_FOLLOWUP', actorId: token.id, kind: follow.kind, checkId: follow.checkId, weaponId, targetId: target.id, visibility: dice.rollVisibility?.() || 'table', playerName: store.state.userName || '', tokenName: token.name });
+    } catch (error) { notify(error.message, 'error'); window.veilCanvas?.setAttackTarget?.(null, null); return; }
+    ctx.used = [...(ctx.used || []), follow.kind];
+    // Cleave and Quick: a whole new attack (it offers no second target of its own).
+    if (rule.attack) { await this.attack(weaponId, target, edge, null, { followUp: true }); return; }
+    if (rule.same && !out.hit) {
+      notify(`${rule.label}: ${out.total} no alcanza la Evasion ${out.evasion} de ${target.name}.`);
+      this.result = { targetName: target.name, outcome: 'FALLO', notes: [`${rule.label}: ${out.total} contra Evasion ${out.evasion}.`], raw: '', severity: '', loss: '', canApply: false, shields: false, applied: false, sent: false };
+      this.lastAttackCtx = { ...ctx, followUp: true }; this.signature = ''; this.render(); return;
+    }
+    await dice.followUpDamage(token.id, weaponId, target.id, rule.half ? { amount: Math.floor((follow.raw || 0) / 2) } : { critical: out.critical });
+    this.lastAttackCtx = { ...ctx, followUp: true, targetId: target.id };
+    this.resultRange = null; // the distance shown was the first target's
+    this.result = this.readResult(target.name);
+    this.result.notes = [`${rule.label}: ${rule.half ? 'la mitad del daño, sin tirada' : `${out.total} contra Evasion ${out.evasion}: impacta`}.`, ...(this.result.notes || [])];
+    this.signature = ''; this.render(); this.watchDamage(); this.autoApply();
+  }
+
+  async attack(weaponId, target, edge = 'normal', closingId = null, { followUp = false } = {}) {
     const dice = window.veilDiceRoller, token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!dice || !token) return;
+    // Explosive, Area, Dispersal Wave and Psionic have no attack roll: the zone rolls (v2.46.0).
+    const procedure = areaProcedure((tokenInventory(token).weapons || []).find(w => w.id === weaponId));
+    if (procedure?.mode === 'save' && !followUp) { this.areaQueue = null; return this.areaSave(weaponId, target, procedure); }
+    this.areaQueue = null;
     const dockWasOpen = !!window.veilDiceDock?.isOpen;
     this.result = null;
     try {
@@ -596,12 +815,24 @@ export class PlayerActionBar {
       if (weaponSelect) weaponSelect.value = weaponId || '';
       if (targetSelect) { targetSelect.value = target.id; targetSelect.onchange?.(); }
       this.applyRoll(edge, 0);
-      await dice.executeAttack({ closingId });
+      const outcome = await dice.executeAttack({ closingId });
+      // The attack, for what the weapon offers after it (Automatic, Salvo Fire, Arc, Cleave, Quick).
+      const done = dice.lastAttack;
+      this.lastAttackCtx = done?.actorId === token.id && done.checkId ? { actorId: token.id, weaponId: weaponId || '', targetId: target.id, checkId: done.checkId, hit: !!outcome?.hit, followUp, used: [] } : null;
+      // Spray and Waveform: the same attack against everyone else in the cone.
+      if (procedure?.mode === 'attack' && this.lastAttackCtx && !followUp) {
+        const out = await network.requestAction({ type: 'WEAPON_AREA', actorId: token.id, weaponId, checkId: done.checkId, visibility: dice.rollVisibility?.() || 'table' }).catch(error => { notify(error.message, 'error'); return null; });
+        // «Roll once»: when the first target was hit, its damage is the total for everyone.
+        if (out?.items?.length) this.areaQueue = { label: out.label, weaponId, actorId: token.id, critical: out.critical, raw: outcome?.hit ? (Number(dice.lastDamage?.raw) || null) : null, items: out.items.map(i => ({ ...i, done: i.share === 0 })) };
+      }
       // The range and its penalty, said in the bar (the panel says it in its detail line).
       const weapon = (tokenInventory(token).weapons || []).find(w => w.id === weaponId) || null;
       const gap = distanceInfo(token, target, store.getActiveMap?.() || {}), check = rangeCheck(weapon, gap.band);
       this.resultRange = { band: gap.band, meters: gap.meters, penalty: check.disadvantage ? check.reason : '' };
-      this.result = this.readResult(target.name); this.signature = ''; this.render();
+      this.result = this.readResult(target.name);
+      if (this.lastAttackCtx) this.lastAttackCtx.raw = Number(this.result.raw) || 0;
+      this.signature = ''; this.render();
+      this.autoApply();
       if (this.reopenDrawer) { this.reopenDrawer = false; window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'sheet' } })); }
       // Bear Down can still raise the damage before it is applied: follow the panel.
       this.watchDamage();

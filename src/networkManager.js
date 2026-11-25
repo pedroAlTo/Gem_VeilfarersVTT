@@ -16,11 +16,12 @@ import { isPortraitReference } from './portraitCatalog.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { controlsToken, isDrone, isPartyToken } from './tokenPermissions.js';
 import { validArmorCut, applyArmorCut } from './weaponFeatures.js';
+import { validCalc } from './logCalc.js';
 import { characterKey } from './characterImport.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
 import { sameDamageDefenses } from './damageProtection.js';
-import { requireActive, LIFE_STATES, canChooseBlaze } from './combatState.js';
+import { requireActive, movementBlock, approachBlock, LIFE_STATES, canChooseBlaze } from './combatState.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
 import { notify } from './ui.js';
 import { TABLE, KEEPER, chatRequest, validateChatEntry, chatVisibleTo, chatHistoryFor, appendChat } from './chat.js';
@@ -991,9 +992,15 @@ export class NetworkManager {
       const fair = o => o && o.type === 'APPLY_DAMAGE' && o.targetId === target.id && owns(o.attackerId);
       const valid = target && options.length && options.every(fair) && reactions.every(r => r.options.length && r.options.every(fair) && typeof r.name === 'string' && typeof r.actorId === 'string');
       if (!valid) { conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El daño no se pudo aplicar: el objetivo o el atacante ya no son válidos.' })); return; }
-      import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options, reactions }, async (n, ri = -1) => {
+      import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options, reactions }, async (n, ri = -1, adjust = 0) => {
         const reaction = ri >= 0 ? reactions[ri] : null;
-        const chosen = (reaction ? reaction.options : options)[n];
+        let chosen = (reaction ? reaction.options : options)[n];
+        // The Keeper's adjustment of the HP lost (v2.51.0).
+        if (Number.isInteger(adjust) && adjust) {
+          const hp = (Number(chosen.newHp) || 0) + (Number(chosen.hpLoss) || 0), loss = Math.max(0, Math.min(hp, (Number(chosen.hpLoss) || 0) + adjust));
+          chosen = { ...chosen, hpLoss: loss, newHp: hp - loss, logDetails: `${chosen.logDetails || ''} Ajuste del Keeper: ${adjust > 0 ? '+' : '−'}${Math.abs(adjust)} HP.`.trim(),
+            ...(validCalc(chosen.calc) ? { calc: [...chosen.calc, `Ajuste del Keeper: ${adjust > 0 ? '+' : '−'}${Math.abs(adjust)} HP → pierde ${loss}`].slice(0, 40) } : {}) };
+        }
         // The reaction's price is paid by its owner (the table checks it holds and can pay it).
         if (reaction) { try { await this.requestAction({ type: 'REACTION_PAY', actorId: reaction.actorId, name: reaction.name, amount: reaction.amount }); } catch (error) { conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: error.message })); return; } }
         // A one-use approval: the table applies a player's damage only after this window.
@@ -1005,7 +1012,7 @@ export class NetworkManager {
           conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El impacto ha cambiado. Vuelve a calcular el daño.' }));
           return;
         }
-        if (chosen.hpLoss > 0) import('./reactionOffers.js').then(m => m.offerAfterDamage(target.id)).catch(() => {});
+        if (chosen.hpLoss > 0) import('./reactionOffers.js').then(m => m.offerAfterDamage(target.id, chosen.attackerId)).catch(() => {});
         conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: true, text: `Keeper: ${target.name} pierde ${chosen.hpLoss} HP${chosen.spentShields ? ` (${chosen.spentShields} escudo${chosen.spentShields > 1 ? 's' : ''})` : ''}.` }));
       }, { onCancel: () => conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: `El Keeper ha cancelado el daño a ${target.name}.` })) }));
       return;
@@ -1139,8 +1146,16 @@ export class NetworkManager {
           ...(data.secret ? { visibility: 'keeper' } : {}),
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${target.name}`,
-          details: logDetails
+          details: logDetails,
+          // The full calculation the attacker worked out (plain lines, checked).
+          ...(validCalc(data.calc) ? { calc: data.calc } : {})
         });
+        // What the weapon does after the hit (v2.45.0): the table reads the weapon from the
+        // attacker's own inventory, rolls an NPC's Reaction Rolls and applies their conditions.
+        if (typeof data.weaponId === 'string' && data.weaponId.length <= 200 && !data.isDirect) {
+          const info = { attackerId, targetId: target.id, weaponId: data.weaponId, hpLost: currentHp - newHp, stressLost: Number.isInteger(data.stressMark) ? data.stressMark : 0, critical: !!data.isCritical, secret: !!data.secret };
+          Promise.all([import('./weaponAftermath.js'), import('./tableDice.js')]).then(([m, d]) => m.resolveWeaponAftermath(this.store, info, { throwDice: d.throwDice })).then(() => this.syncAll()).catch(() => {});
+        }
         return true;
       } catch (error) {
         conn?.send(this.envelope({ type: 'TOKEN_PATCH_REJECTED', error: error.message }));
@@ -1170,7 +1185,11 @@ export class NetworkManager {
           }
         if (partial.conditions && token.isPlayer !== false && LIFE_STATES.some(stage => partial.conditions.includes(stage) !== !!token.conditions?.includes(stage)))
           throw new Error('Utiliza los controles de progreso y estabilización.');
-        if (('x' in partial && partial.x !== token.x) || ('y' in partial && partial.y !== token.y)) requireActive(token);
+        // A player's character that cannot act, or is Restrained, does not move (v2.53.0, fase 5).
+        if (('x' in partial && partial.x !== token.x) || ('y' in partial && partial.y !== token.y)) {
+          const blocked = movementBlock(token) || approachBlock(token, partial.x ?? token.x, partial.y ?? token.y, this.store.state.tokens);
+          if (blocked) throw new Error(blocked);
+        }
         // A player who moves their character takes the Spotlight (an active action).
         if (('x' in partial || 'y' in partial) && (partial.x !== token.x || partial.y !== token.y) && token.isPlayer !== false && token.actorType !== 'drone' && !token.hasSpotlight) partial.hasSpotlight = true;
         // The host applies the same round and Fear rules as the Keeper's own sheet.
@@ -1197,7 +1216,7 @@ export class NetworkManager {
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
           // Card actions resolve here too: the table pays their costs (they were missing, so a
           // connected player's card was refused as "not assigned").
-          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS', 'ARCHIVE_EDIT', 'REACTION_PAY', 'POWER_USE', 'LUCKY_BREAK', 'CARD_DURATION', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL', 'GEAR_INSTALL', 'GEAR_REMOVE', 'GEAR_WEAR'].includes(data.action?.type)
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS', 'ARCHIVE_EDIT', 'REACTION_PAY', 'POWER_USE', 'LUCKY_BREAK', 'CARD_DURATION', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL', 'GEAR_INSTALL', 'GEAR_REMOVE', 'GEAR_WEAR', 'WEAPON_READY', 'WEAPON_FOLLOWUP', 'WEAPON_AREA', 'CARD_EFFECT'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
         const result = await this.performAction(data.action, this.members.get(senderId)?.id || senderId);

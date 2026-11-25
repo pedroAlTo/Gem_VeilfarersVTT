@@ -111,6 +111,7 @@ export function validateCampaign(data) {
     validateActor(t);
     if (t.blazeChoice != null) assert(typeof t.blazeChoice === 'string' && t.blazeChoice.length <= 60, 'Invalid Death Move.');
     if (t.lifeProgress !== undefined) assert(Number.isInteger(t.lifeProgress) && finite(t.lifeProgress, 0, 1), 'Invalid life progress.');
+    if (t.frightenedBy != null) assert(typeof t.frightenedBy === 'string' && t.frightenedBy.length <= 200, 'Invalid fear source.');
     for (const stamp of [t.roundSpotlight, t.lifeRollRound, t.ftlRound]) if (stamp != null) assert(typeof stamp === 'string' && stamp.length <= 220, 'Invalid Spotlight round.');
     assert(t.mapId === 'reserve' || t.inReserve || data.maps.some(m => m.id === t.mapId), 'Token refers to an unknown map.');
   }

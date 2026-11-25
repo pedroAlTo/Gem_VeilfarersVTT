@@ -42,6 +42,8 @@ import { mountSettingsMenu } from './settingsMenu.js';
 import { applyFontSet } from './fontSets.js';
 import './fontSets.css';
 import { store } from './state.js';
+// On Fire and Poisoned act when the Keeper closes the round (v2.54.0).
+import './roundConditions.js';
 import { audio } from './audioEngine.js';
 import { network, getActiveSession, clearActiveSession } from './networkManager.js';
 import { CanvasEngine } from './canvasEngine.js';
@@ -111,7 +113,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.veilTokenHUD = new TokenHUD(quickbarContainer);
   // 4b. The card hand: the selected character's Loadout, beside its stats
   window.veilCardHand = new CardHand(quickbarContainer);
-  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(document.getElementById('tab_pane_sheet')); import('./groupMenus.js').then(({ mountPlayerGroups }) => { window.veilGroupMenus = mountPlayerGroups(); }); import('./effectClockRuntime.js').then(({ startEffectClocks }) => startEffectClocks()); import('./droneControl.js').then(({ startDroneAutoControl }) => startDroneAutoControl()); import('./keeperTray.js').then(({ mountKeeperTray }) => { window.veilKeeperTray = mountKeeperTray(); }); import('./restUI.js').then(({ mountRestUI }) => mountRestUI()); }).catch(error => console.warn('Action bar unavailable:', error));
+  import('./playerActionBar.js').then(({ PlayerActionBar }) => { window.veilActionBar = new PlayerActionBar(document.getElementById('tab_pane_sheet')); import('./groupMenus.js').then(({ mountPlayerGroups }) => { window.veilGroupMenus = mountPlayerGroups(); }); import('./effectClockRuntime.js').then(({ startEffectClocks }) => startEffectClocks()); import('./droneControl.js').then(({ startDroneAutoControl }) => startDroneAutoControl()); import('./keeperTray.js').then(({ mountKeeperTray }) => { window.veilKeeperTray = mountKeeperTray(); }); import('./restUI.js').then(({ mountRestUI }) => mountRestUI()); import('./actionRing.js').then(({ mountActionRing }) => { window.veilActionRing = mountActionRing({ bar: window.veilActionBar, hand: window.veilCardHand }); }); }).catch(error => console.warn('Action bar unavailable:', error));
   window.veilCardFeed = new CardFeed(quickbarContainer.parentElement);
   // The character bar and the deck icon move by pressing on them and dragging (V3).
   import('./movablePanel.js').then(({ makeMovable }) => { const area = document.querySelector('.map-safe-area') || document.getElementById('canvas_viewport_root'); makeMovable(quickbarContainer, 'quickbar', { area }); const hand = document.getElementById('card_hand_root'); if (hand) makeMovable(() => hand.querySelector('.card-deck'), 'deck', { area, root: hand }); });

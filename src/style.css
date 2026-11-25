@@ -2970,3 +2970,11 @@ body, html {
 .insp-switch-lights { display: flex; flex-wrap: wrap; gap: 4px 12px; max-height: 96px; overflow: auto; }
 .insp-check { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #cbd5e1; cursor: pointer; }
 .insp-switch-names { font-size: 11px; color: #fde68a; padding-top: 5px; }
+/* The full calculation of a log entry (v2.51.0): opens under «Ver cálculo». */
+.log-calc { margin-top: 6px; font-size: 11px; color: var(--text-secondary, #cbd5e1); }
+.log-calc summary { cursor: pointer; color: #67e8f9; font-weight: 600; letter-spacing: .02em; list-style: none; }
+.log-calc summary::-webkit-details-marker { display: none; }
+.log-calc summary::before { content: '▸ '; }
+.log-calc[open] summary::before { content: '▾ '; }
+.log-calc ol { margin: 6px 0 0; padding: 6px 8px 6px 24px; border-left: 2px solid rgba(103, 232, 249, .35); background: rgba(8, 12, 28, .45); border-radius: 0 4px 4px 0; display: grid; gap: 2px; }
+.log-calc li { line-height: 1.35; font-variant-numeric: tabular-nums; }

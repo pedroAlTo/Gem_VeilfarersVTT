@@ -1,6 +1,205 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.55.0', date: '2026-11-25', title: 'V3 · Frightened con su fuente',
+    sections: [
+      { title: 'Frightened', items: [
+        'Al marcar Frightened en Condiciones aparece «¿de quién tiene miedo?» con los tokens de la escena. Con una fuente, las tiradas contra ella llevan Desventaja (la barra de ataque lo avisa al marcarla) y el jugador no puede acercar su personaje a ella, ni arrastrándolo ni con las flechas; alejarse sí. El Keeper puede moverlo igualmente.',
+        'Sin fuente, Frightened queda como recordatorio. Un reloj de un Poder o un arma que lleve Frightened cuenta a su lanzador como fuente. Al quitar la condición se olvida la fuente.',
+      ] },
+    ],
+  },
+  {
+    version: '2.54.0', date: '2026-11-25', title: 'V3 · On Fire y Poisoned por ronda (Fase 5 completa)',
+    sections: [
+      { title: 'Al pulsar «Nueva ronda»', items: [
+        'On Fire: la mesa tira 1d4 en 3D y aplica el daño Energy (Fire) contra los umbrales como cualquier daño: cuentan las resistencias, la armadura Reflective y la penetración de Energy. No gasta Armor Slots del objetivo (es un efecto continuo); el Keeper puede ajustarlo a mano. Sigue ardiendo hasta que alguien lo apague.',
+        'Poisoned: el objetivo marca 1 Stress. Los Sintéticos, las máquinas y quien es inmune a las toxinas (por ejemplo, con el Filtro Hepático Bio-Sintético) lo ignoran, y el registro lo dice.',
+        'Cada uno deja su entrada en el registro con «Ver cálculo». Un personaje a 0 HP o en un estado de vida no recibe más. Bleeding sigue siendo manual (decisión 18).',
+      ] },
+    ],
+  },
+  {
+    version: '2.53.0', date: '2026-11-25', title: 'V3 · Condiciones que cuentan solas (Fase 5, primera parte)',
+    sections: [
+      { title: 'Tiradas', items: [
+        'Restrained: Desventaja en Agility y Strength. Weakened: Desventaja en Strength. Prone: Desventaja al atacar. Dazed: Desventaja en la siguiente acción, y se quita al hacerla (una Reaction Roll que pide una carta no la gasta).',
+        'Atacar a distancia a un objetivo Prone da Ventaja; cuerpo a cuerpo, no.',
+      ] },
+      { title: 'Ataques', items: [
+        'Un objetivo Hidden no se puede atacar a distancia: la barra lo dice al marcarlo y no deja tirar. Cuerpo a cuerpo o con un área, sí.',
+        'Contra un objetivo Incapacitated el ataque impacta siempre, aunque los dados no lleguen a su Evasion (el registro lo explica).',
+        'Weakened: el daño pierde los modificadores fijos (el +N del arma, Honed Edge y los extras fijos); los dados, y los extras que son dados como Sneak Attack, siguen. «Ver cálculo» lo indica.',
+      ] },
+      { title: 'Movimiento y acciones', items: [
+        'Un personaje Restrained no se mueve: ni arrastrándolo ni con las flechas, y la mesa dice cómo liberarlo. Incapacitated no actúa ni se mueve. El Keeper sí puede moverlos (movimiento forzado).',
+        'Moverse levanta de Prone (levantarse es gratis al moverse una banda).',
+        'Silenced: al lanzar un Poder, el registro recuerda que no puede lanzarse si necesita voz; el Keeper decide.',
+        'Corregido: dejar de apuntar al cambiar de vista (Keeper ↔ jugador) podía colgar la barra en un bucle.',
+      ] },
+    ],
+  },
+  {
+    version: '2.52.0', date: '2026-11-25', title: 'V3 · Poderes de «elige dos» automáticos (Fase 3 completa)',
+    sections: [
+      { title: 'Elige dos', items: [
+        'Adaptive Evolution, Symbiotic Bloom y Biomorphic Arsenal se resuelven solos con las opciones elegidas. En modo Básico, la mesa toma las más útiles (Physical Adaptation y Enhanced Senses; Lithoderm, y Sky-Adapted con Hope; Carapace Plating y Bone Shards); con doble clic o en Avanzado, la carta muestra una casilla por opción.',
+        'Lo que dan: +1 o +2 Evasion, +2 a Instinct, Resistencia al daño Physical, 2 Armor Slots temporales (se quitan al acabar la escena), quitar una condición (Metabolic Change) y armas en la mano para la escena: Natural Attack (d8 Void), Apex Predator (d6 Void), Bone Shards (d12 a Far) y Toxin Glands, cuyo golpe deja Weakened.',
+        'Biomorphic Arsenal fallado: Desventaja en todas las tiradas durante 1d4 rondas. Cordon of Will explica su cordón en el registro.',
+        'Con esto, 34 Poderes tienen ficha de procedimiento: todos los que tienen daño, tirada de sus objetivos, curación o condición en mesa. El resto son narrativos.',
+      ] },
+    ],
+  },
+  {
+    version: '2.51.0', date: '2026-11-25', title: 'V3 · Cálculo desplegable en el registro, ajuste de daño del Keeper y Poderes por ronda (Fase 3, tercera parte)',
+    sections: [
+      { title: 'Registro', items: [
+        'Cada tirada, daño y efecto automático lleva en el registro «Ver cálculo»: se despliega con todo el detalle. En una tirada: los dados de Hope y Fear (o el d20 del Keeper), cada modificador, Ventaja o Desventaja y por qué, el total contra la DC o la Evasion y el pago. En un daño: los dados con sus caras, el modificador fijo, los extras (Sneak Attack, Burst Fire…), el daño bruto, los umbrales con la penetración, la gravedad, los escudos, el Brace, los HP perdidos, el Stress y las condiciones. También en las salvaciones de las armas, los ataques de los adversarios, las áreas y las curaciones. Lo abierto sigue abierto al llegar entradas nuevas.',
+      ] },
+      { title: 'Ventana de daño del Keeper', items: [
+        'Nuevo «Ajustar HP perdidos» (− / +) junto a los escudos: el Keeper regula el daño antes de aplicarlo, de 0 a todo lo que le queda al objetivo. Funciona con sus propios ataques y con los que le envían los jugadores, y el ajuste queda en el registro y en su cálculo.',
+      ] },
+      { title: 'Poderes que actúan en otro momento', items: [
+        'Neural Feedback: cuando un adversario a Close te hace daño de HP, la carta se ilumina; al usarla se tira Presence DC 15 en 3D y, si sale, el adversario recibe (Proficiency)d8 Void y tira Instinct DC 15 o queda Vulnerable.',
+        'Energy Cascade: al empezar cada ronda («Nueva ronda»), cada enemigo afectado tira Agility DC 15 (el Keeper, con «Tirar adversarios») y quien falla recibe (Proficiency)d8 Physical (Kinetic), +1 por cada ronda que pasa; la pantalla del Keeper prepara ese daño sola. Dura 10 rondas o la escena; si fallas al lanzarlo, os afecta a ti y a tus aliados.',
+        'Inviolable Sanctum: al cambiar de ronda, los aliados a Close de quien lo lanzó limpian 1 Stress. Hivemind Convergence fallado: cada aliado marca 1 Stress y queda Dazed. Solar Avatar: tres rondas y, al terminar, quien lo lanzó marca 2 Stress.',
+      ] },
+    ],
+  },
+  {
+    version: '2.50.0', date: '2026-11-25', title: 'V3 · Vanish automático y más Poderes con ficha (Fase 3, segunda parte)',
+    sections: [
+      { title: 'Vanish', items: [
+        'Vanish (Scoundrel, Resolve) se resuelve solo: gasta 1 Resolve y obtienes el estado Oculto (Hidden), con Ventaja en tu próximo ataque. Se va en cuanto atacas o lanzas un Poder. El texto de la carta y su resumen lo dicen.',
+      ] },
+      { title: 'Más Poderes con ficha', items: [
+        'Rallying Cry: los aliados a Close tienen +2 a todas sus tiradas hasta el cambio de ronda y no pueden quedar Frightened en la escena; con Hope, −1 Stress cada uno (los HP temporales se anotan a mano).',
+        'Lightbridge: los tres aliados más estresados a Far limpian 1 Stress (el traslado se hace moviendo los tokens).',
+        'Beacon of Resurrection: un aliado caído vuelve con 1 HP, con Desventaja hasta el final de su próximo Spotlight.',
+        'Temporal Maelstrom: Desventaja en todas las tiradas de quienes están a Close (tú incluido) durante la escena. Omniscient Eye: quedas Vulnerable mientras dura.',
+        'Psychic Fallout: 3d6 Void a todos los adversarios a Far; quien falle Instinct DC 15 queda Stunned una ronda y Vulnerable la escena. Si fallas el lanzamiento, Desventaja en todas tus tiradas durante 1d4 rondas.',
+        'Apotheosis: los aliados a Far curan tanto como su umbral Severe y limpian 1 Stress; los enemigos reciben 6d10 Energy directo que ignora la armadura. Universal Life Force (Restore: cura todos los HP marcados; Unmake: 4d12 Void sin armadura) y los fallos de Force Incarnate, Architect of Matter y Apotheosis hacen su daño a quien lanza (con su Fear).',
+        'Ya son 25 Poderes con ficha.',
+      ] },
+    ],
+  },
+  {
+    version: '2.49.0', date: '2026-11-25', title: 'V3 · Poderes automáticos: fichas de procedimiento (Fase 3, primera parte)',
+    sections: [
+      { title: 'Fichas de procedimiento', items: [
+        'Cada Poder con mecánica tiene una ficha revisada a mano a partir del Corebook: a quién alcanza, el daño, la tirada de reacción de sus objetivos y lo que trae un fallo, la curación, las condiciones con su duración y lo que cuesta fallar el lanzamiento. La mesa la aplica sola tras la tirada del Poder.',
+        'Primera tanda (15 Poderes): Precision Strike, Solar Judgment, Bio-Integration, Mind Spike, Shockwave Pulse, Cellular Reconstruction, Psychic Storm, Photonic Detonation, Orbital Lance, Corona Beam, Temporal Freeze, Phase Jump y Psychic Collapse.',
+      ] },
+      { title: 'Cómo se juegan', items: [
+        'Daño: se tira una vez (en 3D) y llega a la ventana del Keeper para cada objetivo, uno tras otro, con el mismo total. «Ignora la armadura» (Mind Spike, Psychic Collapse) no deja gastar Armor Slots.',
+        'Áreas: alrededor de quien lanza (Psychic Storm: todos los enemigos a Close; Shockwave Pulse), en un punto (Solar Judgment, Orbital Lance: se apunta a un token y alcanza a los que están a Very Close de él), en cono (Photonic Detonation) o en línea (Corona Beam) hacia el token apuntado.',
+        'Tiradas de los objetivos: cada uno tira contra la DC impresa (los adversarios, con «Tirar adversarios» del Keeper) y quien falla recibe lo que dice la carta: Stunned, Blinded por una ronda, 1 Stress…',
+        'Curación: los dados se tiran en 3D y se aplican solos. Cellular Reconstruction elige modo: Focused (toque, Proficiency d10 + −1 Stress) o Distributed (2 Hope, los tres aliados más heridos a Close).',
+        'Fallos con coste: Temporal Freeze y Phase Jump dejan a quien lanza Stunned y con 2 Stress; Psychic Collapse le devuelve 1d8 Void.',
+      ] },
+    ],
+  },
+  {
+    version: '2.48.0', date: '2026-11-25', title: 'V3 · Cartas sin ventana en Básico y atajos de teclado (Fase 2 completa)',
+    sections: [
+      { title: 'Cartas en un clic', items: [
+        'En modo Básico, las cartas que aún abrían su ventana se juegan con un clic con la opción habitual: un estado que elige atributo (Path to Nirvana, Disciplined State) toma el mejor de Agility, Instinct y Strength del personaje; un movimiento con Resolve variable gasta el mínimo; Drone Whisper y System Jackknife usan la DC de la mesa (la del panel de dados, 15 si no se cambia). Breaking Point y Bear Down siguen en su sitio.',
+        'En modo Avanzado, o con doble clic en la carta, se abre su ventana como antes.',
+      ] },
+      { title: 'Atajos de teclado', items: [
+        '1 a 9: atacar con el arma de ese lugar de la barra (0, desarmado); un toque marca el objetivo y Enter lo ataca. F: tomar foco. Flechas: mover tu personaje. Esc: cancelar. «?» o «···» → «Atajos» los recuerda. Los botones de arma muestran su número (en pantallas con ratón).',
+      ] },
+    ],
+  },
+  {
+    version: '2.47.0', date: '2026-11-25', title: 'V3 · Atacar en dos toques: anillo de acciones y daño directo al Keeper (Fase 2)',
+    sections: [
+      { title: 'Anillo de acciones', items: [
+        'Toca un enemigo en el mapa con tu personaje y se abre un anillo a su alrededor. En él salen tus armas en la mano, con su alcance o el motivo si no llega (fuera de alcance, descargada…), y los Poderes de la mano que pueden apuntarle. Elegir uno ataca o lanza el Poder sobre ese objetivo al momento. Esc, × o tocar fuera lo cierra.',
+        'Atacar pasa a dos toques (el enemigo y el arma); un Poder con objetivo, también. La barra y la mano siguen funcionando como antes.',
+      ] },
+      { title: 'Daño directo', items: [
+        'Al impactar, el daño llega solo a la ventana del Keeper: ya no hay que pulsar «Enviar daño». El Keeper decide escudos, aplicar o cancelar como siempre. El botón solo aparece cuando aún puedes añadir algo al daño: Bear Down (un Sleeping con Resolve) o un efecto como Combat Surge.',
+        'Lo mismo con el segundo objetivo de un arma y con cada criatura de un área.',
+      ] },
+      { title: 'Básico y Avanzado', items: [
+        'En «···» de la barra, «Modo: Básico / Avanzado». En Básico (por defecto), Lucky Break relanza sin preguntar el dado más bajo de tu última tirada (Fear si empatan). En Avanzado, abre su ventana para elegir el dado.',
+      ] },
+    ],
+  },
+  {
+    version: '2.46.0', date: '2026-11-25', title: 'V3 · Segundo objetivo, áreas y Psionic (Fase 4 completa)',
+    sections: [
+      { title: 'Segundo objetivo', items: [
+        'Tras un ataque, el resultado ofrece lo que permite el arma: Automatic y Salvo Fire («Segundo objetivo», 1 Stress: la misma tirada contra la Evasion de otro objetivo a Very Close o a Close del primero, y el daño se tira aparte), Arc («Arco a otro objetivo»: la mitad del daño a otro a Very Close, sin tirada), Cleave («Otro ataque a otro objetivo» tras un impacto Melee) y Quick («Segundo ataque», 1 Stress, contra el mismo objetivo, también tras fallar).',
+        'Se elige el segundo objetivo tocándolo en el mapa dos veces. La mesa comprueba las distancias y cobra el Stress. Cada opción se usa una vez por ataque, y antes hay que aplicar el daño del primer impacto.',
+      ] },
+      { title: 'Áreas y Psionic', items: [
+        'Explosive y Area (con banda): sin tirada de ataque. Al elegir el punto de impacto (un token), cada criatura de la zona (aliados y uno mismo incluidos; un muro la protege) tira Agility contra la Feature DC. La mesa tira en 3D la de los adversarios; un personaje tira la suya y se elige «Falla: completo» o «Resiste: mitad». El daño se tira una vez y cada uno recibe su parte con sus umbrales y Armor Slots, uno tras otro desde la barra.',
+        'Dispersal Wave: un cono Close, Presence DC 15; quien falla recibe el daño. Psionic: no hay tirada contra Evasion; el objetivo tira Presence contra la Feature DC y, si falla, recibe el daño completo.',
+        'Spray y Waveform: el ataque al objetivo se compara además con la Evasion de cada criatura del cono (Very Close o Close, 60°), con el mismo daño para todos los alcanzados.',
+      ] },
+    ],
+  },
+  {
+    version: '2.45.0', date: '2026-11-25', title: 'V3 · Las armas resuelven lo que hacen tras el impacto (Fase 4, segunda parte)',
+    sections: [
+      { title: 'Tiradas de reacción automáticas', items: [
+        'Al aplicar el daño de un arma a un adversario, la mesa tira sola (en 3D) su Reaction Roll contra la Feature DC y, si falla, le pone la condición: Stunning, Taser Charge y Agony (Stunned hasta después de la próxima ronda), Entangling (Restrained), Entrapping (Incapacitated), Knockdown (Prone; DC 10 en Tier 1–2 y 15 en Tier 3–4), Thermal (On Fire), Anchoring y Mind-Lock (no puede moverse o solo puede moverse en su próximo Spotlight), Lethal Toxin (Incapacitated y Poisoned) e Irradiating (Poisoned). El registro dice la tirada y el resultado.',
+        'Si el objetivo es un personaje, la tirada es de su jugador: el registro dice cuál tiene que hacer y contra qué DC.',
+      ] },
+      { title: 'Efectos con duración', items: [
+        'Stunning on crit deja Stunned. Disorienting deja Dazed y Stagger da Desventaja en la próxima acción del objetivo: su siguiente tirada, sea cual sea, la lleva y lo gasta.',
+        'Continuous: el objetivo marca 1 Stress al empezar su próximo Spotlight. Brittle: el siguiente impacto Physical contra él suma +1d6. Melting: al empezar su próximo Spotlight, el registro pide su Strength y el dado de daño Energy.',
+        'Stunned por un arma dura hasta después de la próxima ronda: dos cambios de ronda.',
+      ] },
+      { title: 'Armas', items: [
+        'Paired: con dos armas Paired en la mano, el daño suma el bono mayor de las dos.',
+        'Non-Lethal: el impacto no baja al objetivo de 1 HP; a 1 HP queda Incapacitated, no Dying.',
+        'Reload: cada disparo descarga el arma y su botón pasa a «Recargar» (una Acción, que da el foco). Charge-Up: solo dispara cargada; el botón «Cargar» la prepara para un Spotlight posterior y la carga se pierde al moverse, perder HP o quedar Dazed, Stunned, Prone o Restrained.',
+      ] },
+    ],
+  },
+  {
+    version: '2.44.0', date: '2026-11-25', title: 'V3 · Las armas aplican sus propiedades (Fase 4, primera parte)',
+    sections: [
+      { title: 'Catálogo de armas', items: [
+        'Las 231 armas del catálogo leen todas sus propiedades: antes ~70 no se reconocían. Se aplican las equivalencias de Rust & Steel 12.06: Brutal es Devastating, Stun es Stunning, Blast y Area con banda son el procedimiento Explosive en esa banda, Cone es Spray, AP N es Armor Piercing N y Persistent es Lingering 3. «Armor Piercing 3», «Area Very Close», «Defensive (+2)» o «Reach Very Close» se leen con su valor, y una coma dentro de un paréntesis ya no parte la propiedad («Phasing (ignora 1 slot, Penetración -4)» es Phasing).',
+        'Las fichas guardadas con las propiedades mal leídas se corrigen solas al leerlas.',
+        'Los nombres del mercado negro salen bien: «Widow» Needler, «Ghost» Rifle, «Glass» Cannon.',
+      ] },
+      { title: 'Glosario en el equipo', items: [
+        'Cada propiedad de un arma muestra al pasar por encima la regla del libro (Corebook 12.06 o Rust & Steel 12.06, 147 propiedades) y qué hace la mesa con ella: ⚙ la aplica sola, ◐ la aplica cuando puede saberlo, 🔔 la recuerda en el momento, o es descriptiva.',
+      ] },
+      { title: 'Nuevas propiedades automáticas', items: [
+        'Heavy (arma): con Strength menor que +1, el ataque tira con Desventaja.',
+        'Scatter: +1 al ataque en Melee o Very Close y +2 al daño; −1 al ataque a Close o más.',
+        'Massive: quien la lleva en la mano tiene −1 Evasion al recibir ataques. Defensive: +1 Evasion (o su valor, +2 en el Breaching Shield) contra ataques Melee.',
+        'High-Recoil: con Strength 0 o menos, quien dispara marca 1 Stress. Unstable: en un Fallo con Fear, quien ataca marca 1 Stress; Volatile y Catastrophic se recuerdan.',
+        'Disruptor: contra un Sintético, un dron o una máquina, un dado de daño más.',
+        'Stable ignora Overheating; Guided, Mind Link e Indirect no avisan de muros entre atacante y objetivo; Shred baja el Armor Slot máximo de un enemigo como Disintegrating.',
+        'La vista previa del ataque dice antes de tirar lo que decide el jugador (Unwieldy, Overcharge, Charge-Up, Garrote, Neural-Link) y la Evasion del objetivo por sus armas.',
+      ] },
+      { title: 'Recordatorios', items: [
+        'Knockdown, Thermal, Anchoring, Melting, Arc, Spray, Non-Lethal, Sundering, Sustained Fire, EMP, Anti-Psionic, Temporal y las propiedades prohibidas (Lethal Toxin, Irradiating, Agony, Horrifying, Disabling, Assassination, Black Hole, Lingering, One-Use) se recuerdan tras el impacto con su tirada y su DC. System Shock dice si el objetivo es orgánico o máquina.',
+      ] },
+    ],
+  },
+  {
+    version: '2.43.5', date: '2026-11-25', title: 'V3 · Sneak Attack y The Quiet Network por separado; atacar desde el sigilo da Ventaja',
+    sections: [
+      { title: 'Cartas de clase', items: [
+        'Los rasgos de clase que el Corebook imprime juntos salen ahora como cartas separadas: el Scoundrel Sleeping tiene «Sneak Attack» y «The Quiet Network»; el Awakened, «Shadow Operative» y «Sneak Attack»; la Vanguardia Sleeping, «Trained Body», «Unbroken Focus» y «The Refusal»; el Piloto Awakened, «Stellar Instinct» y «Pilot Surge Die». Las partes pasivas (Sneak Attack, Trained Body, Pilot Surge Die) se muestran como pasivas y no se juegan.',
+        'El resumen de Sneak Attack queda en lo que hace: «ataque con Ventaja que impacta: +1d6 de daño» (2d6 en Tier 2, 3d6 en Tier 3, una vez por ataque).',
+        'Los nombres que el libro escribe con la etiqueta pegada («Off the Record (Passive).») se muestran limpios; la etiqueta pasa al tipo de la carta.',
+      ] },
+      { title: 'Sigilo', items: [
+        'Atacar estando Hidden o invisible da Ventaja, tanto a los personajes como a los adversarios del Keeper. Al atacar se pierde Hidden.',
+        'Sneak Attack se suma solo: si un Scoundrel impacta con un ataque con Ventaja (por estar oculto o por cualquier otra fuente), el daño lleva +{Tier}d6 de Sneak Attack.',
+      ] },
+    ],
+  },
+  {
     version: '2.43.4', date: '2026-11-24', title: 'V3 · Fondos ilustrados y logo de Veilfarers',
     sections: [
       { title: 'Portada', items: [

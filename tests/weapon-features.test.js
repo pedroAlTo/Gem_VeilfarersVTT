@@ -42,9 +42,9 @@ test('Devastating, Stress and conditions of a hit', () => {
 });
 
 test('reminders name the trigger, the roll and the Feature DC', () => {
-  const r = featureReminders({ features: 'Stunning; Reload', tier: 'TT2' }, { damaged: true });
+  const r = featureReminders({ features: 'Stunning; Suppressive', tier: 'TT2' }, { damaged: true });
   assert.match(r[0], /Strength Reaction Roll contra CD 15.*Stunned/);
-  assert.match(r[1], /Reload/);
+  assert.match(r[1], /Suppressive/); // Reload is no longer a reminder: the weapon's button asks to reload (v2.45.0)
   assert.deepEqual(featureReminders({ features: 'Stunning' }, { damaged: false }), [], 'Stunning needs a damaged target');
   assert.equal(overheatCheck({ overheating: true }, () => 2).overheated, true);
   assert.equal(overheatCheck({}), null);

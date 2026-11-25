@@ -60,11 +60,23 @@ Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 
 - **Fase 0** hecha en v2.43.0 (`npm run test:clicks`).
 - **Fase 1** hecha en v2.43.0: inicio con Crear/Unirme/Continuar, entrar con enlace solo con un nombre, tarjeta de invitación del Keeper, pregenerados de *Hearts in the Void* en la Ficha. De paso, Evasión por features de armadura (canon). Falta la prueba online real con dos navegadores (PRUEBAS 128-132).
-- **Siguiente:** Fase 4 (armas según sus features).
+- **Fase 4, primera parte** hecha en v2.44.0: catálogo normalizado (todas las propiedades conocidas, alias de Rust & Steel), glosario con la regla de cada propiedad y qué hace la mesa (⚙ ◐ 🔔), Heavy, Scatter, Massive y Defensive en la Evasion, High-Recoil, Unstable, Disruptor, Stable, Guided sin línea de tiro, Shred y recordatorios de las propiedades de Rust & Steel.
+- **Fase 4, segunda parte** hecha en v2.45.0: tras el impacto la mesa tira las Reaction Rolls de los adversarios y aplica su condición (a los personajes les dice qué tirar), relojes de Stunned, Dazed, Stagger, Continuous, Brittle y Melting, Paired, Non-Lethal, Reload y Charge-Up.
+- **Fase 4, tercera parte** hecha en v2.46.0: segundo objetivo (Automatic, Salvo Fire, Arc, Cleave, Quick), áreas (Explosive, Area, Dispersal Wave, Spray, Waveform) y Psionic. **Fase 4 completa.**
+- **Fase 2, primera parte** hecha en v2.47.0: daño directo a la ventana del Keeper (sin «Enviar daño»), anillo de acciones al tocar un enemigo (atacar o lanzar en 2 clics), modo Básico/Avanzado de la mesa y Lucky Break con el dado más bajo en Básico.
+- **Fase 2, segunda parte** hecha en v2.48.0: cartas con ventana jugadas en un clic en Básico (atributo, Resolve mínimo, DC de la mesa) y atajos de teclado. **Fase 2 completa.**
+- **Fase 3, primera parte** hecha en v2.49.0: motor de fichas de procedimiento (`powerProcedures.js`) y 15 Poderes de combate con ficha (daño, áreas en punto/cono/línea, salvaciones con su fallo, curación, fallos con coste).
+- **Fase 3, segunda parte** hecha en v2.50.0: 25 Poderes con ficha (curación hasta el umbral, resurrección, daño directo, duraciones en dados) y Vanish automático (petición del usuario).
+- **Fase 3, tercera parte** hecha en v2.51.0: Neural Feedback como reacción, efectos por ronda (Energy Cascade, Inviolable Sanctum), Hivemind Convergence y Solar Avatar. De paso, «Ver cálculo» en el registro y ajuste de daño del Keeper (peticiones del usuario).
+- **Fase 3, cuarta parte** hecha en v2.52.0: Poderes de «elige dos» (Adaptive Evolution, Symbiotic Bloom, Biomorphic Arsenal) con armas temporales, Armor Slots temporales y bonos; Cordon of Will. **Fase 3 completa**: 34 Poderes con ficha.
+- **Fase 5, primera parte** hecha en v2.53.0: Prone, Restrained, Weakened, Dazed, Incapacitated, Hidden y Silenced cuentan solas en las tiradas, los ataques, el movimiento y el daño.
+- **Fase 5, segunda parte** hecha en v2.54.0: On Fire (1d4 Energy Fire contra los umbrales) y Poisoned (1 Stress) se aplican solos al pulsar «Nueva ronda». **Fase 5 completa.**
+- **Fase 5, cierre** en v2.55.0: Frightened con su fuente (Desventaja contra ella y no acercarse).
+- **Siguiente:** Fase 6 (accesibilidad).
 
 ## Decisiones
 
 - Fase 1 aprobada: unirse con enlace sin cuenta y pregenerados de *Hearts in the Void* (24 nov 2026).
-- Pendientes de confirmar al llegar a su fase: daño por ronda de On Fire y Poisoned (Bleeding sigue manual,
-  decisión 18); quitar el clic «Enviar daño»; anillo de acciones al tocar un token; relanzamiento por defecto
-  de Lucky Break.
+- Fase 2 aprobada (25 nov 2026): quitar el clic «Enviar daño», anillo de acciones al tocar un token y Lucky
+  Break con el dado más bajo por defecto.
+- Fase 5 (25 nov 2026): On Fire y Poisoned se aplican solos al cerrar la ronda, sin gastar Armor Slots (el Keeper ajusta a mano). Bleeding sigue manual (decisión 18).

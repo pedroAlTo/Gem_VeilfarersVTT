@@ -29,8 +29,39 @@ export function canReceiveHealing(token) {
 export function requireActive(token) {
   const stage = lifeStage(token);
   if (visibleConditions(token).includes('Stunned')) throw new Error(token.name + ' · Stunned. Resuelve la duración de la condición.');
+  // Incapacitated (v2.53.0, fase 5): no actions, reactions or movement.
+  if (visibleConditions(token).includes('Incapacitated')) throw new Error(token.name + ' · Incapacitated: no puede actuar hasta que alguien lo reanime (Knowledge o Instinct DC 10).');
   if (stage) throw new Error(`${token.name} · ${stage}. Consulta el procedimiento en Condiciones.`);
 }
+// Why a token cannot move by itself now (its player moving it): Restrained, or it cannot act.
+// The Keeper may still move anyone (forced movement, the fiction).
+export function movementBlock(token) {
+  try { requireActive(token); } catch (error) { return error.message; }
+  if (visibleConditions(token).includes('Restrained')) return token.name + ' · Restrained: no puede moverse (un aliado lo libera con una Acción, o Strength DC 15 en su Spotlight).';
+  return '';
+}
+
+// Frightened (v2.55.0, Corebook ch. 10): «Disadvantage on rolls made against the source of the
+// fear, and you cannot willingly move closer to it». The source is the token the Keeper names when
+// marking the condition (`frightenedBy`), or the caster of a clock that carries it (`sourceId`).
+export function fearSource(token) {
+  if (!visibleConditions(token).includes('Frightened') || pathImmune(token, 'Frightened')) return '';
+  if ((token.conditions || []).includes('Frightened') && token.frightenedBy) return token.frightenedBy;
+  return (token.effectClocks || []).find(c => c.condition === 'Frightened' && c.sourceId)?.sourceId || '';
+}
+// Why a player's character cannot go from where it is to (x, y): closer to what frightens it.
+export function approachBlock(token, x, y, tokens = []) {
+  const id = fearSource(token), source = id && tokens.find(t => t.id === id && t.mapId === token.mapId && !t.inReserve);
+  if (!source) return '';
+  const before = Math.hypot(token.x - source.x, token.y - source.y), after = Math.hypot(x - source.x, y - source.y);
+  return after < before - 0.5 ? `${token.name} · Frightened: no puede acercarse voluntariamente a ${source.name}.` : '';
+}
+
+// Attacks against a target's conditions (v2.53.0, Corebook ch. 10): an Incapacitated target is
+// hit automatically; a Hidden one cannot be targeted directly by a ranged attack.
+export const helplessTarget = target => visibleConditions(target).includes('Incapacitated');
+export const rangedTargetBlock = (target, ranged) => ranged && visibleConditions(target).includes('Hidden')
+  ? `${target.name} está Hidden: no se le puede apuntar con un ataque a distancia (sí cuerpo a cuerpo o con un área).` : '';
 
 export function lifePatch(token, stage) {
   const conditions = (token.conditions || []).filter(name => !LIFE_STATES.includes(name));
@@ -38,18 +69,37 @@ export function lifePatch(token, stage) {
   return { conditions: normalizeConditions(conditions), lifeProgress: 0 };
 }
 
-export function checkEdge(actor, target, advantage = false, disadvantage = false, trait = '') {
+// ranged: the attack is not a melee one (a Prone target gives it Advantage). reaction: a Reaction
+// Roll, not an action, so «Disadvantage on the next action» (Dazed, Stagger) does not count.
+export function checkEdge(actor, target, advantage = false, disadvantage = false, trait = '', { ranged = false, reaction = false } = {}) {
   const overwhelmed = actor?.conditions?.includes('Overwhelmed') ||
     (actor?.stress?.max > 0 && actor.stress.current >= actor.stress.max);
   const conditions = visibleConditions(actor);
+  // Conditions that count by themselves (v2.53.0, Plan de UX V3, fase 5, Corebook ch. 10):
+  // Restrained, Disadvantage on Agility and Strength; Weakened, on Strength; Prone, on attacks;
+  // Dazed (the plain condition), on the next single action, which spends it.
+  const plainDazed = !reaction && (actor?.conditions || []).includes('Dazed') && !pathImmune(actor, 'Dazed');
   const conditionPenalty = (conditions.includes('Blinded') && (!!target || trait === 'instinct')) ||
     (conditions.includes('Cornered') && ['agility','finesse'].includes(trait)) ||
+    (conditions.includes('Restrained') && ['agility','strength'].includes(trait)) ||
+    (conditions.includes('Weakened') && trait === 'strength') ||
+    (conditions.includes('Prone') && !!target) || plainDazed ||
+    (!!target && !!fearSource(actor) && fearSource(actor) === target.id) ||
     (!!trait && ['knowledge','instinct'].includes(trait) && actor?.effectClocks?.some(c => c.condition === 'Dazed') && !pathImmune(actor, 'Dazed'));
   const jolt = ['agility', 'finesse'].includes(trait) && actor?.effectClocks?.some(c => c.name === 'Slipstream Jolt');
   const field = actor?.effectClocks?.find(c => c.name === 'Global Stimulus Field');
   // «Disadvantage on their next attack» (Blinding Flash…): only an attack, and it is spent by it.
   const nextAttack = !!target && actor?.effectClocks?.some(c => c.nextAttack && c.edge === 'disadvantage');
-  return netEdge(advantage || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
+  // «Disadvantage on its next action» (Stagger, Disorienting → Dazed): any roll, spent by it.
+  const nextAction = !reaction && actor?.effectClocks?.some(c => c.nextAction && c.edge === 'disadvantage');
+  // An edge on all rolls while a clock lasts (Psychic Collapse: Disadvantage on all rolls for 1 round).
+  const allRollsDis = actor?.effectClocks?.some(c => c.allRolls && c.edge === 'disadvantage'), allRollsAdv = actor?.effectClocks?.some(c => c.allRolls && c.edge === 'advantage');
+  // Attacking from stealth (v2.43.5, user note): a Hidden or invisible attacker has Advantage
+  // (Corebook ch. 10: Hidden gives Advantage on the next attack; a Hidden attacker surprises).
+  const unseen = !!target && conditions.some(c => c === 'Hidden' || /invisib/i.test(c));
+  // A Prone target: ranged attackers gain Advantage against it.
+  const proneTarget = !!target && ranged && visibleConditions(target).includes('Prone');
+  return netEdge(advantage || unseen || proneTarget || allRollsAdv || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || nextAction || allRollsDis || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
 }
 
 export const roundKey = (map = {}) => `${map.id}/${map.spotlightRound || 1}`;
@@ -75,6 +125,7 @@ export function combatTransition(previous, next, map) {
     next = { ...next, conditions: next.conditions.filter(name => name !== 'Overwhelmed') };
   }
   if (next.conditions?.some(c => pathImmune(next, c))) next = { ...next, conditions: next.conditions.filter(c => !pathImmune(next, c)) };
+  if (next.frightenedBy && !next.conditions?.includes('Frightened')) next = { ...next, frightenedBy: null };
   if (character(next) && previous.hp?.current > 0 && next.hp?.current === 0) {
     next = { ...next, ...lifePatch(next, 'Dying'), lifeRollRound: null };
   }
@@ -90,6 +141,9 @@ export function combatTransition(previous, next, map) {
       next.effectClocks = list;
       const heal = ticked.reduce((n, c) => n + (c.perTick?.hp || 0), 0);
       if (heal && next.hp && canReceiveHealing(next)) next.hp = { ...next.hp, current: Math.min(next.hp.max, next.hp.current + heal) };
+      // Continuous (a weapon): the target marks Stress at the start of its next Spotlight.
+      const strain = ticked.reduce((n, c) => n + (c.perTick?.stress || 0), 0);
+      if (strain && next.stress) next.stress = { ...next.stress, current: next.stress.max > 0 ? Math.min(next.stress.max, (next.stress.current || 0) + strain) : (next.stress.current || 0) + strain };
     }
   }
   if (previous.hasSpotlight && !next.hasSpotlight && next.effectClocks?.some(c => c.seenSpotlight)) next = { ...next, effectClocks:next.effectClocks.filter(c => !(c.expiry === 'spotlight-end' && c.seenSpotlight)) };
@@ -101,9 +155,23 @@ export function combatTransition(previous, next, map) {
       stress: { ...next.stress, current: Math.min(next.stress?.max ?? 6, (next.stress?.current || 0) + 1) } };
   }
   if (next.conditions?.includes('Long Bruise') && next.stress?.current === 0) next = { ...next, stress: { ...next.stress, current: 1 } };
+  // Prone: standing up is free when moving one band (v2.53.0): a token that moves is no longer Prone.
+  if (previous.conditions?.includes('Prone') && next.conditions?.includes('Prone') && (next.x !== previous.x || next.y !== previous.y)) next = { ...next, conditions: next.conditions.filter(c => c !== 'Prone') };
+  // Charge-Up (Rust & Steel 12.06): the charge is lost if the wielder loses HP, moves, or becomes
+  // Dazed, Stunned, Prone or Restrained.
+  if (next.inventory?.weapons?.some(w => w.charged)) {
+    const hurt = (next.hp?.current ?? 0) < (previous.hp?.current ?? 0), moved = next.x !== previous.x || next.y !== previous.y;
+    const was = visibleConditions(previous), now = visibleConditions(next);
+    const struck = ['Dazed', 'Stunned', 'Prone', 'Restrained'].some(c => now.includes(c) && !was.includes(c));
+    if (hurt || moved || struck) next = { ...next, inventory: { ...next.inventory, weapons: next.inventory.weapons.map(w => w.charged ? { ...w, charged: false } : w) } };
+  }
   return next;
 }
 
+// What happens when the round changes besides clearing clocks (v2.51.0): Power effects that act
+// each round (Energy Cascade, Inviolable Sanctum) register here (cardResolution.js).
+const roundHooks = new Set();
+export const onRoundChange = fn => { roundHooks.add(fn); return () => roundHooks.delete(fn); };
 export function nextSpotlightRound(store) {
   if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') throw new Error('Solo el Keeper puede cerrar la ronda.');
   const map = store.getActiveMap();
@@ -113,8 +181,15 @@ export function nextSpotlightRound(store) {
     tokens: store.state.tokens.map(t => {
       if (t.mapId !== map.id) return t;
       const next = t.hasSpotlight ? { ...t, hasSpotlight: false, spotlight: { ...t.spotlight, enabled: false } } : t;
-      return next.effectClocks?.some(c => c.expiry === 'round') ? { ...next, effectClocks: next.effectClocks.filter(c => c.expiry !== 'round') } : next;
+      // A clock that lasts several rounds (Stunned by a weapon: «cleared after the next round») counts one down.
+      if (!next.effectClocks?.some(c => c.expiry === 'round')) return next;
+      // A clock that ends with a cost (Solar Avatar: 2 Stress when the transformation ends).
+      const ending = next.effectClocks.filter(c => c.expiry === 'round' && !(c.rounds > 1) && c.endStress);
+      const cost = ending.reduce((n, c) => n + c.endStress, 0);
+      return { ...next, effectClocks: next.effectClocks.flatMap(c => c.expiry !== 'round' ? [c] : c.rounds > 1 ? [{ ...c, rounds: c.rounds - 1 }] : []),
+        ...(cost && next.stress ? { stress: { ...next.stress, current: next.stress.max > 0 ? Math.min(next.stress.max, (next.stress.current || 0) + cost) : (next.stress.current || 0) + cost } } : {}) };
     })
   });
   store.addLog({ sender: 'Keeper', type: 'ROUND', title: `Ronda ${round}`, details: map.name });
+  for (const hook of roundHooks) { try { hook(store, round); } catch (error) { console.warn('Round effect:', error); } }
 }

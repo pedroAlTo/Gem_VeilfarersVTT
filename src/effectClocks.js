@@ -112,13 +112,16 @@ export function editClock(list = [], id, patch = {}) {
   });
 }
 
+// The conditions a clock may carry while it lasts (v2.49.0: Power procedures put any of them).
+export const CLOCK_CONDITIONS = ['Dazed', 'Stunned', 'Blinded', 'Vulnerable', 'Prone', 'Restrained', 'Frightened', 'Weakened', 'Incapacitated', 'Hidden', 'Silenced', 'Cornered', 'On Fire', 'Poisoned', 'Bleeding'];
 export function validEffectClocks(v) {
   return Array.isArray(v) && v.length <= MAX_CLOCKS && v.every(c => c && typeof c === 'object'
     && typeof c.id === 'string' && c.id.length <= 60 && typeof c.name === 'string' && c.name.length <= 80
     && Number.isInteger(c.segments) && c.segments >= 1 && c.segments <= MAX_SEGMENTS
     && Number.isInteger(c.filled) && c.filled >= 0 && c.filled <= c.segments
     && ['spotlight', 'fear', 'manual'].includes(c.tick)
-    && (c.condition === undefined || ['Dazed', 'Stunned'].includes(c.condition))
+    && (c.condition === undefined || CLOCK_CONDITIONS.includes(c.condition))
+    && (c.allRolls === undefined || typeof c.allRolls === 'boolean')
     && (c.expiry === undefined || ['round','spotlight-end'].includes(c.expiry))
     && (c.seenSpotlight === undefined || typeof c.seenSpotlight === 'boolean')
     && (c.edge === undefined || ['advantage','disadvantage'].includes(c.edge))
@@ -131,7 +134,15 @@ export function validEffectClocks(v) {
     && (c.meleeRound === undefined || typeof c.meleeRound === 'string' && c.meleeRound.length <= 160)
     && (c.trait === undefined || PATH_TRAITS.includes(c.trait))
     && (c.scene === undefined || typeof c.scene === 'boolean') && (c.firstStrikeUsed === undefined || typeof c.firstStrikeUsed === 'boolean') && (c.die === undefined || /^d(4|6|8|10|12)$/.test(c.die))
-    && (c.perTick === undefined || (c.perTick && typeof c.perTick === 'object' && Number.isInteger(c.perTick.hp ?? 0) && (c.perTick.hp ?? 0) >= 0 && (c.perTick.hp ?? 0) <= 20))
+    && (c.perTick === undefined || (c.perTick && typeof c.perTick === 'object' && Number.isInteger(c.perTick.hp ?? 0) && (c.perTick.hp ?? 0) >= 0 && (c.perTick.hp ?? 0) <= 20 && Number.isInteger(c.perTick.stress ?? 0) && (c.perTick.stress ?? 0) >= 0 && (c.perTick.stress ?? 0) <= 3))
+    // Weapon effects (v2.45.0): a duration in rounds, the next action of any kind, Brittle, Melting and its DC.
+    && (c.rounds === undefined || (Number.isInteger(c.rounds) && c.rounds >= 1 && c.rounds <= 6))
+    && (c.nextAction === undefined || typeof c.nextAction === 'boolean') && (c.brittle === undefined || typeof c.brittle === 'boolean')
+    && (c.melting === undefined || typeof c.melting === 'boolean') && (c.dc === undefined || (Number.isInteger(c.dc) && c.dc >= 5 && c.dc <= 30))
+    // Power effects each round (v2.51.0): Energy Cascade on its targets, Inviolable Sanctum on the caster; a cost when it ends.
+    && (c.cascade === undefined || typeof c.cascade === 'boolean') && (c.sanctum === undefined || typeof c.sanctum === 'boolean')
+    && (c.endStress === undefined || (Number.isInteger(c.endStress) && c.endStress >= 1 && c.endStress <= 6))
+    && (c.grantWeapon === undefined || (typeof c.grantWeapon === 'string' && c.grantWeapon.length <= 100))
     && (c.source === undefined || (typeof c.source === 'string' && c.source.length <= 80)));
 }
 

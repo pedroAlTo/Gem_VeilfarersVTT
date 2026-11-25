@@ -17,13 +17,14 @@ import { cardChoices, chosenCardOptions, openResolution } from './cardResolution
 import { TARGET_RULES, SELF_EFFECTS, CARD_MODES, SUSTAINED, eligible, cardRollOptions, createResolution } from './cardResolution.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { cardSummary } from './cardSummaries.js';
-import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode, emblemNode } from './cardFlow.js';
+import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode, emblemNode, basicDefaults } from './cardFlow.js';
 import { characterDetails } from './characterImport.js';
 import { liveFor, liveReactions, answer as answerReaction } from './reactionOffers.js';
 import { droneCompatible } from './dronePowers.js';
 import { operatedDrone } from './droneControl.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { newId } from './persistence.js';
+import { isAdvanced, luckyBreakDie } from './tableMode.js';
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
 // Reactions this screen can see open by itself (v2.39.0): Lucky Break after the character's own
 // Duality roll (not rerolled yet), Bear Down after its roll or while its damage is still open.
@@ -260,13 +261,36 @@ export class CardHand {
       return;
     }
     if (this.special(card, token, point)) return;
-    const plan = quickPlan(card, token);
+    let plan = quickPlan(card, token);
+    // Básico: the table takes the usual choice instead of opening the card's window (v2.48.0).
+    const auto = plan === 'dialog' && !isAdvanced() ? basicDefaults(card, token, { dc: document.getElementById('dice_dc_select')?.value }) : null;
+    if (auto) plan = auto.plan;
     if (plan === 'dialog') { this.inspect(card, point); return; }
-    const options = { rollNow: true, ...(defaultMode(card) ? { mode: defaultMode(card) } : {}) };
-    if (plan === 'play') { this.play(card, point, null, options); return; }
+    const options = { rollNow: true, ...(defaultMode(card) ? { mode: defaultMode(card) } : {}), ...(auto?.options || {}) };
+    if (plan === 'play') { this.play(card, point, auto?.resolveSpent ?? null, options); return; }
     const drone = this.viaDroneId && store.state.tokens.find(t => t.id === this.viaDroneId);
     const origin = drone ? { ...token, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId } : token;
-    startAim(card, origin, plan, targetIds => this.play(card, null, null, { ...options, targetIds }), { preselect: dropped });
+    startAim(card, origin, plan, targetIds => this.play(card, null, auto?.resolveSpent ?? null, { ...options, targetIds }), { preselect: dropped });
+  }
+
+  // The action ring (v2.47.0): the Powers in hand that can be aimed at this token now, and casting
+  // one at it at once (the same as aiming it and touching the target).
+  ringCards(target) {
+    const token = store.state.tokens.find(t => t.id === this.tokenId), map = store.getActiveMap?.() || {};
+    if (!token || !target) return [];
+    return (this.cards || []).filter(card => {
+      if (!card.playable || KEEPER_KINDS.has(card.kind) || card.uncanny) return false;
+      const rule = TARGET_RULES[card.name];
+      let plan = quickPlan(card, token);
+      if (card.kind === 'archive' && plan === 'dialog') plan = 'play';
+      return plan === 'aim' && !!rule && target.id !== token.id && eligible(token, target, map, rule);
+    });
+  }
+  castAt(cardId, targetId) {
+    const card = (this.cards || []).find(c => c.id === cardId), token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!card || !token) return;
+    if (card.kind === 'archive') { this.uncannyCast(card, token, null, [targetId]); return; }
+    this.play(card, null, null, { rollNow: true, targetIds: [targetId], ...(defaultMode(card) ? { mode: defaultMode(card) } : {}) });
   }
 
   // Click inspects; dragging past a few pixels lifts the card so it can be dropped on the map.
@@ -342,7 +366,7 @@ export class CardHand {
     this.play(card, point);
   }
 
-  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, mode, empower, special, rollNow = false, rollEdge = 'normal', expIndex = '', rollMod = 0 } = {}) {
+  async play(card, point = null, resolveSpent = null, { burnout = false, targetIds, trait, weaponId, cardDC, mode, empower, special, choices, rollNow = false, rollEdge = 'normal', expIndex = '', rollMod = 0 } = {}) {
     if (KEEPER_KINDS.has(card.kind)) return this.playKeeper(card, point);
     const token = store.state.tokens.find(t => t.id === this.tokenId);
     if (!token) return false;
@@ -367,7 +391,7 @@ export class CardHand {
         describe: v => ({ outcome: `${v.reduce((a, b) => a + b, 0)} turnos`, modifiers: `${dd.qty}d${dd.sides} [${v.join(', ')}]` }) }) : null;
       const effectFace = card.name === 'Emergency Repair' && card.kind !== 'archive'
         ? (await throwDice([{ qty: 1, sides: 8, role: 'Reparación' }], { label: card.name, actor: token }))[0] : undefined;
-      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, mode, empower, ...(special ? { special } : {}), ...(this.viaDroneId ? { viaDroneId: this.viaDroneId } : {}), effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
+      const result = await network.requestAction({ type: 'CARD_PLAY', actorId: token.id, cardId: card.id, targetIds: recipients, trait, cardDC, mode, empower, ...(special ? { special } : {}), ...(Array.isArray(choices) ? { choices } : {}), ...(this.viaDroneId ? { viaDroneId: this.viaDroneId } : {}), effectFace, resolveSpent, playerName, tokenName: token.name, ...(durationFaces ? { durationFaces } : {}) });
       const detail = [result.summary, ...(result.notes || [])].join(' ');
       window.veilDiceEngine?.showCallout?.({ playerName, tokenName: token.name, label: card.name, skill: card.name, outcome: result.failed ? 'NO SE MANIFIESTA' : result.outcomeTitle, modifiers: detail, details: detail });
       if (point) { window.veilCanvas?.triggerPing?.(point.x, point.y, card.color); network.broadcast?.({ type: 'PING', x: point.x, y: point.y }); }
@@ -559,6 +583,8 @@ export class CardHand {
   openLuckyBreak(token) {
     const dice = window.veilDiceRoller, last = dice?.lastResult;
     const usable = last && last.actorId === token.id && last.hopeVal != null && !last.keeperD20 && !last.luckyBreak;
+    // Básico (the default): no window, the lower die is rerolled at once (v2.47.0).
+    if (usable && !isAdvanced()) { void this.luckyBreak(token, luckyBreakDie(last)); return null; }
     const modal = tableDialog('Lucky Break', `<div class="kdmg">
       <p>${usable ? `Tu última tirada: Hope <b>${last.hopeVal}</b> · Fear <b>${last.fearVal}</b> → ${last.total} contra DC ${last.dc} (${e(last.outcomeTitle || '')}).` : 'Haz primero una tirada de Dualidad: Lucky Break relanza uno de sus dados.'}</p>
       <p class="dossier-muted">Marca 1 Stress y relanza un dado; te quedas con el nuevo resultado. Modo Personal o Vehículo (una Acción de la nave): el mismo relanzamiento.</p>
@@ -575,6 +601,17 @@ export class CardHand {
       } catch (err) { modal.querySelector('[role=alert]').textContent = err.message; modal.querySelectorAll('[data-lucky]').forEach(x => { x.disabled = false; }); }
     });
     return modal;
+  }
+
+  async luckyBreak(token, die) {
+    const dice = window.veilDiceRoller;
+    try {
+      const [face] = await throwDice([{ qty: 1, sides: 12, role: die === 'hope' ? 'Hope' : 'Fear' }], { label: 'Lucky Break · ' + token.name, actor: token });
+      const result = await network.requestAction({ type: 'LUCKY_BREAK', actorId: token.id, die, face, visibility: dice?.rollVisibility?.() || 'table' });
+      await dice?.applyBearDown?.(result);
+      notify(`Lucky Break: ${result.outcomeDesc}`);
+      return result;
+    } catch (err) { notify(err.message, 'error'); return null; }
   }
 
   openPowerUse(card, token, point = null) {

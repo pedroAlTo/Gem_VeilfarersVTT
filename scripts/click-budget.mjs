@@ -101,14 +101,24 @@ const JOURNEYS = [
     await j.click('[data-pab-trait="agility"]');
     await j.until(id => window.veilDiceRoller?.lastResult?.actorId === id, ids.harker, 'el resultado de la tirada');
   }, true],
-  ['Atacar con arma', 4, 3, async (j, ids) => {
+  // Since v2.47.0 the damage reaches the Keeper's window by itself (no «Enviar daño» click).
+  ['Atacar con arma (barra)', 3, 3, async (j, ids) => {
     await j.click('[data-pab-weapon]');
     await j.clickToken(ids.foe);
     await j.clickToken(ids.foe);
-    await j.until(() => !!document.querySelector('[data-pab-apply]:not([disabled])'), null, 'el daño listo');
-    await j.click('[data-pab-apply]');
     await j.until(() => !!document.querySelector('.kdmg, .damage-action-dialog') || /aplicado|Enviado/i.test(document.querySelector('.pab-applied')?.textContent || ''), null, 'el daño en manos del Keeper');
   }, true],
+  // The action ring (v2.47.0): touch the enemy, choose the weapon.
+  ['Atacar desde el anillo', 2, 2, async (j, ids) => {
+    await j.clickToken(ids.foe);
+    await j.click('.action-ring-item.weapon:not(.off)');
+    await j.until(() => !!document.querySelector('.kdmg, .damage-action-dialog') || /aplicado|Enviado/i.test(document.querySelector('.pab-applied')?.textContent || ''), null, 'el daño en manos del Keeper');
+  }, true],
+  ['Poder desde el anillo (Stellar Lance)', 2, 2, async (j, ids) => {
+    await j.clickToken(ids.foe);
+    await j.click('.action-ring-item.card');
+    await j.until(() => window.__s.state.logs.some(l => l.resolution?.name === 'Stellar Lance' && l.resolution.outcome), null, 'la tirada del poder');
+  }, true, async (page, ids) => page.evaluate(id => { const s = window.__s, h = s.state.tokens.find(t => t.id === id); s.update({ userRole: 'keeper' }); s.updateToken(id, { hope: 5, sheetFields: { ...(h.sheetFields || {}), a_pwr_5_n: 'Stellar Lance' } }); s.update({ userRole: 'player' }); }, ids.harker)],
   ['Poder con objetivo (Stellar Lance)', 3, 3, async (j, ids) => {
     await j.clickCard('Stellar Lance');
     await j.clickToken(ids.foe);
