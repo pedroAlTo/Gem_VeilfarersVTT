@@ -37,7 +37,7 @@ export function createActor(data = {}, mapId) {
 
 // Reimport keeps the existing placement and controls while replacing the character sheet.
 export function replaceActorSheet(existing, imported) {
-  const tactical = ['id', 'mapId', 'x', 'y', 'size', 'color', 'rotation', 'ownerId', 'controllerIds', 'scenePositions', 'hidden', 'hideName', 'displayConfig', 'displayOverlays', 'conditions', 'visionRadius', 'visionMode', 'visionRange', 'visionAngle', 'hasLight', 'lightRadius', 'lightColor', 'lightEffect', 'hasVibrationVision', 'vibrationRadius', 'isFlying', 'inReserve', 'lastMapId'];
+  const tactical = ['id', 'mapId', 'x', 'y', 'size', 'color', 'rotation', 'ownerId', 'controllerIds', 'scenePositions', 'hidden', 'hideName', 'displayConfig', 'displayOverlays', 'vitalsLayout', 'conditions', 'visionRadius', 'visionMode', 'visionRange', 'visionAngle', 'hasLight', 'lightRadius', 'lightColor', 'lightEffect', 'hasVibrationVision', 'vibrationRadius', 'isFlying', 'inReserve', 'lastMapId'];
   const next = { ...existing, ...imported };
   for (const key of tactical) {
     if (key in existing) next[key] = structuredClone(existing[key]);

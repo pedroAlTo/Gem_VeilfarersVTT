@@ -304,3 +304,7 @@
 .condition-fear-source { margin: 10px 0 4px; padding: 8px 10px; border: 1px solid rgba(250, 204, 21, 0.35); border-radius: 8px; }
 .condition-fear-source .dossier-field { display: grid; gap: 4px; max-width: 420px; }
 .condition-fear-source p { margin: 6px 0 0; }
+/* The token's sheet · «En el mapa» (v2.59.0): name, insignia and where each stat goes. */
+.sheet-map-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 14px; align-items: end; margin-top: 6px; }
+.sheet-layout-stat { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-dim, #9fb3c8); }
+.sheet-layout-stat select { width: 100%; }

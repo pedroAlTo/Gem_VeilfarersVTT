@@ -4,6 +4,7 @@ import { actorCollection, openPortraitPicker } from './portraitPicker.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
+import { tokenLayout, placeStat, placesFor, LAYOUT_STATS } from './tokenLayout.js';
 import { validateActor, pickPlayerFields } from './validation.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { tokenInventory } from './equipment.js';
@@ -907,14 +908,14 @@ export class TokenHUD {
                 </div>
               </div>
 
-              <!-- On the map (v2.58.0, user decision): one format, two slim bars under the name. -->
+              <!-- On the map (v2.59.0, the user's design): name, insignia and where each stat goes. -->
               <h4 class="sheet-section-title" style="margin-top: 18px; color: #00f3ff;">📊 EN EL MAPA</h4>
-              <div class="sheet-map-vitals" style="display: flex; gap: 18px; flex-wrap: wrap; align-items: center;">
-                <label class="checkbox-label"><input type="checkbox" id="sheet_show_hp"> Barra de HP</label>
-                <label class="checkbox-label"><input type="checkbox" id="sheet_show_stress"> Barra de Stress</label>
-                <label class="checkbox-label"><input type="checkbox" id="sheet_show_armor"> Escudos</label>
+              <div class="sheet-map-layout">
+                <label class="checkbox-label"><input type="checkbox" id="sheet_layout_name"> Nombre</label>
+                <label class="checkbox-label"><input type="checkbox" id="sheet_layout_insignia"> Insignia de clase</label>
+                ${LAYOUT_STATS.map(([stat, label]) => `<label class="sheet-layout-stat"><span>${label}</span><select class="hud-input" data-layout-stat="${stat}">${placesFor(stat).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}</select></label>`).join('')}
               </div>
-              <p class="dossier-muted" style="margin: 6px 0 0;">Barras finas bajo el nombre o, en Ajustes → Vida en el mapa, anillos con un segmento por punto (HP y Stress fuera, Escudos dentro). Solo las ven el Keeper y el jugador de este personaje; los números están en la barra del personaje al seleccionarlo.</p>
+              <p class="dossier-muted" style="margin: 6px 0 0;">Un círculo o un lado por stat (elegir uno ocupado lo quita del otro); las barras se apilan. Las fichas son de 8 px: Armadura llena o vacía; Resolve, triángulo (d4) o cuadrado (d6). Los stats solo los ven el Keeper y el jugador de este personaje.</p>
             </div>
           </div>
 
@@ -985,13 +986,20 @@ export class TokenHUD {
       ];
     }
 
-    // The two slim bars (v2.58.0): what the token showed before, as HP and Stress on or off. A
-    // clock the Keeper put on the token by hand is kept; the old «HACK» sample is dropped.
+    // Where each stat goes (v2.59.0): the token's layout; choosing a ring or a side for one stat
+    // frees it from another (placeStat). A clock put on the token by hand is kept as it was.
     const sampleClock = o => o?.type === 'circular' && o.statKey === 'clock' && /^hack$/i.test(o.label || '') && (o.id === 'ov_clock' || o.current === 2);
     currentOverlays = currentOverlays.filter(o => !sampleClock(o));
-    modal.querySelector('#sheet_show_hp').checked = currentOverlays.some(o => o.statKey === 'hp' && o.type !== 'circular');
-    modal.querySelector('#sheet_show_stress').checked = currentOverlays.some(o => o.statKey === 'stress' && o.type !== 'circular');
-    modal.querySelector('#sheet_show_armor').checked = currentOverlays.some(o => o.statKey === 'armor' && o.type !== 'circular');
+    let layout = tokenLayout(token);
+    const paintLayout = () => {
+      modal.querySelector('#sheet_layout_name').checked = layout.name;
+      modal.querySelector('#sheet_layout_insignia').checked = layout.insignia;
+      modal.querySelectorAll('[data-layout-stat]').forEach(select => { select.value = layout[select.dataset.layoutStat]; });
+    };
+    modal.querySelectorAll('[data-layout-stat]').forEach(select => select.addEventListener('change', () => { layout = placeStat(layout, select.dataset.layoutStat, select.value); paintLayout(); }));
+    modal.querySelector('#sheet_layout_name').onchange = event => { layout = { ...layout, name: event.target.checked }; };
+    modal.querySelector('#sheet_layout_insignia').onchange = event => { layout = { ...layout, insignia: event.target.checked }; };
+    paintLayout();
 
     // Toggle sleeping section when path select changes
     const pathSelect = modal.querySelector('#sheet_path');
@@ -1045,15 +1053,8 @@ export class TokenHUD {
         subtraits[st.id] = parseInt(modal.querySelector(`#sheet_subtrait_${st.id}`).value, 10) || 0;
       });
 
-      // The bars chosen, plus any clock put on the token by hand.
-      currentOverlays = [
-        ...(modal.querySelector('#sheet_show_hp').checked ? [{ id: 'ov_hp_bar', statKey: 'hp', type: 'bar', color: '#10b981', label: 'HP' }] : []),
-        ...(modal.querySelector('#sheet_show_stress').checked ? [{ id: 'ov_stress_bar', statKey: 'stress', type: 'bar', color: '#d946ef', label: 'ESTRÉS' }] : []),
-        ...(modal.querySelector('#sheet_show_armor').checked ? [{ id: 'ov_armor_bar', statKey: 'armor', type: 'bar', color: '#38bdf8', label: 'ESCUDOS' }] : []),
-        ...currentOverlays.filter(o => o.type === 'circular'),
-      ];
-      // None at all: the token shows only its name (an empty list would mean «the defaults»).
-      if (!currentOverlays.length) currentOverlays = [{ id: 'ov_none', statKey: 'none', type: 'none', label: '' }];
+      // Only a clock put on the token by hand stays in the old overlays; the rest is the layout.
+      currentOverlays = currentOverlays.filter(o => o.type === 'circular');
 
       const actorTypeVal = modal.querySelector('#sheet_actor_type')?.value || 'player';
       const avatarUrl = chosenIllustration ?? token.avatarUrl;
@@ -1111,13 +1112,10 @@ export class TokenHUD {
           intensity: parseFloat(modal.querySelector('#sheet_spotlight_intensity')?.value) || 0.85
         },
         hidden: modal.querySelector('#sheet_is_hidden').checked,
+        // What the token shows and where (v2.59.0); a hand-made clock stays in the overlays.
+        vitalsLayout: layout,
         displayOverlays: currentOverlays,
         displayConfig: {
-          showHpBar: currentOverlays.some(o => o.statKey === 'hp' && o.type === 'bar'),
-          showStressBar: currentOverlays.some(o => o.statKey === 'stress' && o.type === 'bar'),
-          showHpCounter: currentOverlays.some(o => o.statKey === 'hp' && o.type === 'linear'),
-          showStressCounter: currentOverlays.some(o => o.statKey === 'stress' && o.type === 'linear'),
-          showArmorCounter: currentOverlays.some(o => o.statKey === 'armor' && o.type === 'linear'),
           showClock: currentOverlays.some(o => o.type === 'circular'),
           clockLabel: currentOverlays.find(o => o.type === 'circular')?.label || 'CLOCK',
           clockSegments: 4,

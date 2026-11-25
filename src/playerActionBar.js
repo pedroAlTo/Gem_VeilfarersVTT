@@ -131,7 +131,7 @@ export function sheetStats(token, armorName = '') {
 }
 
 // The shortcuts of the player's bar, said by «?» (v2.48.0).
-export const SHORTCUTS_HELP = 'Atajos: T anillo de acciones sobre el enemigo más cercano (otra vez, el siguiente; flechas y Enter dentro) · 1–9 atacar con el arma de ese lugar (0 desarmado) · Enter ataca al objetivo marcado · F tomar foco · flechas mueven tu personaje · ? qué puedo hacer · Esc cancela.';
+export const SHORTCUTS_HELP = 'Atajos: T anillo de acciones sobre el enemigo más cercano (otra vez, el siguiente; flechas y Enter dentro) · 1–9 atacar con el arma de ese lugar (0 desarmado) · Enter ataca al objetivo marcado · F tomar foco · V nombres de los tokens · flechas mueven tu personaje · ? qué puedo hacer · Esc cancela.';
 
 export class PlayerActionBar {
   constructor(parent) {

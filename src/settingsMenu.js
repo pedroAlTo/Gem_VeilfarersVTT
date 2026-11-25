@@ -5,7 +5,6 @@
 // smoothly, while the pointer is at the right edge or over it.
 import './settingsMenu.css';
 import { UI_SCALES, uiScale, applyUiScale, zoomOf } from './uiScale.js';
-import { VITALS_STYLES, vitalsStyle, setVitalsStyle } from './mapVitals.js';
 import { FONT_SETS, applyFontSet, currentFontSet } from './fontSets.js';
 import { audio } from './audioEngine.js';
 import { escapeHTML as e } from './ui.js';
@@ -65,7 +64,6 @@ export function mountSettingsMenu() {
       <div class="settings-row"><span>Idioma</span><span data-settings-lang></span></div>
       <div class="settings-row"><span>Fuentes</span><span class="settings-seg" role="group" aria-label="Fuentes">${Object.entries(FONT_SETS).map(([id, set]) => `<button type="button" data-font-set="${id}" title="${e(set.note)}">${id.toUpperCase()} · ${e(set.name)}</button>`).join('')}</span></div>
       <div class="settings-row"><span>Tamaño</span><span class="settings-seg" role="group" aria-label="Tamaño de la interfaz">${UI_SCALES.map(s => `<button type="button" data-ui-scale="${s.value}" title="${Math.round(s.value * 100)} %">${e(s.label)}</button>`).join('')}</span></div>
-      <div class="settings-row"><span>Vida en el mapa</span><span class="settings-seg" role="group" aria-label="Vida en el mapa">${VITALS_STYLES.map(([id, label]) => `<button type="button" data-vitals-style="${id}" title="${id === 'rings' ? 'Anillos con un segmento por punto: HP y Stress fuera, Escudos dentro' : 'Barras finas bajo el nombre'}">${e(label)}</button>`).join('')}</span></div>
       <div class="settings-row"><span>Panel lateral</span><span class="settings-seg" role="group" aria-label="Panel lateral"><button type="button" data-panel-mode="pinned">Fijo</button><button type="button" data-panel-mode="auto">Se oculta</button></span></div>
     </div>`;
   // Before the account button, after the save state.
@@ -77,7 +75,6 @@ export function mountSettingsMenu() {
     pop.querySelectorAll('[data-font-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fontSet === currentFontSet())));
     pop.querySelectorAll('[data-panel-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.panelMode === panelMode)));
     pop.querySelectorAll('[data-ui-scale]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.uiScale) === uiScale())));
-    pop.querySelectorAll('[data-vitals-style]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vitalsStyle === vitalsStyle())));
   };
   // The header clips what overflows it: the menu is placed on the page, under its button.
   document.body.append(pop);
@@ -97,8 +94,6 @@ export function mountSettingsMenu() {
     }
     const font = event.target.closest('[data-font-set]')?.dataset.fontSet;
     if (font) { applyFontSet(font); paint(); window.dispatchEvent(new Event('resize')); return; }
-    const vitals = event.target.closest('[data-vitals-style]')?.dataset.vitalsStyle;
-    if (vitals) { setVitalsStyle(vitals); paint(); return; }
     const scale = event.target.closest('[data-ui-scale]')?.dataset.uiScale;
     if (scale) { applyUiScale(Number(scale)); paint(); place(); return; }
     const mode = event.target.closest('[data-panel-mode]')?.dataset.panelMode;

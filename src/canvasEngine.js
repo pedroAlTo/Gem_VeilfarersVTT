@@ -9,8 +9,8 @@ import { MapClipboard } from './mapClipboard.js';
 import { LightingEngine } from './lightingEngine.js';
 import { DAYLIGHT_BELOW } from './fogEngine.js';
 import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog, drawLavaGlow } from './surfaceFX.js';
-import { drawSlimVitals, drawVitalRings } from './tokenVitals.js';
-import { vitalsStyle } from './mapVitals.js';
+import { drawStatBars, drawStatRing, drawStatPips, ringRadius } from './tokenVitals.js';
+import { tokenLayout, statFor, LAYOUT_STATS, namesHidden } from './tokenLayout.js';
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
 import { healedTokens } from './healFX.js';
@@ -2991,7 +2991,9 @@ export class CanvasEngine {
     }
 
     // Sensory Vision Acoustic Pass (Tremorsense: reveals ground creatures through darkness)
-    const sensoryTokens = activeTokens.filter(t => t.visionMode === 'sensory' || t.hasVibrationVision);
+    // Only whoever has it sees it (v2.59.0, user decision): the Keeper, every sensor; a player, the
+    // vibration of their own character (store.canEditToken).
+    const sensoryTokens = activeTokens.filter(t => (t.visionMode === 'sensory' || t.hasVibrationVision) && store.canEditToken(t.id));
     if (sensoryTokens.length > 0) {
       this.renderSensoryVision(ctx, sensoryTokens, activeTokens, now * 0.001, map.gridSize || 64);
     }
@@ -4105,7 +4107,8 @@ export class CanvasEngine {
         ctx.restore();
       }
 
-      this.drawClassBanner(ctx, layers.flag, radius);
+      // The class insignia, unless the token's layout hides it (v2.59.0).
+      if (tokenLayout(tok).insignia) this.drawClassBanner(ctx, layers.flag, radius);
 
       // Dead / Defeated Badge above token
       if (isDead) {
@@ -4616,51 +4619,56 @@ export class CanvasEngine {
   // character it plays (claimed) and what it controls.
   canSeeVitals(tok) { return store.canEditToken(tok.id); }
 
-  // The token's name below it and, for whoever may see them, its HP and Stress as two slim bars
-  // under the name (v2.58.0, user decision: «las barras de HP y Stress son demasiado grandes, hacen
-  // la mesa muy caótica»). One format for every token: the numbers are in the character bar when
-  // the token is selected. The old «HACK 2/4» sample clock is no longer drawn.
+  // What the token shows and where (v2.59.0, the user's design: tokenLayout.js): its name (yes/no)
+  // and, for whoever may see them, each stat as a bar below or above it, a ring (inner, outer 1,
+  // outer 2) or, for Armor and Resolve, small tokens beside it. A clock put on the token by hand
+  // (not the old «HACK» sample) is still drawn.
   renderTokenVitals(ctx, tok, radius) {
     if (isEncounterMarker(tok)) return;
     ctx.save();
-    const cfg = tok.displayConfig || {};
-    const sample = o => o?.type === 'circular' && o.statKey === 'clock' && /^hack$/i.test(o.label || '') && (o.id === 'ov_clock' || o.current === 2);
-    const custom = Array.isArray(tok.displayOverlays) && tok.displayOverlays.length > 0;
-    const overlays = custom ? tok.displayOverlays.filter(o => !sample(o)) : [];
-    const wants = key => custom ? overlays.some(o => o.statKey === key && o.type !== 'circular') : key === 'hp' ? cfg.showHpBar !== false || !!cfg.showHpCounter : key === 'stress' ? !!(cfg.showStressBar || cfg.showStressCounter) : !!cfg.showArmorCounter;
-
-    // 1. Nameplate below the token
+    const layout = tokenLayout(tok), scale = Math.max(1, Math.min(1.8, 0.9 / this.zoom));
     const nameWidth = Math.max(radius * 2, 70);
-    ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
-    ctx.strokeStyle = tok.color ? tok.color : 'rgba(0, 243, 255, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(-nameWidth / 2, radius + 4, nameWidth, 16, 3);
-    ctx.fill();
-    ctx.stroke();
-    const isKeeper = store.getState().userRole === 'keeper';
-    const isMasked = !isKeeper && this.isHorrorToken(tok);
-    const rawName = isMasked ? '?????' : tok.name;
-    const displayName = (isKeeper && this.isHorrorToken(tok))
-      ? (tok.name.length > 10 ? tok.name.substring(0, 9) + '.. [?]' : `${tok.name} [?]`)
-      : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
-    ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
-    ctx.font = `bold 11px ${canvasFont('hud')}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(displayName, 0, radius + 12);
-
+    let below = radius + 4;
+    // A player may hide every name on their screen with V; the Keeper always sees them (v2.59.0).
+    const namesOff = namesHidden() && store.getState().userRole !== 'keeper';
+    if (layout.name && !namesOff) {
+      ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
+      ctx.strokeStyle = tok.color ? tok.color : 'rgba(0, 243, 255, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(-nameWidth / 2, radius + 4, nameWidth, 16, 3);
+      ctx.fill();
+      ctx.stroke();
+      const isKeeper = store.getState().userRole === 'keeper';
+      const isMasked = !isKeeper && this.isHorrorToken(tok);
+      const rawName = isMasked ? '?????' : tok.name;
+      const displayName = (isKeeper && this.isHorrorToken(tok))
+        ? (tok.name.length > 10 ? tok.name.substring(0, 9) + '.. [?]' : `${tok.name} [?]`)
+        : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
+      ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
+      ctx.font = `bold 11px ${canvasFont('hud')}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(displayName, 0, radius + 12);
+      below = radius + 22;
+    }
     if (!this.canSeeVitals(tok)) { ctx.restore(); return; }
 
-    // 2. HP, Stress and Escudos: slim bars under the nameplate or segmented rings around the token
-    // (Ajustes → Vida en el mapa), readable when zoomed out.
-    const vitals = { scale: Math.max(1, Math.min(1.8, 0.9 / this.zoom)), hp: wants('hp') && tok.hp?.max ? tok.hp : null,
-      stress: wants('stress') && tok.stress?.max ? tok.stress : null, armor: wants('armor') && tok.armor?.max ? tok.armor : null };
-    if (vitalsStyle() === 'rings') drawVitalRings(ctx, { radius, ...vitals });
-    else drawSlimVitals(ctx, { y: radius + 22, width: nameWidth, ...vitals });
+    const placed = place => LAYOUT_STATS.map(([key]) => key).filter(key => layout[key] === place).map(key => [key, statFor(tok, key)]).filter(([, stat]) => stat);
+    // Bars below (under the name) and above the token.
+    drawStatBars(ctx, { y: below + 2, width: nameWidth, scale, rows: placed('bottom') });
+    drawStatBars(ctx, { y: -radius - 6, width: nameWidth, scale, rows: placed('top'), up: true });
+    // Rings: the inner one inside the rim, the outer ones around it.
+    for (const ring of ['inner1', 'outer1', 'outer2']) for (const [key, stat] of placed(ring)) drawStatRing(ctx, { r: ringRadius(ring, radius, scale), width: 3 * scale, key, stat });
+    // Small tokens beside it; past the outer rings when there are any.
+    const ringsOut = placed('outer2').length ? 9.5 * scale : placed('outer1').length ? 5.5 * scale : 0;
+    for (const side of ['right', 'left']) for (const [key, stat] of placed(side)) drawStatPips(ctx, { side, radius, scale, key, stat, offset: ringsOut });
 
-    // 3. A clock the Keeper put on the token by hand (not the sample one).
-    const clocks = custom ? overlays.filter(o => o.type === 'circular') : cfg.showClock && !/^hack$/i.test(cfg.clockLabel || '') ? [{ label: cfg.clockLabel, current: cfg.clockProgress, max: cfg.clockSegments, color: '#00f3ff' }] : [];
+    // A clock the Keeper put on the token by hand (not the sample one).
+    const cfg = tok.displayConfig || {};
+    const sample = o => o?.type === 'circular' && o.statKey === 'clock' && /^hack$/i.test(o.label || '') && (o.id === 'ov_clock' || o.current === 2);
+    const overlays = Array.isArray(tok.displayOverlays) ? tok.displayOverlays.filter(o => !sample(o)) : [];
+    const clocks = overlays.length ? overlays.filter(o => o.type === 'circular') : cfg.showClock && !/^hack$/i.test(cfg.clockLabel || '') ? [{ label: cfg.clockLabel, current: cfg.clockProgress, max: cfg.clockSegments, color: '#00f3ff' }] : [];
     clocks.slice(0, 2).forEach((item, idx) => {
       const cur = item.current ?? (cfg.clockProgress ?? 0), max = item.max ?? (item.segments || cfg.clockSegments || 4);
       const color = item.color || '#00f3ff', r = 11;

@@ -1,10 +1,29 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.58.1**.
-Paquete: `VeilFarers_VTT_v2.58.1.zip`.
+Versión actual del VTT: **v2.59.0**.
+Paquete: `VeilFarers_VTT_v2.59.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.59.0] — 2026-11-25
+
+V3 · Qué muestra cada token y dónde
+
+### En el mapa (ficha del token)
+
+- Nombre (sí/no) e Insignia de clase (sí/no). Para HP, Effort/Hope, Stress, Armadura y Resolve se elige dónde: barra inferior, barra superior, círculo interior, círculo exterior 1 o círculo exterior 2 (por fuera del 1), o no mostrarlo. Armadura y Resolve también pueden ir como fichas de 8 px a la derecha o a la izquierda del token: escudos llenos o vacíos, y Resolve en triángulos (d4) o cuadrados (d6). Cada círculo y cada lado es de un solo stat: elegir uno ocupado lo quita del otro; las barras se apilan.
+- Corregido: elegir «Sin insignia» al cambiar el retrato no quitaba la bandera de clase del token. Ahora la quita (y la casilla de la ficha también).
+- Sustituye a la opción «Vida en el mapa» de Ajustes: ahora cada token tiene su propia configuración.
+
+### Lo que ve cada uno
+
+- La visión por vibración (ondas y contactos) solo la ven el personaje que la tiene y el Keeper.
+- Tecla V: cada jugador muestra u oculta los nombres de los tokens en su pantalla (se recuerda en su navegador). El Keeper sigue viendo los nombres y su V sigue siendo «Mover».
+
+### Cartas
+
+- La ventana con los detalles de una carta espera 3 segundos con el ratón encima antes de aparecer, para no tapar el mapa al recorrer un mazo.
 
 ## [2.58.1] — 2026-11-25
 

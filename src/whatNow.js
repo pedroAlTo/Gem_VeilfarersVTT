@@ -69,7 +69,7 @@ export function whatNow(token, { tokens = [], cards = null } = {}) {
   if ((token.hope || 0) < 1) limits.push('Sin Hope: no puedes usar Experiencias ni cartas que la cuesten.');
   if (token.stress?.max > 0 && (token.stress.current || 0) >= token.stress.max) limits.push('Stress lleno: estás Overwhelmed (Desventaja en tus tiradas hasta que alivies Stress).');
   how.push('Toca a un enemigo en el mapa: el anillo te ofrece tus armas y Poderes contra él.',
-    'Teclado: T abre el anillo sobre el enemigo más cercano (otra vez, el siguiente; flechas y Enter dentro), 1–9 eligen arma, Enter ataca al objetivo marcado, F toma el foco, las flechas mueven, Esc cancela, ? abre esta ayuda.',
+    'Teclado: T abre el anillo sobre el enemigo más cercano (otra vez, el siguiente; flechas y Enter dentro), 1–9 eligen arma, Enter ataca al objetivo marcado, F toma el foco, V muestra u oculta los nombres de los tokens, las flechas mueven, Esc cancela, ? abre esta ayuda.',
     'Cada resultado del registro tiene «Ver cálculo» con la cuenta completa.');
   return { can, limits, how };
 }

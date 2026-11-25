@@ -1,3 +1,4 @@
+import { tokenLayout } from './tokenLayout.js';
 import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e } from './ui.js';
 import { store } from './state.js';
@@ -63,7 +64,9 @@ export function openPortraitPicker({ title = 'Elegir retrato', current = '', col
       let url = await getSource();
       if (allowCustom && typeof url === 'string' && url.startsWith('data:image/') && !isPortraitSource(url)) url = await resizePortrait(url);
       if (url !== '' && !(allowCustom ? isPortraitSource(url) : isPresetPortrait(url))) throw new Error('Selecciona una imagen válida.');
-      if (await onChoose(url) === false) throw new Error('No se ha podido cambiar el retrato. Comprueba la conexión y la asignación del token.');
+      // The class filter as it is when choosing (v2.59.0): «Sin insignia» means no insignia on the token.
+      const insignia = modal.querySelector('[data-class-filter]').hidden ? null : cls.value !== '';
+      if (await onChoose(url, { insignia }) === false) throw new Error('No se ha podido cambiar el retrato. Comprueba la conexión y la asignación del token.');
       delete modal.dataset.busy;
       close.click();
     } catch (err) { error.textContent = err.message; }
@@ -111,9 +114,12 @@ export function openActorPortrait(tokenId, onApplied) {
   const keeper = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
   const campaign = store.state.campaignId;
   return openPortraitPicker({ current: actorPortrait(token), collection: actorCollection(token), allowCustom: true, cloud: keeper(),
-    onChoose(url) {
+    onChoose(url, { insignia = null } = {}) {
       if (campaign !== store.state.campaignId || !store.canEditToken(tokenId) || (url && !keeper() && !isPlayerPortrait(url))) return false;
       const patch = { avatarUrl: url, portraitOverride: Boolean(url) };
+      // «Insignia de clase: Sin insignia» (v2.59.0, user report: it kept showing): the token hides it.
+      const live = store.state.tokens.find(t => t.id === tokenId);
+      if (typeof insignia === 'boolean' && live && tokenLayout(live).insignia !== insignia) patch.vitalsLayout = { ...tokenLayout(live), insignia };
       if (!store.updateToken(tokenId, patch)) return false;
       onApplied?.(actorPortrait({ ...token, ...patch }));
       return true;

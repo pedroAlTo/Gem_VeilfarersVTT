@@ -1995,6 +1995,19 @@ export const PAIRS = [
   ["Barra de HP", "HP bar"],
   ["Barra de Stress", "Stress bar"],
   ["Barras finas bajo el nombre o, en Ajustes → Vida en el mapa, anillos con un segmento por punto (HP y Stress fuera, Escudos dentro). Solo las ven el Keeper y el jugador de este personaje; los números están en la barra del personaje al seleccionarlo.", "Slim bars under the name or, in Settings → Vitals on the map, rings with a segment per point (HP and Stress outside, Escudos inside). Only the Keeper and this character's player see them; the numbers are in the character bar when it is selected."],
+  // Token map layout (v2.59.0)
+  ["No mostrar", "Do not show"],
+  ["Barra inferior", "Bottom bar"],
+  ["Barra superior", "Top bar"],
+  ["Círculo interior", "Inner ring"],
+  ["Círculo exterior 1", "Outer ring 1"],
+  ["Círculo exterior 2 (por fuera del 1)", "Outer ring 2 (outside ring 1)"],
+  ["Fichas a la derecha", "Tokens on the right"],
+  ["Fichas a la izquierda", "Tokens on the left"],
+  ["Effort / Hope", "Effort / Hope"],
+  ["Un círculo o un lado por stat (elegir uno ocupado lo quita del otro); las barras se apilan. Las fichas son de 8 px: Armadura llena o vacía; Resolve, triángulo (d4) o cuadrado (d6). Los stats solo los ven el Keeper y el jugador de este personaje.", "One ring or side per stat (choosing a taken one frees it from the other); bars stack. The tokens are 8 px: Armor full or empty; Resolve, triangle (d4) or square (d6). Only the Keeper and this character's player see the stats."],
+  ["Nombres de los tokens ocultos (V para verlos).", "Token names hidden (V to show them)."],
+  ["Nombres de los tokens visibles.", "Token names shown."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

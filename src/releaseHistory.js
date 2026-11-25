@@ -1,6 +1,23 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.59.0', date: '2026-11-25', title: 'V3 · Qué muestra cada token y dónde',
+    sections: [
+      { title: 'En el mapa (ficha del token)', items: [
+        'Nombre (sí/no) e Insignia de clase (sí/no). Para HP, Effort/Hope, Stress, Armadura y Resolve se elige dónde: barra inferior, barra superior, círculo interior, círculo exterior 1 o círculo exterior 2 (por fuera del 1), o no mostrarlo. Armadura y Resolve también pueden ir como fichas de 8 px a la derecha o a la izquierda del token: escudos llenos o vacíos, y Resolve en triángulos (d4) o cuadrados (d6). Cada círculo y cada lado es de un solo stat: elegir uno ocupado lo quita del otro; las barras se apilan.',
+        'Corregido: elegir «Sin insignia» al cambiar el retrato no quitaba la bandera de clase del token. Ahora la quita (y la casilla de la ficha también).',
+        'Sustituye a la opción «Vida en el mapa» de Ajustes: ahora cada token tiene su propia configuración.',
+      ] },
+      { title: 'Lo que ve cada uno', items: [
+        'La visión por vibración (ondas y contactos) solo la ven el personaje que la tiene y el Keeper.',
+        'Tecla V: cada jugador muestra u oculta los nombres de los tokens en su pantalla (se recuerda en su navegador). El Keeper sigue viendo los nombres y su V sigue siendo «Mover».',
+      ] },
+      { title: 'Cartas', items: [
+        'La ventana con los detalles de una carta espera 3 segundos con el ratón encima antes de aparecer, para no tapar el mapa al recorrer un mazo.',
+      ] },
+    ],
+  },
+  {
     version: '2.58.1', date: '2026-11-25', title: 'V3 · Reverso de las cartas',
     sections: [
       { title: 'Cartas', items: [

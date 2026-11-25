@@ -1,51 +1,69 @@
-// The tokens on the map (v2.58.0, user decisions): HP, Stress and Escudos as slim segmented bars
-// or as segmented rings (two outside, one inside); the states inside the token, over its flag.
+// The tokens on the map (v2.58.0 and v2.59.0, the user's design): name and insignia yes/no; each
+// stat as a bar below or above, a ring (inner, outer 1, outer 2) or, for Armor and Resolve, 8 px
+// tokens beside it (Resolve: triangles for d4, squares for d6); the states inside the token.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { drawSlimVitals, drawVitalRings } from '../src/tokenVitals.js';
+import { drawStatBars, drawStatRing, drawStatPips, ringRadius } from '../src/tokenVitals.js';
+import { tokenLayout, validLayout, placeStat, statFor, placesFor, DEFAULT_LAYOUT } from '../src/tokenLayout.js';
 import { conditionMarkerLayout } from '../src/conditions.js';
 
-const memory = new Map();
-globalThis.localStorage = { getItem: k => (memory.has(k) ? memory.get(k) : null), setItem: (k, v) => memory.set(k, String(v)), removeItem: k => memory.delete(k) };
 function context() {
   const commands = [];
   const ctx = new Proxy({}, { get(target, key) { if (key in target) return target[key]; return (...args) => { commands.push([key, ...args]); }; }, set(target, key, value) { target[key] = value; commands.push(['set', key, value]); return true; } });
   return { ctx, commands };
 }
 
-test('slim bars: one black pixel between points, nothing when the token shows no bars', () => {
+test('bars: one black pixel between points; above the token they grow upwards', () => {
   const { ctx, commands } = context();
-  drawSlimVitals(ctx, { y: 40, width: 64, hp: { current: 4, max: 6 }, stress: { current: 1, max: 3 } });
-  const rects = commands.filter(c => c[0] === 'fillRect');
-  // Per bar: the track, the fill and its separators (6 HP points → 5, 3 Stress → 2).
-  assert.equal(rects.length, (2 + 5) + (2 + 2));
+  drawStatBars(ctx, { y: 40, width: 64, rows: [['hp', { current: 4, max: 6 }], ['stress', { current: 1, max: 3 }]] });
+  assert.equal(commands.filter(c => c[0] === 'fillRect').length, (2 + 5) + (2 + 2), 'track, fill and separators per bar');
   assert.ok(commands.some(c => c[0] === 'set' && c[1] === 'fillStyle' && c[2] === '#000'));
-  const empty = context(); drawSlimVitals(empty.ctx, { y: 40, width: 64 });
-  assert.equal(empty.commands.length, 0);
+  const up = context(); drawStatBars(up.ctx, { y: -40, width: 64, rows: [['hp', { current: 1, max: 2 }]], up: true });
+  assert.ok(up.commands.filter(c => c[0] === 'fillRect').every(c => c[2] < -40), 'drawn above the line');
+  const none = context(); drawStatBars(none.ctx, { y: 0, width: 64, rows: [] }); assert.equal(none.commands.length, 0);
 });
 
-test('rings: a segment per point, HP and Stress outside, Escudos inside', () => {
+test('rings: a segment per point; inner inside the rim, outer 2 outside outer 1', () => {
   const { ctx, commands } = context();
-  drawVitalRings(ctx, { radius: 32, hp: { current: 3, max: 6 }, stress: { current: 0, max: 4 }, armor: { current: 2, max: 3 } });
-  const arcs = commands.filter(c => c[0] === 'arc').map(c => c[3]);
-  const outer = arcs.filter(r => r > 32), inner = arcs.filter(r => r < 32);
-  assert.equal(inner.length, 3, 'three Escudos segments inside');
-  assert.equal(outer.length, 1 + 6 + 4, 'the dark band, then 6 HP and 4 Stress segments');
+  drawStatRing(ctx, { r: ringRadius('outer1', 32), width: 3, key: 'hp', stat: { current: 3, max: 6 } });
+  assert.equal(commands.filter(c => c[0] === 'arc').length, 1 + 6, 'the dark band and six segments');
+  assert.ok(ringRadius('inner1', 32) < 32 && ringRadius('outer1', 32) > 32 && ringRadius('outer2', 32) > ringRadius('outer1', 32));
+});
+
+test('pips: 8 px tokens, Armor shields, Resolve triangles (d4) or squares (d6), full or empty, on either side', () => {
+  const d6 = context(); drawStatPips(d6.ctx, { side: 'right', radius: 32, key: 'resolve', stat: { current: 1, max: 3, die: 'd6' } });
+  const rects = d6.commands.filter(c => c[0] === 'rect');
+  assert.equal(rects.length, 3); assert.ok(rects.every(c => c[1] > 32 && c[3] === 8 && c[4] === 8), 'squares of 8 px on the right');
+  const d4 = context(); drawStatPips(d4.ctx, { side: 'left', radius: 32, key: 'resolve', stat: { current: 2, max: 2, die: 'd4' } });
+  assert.equal(d4.commands.filter(c => c[0] === 'rect').length, 0, 'triangles, not squares');
+  assert.ok(d4.commands.filter(c => c[0] === 'moveTo').every(c => c[1] < -32), 'on the left');
+  const armor = context(); drawStatPips(armor.ctx, { side: 'right', radius: 32, key: 'armor', stat: { current: 1, max: 2 } });
+  const fills = armor.commands.filter(c => c[0] === 'set' && c[1] === 'fillStyle').map(c => c[2]);
+  assert.deepEqual(fills, ['#79cef9', 'rgba(4,12,23,0.85)'], 'one full, one empty');
+});
+
+test('the layout: defaults, the old display settings, validation and one stat per ring or side', () => {
+  assert.deepEqual(tokenLayout({}), DEFAULT_LAYOUT);
+  assert.equal(tokenLayout({ displayConfig: { showHpBar: true, showStressBar: false } }).stress, 'none');
+  assert.equal(tokenLayout({ displayOverlays: [{ statKey: 'armor', type: 'linear' }] }).armor, 'bottom');
+  assert.equal(tokenLayout({ vitalsLayout: { insignia: false, hp: 'outer1' } }).insignia, false);
+  assert.equal(validLayout({ hp: 'right' }), false, 'HP has no tokens');
+  assert.equal(validLayout({ resolve: 'left', name: false }), true);
+  assert.equal(validLayout({ hope: 'bottom' }), false, 'unknown stat');
+  assert.ok(placesFor('armor').some(([id]) => id === 'right') && !placesFor('stress').some(([id]) => id === 'right'));
+  const moved = placeStat({ ...DEFAULT_LAYOUT, hp: 'outer1' }, 'stress', 'outer1');
+  assert.equal(moved.stress, 'outer1'); assert.equal(moved.hp, 'none', 'the ring is freed');
+  assert.equal(placeStat(DEFAULT_LAYOUT, 'stress', 'bottom').hp, 'bottom', 'bars stack');
+  assert.deepEqual(statFor({ path: 'Sleeping', effort: 2 }, 'path'), { current: 2, max: 6, label: 'EFFORT' });
+  assert.equal(statFor({ isPlayer: false, hope: 3 }, 'path'), null, 'an adversary has no Hope');
+  assert.equal(statFor({ resolve: { current: 1, max: 2, dieType: 'd6' } }, 'resolve').die, 'd6');
 });
 
 test('the states sit inside the token, in its lower-right quarter (over the class flag)', () => {
   for (const radius of [32, 64]) for (const zoom of [0.4, 1, 2]) {
-    const spots = conditionMarkerLayout(4, radius, zoom);
-    for (const s of spots) {
-      assert.ok(Math.hypot(Math.abs(s.x) + s.size / 2, Math.abs(s.y) + s.size / 2) <= radius * 1.05, `inside at r=${radius} z=${zoom}`);
-      assert.ok(s.x > -radius * 0.1 && s.y > -radius * 0.2, 'right and low');
+    for (const s of conditionMarkerLayout(4, radius, zoom)) {
+      assert.ok(Math.hypot(Math.abs(s.x) + s.size / 2, Math.abs(s.y) + s.size / 2) <= radius * 1.05);
+      assert.ok(s.x > -radius * 0.1 && s.y > -radius * 0.2);
     }
   }
-});
-
-test("the map style is each viewer's: bars by default, rings on request", async () => {
-  const { vitalsStyle, setVitalsStyle } = await import('../src/mapVitals.js');
-  assert.equal(vitalsStyle(), 'bars');
-  assert.equal(setVitalsStyle('rings'), 'rings'); assert.equal(memory.get('veil.vitals.style'), 'rings');
-  assert.equal(setVitalsStyle('nope'), 'bars');
 });

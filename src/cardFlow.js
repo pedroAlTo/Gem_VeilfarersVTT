@@ -62,6 +62,9 @@ const chipsHTML = chips => chips.map(([tone, text]) => `<span class="card-chip $
 
 // ── Hover: the card, large and readable ──────────────────────────────────────────────────────
 let previewTimer = null;
+// The card's details wait 3 s under the pointer (v2.59.0, user request: «espera al menos 3 s»), so
+// passing over the cards of an open deck does not cover the map with them.
+export const PREVIEW_DELAY = 3000;
 export function showPreview(hand, card, token, faceHTML) {
   clearTimeout(previewTimer);
   previewTimer = setTimeout(() => {
@@ -83,7 +86,7 @@ export function showPreview(hand, card, token, faceHTML) {
         ${card.playable ? '<p class="card-preview-hint"><b>Clic</b> o arrastrar al mapa: usar · <b>Doble clic</b>: opciones</p>' : ''}
       </div>`);
     document.body.append(panel);
-  }, 280);
+  }, PREVIEW_DELAY);
 }
 export function hidePreview() { clearTimeout(previewTimer); document.getElementById('card_preview')?.remove(); }
 
