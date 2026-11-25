@@ -80,7 +80,10 @@ export function startEffectClocks() {
         const now = (token.effectClocks || []).find(c => c.id === clock.id);
         if (now && now.filled === clock.filled) continue;
         const left = now ? now.segments - now.filled : 0, healed = clock.perTick?.hp ? ` ${token.name} recupera ${clock.perTick.hp} HP.` : '';
-        const details = (left ? `${clock.name} · ${left} / ${clock.segments} pendientes.` : `Fin de ${clock.name}.`) + healed;
+        // Weapon effects (v2.45.0): Continuous marks Stress; Melting asks its Reaction Roll now.
+        const strained = clock.perTick?.stress ? ` ${token.name} marca ${clock.perTick.stress} Stress.` : '';
+        const melting = clock.melting ? ` ${token.name} tira Strength contra CD ${clock.dc || 10}: si falla, recibe ${(clock.die || 'd6').replace(/^d/, '1d')} de daño Energy; si acierta, la mitad (con umbrales y Armor Slots).` : '';
+        const details = (left ? `${clock.name} · ${left} / ${clock.segments} pendientes.` : `Fin de ${clock.name}.`) + healed + strained + melting;
         queueMicrotask(() => { if (!left) notify(details); store.addLog({ sender: token.name, type: 'EFFECT', title: clock.name, details }); });
       }
     }

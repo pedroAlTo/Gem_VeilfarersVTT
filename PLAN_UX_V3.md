@@ -61,7 +61,8 @@ Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 - **Fase 0** hecha en v2.43.0 (`npm run test:clicks`).
 - **Fase 1** hecha en v2.43.0: inicio con Crear/Unirme/Continuar, entrar con enlace solo con un nombre, tarjeta de invitación del Keeper, pregenerados de *Hearts in the Void* en la Ficha. De paso, Evasión por features de armadura (canon). Falta la prueba online real con dos navegadores (PRUEBAS 128-132).
 - **Fase 4, primera parte** hecha en v2.44.0: catálogo normalizado (todas las propiedades conocidas, alias de Rust & Steel), glosario con la regla de cada propiedad y qué hace la mesa (⚙ ◐ 🔔), Heavy, Scatter, Massive y Defensive en la Evasion, High-Recoil, Unstable, Disruptor, Stable, Guided sin línea de tiro, Shred y recordatorios de las propiedades de Rust & Steel.
-- **Siguiente:** Fase 4, segunda parte: salvaciones automáticas de los adversarios con su condición, relojes de efecto de las armas, segundo objetivo, plantillas de área, Reload/Charge-Up, Paired, Psionic y Non-Lethal.
+- **Fase 4, segunda parte** hecha en v2.45.0: tras el impacto la mesa tira las Reaction Rolls de los adversarios y aplica su condición (a los personajes les dice qué tirar), relojes de Stunned, Dazed, Stagger, Continuous, Brittle y Melting, Paired, Non-Lethal, Reload y Charge-Up.
+- **Siguiente:** Fase 4, tercera parte: segundo objetivo (Automatic, Salvo Fire, Cleave, Quick, Arc), plantillas de área (Explosive, Area, Spray, Waveform) y Psionic contra Presence. Después, Fase 2.
 
 ## Decisiones
 

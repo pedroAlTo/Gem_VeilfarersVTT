@@ -24,8 +24,9 @@ import { distanceInfo, rangeCheck, weaponRangeBand, weaponTraitId, rollAdversary
 import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { throwDice, facesRoller } from './tableDice.js';
+import { resolveWeaponAftermath } from './weaponAftermath.js';
 import { durationDice } from './effectClocks.js';
-import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, extraDiceNeeded, armorCut, applyArmorCut, armorCutNotes, wielderEvasion, weaponAttackEdge, ignoresLineOfSight, isMachineTarget } from './weaponFeatures.js';
+import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, extraDiceNeeded, armorCut, applyArmorCut, armorCutNotes, wielderEvasion, weaponAttackEdge, ignoresLineOfSight, isMachineTarget, nonLethalHp } from './weaponFeatures.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
 import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
@@ -1500,7 +1501,8 @@ export class DiceRollerSidebar {
       const roll = rollAdversaryAttack({ attackModifier: (attacker.attackModifier ?? 0) + conditional + bloodiedAttack(attacker).attack, evasion, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces?.[0] ?? null, forcedD6: faces?.[1] ?? null });
       if (guard) markMeleeDefense(store,target,guard);
       // A «Disadvantage on their next attack» is spent by this attack.
-      if (attacker.effectClocks?.some(c => c.nextAttack)) store.updateToken(attacker.id, { effectClocks: attacker.effectClocks.filter(c => !c.nextAttack) });
+      // (and a «next action» one: Stagger, Disorienting).
+      if (attacker.effectClocks?.some(c => c.nextAttack || c.nextAction)) store.updateToken(attacker.id, { effectClocks: attacker.effectClocks.filter(c => !c.nextAttack && !c.nextAction) });
       // Attacking breaks Hidden (the Advantage it gave was counted in checkEdge).
       if (store.state.tokens.find(t => t.id === attacker.id)?.conditions?.includes('Hidden')) store.updateToken(attacker.id, { conditions: store.state.tokens.find(t => t.id === attacker.id).conditions.filter(c => c !== 'Hidden') });
       hit = roll.hit; critical = roll.isCritical; total = roll.total;
@@ -1809,11 +1811,11 @@ export class DiceRollerSidebar {
     const featureNotes = [...riders.map(r => `${r.label}: +${r.value}${r.faces?.length ? ` (${r.dice} [${r.faces.join(', ')}])` : ''}.`), ...extras.notes, ...(devastating ? ['Devastating: alcanza el umbral Severe y marca 1 HP más.'] : []), ...(isDirect ? [] : armorSlotNotes(feats, { composite })),
       ...(feats.poison ? ['Poison: si pierde HP, el objetivo marca 1 Stress.'] : []), ...(feats.ignite ? ['Ignite: si pierde HP, el objetivo queda On Fire.'] : []),
       ...armorCutNotes(plannedCut),
-      ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor, machine: targetToken ? isMachineTarget(targetToken) : undefined })];
+      ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor, machine: targetToken ? isMachineTarget(targetToken) : undefined, aftermath: isDirect || !targetToken ? '' : isPartyToken(targetToken) ? 'pc' : 'npc' })];
     this.lastFeatureNotes = featureNotes; // the player's Ficha shows them under the result
     // What the Keeper has to resolve by hand goes to the Keeper as a whisper, once per attack.
     if (this.featureWhisper) {
-      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor, machine: targetToken ? isMachineTarget(targetToken) : undefined });
+      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor, machine: targetToken ? isMachineTarget(targetToken) : undefined, aftermath: isDirect || !targetToken ? '' : isPartyToken(targetToken) ? 'pc' : 'npc' });
       const text = rulesWhisperText({ ...this.featureWhisper, notes: toResolve });
       this.featureWhisper = null;
       if (text) void whisperToKeeper(text);
@@ -1930,7 +1932,8 @@ export class DiceRollerSidebar {
 
         const currentArmor = targetToken.armor?.current || 0;
         const newArmor = Math.max(0, currentArmor - spentShields);
-        const newHp = Math.max(0, targetToken.hp.current - finalHpDamage);
+        // Non-Lethal: the hit never takes the target below 1 HP (weaponAftermath adds Incapacitated).
+        const newHp = isDirect ? Math.max(0, targetToken.hp.current - finalHpDamage) : nonLethalHp(activeWeapon, targetToken.hp.current, Math.max(0, targetToken.hp.current - finalHpDamage));
 
         const attacker = store.state.tokens.find(t => t.id === attackerId && t.mapId === damageMapId);
         const hpLost = targetToken.hp.current - newHp;
@@ -1957,6 +1960,8 @@ export class DiceRollerSidebar {
           spentShields,
           stressMark,
           ...(cut ? { armorCut: cut } : {}),
+          // The weapon, so the table resolves what it does after the hit (weaponAftermath.js).
+          ...(activeWeapon && !isDirect ? { weaponId: activeWeapon.id } : {}),
           addCondition,
           addConditions,
           isDirect,
@@ -2037,6 +2042,8 @@ export class DiceRollerSidebar {
         });
         // Rapid Regeneration lights up for whoever can heal the character now (v2.38.0).
         if (hpLost > 0 && store.sessionRole !== 'player') offerAfterDamage(targetToken.id);
+        // What the weapon does after the hit: Reaction Rolls, conditions, effect clocks (v2.45.0).
+        if (damagePayload.weaponId && store.sessionRole !== 'player') void resolveWeaponAftermath(store, { attackerId: damagePayload.attackerId, targetId: targetToken.id, weaponId: damagePayload.weaponId, hpLost, stressLost: damagePayload.stressMark || 0, critical: isCritical, secret }, { throwDice });
         // The attack is over: the Ficha closes it and the tokens are deselected.
         window.dispatchEvent(new CustomEvent('veil:attack-done', { detail: { attackerId: attacker?.id || attackerId, targetId: targetToken.id } }));
       };

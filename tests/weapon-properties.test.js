@@ -98,9 +98,9 @@ const scene = { id: 'deck', gridSize: 64, gridScaleMeters: 2, spotlightRound: 1 
 const pc = (id, patch = {}) => ({ id, name: id, mapId: scene.id, x: 64, y: 64, size: 1, isPlayer: true, actorType: 'player', characterClass: 'Soldier', path: 'Awakened', level: 1, proficiency: 1, hope: 2,
   traits: { agility: 1, strength: 0, finesse: 1 }, conditions: [], hp: { current: 6, max: 6 }, stress: { current: 0, max: 6 }, armor: { current: 1, max: 1 }, sheetFields: {}, ...patch });
 function table(...tokens) {
-  return { sessionRole: 'host', state: { campaignId: 'w', activeMapId: scene.id, userRole: 'keeper', tokens, logs: [], fear: 0, clocks: [] },
-    getActiveMap: () => scene, update(patch) { Object.assign(this.state, patch); },
-    updateToken(id, patch) { this.state.tokens = this.state.tokens.map(t => t.id === id ? combatTransition(t, { ...t, ...patch }, scene) : t); },
+  return { sessionRole: 'host', state: { campaignId: 'w', activeMapId: scene.id, maps: [scene], userRole: 'keeper', tokens, logs: [], fear: 0, clocks: [] },
+    getActiveMap() { return this.state.maps.find(m => m.id === this.state.activeMapId); }, update(patch) { Object.assign(this.state, patch); },
+    updateToken(id, patch) { this.state.tokens = this.state.tokens.map(t => t.id === id ? combatTransition(t, { ...t, ...patch }, this.getActiveMap()) : t); },
     addLog(log) { this.state.logs.unshift(log); }, addFear(n) { this.state.fear = Math.min(12, this.state.fear + n); } };
 }
 const gun = (id, tags) => ({ inventory: { weapons: [{ id, name: id, damage: '1d8+1', trait: 'Agility', range: 'Close', tags }], items: [], credits: 0 } });
@@ -119,4 +119,104 @@ test('an attack with the weapon: Heavy, High-Recoil, Unstable, Scatter and Disru
   const sc = table({ ...pc('pc', { traits: { agility: 1, strength: 2 } }), ...gun('shotgun', ['scatter', 'disruptor']) }, foe);
   const hit = attack(sc, 'shotgun');
   assert.deepEqual(hit.damageRiders.map(r => r.id), ['scatter', 'disruptor'], 'Very Close: Scatter +2; the target is a Synthetic: Disruptor +1d8');
+});
+
+// v2.45.0 (fase 4, second part): what the weapon does after the hit.
+test('after the hit: an NPC rolls its Reaction Rolls and a failure applies the condition; effects need no roll', async () => {
+  const { weaponOutcomes } = await import('../src/weaponFeatures.js');
+  const { resolveWeaponAftermath } = await import('../src/weaponAftermath.js');
+  const { nextSpotlightRound, checkEdge } = await import('../src/combatState.js');
+  const { visibleConditions } = await import('../src/conditions.js');
+  // Triggers as printed: Stunning needs HP loss; Knockdown uses DC 10 at TT1-2; Lethal Toxin spares Synthetics.
+  assert.deepEqual(weaponOutcomes({ tier: 'TT1', tags: ['stunning'] }, { hit: true, hpLost: 0 }), []);
+  assert.equal(weaponOutcomes({ tier: 'TT1', tags: ['stunning'] }, { hit: true, hpLost: 1 })[0].dc, 10);
+  assert.equal(weaponOutcomes({ tier: 'TT3', tags: ['knockdown'] }, { hit: true })[0].dc, 15);
+  assert.deepEqual(weaponOutcomes({ tags: ['lethal-toxin'] }, { hit: true, hpLost: 2, organic: false }), []);
+  assert.equal(weaponOutcomes({ tags: ['mind-lock'] }, { hit: true, hpLost: 1, stressLost: 0 }).length, 0, 'Mind-Lock needs Stress');
+
+  const baton = { id: 'baton', name: 'Shock Baton', tier: 'Common (TT1)', damage: 'd6+1', range: 'Melee', tags: ['stunning', 'knockdown', 'stagger'] };
+  const s = table({ ...pc('pc'), inventory: { weapons: [baton], items: [], credits: 0 } }, { ...pc('foe'), isPlayer: false, actorType: 'adversary', name: 'Pirata', attackModifier: 1, x: 128 });
+  // d20 3 + 1 = 4 vs DC 10: fails Stunning; 15 + 1 resists Knockdown.
+  const faces = [[3], [15]];
+  const lines = await resolveWeaponAftermath(s, { attackerId: 'pc', targetId: 'foe', weaponId: 'baton', hpLost: 1, critical: false }, { throwDice: async () => faces.shift() });
+  const foe = s.state.tokens.find(t => t.id === 'foe');
+  assert.ok(visibleConditions(foe).includes('Stunned'), 'Stunned by the failed Strength roll');
+  assert.equal(foe.conditions.includes('Prone'), false, 'Knockdown resisted');
+  assert.ok(foe.effectClocks.some(c => c.nextAction && c.edge === 'disadvantage'), 'Stagger: Disadvantage on its next action');
+  assert.equal(checkEdge(foe, null).disadvantage, true);
+  assert.match(lines.join(' '), /Stunning: Strength d20 \[3\] \+ 1 = 4 vs CD 10 → falla/);
+  assert.match(s.state.logs[0].details, /Knockdown: .* → resiste/);
+  // Stunned lasts until after the next round: two round changes.
+  nextSpotlightRound(s);
+  assert.ok(visibleConditions(s.state.tokens.find(t => t.id === 'foe')).includes('Stunned'), 'still Stunned during the next round');
+  nextSpotlightRound(s);
+  assert.equal(visibleConditions(s.state.tokens.find(t => t.id === 'foe')).includes('Stunned'), false, 'cleared after the next round');
+
+  // A character rolls its own Reaction Rolls: the log says which; effects still apply.
+  const k = table({ ...pc('pc'), inventory: { weapons: [baton], items: [], credits: 0 } }, { ...pc('ally'), x: 128 });
+  const said = await resolveWeaponAftermath(k, { attackerId: 'pc', targetId: 'ally', weaponId: 'baton', hpLost: 1 }, { throwDice: async () => { throw new Error('no roll for a character'); } });
+  assert.match(said.join(' '), /ally tira Strength contra CD 10; si falla, Stunned/);
+  assert.equal(visibleConditions(k.state.tokens.find(t => t.id === 'ally')).includes('Stunned'), false);
+  assert.ok(k.state.tokens.find(t => t.id === 'ally').effectClocks.some(c => c.nextAction));
+});
+
+test('Continuous marks Stress at the next Spotlight; Stagger is spent by the next roll; Brittle adds 1d6 to the next Physical hit', async () => {
+  const { resolveWeaponAftermath } = await import('../src/weaponAftermath.js');
+  const gun = { id: 'g', name: 'Rail', damage: '1d8', range: 'Close', tags: ['continuous', 'brittle'] };
+  const foe = { ...pc('foe'), isPlayer: false, actorType: 'adversary', x: 128, evasion: 5, stress: { current: 0, max: 4 } };
+  const s = table({ ...pc('pc', { traits: { agility: 1, strength: 2 } }), inventory: { weapons: [gun], items: [], credits: 0 } }, foe);
+  await resolveWeaponAftermath(s, { attackerId: 'pc', targetId: 'foe', weaponId: 'g', hpLost: 2 });
+  let f = s.state.tokens.find(t => t.id === 'foe');
+  assert.deepEqual(f.effectClocks.map(c => c.name).sort(), ['Brittle · +1d6 Physical', 'Continuous · +1 Stress']);
+  s.updateToken('foe', { hasSpotlight: true });
+  f = s.state.tokens.find(t => t.id === 'foe');
+  assert.equal(f.stress.current, 1, 'Continuous: 1 Stress at the start of its Spotlight');
+  assert.equal(f.effectClocks.some(c => c.name.startsWith('Continuous')), false, 'and it ends');
+  // The next Physical hit with Brittle on the target: +1d6, and Brittle ends.
+  s.updateToken('foe', { hasSpotlight: false });
+  const hit = attack(s, 'g');
+  assert.ok(hit.damageRiders.some(r => r.id === 'brittle' && r.dice === '1d6'));
+  assert.equal(s.state.tokens.find(t => t.id === 'foe').effectClocks.some(c => c.brittle), false);
+  // Stagger on a character: its next roll of any kind has Disadvantage and spends it.
+  const stag = table({ ...pc('pc', { effectClocks: [{ id: 'st', name: 'Stagger · próxima acción', segments: 1, filled: 0, tick: 'manual', edge: 'disadvantage', nextAction: true }] }) });
+  const roll = performGameAction({ type: 'CHECK', actorId: 'pc', options: { traitId: 'agility', dc: 10, forcedHope: 9, forcedFear: 3, forcedAdv: 2 } }, stag);
+  assert.equal(roll.disadvVal, 2);
+  assert.equal(stag.state.tokens[0].effectClocks.length, 0);
+});
+
+test('Paired, Non-Lethal, Reload and Charge-Up at the table', async () => {
+  const { weaponDamageRiders, weaponReadiness, afterShot, nonLethalHp, weaponOutcomes } = await import('../src/weaponFeatures.js');
+  const { validateInventory } = await import('../src/equipment.js');
+  // Paired: two Paired weapons in hand add the larger bonus; one alone adds nothing.
+  const left = { id: 'l', tags: ['paired:1'] }, right = { id: 'r', tags: ['paired:2'] };
+  assert.deepEqual(weaponDamageRiders(left, { held: [left, right] }).map(r => [r.id, r.value]), [['paired', 2]]);
+  assert.deepEqual(weaponDamageRiders(left, { held: [left] }), []);
+  assert.deepEqual(weaponDamageRiders(left, { held: [left, { ...right, equipped: false }] }), [], 'holstered');
+  // Non-Lethal: never below 1 HP; at 1 HP the target is Incapacitated.
+  assert.equal(nonLethalHp({ tags: ['non-lethal'] }, 3, 0), 1);
+  assert.equal(nonLethalHp({ tags: [] }, 3, 0), 0);
+  assert.deepEqual(weaponOutcomes({ tags: ['non-lethal'] }, { hit: true, hpLost: 2, hpAfter: 1 })[0].apply, { conditions: ['Incapacitated'] });
+  // Reload: each shot spends it; Charge-Up fires only charged.
+  assert.equal(weaponReadiness({ tags: ['reload'] }).ready, true);
+  assert.deepEqual(afterShot({ tags: ['reload'] }), { tags: ['reload'], spent: true });
+  assert.equal(weaponReadiness({ name: 'Rifle', tags: ['reload'], spent: true }).action, 'Recargar');
+  assert.equal(weaponReadiness({ name: 'Railgun', tags: ['charge-up'] }).action, 'Cargar');
+  assert.ok(validateInventory({ weapons: [{ id: 'a', name: 'A', damage: 'd8', damageMode: 'base', trait: '', range: '', features: '', tier: '', spent: true, charged: false }], items: [] }));
+
+  const s = table({ ...pc('pc', { traits: { agility: 1, strength: 2 } }), ...gun('rail', ['charge-up', 'reload']) }, { ...pc('foe'), isPlayer: false, actorType: 'adversary', x: 128 });
+  assert.throws(() => attack(s, 'rail'), /no está cargada/);
+  performGameAction({ type: 'WEAPON_READY', actorId: 'pc', weaponId: 'rail' }, s);
+  let w = s.state.tokens.find(t => t.id === 'pc').inventory.weapons[0];
+  assert.equal(w.charged, true);
+  attack(s, 'rail');
+  w = s.state.tokens.find(t => t.id === 'pc').inventory.weapons[0];
+  assert.deepEqual([w.charged, w.spent], [false, true], 'the shot uses the charge and spends the weapon');
+  assert.throws(() => attack(s, 'rail'), /descargada/);
+  performGameAction({ type: 'WEAPON_READY', actorId: 'pc', weaponId: 'rail' }, s);
+  assert.equal(s.state.tokens.find(t => t.id === 'pc').inventory.weapons[0].spent, false, 'reloaded');
+  // The charge is lost when the wielder moves.
+  performGameAction({ type: 'WEAPON_READY', actorId: 'pc', weaponId: 'rail' }, s);
+  assert.equal(s.state.tokens.find(t => t.id === 'pc').inventory.weapons[0].charged, true);
+  s.updateToken('pc', { x: 64 + 64 });
+  assert.equal(s.state.tokens.find(t => t.id === 'pc').inventory.weapons[0].charged, false);
 });

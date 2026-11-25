@@ -49,10 +49,12 @@ export function checkEdge(actor, target, advantage = false, disadvantage = false
   const field = actor?.effectClocks?.find(c => c.name === 'Global Stimulus Field');
   // «Disadvantage on their next attack» (Blinding Flash…): only an attack, and it is spent by it.
   const nextAttack = !!target && actor?.effectClocks?.some(c => c.nextAttack && c.edge === 'disadvantage');
+  // «Disadvantage on its next action» (Stagger, Disorienting → Dazed): any roll, spent by it.
+  const nextAction = actor?.effectClocks?.some(c => c.nextAction && c.edge === 'disadvantage');
   // Attacking from stealth (v2.43.5, user note): a Hidden or invisible attacker has Advantage
   // (Corebook ch. 10: Hidden gives Advantage on the next attack; a Hidden attacker surprises).
   const unseen = !!target && conditions.some(c => c === 'Hidden' || /invisib/i.test(c));
-  return netEdge(advantage || unseen || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
+  return netEdge(advantage || unseen || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || nextAction || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
 }
 
 export const roundKey = (map = {}) => `${map.id}/${map.spotlightRound || 1}`;
@@ -93,6 +95,9 @@ export function combatTransition(previous, next, map) {
       next.effectClocks = list;
       const heal = ticked.reduce((n, c) => n + (c.perTick?.hp || 0), 0);
       if (heal && next.hp && canReceiveHealing(next)) next.hp = { ...next.hp, current: Math.min(next.hp.max, next.hp.current + heal) };
+      // Continuous (a weapon): the target marks Stress at the start of its next Spotlight.
+      const strain = ticked.reduce((n, c) => n + (c.perTick?.stress || 0), 0);
+      if (strain && next.stress) next.stress = { ...next.stress, current: next.stress.max > 0 ? Math.min(next.stress.max, (next.stress.current || 0) + strain) : (next.stress.current || 0) + strain };
     }
   }
   if (previous.hasSpotlight && !next.hasSpotlight && next.effectClocks?.some(c => c.seenSpotlight)) next = { ...next, effectClocks:next.effectClocks.filter(c => !(c.expiry === 'spotlight-end' && c.seenSpotlight)) };
@@ -104,6 +109,14 @@ export function combatTransition(previous, next, map) {
       stress: { ...next.stress, current: Math.min(next.stress?.max ?? 6, (next.stress?.current || 0) + 1) } };
   }
   if (next.conditions?.includes('Long Bruise') && next.stress?.current === 0) next = { ...next, stress: { ...next.stress, current: 1 } };
+  // Charge-Up (Rust & Steel 12.06): the charge is lost if the wielder loses HP, moves, or becomes
+  // Dazed, Stunned, Prone or Restrained.
+  if (next.inventory?.weapons?.some(w => w.charged)) {
+    const hurt = (next.hp?.current ?? 0) < (previous.hp?.current ?? 0), moved = next.x !== previous.x || next.y !== previous.y;
+    const was = visibleConditions(previous), now = visibleConditions(next);
+    const struck = ['Dazed', 'Stunned', 'Prone', 'Restrained'].some(c => now.includes(c) && !was.includes(c));
+    if (hurt || moved || struck) next = { ...next, inventory: { ...next.inventory, weapons: next.inventory.weapons.map(w => w.charged ? { ...w, charged: false } : w) } };
+  }
   return next;
 }
 
@@ -116,7 +129,8 @@ export function nextSpotlightRound(store) {
     tokens: store.state.tokens.map(t => {
       if (t.mapId !== map.id) return t;
       const next = t.hasSpotlight ? { ...t, hasSpotlight: false, spotlight: { ...t.spotlight, enabled: false } } : t;
-      return next.effectClocks?.some(c => c.expiry === 'round') ? { ...next, effectClocks: next.effectClocks.filter(c => c.expiry !== 'round') } : next;
+      // A clock that lasts several rounds (Stunned by a weapon: «cleared after the next round») counts one down.
+      return next.effectClocks?.some(c => c.expiry === 'round') ? { ...next, effectClocks: next.effectClocks.flatMap(c => c.expiry !== 'round' ? [c] : c.rounds > 1 ? [{ ...c, rounds: c.rounds - 1 }] : []) } : next;
     })
   });
   store.addLog({ sender: 'Keeper', type: 'ROUND', title: `Ronda ${round}`, details: map.name });

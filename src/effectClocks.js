@@ -131,7 +131,11 @@ export function validEffectClocks(v) {
     && (c.meleeRound === undefined || typeof c.meleeRound === 'string' && c.meleeRound.length <= 160)
     && (c.trait === undefined || PATH_TRAITS.includes(c.trait))
     && (c.scene === undefined || typeof c.scene === 'boolean') && (c.firstStrikeUsed === undefined || typeof c.firstStrikeUsed === 'boolean') && (c.die === undefined || /^d(4|6|8|10|12)$/.test(c.die))
-    && (c.perTick === undefined || (c.perTick && typeof c.perTick === 'object' && Number.isInteger(c.perTick.hp ?? 0) && (c.perTick.hp ?? 0) >= 0 && (c.perTick.hp ?? 0) <= 20))
+    && (c.perTick === undefined || (c.perTick && typeof c.perTick === 'object' && Number.isInteger(c.perTick.hp ?? 0) && (c.perTick.hp ?? 0) >= 0 && (c.perTick.hp ?? 0) <= 20 && Number.isInteger(c.perTick.stress ?? 0) && (c.perTick.stress ?? 0) >= 0 && (c.perTick.stress ?? 0) <= 3))
+    // Weapon effects (v2.45.0): a duration in rounds, the next action of any kind, Brittle, Melting and its DC.
+    && (c.rounds === undefined || (Number.isInteger(c.rounds) && c.rounds >= 1 && c.rounds <= 3))
+    && (c.nextAction === undefined || typeof c.nextAction === 'boolean') && (c.brittle === undefined || typeof c.brittle === 'boolean')
+    && (c.melting === undefined || typeof c.melting === 'boolean') && (c.dc === undefined || (Number.isInteger(c.dc) && c.dc >= 5 && c.dc <= 30))
     && (c.source === undefined || (typeof c.source === 'string' && c.source.length <= 80)));
 }
 

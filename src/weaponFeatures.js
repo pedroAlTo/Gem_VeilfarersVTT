@@ -74,14 +74,82 @@ export function afterAttackStress(weapon, wielder, result = {}) {
 }
 
 // Damage the weapon adds on a hit: Scatter +2 in Melee or Very Close (Rust & Steel); Disruptor one
-// more normal damage die against a Synthetic, a drone or a machine.
-export function weaponDamageRiders(weapon, { band = '', target = null } = {}) {
+// more normal damage die against a Synthetic, a drone or a machine; Paired (Corebook): with two
+// Paired weapons in hand, the bonus of one of them (the larger).
+export function weaponDamageRiders(weapon, { band = '', target = null, held = [] } = {}) {
   const out = [];
   if (!weapon || typeof weapon !== 'object') return out;
+  const partner = hasTag(weapon, 'paired') && (held || []).some(w => w && w.id !== weapon.id && w.equipped !== false && hasTag(w, 'paired'));
+  if (partner) {
+    const bonus = Math.max(...[weapon, ...held.filter(w => w && w.id !== weapon.id && w.equipped !== false && hasTag(w, 'paired'))].map(w => tagValue(w, 'paired', 0)));
+    if (bonus > 0) out.push({ id: 'paired', label: 'Paired', value: bonus });
+  }
   if (hasTag(weapon, 'scatter') && (band === 'Melee' || band === 'Very Close')) out.push({ id: 'scatter', label: 'Scatter', value: 2 });
   if (hasTag(weapon, 'disruptor') && isMachineTarget(target)) out.push({ id: 'disruptor', label: 'Disruptor', dice: '1d' + weaponDie(weapon) });
   return out;
 }
+
+// ── After the hit (Plan de UX V3, fase 4, second part) ───────────────────────────────────────
+// What a weapon does to the target once the damage is applied: Reaction Rolls with the condition a
+// failure brings, and effects that need no roll. Each entry says its trigger as the book prints it:
+//   save:   { kind: 'save', id, label, traits, dc, fail: { conditions?, clock? }, failText }
+//   effect: { kind: 'effect', id, label, apply: { conditions?, clock? }, text }
+// `clock` is an effect clock for the target (effectClocks.js), built by the table.
+// ctx: { hit, hpLost, stressLost, critical, organic }
+const STUNNED = label => ({ name: label + ' · Stunned', condition: 'Stunned', expiry: 'round', rounds: 2 });
+export function weaponOutcomes(weapon, ctx = {}) {
+  if (!weapon || typeof weapon !== 'object' || !ctx.hit) return [];
+  const t = id => hasTag(weapon, id), dc = featureDC(weapon), out = [];
+  const damaged = (ctx.hpLost || 0) > 0, hurt = damaged || (ctx.stressLost || 0) > 0;
+  const save = (id, label, traits, saveDc, fail, failText) => out.push({ kind: 'save', id, label, traits, dc: saveDc, fail, failText });
+  const effect = (id, label, apply, text) => out.push({ kind: 'effect', id, label, apply, text });
+  // Corebook 12.06
+  if (t('stunning') && damaged) save('stunning', 'Stunning', ['strength'], dc, { clock: STUNNED('Stunning') }, 'Stunned hasta después de la próxima ronda');
+  if (t('taser-charge')) save('taser-charge', 'Taser Charge', ['strength'], dc, { clock: STUNNED('Taser Charge') }, 'Stunned hasta después de la próxima ronda');
+  if (t('entangling') && hurt) save('entangling', 'Entangling', ['strength'], dc, { conditions: ['Restrained'] }, 'Restrained');
+  if (t('entrapping')) save('entrapping', 'Entrapping', ['strength', 'knowledge'], dc, { conditions: ['Incapacitated'] }, 'Incapacitated');
+  if (t('mind-lock') && (ctx.stressLost || 0) > 0) save('mind-lock', 'Mind-Lock', ['presence'], dc, { clock: { name: 'Mind-Lock · solo puede moverse', expiry: 'spotlight-end' } }, 'solo puede moverse en su próximo Spotlight');
+  if (t('stunning-on-crit') && ctx.critical) effect('stunning-on-crit', 'Stunning on crit', { clock: STUNNED('Stunning on crit') }, 'crítico: Stunned hasta después de la próxima ronda');
+  if (t('disorienting')) effect('disorienting', 'Disorienting', { clock: { name: 'Disorienting · Dazed', condition: 'Dazed', edge: 'disadvantage', nextAction: true } }, 'Dazed: Desventaja en su próxima acción');
+  if (t('stagger') && damaged) effect('stagger', 'Stagger', { clock: { name: 'Stagger · próxima acción', edge: 'disadvantage', nextAction: true } }, 'Desventaja en su próxima acción');
+  if (t('continuous')) effect('continuous', 'Continuous', { clock: { name: 'Continuous · +1 Stress', tick: 'spotlight', perTick: { stress: 1 } } }, 'marca 1 Stress al empezar su próximo Spotlight');
+  if (t('brittle') && damaged) effect('brittle', 'Brittle', { clock: { name: 'Brittle · +1d6 Physical', brittle: true } }, 'su próximo daño Physical hace +1d6');
+  // Rust & Steel 12.06
+  if (t('knockdown')) save('knockdown', 'Knockdown', ['agility', 'strength'], dc <= 15 ? 10 : 15, { conditions: ['Prone'] }, 'Prone');
+  if (t('thermal') && damaged) save('thermal', 'Thermal', ['strength'], dc, { conditions: ['On Fire'] }, 'On Fire');
+  if (t('anchoring') && damaged) save('anchoring', 'Anchoring', ['strength'], dc, { clock: { name: 'Anchoring · sin moverse', expiry: 'spotlight-end' } }, 'no puede hacer Move en su próximo Spotlight');
+  if (t('non-lethal') && damaged && ctx.hpAfter === 1) effect('non-lethal', 'Non-Lethal', { conditions: ['Incapacitated'] }, 'a 1 HP queda Incapacitated (inconsciente), no Dying');
+  if (t('melting') && damaged) effect('melting', 'Melting', { clock: { name: 'Melting', tick: 'spotlight', melting: true, dc, die: 'd' + weaponDie(weapon) } }, `al empezar su próximo Spotlight, Strength contra CD ${dc} o 1d${weaponDie(weapon)} Energy`);
+  // Rust & Steel 12.06, Forbidden
+  if (t('agony') && hurt) save('agony', 'Agony', ['instinct'], 15, { clock: STUNNED('Agony') }, 'Stunned hasta después de la próxima ronda');
+  if (t('lethal-toxin') && damaged && ctx.organic !== false) save('lethal-toxin', 'Lethal Toxin', ['strength'], 15, { conditions: ['Incapacitated', 'Poisoned'] }, 'Incapacitated y Poisoned');
+  if (t('irradiating') && damaged && (t('radiation') || /radiation/i.test(String(weapon.damage || '')))) save('irradiating', 'Irradiating', ['strength'], 15, { conditions: ['Poisoned'] }, 'Poisoned');
+  return out;
+}
+// What the table resolves after the hit, so it is no longer a reminder: the effects on any target,
+// the Reaction Rolls on an NPC (a character's player rolls them: those stay as reminders).
+export const AFTERMATH_EFFECTS = ['stunning-on-crit', 'disorienting', 'stagger', 'continuous', 'brittle', 'melting', 'non-lethal'];
+export const AFTERMATH_TAGS = [...AFTERMATH_EFFECTS, 'stunning', 'taser-charge', 'entangling', 'entrapping', 'mind-lock', 'knockdown', 'thermal', 'anchoring', 'agony', 'lethal-toxin', 'irradiating'];
+
+// Reload and Charge-Up (Corebook; Rust & Steel): whether the weapon can attack now, and what the
+// Action that readies it is called. A Reload weapon is spent by each shot; a Charge-Up weapon
+// fires only charged, and the shot uses the charge.
+export function weaponReadiness(weapon) {
+  if (!weapon || typeof weapon !== 'object') return { ready: true };
+  if (hasTag(weapon, 'reload') && weapon.spent) return { ready: false, mode: 'reload', action: 'Recargar', reason: `${weapon.name} está descargada: gasta una Acción en recargarla antes de volver a disparar (Reload).` };
+  if (hasTag(weapon, 'charge-up') && !weapon.charged) return { ready: false, mode: 'charge', action: 'Cargar', reason: `${weapon.name} no está cargada: gasta una Acción en cargarla; podrá disparar en un Spotlight posterior (Charge-Up).` };
+  return { ready: true };
+}
+// The weapon row after attacking with it: a Reload weapon is spent, a Charge-Up one loses its charge.
+export function afterShot(weapon) {
+  if (!weapon || typeof weapon !== 'object') return weapon;
+  const next = { ...weapon };
+  if (hasTag(weapon, 'reload')) next.spent = true;
+  if (hasTag(weapon, 'charge-up')) next.charged = false;
+  return next;
+}
+// Non-Lethal (Rust & Steel): the hit cannot take the target below 1 HP.
+export const nonLethalHp = (weapon, currentHp, newHp) => (weapon && typeof weapon === 'object' && hasTag(weapon, 'non-lethal') && currentHp >= 1 ? Math.max(1, newHp) : newHp);
 
 // Guided, Mind Link and Indirect may attack without line of sight.
 export const ignoresLineOfSight = weapon => !!weapon && ['guided', 'mind-link', 'indirect'].some(id => hasTag(weapon, id));
@@ -187,10 +255,8 @@ const REMINDERS = [
   ['salvo-fire', (dc, ctx) => ctx.hit ? 'Salvo Fire: marca 1 Stress para aplicar el resultado a un segundo objetivo a Close del primero.' : ''],
   ['cleave', (dc, ctx) => ctx.hit ? 'Cleave: haz otro ataque contra un objetivo distinto a tu alcance.' : ''],
   ['quick', () => 'Quick: marca 1 Stress para hacer un segundo ataque al mismo objetivo.'],
-  ['reload', () => 'Reload: gasta una Acción en recargar antes de volver a disparar.'],
   ['suppressive', () => 'Suppressive: marca 1 Stress; quien esté a Close del objetivo tiene Desventaja en sus ataques hasta el final de su próximo Spotlight.'],
   ['probability-shift', () => 'Probability Shift: puedes repetir los dos Duality Dice y quedarte con el nuevo resultado.'],
-  ['paired', (dc, ctx, w) => `Paired${tagValue(w, 'paired') ? ` +${tagValue(w, 'paired')}` : ''}: con dos armas Paired, suma el bono Paired de una de ellas al daño.`],
   ['psionic', dc => `Psionic: no tira contra Evasion; el objetivo hace una Presence Reaction Roll contra CD ${dc} (falla: daño completo; acierta: nada).`],
   ['area', (dc, ctx, w) => { const band = String(weaponTagList(w).find(t => t.startsWith('area:'))?.split(':')[1] || ''); return band
     ? `Área (${band.split('-').map(x => x[0].toUpperCase() + x.slice(1)).join(' ')}): cada criatura de la zona tira Agility contra CD ${dc}; si falla, el daño completo; si acierta, la mitad y sin condición secundaria. Total Cover lo bloquea.`
@@ -227,7 +293,7 @@ const ARMOR_CUT_TAGS = ['armor-piercing', 'shredding', 'disintegrating'];
 export function featureReminders(weapon, ctx = {}) {
   if (!weapon || typeof weapon !== 'object') return [];
   const dc = featureDC(weapon);
-  return [...new Set(REMINDERS.filter(([id]) => hasTag(weapon, id) && !(ctx.armorAuto && ARMOR_CUT_TAGS.includes(id))).map(([, say]) => say(dc, ctx, weapon)).filter(Boolean))];
+  return [...new Set(REMINDERS.filter(([id]) => hasTag(weapon, id) && !(ctx.armorAuto && ARMOR_CUT_TAGS.includes(id)) && !((ctx.aftermath === 'npc' ? AFTERMATH_TAGS : ctx.aftermath === 'pc' ? AFTERMATH_EFFECTS : []).includes(id))).map(([, say]) => say(dc, ctx, weapon)).filter(Boolean))];
 }
 
 // Cuts to an enemy's maximum Armor Slots, applied at once (enemies rarely live to a second

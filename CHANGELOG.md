@@ -1,10 +1,31 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.44.0**.
-Paquete: `VeilFarers_VTT_v2.44.0.zip`.
+Versión actual del VTT: **v2.45.0**.
+Paquete: `VeilFarers_VTT_v2.45.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.45.0] — 2026-11-25
+
+V3 · Las armas resuelven lo que hacen tras el impacto (Fase 4, segunda parte)
+
+### Tiradas de reacción automáticas
+
+- Al aplicar el daño de un arma a un adversario, la mesa tira sola (en 3D) su Reaction Roll contra la Feature DC y, si falla, le pone la condición: Stunning, Taser Charge y Agony (Stunned hasta después de la próxima ronda), Entangling (Restrained), Entrapping (Incapacitated), Knockdown (Prone; DC 10 en Tier 1–2 y 15 en Tier 3–4), Thermal (On Fire), Anchoring y Mind-Lock (no puede moverse o solo puede moverse en su próximo Spotlight), Lethal Toxin (Incapacitated y Poisoned) e Irradiating (Poisoned). El registro dice la tirada y el resultado.
+- Si el objetivo es un personaje, la tirada es de su jugador: el registro dice cuál tiene que hacer y contra qué DC.
+
+### Efectos con duración
+
+- Stunning on crit deja Stunned. Disorienting deja Dazed y Stagger da Desventaja en la próxima acción del objetivo: su siguiente tirada, sea cual sea, la lleva y lo gasta.
+- Continuous: el objetivo marca 1 Stress al empezar su próximo Spotlight. Brittle: el siguiente impacto Physical contra él suma +1d6. Melting: al empezar su próximo Spotlight, el registro pide su Strength y el dado de daño Energy.
+- Stunned por un arma dura hasta después de la próxima ronda: dos cambios de ronda.
+
+### Armas
+
+- Paired: con dos armas Paired en la mano, el daño suma el bono mayor de las dos.
+- Non-Lethal: el impacto no baja al objetivo de 1 HP; a 1 HP queda Incapacitated, no Dying.
+- Reload: cada disparo descarga el arma y su botón pasa a «Recargar» (una Acción, que da el foco). Charge-Up: solo dispara cargada; el botón «Cargar» la prepara para un Spotlight posterior y la carga se pierde al moverse, perder HP o quedar Dazed, Stunned, Prone o Restrained.
 
 ## [2.44.0] — 2026-11-25
 

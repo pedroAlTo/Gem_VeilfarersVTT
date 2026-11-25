@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.44.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.44.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.44.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.44.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.45.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.45.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.45.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.45.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -155,6 +155,10 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.44.0.zip**. Abre **AYUDA
 140. **(V3) Scatter, Heavy y High-Recoil al atacar.** Con la Combat Shotgun, atacar a un enemigo adyacente: la vista previa dice «Scatter +1 al ataque» y al impactar el resultado suma «Scatter: +2». A Close, «Scatter −1». Con un Handheld Railgun (Heavy) y Strength 0, la vista previa marca Desventaja («Heavy: Strength menor que +1»). Con una Heavy Pistol (High-Recoil) y Strength 0, tras disparar el personaje marca 1 Stress y el registro lo dice.
 141. **(V3) Massive y Defensive en la Evasion.** Un adversario ataca cuerpo a cuerpo a un personaje con el Breaching Shield en la mano: el ataque compara con su Evasion +2 y el detalle dice «Defensive: +2 Evasion contra Melee». Si el personaje enfunda el escudo, no cuenta. Con un arma Massive en la mano, cualquier ataque contra él compara con Evasion −1.
 142. **(V3) Disruptor y Unstable.** Una Ion Disruptor Rifle contra un adversario dron o sintético: al impactar el daño lleva «Disruptor 1dX». Contra un humano, no. Con una Phase Sabre (Unstable), un Fallo con Fear marca 1 Stress al atacante.
+143. **(V3) Salvación automática de un adversario.** Un personaje con una Shock Baton (Stunning) impacta a un adversario y el Keeper aplica el daño: sale un d20 en 3D («Stunning · nombre: Strength vs CD 10») y el registro dice «Stunning: Strength d20 [x] ± mod = total vs CD 10 → falla/resiste». Si falla, el adversario muestra Stunned y no puede actuar; tras dos «Nueva ronda» deja de estarlo. Lo mismo con Knockdown (Prone), Thermal (On Fire), Entangling (Restrained).
+144. **(V3) Salvación de un personaje.** El Keeper ataca a un personaje con un arma Stunning y aplica el daño: el registro dice «nombre tira Strength contra CD 10; si falla, Stunned» y no pone la condición (la tira el jugador).
+145. **(V3) Stagger, Continuous, Brittle.** Un arma con Stagger impacta: el objetivo muestra el reloj «Stagger · próxima acción» y su siguiente tirada lleva Desventaja y lo quita. Con Continuous, al darle el foco al objetivo marca 1 Stress y el reloj desaparece. Con Brittle, el siguiente impacto Physical contra él suma «Brittle 1d6».
+146. **(V3) Reload y Charge-Up.** Un arma Reload: tras disparar, su botón en la barra pasa a «Recargar»; pulsarlo la recarga (registro: «recarga…») y da el foco. Un arma Charge-Up empieza con «Cargar»; cargada dispara una vez; si el personaje se mueve antes de disparar, vuelve a «Cargar». Dos armas Paired en la mano: el daño suma «Paired +N». Un arma Non-Lethal deja al objetivo en 1 HP e Incapacitated.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

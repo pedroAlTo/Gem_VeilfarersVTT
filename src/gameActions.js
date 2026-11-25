@@ -1,7 +1,7 @@
 import { store as defaultStore } from './state.js';
 import { newId } from './persistence.js';
 import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice, tierOf } from './effectClocks.js';
-import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS } from './rulesEngine.js';
+import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS, damageTypeOf } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
 import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration } from './cardResolution.js';
@@ -20,7 +20,7 @@ import { cardData } from './cardData.js';
 import { handoffControl, isDroneToken, droneSignal as signalOf } from './drones.js';
 import { droneCompatible } from './dronePowers.js';
 import { tokenInventory, validateInventory } from './equipment.js';
-import { weaponAttackEdge, afterAttackStress, weaponDamageRiders } from './weaponFeatures.js';
+import { weaponAttackEdge, afterAttackStress, weaponDamageRiders, weaponReadiness, afterShot } from './weaponFeatures.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear, wearArmor } from './gear.js';
 import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName, uncannyAccess, uncannyChoices, editArchive } from './loadoutCards.js';
@@ -101,6 +101,20 @@ function resolveGameAction(action, store) {
     return { actorId: actor.id, conditions };
   }
   if (action.type === 'FTL') return resolveJump(store, actor, action, resolveGameAction);
+  // Reload or charge a weapon (v2.45.0): an Action, so it takes the Spotlight.
+  if (action.type === 'WEAPON_READY') {
+    requireActive(actor);
+    const inventory = tokenInventory(actor), weapon = inventory.weapons.find(w => w.id === String(action.weaponId ?? ''));
+    if (!weapon) throw new Error('El arma ya no pertenece al personaje.');
+    const readiness = weaponReadiness(weapon);
+    if (readiness.ready) throw new Error(`${weapon.name} ya está lista para atacar.`);
+    const ready = readiness.mode === 'reload' ? { ...weapon, spent: false } : { ...weapon, charged: true };
+    store.updateToken(actor.id, { inventory: { ...inventory, weapons: inventory.weapons.map(w => w.id === weapon.id ? ready : w) } });
+    if (actor.isPlayer !== false) grantActorSpotlight(store, actor.id);
+    const said = readiness.mode === 'reload' ? `recarga ${weapon.name}` : `carga ${weapon.name}: podrá disparar en un Spotlight posterior`;
+    store.addLog({ sender: actor.name, type: 'GEAR', title: `${actor.name} ${said}`, details: `${readiness.action} (una Acción).` });
+    return { actorId: actor.id, weaponId: weapon.id, mode: readiness.mode };
+  }
   // Armor and augmentations: the table puts them on or takes them off and applies or undoes what
   // they change (thresholds, Armor Slots, Evasion, HP, Traits, over-capacity Stress).
   if (action.type === 'GEAR_INSTALL' || action.type === 'GEAR_REMOVE' || action.type === 'GEAR_WEAR') {
@@ -526,6 +540,9 @@ function resolveGameAction(action, store) {
     if (action.closingId && (!ownAttack || !state || state.id !== action.closingId)) throw new Error('Breaking Point requiere el estado activo y una acción propia.');
     const weapon = ownAttack && action.weaponId ? tokenInventory(actor).weapons.find(w => w.id === action.weaponId) : null;
     if (ownAttack && action.weaponId && !weapon) throw new Error('El arma ya no pertenece al personaje.');
+    // Reload and Charge-Up: a spent or uncharged weapon cannot attack until an Action readies it.
+    const readiness = weaponReadiness(weapon);
+    if (!readiness.ready) throw new Error(readiness.reason);
     const context = o.contextId && contextualEdges(actor,o.traitId).find(c => c.id === o.contextId);
     if (o.contextId && !context) throw new Error('Ese efecto contextual ya no está activo para el atributo.');
     if (action.closingId && (target.hidden || target.mapId !== store.state.activeMapId)) throw new Error('El objetivo de Breaking Point ya no está en la escena.');
@@ -637,7 +654,13 @@ function resolveGameAction(action, store) {
     // +1d6 once (2d6 at Tier 2, 3d6 at Tier 3); more sources of Advantage add nothing.
     if (hit && edge.advantage && sneakAttacker(actor)) damageRiders.push({ id: 'sneak-attack', label: 'Sneak Attack', dice: tierOf(actor.level) + 'd6' });
     // The weapon's own damage on a hit: Scatter +2 up close, Disruptor +1 die against a machine.
-    if (hit && weapon) damageRiders.push(...weaponDamageRiders(weapon, { band: distanceInfo(actor, target, store.getActiveMap?.() || {}).band, target }));
+    if (hit && weapon) damageRiders.push(...weaponDamageRiders(weapon, { band: distanceInfo(actor, target, store.getActiveMap?.() || {}).band, target, held: tokenInventory(actor).weapons }));
+    // The shot spends a Reload weapon and the charge of a Charge-Up one.
+    const shot = weapon && afterShot(weapon);
+    if (shot && (shot.spent !== weapon.spent || shot.charged !== weapon.charged)) {
+      const inventory = tokenInventory(actor);
+      patch.inventory = { ...inventory, weapons: inventory.weapons.map(w => w.id === weapon.id ? shot : w) };
+    }
     // Attacking ends the self effects that say so (Temporal Cloak) and breaks Hidden.
     const unveiled = ownAttack && endSelfEffects({ ...actor, effectClocks: patch.effectClocks || actor.effectClocks }, { attack: true });
     if (unveiled) { patch.effectClocks = unveiled.effectClocks; patch.conditions = unveiled.conditions; }
@@ -663,6 +686,14 @@ function resolveGameAction(action, store) {
       patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== state.id);
     }
     if (target && target.id !== actor.id && actor.effectClocks?.some(c => c.nextAttack)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAttack);
+    // Stagger and Disorienting: the next action of any kind has Disadvantage and spends them.
+    if (actor.effectClocks?.some(c => c.nextAction)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAction);
+    // Brittle on the target: this Physical hit deals +1d6 and Brittle ends.
+    const brittle = hit && target?.effectClocks?.find(c => c.brittle);
+    if (brittle && (!weapon || damageTypeOf(weapon) === 'physical')) {
+      damageRiders.push({ id: 'brittle', label: 'Brittle', dice: '1d6' });
+      store.updateToken(target.id, { effectClocks: target.effectClocks.filter(c => c.id !== brittle.id) });
+    }
     if (['agility','finesse'].includes(o.traitId) && actor.effectClocks?.some(c => c.name === 'Slipstream Jolt')) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.name !== 'Slipstream Jolt');
     if (!standalone) store.updateToken(actor.id, patch);
     if (guard) markMeleeDefense(store, target, guard);

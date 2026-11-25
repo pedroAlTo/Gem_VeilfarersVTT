@@ -20,7 +20,7 @@ import { normalizeConditions, conditionDefinition } from './conditions.js';
 import { openConditions } from './conditionUI.js';
 import { checkEdge, lifeStage } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus, weaponTraitId } from './attackFlow.js';
-import { weaponAttackEdge, wielderEvasion, ignoresLineOfSight } from './weaponFeatures.js';
+import { weaponAttackEdge, wielderEvasion, ignoresLineOfSight, weaponReadiness } from './weaponFeatures.js';
 import { hasSwarmTactics } from './adversaryPassives.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { proceduralAttack } from './adversaryWeapons.js';
@@ -189,7 +189,7 @@ export class PlayerActionBar {
     const experiences = (details.experiences || []).filter(x => x.name);
     const stats = sheetStats(token, details.armor);
     if (token.id !== this.tokenId) this.pick = EMPTY_PICK;
-    const signature = JSON.stringify([token.id, token.name, token.characterClass, actorPortrait(token), store.canEditToken(token.id), stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
+    const signature = JSON.stringify([token.id, token.name, token.characterClass, actorPortrait(token), store.canEditToken(token.id), stats, bearDownTarget(token.id), this.bearCount || 1, window.veilDiceRoller?.lastDamage?.riders?.length || 0, token.traits, token.path, token.hope, !!token.hasSpotlight, experiences, weapons.map(w => [w.id, w.name, w.range, w.trait, !!w.spent, !!w.charged]), this.pick, this.optionsOpen, this.targeting?.weaponId ?? null, this.targeting?.targetId ?? null, this.result]);
     if (signature === this.signature) return;
     this.signature = signature; this.tokenId = token.id; this.weapons = weapons; this.experiences = experiences;
     const dc = document.getElementById('dice_dc_select')?.value || '15';
@@ -231,7 +231,10 @@ export class PlayerActionBar {
       </div>` : ''}
       <div class="pab-row">
         <span class="pab-label">Atacar</span>
-        <div class="pab-buttons">${weapons.length ? weapons.map(w => `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}"><b>${e(w.name)}</b><span data-no-i18n>${e(weaponRangeBand(w) || '—')}</span></button>`).join('')
+        <div class="pab-buttons">${weapons.length ? weapons.map(w => { const ready = weaponReadiness(w);
+          // Reload / Charge-Up (v2.45.0): a spent or uncharged weapon offers its Action instead.
+          return ready.ready ? `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}"><b>${e(w.name)}</b><span data-no-i18n>${e(weaponRangeBand(w) || '—')}</span></button>`
+            : `<button type="button" class="pab-weapon pab-weapon-unready" data-pab-ready="${e(w.id)}" title="${e(ready.reason)}"><b>${e(w.name)}</b><span>${e(ready.action)}</span></button>`; }).join('')
           : `<button type="button" class="pab-weapon ${this.targeting?.weaponId === '' ? 'active' : ''}" data-pab-weapon="" title="Sin armas: ataque desarmado (Melee)"><b>Desarmado</b><span>Melee</span></button>`}</div>
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
@@ -245,6 +248,8 @@ export class PlayerActionBar {
     this.root.querySelectorAll('[data-pab-trait]').forEach(b => { b.onclick = () => this.tap({ kind: 'trait', id: b.dataset.pabTrait }); });
     this.root.querySelectorAll('[data-pab-exp]').forEach(b => { b.onclick = () => this.tap({ kind: 'exp', id: Number(b.dataset.pabExp) }); });
     this.root.querySelectorAll('[data-pab-weapon]').forEach(b => { b.onclick = () => (this.targeting?.weaponId === b.dataset.pabWeapon ? this.stopTargeting() : this.startTargeting(b.dataset.pabWeapon)); });
+    this.root.querySelectorAll('[data-pab-ready]').forEach(b => { b.onclick = () => network.requestAction({ type: 'WEAPON_READY', actorId: token.id, weaponId: b.dataset.pabReady, playerName: store.state.userName || '', tokenName: token.name })
+      .then(r => { notify(r.mode === 'reload' ? 'Arma recargada (una Acción).' : 'Arma cargada: podrá disparar en un Spotlight posterior.'); this.signature = ''; this.render(); }).catch(error => notify(error.message, 'error')); });
     this.root.querySelector('[data-pab-options]').onclick = () => { this.optionsOpen = !this.optionsOpen; this.render(); };
     this.root.querySelectorAll('[data-pab-edge]').forEach(b => { b.onclick = () => this.tap({ kind: 'edge', id: b.dataset.pabEdge }); });
     this.root.querySelector('[data-pab-dc]')?.addEventListener('change', event => { const panel = document.getElementById('dice_dc_select'); if (panel) { panel.value = event.target.value; panel.dispatchEvent(new Event('change')); } this.signature = ''; this.render(); });

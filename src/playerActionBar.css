@@ -169,3 +169,6 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-pregen[disabled] { opacity: .45; cursor: default; }
 .pab-choose-source { margin: 0; font-size: 11px; color: var(--text-dim, #a5a3c4); }
 .pab-choose-more { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Reload / Charge-Up (v2.45.0): a spent or uncharged weapon shows the Action that readies it. */
+.pab-weapon-unready { border-style: dashed !important; opacity: .9; }
+.pab-weapon-unready span { color: #fde68a; }
