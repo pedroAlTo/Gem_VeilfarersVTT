@@ -324,7 +324,7 @@ body.card-aiming #tactical_canvas { cursor: crosshair; }
 .hand-deck[data-deck="reactions"] .hand-deck-pile { --deck: #22d3ee; }
 .hand-deck[data-deck="moves"] .hand-deck-pile { --deck: #f59e0b; }
 .hand-deck[data-deck="traits"] .hand-deck-pile { --deck: #34d399; }
-.hand-deck-stack { position: absolute; inset: 0 6px 30px; }
+.hand-deck-stack { position: absolute; inset: 0 12px 30px; }
 .hand-deck-stack i { position: absolute; inset: 0; border-radius: 7px; border: 2px solid #e9a93a; box-shadow: 0 4px 10px rgba(0,0,0,.55);
   background: repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 2px, transparent 2px 7px), linear-gradient(160deg, color-mix(in srgb, var(--deck) 55%, #12062a), #0d0420); }
 .hand-deck-stack i:nth-last-child(2) { transform: translate(-4px, 3px) rotate(-4deg); }
@@ -355,6 +355,6 @@ body.card-aiming #tactical_canvas { cursor: crosshair; }
 /* The back of the cards (v2.57.0, the user's art: «usa esto para el reverso de las cartas»):
    the decks of the hand and the Vault deck show it; until the file is there, the old back. */
 .hand-deck-stack i, .card-deck-stack i {
-  background: url('/assets/cards/card-back.webp') center / cover no-repeat,
+  background: url('/assets/cards/card-back.webp') center top / cover no-repeat,
     repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 2px, transparent 2px 7px), linear-gradient(160deg, color-mix(in srgb, var(--deck, #a855f7) 55%, #12062a), #0d0420);
 }

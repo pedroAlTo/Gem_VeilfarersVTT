@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.58.1', date: '2026-11-25', title: 'V3 · Reverso de las cartas',
+    sections: [
+      { title: 'Cartas', items: [
+        'Los mazos de la mano y el del Vault muestran el reverso de Veilfarers: «Chronicles of the Silence», con el planeta y la tripulación. Los mazos tienen ahora forma de carta para que se vea el logo.',
+      ] },
+    ],
+  },
+  {
     version: '2.58.0', date: '2026-11-25', title: 'V3 · Tokens limpios: cada uno ve lo suyo',
     sections: [
       { title: 'Lo que ve cada uno', items: [

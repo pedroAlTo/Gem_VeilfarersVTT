@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.58.0**.
-Paquete: `VeilFarers_VTT_v2.58.0.zip`.
+Versión actual del VTT: **v2.58.1**.
+Paquete: `VeilFarers_VTT_v2.58.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.58.1] — 2026-11-25
+
+V3 · Reverso de las cartas
+
+### Cartas
+
+- Los mazos de la mano y el del Vault muestran el reverso de Veilfarers: «Chronicles of the Silence», con el planeta y la tripulación. Los mazos tienen ahora forma de carta para que se vea el logo.
 
 ## [2.58.0] — 2026-11-25
 
