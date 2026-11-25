@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.46.0', date: '2026-11-25', title: 'V3 · Segundo objetivo, áreas y Psionic (Fase 4 completa)',
+    sections: [
+      { title: 'Segundo objetivo', items: [
+        'Tras un ataque, el resultado ofrece lo que permite el arma: Automatic y Salvo Fire («Segundo objetivo», 1 Stress: la misma tirada contra la Evasion de otro objetivo a Very Close o a Close del primero, y el daño se tira aparte), Arc («Arco a otro objetivo»: la mitad del daño a otro a Very Close, sin tirada), Cleave («Otro ataque a otro objetivo» tras un impacto Melee) y Quick («Segundo ataque», 1 Stress, contra el mismo objetivo, también tras fallar).',
+        'Se elige el segundo objetivo tocándolo en el mapa dos veces. La mesa comprueba las distancias y cobra el Stress. Cada opción se usa una vez por ataque, y antes hay que aplicar el daño del primer impacto.',
+      ] },
+      { title: 'Áreas y Psionic', items: [
+        'Explosive y Area (con banda): sin tirada de ataque. Al elegir el punto de impacto (un token), cada criatura de la zona (aliados y uno mismo incluidos; un muro la protege) tira Agility contra la Feature DC. La mesa tira en 3D la de los adversarios; un personaje tira la suya y se elige «Falla: completo» o «Resiste: mitad». El daño se tira una vez y cada uno recibe su parte con sus umbrales y Armor Slots, uno tras otro desde la barra.',
+        'Dispersal Wave: un cono Close, Presence DC 15; quien falla recibe el daño. Psionic: no hay tirada contra Evasion; el objetivo tira Presence contra la Feature DC y, si falla, recibe el daño completo.',
+        'Spray y Waveform: el ataque al objetivo se compara además con la Evasion de cada criatura del cono (Very Close o Close, 60°), con el mismo daño para todos los alcanzados.',
+      ] },
+    ],
+  },
+  {
     version: '2.45.0', date: '2026-11-25', title: 'V3 · Las armas resuelven lo que hacen tras el impacto (Fase 4, segunda parte)',
     sections: [
       { title: 'Tiradas de reacción automáticas', items: [

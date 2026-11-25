@@ -151,6 +151,79 @@ export function afterShot(weapon) {
 // Non-Lethal (Rust & Steel): the hit cannot take the target below 1 HP.
 export const nonLethalHp = (weapon, currentHp, newHp) => (weapon && typeof weapon === 'object' && hasTag(weapon, 'non-lethal') && currentHp >= 1 ? Math.max(1, newHp) : newHp);
 
+// A second target or a second attack after an attack (Plan de UX V3, fase 4, third part, v2.46.0),
+// as the books print them:
+//   Automatic (Corebook): after a hit, 1 Stress: the same attack result against a second valid target
+//     within range and Very Close of the first; damage rolled separately.
+//   Salvo Fire (Corebook): the same, a second target within Close of the first.
+//   Arc (Rust & Steel): after a hit, a second target within Very Close of the first takes half the
+//     damage (rounded down), with no roll.
+//   Cleave (Corebook): after a Melee hit, one more attack against a different target within reach.
+//   Quick (Corebook): after attacking (hit or not), 1 Stress: a second attack against the same target.
+export const FOLLOW_UPS = {
+  automatic: { label: 'Automatic', action: 'Segundo objetivo', stress: 1, hit: true, near: 'Very Close', other: true, same: true },
+  'salvo-fire': { label: 'Salvo Fire', action: 'Segundo objetivo', stress: 1, hit: true, near: 'Close', other: true, same: true },
+  arc: { label: 'Arc', action: 'Arco a otro objetivo', stress: 0, hit: true, near: 'Very Close', other: true, half: true },
+  cleave: { label: 'Cleave', action: 'Otro ataque a otro objetivo', stress: 0, hit: true, melee: true, other: true, attack: true },
+  quick: { label: 'Quick', action: 'Segundo ataque', stress: 1, hit: false, sameTarget: true, attack: true },
+};
+// The ones this weapon offers after this attack (each once per attack).
+export function availableFollowUps(weapon, { hit = false, melee = false, used = [] } = {}) {
+  if (!weapon || typeof weapon !== 'object') return [];
+  return Object.entries(FOLLOW_UPS).filter(([id, rule]) => hasTag(weapon, id) && !used.includes(id) && (!rule.hit || hit) && (!rule.melee || melee))
+    .map(([id, rule]) => ({ id, ...rule }));
+}
+
+// ── Areas and Psionic (v2.46.0) ──────────────────────────────────────────────────────────────
+// How a weapon reaches its targets, as the books print it:
+//   Explosive (Corebook): every creature within Very Close of the impact point makes an Agility
+//     Reaction Roll against the Feature DC: failure, the damage in full; success, half. Total Cover
+//     blocks it. Area (band) and Blast (band) are the same procedure in that band (Rust & Steel).
+//   Dispersal Wave (Corebook): a Close cone; each creature makes a Presence Reaction Roll, DC 15;
+//     on a failure it suffers the weapon's effect (here: its damage), on a success nothing.
+//   Psionic (Corebook): no attack roll against Evasion; the target makes a Presence Reaction Roll
+//     against the Feature DC: failure, the damage in full; success, none.
+//   Spray and Cone (Rust & Steel): a Very Close cone; Waveform (Corebook): a Close cone. One attack
+//     roll compared with every creature's Evasion; the damage is rolled once (allies included).
+const BAND_NAME = { 'very-close': 'Very Close', close: 'Close', far: 'Far', melee: 'Melee', medium: 'Close', 'very-far': 'Extreme' };
+export function areaProcedure(weapon) {
+  if (!weapon || typeof weapon !== 'object') return null;
+  const dc = featureDC(weapon);
+  if (hasTag(weapon, 'psionic')) return { kind: 'psionic', label: 'Psionic', mode: 'save', traits: ['presence'], dc, zone: 'target', success: 0 };
+  if (hasTag(weapon, 'dispersal-wave')) return { kind: 'dispersal-wave', label: 'Dispersal Wave', mode: 'save', traits: ['presence'], dc: 15, cone: 'Close', success: 0 };
+  const area = weaponTagList(weapon).find(t => t === 'area' || t.startsWith('area:'));
+  if (hasTag(weapon, 'explosive') || (area && area.includes(':'))) {
+    const band = area?.includes(':') ? BAND_NAME[area.split(':')[1]] || 'Very Close' : 'Very Close';
+    return { kind: hasTag(weapon, 'explosive') ? 'explosive' : 'area', label: hasTag(weapon, 'explosive') ? 'Explosive' : `Area (${band})`, mode: 'save', traits: ['agility'], dc, around: band, success: 0.5 };
+  }
+  if (hasTag(weapon, 'spray')) return { kind: 'spray', label: 'Spray', mode: 'attack', cone: 'Very Close' };
+  if (hasTag(weapon, 'waveform')) return { kind: 'waveform', label: 'Waveform', mode: 'attack', cone: 'Close' };
+  return null;
+}
+// Who is in the zone: around the impact (a band from the target token; a wall between them and the
+// impact is Total Cover), a 60° cone from the attacker towards the target, or the target alone.
+// `distance(a, b)` → { band, blocked } (attackFlow.distanceInfo with the map).
+const ORDER = ['Melee', 'Very Close', 'Close', 'Far', 'Extreme'];
+const within = (band, limit) => ORDER.indexOf(band) >= 0 && ORDER.indexOf(band) <= ORDER.indexOf(limit);
+export function zoneTargets(tokens, actor, impact, procedure, distance) {
+  if (!procedure || !impact) return [];
+  if (procedure.zone === 'target') return [impact];
+  const live = (tokens || []).filter(t => t && t.mapId === impact.mapId && !t.inReserve && Number.isFinite(t.x) && Number.isFinite(t.y));
+  if (procedure.around) return live.filter(t => { const d = distance(impact, t); return t.id === impact.id || (within(d.band, procedure.around) && !d.blocked); });
+  if (procedure.cone) {
+    const aim = Math.atan2(impact.y - actor.y, impact.x - actor.x);
+    return live.filter(t => {
+      if (t.id === actor.id) return false;
+      if (t.id === impact.id) return true;
+      const d = distance(actor, t);
+      if (!within(d.band, procedure.cone) || d.blocked) return false;
+      const angle = Math.abs(Math.atan2(Math.sin(Math.atan2(t.y - actor.y, t.x - actor.x) - aim), Math.cos(Math.atan2(t.y - actor.y, t.x - actor.x) - aim)));
+      return angle <= Math.PI / 6 + 1e-6;
+    });
+  }
+  return [impact];
+}
+
 // Guided, Mind Link and Indirect may attack without line of sight.
 export const ignoresLineOfSight = weapon => !!weapon && ['guided', 'mind-link', 'indirect'].some(id => hasTag(weapon, id));
 
@@ -250,26 +323,15 @@ const REMINDERS = [
   ['disintegrating', (dc, ctx) => ctx.maxDie ? 'Disintegrating: un dado salió al máximo; un objeto expuesto queda inutilizado o −1 Armor Slot máximo (elige el objetivo).' : ''],
   ['unraveling', (dc, ctx) => ctx.maxDie ? 'Unraveling: un dado salió al máximo; el objetivo suprime un rasgo de Clase o Ancestry hasta el final de la escena.' : ''],
   ['system-shock', (dc, ctx) => ctx.machine === true ? 'System Shock: el objetivo es Sintético o máquina: daño normal.' : ctx.machine === false ? 'System Shock: el objetivo es orgánico: en lugar del daño, solo 1d4 Stress.' : 'System Shock: daño normal contra Sintéticos y máquinas; contra orgánicos, solo 1d4 Stress.'],
-  ['explosive', dc => `Explosive: todos a Very Close del impacto hacen una Agility Reaction Roll contra CD ${dc}; si fallan, daño completo; si aciertan, la mitad.`],
-  ['automatic', (dc, ctx) => ctx.hit ? 'Automatic: marca 1 Stress para aplicar el mismo resultado a un segundo objetivo a Very Close del primero.' : ''],
-  ['salvo-fire', (dc, ctx) => ctx.hit ? 'Salvo Fire: marca 1 Stress para aplicar el resultado a un segundo objetivo a Close del primero.' : ''],
-  ['cleave', (dc, ctx) => ctx.hit ? 'Cleave: haz otro ataque contra un objetivo distinto a tu alcance.' : ''],
-  ['quick', () => 'Quick: marca 1 Stress para hacer un segundo ataque al mismo objetivo.'],
   ['suppressive', () => 'Suppressive: marca 1 Stress; quien esté a Close del objetivo tiene Desventaja en sus ataques hasta el final de su próximo Spotlight.'],
   ['probability-shift', () => 'Probability Shift: puedes repetir los dos Duality Dice y quedarte con el nuevo resultado.'],
-  ['psionic', dc => `Psionic: no tira contra Evasion; el objetivo hace una Presence Reaction Roll contra CD ${dc} (falla: daño completo; acierta: nada).`],
-  ['area', (dc, ctx, w) => { const band = String(weaponTagList(w).find(t => t.startsWith('area:'))?.split(':')[1] || ''); return band
-    ? `Área (${band.split('-').map(x => x[0].toUpperCase() + x.slice(1)).join(' ')}): cada criatura de la zona tira Agility contra CD ${dc}; si falla, el daño completo; si acierta, la mitad y sin condición secundaria. Total Cover lo bloquea.`
-    : 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.'; }],
-  ['waveform', () => 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.'],
-  ['dispersal-wave', () => 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.'],
+  // Area with no band (Corebook): who is in its zone is the table's call.
+  ['area', (dc, ctx, w) => weaponTagList(w).includes('area') ? 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.' : ''],
   // Rust & Steel 12.06
   ['knockdown', dc => `Knockdown: el objetivo elige Agility o Strength (Reaction Roll) contra CD ${dc <= 15 ? 10 : 15}; si falla, Prone.`],
   ['thermal', (dc, ctx) => ctx.damaged ? `Thermal: Strength Reaction Roll contra CD ${dc}; si falla, On Fire.` : ''],
   ['anchoring', (dc, ctx) => ctx.damaged ? `Anchoring: Strength Reaction Roll contra CD ${dc}; si falla, no puede hacer Move en su próximo Spotlight.` : ''],
   ['melting', (dc, ctx) => ctx.damaged ? `Melting: al empezar su próximo Spotlight, el objetivo tira Strength contra CD ${dc}; si falla, un dado de daño del arma como Energy; si acierta, la mitad.` : ''],
-  ['arc', (dc, ctx) => ctx.hit ? 'Arc: un segundo objetivo a Very Close del primero recibe la mitad del daño (sin tirada).' : ''],
-  ['spray', () => 'Spray: el ataque alcanza a todas las criaturas de un cono Very Close (aliados incluidos); compara la tirada con la Evasion de cada una.'],
   ['non-lethal', () => 'Non-Lethal: no baja al objetivo de 1 HP; a 1 HP queda Incapacitated (inconsciente), no Dying.'],
   ['sundering', (dc, ctx) => ctx.critical && ctx.damaged ? 'Sundering: el objetivo elige: un escudo expuesto queda fuera de servicio o −2 Armor Slots máximos hasta Repair All Armor.' : ''],
   ['sustained-fire', (dc, ctx) => ctx.hit ? 'Sustained Fire: en tu próximo Spotlight, sin moverte y con el objetivo a tu alcance, gasta tu Acción para repetir este daño sin tirar.' : ''],

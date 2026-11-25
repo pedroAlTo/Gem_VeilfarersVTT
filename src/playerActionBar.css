@@ -172,3 +172,11 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 /* Reload / Charge-Up (v2.45.0): a spent or uncharged weapon shows the Action that readies it. */
 .pab-weapon-unready { border-style: dashed !important; opacity: .9; }
 .pab-weapon-unready span { color: #fde68a; }
+/* Areas and second targets (v2.46.0). */
+.pab-area { display: grid; gap: 4px; margin-top: 6px; }
+.pab-area ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pab-area li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.pab-area li.done { opacity: .6; }
+.pab-follow { margin-top: 6px; }
+.pab-area.waiting button { opacity: .5; pointer-events: none; }
+.pab-wait { font-size: 11px; color: #fde68a; margin-right: 6px; }

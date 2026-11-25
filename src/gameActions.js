@@ -8,7 +8,7 @@ import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardR
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
-import { weaponRangeBand, rollAdversaryCheck, distanceInfo } from './attackFlow.js';
+import { weaponRangeBand, rollAdversaryCheck, distanceInfo, rangeCheck } from './attackFlow.js';
 import { finite } from './validation.js';
 import { normalizeConditions, specialState, SPECIAL_PREFIX } from './conditions.js';
 import { isPartyToken } from './tokenPermissions.js';
@@ -20,7 +20,10 @@ import { cardData } from './cardData.js';
 import { handoffControl, isDroneToken, droneSignal as signalOf } from './drones.js';
 import { droneCompatible } from './dronePowers.js';
 import { tokenInventory, validateInventory } from './equipment.js';
-import { weaponAttackEdge, afterAttackStress, weaponDamageRiders, weaponReadiness, afterShot } from './weaponFeatures.js';
+import { weaponAttackEdge, afterAttackStress, weaponDamageRiders, weaponReadiness, afterShot, FOLLOW_UPS, wielderEvasion, areaProcedure, zoneTargets } from './weaponFeatures.js';
+import { npcSave } from './weaponAftermath.js';
+import { hasTag } from './weaponTags.js';
+import { droneEvasion } from './drones.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear, wearArmor } from './gear.js';
 import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName, uncannyAccess, uncannyChoices, editArchive } from './loadoutCards.js';
@@ -101,6 +104,98 @@ function resolveGameAction(action, store) {
     return { actorId: actor.id, conditions };
   }
   if (action.type === 'FTL') return resolveJump(store, actor, action, resolveGameAction);
+  // A second target or a second attack after an attack (v2.46.0): Automatic, Salvo Fire, Arc,
+  // Cleave, Quick. The table checks the attack, the weapon, the distances and pays the Stress;
+  // Automatic and Salvo Fire compare the same attack total with the new target's Evasion.
+  if (action.type === 'WEAPON_FOLLOWUP') {
+    requireActive(actor);
+    const kind = String(action.kind ?? ''), rule = FOLLOW_UPS[kind];
+    if (!rule) throw new Error('Propiedad de arma desconocida.');
+    const record = lastRoll.get(rollKey);
+    if (!record || record.id !== action.checkId || !record.attackTargetId || record.mapId !== store.state.activeMapId) throw new Error('Ese ataque ya no está pendiente.');
+    const weapon = tokenInventory(actor).weapons.find(w => w.id === String(action.weaponId ?? ''));
+    if (!weapon || !hasTag(weapon, kind)) throw new Error(`El arma no tiene ${rule.label}.`);
+    if ((record.followUps || []).includes(kind)) throw new Error(`${rule.label} ya se usó en este ataque.`);
+    if (rule.hit && !record.hitTarget) throw new Error(`${rule.label} necesita un impacto.`);
+    if (rule.melee && weaponRangeBand(weapon) !== 'Melee') throw new Error('Cleave es de un arma Melee.');
+    // A new attack needs the weapon ready (Reload, Charge-Up) before anything is paid.
+    if (rule.attack && !weaponReadiness(weapon).ready) throw new Error(weaponReadiness(weapon).reason);
+    const map = store.getActiveMap?.() || {}, primary = store.state.tokens.find(t => t.id === record.attackTargetId);
+    const target = store.state.tokens.find(t => t.id === String(action.targetId ?? '') && t.mapId === actor.mapId && !t.inReserve);
+    if (!primary || !target) throw new Error('El objetivo ya no está en la escena.');
+    if (rule.sameTarget && target.id !== primary.id) throw new Error('Quick ataca otra vez al mismo objetivo.');
+    if (rule.other && (target.id === primary.id || target.id === actor.id)) throw new Error('Elige otro objetivo distinto del primero.');
+    const order = ['Melee', 'Very Close', 'Close', 'Far', 'Extreme'];
+    if (rule.near && order.indexOf(distanceInfo(primary, target, map).band) > order.indexOf(rule.near)) throw new Error(`${rule.label}: el segundo objetivo debe estar a ${rule.near} del primero.`);
+    if ((rule.same || rule.attack) && !rule.sameTarget) {
+      const reach = rangeCheck(weapon, distanceInfo(actor, target, map).band);
+      if (!reach.allowed) throw new Error(reach.reason || 'Fuera del alcance del arma.');
+    }
+    const patch = {};
+    if (rule.stress) {
+      const stress = actor.stress || { current: 0, max: 0 };
+      if (stress.max > 0 && (stress.current || 0) + rule.stress > stress.max) throw new Error(`${rule.label} cuesta ${rule.stress} Stress y no queda ninguno libre.`);
+      patch.stress = { ...stress, current: (stress.current || 0) + rule.stress };
+    }
+    if (Object.keys(patch).length) store.updateToken(actor.id, patch);
+    record.followUps = [...(record.followUps || []), kind];
+    const out = { kind, targetId: target.id, primaryId: primary.id, critical: !!record.isCritical, total: record.total };
+    if (rule.same) {
+      const melee = weaponRangeBand(weapon) === 'Melee';
+      out.evasion = droneEvasion(target) + wielderEvasion(tokenInventory(target).weapons, { melee }).mod;
+      out.hit = !!record.isCritical || record.total >= out.evasion;
+    }
+    const said = rule.same ? `${record.total} contra la Evasion ${out.evasion} de ${target.name}: ${out.hit ? 'impacta' : 'falla'}` : rule.half ? `${target.name} recibe la mitad del daño, sin tirada` : rule.sameTarget ? `segundo ataque contra ${target.name}` : `otro ataque contra ${target.name}`;
+    store.addLog({ sender: actor.name, type: 'EFFECT', title: `${rule.label} · ${weapon.name}`, details: `${said}${rule.stress ? ` (marca ${rule.stress} Stress)` : ''}.` });
+    if (actor.isPlayer !== false) grantActorSpotlight(store, actor.id);
+    return out;
+  }
+  // Areas and Psionic (v2.46.0). «save»: Explosive, Area (band), Dispersal Wave and Psionic have no
+  // attack roll: every creature in the zone makes its Reaction Roll (an NPC here, with the d20s the
+  // client threw in 3D; a character's player rolls it and chooses). «attack»: Spray and Waveform
+  // compare the attack just made with the Evasion of everyone else in the cone.
+  if (action.type === 'WEAPON_AREA') {
+    requireActive(actor);
+    const inventory = tokenInventory(actor), weapon = inventory.weapons.find(w => w.id === String(action.weaponId ?? ''));
+    const procedure = areaProcedure(weapon);
+    if (!weapon || !procedure) throw new Error('Esa arma no tiene un área ni es Psionic.');
+    const map = store.getActiveMap?.() || {}, distance = (a, b) => distanceInfo(a, b, map);
+    if (procedure.mode === 'attack') {
+      const record = lastRoll.get(rollKey);
+      if (!record || record.id !== action.checkId || !record.attackTargetId || record.mapId !== store.state.activeMapId) throw new Error('Ese ataque ya no está pendiente.');
+      if (record.cone) throw new Error(`${procedure.label} ya se resolvió en este ataque.`);
+      record.cone = true;
+      const primary = store.state.tokens.find(t => t.id === record.attackTargetId);
+      const melee = weaponRangeBand(weapon) === 'Melee';
+      const items = zoneTargets(store.state.tokens, actor, primary, procedure, distance).filter(t => t.id !== primary.id).map(t => {
+        const evasion = droneEvasion(t) + wielderEvasion(tokenInventory(t).weapons, { melee }).mod;
+        return { targetId: t.id, name: t.name, evasion, share: record.isCritical || record.total >= evasion ? 1 : 0 };
+      });
+      store.addLog({ sender: actor.name, type: 'EFFECT', title: `${procedure.label} · ${weapon.name}`, details: items.length ? `${record.total} contra ${items.map(i => `${i.name} (Evasion ${i.evasion}: ${i.share ? 'impacta' : 'falla'})`).join(', ')}.` : 'Nadie más en el cono.' });
+      return { kind: procedure.kind, label: procedure.label, mode: 'attack', critical: !!record.isCritical, items };
+    }
+    const readiness = weaponReadiness(weapon);
+    if (!readiness.ready) throw new Error(readiness.reason);
+    const impact = store.state.tokens.find(t => t.id === String(action.targetId ?? '') && t.mapId === actor.mapId && !t.inReserve);
+    if (!impact) throw new Error('El objetivo ya no está en la escena.');
+    const reach = rangeCheck(weapon, distanceInfo(actor, impact, map).band);
+    if (!reach.allowed) throw new Error(reach.reason || 'Fuera del alcance del arma.');
+    const faces = (Array.isArray(action.faces) ? action.faces : []).slice(0, 30).filter(f => Number.isInteger(f) && f >= 1 && f <= 20);
+    const items = zoneTargets(store.state.tokens, actor, impact, procedure, distance).map(t => {
+      if (t.isPlayer !== false || isPartyToken(t)) return { targetId: t.id, name: t.name, share: null, player: true };
+      const { trait, roll, failed } = npcSave(t, procedure, [faces.shift()]);
+      return { targetId: t.id, name: t.name, share: failed ? 1 : procedure.success, math: `${trait[0].toUpperCase() + trait.slice(1)} ${roll.total} vs CD ${procedure.dc}`, failed };
+    });
+    const shot = afterShot(weapon);
+    const patch = shot.spent !== weapon.spent || shot.charged !== weapon.charged ? { inventory: { ...inventory, weapons: inventory.weapons.map(w => w.id === weapon.id ? shot : w) } } : {};
+    if (Object.keys(patch).length) store.updateToken(actor.id, patch);
+    if (actor.isPlayer !== false) grantActorSpotlight(store, actor.id);
+    const share = s => s === 1 ? 'daño completo' : s === 0.5 ? 'la mitad' : 'sin daño';
+    const trait = procedure.traits.map(t => t[0].toUpperCase() + t.slice(1)).join(' o ');
+    store.addLog({ sender: actor.name, ...(secret ? { visibility: 'keeper' } : {}), type: 'EFFECT', title: `${procedure.label} · ${weapon.name}`,
+      details: items.map(i => i.player ? `${i.name} tira ${trait} contra CD ${procedure.dc} y elige` : `${i.name}: ${i.math} → ${i.failed ? 'falla' : 'resiste'}, ${share(i.share)}`).join(' · ') + '.' });
+    return { kind: procedure.kind, label: procedure.label, mode: 'save', dc: procedure.dc, traits: procedure.traits, success: procedure.success, impactId: impact.id, items };
+  }
   // Reload or charge a weapon (v2.45.0): an Action, so it takes the Spotlight.
   if (action.type === 'WEAPON_READY') {
     requireActive(actor);

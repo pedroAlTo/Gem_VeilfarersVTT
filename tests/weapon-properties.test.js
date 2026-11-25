@@ -220,3 +220,74 @@ test('Paired, Non-Lethal, Reload and Charge-Up at the table', async () => {
   s.updateToken('pc', { x: 64 + 64 });
   assert.equal(s.state.tokens.find(t => t.id === 'pc').inventory.weapons[0].charged, false);
 });
+
+// v2.46.0 (fase 4, third part): a second target or a second attack.
+test('Automatic, Salvo Fire, Arc, Cleave and Quick after an attack, as the books print them', async () => {
+  const { availableFollowUps } = await import('../src/weaponFeatures.js');
+  assert.deepEqual(availableFollowUps({ tags: ['automatic', 'quick'] }, { hit: false }).map(f => f.id), ['quick'], 'Quick also after a miss');
+  assert.deepEqual(availableFollowUps({ tags: ['automatic', 'quick'] }, { hit: true, used: ['quick'] }).map(f => f.id), ['automatic']);
+  assert.deepEqual(availableFollowUps({ tags: ['cleave'] }, { hit: true, melee: false }), [], 'Cleave needs a Melee hit');
+
+  const foe = (id, x, patch = {}) => ({ ...pc(id), isPlayer: false, actorType: 'adversary', x, evasion: 8, ...patch });
+  const follow = (s, kind, targetId, checkId, weaponId = 'smg') => performGameAction({ type: 'WEAPON_FOLLOWUP', actorId: 'pc', kind, checkId, weaponId, targetId }, s);
+  // Automatic: same total (9 + 1 = 10 here) against a second target within Very Close of the first.
+  const s = table({ ...pc('pc', { traits: { agility: 1, strength: 2 } }), ...gun('smg', ['automatic', 'arc']) }, foe('foe', 128), foe('near', 192, { evasion: 12 }), foe('close', 128 + 64 * 4, { evasion: 6 }));
+  const hit = attack(s, 'smg', { dc: 8, forcedHope: 7, forcedFear: 2 });
+  assert.equal(hit.total, 10);
+  const auto = follow(s, 'automatic', 'near', hit.id);
+  assert.deepEqual([auto.hit, auto.evasion], [false, 12], 'the same result against its Evasion');
+  assert.equal(s.state.tokens.find(t => t.id === 'pc').stress.current, 1, 'Automatic costs 1 Stress');
+  assert.throws(() => follow(s, 'automatic', 'near', hit.id), /ya se usó/);
+  assert.throws(() => follow(s, 'arc', 'close', hit.id), /Very Close del primero/);
+  assert.throws(() => follow(s, 'arc', 'foe', hit.id), /otro objetivo/);
+  assert.equal(follow(s, 'arc', 'near', hit.id).kind, 'arc');
+  assert.equal(s.state.tokens.find(t => t.id === 'pc').stress.current, 1, 'Arc costs nothing');
+  assert.match(s.state.logs[0].details, /mitad del daño/);
+  // Quick: the same target; Cleave: a Melee hit, another target within reach.
+  const q = table({ ...pc('pc'), ...gun('knife', ['quick', 'cleave']) }, foe('foe', 128, { evasion: 5 }), foe('other', 128, { y: 128, evasion: 5 }));
+  q.state.tokens[0].inventory.weapons[0].range = 'Melee';
+  const swing = attack(q, 'knife', { dc: 5 });
+  assert.throws(() => follow(q, 'quick', 'other', swing.id, 'knife'), /mismo objetivo/);
+  assert.equal(follow(q, 'cleave', 'other', swing.id, 'knife').kind, 'cleave');
+  assert.equal(follow(q, 'quick', 'foe', swing.id, 'knife').kind, 'quick');
+  assert.equal(q.state.tokens.find(t => t.id === 'pc').stress.current, 1, 'Quick costs 1 Stress, Cleave nothing');
+  // Without the property or after another attack, nothing.
+  assert.throws(() => follow(q, 'automatic', 'other', swing.id, 'knife'), /no tiene Automatic/);
+  const next = attack(q, 'knife', { dc: 5 });
+  assert.throws(() => follow(q, 'cleave', 'other', swing.id, 'knife'), /ya no está pendiente/);
+  assert.equal(follow(q, 'cleave', 'other', next.id, 'knife').kind, 'cleave');
+});
+
+test('Explosive, Area, Psionic and Spray: who is in the zone and what each one takes', async () => {
+  const { zoneTargets, areaProcedure } = await import('../src/weaponFeatures.js');
+  const { distanceInfo } = await import('../src/attackFlow.js');
+  const foe = (id, x, y = 64, patch = {}) => ({ ...pc(id), isPlayer: false, actorType: 'adversary', x, y, attackModifier: 0, evasion: 9, ...patch });
+  // The grenade lands on «a» (6 squares away): «b» next to it, the ally «c» two squares from it, «far» out of the blast.
+  const tokens = [{ ...pc('pc') }, foe('a', 64 * 7), foe('b', 64 * 8), { ...pc('c'), x: 64 * 7, y: 64 * 3 }, foe('far', 64 * 13)];
+  const dist = (a, b) => distanceInfo(a, b, scene);
+  const blast = areaProcedure({ tags: ['explosive'] });
+  assert.deepEqual(zoneTargets(tokens, tokens[0], tokens[1], blast, dist).map(t => t.id).sort(), ['a', 'b', 'c'], 'Very Close of the impact, allies included');
+  assert.deepEqual(zoneTargets(tokens, tokens[0], tokens[1], areaProcedure({ tags: ['psionic'] }), dist).map(t => t.id), ['a'], 'Psionic: the target alone');
+  // A cone from the attacker towards «a2» (next to it): Spray reaches Very Close, Waveform Close.
+  const coneTokens = [...tokens, foe('a2', 64 * 3)];
+  assert.deepEqual(zoneTargets(coneTokens, coneTokens[0], coneTokens.at(-1), areaProcedure({ tags: ['spray'] }), dist).map(t => t.id), ['a2']);
+  assert.ok(zoneTargets(coneTokens, coneTokens[0], coneTokens.at(-1), areaProcedure({ tags: ['waveform'] }), dist).some(t => t.id === 'a'), 'a is in the Close cone');
+  assert.equal(zoneTargets(coneTokens, coneTokens[0], coneTokens.at(-1), areaProcedure({ tags: ['waveform'] }), dist).some(t => t.id === 'far'), false);
+
+  // At the table: the NPCs roll Agility with the d20s thrown (a: 3 fails, b: 18 resists); the ally chooses.
+  const s = table({ ...pc('pc', { traits: { agility: 1, strength: 2 } }), ...gun('nade', ['explosive']) }, ...tokens.slice(1));
+  s.state.tokens[0].inventory.weapons[0].range = 'Far';
+  const out = performGameAction({ type: 'WEAPON_AREA', actorId: 'pc', weaponId: 'nade', targetId: 'a', faces: [3, 18] }, s);
+  const by = Object.fromEntries(out.items.map(i => [i.targetId, i.share]));
+  assert.deepEqual(by, { a: 1, b: 0.5, c: null }, 'failure: in full; success: half; a character chooses');
+  assert.match(s.state.logs[0].details, /a: Agility 3 vs CD 10 → falla, daño completo · b: Agility 18 vs CD 10 → resiste, la mitad · c tira Agility/);
+  // Psionic: a success takes nothing.
+  const p = table({ ...pc('pc'), ...gun('mind', ['psionic']) }, foe('a', 128));
+  assert.deepEqual(performGameAction({ type: 'WEAPON_AREA', actorId: 'pc', weaponId: 'mind', targetId: 'a', faces: [19] }, p).items.map(i => i.share), [0]);
+  // Spray: the attack's total against everyone else in the Very Close cone.
+  const sp = table({ ...pc('pc', { traits: { agility: 1, strength: 2 } }), ...gun('spray', ['spray']) }, foe('a', 128), foe('b', 192, 80, { evasion: 20 }), foe('side', 64, 192));
+  const hit = performGameAction({ type: 'CHECK', actorId: 'pc', attack: true, targetId: 'a', weaponId: 'spray', options: { traitId: 'agility', dc: 9, forcedHope: 7, forcedFear: 2 } }, sp);
+  const cone = performGameAction({ type: 'WEAPON_AREA', actorId: 'pc', weaponId: 'spray', checkId: hit.id }, sp);
+  assert.deepEqual(cone.items.map(i => [i.targetId, i.share]), [['b', 0]], 'b is in the cone (side is not); 10 does not reach its Evasion 20');
+  assert.throws(() => performGameAction({ type: 'WEAPON_AREA', actorId: 'pc', weaponId: 'spray', checkId: hit.id }, sp), /ya se resolvió/);
+});

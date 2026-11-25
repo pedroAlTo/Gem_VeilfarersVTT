@@ -330,6 +330,28 @@ export class DiceRollerSidebar {
     return true;
   }
 
+  // The damage of a weapon against a second target with no new attack roll (Automatic, Salvo
+  // Fire: «roll damage separately»; v2.46.0). It is left in the panel and the bar, to be applied as
+  // any hit. `amount`: a damage already rolled, with the weapon's type (Arc: half of it; an area:
+  // the same roll for everyone, in full or half).
+  async followUpDamage(actorId, weaponId, targetId, { critical = false, amount = null } = {}) {
+    const actor = store.state.tokens.find(t => t.id === actorId), weapon = actor && tokenInventory(actor).weapons.find(w => w.id === weaponId);
+    if (!actor || !weapon) return false;
+    if (amount !== null) {
+      const type = damageTypeOf(weapon);
+      if (!this.prepareCardDamage(actorId, targetId, `${Math.max(0, Math.floor(amount))} ${type[0].toUpperCase() + type.slice(1)}`, this.rollVisibility() === 'keeper', { type }, { open: false })) return false;
+    } else {
+      if (!this.prepareWeapon(actorId, weaponId)) return false;
+      this.populateDamageTargets();
+      const select = this.container.querySelector('#dmg_target_select');
+      if (select) { select.value = targetId; select.onchange?.(); }
+      this.container.querySelector('#dmg_is_critical').checked = !!critical;
+    }
+    this.lastAttack = null;
+    await this.executeDamageCalc();
+    return true;
+  }
+
   prepareCardDamage(actorId, targetId, formula, secret, power = null, { open = true } = {}) {
     const q = selector => this.container.querySelector(selector);
     store.update({ selectedTokenId: actorId });

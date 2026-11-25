@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.45.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.45.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.45.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.45.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.46.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.46.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.46.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.46.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -159,6 +159,10 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.45.0.zip**. Abre **AYUDA
 144. **(V3) Salvación de un personaje.** El Keeper ataca a un personaje con un arma Stunning y aplica el daño: el registro dice «nombre tira Strength contra CD 10; si falla, Stunned» y no pone la condición (la tira el jugador).
 145. **(V3) Stagger, Continuous, Brittle.** Un arma con Stagger impacta: el objetivo muestra el reloj «Stagger · próxima acción» y su siguiente tirada lleva Desventaja y lo quita. Con Continuous, al darle el foco al objetivo marca 1 Stress y el reloj desaparece. Con Brittle, el siguiente impacto Physical contra él suma «Brittle 1d6».
 146. **(V3) Reload y Charge-Up.** Un arma Reload: tras disparar, su botón en la barra pasa a «Recargar»; pulsarlo la recarga (registro: «recarga…») y da el foco. Un arma Charge-Up empieza con «Cargar»; cargada dispara una vez; si el personaje se mueve antes de disparar, vuelve a «Cargar». Dos armas Paired en la mano: el daño suma «Paired +N». Un arma Non-Lethal deja al objetivo en 1 HP e Incapacitated.
+147. **(V3) Automatic y Arc.** Atacar con un arma Automatic a un enemigo que tiene otro al lado e impactar: en el resultado sale «Automatic · Segundo objetivo · 1 Stress», desactivado hasta aplicar el daño. Tras aplicarlo, pulsarlo, tocar dos veces al otro enemigo: la barra dice «Automatic: N contra Evasion X: impacta» y prepara su daño aparte; el atacante marca 1 Stress. Un objetivo a más de Very Close del primero se rechaza. Con Arc, el segundo recibe la mitad del daño, sin tirada y sin Stress.
+148. **(V3) Cleave y Quick.** Un arma Melee con Cleave: tras impactar, «Otro ataque a otro objetivo» abre un ataque normal contra otro a tu alcance (sin coste). Con Quick, «Segundo ataque» (1 Stress) ataca otra vez al mismo objetivo, también tras fallar. Cada opción una vez por ataque.
+149. **(V3) Granada (Explosive).** Atacar con un arma Explosive a un enemigo con otros cerca: no hay tirada de ataque; sale un d20 en 3D por cada adversario de la zona y el resultado lista quién falla (completo) o resiste (mitad). Un personaje en la zona muestra «Falla: completo / Resiste: mitad». Pulsar cada uno prepara su daño (la misma tirada para todos) y se aplica uno tras otro.
+150. **(V3) Psionic y Spray.** Un arma Psionic: el objetivo tira Presence contra la Feature DC; si resiste, «sin daño». Un arma Spray contra un enemigo con otro detrás en línea: tras el ataque, la barra lista al segundo con «impacta» o no según su Evasion, con el mismo daño.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 
