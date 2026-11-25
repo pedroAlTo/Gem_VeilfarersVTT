@@ -139,6 +139,9 @@ export function validEffectClocks(v) {
     && (c.rounds === undefined || (Number.isInteger(c.rounds) && c.rounds >= 1 && c.rounds <= 6))
     && (c.nextAction === undefined || typeof c.nextAction === 'boolean') && (c.brittle === undefined || typeof c.brittle === 'boolean')
     && (c.melting === undefined || typeof c.melting === 'boolean') && (c.dc === undefined || (Number.isInteger(c.dc) && c.dc >= 5 && c.dc <= 30))
+    // Power effects each round (v2.51.0): Energy Cascade on its targets, Inviolable Sanctum on the caster; a cost when it ends.
+    && (c.cascade === undefined || typeof c.cascade === 'boolean') && (c.sanctum === undefined || typeof c.sanctum === 'boolean')
+    && (c.endStress === undefined || (Number.isInteger(c.endStress) && c.endStress >= 1 && c.endStress <= 6))
     && (c.source === undefined || (typeof c.source === 'string' && c.source.length <= 80)));
 }
 

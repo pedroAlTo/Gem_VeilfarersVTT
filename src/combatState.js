@@ -122,6 +122,10 @@ export function combatTransition(previous, next, map) {
   return next;
 }
 
+// What happens when the round changes besides clearing clocks (v2.51.0): Power effects that act
+// each round (Energy Cascade, Inviolable Sanctum) register here (cardResolution.js).
+const roundHooks = new Set();
+export const onRoundChange = fn => { roundHooks.add(fn); return () => roundHooks.delete(fn); };
 export function nextSpotlightRound(store) {
   if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') throw new Error('Solo el Keeper puede cerrar la ronda.');
   const map = store.getActiveMap();
@@ -132,8 +136,14 @@ export function nextSpotlightRound(store) {
       if (t.mapId !== map.id) return t;
       const next = t.hasSpotlight ? { ...t, hasSpotlight: false, spotlight: { ...t.spotlight, enabled: false } } : t;
       // A clock that lasts several rounds (Stunned by a weapon: «cleared after the next round») counts one down.
-      return next.effectClocks?.some(c => c.expiry === 'round') ? { ...next, effectClocks: next.effectClocks.flatMap(c => c.expiry !== 'round' ? [c] : c.rounds > 1 ? [{ ...c, rounds: c.rounds - 1 }] : []) } : next;
+      if (!next.effectClocks?.some(c => c.expiry === 'round')) return next;
+      // A clock that ends with a cost (Solar Avatar: 2 Stress when the transformation ends).
+      const ending = next.effectClocks.filter(c => c.expiry === 'round' && !(c.rounds > 1) && c.endStress);
+      const cost = ending.reduce((n, c) => n + c.endStress, 0);
+      return { ...next, effectClocks: next.effectClocks.flatMap(c => c.expiry !== 'round' ? [c] : c.rounds > 1 ? [{ ...c, rounds: c.rounds - 1 }] : []),
+        ...(cost && next.stress ? { stress: { ...next.stress, current: next.stress.max > 0 ? Math.min(next.stress.max, (next.stress.current || 0) + cost) : (next.stress.current || 0) + cost } } : {}) };
     })
   });
   store.addLog({ sender: 'Keeper', type: 'ROUND', title: `Ronda ${round}`, details: map.name });
+  for (const hook of roundHooks) { try { hook(store, round); } catch (error) { console.warn('Round effect:', error); } }
 }

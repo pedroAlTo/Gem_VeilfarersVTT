@@ -86,10 +86,39 @@ if (typeof window !== 'undefined') {
 // Rapid Regeneration as a reaction (v2.38.0): after a character loses HP, it lights up for whoever
 // can use it (the target or an ally in Very Close, with it in the Loadout and 1 Hope). The first
 // to accept plays it on that character, paid and resolved by the table.
-export async function offerAfterDamage(targetId) {
+// Neural Feedback (v2.51.0, fase 3): when an adversary within Close deals HP damage to a character
+// who holds it, the card lights up for that player. Using it casts it at the attacker: the Spellcast
+// (Presence DC 15) is thrown in 3D at the table, then its procedure (damage, Instinct DC 15 or
+// Vulnerable) runs like any Power.
+export async function offerNeuralFeedback(target, attackerId, data, characterCards) {
+  const attacker = store.state.tokens.find(t => t.id === attackerId);
+  if (!attacker || attacker.isPlayer !== false || target.isPlayer === false) return null;
+  const [{ distanceInfo, RANGE_BANDS }, { isPartyToken }] = await Promise.all([import('./attackFlow.js'), import('./tokenPermissions.js')]);
+  if (isPartyToken(attacker) || RANGE_BANDS.indexOf(distanceInfo(target, attacker, store.getActiveMap?.() || {}).band) > RANGE_BANDS.indexOf('Close')) return null;
+  const card = characterCards(target, data).find(c => c.name === 'Neural Feedback' && c.playable);
+  if (!card) return null;
+  let done = false;
+  const offerId = sendOffer({ name: 'Neural Feedback', reactors: [{ id: target.id, name: target.name }], text: `${attacker.name} te ha hecho daño a Close. Neural Feedback: Presence DC 15; si sale, (Proficiency)d8 Void y Instinct DC 15 o queda Vulnerable.`, cost: card.costText || 'Reacción' }, async ({ use }) => {
+    if (!use || done) return;
+    done = true; closeOffer(offerId);
+    try {
+      const play = await network.requestAction({ type: 'CARD_PLAY', actorId: target.id, cardId: card.id, targetIds: [attacker.id] });
+      const { throwDice } = await import('./tableDice.js');
+      const [hope, fear] = await throwDice([{ qty: 1, sides: 12, role: 'Hope' }, { qty: 1, sides: 12, role: 'Fear' }], { label: `Neural Feedback · ${target.name}`, actor: target });
+      await network.requestAction({ type: 'CHECK', actorId: target.id, cardPlayId: play.id, options: { traitId: 'presence', dc: 15, forcedHope: hope, forcedFear: fear } });
+      const { resolutionLog } = await import('./cardResolution.js');
+      const record = resolutionLog(store, play.id)?.resolution;
+      if (record?.damagePending?.length) window.veilDiceRoller?.autoPowerDamage(target, record);
+    } catch (error) { (await import('./ui.js')).notify(error.message, 'error'); }
+  });
+  return offerId;
+}
+
+export async function offerAfterDamage(targetId, attackerId = '') {
   const [{ reactorsFor }, { cardData }, { characterCards }] = await Promise.all([import('./powerReactions.js'), import('./cardData.js'), import('./loadoutCards.js')]);
   const target = store.state.tokens.find(t => t.id === targetId), data = cardData();
   if (!target || !data) return null;
+  void offerNeuralFeedback(target, attackerId, data, characterCards);
   const reactors = reactorsFor('Rapid Regeneration', target, store.state.tokens, store.getActiveMap?.(), data);
   if (!reactors.length) return null;
   let done = false;

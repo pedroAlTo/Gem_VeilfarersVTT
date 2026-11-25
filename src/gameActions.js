@@ -22,6 +22,7 @@ import { droneCompatible } from './dronePowers.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { weaponAttackEdge, afterAttackStress, weaponDamageRiders, weaponReadiness, afterShot, FOLLOW_UPS, wielderEvasion, areaProcedure, zoneTargets } from './weaponFeatures.js';
 import { npcSave } from './weaponAftermath.js';
+import { rollCalc } from './logCalc.js';
 import { PROCEDURES, procedureFor } from './powerProcedures.js';
 import { hasTag } from './weaponTags.js';
 import { droneEvasion } from './drones.js';
@@ -195,8 +196,9 @@ function resolveGameAction(action, store) {
     if (actor.isPlayer !== false) grantActorSpotlight(store, actor.id);
     const share = s => s === 1 ? 'daño completo' : s === 0.5 ? 'la mitad' : 'sin daño';
     const trait = procedure.traits.map(t => t[0].toUpperCase() + t.slice(1)).join(' o ');
+    const areaLines = items.map(i => i.player ? `${i.name} tira ${trait} contra CD ${procedure.dc} y elige` : `${i.name}: ${i.math} → ${i.failed ? 'falla' : 'resiste'}, ${share(i.share)}`);
     store.addLog({ sender: actor.name, ...(secret ? { visibility: 'keeper' } : {}), type: 'EFFECT', title: `${procedure.label} · ${weapon.name}`,
-      details: items.map(i => i.player ? `${i.name} tira ${trait} contra CD ${procedure.dc} y elige` : `${i.name}: ${i.math} → ${i.failed ? 'falla' : 'resiste'}, ${share(i.share)}`).join(' · ') + '.' });
+      details: areaLines.join(' · ') + '.', calc: [`${procedure.label}: ${procedure.around ? `todos a ${procedure.around} de ${impact.name}` : procedure.cone ? `cono ${procedure.cone}` : impact.name}`, `Reaction Roll: ${trait} contra CD ${procedure.dc} (falla: daño completo; acierta: ${share(procedure.success)})`, ...areaLines] });
     return { kind: procedure.kind, label: procedure.label, mode: 'save', dc: procedure.dc, traits: procedure.traits, success: procedure.success, impactId: impact.id, items };
   }
   // Reload or charge a weapon (v2.45.0): an Action, so it takes the Spotlight.
@@ -290,13 +292,16 @@ function resolveGameAction(action, store) {
   if (action.type === 'CARD_EFFECT') {
     const row = resolutionLog(store, String(action.playId ?? '')), record = row?.resolution;
     if (!record || record.actorId !== actor.id || !Array.isArray(record.effectPending) || !record.effectPending.length || record.mapId !== store.state.activeMapId) throw new Error('Esta carta no espera su curación.');
+    const calc = [];
     const said = record.effectPending.map((heal, i) => {
       const [qty, sides] = String(heal.dice).split('d').map(Number);
       const faces = Array.isArray(action.faces?.[i]) && validFaces(action.faces[i], qty, sides) ? action.faces[i] : Array.from({ length: qty }, () => 1 + Math.floor(Math.random() * sides));
+      calc.push(`${heal.dice}: [${faces.join(', ')}] = ${faces.reduce((a, b) => a + b, 0)} HP${heal.stress ? ` y −${heal.stress} Stress` : ''}`);
       return applyHeal(store, record, heal, faces.reduce((a, b) => a + b, 0));
     }).filter(Boolean).join(' ');
+    calc.push(said);
     updateResolution(store, record.id, { effectPending: null, notes: [...(record.notes || []).filter(n => n !== 'Ahora se tira la curación.'), said].filter(Boolean) });
-    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + record.name + ' · curación', details: said };
+    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + record.name + ' · curación', details: said, calc };
     store.addLog(log);
     return { id: newId(), actorId: actor.id, log, summary: said };
   }
@@ -849,6 +854,8 @@ function resolveGameAction(action, store) {
       title: `${actor.name}: ${result.outcomeTitle}`,
       details: `${checkMath(result)} vs DC ${result.dc}. ${result.pathPayout}${weaponNotes.length ? ' ' + weaponNotes.join(' ') : ''}`,
       resultType: result.resultType,
+      // The full calculation, shown under «Ver cálculo» (v2.51.0).
+      calc: rollCalc({ ...result, attack: !!ownAttack }, [...(edge.advantage ? ['Ventaja por: ' + (o.hasAdvantage ? 'elegida' : 'efectos o condiciones')] : []), ...(edge.disadvantage ? ['Desventaja por: ' + (o.hasDisadvantage ? 'elegida o alcance' : 'efectos, condiciones o el arma')] : []), ...powerNotes, ...weaponNotes]),
     };
     store.addLog(log);
     return { ...record, log };

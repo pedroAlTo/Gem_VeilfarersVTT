@@ -1,6 +1,22 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.51.0', date: '2026-11-25', title: 'V3 · Cálculo desplegable en el registro, ajuste de daño del Keeper y Poderes por ronda (Fase 3, tercera parte)',
+    sections: [
+      { title: 'Registro', items: [
+        'Cada tirada, daño y efecto automático lleva en el registro «Ver cálculo»: se despliega con todo el detalle. En una tirada: los dados de Hope y Fear (o el d20 del Keeper), cada modificador, Ventaja o Desventaja y por qué, el total contra la DC o la Evasion y el pago. En un daño: los dados con sus caras, el modificador fijo, los extras (Sneak Attack, Burst Fire…), el daño bruto, los umbrales con la penetración, la gravedad, los escudos, el Brace, los HP perdidos, el Stress y las condiciones. También en las salvaciones de las armas, los ataques de los adversarios, las áreas y las curaciones. Lo abierto sigue abierto al llegar entradas nuevas.',
+      ] },
+      { title: 'Ventana de daño del Keeper', items: [
+        'Nuevo «Ajustar HP perdidos» (− / +) junto a los escudos: el Keeper regula el daño antes de aplicarlo, de 0 a todo lo que le queda al objetivo. Funciona con sus propios ataques y con los que le envían los jugadores, y el ajuste queda en el registro y en su cálculo.',
+      ] },
+      { title: 'Poderes que actúan en otro momento', items: [
+        'Neural Feedback: cuando un adversario a Close te hace daño de HP, la carta se ilumina; al usarla se tira Presence DC 15 en 3D y, si sale, el adversario recibe (Proficiency)d8 Void y tira Instinct DC 15 o queda Vulnerable.',
+        'Energy Cascade: al empezar cada ronda («Nueva ronda»), cada enemigo afectado tira Agility DC 15 (el Keeper, con «Tirar adversarios») y quien falla recibe (Proficiency)d8 Physical (Kinetic), +1 por cada ronda que pasa; la pantalla del Keeper prepara ese daño sola. Dura 10 rondas o la escena; si fallas al lanzarlo, os afecta a ti y a tus aliados.',
+        'Inviolable Sanctum: al cambiar de ronda, los aliados a Close de quien lo lanzó limpian 1 Stress. Hivemind Convergence fallado: cada aliado marca 1 Stress y queda Dazed. Solar Avatar: tres rondas y, al terminar, quien lo lanzó marca 2 Stress.',
+      ] },
+    ],
+  },
+  {
     version: '2.50.0', date: '2026-11-25', title: 'V3 · Vanish automático y más Poderes con ficha (Fase 3, segunda parte)',
     sections: [
       { title: 'Vanish', items: [

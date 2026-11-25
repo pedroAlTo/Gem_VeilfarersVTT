@@ -20,7 +20,8 @@
 //            { do: 'clock', to, clock }                       an effect clock (condition, edge…)
 //            { do: 'mark', to, stress, hp }                   Stress or direct HP marked
 //            { do: 'note', text }
-//   to       'targets' (default) | 'enemies' | 'allies' | 'self'
+//   to       'targets' (default) | 'enemies' | 'allies' | 'self' | 'ownSide' (the caster and its
+//            allies within the zone's reach: a failed cast turned against them)
 //   dice     'P*d10' (Proficiency × d10), 'P2*d8' (Proficiency × 2 × d8), '3d8', '1d4'
 //   modes    { Name: { …the same fields… } }, the first is the default (Básico)
 const STUN_NEXT = name => ({ name: name + ' · Stunned', condition: 'Stunned', expiry: 'spotlight-end' });
@@ -35,6 +36,10 @@ export const PROCEDURES = {
       { do: 'note', text: 'Una criatura Veil-Touched o Void tira Instinct DC 15: si falla, Dazed y sin Poderes Void hasta el final de su próximo Spotlight.' }] },
   'Bio-Integration': { target: { who: 'party', reach: 'Melee', self: true },
     failure: [{ do: 'mark', hp: 1, stress: 1 }] },
+  // Neural Feedback: a Reaction when an adversary within Close deals HP damage to you (offered then).
+  'Neural Feedback': { target: { who: 'creature', reach: 'Close', self: false },
+    success: [{ do: 'damage', dice: 'P*d8', type: 'void' },
+      { do: 'save', trait: 'instinct', dc: 15, fail: { clock: { name: 'Neural Feedback · Vulnerable', condition: 'Vulnerable', expiry: 'spotlight-end' } }, failText: 'Vulnerable hasta el final de su próximo Spotlight' }] },
   // ── Level 5 ──
   'Mind Spike': { target: { who: 'creature', reach: 'Far', self: false },
     success: [{ do: 'damage', dice: 'P*d12', type: 'void', noArmor: true },
@@ -60,6 +65,11 @@ export const PROCEDURES = {
   'Photonic Detonation': { zone: { shape: 'cone', reach: 'Close', who: 'creatures' },
     success: [{ do: 'damage', dice: 'P*d10', type: 'energy', tag: 'Radiant' },
       { do: 'save', trait: 'agility', dc: 15, fail: { clock: { name: 'Photonic Detonation · Blinded', condition: 'Blinded', expiry: 'round' } }, failText: 'Blinded hasta el cambio de ronda' }] },
+  // Energy Cascade: each round, every affected target rolls Agility DC 15 or takes the damage (+1 each round).
+  'Energy Cascade': { zone: { shape: 'around', reach: 'Far', who: 'enemies' },
+    success: [{ do: 'clock', to: 'enemies', clock: { name: 'Energy Cascade', cascade: true, dc: 15, segments: 10 } },
+      { do: 'note', text: 'Al empezar cada ronda, cada objetivo tira Agility DC 15: si falla, recibe (Proficiency)d8 Physical (Kinetic), +1 por ronda, y se aleja una banda.' }],
+    failure: [{ do: 'clock', to: 'ownSide', clock: { name: 'Energy Cascade', cascade: true, dc: 15, segments: 10 } }, { do: 'note', text: 'Fallo: la cascada os afecta a ti y a tus aliados.' }] },
   // ── Level 7 ──
   'Orbital Lance': { zone: { shape: 'point', reach: 'Extreme', size: 'Very Close', who: 'creatures' },
     success: [{ do: 'damage', dice: '4d10', type: 'physical', tag: 'Kinetic' }],
@@ -81,7 +91,14 @@ export const PROCEDURES = {
   'Temporal Maelstrom': { zone: { shape: 'around', reach: 'Close', who: 'creatures', self: true },
     success: [{ do: 'clock', to: 'targets', clock: { name: 'Temporal Maelstrom · Desventaja', edge: 'disadvantage', allRolls: true } }],
     failure: [{ do: 'note', text: 'Fallo: sufres los efectos de la Veil Storm hasta limpiar 2 Stress.' }] },
+  'Inviolable Sanctum': { success: [{ do: 'clock', to: 'self', clock: { name: 'Inviolable Sanctum', sanctum: true } },
+    { do: 'note', text: 'Cúpula a Close: nada la cruza sin tu permiso. Los aliados dentro limpian 1 Stress al final de cada ronda mientras dure (hasta 1 minuto o hasta romper la concentración).' }] },
+  'Hivemind Convergence': { zone: { shape: 'around', reach: 'Far', who: 'allies', max: 6, self: true },
+    success: [{ do: 'note', text: 'Mentes unidas la escena: Ventaja al ayudar a otro y una reserva común de 1d6 HP temporales.' }],
+    failure: [{ do: 'mark', to: 'allies', stress: 1 }, { do: 'clock', to: 'allies', clock: { name: 'Hivemind Convergence · Dazed', condition: 'Dazed', edge: 'disadvantage', nextAction: true } }] },
   // ── Level 8 ──
+  'Solar Avatar': { success: [{ do: 'clock', to: 'self', clock: { name: 'Solar Avatar', expiry: 'round', rounds: 3, endStress: 2 } },
+    { do: 'note', text: 'Tres rondas: vuelas, eres inmune al daño Physical, tus ataques Lux marcan 1 HP más (hasta 4) y das luz brillante a Far. Al terminar, marcas 2 Stress (la mesa lo hace).' }] },
   'Omniscient Eye': { success: [{ do: 'clock', to: 'self', clock: { name: 'Omniscient Eye · Vulnerable', condition: 'Vulnerable' } }] },
   'Psychic Collapse': { target: { who: 'creature', reach: 'Extreme', self: false },
     success: [{ do: 'damage', dice: '3d8', type: 'void', noArmor: true },

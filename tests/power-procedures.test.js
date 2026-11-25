@@ -186,3 +186,64 @@ test('second batch: Rallying Cry, Beacon of Resurrection, Apotheosis and Psychic
   const clock = get(f, 'caster').effectClocks.find(c => c.allRolls);
   assert.ok(clock && clock.rounds >= 1 && clock.rounds <= 4);
 });
+
+test('third batch: Neural Feedback, Energy Cascade each round, Inviolable Sanctum, Hivemind Convergence and Solar Avatar', () => {
+  // Neural Feedback at the attacker within Close: damage, then Instinct DC 15 or Vulnerable.
+  const n = table(withPower('Neural Feedback'), hostile('e', { x: 128 }));
+  const nf = play(n, 'Neural Feedback', { targetIds: ['e'] });
+  cast(n, nf.id, 'presence', 15, 11, 5);
+  const nr = record(n, nf.id);
+  assert.deepEqual(nr.damagePending[0].targetIds, ['e']);
+  reply(n, nf.id, nr.replies[0].id, 'e', 'instinct', 15, 2);
+  assert.ok(visibleConditions(get(n, 'e')).includes('Vulnerable'));
+  // Energy Cascade: each round a card entry asks Agility DC 15 of every affected enemy; +1 damage per round.
+  const c = table(withPower('Energy Cascade', { hope: 6 }), hostile('a', { x: 64 * 6 }), hostile('b', { x: 64 * 8 }), actor('ally', { x: 128 }));
+  const ec = play(c, 'Energy Cascade');
+  cast(c, ec.id, 'strength', 20, 12, 10);
+  assert.deepEqual(c.state.tokens.filter(t => t.effectClocks?.some(x => x.cascade)).map(t => t.id).sort(), ['a', 'b']);
+  nextSpotlightRound(c);
+  const first = c.state.logs.find(l => l.resolution?.name === 'Energy Cascade' && l.resolution.replies?.length).resolution;
+  assert.deepEqual(first.replies.map(r => [r.actorId, r.traitId, r.dc]).sort(), [['a', 'agility', 15], ['b', 'agility', 15]]);
+  assert.equal(first.saveFailure.damage.formula, '2d8');
+  reply(c, first.id, first.replies.find(r => r.actorId === 'a').id, 'a', 'agility', 15, 2);
+  assert.match(record(c, first.id).replies.find(r => r.actorId === 'a').consequence, /2d8 Physical \(Kinetic\)/);
+  nextSpotlightRound(c);
+  assert.equal(c.state.logs.find(l => l.resolution?.name === 'Energy Cascade' && l.resolution.replies?.length).resolution.saveFailure.damage.formula, '2d8+1', '+1 the next round');
+  // Inviolable Sanctum: the allies within Close clear 1 Stress when the round changes.
+  const sn = table(withPower('Inviolable Sanctum', { hope: 6 }), actor('ally', { x: 128, stress: { current: 3, max: 6 } }), actor('far', { x: 64 * 12, stress: { current: 3, max: 6 } }));
+  const sanc = play(sn, 'Inviolable Sanctum');
+  cast(sn, sanc.id, 'presence', 20, 12, 10);
+  nextSpotlightRound(sn);
+  assert.equal(get(sn, 'ally').stress.current, 2); assert.equal(get(sn, 'far').stress.current, 3);
+  // Hivemind Convergence failed: each intended target marks 1 Stress and is Dazed.
+  const h = table(withPower('Hivemind Convergence', { hope: 6 }), actor('ally', { x: 128, stress: { current: 0, max: 6 } }));
+  const hv = play(h, 'Hivemind Convergence');
+  cast(h, hv.id, 'presence', 20, 2, 3);
+  assert.equal(get(h, 'ally').stress.current, 1); assert.ok(visibleConditions(get(h, 'ally')).includes('Dazed'));
+  // Solar Avatar: three rounds, then 2 Stress.
+  const sa = table(withPower('Solar Avatar', { hope: 6 }));
+  const av = play(sa, 'Solar Avatar');
+  cast(sa, av.id, 'presence', 25, 12, 12);
+  const before = get(sa, 'caster').stress.current;
+  nextSpotlightRound(sa); nextSpotlightRound(sa);
+  assert.ok(get(sa, 'caster').effectClocks.some(x => x.name === 'Solar Avatar'), 'still on after two rounds');
+  nextSpotlightRound(sa);
+  assert.equal(get(sa, 'caster').effectClocks.some(x => x.name === 'Solar Avatar'), false);
+  assert.equal(get(sa, 'caster').stress.current, before + 2, '2 Stress when it ends');
+});
+
+test('the log keeps the full calculation of a roll and of a damage (user request)', async () => {
+  const { rollCalc, damageCalc, validCalc } = await import('../src/logCalc.js');
+  const lines = rollCalc({ hopeVal: 9, fearVal: 4, traitName: 'agility', traitMod: 2, experienceMod: 2, experienceLabel: 'Piloto', advVal: 3, total: 20, dc: 12, outcomeTitle: 'SUCCESS WITH HOPE', pathPayout: '+1 Hope', attack: true });
+  assert.deepEqual(lines, ['Hope d12: 9 · Fear d12: 4', 'Agility: + 2', 'Experience (Piloto): + 2', 'Ventaja d6: + 3', 'Total 20 contra Evasion 12 → SUCCESS WITH HOPE', '+1 Hope']);
+  const dmg = damageCalc({ result: { rolls: [4, 6], baseDiceTotal: 10, flatModifier: 2, rawDamage: 12, effectiveDamage: 12, targetMajorThreshold: 8, targetSevereThreshold: 14, penetration: 2, damageType: 'energy', effectiveMajor: 6, effectiveSevere: 12, baseSeverity: 'Severe', finalSeverity: 'Major' },
+    sides: [6, 6], proficiency: 2, spent: 1, armorLeft: 1, hpLost: 2, hpBefore: 6, hpAfter: 4, hpMax: 6, type: 'energy' });
+  assert.ok(dmg.includes('Dados: d6 [4] + d6 [6] = 10 (Proficiency 2)'));
+  assert.ok(dmg.includes('Umbrales: Major 8 / Severe 14 − 2 (penetración energy) = 6 / 12'));
+  assert.ok(dmg.includes('Gravedad: Severe → Major')); assert.ok(dmg.includes('HP perdidos: 2 (6 → 4 / 6)'));
+  assert.equal(validCalc(dmg), true); assert.equal(validCalc(['x'.repeat(500)]), false);
+  // Every Duality roll at the table carries it.
+  const s = table(actor('caster'));
+  performGameAction({ type: 'CHECK', actorId: 'caster', options: { traitId: 'agility', dc: 10, forcedHope: 8, forcedFear: 3 } }, s);
+  assert.ok(Array.isArray(s.state.logs[0].calc) && s.state.logs[0].calc[0] === 'Hope d12: 8 · Fear d12: 3');
+});

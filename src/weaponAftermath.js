@@ -19,8 +19,8 @@ const TRAIT_NAME = { agility: 'Agility', strength: 'Strength', finesse: 'Finesse
 
 // The clock a weapon effect puts on the target.
 export function weaponClock(spec, source) {
-  const base = newClock({ name: spec.name, segments: 1, tick: spec.tick || 'manual', ...(spec.perTick ? { perTick: spec.perTick } : {}), ...(spec.die ? { die: spec.die } : {}), scene: true }, { source });
-  const extra = Object.fromEntries(['condition', 'expiry', 'rounds', 'edge', 'nextAction', 'allRolls', 'brittle', 'melting', 'dc'].filter(k => spec[k] !== undefined).map(k => [k, spec[k]]));
+  const base = newClock({ name: spec.name, segments: spec.segments || 1, tick: spec.tick || 'manual', ...(spec.perTick ? { perTick: spec.perTick } : {}), ...(spec.die ? { die: spec.die } : {}), scene: true }, { source });
+  const extra = Object.fromEntries(['condition', 'expiry', 'rounds', 'edge', 'nextAction', 'allRolls', 'brittle', 'melting', 'dc', 'cascade', 'sanctum', 'endStress', 'sourceId'].filter(k => spec[k] !== undefined).map(k => [k, spec[k]]));
   return { ...base, ...extra };
 }
 
@@ -90,6 +90,7 @@ export async function resolveWeaponAftermath(store, info, { throwDice = null } =
     const { named, immune } = apply(o.fail, o.label);
     lines.push(`${o.label}: ${math} → falla: ${named.length ? o.failText : 'inmune a ' + immune.join(', ')}.`);
   }
-  if (lines.length) store.addLog({ sender: 'Combat', ...visibility, type: 'EFFECT', title: `${weapon.name} · ${target.name}`, details: lines.join(' ') });
+  if (lines.length) store.addLog({ sender: 'Combat', ...visibility, type: 'EFFECT', title: `${weapon.name} · ${target.name}`, details: lines.join(' '),
+    calc: [`Arma: ${weapon.name}${outcomes.some(o => o.dc) ? ` · Feature DC ${outcomes.find(o => o.dc).dc}` : ''}`, `${target.name}: ${info.hpLost || 0} HP perdidos${info.stressLost ? `, ${info.stressLost} Stress` : ''}${info.critical ? ', crítico' : ''}`, ...lines] });
   return lines;
 }

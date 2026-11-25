@@ -4,7 +4,7 @@ import { newId } from './persistence.js';
 import { distanceInfo, RANGE_BANDS } from './attackFlow.js';
 import { cardDuration, helpsOthers, addClock, newClock, MAX_SEGMENTS } from './effectClocks.js';
 import { CONDITIONS, normalizeConditions, specialState } from './conditions.js';
-import { canReceiveHealing, LIFE_STATES, lifePatch } from './combatState.js';
+import { canReceiveHealing, LIFE_STATES, lifePatch, onRoundChange } from './combatState.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { facesRoller } from './tableDice.js';
 import { pathImmune } from './statePowers.js';
@@ -389,7 +389,9 @@ export function runProcedure(store, record, roll, actor) {
   const success = roll.isCritical || roll.total >= roll.dc, hope = success && (roll.dominance === 'Hope' || roll.isCritical);
   const fresh = id => store.state.tokens.find(t => t.id === id && t.mapId === record.mapId);
   const targets = (record.targetIds || []).map(fresh).filter(Boolean);
-  const pick = to => to === 'self' ? [fresh(actor?.id)].filter(Boolean)
+  const ownSide = () => { const map = store.getActiveMap?.() || {}, reach = proc.zone?.reach || 'Far';
+    return store.state.tokens.filter(t => t.mapId === record.mapId && !t.inReserve && isPartyToken(t) === isPartyToken(actor) && (t.id === actor?.id || (!distanceInfo(actor, t, map).blocked && RANGE_BANDS.indexOf(distanceInfo(actor, t, map).band) <= RANGE_BANDS.indexOf(reach)))); };
+  const pick = to => to === 'self' ? [fresh(actor?.id)].filter(Boolean) : to === 'ownSide' ? ownSide()
     : to === 'enemies' ? targets.filter(t => isPartyToken(t) !== isPartyToken(actor)) : to === 'allies' ? targets.filter(t => isPartyToken(t) === isPartyToken(actor)) : targets;
   const notes = [], extra = {}, damage = [], heals = [];
   for (const step of stepsFor(proc, { success, hope })) {
@@ -421,7 +423,8 @@ export function runProcedure(store, record, roll, actor) {
       const live = fresh(target.id);
       if (step.do === 'condition' || step.do === 'clock') {
         // A duration in dice («for 1d4 rounds»): rolled here.
-        const clock = step.clock && typeof step.clock.rounds === 'string' ? { ...step.clock, rounds: Math.max(1, Math.min(6, String(step.clock.rounds).split('d').reduce((qty, sides) => Array.from({ length: Number(qty) || 1 }, () => 1 + Math.floor(Math.random() * Number(sides))).reduce((a, b) => a + b, 0)))) } : step.clock;
+        const base = step.clock && (step.clock.cascade || step.clock.sanctum) ? { ...step.clock, sourceId: actor?.id } : step.clock;
+        const clock = base && typeof base.rounds === 'string' ? { ...step.clock, rounds: Math.max(1, Math.min(6, String(step.clock.rounds).split('d').reduce((qty, sides) => Array.from({ length: Number(qty) || 1 }, () => 1 + Math.floor(Math.random() * Number(sides))).reduce((a, b) => a + b, 0)))) } : base;
         const { patch, named, immune } = outcomePatch(live, step.do === 'clock' ? { clock } : { conditions: step.conditions }, record.name);
         if (named.length) store.updateToken(live.id, patch);
         notes.push(`${live.name}: ${named.length ? named.join(', ') : 'inmune a ' + immune.join(', ')}.`);
@@ -460,6 +463,56 @@ export function applyHeal(store, record, heal, total = 0) {
   return said.length ? said.join(' · ') + '.' : '';
 }
 
+// Damage the table's own screen prepares (the host is the Keeper's): a failed save that deals damage.
+export function emitPowerDamage(actorId, hits) {
+  if (typeof window === 'undefined' || typeof CustomEvent === 'undefined' || !window.dispatchEvent) return false;
+  window.dispatchEvent(new CustomEvent('veil:power-damage', { detail: { actorId, hits } }));
+  return true;
+}
+
+// ── Power effects when the round changes (v2.51.0) ───────────────────────────────────────────
+// Energy Cascade: every affected target rolls Agility DC 15 (a card entry with its replies, like any
+// Reaction Roll; the Keeper rolls the adversaries) and a failure takes (Proficiency)d8 Physical
+// (Kinetic), +1 per round already passed. Inviolable Sanctum: the allies within Close of the caster
+// clear 1 Stress. Both end with the scene.
+export function roundEffects(store, round) {
+  const map = store.getActiveMap?.();
+  if (!map) return [];
+  const said = [];
+  const groups = new Map();
+  for (const t of store.state.tokens) if (t.mapId === map.id && !t.inReserve) for (const c of t.effectClocks || []) if (c.cascade) {
+    const list = groups.get(c.sourceId) || []; list.push({ token: t, clock: c }); groups.set(c.sourceId, list);
+  }
+  for (const [casterId, items] of groups) {
+    const caster = store.state.tokens.find(t => t.id === casterId) || { id: casterId, name: 'Energy Cascade', proficiency: 1 };
+    const bonus = Math.max(0, ...items.map(i => i.clock.filled || 0));
+    const formula = `${Math.max(1, Math.min(10, Number(caster.proficiency) || 1))}d8${bonus ? '+' + bonus : ''}`;
+    for (const { token, clock } of items) {
+      const live = store.state.tokens.find(t => t.id === token.id);
+      // One segment per round («1 minute» = 10 rounds); the last one ends it.
+      store.updateToken(live.id, { effectClocks: (live.effectClocks || []).flatMap(c => c.id !== clock.id ? [c] : (c.filled || 0) + 1 >= c.segments ? [] : [{ ...c, filled: (c.filled || 0) + 1 }]) });
+    }
+    const targets = items.map(i => i.token);
+    const id = newId(), record = createResolution({ name: 'Energy Cascade', text: '' }, caster, targets, null, id, map.id);
+    record.replies = targets.map(t => ({ id: newId(), actorId: t.id, traitId: 'agility', dc: 15 }));
+    record.saveFailure = { damage: { formula, type: 'physical', tag: 'Kinetic' } };
+    record.saveFailText = `${formula} Physical (Kinetic) y se aleja una banda de alcance`;
+    record.notes = [`Ronda ${round}: ${targets.map(t => t.name).join(', ')} ${targets.length > 1 ? 'tiran' : 'tira'} Agility contra DC 15; si falla, ${record.saveFailText}.`];
+    store.addLog({ sender: caster.name, type: 'CARD', title: `Energy Cascade · ronda ${round}`, details: record.notes[0], resolution: record });
+    said.push(record.notes[0]);
+  }
+  for (const caster of store.state.tokens.filter(t => t.mapId === map.id && t.effectClocks?.some(c => c.sanctum))) {
+    const inside = store.state.tokens.filter(t => t.mapId === map.id && !t.inReserve && isPartyToken(t) === isPartyToken(caster) && t.stress?.current > 0 &&
+      (t.id === caster.id || RANGE_BANDS.indexOf(distanceInfo(caster, t, map).band) <= RANGE_BANDS.indexOf('Close')));
+    for (const t of inside) store.updateToken(t.id, { stress: { ...t.stress, current: t.stress.current - 1 } });
+    const line = `Inviolable Sanctum: ${inside.length ? inside.map(t => t.name).join(', ') + ' limpian 1 Stress' : 'nadie dentro con Stress'}.`;
+    store.addLog({ sender: caster.name, type: 'EFFECT', title: 'Inviolable Sanctum', details: line });
+    said.push(line);
+  }
+  return said;
+}
+onRoundChange(roundEffects);
+
 export function completeCardRoll(store, record, roll, previous = null) {
   if (record.replyId) {
     const reply = record.replies.find(r => r.id === record.replyId);
@@ -472,7 +525,10 @@ export function completeCardRoll(store, record, roll, previous = null) {
       const { patch, named, immune } = outcomePatch(target, record.saveFailure, record.name);
       if (record.saveFailure.stress && target.stress) patch.stress = { ...target.stress, current: target.stress.max > 0 ? Math.min(target.stress.max, (target.stress.current || 0) + record.saveFailure.stress) : (target.stress.current || 0) + record.saveFailure.stress };
       if (named.length || patch.stress) store.updateToken(target.id, patch);
-      consequence = [consequence, target.name + ': ' + (named.length || patch.stress ? record.saveFailText : 'inmune a ' + immune.join(', '))].filter(Boolean).join(' ');
+      // Damage on a failed save (Energy Cascade): the table's screen (the Keeper's) prepares it.
+      const damage = record.saveFailure.damage;
+      if (damage) emitPowerDamage(record.actorId, [{ ...damage, targetIds: [target.id] }]);
+      consequence = [consequence, target.name + ': ' + (named.length || patch.stress || damage ? record.saveFailText : 'inmune a ' + immune.join(', '))].filter(Boolean).join(' ');
     }
     // The Special state of the play goes to whoever fails its reply.
     if (failed && reply && !reply.consequence && record.special && target) consequence = [consequence, applySpecial(store, record.special, [target])].filter(Boolean).join(' ');

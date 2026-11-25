@@ -25,6 +25,7 @@ import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { throwDice, facesRoller } from './tableDice.js';
 import { resolveWeaponAftermath } from './weaponAftermath.js';
+import { damageCalc, rollCalc, validCalc } from './logCalc.js';
 import { durationDice } from './effectClocks.js';
 import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, extraDiceNeeded, armorCut, applyArmorCut, armorCutNotes, wielderEvasion, weaponAttackEdge, ignoresLineOfSight, isMachineTarget, nonLethalHp } from './weaponFeatures.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
@@ -49,6 +50,12 @@ export class DiceRollerSidebar {
     this.stdBroadcast = true;
     this.is3D = store.state.dice3d !== false;
     this.diceTextureSet = typeof localStorage !== 'undefined' ? (localStorage.getItem('veilfarers_dice_texture_set') || 'tech') : 'tech';
+    // Damage of a failed save (Energy Cascade…): the table's screen prepares it (v2.51.0).
+    if (typeof window !== 'undefined') window.addEventListener('veil:power-damage', event => {
+      if (store.sessionRole === 'player') return;
+      const actor = store.state.tokens.find(t => t.id === event.detail?.actorId);
+      if (actor && Array.isArray(event.detail.hits)) setTimeout(() => this.autoPowerDamage(actor, { damagePending: event.detail.hits }), 400);
+    });
     this.render();
     this.syncWithSelectedToken();
     window.veilDiceRoller = this;
@@ -1590,7 +1597,12 @@ export class DiceRollerSidebar {
       detail = `d20 [${roll.d20}] ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}${roll.edge ? ` ${roll.edge === 'Advantage' ? '+' : '−'} d6 [${roll.d6}]` : ''} = ${roll.total}.`;
       const secret = this.rollVisibility() === 'keeper';
       const summary = `⚔️ ${attacker.name} ataca a ${target.name}: ${detail} vs Evasion ${evasion}${shielded ? ` (+3 Force Shield de ${shielded.name})` : ''} → ${critical ? 'CRÍTICO' : hit ? 'IMPACTO' : 'FALLO'}`;
-      store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'ROLL', sender: 'Keeper', title: `Ataque · ${attacker.name}`, details: summary });
+      store.addLog({ ...(secret ? { visibility: 'keeper' } : {}), type: 'ROLL', sender: 'Keeper', title: `Ataque · ${attacker.name}`, details: summary,
+        // The full calculation (v2.51.0).
+        calc: [`d20: ${roll.d20}`, `Modificador de ataque: ${roll.attackModifier >= 0 ? '+' : '−'} ${Math.abs(roll.attackModifier)}`, ...(roll.edge ? [`${roll.edge === 'Advantage' ? 'Ventaja' : 'Desventaja'} d6: ${roll.edge === 'Advantage' ? '+' : '−'} ${roll.d6}`] : []),
+          ...(edge.advantage || edge.disadvantage ? [`${edge.advantage ? 'Ventaja' : 'Desventaja'} por: ${[q('#dice_advantage').checked && 'elegida', q('#dice_disadvantage').checked && 'elegida', range.disadvantage && range.reason, guard?.penalty && 'defensa disciplinada', overwatch && 'Tactical Overwatch'].filter(Boolean).join(', ') || 'efectos o condiciones'}`] : []),
+          `Evasion de ${target.name}: ${evasion}${held.notes.length ? ` (${held.notes.join(', ')})` : ''}${shielded ? ` + 3 (Force Shield de ${shielded.name})` : ''}`,
+          `Total ${roll.total} → ${critical ? 'CRÍTICO (20 natural)' : hit ? 'IMPACTO' : 'FALLO'}`] });
       if (!secret) network.sendChat({ text: summary, recipientId: 'table' }).catch(() => store.addChatMessage?.({ senderName: attacker.name, text: summary, channel: 'table' }));
     }
     const rangeNote = (range.disadvantage ? ` ${range.reason}` : '') + (drone ? ` Tira ${operator.name}, operador del dron.${command.disadvantage ? ' ' + command.reason : ''}` : '') + (gear.text || '');
@@ -1969,7 +1981,7 @@ export class DiceRollerSidebar {
       }
 
       // What this hit does with a number of shields spent (nothing is changed yet).
-      const planDamage = (spentShields = 0, reaction = null) => {
+      const planDamage = (spentShields = 0, reaction = null, adjust = 0) => {
         const targetToken = store.state.tokens.find(t => t.id === targetId) || currentTarget;
 
         const currentDamage = resolveDamage({
@@ -1990,7 +2002,8 @@ export class DiceRollerSidebar {
         if (currentDamage.fullyProtected) spentShields = 0;
         // Each shield spent absorbs damage/reduces severity
         const mitigatedHpDamage = Math.max(0, (currentDamage.finalHpDamage || 0) + (isDirect || perHitMinion(targetToken) ? 0 : devastatingExtra(feats, currentDamage.effectiveDamage, currentDamage.effectiveSevere)) - (spentShields > 0 ? (spentShields - 1) : 0));
-        const finalHpDamage = targetToken.pendingBrace && !isDirect ? Math.max(0, mitigatedHpDamage - 1) : mitigatedHpDamage;
+        // The Keeper's adjustment of the HP lost (its window), never below 0.
+        const finalHpDamage = Math.max(0, (targetToken.pendingBrace && !isDirect ? Math.max(0, mitigatedHpDamage - 1) : mitigatedHpDamage) + (Number(adjust) || 0));
 
         const currentArmor = targetToken.armor?.current || 0;
         const newArmor = Math.max(0, currentArmor - spentShields);
@@ -2024,6 +2037,11 @@ export class DiceRollerSidebar {
           ...(cut ? { armorCut: cut } : {}),
           // The weapon, so the table resolves what it does after the hit (weaponAftermath.js).
           ...(activeWeapon && !isDirect ? { weaponId: activeWeapon.id } : {}),
+          // The full calculation for the log (v2.51.0).
+          calc: damageCalc({ result: { ...dmgResult, ...currentDamage, rolls: dmgResult.rolls, baseDiceTotal: dmgResult.baseDiceTotal, flatModifier: dmgResult.flatModifier, rawDamage: dmgResult.rawDamage },
+            sides: rollSides, proficiency, honed, riders, extras: extras.notes || [], devastating: isDirect ? 0 : devastatingExtra(feats, currentDamage.effectiveDamage, currentDamage.effectiveSevere),
+            spent: spentShields, armorLeft: newArmor, brace: !!targetToken.pendingBrace && !isDirect, hpLost, hpBefore: targetToken.hp.current, hpAfter: newHp, hpMax: targetToken.hp.max,
+            stress: stressMark, conditions: [addCondition, ...addConditions].filter(Boolean), cut, type: dmgResult.damageType || '', noArmor: !!this.noArmorHit, direct: isDirect }).concat(adjust ? [`Ajuste del Keeper: ${adjust > 0 ? '+' : '−'}${Math.abs(adjust)} HP`] : []),
           addCondition,
           addConditions,
           isDirect,
@@ -2037,12 +2055,12 @@ export class DiceRollerSidebar {
         return { targetToken, attacker, currentDamage, newHp, newArmor, hpLost, spentShields, armorAfter, withStress, withCondition, damagePayload };
       };
 
-      const applyFinalDamage = (spentShields = 0, reaction = null) => {
+      const applyFinalDamage = (spentShields = 0, reaction = null, adjust = 0) => {
         if (applied || !canApply()) return;
         applied = true; pending.applied = true;
         applyBtn.disabled = true;
         applyBtn.textContent = 'DAMAGE APPLIED';
-        const { targetToken, attacker, currentDamage, newHp, hpLost, armorAfter, withStress, withCondition, damagePayload } = planDamage(spentShields, reaction);
+        const { targetToken, attacker, currentDamage, newHp, hpLost, armorAfter, withStress, withCondition, damagePayload } = planDamage(spentShields, reaction, adjust);
 
         if (store.sessionRole === 'player') {
           network.broadcast?.(damagePayload);
@@ -2100,10 +2118,11 @@ export class DiceRollerSidebar {
           ...(secret ? { visibility: 'keeper' } : {}),
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${targetToken.name}`,
-          details: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`
+          details: `Lost ${hpLost} HP (${currentDamage.finalHpDamage} base). Escudos gastados: ${spentShields}. Current HP: ${newHp}/${targetToken.hp.max}.`,
+          ...(validCalc(damagePayload.calc) ? { calc: damagePayload.calc } : {})
         });
         // Rapid Regeneration lights up for whoever can heal the character now (v2.38.0).
-        if (hpLost > 0 && store.sessionRole !== 'player') offerAfterDamage(targetToken.id);
+        if (hpLost > 0 && store.sessionRole !== 'player') offerAfterDamage(targetToken.id, attacker?.id || attackerId);
         // What the weapon does after the hit: Reaction Rolls, conditions, effect clocks (v2.45.0).
         if (damagePayload.weaponId && store.sessionRole !== 'player') void resolveWeaponAftermath(store, { attackerId: damagePayload.attackerId, targetId: targetToken.id, weaponId: damagePayload.weaponId, hpLost, stressLost: damagePayload.stressMark || 0, critical: isCritical, secret }, { throwDice });
         // The attack is over: the Ficha closes it and the tokens are deselected.
@@ -2129,7 +2148,7 @@ export class DiceRollerSidebar {
         return;
       }
       awaitingKeeper = true;
-      keeperDamageDialog(currentTarget, request, (n, ri = -1) => {
+      keeperDamageDialog(currentTarget, request, (n, ri = -1, adjust = 0) => {
         const reaction = ri >= 0 ? reactions[ri] : null;
         awaitingKeeper = false;
         const live = store.state.tokens.find(t => t.id === targetId);
@@ -2142,7 +2161,7 @@ export class DiceRollerSidebar {
           pending.apply();
           return;
         }
-        applyFinalDamage(n, reaction);
+        applyFinalDamage(n, reaction, adjust);
         if (reaction) network.requestAction({ type: 'REACTION_PAY', actorId: reaction.actorId, name: reaction.name, amount: reaction.amount }).catch(error => notify(error.message, 'error'));
       }, { shields: spentShieldsChoice ?? (useArmor ? 1 : 0), onCancel: () => { awaitingKeeper = false; } });
     };
@@ -2202,7 +2221,11 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
   const reactions = (Array.isArray(request.reactions) ? request.reactions : []).filter(r => Array.isArray(r?.options) && r.options.length);
   let ri = reactions.findIndex(r => r.free);
   const set = () => (ri >= 0 ? reactions[ri].options : base), max = () => set().length - 1;
-  const describe = n => { const o = set()[Math.min(n, max())]; return `Pierde ${o.hpLoss} HP · HP ${o.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}`; };
+  // The Keeper may adjust the HP the hit takes (v2.51.0, user report: «no le sale al keeper la
+  // opción de regular el daño»): − / + on the HP lost, from 0 to all the target has.
+  let adjust = 0;
+  const adjusted = o => { const hp = (o.newHp || 0) + (o.hpLoss || 0), loss = Math.max(0, Math.min(hp, (o.hpLoss || 0) + adjust)); return { loss, newHp: hp - loss }; };
+  const describe = n => { const o = set()[Math.min(n, max())], a = adjusted(o); return `Pierde ${a.loss} HP · HP ${a.newHp}/${targetToken.hp?.max ?? '?'}${o.stressMark ? ` · +${o.stressMark} Stress` : ''}${n ? ` · ${n} escudo${n > 1 ? 's' : ''}` : ''}${adjust ? ` · ajuste del Keeper ${adjust > 0 ? '+' : '−'}${Math.abs(adjust)}` : ''}`; };
   const start = Math.max(0, Math.min(max(), shields));
   const modal = tableDialog('Daño a ' + targetToken.name, `
     <div class="kdmg">
@@ -2212,6 +2235,8 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
       <label class="dossier-field kdmg-shields" id="kdmg_shields_field"><span id="kdmg_shields_label"></span>
         <div class="kdmg-row"><input type="range" id="kdmg_shields" min="0" max="${max()}" value="${start}" /><b id="kdmg_shields_val">${start}</b></div></label>
       <p class="dossier-muted" id="kdmg_noshields">Sin escudos disponibles para este impacto.</p>
+      <div class="dossier-field kdmg-adjust"><span>Ajustar HP perdidos</span>
+        <div class="kdmg-row"><button type="button" class="pab-step" data-kadj="-1" aria-label="Un HP menos">−</button><b id="kdmg_adjust_val">0</b><button type="button" class="pab-step" data-kadj="1" aria-label="Un HP más">+</button></div></div>
       <p class="kdmg-preview" id="kdmg_preview">${escapeHTML(describe(start))}</p>
     </div>
     <footer class="dossier-footer"><button class="hud-btn hud-btn-secondary" type="button" id="kdmg_cancel">Cancelar</button>
@@ -2225,6 +2250,11 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
     val.textContent = slider.value; preview.textContent = describe(chosen());
   };
   slider.oninput = sync;
+  modal.querySelectorAll('[data-kadj]').forEach(b => b.onclick = () => {
+    const o = set()[chosen()], hp = (o.newHp || 0) + (o.hpLoss || 0);
+    adjust = Math.max(-(o.hpLoss || 0), Math.min(hp - (o.hpLoss || 0), adjust + Number(b.dataset.kadj)));
+    modal.querySelector('#kdmg_adjust_val').textContent = (adjust > 0 ? '+' : '') + adjust; sync();
+  });
   const pick = modal.querySelector('#kdmg_reaction');
   if (pick) pick.onchange = () => { ri = Number(pick.value); sync(); };
   sync();
@@ -2243,7 +2273,7 @@ export function keeperDamageDialog(targetToken, request, onApply, { shields = 0,
   if (offers.length) modal.querySelector('#kdmg_preview')?.insertAdjacentHTML('beforebegin', '<p class="kdmg-answers" id="kdmg_answers" role="status">Reacciones avisadas a sus jugadores…</p>');
   let done = false;
   const close = () => offers.forEach(closeOffer);
-  modal.querySelector('#kdmg_apply').onclick = () => { done = true; close(); const n = chosen(); modal.remove(); onApply(n, ri); };
+  modal.querySelector('#kdmg_apply').onclick = () => { done = true; close(); const n = chosen(); modal.remove(); onApply(n, ri, adjust); };
   modal.querySelector('#kdmg_cancel').onclick = () => { done = true; close(); modal.remove(); onCancel(); };
   // Closing the window another way also cancels.
   new MutationObserver((_, obs) => { if (!modal.isConnected) { obs.disconnect(); close(); if (!done) { done = true; onCancel(); } } }).observe(document.body, { childList: true });

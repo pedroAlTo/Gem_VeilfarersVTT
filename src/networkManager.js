@@ -16,6 +16,7 @@ import { isPortraitReference } from './portraitCatalog.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { controlsToken, isDrone, isPartyToken } from './tokenPermissions.js';
 import { validArmorCut, applyArmorCut } from './weaponFeatures.js';
+import { validCalc } from './logCalc.js';
 import { characterKey } from './characterImport.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
@@ -991,9 +992,15 @@ export class NetworkManager {
       const fair = o => o && o.type === 'APPLY_DAMAGE' && o.targetId === target.id && owns(o.attackerId);
       const valid = target && options.length && options.every(fair) && reactions.every(r => r.options.length && r.options.every(fair) && typeof r.name === 'string' && typeof r.actorId === 'string');
       if (!valid) { conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El daño no se pudo aplicar: el objetivo o el atacante ya no son válidos.' })); return; }
-      import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options, reactions }, async (n, ri = -1) => {
+      import('./diceRoller.js').then(({ keeperDamageDialog }) => keeperDamageDialog(target, { ...req, options, reactions }, async (n, ri = -1, adjust = 0) => {
         const reaction = ri >= 0 ? reactions[ri] : null;
-        const chosen = (reaction ? reaction.options : options)[n];
+        let chosen = (reaction ? reaction.options : options)[n];
+        // The Keeper's adjustment of the HP lost (v2.51.0).
+        if (Number.isInteger(adjust) && adjust) {
+          const hp = (Number(chosen.newHp) || 0) + (Number(chosen.hpLoss) || 0), loss = Math.max(0, Math.min(hp, (Number(chosen.hpLoss) || 0) + adjust));
+          chosen = { ...chosen, hpLoss: loss, newHp: hp - loss, logDetails: `${chosen.logDetails || ''} Ajuste del Keeper: ${adjust > 0 ? '+' : '−'}${Math.abs(adjust)} HP.`.trim(),
+            ...(validCalc(chosen.calc) ? { calc: [...chosen.calc, `Ajuste del Keeper: ${adjust > 0 ? '+' : '−'}${Math.abs(adjust)} HP → pierde ${loss}`].slice(0, 40) } : {}) };
+        }
         // The reaction's price is paid by its owner (the table checks it holds and can pay it).
         if (reaction) { try { await this.requestAction({ type: 'REACTION_PAY', actorId: reaction.actorId, name: reaction.name, amount: reaction.amount }); } catch (error) { conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: error.message })); return; } }
         // A one-use approval: the table applies a player's damage only after this window.
@@ -1005,7 +1012,7 @@ export class NetworkManager {
           conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: 'El impacto ha cambiado. Vuelve a calcular el daño.' }));
           return;
         }
-        if (chosen.hpLoss > 0) import('./reactionOffers.js').then(m => m.offerAfterDamage(target.id)).catch(() => {});
+        if (chosen.hpLoss > 0) import('./reactionOffers.js').then(m => m.offerAfterDamage(target.id, chosen.attackerId)).catch(() => {});
         conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: true, text: `Keeper: ${target.name} pierde ${chosen.hpLoss} HP${chosen.spentShields ? ` (${chosen.spentShields} escudo${chosen.spentShields > 1 ? 's' : ''})` : ''}.` }));
       }, { onCancel: () => conn?.send(this.envelope({ type: 'DAMAGE_DECIDED', applied: false, text: `El Keeper ha cancelado el daño a ${target.name}.` })) }));
       return;
@@ -1139,7 +1146,9 @@ export class NetworkManager {
           ...(data.secret ? { visibility: 'keeper' } : {}),
           type: 'DAMAGE',
           title: `DAMAGE APPLIED: ${target.name}`,
-          details: logDetails
+          details: logDetails,
+          // The full calculation the attacker worked out (plain lines, checked).
+          ...(validCalc(data.calc) ? { calc: data.calc } : {})
         });
         // What the weapon does after the hit (v2.45.0): the table reads the weapon from the
         // attacker's own inventory, rolls an NPC's Reaction Rolls and applies their conditions.

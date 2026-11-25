@@ -10,6 +10,8 @@ import { store } from './state.js';
 export class CombatLogView {
   constructor(containerElement) {
     this.container = containerElement;
+    // The calculations open stay open when the log is drawn again.
+    this.openCalc = new Set();
     this.render();
     store.subscribe((state, keys) => {
       if (keys.some(key => ['logs', 'userRole', 'activeMapId', 'arcs', 'rest'].includes(key))) {
@@ -45,6 +47,7 @@ export class CombatLogView {
                 <div class="log-title">${e(entry.title)}</div>
                 ${entry.resolution ? `<button type="button" class="hud-btn hud-btn-xs" data-resolution="${e(entry.resolution.id)}">${e(resolutionLabel(entry.resolution))} · ${e(entry.resolution.name)}</button>` : ''}
                 ${entry.details ? `<div class="log-details">${e(entry.details)}</div>` : ''}
+                ${Array.isArray(entry.calc) && entry.calc.length ? `<details class="log-calc" data-calc="${e(entry.id)}" ${this.openCalc.has(entry.id) ? 'open' : ''}><summary>Ver cálculo</summary><ol>${entry.calc.map(line => `<li>${e(line)}</li>`).join('')}</ol></details>` : ''}
               </div>
             `;
           }).join('')}
@@ -53,6 +56,7 @@ export class CombatLogView {
     `);
 
     for (const btn of this.container.querySelectorAll('[data-resolution]')) btn.onclick = () => openResolution(btn.dataset.resolution);
+    for (const box of this.container.querySelectorAll('[data-calc]')) box.addEventListener('toggle', () => { if (box.open) this.openCalc.add(box.dataset.calc); else this.openCalc.delete(box.dataset.calc); });
     const session = this.container.querySelector('[data-game-session]');
     if (session) session.onclick = () => {
       const modal = dossierDialog('Nueva sesión de juego','<p>Se renovarán los poderes de un uso por sesión para todos los personajes de esta sala.</p><button class="hud-btn" data-renew>Renovar usos de sesión</button>');
