@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.51.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.51.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.51.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.51.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.52.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.52.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.52.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.52.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -177,6 +177,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.51.0.zip**. Abre **AYUDA
 162. **(V3) Cálculo en el registro.** Atacar e impactar; en Registro, la entrada de la tirada y la de «DAMAGE APPLIED» tienen «Ver cálculo»: al desplegarlo salen los dados con sus caras, los modificadores, el total contra la Evasion, los umbrales, la gravedad, los escudos y los HP perdidos. Sigue abierto aunque lleguen entradas nuevas. Un ataque del Keeper con un adversario y una salvación de arma también lo tienen.
 163. **(V3) Ajuste del Keeper.** En la ventana de daño, «Ajustar HP perdidos»: + y − cambian «Pierde N HP» (no baja de 0 ni pasa de los HP que le quedan). Al aplicar, el objetivo pierde lo ajustado y el cálculo del registro dice «Ajuste del Keeper: +N HP». En partida online, igual con el daño que envía un jugador.
 164. **(V3) Poderes por ronda y reacción.** Energy Cascade lanzado: los enemigos a Far muestran su reloj; con «Nueva ronda» aparece una entrada que pide Agility DC 15 a cada uno y, al fallar, la pantalla del Keeper prepara el daño (2d8 a Proficiency 2, 2d8+1 la ronda siguiente). Inviolable Sanctum: al cambiar de ronda, los aliados a Close limpian 1 Stress. Un adversario a Close daña a un personaje con Neural Feedback: la carta se ilumina; usarla tira Presence DC 15 y, si sale, prepara el daño al adversario y su tirada de Instinct.
+165. **(V3) Elige dos.** Un personaje con Adaptive Evolution: un clic lo lanza (Básico) y, si sale, tiene +1 Evasion y +2 a Instinct (relojes en su token). Doble clic: la carta muestra «Elige 2» con cuatro casillas; marcar Natural Attack y Metabolic Change: aparece «Natural Attack» en su barra de armas (d8 Void, Melee) y se le quita una condición. Symbiotic Bloom con Hope: Lithoderm (+2 Armor Slots temporales, Resistencia Physical) y Sky-Adapted (+2 Evasion); al cambiar de escena, los Armor Slots vuelven a lo de antes y el arma desaparece. Biomorphic Arsenal con Toxin Glands: un golpe con ellas deja al objetivo Weakened.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.52.0', date: '2026-11-25', title: 'V3 · Poderes de «elige dos» automáticos (Fase 3 completa)',
+    sections: [
+      { title: 'Elige dos', items: [
+        'Adaptive Evolution, Symbiotic Bloom y Biomorphic Arsenal se resuelven solos con las opciones elegidas. En modo Básico, la mesa toma las más útiles (Physical Adaptation y Enhanced Senses; Lithoderm, y Sky-Adapted con Hope; Carapace Plating y Bone Shards); con doble clic o en Avanzado, la carta muestra una casilla por opción.',
+        'Lo que dan: +1 o +2 Evasion, +2 a Instinct, Resistencia al daño Physical, 2 Armor Slots temporales (se quitan al acabar la escena), quitar una condición (Metabolic Change) y armas en la mano para la escena: Natural Attack (d8 Void), Apex Predator (d6 Void), Bone Shards (d12 a Far) y Toxin Glands, cuyo golpe deja Weakened.',
+        'Biomorphic Arsenal fallado: Desventaja en todas las tiradas durante 1d4 rondas. Cordon of Will explica su cordón en el registro.',
+        'Con esto, 34 Poderes tienen ficha de procedimiento: todos los que tienen daño, tirada de sus objetivos, curación o condición en mesa. El resto son narrativos.',
+      ] },
+    ],
+  },
+  {
     version: '2.51.0', date: '2026-11-25', title: 'V3 · Cálculo desplegable en el registro, ajuste de daño del Keeper y Poderes por ronda (Fase 3, tercera parte)',
     sections: [
       { title: 'Registro', items: [

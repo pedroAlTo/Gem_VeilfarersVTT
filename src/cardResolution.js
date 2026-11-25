@@ -9,7 +9,7 @@ import { isPartyToken } from './tokenPermissions.js';
 import { facesRoller } from './tableDice.js';
 import { pathImmune } from './statePowers.js';
 import { CLOCK_BONUSES } from './powerEffects.js';
-import { PROCEDURES, procedureFor, stepsFor, diceFormula } from './powerProcedures.js';
+import { PROCEDURES, procedureFor, stepsFor, diceFormula, chosenOptions } from './powerProcedures.js';
 import { outcomePatch } from './weaponAftermath.js';
 
 // Range and recipients here are the printed activation requirements. Fictional objects and
@@ -394,9 +394,31 @@ export function runProcedure(store, record, roll, actor) {
   const pick = to => to === 'self' ? [fresh(actor?.id)].filter(Boolean) : to === 'ownSide' ? ownSide()
     : to === 'enemies' ? targets.filter(t => isPartyToken(t) !== isPartyToken(actor)) : to === 'allies' ? targets.filter(t => isPartyToken(t) === isPartyToken(actor)) : targets;
   const notes = [], extra = {}, damage = [], heals = [];
-  for (const step of stepsFor(proc, { success, hope })) {
+  // «Choose two» (v2.52.0): the chosen options' steps follow the success.
+  const chosen = success ? chosenOptions(proc.choose, record.choices, { hope }) : [];
+  if (chosen.length) notes.push('Opciones: ' + chosen.join(', ') + '.');
+  for (const step of [...stepsFor(proc, { success, hope }), ...chosen.flatMap(name => proc.choose.options[name])]) {
     const who = pick(step.to);
     if (step.do === 'note') { notes.push(step.text); continue; }
+    // Steps on the caster that need no target: a weapon for the scene, a condition that ends.
+    if (step.do === 'weapon') {
+      // A weapon in hand for the scene (Natural Attack, Bone Shards…), removed when the scene ends.
+      const live = fresh(actor?.id);
+      if (!live) continue;
+      const inv = live.inventory || { weapons: [], items: [] }, id = 'pw-' + String(step.weapon.name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const row = { id, name: step.weapon.name, damage: step.weapon.damage, damageMode: 'base', trait: step.weapon.trait || 'Strength', range: step.weapon.range || 'Melee', features: record.name, tier: 'Poder', tags: step.weapon.tags || [] };
+      store.updateToken(live.id, { inventory: { ...inv, weapons: [...(inv.weapons || []).filter(w => w.id !== id), row] },
+        effectClocks: addClock(live.effectClocks, { ...newClock({ name: record.name + ' · ' + step.weapon.name, segments: 1, tick: 'manual', scene: true }), grantWeapon: id }) });
+      notes.push(`${live.name}: ${step.weapon.name} en la mano (${step.weapon.damage}, ${step.weapon.range}) hasta el final de la escena.`);
+      continue;
+    }
+    if (step.do === 'clear') {
+      // Metabolic Change: one ongoing condition of the caster ends.
+      const live = fresh(actor?.id), gone = normalizeConditions(live?.conditions).filter(c => !LIFE_STATES.includes(c)).slice(0, step.count || 1);
+      if (live && gone.length) { store.updateToken(live.id, { conditions: normalizeConditions(live.conditions).filter(c => !gone.includes(c)) }); notes.push(`${live.name}: termina ${gone.join(', ')}.`); }
+      else if (live) notes.push(`${live.name}: ninguna condición que quitar.`);
+      continue;
+    }
     if (!who.length) continue;
     if (step.do === 'damage') { damage.push({ formula: diceFormula(step.dice, actor), type: step.type || 'physical', tag: step.tag || '', noArmor: !!step.noArmor, ...(step.direct ? { direct: true } : {}), targetIds: who.map(t => t.id) }); continue; }
     if (step.do === 'heal') { heals.push({ dice: step.dice ? diceFormula(step.dice, actor) : '', hp: step.hp || 0, stress: step.stress || 0, targetIds: who.map(t => t.id) }); continue; }
@@ -426,6 +448,8 @@ export function runProcedure(store, record, roll, actor) {
         const base = step.clock && (step.clock.cascade || step.clock.sanctum) ? { ...step.clock, sourceId: actor?.id } : step.clock;
         const clock = base && typeof base.rounds === 'string' ? { ...step.clock, rounds: Math.max(1, Math.min(6, String(step.clock.rounds).split('d').reduce((qty, sides) => Array.from({ length: Number(qty) || 1 }, () => 1 + Math.floor(Math.random() * Number(sides))).reduce((a, b) => a + b, 0)))) } : base;
         const { patch, named, immune } = outcomePatch(live, step.do === 'clock' ? { clock } : { conditions: step.conditions }, record.name);
+        // Temporary Armor Slots (Lithoderm, Carapace Plating): on now, off when the clock ends.
+        if (named.length && clock?.tempArmor && live.armor) patch.armor = { ...live.armor, max: (live.armor.max || 0) + clock.tempArmor, current: (live.armor.current || 0) + clock.tempArmor };
         if (named.length) store.updateToken(live.id, patch);
         notes.push(`${live.name}: ${named.length ? named.join(', ') : 'inmune a ' + immune.join(', ')}.`);
       } else if (step.do === 'mark') {

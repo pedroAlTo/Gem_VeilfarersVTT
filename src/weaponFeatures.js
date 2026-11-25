@@ -119,6 +119,8 @@ export function weaponOutcomes(weapon, ctx = {}) {
   if (t('thermal') && damaged) save('thermal', 'Thermal', ['strength'], dc, { conditions: ['On Fire'] }, 'On Fire');
   if (t('anchoring') && damaged) save('anchoring', 'Anchoring', ['strength'], dc, { clock: { name: 'Anchoring · sin moverse', expiry: 'spotlight-end' } }, 'no puede hacer Move en su próximo Spotlight');
   if (t('non-lethal') && damaged && ctx.hpAfter === 1) effect('non-lethal', 'Non-Lethal', { conditions: ['Incapacitated'] }, 'a 1 HP queda Incapacitated (inconsciente), no Dying');
+  // Toxin Glands (Biomorphic Arsenal): the target is Weakened (a Strength Reaction Roll, DC 15, ends it).
+  if (t('toxin') && damaged) effect('toxin', 'Toxin', { conditions: ['Weakened'] }, 'Weakened (Strength DC 15 lo termina)');
   if (t('melting') && damaged) effect('melting', 'Melting', { clock: { name: 'Melting', tick: 'spotlight', melting: true, dc, die: 'd' + weaponDie(weapon) } }, `al empezar su próximo Spotlight, Strength contra CD ${dc} o 1d${weaponDie(weapon)} Energy`);
   // Rust & Steel 12.06, Forbidden
   if (t('agony') && hurt) save('agony', 'Agony', ['instinct'], 15, { clock: STUNNED('Agony') }, 'Stunned hasta después de la próxima ronda');

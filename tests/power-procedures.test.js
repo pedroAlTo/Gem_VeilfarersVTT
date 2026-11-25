@@ -247,3 +247,37 @@ test('the log keeps the full calculation of a roll and of a damage (user request
   performGameAction({ type: 'CHECK', actorId: 'caster', options: { traitId: 'agility', dc: 10, forcedHope: 8, forcedFear: 3 } }, s);
   assert.ok(Array.isArray(s.state.logs[0].calc) && s.state.logs[0].calc[0] === 'Hope d12: 8 · Fear d12: 3');
 });
+
+test('«choose two» Powers: Básico takes the defaults; the marked options apply; weapons in hand and temporary Armor Slots', async () => {
+  const { rollBonus, resists } = await import('../src/powerEffects.js');
+  const { chosenOptions, PROCEDURES: P } = await import('../src/powerProcedures.js');
+  assert.deepEqual(chosenOptions(P['Symbiotic Bloom'].choose, []), ['Lithoderm']);
+  assert.deepEqual(chosenOptions(P['Symbiotic Bloom'].choose, [], { hope: true }), ['Lithoderm', 'Sky-Adapted'], 'a second one with Hope');
+  assert.deepEqual(chosenOptions(P['Adaptive Evolution'].choose, ['Natural Attack', 'Nope', 'Natural Attack']), ['Natural Attack', 'Physical Adaptation'], 'unknown and repeated choices are dropped and completed with the defaults');
+  // Adaptive Evolution with its defaults: +1 Evasion and +2 Instinct.
+  const a = table(withPower('Adaptive Evolution'));
+  const ae = play(a, 'Adaptive Evolution');
+  cast(a, ae.id, 'instinct', 15, 9, 6);
+  assert.equal(evasionBonus(get(a, 'caster')), 1); assert.equal(rollBonus(get(a, 'caster'), 'instinct'), 2);
+  // Natural Attack and Metabolic Change, marked: a weapon in hand and one condition gone.
+  const b = table(withPower('Adaptive Evolution', { conditions: ['Restrained'] }));
+  const be = play(b, 'Adaptive Evolution', { choices: ['Natural Attack', 'Metabolic Change'] });
+  cast(b, be.id, 'instinct', 15, 9, 6);
+  assert.ok(get(b, 'caster').inventory.weapons.some(w => w.name === 'Natural Attack' && w.damage === 'd8 void'));
+  assert.equal(get(b, 'caster').conditions.includes('Restrained'), false);
+  // Symbiotic Bloom with Hope: Lithoderm (2 temporary Armor Slots, Resistance to Physical) and Sky-Adapted (+2 Evasion).
+  const s = table(withPower('Symbiotic Bloom', { armor: { current: 1, max: 2 } }));
+  const sb = play(s, 'Symbiotic Bloom');
+  cast(s, sb.id, 'instinct', 15, 12, 3);
+  assert.deepEqual([get(s, 'caster').armor.max, get(s, 'caster').armor.current], [4, 3]);
+  assert.equal(resists(get(s, 'caster'), 'physical'), true); assert.equal(evasionBonus(get(s, 'caster')), 2);
+  // Biomorphic Arsenal · Toxin Glands: a hit with them leaves the target Weakened.
+  const { resolveWeaponAftermath } = await import('../src/weaponAftermath.js');
+  const t = table(withPower('Biomorphic Arsenal', { hope: 6 }), hostile('e', { x: 128 }));
+  const ba = play(t, 'Biomorphic Arsenal', { choices: ['Toxin Glands', 'Carapace Plating'] });
+  cast(t, ba.id, 'strength', 20, 12, 10);
+  const glands = get(t, 'caster').inventory.weapons.find(w => w.name === 'Toxin Glands');
+  assert.ok(glands);
+  await resolveWeaponAftermath(t, { attackerId: 'caster', targetId: 'e', weaponId: glands.id, hpLost: 1 });
+  assert.ok(get(t, 'e').conditions.includes('Weakened'));
+});

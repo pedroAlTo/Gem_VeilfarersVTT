@@ -24,10 +24,27 @@
 //            allies within the zone's reach: a failed cast turned against them)
 //   dice     'P*d10' (Proficiency × d10), 'P2*d8' (Proficiency × 2 × d8), '3d8', '1d4'
 //   modes    { Name: { …the same fields… } }, the first is the default (Básico)
+//   choose   «choose two»: { count, hopeCount, defaults: [names], options: { Name: [steps] } }; the
+//            chosen options' steps follow `success` (Básico takes the defaults)
+//            { do: 'weapon', weapon: { name, damage, range, trait, tags } }   a weapon in hand for the scene
+//            { do: 'clear', count }                                          ends N of the caster's conditions
 const STUN_NEXT = name => ({ name: name + ' · Stunned', condition: 'Stunned', expiry: 'spotlight-end' });
 
 export const PROCEDURES = {
+  // ── Level 3 ──
+  'Symbiotic Bloom': { choose: { count: 1, hopeCount: 2, defaults: ['Lithoderm', 'Sky-Adapted'], options: {
+    'Apex Predator': [{ do: 'weapon', weapon: { name: 'Apex Predator', damage: 'd6 void', range: 'Melee', trait: 'Strength' } }, { do: 'note', text: 'Apex Predator: Resistencia al frío.' }],
+    'Aquatic Symbiote': [{ do: 'note', text: 'Aquatic Symbiote: respiras en cualquier líquido, no te estorba y tienes Resistencia al fuego.' }],
+    'Lithoderm': [{ do: 'clock', to: 'self', clock: { name: 'Symbiotic Bloom · Lithoderm', tempArmor: 2 } }, { do: 'note', text: 'Lithoderm: moverte una banda te cuesta la Acción.' }],
+    'Sky-Adapted': [{ do: 'clock', to: 'self', clock: { name: 'Symbiotic Bloom · Sky-Adapted' } }, { do: 'note', text: 'Sky-Adapted: vuelo flotante y Resistencia al rayo.' }],
+  } } },
   // ── Level 4 ──
+  'Adaptive Evolution': { choose: { count: 2, defaults: ['Physical Adaptation', 'Enhanced Senses'], options: {
+    'Natural Attack': [{ do: 'weapon', weapon: { name: 'Natural Attack', damage: 'd8 void', range: 'Melee', trait: 'Strength' } }],
+    'Enhanced Senses': [{ do: 'clock', to: 'self', clock: { name: 'Adaptive Evolution · Enhanced Senses' } }],
+    'Physical Adaptation': [{ do: 'clock', to: 'self', clock: { name: 'Adaptive Evolution · Physical Adaptation' } }],
+    'Metabolic Change': [{ do: 'clear', count: 1 }],
+  } }, hope: [{ do: 'note', text: 'Con Hope dura 24 horas o hasta tu próximo Long Rest (la mesa la quita al acabar la escena: vuelve a ponerla si sigue).' }] },
   'Precision Strike': { target: { who: 'creature', reach: 'Far', self: false },
     success: [{ do: 'damage', dice: 'P*d10', type: 'physical', tag: 'Kinetic' }],
     hope: [{ do: 'clock', clock: { name: 'Precision Strike · sin Reacciones', expiry: 'spotlight-end' } }] },
@@ -99,6 +116,12 @@ export const PROCEDURES = {
   // ── Level 8 ──
   'Solar Avatar': { success: [{ do: 'clock', to: 'self', clock: { name: 'Solar Avatar', expiry: 'round', rounds: 3, endStress: 2 } },
     { do: 'note', text: 'Tres rondas: vuelas, eres inmune al daño Physical, tus ataques Lux marcan 1 HP más (hasta 4) y das luz brillante a Far. Al terminar, marcas 2 Stress (la mesa lo hace).' }] },
+  'Biomorphic Arsenal': { choose: { count: 2, defaults: ['Carapace Plating', 'Bone Shards'], options: {
+    'Bone Shards': [{ do: 'weapon', weapon: { name: 'Bone Shards', damage: 'd12 phys.', range: 'Far', trait: 'Strength' } }],
+    'Carapace Plating': [{ do: 'clock', to: 'self', clock: { name: 'Biomorphic Arsenal · Carapace Plating', tempArmor: 2 } }],
+    'Toxin Glands': [{ do: 'weapon', weapon: { name: 'Toxin Glands', damage: 'd4 phys.', range: 'Melee', trait: 'Strength', tags: ['toxin'] } }],
+  } }, failure: [{ do: 'clock', to: 'self', clock: { name: 'Biomorphic Arsenal · forma inestable', edge: 'disadvantage', allRolls: true, expiry: 'round', rounds: '1d4' } }] },
+  'Cordon of Will': { success: [{ do: 'note', text: 'Cordón a Close: quien intente cruzarlo tira Presence DC 20; si falla, no pasa y queda Dazed (márcalo en su token). Un hostil decidido puede marcar 1 Stress para cruzarlo. Tiene Major 5, Severe 10 y 10 HP contra daño Neural; moverlo una banda cuesta una Acción.' }] },
   'Omniscient Eye': { success: [{ do: 'clock', to: 'self', clock: { name: 'Omniscient Eye · Vulnerable', condition: 'Vulnerable' } }] },
   'Psychic Collapse': { target: { who: 'creature', reach: 'Extreme', self: false },
     success: [{ do: 'damage', dice: '3d8', type: 'void', noArmor: true },
@@ -140,6 +163,15 @@ export function diceFormula(spec, actor) {
   const m = /^P(\d*)\*d(\d+)$/.exec(String(spec || ''));
   if (m) return `${prof * (Number(m[1]) || 1)}d${m[2]}`;
   return String(spec || '');
+}
+// The options of a «choose two» Power that apply: the chosen ones that exist, as many as allowed
+// (one more with Hope where it says so), completed with the defaults.
+export function chosenOptions(choose, choices = [], { hope = false } = {}) {
+  if (!choose) return [];
+  const allowed = hope ? choose.hopeCount || choose.count : choose.count;
+  const valid = [...new Set((choices || []).filter(c => Object.hasOwn(choose.options, c)))];
+  for (const d of choose.defaults || []) if (valid.length < allowed && !valid.includes(d)) valid.push(d);
+  return valid.slice(0, allowed);
 }
 // The steps a cast brings: success (plus hope on a Success with Hope or a Critical), or failure.
 export function stepsFor(procedure, { success = false, hope = false } = {}) {

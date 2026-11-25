@@ -1914,6 +1914,15 @@ export const PAIRS = [
   ["Ignora la armadura: no se pueden gastar Armor Slots.", "Ignores armor: no Armor Slots can be spent."],
   ["Brace: −1 HP.", "Brace: −1 HP."],
   ["Dados iguales: éxito crítico.", "Matching dice: critical success."],
+  // Fase 3: «choose two» Powers (v2.52.0)
+  ["Apex Predator: Resistencia al frío.", "Apex Predator: Resistance to Cold."],
+  ["Aquatic Symbiote: respiras en cualquier líquido, no te estorba y tienes Resistencia al fuego.", "Aquatic Symbiote: you breathe in any liquid, it does not hinder you and you have Resistance to Fire."],
+  ["Lithoderm: moverte una banda te cuesta la Acción.", "Lithoderm: moving one band costs your Action."],
+  ["Sky-Adapted: vuelo flotante y Resistencia al rayo.", "Sky-Adapted: hovering flight and Resistance to Lightning."],
+  ["Con Hope dura 24 horas o hasta tu próximo Long Rest (la mesa la quita al acabar la escena: vuelve a ponerla si sigue).", "With Hope it lasts 24 hours or until your next Long Rest (the table removes it when the scene ends: put it back if it goes on)."],
+  ["Si hace daño, el objetivo queda Weakened (una Strength Reaction Roll DC 15 lo termina).", "If it deals damage, the target is Weakened (a Strength Reaction Roll DC 15 ends it)."],
+  ["Weakened (Strength DC 15 lo termina)", "Weakened (Strength DC 15 ends it)"],
+  ["Cordón a Close: quien intente cruzarlo tira Presence DC 20; si falla, no pasa y queda Dazed (márcalo en su token). Un hostil decidido puede marcar 1 Stress para cruzarlo. Tiene Major 5, Severe 10 y 10 HP contra daño Neural; moverlo una banda cuesta una Acción.", "Cordon at Close: whoever tries to cross rolls Presence DC 20; on a failure it cannot pass and is Dazed (mark it on its token). A determined hostile may mark 1 Stress to cross. It has Major 5, Severe 10 and 10 HP against Neural damage; moving it one band costs an Action."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2116,4 +2125,9 @@ export const PATTERNS = [
   ["Energy Cascade · ronda {a}", "Energy Cascade · round {a}"],
   ["Inviolable Sanctum: {_a}", "Inviolable Sanctum: {_a}"],
   ["{_a} te ha hecho daño a Close. Neural Feedback: Presence DC 15; si sale, (Proficiency)d8 Void y Instinct DC 15 o queda Vulnerable.", "{_a} damaged you at Close. Neural Feedback: Presence DC 15; on a success, (Proficiency)d8 Void and Instinct DC 15 or Vulnerable."],
+  ["Elige {a}", "Choose {a}"],
+  ["Elige {a} ({b} con Hope)", "Choose {a} ({b} with Hope)"],
+  ["Opciones: {_a}.", "Options: {_a}."],
+  ["{_a}: {_b} en la mano ({_c}, {_d}) hasta el final de la escena.", "{_a}: {_b} in hand ({_c}, {_d}) until the end of the scene."],
+  ["{_a}: termina {_b}.", "{_a}: {_b} ends."],
 ];

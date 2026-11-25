@@ -624,6 +624,8 @@ function resolveGameAction(action, store) {
     }
     if (result.failed) resolution.phase = 'done';
     if (SELF_EFFECTS[card.name] || CARD_MODES[card.name]) resolution.mode = String(action.mode ?? '').slice(0, 30);
+    // «Choose two» (v2.52.0): the options the player marked (the defaults otherwise).
+    if (PROCEDURES[card.name]?.choose && Array.isArray(action.choices)) resolution.choices = action.choices.filter(c => typeof c === 'string' && Object.hasOwn(PROCEDURES[card.name].choose.options, c)).slice(0, 4);
     if (CARD_MODES[card.name] && !CARD_MODES[card.name].includes(resolution.mode)) resolution.mode = CARD_MODES[card.name][0];
     if (area && !result.failed) {
       resolution.area = { x: Math.round(origin.x), y: Math.round(origin.y), reach: area.reach, radius: Math.round(areaRadius(origin, store.getActiveMap?.(), area.reach)), color: card.color || '#00f3ff', failure: area.failure };

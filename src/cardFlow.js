@@ -15,6 +15,7 @@ import { costLabel, DUAL_REACTIONS } from './loadoutCards.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { distanceInfo } from './attackFlow.js';
 import { PATH_TRAITS } from './statePowers.js';
+import { PROCEDURES } from './powerProcedures.js';
 
 // ── State of a card in the hand ─────────────────────────────────────────────────────────────
 function missing(card, token) {
@@ -90,7 +91,7 @@ export function hidePreview() { clearTimeout(previewTimer); document.getElementB
 // 'dialog': it has choices that cannot be guessed; 'aim': a target on the map; 'area': an area
 // around the caster to confirm; 'play': nothing else, it is played at once.
 export function quickPlan(card, token) {
-  if (card.chooseTrait || card.reverse || card.kind === 'beardown' || cardRollOptions(card) || (card.cost?.open && card.cost?.resolve)) return 'dialog';
+  if (card.chooseTrait || card.reverse || card.kind === 'beardown' || cardRollOptions(card) || (card.cost?.open && card.cost?.resolve) || PROCEDURES[card.name]?.choose) return 'dialog';
   if (card.kind === 'effort' && (token.effort || 0) < (card.cost?.effort || 0)) return 'dialog';
   if (areaRule(card)) return 'area';
   if (TARGET_RULES[card.name]) return 'aim';

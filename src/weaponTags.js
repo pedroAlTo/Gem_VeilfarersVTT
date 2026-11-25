@@ -34,6 +34,8 @@ export const WEAPON_TAGS = {
   cursed: 'Cursed', assassination: 'Assassination', plague: 'Plague', genocide: 'Genocide', horrifying: 'Horrifying',
   disabling: 'Disabling', 'anti-tech': 'Anti-Tech', 'neural-link': 'Neural-Link', 'one-use': 'One-Use', lingering: 'Lingering',
   forbidden: 'Forbidden', precursor: 'Precursor', radiation: 'Radiation',
+  // Domain Powers that give a weapon (v2.52.0): Biomorphic Arsenal's Toxin Glands.
+  toxin: 'Toxin',
   // The table's own weapons (homebrew): descriptive, without a rule in the books.
   'resonancia-sismica': 'Resonancia sísmica', shrewd: 'Shrewd', 'despliegue-rapido': 'Despliegue en fracción de segundo',
 };

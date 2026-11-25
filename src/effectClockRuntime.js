@@ -39,7 +39,12 @@ export function endSceneEffects() {
     for (const token of store.state.tokens) {
       const gone = (token.effectClocks || []).filter(c => c.scene);
       if (!gone.length) continue;
-      store.updateToken(token.id, { effectClocks: token.effectClocks.filter(c => !c.scene) });
+      // What a Power gave for the scene goes with it (v2.52.0): temporary Armor Slots and weapons.
+      const armorBack = gone.reduce((n, c) => n + (c.tempArmor && !c.sourceId ? c.tempArmor : 0), 0), weaponsGone = gone.map(c => c.grantWeapon).filter(Boolean);
+      const patch = { effectClocks: token.effectClocks.filter(c => !c.scene) };
+      if (armorBack && token.armor) { const max = Math.max(0, (token.armor.max || 0) - armorBack); patch.armor = { ...token.armor, max, current: Math.min(max, Math.max(0, (token.armor.current || 0) - armorBack)) }; }
+      if (weaponsGone.length && token.inventory?.weapons) patch.inventory = { ...token.inventory, weapons: token.inventory.weapons.filter(w => !weaponsGone.includes(w.id)) };
+      store.updateToken(token.id, patch);
       for (const c of gone) { ended++; store.addLog({ sender: token.name, type: 'EFFECT', title: `Fin de ${c.name}`, details: `${token.name}: «${c.name}» termina al acabar la escena.` }); }
     }
   } finally { store.tableActing = before; }

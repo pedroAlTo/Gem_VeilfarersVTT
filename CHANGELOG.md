@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.51.0**.
-Paquete: `VeilFarers_VTT_v2.51.0.zip`.
+Versión actual del VTT: **v2.52.0**.
+Paquete: `VeilFarers_VTT_v2.52.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.52.0] — 2026-11-25
+
+V3 · Poderes de «elige dos» automáticos (Fase 3 completa)
+
+### Elige dos
+
+- Adaptive Evolution, Symbiotic Bloom y Biomorphic Arsenal se resuelven solos con las opciones elegidas. En modo Básico, la mesa toma las más útiles (Physical Adaptation y Enhanced Senses; Lithoderm, y Sky-Adapted con Hope; Carapace Plating y Bone Shards); con doble clic o en Avanzado, la carta muestra una casilla por opción.
+- Lo que dan: +1 o +2 Evasion, +2 a Instinct, Resistencia al daño Physical, 2 Armor Slots temporales (se quitan al acabar la escena), quitar una condición (Metabolic Change) y armas en la mano para la escena: Natural Attack (d8 Void), Apex Predator (d6 Void), Bone Shards (d12 a Far) y Toxin Glands, cuyo golpe deja Weakened.
+- Biomorphic Arsenal fallado: Desventaja en todas las tiradas durante 1d4 rondas. Cordon of Will explica su cordón en el registro.
+- Con esto, 34 Poderes tienen ficha de procedimiento: todos los que tienen daño, tirada de sus objetivos, curación o condición en mesa. El resto son narrativos.
 
 ## [2.51.0] — 2026-11-25
 

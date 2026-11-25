@@ -133,6 +133,7 @@ export const TABLE_USE = {
   forbidden: [I, 'Clasificación legal: sin efecto.'],
   precursor: [I, 'Origen Precursor: sin efecto.'],
   radiation: [I, 'Etiqueta del daño (la usa Irradiating).'],
+  toxin: [A, 'Si hace daño, el objetivo queda Weakened (una Strength Reaction Roll DC 15 lo termina).'],
   // The table's own weapons
   'resonancia-sismica': [I, 'Propiedad descriptiva de la mesa.'],
   shrewd: [I, 'Propiedad descriptiva de la mesa.'],
