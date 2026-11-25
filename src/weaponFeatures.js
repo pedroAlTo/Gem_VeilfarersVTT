@@ -1,4 +1,4 @@
-import { hasTag, tagValue } from './weaponTags.js';
+import { hasTag, tagValue, weaponTagList } from './weaponTags.js';
 // Weapon features (Corebook ch. 13, Weapon Features Glossary), read from the weapon's tags
 // (weaponTags.js), never by searching words in its text.
 // What changes numbers is applied by the table: the attack roll (attackFlow.weaponAttackBonus),
@@ -11,9 +11,80 @@ export function weaponFeatures(weapon) {
   return {
     crushing: t('crushing'), bleed: t('bleed'), phasing: t('phasing'), cutting: t('cutting'), vibration: t('vibration'),
     shieldPiercing: t('shield-piercing'), burstFire: t('burst-fire'), massive: t('massive'), energySurge: t('energy-surge'),
-    devastating: t('devastating'), poison: t('poison'), ignite: t('ignite'), overheating: t('overheating'),
+    devastating: t('devastating'), poison: t('poison'), ignite: t('ignite'),
+    // Stable: the weapon ignores Overheating (Corebook).
+    overheating: t('overheating') && !t('stable'),
   };
 }
+
+// ── Rust & Steel 12.06 and Corebook properties the table applies (Plan de UX V3, fase 4) ──────
+const strengthOf = token => Number(token?.traits?.strength) || 0;
+// The die of the weapon's damage line («1d8+3 phys.» → 8).
+const weaponDie = weapon => Number(String(weapon?.damage || '').match(/d(\d+)/i)?.[1]) || 6;
+// A Synthetic, a drone or a machine (Disruptor, System Shock): a drone token, a character whose
+// Ancestry is Synthetic, or an adversary whose name or role says it is one.
+export function isMachineTarget(token) {
+  if (!token) return false;
+  if (token.actorType === 'drone' || token.drone) return true;
+  const who = [token.species, token.sourceCharacter?.document?.fields?.ancestry].join(' ');
+  if (/synthe?t|sint[eé]tic|android|robot/i.test(who)) return true;
+  return token.isPlayer === false && /\b(drones?|synth\w*|sint[eé]tic\w*|androids?|robots?|automat\w*|constructs?|mechs?|machines?|m[aá]quinas?|turrets?|torretas?)\b/i.test([token.name, token.roleTag].join(' '));
+}
+
+// What the weapon does to its own attack roll besides the bonus (attackFlow.weaponAttackBonus):
+// Heavy (Rust & Steel): Strength +1 or higher, otherwise Disadvantage. `ahead` lists what the
+// player decides before rolling (Unwieldy, Overcharge, Charge-Up, Garrote, Neural-Link).
+export function weaponAttackEdge(weapon, wielder) {
+  const notes = [], ahead = [];
+  let disadvantage = false;
+  if (!weapon || typeof weapon !== 'object') return { disadvantage, notes, ahead };
+  if (hasTag(weapon, 'heavy') && strengthOf(wielder) < 1) { disadvantage = true; notes.push('Heavy: Strength menor que +1, Desventaja.'); }
+  if (hasTag(weapon, 'unwieldy')) ahead.push('Unwieldy: −2 al ataque salvo que la hayas afianzado con una Acción y no te hayas movido.');
+  if (hasTag(weapon, 'overcharge')) ahead.push('Overcharge: antes de atacar, puedes marcar 1 Stress para +1d6 de daño si impactas.');
+  if (hasTag(weapon, 'charge-up')) ahead.push('Charge-Up: dispara solo si la cargaste con una Acción en un Spotlight anterior.');
+  if (hasTag(weapon, 'garrote')) ahead.push('Garrote: solo contra un objetivo desprevenido o Restrained por ti.');
+  if (hasTag(weapon, 'neural-link')) ahead.push('Neural-Link: sin un aumento de interfaz neural, Desventaja.');
+  return { disadvantage, notes, ahead };
+}
+
+// The Evasion of whoever holds these weapons in hand: Massive −1 (Corebook); Defensive +1 (or
+// its value) against Melee attacks (Rust & Steel). Only the best Defensive counts.
+export function wielderEvasion(weapons = [], { melee = false } = {}) {
+  const held = (weapons || []).filter(w => w && w.equipped !== false);
+  let mod = 0; const notes = [];
+  if (held.some(w => hasTag(w, 'massive'))) { mod -= 1; notes.push('Massive en la mano: −1 Evasion'); }
+  const defensive = melee ? Math.max(0, ...held.filter(w => hasTag(w, 'defensive')).map(w => tagValue(w, 'defensive', 1))) : 0;
+  if (defensive) { mod += defensive; notes.push(`Defensive: +${defensive} Evasion contra Melee`); }
+  return { mod, notes };
+}
+
+// Stress the wielder marks after the attack roll: High-Recoil with Strength 0 or lower; Unstable
+// on a Failure with Fear (matching dice stay a Critical Success). Volatile and Catastrophic are
+// recalled on a Failure with Fear.
+export function afterAttackStress(weapon, wielder, result = {}) {
+  const notes = [];
+  let stress = 0;
+  if (!weapon || typeof weapon !== 'object') return { stress, notes };
+  const fearFail = result.resultType === 'FAILURE_WITH_FEAR' && !result.isCritical;
+  if (hasTag(weapon, 'high-recoil') && strengthOf(wielder) <= 0) { stress++; notes.push('High-Recoil: Strength 0 o menos, marca 1 Stress'); }
+  if (fearFail && hasTag(weapon, 'unstable')) { stress++; notes.push('Unstable: Fallo con Fear, marca 1 Stress y el arma queda fuera de servicio hasta una Acción y Knowledge (Tech) DC 10'); }
+  if (fearFail && hasTag(weapon, 'volatile')) notes.push('Volatile: el arma se sobrecalienta y no ataca hasta enfriarla con una Acción; Agility DC 10 o 1d6 Energy (Fire)');
+  if (fearFail && hasTag(weapon, 'catastrophic')) notes.push('Catastrophic: el arma queda Broken y detona; tú y todos a Very Close tiráis Agility DC 15 (3d6 Energy, la mitad si acertáis)');
+  return { stress, notes };
+}
+
+// Damage the weapon adds on a hit: Scatter +2 in Melee or Very Close (Rust & Steel); Disruptor one
+// more normal damage die against a Synthetic, a drone or a machine.
+export function weaponDamageRiders(weapon, { band = '', target = null } = {}) {
+  const out = [];
+  if (!weapon || typeof weapon !== 'object') return out;
+  if (hasTag(weapon, 'scatter') && (band === 'Melee' || band === 'Very Close')) out.push({ id: 'scatter', label: 'Scatter', value: 2 });
+  if (hasTag(weapon, 'disruptor') && isMachineTarget(target)) out.push({ id: 'disruptor', label: 'Disruptor', dice: '1d' + weaponDie(weapon) });
+  return out;
+}
+
+// Guided, Mind Link and Indirect may attack without line of sight.
+export const ignoresLineOfSight = weapon => !!weapon && ['guided', 'mind-link', 'indirect'].some(id => hasTag(weapon, id));
 
 // Feature DC: TT1 10, TT2 15, TT3 20, TT4 25 (Corebook). Read from the item's tier text.
 export function featureDC(weapon) {
@@ -110,7 +181,7 @@ const REMINDERS = [
   ['mind-lock', dc => `Mind-Lock: si el objetivo marca Stress, Presence Reaction Roll contra CD ${dc}; si falla, solo puede moverse en su próximo Spotlight.`],
   ['disintegrating', (dc, ctx) => ctx.maxDie ? 'Disintegrating: un dado salió al máximo; un objeto expuesto queda inutilizado o −1 Armor Slot máximo (elige el objetivo).' : ''],
   ['unraveling', (dc, ctx) => ctx.maxDie ? 'Unraveling: un dado salió al máximo; el objetivo suprime un rasgo de Clase o Ancestry hasta el final de la escena.' : ''],
-  ['system-shock', () => 'System Shock: daño normal contra Sintéticos y máquinas; contra orgánicos, solo 1d4 Stress.'],
+  ['system-shock', (dc, ctx) => ctx.machine === true ? 'System Shock: el objetivo es Sintético o máquina: daño normal.' : ctx.machine === false ? 'System Shock: el objetivo es orgánico: en lugar del daño, solo 1d4 Stress.' : 'System Shock: daño normal contra Sintéticos y máquinas; contra orgánicos, solo 1d4 Stress.'],
   ['explosive', dc => `Explosive: todos a Very Close del impacto hacen una Agility Reaction Roll contra CD ${dc}; si fallan, daño completo; si aciertan, la mitad.`],
   ['automatic', (dc, ctx) => ctx.hit ? 'Automatic: marca 1 Stress para aplicar el mismo resultado a un segundo objetivo a Very Close del primero.' : ''],
   ['salvo-fire', (dc, ctx) => ctx.hit ? 'Salvo Fire: marca 1 Stress para aplicar el resultado a un segundo objetivo a Close del primero.' : ''],
@@ -121,10 +192,35 @@ const REMINDERS = [
   ['probability-shift', () => 'Probability Shift: puedes repetir los dos Duality Dice y quedarte con el nuevo resultado.'],
   ['paired', (dc, ctx, w) => `Paired${tagValue(w, 'paired') ? ` +${tagValue(w, 'paired')}` : ''}: con dos armas Paired, suma el bono Paired de una de ellas al daño.`],
   ['psionic', dc => `Psionic: no tira contra Evasion; el objetivo hace una Presence Reaction Roll contra CD ${dc} (falla: daño completo; acierta: nada).`],
-  ['area', () => 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.'],
+  ['area', (dc, ctx, w) => { const band = String(weaponTagList(w).find(t => t.startsWith('area:'))?.split(':')[1] || ''); return band
+    ? `Área (${band.split('-').map(x => x[0].toUpperCase() + x.slice(1)).join(' ')}): cada criatura de la zona tira Agility contra CD ${dc}; si falla, el daño completo; si acierta, la mitad y sin condición secundaria. Total Cover lo bloquea.`
+    : 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.'; }],
   ['waveform', () => 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.'],
   ['dispersal-wave', () => 'Área: el efecto alcanza a todas las criaturas de su zona (también aliados); compara la tirada con la Evasion de cada una.'],
-  ['massive', () => 'Massive: quien lo empuña tiene −1 Evasion.'],
+  // Rust & Steel 12.06
+  ['knockdown', dc => `Knockdown: el objetivo elige Agility o Strength (Reaction Roll) contra CD ${dc <= 15 ? 10 : 15}; si falla, Prone.`],
+  ['thermal', (dc, ctx) => ctx.damaged ? `Thermal: Strength Reaction Roll contra CD ${dc}; si falla, On Fire.` : ''],
+  ['anchoring', (dc, ctx) => ctx.damaged ? `Anchoring: Strength Reaction Roll contra CD ${dc}; si falla, no puede hacer Move en su próximo Spotlight.` : ''],
+  ['melting', (dc, ctx) => ctx.damaged ? `Melting: al empezar su próximo Spotlight, el objetivo tira Strength contra CD ${dc}; si falla, un dado de daño del arma como Energy; si acierta, la mitad.` : ''],
+  ['arc', (dc, ctx) => ctx.hit ? 'Arc: un segundo objetivo a Very Close del primero recibe la mitad del daño (sin tirada).' : ''],
+  ['spray', () => 'Spray: el ataque alcanza a todas las criaturas de un cono Very Close (aliados incluidos); compara la tirada con la Evasion de cada una.'],
+  ['non-lethal', () => 'Non-Lethal: no baja al objetivo de 1 HP; a 1 HP queda Incapacitated (inconsciente), no Dying.'],
+  ['sundering', (dc, ctx) => ctx.critical && ctx.damaged ? 'Sundering: el objetivo elige: un escudo expuesto queda fuera de servicio o −2 Armor Slots máximos hasta Repair All Armor.' : ''],
+  ['sustained-fire', (dc, ctx) => ctx.hit ? 'Sustained Fire: en tu próximo Spotlight, sin moverte y con el objetivo a tu alcance, gasta tu Acción para repetir este daño sin tirar.' : ''],
+  ['emp', (dc, ctx) => ctx.hit ? 'EMP: resuelve el pulso EMP (Rust & Steel, cap. 5) contra los dispositivos expuestos, aumentos, drones y Sintéticos a su alcance.' : ''],
+  ['anti-psionic', (dc, ctx) => ctx.hit ? 'Anti-Psionic: +1d6 Neural si el objetivo es Veil-Touched o Veil-Aligned, o usó un Domain Power desde su último Spotlight.' : ''],
+  ['temporal', () => 'Temporal: una vez por escena, tras una tirada sin dobles, puedes repetir el dado de Hope.'],
+  // Rust & Steel 12.06, Forbidden
+  ['lethal-toxin', (dc, ctx) => ctx.damaged ? 'Lethal Toxin: un objetivo orgánico tira Strength DC 15; si falla, Incapacitated y Poisoned (un segundo fallo, Dying). Los Sintéticos son inmunes.' : ''],
+  ['irradiating', (dc, ctx) => ctx.damaged ? 'Irradiating: Strength DC 15; si falla, Poisoned hasta Knowledge (Medicine) DC 20 en un Long Rest. La zona queda contaminada.' : ''],
+  ['agony', (dc, ctx) => ctx.damaged ? 'Agony: Instinct Reaction Roll DC 15; si falla, Stunned (salvo inmunes al dolor).' : ''],
+  ['horrifying', (dc, ctx) => ctx.damaged ? 'Horrifying: quien lo vea causar daño por primera vez en la escena tira Presence DC 15; si falla, marca 1 Stress.' : ''],
+  ['disabling', (dc, ctx) => ctx.damaged ? 'Disabling: contra un Sintético, un dron o alguien con aumentos, su operador tira Knowledge (Tech) DC 15; si falla, un dispositivo expuesto queda fuera de servicio.' : ''],
+  ['assassination', (dc, ctx) => ctx.hit ? 'Assassination: contra un objetivo desprevenido, un dado de daño más y el objetivo queda Dazed.' : ''],
+  ['shred', (dc, ctx) => ctx.damaged ? (ctx.armorAuto ? 'Shred: un objetivo orgánico queda Bleeding.' : 'Shred: −1 Armor Slot máximo hasta Repair All Armor y, si es orgánico, Bleeding.') : ''],
+  ['black-hole', () => 'Black Hole: cada criatura a Very Close tira Strength DC 15; si falla, es arrastrada al centro y recibe 4d6 Void; si acierta, la mitad.'],
+  ['lingering', (dc, ctx, w) => `Lingering: la zona sigue siendo peligrosa ${tagValue(w, 'lingering') ? tagValue(w, 'lingering') + ' rondas' : 'hasta el final de la próxima ronda'}; quien entre o empiece allí su Spotlight repite la tirada de Agility contra la mitad de los dados.`],
+  ['one-use', () => 'One-Use: el arma o su carga se gasta tras esta Acción.'],
 ];
 // ctx.armorAuto: the table already cut the target's maximum Armor Slots (an enemy, see armorCut).
 const ARMOR_CUT_TAGS = ['armor-piercing', 'shredding', 'disintegrating'];
@@ -148,6 +244,8 @@ export function armorCut(weapon, ctx = {}, armorMax = 0) {
   if (hasTag(weapon, 'armor-piercing')) cut.long = Math.max(1, Math.min(5, tagValue(weapon, 'armor-piercing', 1)));
   if (hasTag(weapon, 'disintegrating') && ctx.maxDie) cut.repairAll = 1;
   if (hasTag(weapon, 'shredding') && ctx.damaged) cut.downtime = 1;
+  // Shred (Rust & Steel, Forbidden): −1 until Repair All Armor when it causes HP loss.
+  if (hasTag(weapon, 'shred') && ctx.damaged) { cut.repairAll += 1; cut.shred = 1; }
   return cut.long + cut.repairAll + cut.downtime ? cut : null;
 }
 export const validArmorCut = c => !!c && typeof c === 'object' && ['long', 'repairAll', 'downtime'].every(k => Number.isInteger(c[k]) && c[k] >= 0 && c[k] <= 5) && c.long + c.repairAll + c.downtime >= 1;
@@ -173,7 +271,8 @@ export function armorCutNotes(cut) {
   if (!cut) return [];
   return [
     ...(cut.long ? [`Armor Piercing: −${cut.long} Armor Slot${cut.long > 1 ? 's' : ''} máximo${cut.long > 1 ? 's' : ''} del objetivo al aplicar el daño (hasta su próximo Long Rest).`] : []),
-    ...(cut.repairAll ? ['Disintegrating: un dado salió al máximo; −1 Armor Slot máximo del objetivo al aplicar el daño (hasta Repair All Armor).'] : []),
+    ...(cut.repairAll - (cut.shred || 0) > 0 ? ['Disintegrating: un dado salió al máximo; −1 Armor Slot máximo del objetivo al aplicar el daño (hasta Repair All Armor).'] : []),
+    ...(cut.shred ? ['Shred: −1 Armor Slot máximo del objetivo al aplicar el daño (hasta Repair All Armor).'] : []),
     ...(cut.downtime ? ['Shredding: −1 Armor Slot máximo del objetivo al aplicar el daño (hasta reparar la armadura en Downtime).'] : []),
   ];
 }

@@ -1,6 +1,31 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.44.0', date: '2026-11-25', title: 'V3 · Las armas aplican sus propiedades (Fase 4, primera parte)',
+    sections: [
+      { title: 'Catálogo de armas', items: [
+        'Las 231 armas del catálogo leen todas sus propiedades: antes ~70 no se reconocían. Se aplican las equivalencias de Rust & Steel 12.06: Brutal es Devastating, Stun es Stunning, Blast y Area con banda son el procedimiento Explosive en esa banda, Cone es Spray, AP N es Armor Piercing N y Persistent es Lingering 3. «Armor Piercing 3», «Area Very Close», «Defensive (+2)» o «Reach Very Close» se leen con su valor, y una coma dentro de un paréntesis ya no parte la propiedad («Phasing (ignora 1 slot, Penetración -4)» es Phasing).',
+        'Las fichas guardadas con las propiedades mal leídas se corrigen solas al leerlas.',
+        'Los nombres del mercado negro salen bien: «Widow» Needler, «Ghost» Rifle, «Glass» Cannon.',
+      ] },
+      { title: 'Glosario en el equipo', items: [
+        'Cada propiedad de un arma muestra al pasar por encima la regla del libro (Corebook 12.06 o Rust & Steel 12.06, 147 propiedades) y qué hace la mesa con ella: ⚙ la aplica sola, ◐ la aplica cuando puede saberlo, 🔔 la recuerda en el momento, o es descriptiva.',
+      ] },
+      { title: 'Nuevas propiedades automáticas', items: [
+        'Heavy (arma): con Strength menor que +1, el ataque tira con Desventaja.',
+        'Scatter: +1 al ataque en Melee o Very Close y +2 al daño; −1 al ataque a Close o más.',
+        'Massive: quien la lleva en la mano tiene −1 Evasion al recibir ataques. Defensive: +1 Evasion (o su valor, +2 en el Breaching Shield) contra ataques Melee.',
+        'High-Recoil: con Strength 0 o menos, quien dispara marca 1 Stress. Unstable: en un Fallo con Fear, quien ataca marca 1 Stress; Volatile y Catastrophic se recuerdan.',
+        'Disruptor: contra un Sintético, un dron o una máquina, un dado de daño más.',
+        'Stable ignora Overheating; Guided, Mind Link e Indirect no avisan de muros entre atacante y objetivo; Shred baja el Armor Slot máximo de un enemigo como Disintegrating.',
+        'La vista previa del ataque dice antes de tirar lo que decide el jugador (Unwieldy, Overcharge, Charge-Up, Garrote, Neural-Link) y la Evasion del objetivo por sus armas.',
+      ] },
+      { title: 'Recordatorios', items: [
+        'Knockdown, Thermal, Anchoring, Melting, Arc, Spray, Non-Lethal, Sundering, Sustained Fire, EMP, Anti-Psionic, Temporal y las propiedades prohibidas (Lethal Toxin, Irradiating, Agony, Horrifying, Disabling, Assassination, Black Hole, Lingering, One-Use) se recuerdan tras el impacto con su tirada y su DC. System Shock dice si el objetivo es orgánico o máquina.',
+      ] },
+    ],
+  },
+  {
     version: '2.43.5', date: '2026-11-25', title: 'V3 · Sneak Attack y The Quiet Network por separado; atacar desde el sigilo da Ventaja',
     sections: [
       { title: 'Cartas de clase', items: [

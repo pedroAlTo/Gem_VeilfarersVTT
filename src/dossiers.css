@@ -256,6 +256,15 @@
 .eq-tag-pop { display:none; position:absolute; left:0; bottom:calc(100% + 6px); z-index:50; width:min(320px, 70vw); padding:8px 10px; border-radius:5px; border:1px solid rgba(250,204,21,.6); background:#140a2b; color:#e2e8f0; font:400 12px/1.5 system-ui, sans-serif; text-transform:none; letter-spacing:0; box-shadow:0 10px 24px rgba(0,0,0,.6); white-space:normal; }
 .eq-tag-pop b { display:block; color:#fde68a; margin-bottom:3px; font-weight:700; }
 .eq-tag:hover .eq-tag-pop, .eq-tag:focus-visible .eq-tag-pop { display:block; }
+/* What the table does with a weapon property (Plan de UX V3, fase 4). */
+.eq-tag > i { font-style:normal; margin-right:3px; font-size:10px; opacity:.85; }
+.eq-tag-auto { border-color:rgba(74,222,128,.55); }
+.eq-tag-partial { border-color:rgba(125,211,252,.55); }
+.eq-tag-info { opacity:.8; }
+.eq-tag-pop small { display:block; margin-top:4px; color:#a5b4fc; font-size:11px; }
+.eq-tag-use { display:block; margin-top:6px; padding-top:6px; border-top:1px solid rgba(250,204,21,.25); font-style:normal; color:#e2e8f0; }
+.eq-tag-use strong { display:block; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+.eq-use-auto strong { color:#86efac; } .eq-use-partial strong { color:#7dd3fc; } .eq-use-reminder strong { color:#fde68a; } .eq-use-info strong { color:#cbd5e1; }
 .eq-row { border:1px solid rgba(255,255,255,.08); border-radius:5px; background:rgba(13,4,32,.55); padding:6px 8px; margin-bottom:6px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px; align-items:center; }
 .eq-row.open { border-color:rgba(192,132,252,.5); }
 .eq-row > .eq-detail { grid-column:1 / -1; margin-top:2px; }

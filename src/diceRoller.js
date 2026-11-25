@@ -25,7 +25,7 @@ import { whisperToKeeper, rulesWhisperText } from './rulesWhisper.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { throwDice, facesRoller } from './tableDice.js';
 import { durationDice } from './effectClocks.js';
-import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, extraDiceNeeded, armorCut, applyArmorCut, armorCutNotes } from './weaponFeatures.js';
+import { weaponFeatures, armorSlotsAllowed, armorSlotNotes, damageExtras, devastatingExtra, hitStress, hitConditions, featureReminders, overheatCheck, extraDiceNeeded, armorCut, applyArmorCut, armorCutNotes, wielderEvasion, weaponAttackEdge, ignoresLineOfSight, isMachineTarget } from './weaponFeatures.js';
 import { isDroneToken, droneEvasion, droneCommand } from './drones.js';
 import { cardData, loadCardData } from './cardData.js';
 import { competence, droneCompetence, gearOutsideCompetence, failureWithFearAdvice } from './techAccess.js';
@@ -1426,8 +1426,11 @@ export class DiceRollerSidebar {
     const gap = distanceInfo(attacker, target, map), band = gap.band;
     if (swarm && (store.sessionRole === 'player' || store.state.userRole !== 'keeper' || !swarmCandidates(attacker,map,store.state.tokens).some(t => t.id === target.id))) throw new Error('La situación del enjambre o del objetivo ha cambiado.');
     const range = swarm ? { allowed: true, reach: 'Close', disadvantage: false } : rangeCheck(weapon, band);
-    // A drone whose signal is Lost cannot evade: Evasion −2 (Corebook ch. 14).
-    const evasion = droneEvasion(target);
+    // A drone whose signal is Lost cannot evade: Evasion −2 (Corebook ch. 14). The defender's
+    // weapons in hand: Massive −1; Defensive +1 (or its value) against a Melee attack.
+    const meleeAttack = weapon ? weaponRangeBand(weapon) === 'Melee' || (!weaponRangeBand(weapon) && band === 'Melee') : band === 'Melee';
+    const held = wielderEvasion(tokenInventory(target).weapons, { melee: !swarm && meleeAttack });
+    const evasion = droneEvasion(target) + held.mod;
     // A drone attacks with its operator's Action and its operator's roll.
     const drone = isDroneToken(attacker), command = drone ? droneCommand(attacker) : null;
     const operator = drone ? store.state.tokens.find(t => t.id === attacker.drone?.operatorId && t.isPlayer !== false) : null;
@@ -1442,7 +1445,8 @@ export class DiceRollerSidebar {
     };
     q('#damage_result_display').style.display = 'none';
     const where = `${weapon ? weapon.name : 'Ataque básico'} · objetivo a ${band} (${gap.meters.toFixed(1)} m, ${gap.squares.toFixed(1)} casillas) · ${range.reach ? `alcance del arma ${range.reach}` : 'alcance del arma sin indicar: no se aplica límite'}.`
-      + (gap.blocked ? ' ⚠️ Hay un muro o una puerta cerrada entre atacante y objetivo: línea de tiro bloqueada.' : '');
+      + (held.notes.length ? ` Evasion de ${target.name}: ${held.notes.join(', ')}.` : '')
+      + (gap.blocked ? (ignoresLineOfSight(weapon) ? ' Hay un muro entre atacante y objetivo, pero el arma no necesita línea de tiro (Guided, Mind Link o Indirect).' : ' ⚠️ Hay un muro o una puerta cerrada entre atacante y objetivo: línea de tiro bloqueada.') : '');
     if (!range.allowed) { show('—', 'FUERA DE ALCANCE', `${where} ${range.reason} Acércate o cambia de arma.`, 'miss'); notify(range.reason, 'error'); return { hit: false, blocked: true, band }; }
 
     let attackRoll;
@@ -1458,7 +1462,8 @@ export class DiceRollerSidebar {
       }
       if (traitId && traitId !== this.selectedTraitId) this.selectTrait(traitId, { rollNow: false });
       const props = weaponAttackBonus(drone ? null : weapon, band);
-      const result = await this.executeActionCheck({ evasion, target, weaponId: weapon?.id, closingId, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '', bonus: props.bonus });
+      const heavy = weaponAttackEdge(drone ? null : weapon, attacker);
+      const result = await this.executeActionCheck({ evasion, target, weaponId: weapon?.id, closingId, disadvantage: range.disadvantage || !!command?.disadvantage || gear.disadvantage || heavy.disadvantage, targetName: target.name, actor: operator, via: drone ? attacker.name : '', bonus: props.bonus });
       if (!result) return { hit: false, band };
       attackRoll = result;
       hit = dualityAttackHit(result, evasion); critical = !!result.isCritical; total = result.total;
@@ -1468,7 +1473,9 @@ export class DiceRollerSidebar {
         describe: v => ({ total: v[0], outcome: v[0] <= 2 ? 'SE SOBRECALIENTA' : 'SIN PROBLEMA', modifiers: `d6 [${v[0]}]: 1–2 se sobrecalienta` }) }))[0] : null;
       const heat = drone ? null : overheatCheck(heatFeatures, () => heatFace);
       if (heat?.overheated) void whisperToKeeper(rulesWhisperText({ attacker: attacker.name, target: target.name, weapon: weapon.name, notes: [heat.text] }));
-      detail = `${checkMath(result)}.${props.notes.length ? ` Propiedades del arma: ${props.notes.join(', ')}.` : ''}${heat ? ` ${heat.text}` : ''}`;
+      // High-Recoil, Unstable, Volatile: what the table already applied after the roll (gameActions).
+      const after = (result.outcomeDesc || '').match(/(?:Heavy|High-Recoil|Unstable|Volatile|Catastrophic): [^.]*\./g) || [];
+      detail = `${checkMath(result)}.${props.notes.length ? ` Propiedades del arma: ${props.notes.join(', ')}.` : ''}${after.length ? ` ${after.join(' ')}` : ''}${heat ? ` ${heat.text}` : ''}`;
       // Failure with Fear on an attack: the consequence is best taken from the weapon (or drone).
       if (result.resultType === 'FAILURE_WITH_FEAR') fearAdvice = drone ? failureWithFearAdvice('drone', attacker.name) : weapon ? failureWithFearAdvice('weapon', weapon.name, weapon.features) : '';
       rolled3D = this.can3D();
@@ -1802,11 +1809,11 @@ export class DiceRollerSidebar {
     const featureNotes = [...riders.map(r => `${r.label}: +${r.value}${r.faces?.length ? ` (${r.dice} [${r.faces.join(', ')}])` : ''}.`), ...extras.notes, ...(devastating ? ['Devastating: alcanza el umbral Severe y marca 1 HP más.'] : []), ...(isDirect ? [] : armorSlotNotes(feats, { composite })),
       ...(feats.poison ? ['Poison: si pierde HP, el objetivo marca 1 Stress.'] : []), ...(feats.ignite ? ['Ignite: si pierde HP, el objetivo queda On Fire.'] : []),
       ...armorCutNotes(plannedCut),
-      ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor })];
+      ...featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor, machine: targetToken ? isMachineTarget(targetToken) : undefined })];
     this.lastFeatureNotes = featureNotes; // the player's Ficha shows them under the result
     // What the Keeper has to resolve by hand goes to the Keeper as a whisper, once per attack.
     if (this.featureWhisper) {
-      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor });
+      const toResolve = featureReminders(activeWeapon, { damaged: dmgResult.finalHpDamage > 0, critical: isCritical, maxDie, hit: true, armorAuto: enemyArmor, machine: targetToken ? isMachineTarget(targetToken) : undefined });
       const text = rulesWhisperText({ ...this.featureWhisper, notes: toResolve });
       this.featureWhisper = null;
       if (text) void whisperToKeeper(text);

@@ -192,7 +192,7 @@ def main():
             row = dict(zip(h, r)); label, rank = tier_of(row.get('TIER', '')); heat = row.get('HEAT', '')
             if h[0] == 'WEAPON':
                 kind = next((k for k in trait_by_type if k in row.get('TYPE', '').upper()), 'HEAVY')
-                add({'id': 'bk_rs_bm_' + slug(r[0]), 'name': r[0].strip('"').replace('"', '«', 1).replace('"', '»', 1) if r[0].count('"') == 2 else r[0], 'source': 'rust_and_steel', 'category': 'weapons',
+                add({'id': 'bk_rs_bm_' + slug(r[0]), 'name': r[0].replace('"', '«', 1).replace('"', '»', 1) if r[0].count('"') == 2 else r[0], 'source': 'rust_and_steel', 'category': 'weapons',
                      'tier': label, 'tierRank': rank, 'trait': trait_by_type[kind], 'traitProposed': True, 'damage': row.get('DMG', ''), 'range': row.get('RANGE', ''), 'burden': row.get('BURDEN'),
                      'features': row.get('PROPERTIES', ''), 'family': family_by_type.get(kind, 'Heavy Weapons'), 'cost': row.get('COST', ''), 'wt': wealth_tier(row.get('COST')), 'heat': heat, 'illegal': True})
             elif h[0] == 'ARMOR':

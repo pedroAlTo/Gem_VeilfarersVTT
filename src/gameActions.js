@@ -20,6 +20,7 @@ import { cardData } from './cardData.js';
 import { handoffControl, isDroneToken, droneSignal as signalOf } from './drones.js';
 import { droneCompatible } from './dronePowers.js';
 import { tokenInventory, validateInventory } from './equipment.js';
+import { weaponAttackEdge, afterAttackStress, weaponDamageRiders } from './weaponFeatures.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { installGear, removeGear, wearArmor } from './gear.js';
 import { characterCards, playCard, recallPower, learnPower, costLabel, COMMON_EFFORTS, CARD_KINDS, cardKindName, uncannyAccess, uncannyChoices, editArchive } from './loadoutCards.js';
@@ -530,7 +531,9 @@ function resolveGameAction(action, store) {
     if (action.closingId && (target.hidden || target.mapId !== store.state.activeMapId)) throw new Error('El objetivo de Breaking Point ya no está en la escena.');
     const melee = ownAttack && (!weapon || weaponRangeBand(weapon) === 'Melee');
     const guard = melee && disciplinedDefense(target, actor, store.getActiveMap?.(), store.state.tokens);
-    const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty, o.traitId);
+    // Heavy (Rust & Steel 12.06): Strength below +1 attacks with Disadvantage.
+    const heavy = weapon ? weaponAttackEdge(weapon, actor) : null;
+    const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty || !!heavy?.disadvantage, o.traitId);
     const keeperRoll = !player;
     // Powers in effect (Velocity Surge +2 Agility) and those armed for this roll (Silver Tongue,
     // Vector Calculus: a bonus and a Hope die that counts higher).
@@ -604,6 +607,15 @@ function resolveGameAction(action, store) {
     }
     if (player && result.isCritical)
       patch.stress = { ...actor.stress, current: Math.max(0, (actor.stress?.current || 0) - 1) };
+    // The weapon's cost after the roll: High-Recoil (Strength 0 or lower) and Unstable (Failure
+    // with Fear) mark Stress; Volatile and Catastrophic are recalled.
+    const recoil = weapon ? afterAttackStress(weapon, actor, result) : null;
+    if (recoil?.stress) {
+      const before = patch.stress || actor.stress || { current: 0, max: 0 };
+      patch.stress = { ...before, current: before.max > 0 ? Math.min(before.max, (before.current || 0) + recoil.stress) : (before.current || 0) + recoil.stress };
+    }
+    const weaponNotes = [...(heavy?.notes || []), ...(recoil?.notes || []).map(n => n + '.')];
+    if (weaponNotes.length) result.outcomeDesc = `${result.outcomeDesc || ''} ${weaponNotes.join(' ')}`.trim();
     // Integrity Die (Path to Nirvana, Disciplined State): each roll with Fear lowers it by 1, never
     // on matching dice; at 0 the state ends.
     let integrityEnded = [];
@@ -624,6 +636,8 @@ function resolveGameAction(action, store) {
     // Sneak Attack (Scoundrel, Awakened and Sleeping): an attack with Advantage that hits deals
     // +1d6 once (2d6 at Tier 2, 3d6 at Tier 3); more sources of Advantage add nothing.
     if (hit && edge.advantage && sneakAttacker(actor)) damageRiders.push({ id: 'sneak-attack', label: 'Sneak Attack', dice: tierOf(actor.level) + 'd6' });
+    // The weapon's own damage on a hit: Scatter +2 up close, Disruptor +1 die against a machine.
+    if (hit && weapon) damageRiders.push(...weaponDamageRiders(weapon, { band: distanceInfo(actor, target, store.getActiveMap?.() || {}).band, target }));
     // Attacking ends the self effects that say so (Temporal Cloak) and breaks Hidden.
     const unveiled = ownAttack && endSelfEffects({ ...actor, effectClocks: patch.effectClocks || actor.effectClocks }, { attack: true });
     if (unveiled) { patch.effectClocks = unveiled.effectClocks; patch.conditions = unveiled.conditions; }
@@ -670,7 +684,7 @@ function resolveGameAction(action, store) {
       ...(secret ? { visibility: 'keeper' } : {}),
       type: 'CHECK',
       title: `${actor.name}: ${result.outcomeTitle}`,
-      details: `${checkMath(result)} vs DC ${result.dc}. ${result.pathPayout}`,
+      details: `${checkMath(result)} vs DC ${result.dc}. ${result.pathPayout}${weaponNotes.length ? ' ' + weaponNotes.join(' ') : ''}`,
       resultType: result.resultType,
     };
     store.addLog(log);

@@ -20,6 +20,7 @@ import { normalizeConditions, conditionDefinition } from './conditions.js';
 import { openConditions } from './conditionUI.js';
 import { checkEdge, lifeStage } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus, weaponTraitId } from './attackFlow.js';
+import { weaponAttackEdge, wielderEvasion, ignoresLineOfSight } from './weaponFeatures.js';
 import { hasSwarmTactics } from './adversaryPassives.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { proceduralAttack } from './adversaryWeapons.js';
@@ -455,13 +456,20 @@ export class PlayerActionBar {
     const gear = await window.veilDiceRoller?.gearCheck?.(token, { weapon }).catch(() => null) || { disadvantage: false, text: '' };
     if (this.targeting !== targeting || targeting.targetId !== target.id) return;
     const roller = token.actorType === 'drone' ? store.state.tokens.find(t => t.id === token.drone?.operatorId) : token;
-    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage, weaponTraitId(weapon));
+    // The weapon's properties, said before the roll (Plan de UX V3, fase 4): Heavy, the defender's
+    // weapons (Massive, Defensive), what the player decides first (Unwieldy, Overcharge…).
+    const heavy = weaponAttackEdge(token.actorType === 'drone' ? null : weapon, roller);
+    const melee = weapon ? weaponRangeBand(weapon) === 'Melee' || (!weaponRangeBand(weapon) && gap.band === 'Melee') : gap.band === 'Melee';
+    const held = wielderEvasion(tokenInventory(target).weapons, { melee });
+    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage || heavy.disadvantage, weaponTraitId(weapon));
     const props = weaponAttackBonus(weapon, gap.band), type = damageTypeOf(weapon || ''), pen = penetrationFor(type);
     const reasons = [check.disadvantage || !check.allowed ? check.reason : '',
       props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',
+      ...heavy.notes, held.notes.length ? `Evasion de ${target.name}: ${held.notes.join(', ')}.` : '', ...heavy.ahead,
+      gap.blocked && ignoresLineOfSight(weapon) ? 'El arma no necesita línea de tiro.' : '',
       pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
     if (lifeStage(roller)) reasons.unshift('El personaje no puede atacar en este estado.');
-    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked, allowed: check.allowed && !lifeStage(roller), edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
+    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked && !ignoresLineOfSight(weapon), allowed: check.allowed && !lifeStage(roller), edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
     if (this.keeperAttack) this.keeperPanel();
     this.signature = ''; this.render();
   }
