@@ -54,6 +54,7 @@ export function makeMovable(el, name, { area, root = null } = {}) {
       if (!dragging) return;
       node.classList.remove('is-moving');
       if (last) write(name, last);
+      window.dispatchEvent(new CustomEvent('veil:panel-moved', { detail: { name } }));
       // The click that ends a drag does not press the element.
       const swallow = e => { e.stopPropagation(); e.preventDefault(); };
       window.addEventListener('click', swallow, { capture: true, once: true });

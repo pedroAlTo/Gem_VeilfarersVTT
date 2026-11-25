@@ -285,3 +285,26 @@ export function trackPlay(hand, card, token, result) {
 
 // The default mode of a card with modes (the first printed).
 export const defaultMode = card => CARD_MODES[card.name]?.[0];
+
+// ── The hand in decks (v2.57.0, the user's idea, 25 nov 2026) ──────────────────────────────────
+// «Montar mazos: haces mouse over y se muestran las cartas; si una se puede usar como reacción
+// aparece como opción seleccionable directamente.» Each card goes to one deck, by what it is;
+// a reaction that can be used now leaves its deck and waits on top, one click away.
+export const HAND_DECKS = [
+  ['reactions', 'Reacciones'], ['powers', 'Poderes'], ['moves', 'Moves'], ['traits', 'Rasgos'],
+];
+export function deckOf(card) {
+  if (card.reaction || card.name === 'Lucky Break' || card.kind === 'beardown') return 'reactions';
+  if (['power', 'archive'].includes(card.kind) || card.uncanny) return 'powers';
+  if (['move', 'effort'].includes(card.kind)) return 'moves';
+  return 'traits';
+}
+// cards: the hand; isLive(card): usable as a reaction right now; isUsable(card): can be paid now.
+export function handDecks(cards, { isLive = () => false, isUsable = () => true } = {}) {
+  const live = cards.filter(isLive);
+  const decks = HAND_DECKS.map(([id, label]) => {
+    const list = cards.filter(c => deckOf(c) === id && !live.includes(c));
+    return { id, label, cards: list, usable: list.filter(isUsable).length };
+  }).filter(d => d.cards.length);
+  return { live, decks };
+}

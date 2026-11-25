@@ -1983,6 +1983,8 @@ export const PAIRS = [
   ["No puedes actuar hasta después de la próxima ronda, o hasta que un aliado te despierte.", "You cannot act until after the next round, or until an ally rouses you."],
   ["Los ataques contra ti tienen Ventaja.", "Attacks against you have Advantage."],
   ["Desventaja en Strength; tu daño pierde los modificadores fijos.", "Disadvantage on Strength; your damage loses its flat modifiers."],
+  // The hand in decks (v2.57.0)
+  ["Reacciones que puedes usar ahora", "Reactions you can use now"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2214,4 +2216,7 @@ export const PATTERNS = [
   ["¿Qué puedo hacer? · {_a}", "What can I do? · {_a}"],
   ["Condiciones de {_a}", "Conditions of {_a}"],
   ["Retrato de {_a}", "Portrait of {_a}"],
+  ["{a}: {_n} cartas, {_m} se pueden usar ahora", "{a}: {_n} cards, {_m} can be used now"],
+  ["{a}: 1 carta, {_m} se pueden usar ahora", "{a}: 1 card, {_m} can be used now"],
+  ["{_n} · {_m} usables", "{_n} · {_m} usable"],
 ];

@@ -1,10 +1,22 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.56.0**.
-Paquete: `VeilFarers_VTT_v2.56.0.zip`.
+Versión actual del VTT: **v2.57.0**.
+Paquete: `VeilFarers_VTT_v2.57.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.57.0] — 2026-11-25
+
+V3 · La mano en mazos (idea del usuario)
+
+### Mazos
+
+- La mano del personaje son mazos por tipo: Reacciones, Poderes, Moves y Rasgos, cada uno con cuántas cartas tiene y cuántas puedes usar ahora. Al pasar el ratón por un mazo se abren sus cartas en abanico encima de él; con un clic queda abierto hasta otro clic, Esc o tocar fuera. En tableta se abre tocándolo; con el teclado, Enter abre el mazo y pone el foco en la primera carta.
+- Una reacción que puedes usar ahora (la ilumina el Keeper, Lucky Break tras tu tirada, Bear Down) sale de su mazo y queda encima con «¡Úsala ahora!»: un clic y se usa.
+- Desaparecen el abanico único y los filtros Todas, Poderes, Reacciones y Usables: los mazos ya separan las cartas y ocupan mucho menos mapa. Las cartas se juegan igual: clic, doble clic para sus opciones o arrastrar al mapa.
+- Si la mano taparía la barra del personaje (pantallas más estrechas), se coloca justo encima. Corregido: el aviso «Sin cartas» quedaba fuera de la pantalla en tableta.
+- El reverso de las cartas (mazos y Vault) usa el arte de Veilfarers en cuanto su archivo esté en la app.
 
 ## [2.56.0] — 2026-11-25
 

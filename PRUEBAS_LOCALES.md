@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.56.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.56.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.56.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.56.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.57.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.57.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.57.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.57.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -186,6 +186,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.56.0.zip**. Abre **AYUDA
 171. **(V3) ¿Qué puedo hacer?** Con un personaje Restrained y Poisoned, una pistola y un rifle con Reload gastado: la barra muestra «Restringido» y «Envenenado» con icono y lo que hacen. Pulsa «¿Qué puedo hacer?» (o la tecla ?): «Ahora puedes» lista tirar, atacar con la pistola, recargar el rifle y tomar el foco (no moverte); «Te limita» explica cada condición.
 172. **(V3) Tamaño de la interfaz.** Ajustes → Tamaño → Muy grande: la cabecera, el panel lateral, la barra rápida y las ventanas crecen y el mapa no. El menú de Ajustes y los desplegables siguen saliendo bajo su botón; la barra rápida se arrastra siguiendo al puntero. Recarga: el tamaño se mantiene. Vuelve a Normal.
 173. **(V3) Táctil y teclado.** En una tableta (o el emulador táctil del navegador), ningún botón de la barra, el panel o las ventanas mide menos de 44 px y los + / − de la barra rápida no se pisan. Con teclado: T abre el anillo sobre el enemigo más cercano con el foco en la primera arma; → pasa a la siguiente; Enter ataca; T otra vez cambia de enemigo; Esc cierra.
+174. **(V3) Mano en mazos.** Un personaje Awakened con Kinetic Barrier, Tactical Overwatch, Precision Strike, Neural Feedback y Mind Spike: abajo a la derecha hay dos mazos, «Reacciones 2» y «Poderes 3», y el del Vault. Pasa el ratón por «Poderes»: se abren sus tres cartas encima, sin quedar bajo el panel lateral; sube a una y haz clic: se juega como siempre. Sal: se cierra. Clic en el mazo: queda abierto hasta otro clic, Esc o un clic fuera. Con Tab llega al mazo y Enter lo abre con el foco en la primera carta. Cuando el Keeper ofrece Tactical Overwatch, esa carta sale del mazo y aparece encima con «¡Úsala ahora!»: un clic la usa. En tableta, tocar el mazo lo abre y tocar fuera lo cierra, y los mazos (o el aviso «Sin cartas») quedan encima de la barra del personaje, no sobre ella.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

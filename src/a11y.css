@@ -34,11 +34,6 @@
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 
-/* Narrower screens: the «Sin cartas» notice goes above the character bar instead of over its stats. */
-@media (max-width: 1350px) {
-  .card-hand:has(.card-hand-empty) { bottom: calc(100% + 8px); height: auto; }
-  .card-hand:has(.card-hand-empty) .card-hand-empty { margin: 0; }
-}
 
 /* The character's conditions with icon and words, and «¿Qué puedo hacer?» (player bar). */
 .pab-status { display: flex; flex-direction: column; gap: 6px; }

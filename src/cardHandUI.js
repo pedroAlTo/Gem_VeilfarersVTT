@@ -17,7 +17,7 @@ import { cardChoices, chosenCardOptions, openResolution } from './cardResolution
 import { TARGET_RULES, SELF_EFFECTS, CARD_MODES, SUSTAINED, eligible, cardRollOptions, createResolution } from './cardResolution.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { cardSummary } from './cardSummaries.js';
-import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode, emblemNode, basicDefaults } from './cardFlow.js';
+import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode, emblemNode, basicDefaults, handDecks } from './cardFlow.js';
 import { characterDetails } from './characterImport.js';
 import { liveFor, liveReactions, answer as answerReaction } from './reactionOffers.js';
 import { droneCompatible } from './dronePowers.js';
@@ -141,6 +141,17 @@ export class CardHand {
     this.root.id = 'card_hand_root'; this.root.className = 'card-hand hidden';
     quickbar.parentElement.append(this.root);
     this.unsubscribe = store.subscribe(() => this.render());
+    // A press outside the hand, or Esc, closes an open deck (v2.57.0).
+    const outside = event => { if (this.openDeckId && !this.root.contains(event.target) && !event.target.closest?.('.card-preview, .veil-modal-backdrop')) this.closeDecks(); };
+    document.addEventListener('pointerdown', outside, true);
+    document.addEventListener('touchstart', outside, { capture: true, passive: true });
+    this.root.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || !this.root.querySelector('.hand-deck.open, .hand-deck:focus-within')) return;
+      const deck = this.root.querySelector('.hand-deck.open') || this.root.querySelector('.hand-deck:focus-within');
+      event.stopPropagation(); this.closeDecks(); deck?.querySelector('[data-deck-toggle]')?.focus();
+    });
+    window.addEventListener('resize', () => { this.avoidBar(); this.placeOpenFan?.(); });
+    window.addEventListener('veil:panel-moved', () => this.avoidBar());
     this.render();
   }
 
@@ -186,24 +197,77 @@ export class CardHand {
     const held = cards.filter(c => c.zone !== 'vault'), vault = cards.filter(c => c.zone === 'vault');
     const lit = card => !!(liveFor(token.id, card.name) || localLive(card, token));
     const usable = card => card.playable && affordable(token, card) && cardStatus(card, token)?.cls !== 'no';
-    const groups = HAND_GROUPS.filter(([id]) => id === 'all' || held.some(c => groupTest[id](c)));
-    if (!groups.some(([id]) => id === this.group)) this.group = 'all';
-    const hand = held.filter(c => lit(c) || (groupTest[this.group](c) && (!this.onlyUsable || usable(c)))), n = hand.length;
+    // The hand in decks (v2.57.0, the user's idea): each kind in its own deck, opened by pointing
+    // at it (a tap on a touch screen, Enter with the keyboard); a reaction usable now waits on top.
+    const { live, decks } = handDecks(held, { isLive: lit, isUsable: usable });
     this.root.classList.remove('hidden'); this.quickbar.classList.add('with-hand');
     if (!cards.length) {
       // Say why instead of showing nothing: the sheet has no class, ancestry or Powers to read.
       this.root.innerHTML = sanitizeHTML(`<div class="card-hand-empty"><strong>Sin cartas</strong><p>La ficha de ${e(token.name)} no indica clase, ancestry, background ni Poderes, así que no hay cartas que mostrar.</p><button type="button" class="hud-btn hud-btn-xs" data-open-sheet>Completar la ficha</button></div>${deckButton('Mazo: consulta todos los Poderes del juego')}`);
       this.root.querySelector('[data-open-vault]').onclick = () => this.toggleDrawer('', false, { catalogOnly: true });
       this.root.querySelector('[data-open-sheet]').onclick = async () => { const { openDossier } = await import('./dossierUI.js'); openDossier(store.state.tokens.find(t => t.id === token.id), () => {}, 'stats'); };
+      this.avoidBar();
       return;
     }
     const title = drone ? `Vía dron · ${drone.name}` : token.path === 'Sleeping' ? (isSleepingMystic(token) ? 'Archivo y Moves' : 'Moves') : `Loadout ${loadoutNames(token).length}/${loadoutCap(token)}`;
+    const face = (card, i, n) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}"${lit(card) ? ' data-live-reaction="1"' : ''}>${statusBadge(lit(card) ? { cls: 'react live', text: '¡Úsala ahora!' } : card.droneBlocked ? { cls: 'no', text: 'No a través del dron' } : cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`;
+    this.root.classList.add('decked');
     this.root.innerHTML = sanitizeHTML(`
-      <div class="card-hand-label"><span>${e(title)}</span>${groups.length > 2 || this.onlyUsable ? `<span class="card-hand-groups" role="group" aria-label="Tipo de carta">${groups.map(([id, label]) => `<button type="button" class="${this.group === id ? 'active' : ''}" data-hand-group="${id}" aria-pressed="${this.group === id}">${label}</button>`).join('')}</span>` : ''}<button type="button" class="card-hand-usable ${this.onlyUsable ? 'active' : ''}" data-hand-usable aria-pressed="${!!this.onlyUsable}" title="Mostrar solo las cartas que puedes usar ahora">Usables</button></div>
-      <div class="card-hand-fan" style="--n:${n}">${hand.map((card, i) => `<button type="button" class="vf-card ${card.playable ? '' : 'passive'} ${card.playable && !affordable(token, card) ? 'unaffordable' : ''}" data-card="${e(card.id)}" style="--i:${i};--offset:${(i - (n - 1) / 2).toFixed(2)}" aria-label="${e(card.name)} · ${e(costLabel(card.cost))}"${liveFor(token.id, card.name) || localLive(card, token) ? ' data-live-reaction="1"' : ''}>${statusBadge(liveFor(token.id, card.name) || localLive(card, token) ? { cls: 'react live', text: '¡Úsala ahora!' } : card.droneBlocked ? { cls: 'no', text: 'No a través del dron' } : cardStatus(card, token))}${cardFace(card, { summary: cardSummary(card, token) })}</button>`).join('')}</div>
+      <div class="card-hand-label"><span>${e(title)}</span></div>
+      ${live.length ? `<div class="hand-live" role="group" aria-label="Reacciones que puedes usar ahora"><span class="hand-live-label">¡Úsala ahora!</span><div class="card-hand-fan hand-live-fan" style="--n:${live.length}">${live.map((card, i) => face(card, i, live.length)).join('')}</div></div>` : ''}
+      <div class="hand-decks">${decks.map(d => `<div class="hand-deck ${this.openDeckId === d.id ? 'open' : ''}" data-deck="${d.id}">
+        <div class="card-hand-fan hand-deck-fan" style="--n:${d.cards.length}">${d.cards.map((card, i) => face(card, i, d.cards.length)).join('')}</div>
+        <button type="button" class="hand-deck-pile" data-deck-toggle="${d.id}" aria-expanded="${this.openDeckId === d.id}" aria-label="${e(d.label)}: ${d.cards.length} ${d.cards.length === 1 ? 'carta' : 'cartas'}, ${d.usable} se pueden usar ahora"><span class="hand-deck-stack" aria-hidden="true">${d.cards.length > 2 ? '<i></i>' : ''}${d.cards.length > 1 ? '<i></i>' : ''}<i></i></span><b>${e(d.label)}</b><small>${d.cards.length}${d.usable && d.usable < d.cards.length ? ` · ${d.usable} usables` : ''}</small></button>
+      </div>`).join('')}</div>
       ${token.path !== 'Sleeping' ? `<button type="button" class="card-deck" data-open-vault title="Mazo: cambia los Poderes de tu Loadout por los del Vault" aria-label="Abrir el mazo. ${vault.length} Poderes en el Vault"><span class="card-deck-stack"><i></i><i></i><i></i></span><b>${vault.length}</b></button>` : deckButton('Mazo: consulta todos los Poderes')}`);
-    this.layoutFan(n);
+    this.avoidBar();
+    this.layoutDecks();
     this.bind();
+  }
+
+  // On a narrower screen the hand would cover the character bar: it goes just above it (v2.57.0).
+  avoidBar() {
+    const root = this.root, bar = this.quickbar, parent = root.offsetParent || root.parentElement;
+    root.style.bottom = '';
+    if (!bar?.offsetWidth || !parent || root.classList.contains('hidden')) return;
+    const a = root.getBoundingClientRect(), b = bar.getBoundingClientRect(), p = parent.getBoundingClientRect();
+    if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) root.style.bottom = `${Math.round(p.bottom - b.top + 8)}px`;
+  }
+  // Each deck's fan: as wide as its cards need (up to about half the screen), above its pile and
+  // inside the screen.
+  layoutDecks() {
+    const cardWidth = 124, max = Math.max(260, Math.min(620, window.innerWidth * 0.46));
+    for (const fan of this.root.querySelectorAll('.hand-deck-fan, .hand-live-fan')) {
+      const n = fan.querySelectorAll('.vf-card').length, half = Math.max(1, (n - 1) / 2);
+      const spread = n > 1 ? Math.max(34, Math.min(96, (max - cardWidth) / (n - 1))) : 0;
+      fan.style.setProperty('--spread', `${spread.toFixed(1)}px`);
+      fan.style.setProperty('--tilt', `${Math.min(4, 12 / half).toFixed(2)}deg`); fan.style.setProperty('--drop', `${(16 / (half * half)).toFixed(2)}px`);
+      fan.style.width = `${Math.round(cardWidth + spread * Math.max(0, n - 1) + 48)}px`;
+    }
+    this.placeOpenFan();
+  }
+  // The open deck's fan, centred over its pile but never past the screen's edges.
+  placeOpenFan() {
+    const deck = this.root.querySelector('.hand-deck.open, .hand-deck:hover, .hand-deck:has(.vf-card:focus)');
+    const fan = deck?.querySelector('.hand-deck-fan');
+    if (!fan) return;
+    fan.style.left = '50%';
+    // The right edge is the hand's own (the side panel may cover the rest of the screen).
+    const box = deck.getBoundingClientRect(), w = fan.offsetWidth, centre = box.left + box.width / 2;
+    const right = Math.min(window.innerWidth - 8, this.root.getBoundingClientRect().right);
+    const left = Math.max(8, Math.min(right - w, centre - w / 2));
+    fan.style.left = `${Math.round(left - box.left + w / 2)}px`;
+  }
+  openDeck(id, pin = false) {
+    clearTimeout(this.deckTimer);
+    this.root.querySelectorAll('.hand-deck').forEach(d => { const on = d.dataset.deck === id; d.classList.toggle('open', on); d.querySelector('[data-deck-toggle]')?.setAttribute('aria-expanded', String(on)); });
+    this.openDeckId = pin ? id : this.openDeckId === id ? id : null;
+    this.placeOpenFan();
+  }
+  closeDecks(delay = 0) {
+    clearTimeout(this.deckTimer);
+    const shut = () => { this.openDeckId = null; this.root.querySelectorAll('.hand-deck.open').forEach(d => { d.classList.remove('open'); d.querySelector('[data-deck-toggle]')?.setAttribute('aria-expanded', 'false'); }); hidePreview(); };
+    if (delay) this.deckTimer = setTimeout(shut, delay); else shut();
   }
 
   bind() {
@@ -212,6 +276,19 @@ export class CardHand {
     if (usableToggle) usableToggle.onclick = () => { this.onlyUsable = !this.onlyUsable; savePrefs(this); this.refresh(); };
     const vault = this.root.querySelector('[data-open-vault]');
     if (vault) vault.onclick = () => this.toggleDrawer();
+    // The decks (v2.57.0): pointing opens one for a moment, a click (or a tap, or Enter) keeps it
+    // open until another click, Esc or a press outside the hand.
+    for (const deck of this.root.querySelectorAll('.hand-deck')) {
+      const id = deck.dataset.deck, pile = deck.querySelector('[data-deck-toggle]');
+      deck.onpointerenter = event => { if (event.pointerType !== 'touch') this.openDeck(id); };
+      deck.onpointerleave = event => { if (event.pointerType !== 'touch' && this.openDeckId !== id) this.closeDecks(260); };
+      pile.onclick = event => {
+        if (this.openDeckId === id) { this.closeDecks(); return; }
+        this.openDeck(id, true);
+        // From the keyboard the first card takes the focus (Enter reads it, Tab goes on).
+        if (event.detail === 0) deck.querySelector('.vf-card')?.focus();
+      };
+    }
     for (const node of this.root.querySelectorAll('.vf-card')) {
       const card = this.cards.find(c => c.id === node.dataset.card);
       node.onpointermove = event => { // the card tilts towards the pointer
