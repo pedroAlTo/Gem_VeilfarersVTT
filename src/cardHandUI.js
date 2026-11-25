@@ -17,7 +17,7 @@ import { cardChoices, chosenCardOptions, openResolution } from './cardResolution
 import { TARGET_RULES, SELF_EFFECTS, CARD_MODES, SUSTAINED, eligible, cardRollOptions, createResolution } from './cardResolution.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { cardSummary } from './cardSummaries.js';
-import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode, emblemNode } from './cardFlow.js';
+import { cardStatus, statusBadge, cardChips, showPreview, hidePreview, quickPlan, startAim, stopAim, trackPlay, defaultMode, emblemNode, basicDefaults } from './cardFlow.js';
 import { characterDetails } from './characterImport.js';
 import { liveFor, liveReactions, answer as answerReaction } from './reactionOffers.js';
 import { droneCompatible } from './dronePowers.js';
@@ -261,13 +261,16 @@ export class CardHand {
       return;
     }
     if (this.special(card, token, point)) return;
-    const plan = quickPlan(card, token);
+    let plan = quickPlan(card, token);
+    // Básico: the table takes the usual choice instead of opening the card's window (v2.48.0).
+    const auto = plan === 'dialog' && !isAdvanced() ? basicDefaults(card, token, { dc: document.getElementById('dice_dc_select')?.value }) : null;
+    if (auto) plan = auto.plan;
     if (plan === 'dialog') { this.inspect(card, point); return; }
-    const options = { rollNow: true, ...(defaultMode(card) ? { mode: defaultMode(card) } : {}) };
-    if (plan === 'play') { this.play(card, point, null, options); return; }
+    const options = { rollNow: true, ...(defaultMode(card) ? { mode: defaultMode(card) } : {}), ...(auto?.options || {}) };
+    if (plan === 'play') { this.play(card, point, auto?.resolveSpent ?? null, options); return; }
     const drone = this.viaDroneId && store.state.tokens.find(t => t.id === this.viaDroneId);
     const origin = drone ? { ...token, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId } : token;
-    startAim(card, origin, plan, targetIds => this.play(card, null, null, { ...options, targetIds }), { preselect: dropped });
+    startAim(card, origin, plan, targetIds => this.play(card, null, auto?.resolveSpent ?? null, { ...options, targetIds }), { preselect: dropped });
   }
 
   // The action ring (v2.47.0): the Powers in hand that can be aimed at this token now, and casting

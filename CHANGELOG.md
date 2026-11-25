@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.47.0**.
-Paquete: `VeilFarers_VTT_v2.47.0.zip`.
+Versión actual del VTT: **v2.48.0**.
+Paquete: `VeilFarers_VTT_v2.48.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.48.0] — 2026-11-25
+
+V3 · Cartas sin ventana en Básico y atajos de teclado (Fase 2 completa)
+
+### Cartas en un clic
+
+- En modo Básico, las cartas que aún abrían su ventana se juegan con un clic con la opción habitual: un estado que elige atributo (Path to Nirvana, Disciplined State) toma el mejor de Agility, Instinct y Strength del personaje; un movimiento con Resolve variable gasta el mínimo; Drone Whisper y System Jackknife usan la DC de la mesa (la del panel de dados, 15 si no se cambia). Breaking Point y Bear Down siguen en su sitio.
+- En modo Avanzado, o con doble clic en la carta, se abre su ventana como antes.
+
+### Atajos de teclado
+
+- 1 a 9: atacar con el arma de ese lugar de la barra (0, desarmado); un toque marca el objetivo y Enter lo ataca. F: tomar foco. Flechas: mover tu personaje. Esc: cancelar. «?» o «···» → «Atajos» los recuerda. Los botones de arma muestran su número (en pantallas con ratón).
 
 ## [2.47.0] — 2026-11-25
 

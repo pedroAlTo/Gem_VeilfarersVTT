@@ -29,3 +29,14 @@ test('the action ring: each weapon in hand against the touched enemy, with why i
   assert.deepEqual(ringOptions({ ...actor, inventory: { weapons: [], items: [] } }, { ...foe, x: 128 }, map).map(o => [o.name, o.ok]), [['Desarmado', true]]);
   assert.deepEqual(ringOptions(actor, { ...foe, isPlayer: true, actorType: 'player' }, map), []);
 });
+
+test('Básico plays the cards that had a window with the usual choice (v2.48.0)', async () => {
+  const { basicDefaults } = await import('../src/cardFlow.js');
+  const token = { traits: { agility: 1, instinct: 3, strength: 2 }, effort: 2 };
+  assert.deepEqual(basicDefaults({ name: 'Path to Nirvana', chooseTrait: true, cost: {} }, token).options, { trait: 'instinct' }, 'the best of Agility, Instinct, Strength');
+  assert.equal(basicDefaults({ name: 'Drone Whisper', cost: {} }, token, { dc: '20' }).options.cardDC, 20, 'the table DC');
+  assert.equal(basicDefaults({ name: 'System Jackknife', cost: {} }, token, { dc: '12' }).options.cardDC, 15, 'not one of its DCs: 15');
+  assert.equal(basicDefaults({ name: 'Run It Down', kind: 'move', cost: { open: true, resolve: 1 } }, token).resolveSpent, 1, 'the minimum Resolve');
+  assert.equal(basicDefaults({ name: 'Breaking Point', reverse: true, cost: {} }, token), null, 'Breaking Point keeps its place');
+  assert.equal(basicDefaults({ name: 'Bear Down', kind: 'beardown', cost: {} }, token), null);
+});

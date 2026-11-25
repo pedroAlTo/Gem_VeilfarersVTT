@@ -1876,6 +1876,9 @@ export const PAIRS = [
   ["Modo Avanzado: la mesa te pregunta antes y muestra todas las opciones.", "Advanced mode: the table asks you first and shows every option."],
   ["Modo Básico: la mesa elige lo habitual con menos clics.", "Basic mode: the table picks the usual option with fewer clicks."],
   ["No llega.", "Out of reach."],
+  // Fase 2: keyboard shortcuts (v2.48.0)
+  ["Atajos: 1–9 atacar con el arma de ese lugar (0 desarmado) · Enter ataca al objetivo marcado · F tomar foco · flechas mueven tu personaje · Esc cancela.", "Shortcuts: 1–9 attack with the weapon in that place (0 unarmed) · Enter attacks the marked target · F takes the Spotlight · arrows move your character · Esc cancels."],
+  ["Atajos", "Shortcuts"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2059,4 +2062,5 @@ export const PATTERNS = [
   ["Acciones contra {_a}", "Actions against {_a}"],
   ["Atacar a {_a}", "Attack {_a}"],
   ["Lanzar sobre {_a}", "Cast on {_a}"],
+  ["{_a}: toca el objetivo (Enter ataca al marcado, Esc cancela).", "{_a}: touch the target (Enter attacks the marked one, Esc cancels)."],
 ];

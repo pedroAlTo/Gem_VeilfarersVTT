@@ -128,6 +128,9 @@ export function sheetStats(token, armorName = '') {
   };
 }
 
+// The shortcuts of the player's bar, said by «?» (v2.48.0).
+export const SHORTCUTS_HELP = 'Atajos: 1–9 atacar con el arma de ese lugar (0 desarmado) · Enter ataca al objetivo marcado · F tomar foco · flechas mueven tu personaje · Esc cancela.';
+
 export class PlayerActionBar {
   constructor(parent) {
     this.root = document.createElement('section');
@@ -155,6 +158,10 @@ export class PlayerActionBar {
       }, 1200);
     });
     window.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (this.targeting) this.stopTargeting(); else if (this.pick.trait || this.pick.exp !== null) { this.pick = EMPTY_PICK; this.render(); } });
+    // Keyboard shortcuts (v2.48.0, Plan de UX V3, fase 2): 1–9 attack with the weapon in that place
+    // of the bar (0 unarmed), Enter attacks the marked target, F takes the Spotlight, ? lists them.
+    // In the capture phase: Enter on a marked target attacks before it would open the table chat.
+    window.addEventListener('keydown', event => this.shortcut(event), true);
     this.render();
   }
 
@@ -234,13 +241,14 @@ export class PlayerActionBar {
       ${this.optionsOpen ? `<div class="pab-options">
         <label class="pab-dc">DC <select data-pab-dc>${[5, 10, 12, 15, 18, 20, 25, 30].map(v => `<option value="${v}" ${String(v) === String(dc) ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <button type="button" class="hud-btn hud-btn-xs" data-pab-panel>Más opciones de tirada</button>
+        <button type="button" class="hud-btn hud-btn-xs" data-pab-keys title="${e(SHORTCUTS_HELP)}">Atajos <kbd>?</kbd></button>
         <button type="button" class="hud-btn hud-btn-xs" data-pab-mode aria-pressed="${isAdvanced()}" title="Básico: la mesa elige lo habitual (Lucky Break relanza el dado más bajo). Avanzado: te pregunta y muestra todas las opciones.">Modo: ${isAdvanced() ? 'Avanzado' : 'Básico'}</button>
       </div>` : ''}
       <div class="pab-row">
         <span class="pab-label">Atacar</span>
-        <div class="pab-buttons">${weapons.length ? weapons.map(w => { const ready = weaponReadiness(w);
+        <div class="pab-buttons">${weapons.length ? weapons.map((w, i) => { const ready = weaponReadiness(w), kbd = i < 9 ? `<kbd class="pab-key" aria-hidden="true">${i + 1}</kbd>` : '';
           // Reload / Charge-Up (v2.45.0): a spent or uncharged weapon offers its Action instead.
-          return ready.ready ? `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}"><b>${e(w.name)}</b><span data-no-i18n>${e(weaponRangeBand(w) || '—')}</span></button>`
+          return ready.ready ? `<button type="button" class="pab-weapon ${this.targeting?.weaponId === w.id ? 'active' : ''}" data-pab-weapon="${e(w.id)}" title="Atacar con ${e(w.name)}">${kbd}<b>${e(w.name)}</b><span data-no-i18n>${e(weaponRangeBand(w) || '—')}</span></button>`
             : `<button type="button" class="pab-weapon pab-weapon-unready" data-pab-ready="${e(w.id)}" title="${e(ready.reason)}"><b>${e(w.name)}</b><span>${e(ready.action)}</span></button>`; }).join('')
           : `<button type="button" class="pab-weapon ${this.targeting?.weaponId === '' ? 'active' : ''}" data-pab-weapon="" title="Sin armas: ataque desarmado (Melee)"><b>Desarmado</b><span>Melee</span></button>`}</div>
       </div>
@@ -258,6 +266,7 @@ export class PlayerActionBar {
     this.root.querySelectorAll('[data-pab-ready]').forEach(b => { b.onclick = () => network.requestAction({ type: 'WEAPON_READY', actorId: token.id, weaponId: b.dataset.pabReady, playerName: store.state.userName || '', tokenName: token.name })
       .then(r => { notify(r.mode === 'reload' ? 'Arma recargada (una Acción).' : 'Arma cargada: podrá disparar en un Spotlight posterior.'); this.signature = ''; this.render(); }).catch(error => notify(error.message, 'error')); });
     this.root.querySelector('[data-pab-options]').onclick = () => { this.optionsOpen = !this.optionsOpen; this.render(); };
+    this.root.querySelector('[data-pab-keys]')?.addEventListener('click', () => notify(SHORTCUTS_HELP));
     this.root.querySelector('[data-pab-mode]')?.addEventListener('click', () => { const mode = setTableMode(isAdvanced() ? 'basic' : 'advanced'); notify(mode === 'advanced' ? 'Modo Avanzado: la mesa te pregunta antes y muestra todas las opciones.' : 'Modo Básico: la mesa elige lo habitual con menos clics.'); this.signature = ''; this.render(); });
     this.root.querySelectorAll('[data-pab-edge]').forEach(b => { b.onclick = () => this.tap({ kind: 'edge', id: b.dataset.pabEdge }); });
     this.root.querySelector('[data-pab-dc]')?.addEventListener('change', event => { const panel = document.getElementById('dice_dc_select'); if (panel) { panel.value = event.target.value; panel.dispatchEvent(new Event('change')); } this.signature = ''; this.render(); });
@@ -616,6 +625,32 @@ export class PlayerActionBar {
     if (!this.result?.canApply || this.result.applied || this.canAddToDamage()) return false;
     this.applyDamage();
     return true;
+  }
+
+  shortcut(event) {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return false;
+    const active = document.activeElement;
+    if (active && (/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) || active.isContentEditable || active.closest?.('vf-select,.orbital-listbox'))) return false;
+    if (document.querySelector('.dossier-backdrop, .veil-modal-backdrop') || window.veilCardAim) return false;
+    const token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!token || !store.canEditToken(token.id) || lifeStage(token)) return false;
+    const key = event.key;
+    if (/^[0-9]$/.test(key)) {
+      const n = Number(key), weapons = this.weapons || [];
+      const weapon = n === 0 ? null : weapons[n - 1];
+      if (n > 0 && !weapon) return false;
+      if (n === 0 && weapons.length) return false;
+      event.preventDefault();
+      const ready = weaponReadiness(weapon);
+      if (!ready.ready) { notify(ready.reason, 'error'); return true; }
+      this.startTargeting(weapon?.id || '');
+      if (this.targeting) notify(`${weapon?.name || 'Desarmado'}: toca el objetivo (Enter ataca al marcado, Esc cancela).`);
+      return true;
+    }
+    if (key === 'Enter' && this.targeting?.targetId && this.targeting.preview?.allowed) { event.preventDefault(); this.confirmAttack('normal'); return true; }
+    if ((key === 'f' || key === 'F') && !event.shiftKey && !token.hasSpotlight) { event.preventDefault(); if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } return true; }
+    if (key === '?') { event.preventDefault(); notify(SHORTCUTS_HELP); return true; }
+    return false;
   }
 
   // The action ring chose the weapon and the target (v2.47.0): the attack goes at once, no edge.

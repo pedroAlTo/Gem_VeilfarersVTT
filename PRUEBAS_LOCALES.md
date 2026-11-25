@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.47.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.47.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.47.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.47.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.48.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.48.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.48.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.48.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -166,6 +166,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.47.0.zip**. Abre **AYUDA
 151. **(V3) Anillo de acciones.** Como jugador con tu personaje asignado, toca un enemigo: se abre un anillo sobre él con tus armas en la mano (las que no llegan, en gris con el motivo al pasar por encima) y los Poderes de la mano que pueden apuntarle; debajo, su nombre y la distancia. Pulsar un arma ataca al momento; pulsar un Poder lo lanza sobre él. Esc, × o tocar fuera lo cierra. Tocar un aliado no abre nada.
 152. **(V3) Daño directo al Keeper.** Con un personaje Awakened, atacar e impactar: sin pulsar nada, al Keeper se le abre la ventana de daño (en partida online, al jugador le sale «Enviado al Keeper»). Con un Sleeping que tenga Resolve, el botón «Enviar daño al Keeper» sigue ahí para poder hacer Bear Down antes.
 153. **(V3) Lucky Break en Básico y Avanzado.** Tras una tirada con Hope 3 y Fear 9, usar Lucky Break: en Básico relanza el Hope sin ventana y el registro lo dice. En «···» → «Modo: Avanzado», Lucky Break abre la ventana para elegir el dado. `npm run test:clicks`: «Atacar desde el anillo» 2 clics, «Atacar con arma (barra)» 3.
+154. **(V3) Cartas en un clic (Básico).** Con un Vanguardia Awakened, un clic en Path to Nirvana lo activa con su mejor atributo de Agility/Instinct/Strength, sin ventana. Un Sleeping con Run It Down (Resolve variable) lo juega gastando el mínimo. Drone Whisper tira contra la DC elegida en la barra (15 por defecto). En «···» → «Modo: Avanzado», o con doble clic, se abre la ventana como antes.
+155. **(V3) Atajos.** Con tu personaje en la barra y el ratón sobre el mapa: «1» marca el arma primera (aviso «toca el objetivo»), un toque marca al enemigo y Enter ataca (sin abrir el chat). «0» sin armas ataca desarmado. «F» toma el foco. «?» muestra la lista. Escribiendo en el chat, los números no hacen nada. Los botones de arma muestran 1, 2, 3…
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

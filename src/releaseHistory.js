@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.48.0', date: '2026-11-25', title: 'V3 · Cartas sin ventana en Básico y atajos de teclado (Fase 2 completa)',
+    sections: [
+      { title: 'Cartas en un clic', items: [
+        'En modo Básico, las cartas que aún abrían su ventana se juegan con un clic con la opción habitual: un estado que elige atributo (Path to Nirvana, Disciplined State) toma el mejor de Agility, Instinct y Strength del personaje; un movimiento con Resolve variable gasta el mínimo; Drone Whisper y System Jackknife usan la DC de la mesa (la del panel de dados, 15 si no se cambia). Breaking Point y Bear Down siguen en su sitio.',
+        'En modo Avanzado, o con doble clic en la carta, se abre su ventana como antes.',
+      ] },
+      { title: 'Atajos de teclado', items: [
+        '1 a 9: atacar con el arma de ese lugar de la barra (0, desarmado); un toque marca el objetivo y Enter lo ataca. F: tomar foco. Flechas: mover tu personaje. Esc: cancelar. «?» o «···» → «Atajos» los recuerda. Los botones de arma muestran su número (en pantallas con ratón).',
+      ] },
+    ],
+  },
+  {
     version: '2.47.0', date: '2026-11-25', title: 'V3 · Atacar en dos toques: anillo de acciones y daño directo al Keeper (Fase 2)',
     sections: [
       { title: 'Anillo de acciones', items: [

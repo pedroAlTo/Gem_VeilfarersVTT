@@ -64,7 +64,8 @@ Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 - **Fase 4, segunda parte** hecha en v2.45.0: tras el impacto la mesa tira las Reaction Rolls de los adversarios y aplica su condición (a los personajes les dice qué tirar), relojes de Stunned, Dazed, Stagger, Continuous, Brittle y Melting, Paired, Non-Lethal, Reload y Charge-Up.
 - **Fase 4, tercera parte** hecha en v2.46.0: segundo objetivo (Automatic, Salvo Fire, Arc, Cleave, Quick), áreas (Explosive, Area, Dispersal Wave, Spray, Waveform) y Psionic. **Fase 4 completa.**
 - **Fase 2, primera parte** hecha en v2.47.0: daño directo a la ventana del Keeper (sin «Enviar daño»), anillo de acciones al tocar un enemigo (atacar o lanzar en 2 clics), modo Básico/Avanzado de la mesa y Lucky Break con el dado más bajo en Básico.
-- **Siguiente:** Fase 2, segunda parte: valores por defecto en las cartas que aún abren ventana, atajos de teclado y más opciones bajo Básico/Avanzado. Después, Fase 3 (todos los poderes automáticos) y Fase 5 (condiciones que cuentan solas).
+- **Fase 2, segunda parte** hecha en v2.48.0: cartas con ventana jugadas en un clic en Básico (atributo, Resolve mínimo, DC de la mesa) y atajos de teclado. **Fase 2 completa.**
+- **Siguiente:** Fase 3 (todos los poderes automáticos: ficha de procedimiento por Poder) y Fase 5 (condiciones que cuentan solas; confirmar antes el daño por ronda de On Fire y Poisoned).
 
 ## Decisiones
 

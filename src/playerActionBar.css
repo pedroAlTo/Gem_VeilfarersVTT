@@ -192,3 +192,6 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .action-ring-item:hover, .action-ring-item:focus-visible { border-color: #fde047; outline: none; }
 .action-ring-close { position: absolute; left: 0; top: 0; pointer-events: auto; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); background: rgba(10, 6, 24, .9); color: #e2e8f0; cursor: pointer; }
 @media (prefers-reduced-motion: no-preference) { .action-ring-item { animation: ring-in .14s ease-out; } @keyframes ring-in { from { opacity: 0; } to { opacity: 1; } } }
+/* Keyboard shortcuts (v2.48.0). */
+.pab-key { display: inline-block; min-width: 14px; margin-right: 6px; padding: 0 3px; border: 1px solid rgba(165, 243, 252, .45); border-radius: 3px; font: 600 10px/14px ui-monospace, monospace; color: #a5f3fc; text-align: center; vertical-align: 1px; }
+@media (hover: none) { .pab-key { display: none; } }
