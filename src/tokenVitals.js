@@ -38,3 +38,49 @@ export function drawTokenGauge(ctx, { x, y, width, current, max, key = 'hp', lab
   }
   ctx.restore();
 }
+
+// The token's HP and Stress on the map (v2.58.0): two slim bars, no labels or numbers (those are
+// in the character bar). HP above, Stress below; the colour warns as in the gauges.
+export function drawSlimVitals(ctx, { y, width, scale = 1, hp = null, stress = null, armor = null }) {
+  const rows = [hp && ['hp', hp], stress && ['stress', stress], armor && ['armor', armor]].filter(Boolean);
+  if (!rows.length) return;
+  const h = 3.5 * scale, gap = 1.5 * scale, w = width;
+  ctx.save();
+  ctx.fillStyle = 'rgba(4,12,23,0.88)';
+  ctx.beginPath(); ctx.roundRect(-w / 2 - 2, y - 2, w + 4, rows.length * h + (rows.length - 1) * gap + 4, 2); ctx.fill();
+  rows.forEach(([key, stat], i) => {
+    const g = gaugeState(stat.current, stat.max, key), top = y + i * (h + gap);
+    ctx.fillStyle = '#213246'; ctx.fillRect(-w / 2, top, w, h);
+    ctx.fillStyle = g.color; ctx.fillRect(-w / 2, top, w * g.ratio, h);
+    // One black pixel between points, so the segments read at a glance (user request).
+    const n = Math.max(1, Math.min(40, Math.round(g.limit))), px = 1 / (ctx.getTransform?.()?.a || 1);
+    ctx.fillStyle = '#000';
+    for (let k = 1; k < n; k++) ctx.fillRect(-w / 2 + (w * k) / n - px / 2, top, px, h);
+  });
+  ctx.restore();
+}
+
+// The same, as segmented rings around the token (v2.58.0, user's option: «círculos alrededor del
+// token con los segmentos; 2 círculos exteriores y uno interior»): HP and Stress outside, Escudos
+// (Armor Slots) inside, one segment per point, filled from the top clockwise.
+export function drawVitalRings(ctx, { radius, scale = 1, hp = null, stress = null, armor = null }) {
+  const ring = (stat, key, r, width, color) => {
+    if (!stat?.max) return;
+    const g = gaugeState(stat.current, stat.max, key), n = Math.max(1, Math.min(40, Math.round(g.limit)));
+    const gap = Math.min(0.12, (Math.PI * 2) / n * 0.22), step = (Math.PI * 2) / n;
+    ctx.lineWidth = width; ctx.lineCap = 'butt';
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + i * step + gap / 2;
+      ctx.beginPath(); ctx.arc(0, 0, r, a, a + step - gap);
+      ctx.strokeStyle = i < Math.max(0, Math.min(n, g.value)) ? (color || g.color) : 'rgba(33,50,70,0.92)';
+      ctx.stroke();
+    }
+  };
+  ctx.save();
+  const w = 3 * scale;
+  if (hp || stress) { ctx.beginPath(); ctx.arc(0, 0, radius + 2 + w * (stress ? 2.1 : 1.1), 0, Math.PI * 2); ctx.lineWidth = w * (stress ? 2.6 : 1.4); ctx.strokeStyle = 'rgba(4,12,23,0.55)'; ctx.stroke(); }
+  ring(hp, 'hp', radius + 2 + w * 0.6, w, null);
+  ring(stress, 'stress', radius + 2 + w * 1.8, w * 0.85, null);
+  ring(armor, 'armor', Math.max(4, radius - w * 0.9), w * 0.85, '#79cef9');
+  ctx.restore();
+}

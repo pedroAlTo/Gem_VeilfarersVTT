@@ -1,6 +1,23 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.58.0', date: '2026-11-25', title: 'V3 · Tokens limpios: cada uno ve lo suyo',
+    sections: [
+      { title: 'Lo que ve cada uno', items: [
+        'El jugador solo ve los datos de su personaje: en el mapa no aparecen el HP ni el Stress de los aliados ni de los enemigos, y al seleccionar otro token la barra muestra su nombre, su papel y sus condiciones, sin números ni botones de ficha. El Keeper ve los de todos.',
+      ] },
+      { title: 'Barras y anillos', items: [
+        'El HP, el Stress y los Escudos son ahora barras finas bajo el nombre, con un punto negro entre segmento y segmento; ya no hay placas grandes encima del token ni la fila de contadores («❤ 16/16», «🛡 3»): los números están en la barra del personaje al seleccionarlo.',
+        'Opción en Ajustes → Vida en el mapa: «Anillos», con un segmento por punto alrededor del token: dos anillos exteriores (HP y Stress) y uno interior (Escudos). Es de cada persona y se recuerda en su navegador.',
+        'En la ficha del token, «En el mapa» se reduce a tres casillas: Barra de HP, Barra de Stress y Escudos.',
+        'Fuera el reloj de ejemplo «HACK 2/4» que traían algunos tokens.',
+      ] },
+      { title: 'Estados', items: [
+        'Los estados se ven dentro del token, en un bloque en su esquina inferior derecha, encima de la bandera de clase si la tiene. Al pasar el ratón por uno se lee su regla, como antes.',
+      ] },
+    ],
+  },
+  {
     version: '2.57.0', date: '2026-11-25', title: 'V3 · La mano en mazos (idea del usuario)',
     sections: [
       { title: 'Mazos', items: [

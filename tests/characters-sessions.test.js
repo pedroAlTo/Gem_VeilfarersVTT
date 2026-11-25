@@ -294,8 +294,13 @@ test('the compact Sleeper bar spends and regains Resolve with the recorded die a
   button(-1).click(); assert.equal(button(-1).disabled, true);
   button(1).click(); button(1).click(); assert.equal(button(1).disabled, true);
   assert.deepEqual(store.getSelectedToken().resolve, { current: 2, max: 2, dieType: 'd6' });
+  // A player sees only their own character's numbers (v2.58.0): not one they do not play.
   store.state.userRole = 'player'; store.state.claimedTokenId = null; hud.render();
-  assert.ok(meter()); assert.equal(button(-1), null);
+  assert.equal(meter(), null); assert.equal(button(-1), null);
+  assert.equal(root.querySelector('[role=meter]'), null, 'no numbers of a character that is not theirs');
+  store.state.claimedTokenId = token.id; hud.render();
+  assert.ok(meter()); assert.ok(button(-1), 'their own: they can change it');
   store.getSelectedToken().path = 'Awakened'; hud.render();
   assert.equal(meter(), null); assert.ok(root.querySelector('[role=meter][aria-label="HOPE"]'));
+  store.state.claimedTokenId = null;
 });

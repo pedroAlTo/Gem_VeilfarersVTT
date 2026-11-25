@@ -204,13 +204,7 @@ export const INITIAL_TOKENS = [
     lightEffect: 'steady',
     displayConfig: {
       showHpBar: true,
-      showStressBar: true,
-      showHpCounter: true,
-      showArmorCounter: true,
-      showClock: true,
-      clockSegments: 4,
-      clockProgress: 2,
-      clockLabel: 'HACK'
+      showStressBar: true
     }
   },
   {

@@ -83,6 +83,9 @@ export class TokenHUD {
     const isOverwhelmed = maxStress > 0 && (token.stress?.current || 0) >= maxStress;
 
     const canEdit = store.canEditToken(token.id);
+    // A player sees only their own character's numbers (v2.58.0, user decision): of an ally or an
+    // enemy, the name, the role and the conditions; the Keeper sees everyone's.
+    const sees = isKeeper || canEdit;
 
     if (isEncounterMarker(token)) {
       this.container.innerHTML = sanitizeHTML(`<div class="token-quickbar glass-panel tok-qb-compact"><div class="tok-qb-avatar-group"><img src="${escapeHTML(actorPortrait(token))}" alt="" class="tok-qb-avatar"><span class="tok-qb-name">${escapeHTML(displayName)}</span></div>${canEdit ? '<button class="hud-btn" data-encounter>Ficha de encuentro</button>' : ''}</div>`);
@@ -91,7 +94,7 @@ export class TokenHUD {
     }
 
     // --- COMPACT MINIMIZED QUICKBAR (DEFAULT) ---
-    if (!this.isExpanded) {
+    if (!this.isExpanded || !sees) {
       this.container.innerHTML = sanitizeHTML(`
         <div class="token-quickbar glass-panel tok-qb-compact">
           <!-- Token Avatar & Name -->
@@ -104,7 +107,7 @@ export class TokenHUD {
             </div>
           </div>
 
-          <div class="tok-qb-divider"></div>
+          ${sees ? `<div class="tok-qb-divider"></div>
 
           <div class="token-telemetry-grid">
             ${quickStat('hp', 'HP', token.hp?.current, token.hp?.max, canEdit, 'Restar 1 HP', 'Sumar 1 HP')}
@@ -115,17 +118,17 @@ export class TokenHUD {
               : quickStat('hope', 'HOPE', token.hope ?? 0, token.hopeMax ?? 6, canEdit, 'Gastar 1 Esperanza', 'Ganar 1 Esperanza', 'path'))
               : `<div class="dossier-eyebrow">EVASION ${token.evasion ?? '—'}<br>ATTACK ${token.attackModifier ?? '—'}</div>`}
             ${isPC && token.path === 'Sleeping' ? quickStat('resolve', 'Resolve · ' + (token.resolve?.dieType === 'd6' ? 'd6' : 'd4'), token.resolve?.current ?? 0, token.resolve?.max ?? 2, canEdit, 'Gastar 1 dado de Resolve', 'Recuperar 1 dado de Resolve') : ''}
-          </div>
+          </div>` : ''}
 
           <!-- Compact Action Controls -->
           <div class="tok-qb-actions">
             ${isKeeper && !isPC && token.actorType !== 'drone' ? `<button class="hud-btn hud-btn-xs hud-btn-primary" id="quick_attack_btn" title="Ataque normal: toca el objetivo en el mapa y vuelve a tocarlo para atacar">⚔ ATACAR</button>` : ''}
             <button class="hud-btn hud-btn-xs qb-focus-btn ${token.hasSpotlight ? 'is-on' : ''}" id="quick_spotlight_btn" aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tiene el foco · pulsa para quitarlo' : 'Tomar el foco'}">${token.hasSpotlight ? '✨ CON FOCO' : '✨ FOCO'}</button>
             <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
-            <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
-            <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>
+            ${sees ? `<button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
+            <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>` : ''}
             ${isKeeper || canEdit ? `<button class="hud-btn hud-btn-xs" id="quick_reserve_btn" title="Retirar a Reserva (Ocultar del mapa sin borrar)">📦 RESERVA</button>` : ''}
-            <button class="hud-btn hud-btn-xs hud-btn-primary" id="toggle_expand_btn" title="Expandir Panel Completo">▲ EXPANDIR</button>
+            ${sees ? '<button class="hud-btn hud-btn-xs hud-btn-primary" id="toggle_expand_btn" title="Expandir Panel Completo">▲ EXPANDIR</button>' : ''}
           </div>
         </div>
       `);
@@ -904,16 +907,14 @@ export class TokenHUD {
                 </div>
               </div>
 
-              <!-- MAP OVERLAYS & MODULAR INDICATOR SELECTION -->
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; border-bottom: 1px solid rgba(0, 243, 255, 0.3); padding-bottom: 4px;">
-                <h4 class="sheet-section-title" style="margin: 0; color: #00f3ff; border: none;">
-                  📊 INDICADORES EN TOKEN // BARRAS, CONTADORES Y RELOJES
-                </h4>
-                <button type="button" class="hud-btn hud-btn-xs hud-btn-primary" id="sheet_add_overlay_btn">+ AÑADIR INDICADOR</button>
+              <!-- On the map (v2.58.0, user decision): one format, two slim bars under the name. -->
+              <h4 class="sheet-section-title" style="margin-top: 18px; color: #00f3ff;">📊 EN EL MAPA</h4>
+              <div class="sheet-map-vitals" style="display: flex; gap: 18px; flex-wrap: wrap; align-items: center;">
+                <label class="checkbox-label"><input type="checkbox" id="sheet_show_hp"> Barra de HP</label>
+                <label class="checkbox-label"><input type="checkbox" id="sheet_show_stress"> Barra de Stress</label>
+                <label class="checkbox-label"><input type="checkbox" id="sheet_show_armor"> Escudos</label>
               </div>
-              <div class="overlay-indicators-list" id="sheet_overlays_list">
-                <!-- Rendered dynamically -->
-              </div>
+              <p class="dossier-muted" style="margin: 6px 0 0;">Barras finas bajo el nombre o, en Ajustes → Vida en el mapa, anillos con un segmento por punto (HP y Stress fuera, Escudos dentro). Solo las ven el Keeper y el jugador de este personaje; los números están en la barra del personaje al seleccionarlo.</p>
             </div>
           </div>
 
@@ -977,91 +978,20 @@ export class TokenHUD {
     if (token.displayOverlays && Array.isArray(token.displayOverlays) && token.displayOverlays.length > 0) {
       currentOverlays = JSON.parse(JSON.stringify(token.displayOverlays));
     } else {
+      // HP and Stress (v2.58.0): the map draws them as two slim bars; no sample clock.
       currentOverlays = [
         { id: 'ov_hp_bar', statKey: 'hp', type: 'bar', color: '#10b981', label: 'HP' },
-        { id: 'ov_stress_bar', statKey: 'stress', type: 'bar', color: '#d946ef', label: 'ESTRÉS' },
-        { id: 'ov_hp_cnt', statKey: 'hp', type: 'linear', color: '#34d399', label: '❤️' },
-        { id: 'ov_armor_cnt', statKey: 'armor', type: 'linear', color: '#38bdf8', label: '🛡️' },
-        { id: 'ov_clock', statKey: 'clock', type: 'circular', color: '#00f3ff', label: 'HACK', segments: 4, current: 2 }
+        { id: 'ov_stress_bar', statKey: 'stress', type: 'bar', color: '#d946ef', label: 'ESTRÉS' }
       ];
     }
 
-    const overlaysListEl = modal.querySelector('#sheet_overlays_list');
-    const renderOverlayCards = () => {
-      overlaysListEl.innerHTML = sanitizeHTML('');
-      currentOverlays.forEach((ov, index) => {
-        const card = document.createElement('div');
-        card.className = 'overlay-indicator-card';
-        card.innerHTML = sanitizeHTML(`
-          <div style="flex: 1.5; min-width: 140px;">
-            <label style="font-size: 9px; color: var(--text-dim); display: block; margin-bottom: 2px;">Elemento de Ficha</label>
-            <vf-select class="overlay-stat hud-select hud-select-xs">
-              ${AVAILABLE_STATS.map(st => `
-                <option value="${st.id}" ${ov.statKey === st.id ? 'selected' : ''}>${st.name}</option>
-              `).join('')}
-            </vf-select>
-          </div>
-          <div style="flex: 1.2; min-width: 130px;">
-            <label style="font-size: 9px; color: var(--text-dim); display: block; margin-bottom: 2px;">Tipo Visual</label>
-            <vf-select class="overlay-type hud-select hud-select-xs">
-              <option value="bar" ${ov.type === 'bar' ? 'selected' : ''}>█ Barra Superior</option>
-              <option value="linear" ${ov.type === 'linear' ? 'selected' : ''}>🏷️ Contador Linear</option>
-              <option value="circular" ${ov.type === 'circular' ? 'selected' : ''}>⏱️ Contador Circular / Reloj</option>
-            </vf-select>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: center; width: 36px;">
-            <label style="font-size: 9px; color: var(--text-dim); margin-bottom: 2px;">Color</label>
-            <button type="button" class="overlay-color-btn" style="background: ${ov.color || '#00f3ff'};" title="Elegir Color"></button>
-          </div>
-          <div style="flex: 1; min-width: 80px;">
-            <label style="font-size: 9px; color: var(--text-dim); display: block; margin-bottom: 2px;">Etiqueta</label>
-            <input type="text" class="overlay-label hud-input hud-input-xs" value="${ov.label || ''}" placeholder="ej. HP" />
-          </div>
-          <div style="display: flex; align-items: flex-end;">
-            <button type="button" class="hud-btn hud-btn-xs hud-btn-danger overlay-del" title="Eliminar Indicador" style="margin-top: 14px;">✕</button>
-          </div>
-        `);
-
-        const statSel = card.querySelector('.overlay-stat');
-        const typeSel = card.querySelector('.overlay-type');
-        const colorBtn = card.querySelector('.overlay-color-btn');
-        const labelInp = card.querySelector('.overlay-label');
-        const delBtn = card.querySelector('.overlay-del');
-
-        statSel.onchange = (e) => { ov.statKey = e.target.value; };
-        typeSel.onchange = (e) => { ov.type = e.target.value; };
-        labelInp.oninput = (e) => { ov.label = e.target.value; };
-
-        colorBtn.onclick = (e) => {
-          e.stopPropagation();
-          openColorPickerPopover(colorBtn, ov.color || '#00f3ff', (newCol) => {
-            ov.color = newCol;
-            colorBtn.style.background = newCol;
-          });
-        };
-
-        delBtn.onclick = () => {
-          currentOverlays.splice(index, 1);
-          renderOverlayCards();
-        };
-
-        overlaysListEl.appendChild(card);
-      });
-    };
-
-    renderOverlayCards();
-
-    // Add Overlay Button
-    modal.querySelector('#sheet_add_overlay_btn').onclick = () => {
-      currentOverlays.push({
-        id: 'ov_' + Date.now(),
-        statKey: 'hp',
-        type: 'bar',
-        color: '#00f3ff',
-        label: 'STAT'
-      });
-      renderOverlayCards();
-    };
+    // The two slim bars (v2.58.0): what the token showed before, as HP and Stress on or off. A
+    // clock the Keeper put on the token by hand is kept; the old «HACK» sample is dropped.
+    const sampleClock = o => o?.type === 'circular' && o.statKey === 'clock' && /^hack$/i.test(o.label || '') && (o.id === 'ov_clock' || o.current === 2);
+    currentOverlays = currentOverlays.filter(o => !sampleClock(o));
+    modal.querySelector('#sheet_show_hp').checked = currentOverlays.some(o => o.statKey === 'hp' && o.type !== 'circular');
+    modal.querySelector('#sheet_show_stress').checked = currentOverlays.some(o => o.statKey === 'stress' && o.type !== 'circular');
+    modal.querySelector('#sheet_show_armor').checked = currentOverlays.some(o => o.statKey === 'armor' && o.type !== 'circular');
 
     // Toggle sleeping section when path select changes
     const pathSelect = modal.querySelector('#sheet_path');
@@ -1115,15 +1045,15 @@ export class TokenHUD {
         subtraits[st.id] = parseInt(modal.querySelector(`#sheet_subtrait_${st.id}`).value, 10) || 0;
       });
 
-      // Synchronize latest values from overlay cards
-      const cardEls = modal.querySelectorAll('.overlay-indicator-card');
-      cardEls.forEach((card, idx) => {
-        if (currentOverlays[idx]) {
-          currentOverlays[idx].statKey = card.querySelector('.overlay-stat').value;
-          currentOverlays[idx].type = card.querySelector('.overlay-type').value;
-          currentOverlays[idx].label = card.querySelector('.overlay-label').value.trim() || currentOverlays[idx].statKey.toUpperCase();
-        }
-      });
+      // The bars chosen, plus any clock put on the token by hand.
+      currentOverlays = [
+        ...(modal.querySelector('#sheet_show_hp').checked ? [{ id: 'ov_hp_bar', statKey: 'hp', type: 'bar', color: '#10b981', label: 'HP' }] : []),
+        ...(modal.querySelector('#sheet_show_stress').checked ? [{ id: 'ov_stress_bar', statKey: 'stress', type: 'bar', color: '#d946ef', label: 'ESTRÉS' }] : []),
+        ...(modal.querySelector('#sheet_show_armor').checked ? [{ id: 'ov_armor_bar', statKey: 'armor', type: 'bar', color: '#38bdf8', label: 'ESCUDOS' }] : []),
+        ...currentOverlays.filter(o => o.type === 'circular'),
+      ];
+      // None at all: the token shows only its name (an empty list would mean «the defaults»).
+      if (!currentOverlays.length) currentOverlays = [{ id: 'ov_none', statKey: 'none', type: 'none', label: '' }];
 
       const actorTypeVal = modal.querySelector('#sheet_actor_type')?.value || 'player';
       const avatarUrl = chosenIllustration ?? token.avatarUrl;

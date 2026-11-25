@@ -1985,6 +1985,16 @@ export const PAIRS = [
   ["Desventaja en Strength; tu daño pierde los modificadores fijos.", "Disadvantage on Strength; your damage loses its flat modifiers."],
   // The hand in decks (v2.57.0)
   ["Reacciones que puedes usar ahora", "Reactions you can use now"],
+  // Tokens on the map (v2.58.0)
+  ["Vida en el mapa", "Vitals on the map"],
+  ["Barras", "Bars"],
+  ["Anillos", "Rings"],
+  ["Anillos con un segmento por punto: HP y Stress fuera, Escudos dentro", "Rings with a segment per point: HP and Stress outside, Escudos inside"],
+  ["Barras finas bajo el nombre", "Slim bars under the name"],
+  ["📊 EN EL MAPA", "📊 ON THE MAP"],
+  ["Barra de HP", "HP bar"],
+  ["Barra de Stress", "Stress bar"],
+  ["Barras finas bajo el nombre o, en Ajustes → Vida en el mapa, anillos con un segmento por punto (HP y Stress fuera, Escudos dentro). Solo las ven el Keeper y el jugador de este personaje; los números están en la barra del personaje al seleccionarlo.", "Slim bars under the name or, in Settings → Vitals on the map, rings with a segment per point (HP and Stress outside, Escudos inside). Only the Keeper and this character's player see them; the numbers are in the character bar when it is selected."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

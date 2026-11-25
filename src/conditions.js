@@ -198,18 +198,22 @@ const pathSymbol = 'M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3zM12 8v8M8 12h8';
 export function visibleConditions(token) {
   return normalizeConditions([...(token?.conditions || []), ...(token?.effectClocks || []).map(c => c.condition).filter(c => c && !pathImmune(token,c))]);
 }
+// Where the markers go (v2.58.0, user decision: «los estados dentro del token, encima de la
+// insignia si está»): inside the token, a 2 × 2 block in its lower-right quarter, over the class
+// flag that hangs there. Positions are from the token's centre; size is the marker's side.
+export function conditionMarkerLayout(count, radius, zoom = 1) {
+  const size = Math.min(16 * Math.max(1, Math.min(1.8, .9 / zoom)), radius * 0.46), step = size + 2;
+  const x0 = radius * 0.5, y0 = radius * 0.48;
+  return Array.from({ length: count }, (_, i) => ({ x: x0 - Math.floor(i / 2) * step, y: y0 - (i % 2) * step, size }));
+}
 export function getHoveredCondition(token, cursorWorld, radius, zoom = 1) {
   if (!token || !cursorWorld) return null;
   const markers = tokenMarkers(token);
   if (!markers.length) return null;
-  const scale = Math.max(1, Math.min(1.8, .9 / zoom));
-  const markerX = token.x + radius + 13 * scale;
+  const layout = conditionMarkerLayout(markers.length, radius, zoom);
   for (let i = 0; i < markers.length; i++) {
-    const marker = markers[i];
-    const markerY = token.y + (i - (markers.length - 1) / 2) * 18 * scale;
-    const half = 10 * scale;
-    if (cursorWorld.x >= markerX - half && cursorWorld.x <= markerX + half &&
-        cursorWorld.y >= markerY - half && cursorWorld.y <= markerY + half) {
+    const marker = markers[i], spot = layout[i], half = spot.size / 2 + 1;
+    if (Math.abs(cursorWorld.x - (token.x + spot.x)) <= half && Math.abs(cursorWorld.y - (token.y + spot.y)) <= half) {
       if (marker.more) {
         return { label: `+${marker.more} adicionales`, name: 'Más estados', rule: 'Abre el panel de estados para consultar todos los marcadores activos.' };
       }
@@ -224,11 +228,12 @@ const canvasPaths = new Map();
 export function drawTokenConditions(ctx, token, radius, zoom = 1) {
   const markers = tokenMarkers(token);
   if (!markers.length) return;
-  const scale = Math.max(1, Math.min(1.8, .9 / zoom));
-  ctx.save(); ctx.translate(radius + 13 * scale, 0); ctx.scale(scale, scale);
+  const layout = conditionMarkerLayout(markers.length, radius, zoom);
+  ctx.save();
   markers.forEach((marker, i) => {
-    ctx.save(); ctx.translate(0, (i - (markers.length - 1) / 2) * 18);
-    ctx.fillStyle = '#101b2b'; ctx.strokeStyle = '#e9c78a'; ctx.lineWidth = 1;
+    const { x, y, size } = layout[i], k = size / 16;
+    ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+    ctx.fillStyle = 'rgba(16,27,43,0.94)'; ctx.strokeStyle = '#e9c78a'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.roundRect(-8, -8, 16, 16, 4); ctx.fill(); ctx.stroke();
     if (marker.more) {
       ctx.fillStyle = '#fff1ce'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('+' + marker.more, 0, 0);

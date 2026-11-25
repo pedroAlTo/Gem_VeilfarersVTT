@@ -9,7 +9,8 @@ import { MapClipboard } from './mapClipboard.js';
 import { LightingEngine } from './lightingEngine.js';
 import { DAYLIGHT_BELOW } from './fogEngine.js';
 import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog, drawLavaGlow } from './surfaceFX.js';
-import { drawTokenGauge } from './tokenVitals.js';
+import { drawSlimVitals, drawVitalRings } from './tokenVitals.js';
+import { vitalsStyle } from './mapVitals.js';
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
 import { healedTokens } from './healFX.js';
@@ -4609,286 +4610,73 @@ export class CanvasEngine {
     return 0;
   }
 
+  // Who sees a token's HP and Stress on the map (v2.58.0, user decision): the Keeper, everyone's;
+  // a player, only their own character (and the drone they operate), never allies or enemies.
+  // store.canEditToken is exactly that: the Keeper's table edits every token; a player, the
+  // character it plays (claimed) and what it controls.
+  canSeeVitals(tok) { return store.canEditToken(tok.id); }
+
+  // The token's name below it and, for whoever may see them, its HP and Stress as two slim bars
+  // under the name (v2.58.0, user decision: «las barras de HP y Stress son demasiado grandes, hacen
+  // la mesa muy caótica»). One format for every token: the numbers are in the character bar when
+  // the token is selected. The old «HACK 2/4» sample clock is no longer drawn.
   renderTokenVitals(ctx, tok, radius) {
     if (isEncounterMarker(tok)) return;
     ctx.save();
     const cfg = tok.displayConfig || {};
-    const gaugeScale = Math.max(1, Math.min(2, 0.9 / this.zoom));
-    const overlays = tok.displayOverlays || [];
+    const sample = o => o?.type === 'circular' && o.statKey === 'clock' && /^hack$/i.test(o.label || '') && (o.id === 'ov_clock' || o.current === 2);
+    const custom = Array.isArray(tok.displayOverlays) && tok.displayOverlays.length > 0;
+    const overlays = custom ? tok.displayOverlays.filter(o => !sample(o)) : [];
+    const wants = key => custom ? overlays.some(o => o.statKey === key && o.type !== 'circular') : key === 'hp' ? cfg.showHpBar !== false || !!cfg.showHpCounter : key === 'stress' ? !!(cfg.showStressBar || cfg.showStressCounter) : !!cfg.showArmorCounter;
 
-    // If custom modular overlays are defined, render them
-    if (overlays.length > 0) {
-      let barY = -radius - 12 * gaugeScale;
-      const barWidth = Math.max(radius * 2, 86 * gaugeScale);
-      for (const item of overlays) {
-        if (item.type !== 'bar') continue;
-        drawTokenGauge(ctx, { x: -barWidth / 2, y: barY, width: barWidth,
-          current: item.current ?? this.resolveTokenStat(tok, item.statKey, 'current'),
-          max: item.max ?? this.resolveTokenStat(tok, item.statKey, 'max'),
-          key: item.statKey, label: item.label, color: item.color, scale: gaugeScale });
-        barY -= 25 * gaugeScale;
-      }
-
-      // Nameplate below token
-      ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
-      ctx.strokeStyle = tok.color ? tok.color : 'rgba(0, 243, 255, 0.3)';
-      ctx.lineWidth = 1;
-      const nameWidth = Math.max(radius * 2, 70);
-      ctx.beginPath();
-      ctx.roundRect(-nameWidth / 2, radius + 4, nameWidth, 16, 3);
-      ctx.fill();
-      ctx.stroke();
-
-      const isKeeper = store.getState().userRole === 'keeper';
-      const isMasked = !isKeeper && this.isHorrorToken(tok);
-      const rawName = isMasked ? '?????' : tok.name;
-      const displayName = (isKeeper && this.isHorrorToken(tok))
-        ? (tok.name.length > 10 ? tok.name.substring(0, 9) + '.. [?]' : `${tok.name} [?]`)
-        : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
-
-      ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
-      ctx.font = `bold 11px ${canvasFont('hud')}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(displayName, 0, radius + 12);
-
-      // 2. Linear Badges below nameplate
-      const linearBadges = overlays.filter(o => o.type === 'linear');
-      if (linearBadges.length > 0) {
-        const badgeY = radius + 24;
-        const bWidth = 52;
-        const spacing = 4;
-        const totalW = linearBadges.length * bWidth + (linearBadges.length - 1) * spacing;
-        let startX = -totalW / 2;
-
-        for (const item of linearBadges) {
-          const cur = item.current ?? this.resolveTokenStat(tok, item.statKey, 'current') ?? 0;
-          const max = item.max ?? this.resolveTokenStat(tok, item.statKey, 'max');
-          const color = item.color || '#38bdf8';
-          const label = item.label || item.statKey.toUpperCase();
-          const text = max !== undefined && max !== null ? `${label} ${cur}/${max}` : `${label} ${cur}`;
-
-          ctx.beginPath();
-          ctx.roundRect(startX, badgeY, bWidth, 15, 3);
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-          ctx.fill();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.2;
-          ctx.stroke();
-
-          ctx.fillStyle = color;
-          ctx.font = `bold 9px ${canvasFont('hud')}`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(text, startX + bWidth / 2, badgeY + 7.5);
-
-          startX += bWidth + spacing;
-        }
-      }
-
-      // 3. Circular Counter / Tactical Clock Dials
-      const circularItems = overlays.filter(o => o.type === 'circular');
-      circularItems.forEach((item, idx) => {
-        const cur = item.current ?? (tok.displayConfig?.clockProgress ?? 0);
-        const max = item.max ?? (item.segments || tok.displayConfig?.clockSegments || 4);
-        const color = item.color || '#00f3ff';
-        const label = item.label || 'CLOCK';
-        const clockRadius = 14;
-
-        const clockX = idx === 0 ? radius * 0.75 : (idx === 1 ? -radius * 0.75 : radius * 0.75);
-        const clockY = idx <= 1 ? -radius * 0.75 : radius * 0.75;
-
-        ctx.save();
-        ctx.translate(clockX, clockY);
-
-        ctx.beginPath();
-        ctx.arc(0, 0, clockRadius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(10, 15, 26, 0.95)';
-        ctx.fill();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.8;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 6;
-        ctx.stroke();
-
-        const segAngle = (Math.PI * 2) / max;
-        for (let s = 0; s < max; s++) {
-          const a = -Math.PI / 2 + s * segAngle;
-          if (s < cur) {
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.arc(0, 0, clockRadius - 1.5, a, a + segAngle);
-            ctx.closePath();
-            ctx.fillStyle = color;
-            ctx.fill();
-          }
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(Math.cos(a) * clockRadius, Math.sin(a) * clockRadius);
-          ctx.strokeStyle = 'rgba(15, 23, 42, 0.8)';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        }
-
-        if (label) {
-          ctx.fillStyle = color;
-          ctx.font = `bold 8px ${canvasFont('hud')}`;
-          ctx.textAlign = 'center';
-          ctx.fillText(label, 0, clockRadius + 8);
-        }
-
-        ctx.restore();
-      });
-
-      ctx.restore();
-      return;
-    }
-
-    // Default Legacy Fallback using displayConfig
-
-    let barY = -radius - 12 * gaugeScale;
-    const width = Math.max(radius * 2, 86 * gaugeScale);
-    if (cfg.showHpBar !== false && tok.hp?.max) {
-      drawTokenGauge(ctx, { x: -width / 2, y: barY, width, scale: gaugeScale, key: 'hp', current: tok.hp.current, max: tok.hp.max });
-      barY -= 25 * gaugeScale;
-    }
-    if (cfg.showStressBar) {
-      drawTokenGauge(ctx, { x: -width / 2, y: barY, width, scale: gaugeScale, key: 'stress', current: tok.stress?.current ?? 0, max: tok.stress?.max ?? 6 });
-    }
-
-    // 2. Nameplate below token
+    // 1. Nameplate below the token
+    const nameWidth = Math.max(radius * 2, 70);
     ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
     ctx.strokeStyle = tok.color ? tok.color : 'rgba(0, 243, 255, 0.3)';
     ctx.lineWidth = 1;
-    const nameWidth = Math.max(radius * 2, 70);
     ctx.beginPath();
     ctx.roundRect(-nameWidth / 2, radius + 4, nameWidth, 16, 3);
     ctx.fill();
     ctx.stroke();
-
     const isKeeper = store.getState().userRole === 'keeper';
     const isMasked = !isKeeper && this.isHorrorToken(tok);
     const rawName = isMasked ? '?????' : tok.name;
     const displayName = (isKeeper && this.isHorrorToken(tok))
       ? (tok.name.length > 10 ? tok.name.substring(0, 9) + '.. [?]' : `${tok.name} [?]`)
       : (rawName.length > 14 ? rawName.substring(0, 12) + '..' : rawName);
-
     ctx.fillStyle = isMasked ? '#f43f5e' : (tok.color || '#e2e8f0');
     ctx.font = `bold 11px ${canvasFont('hud')}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(displayName, 0, radius + 12);
 
-    // 3. Configurable Numeric Counters row below nameplate
-    const badges = [];
-    if (cfg.showHpCounter && tok.hp) {
-      badges.push({ text: `❤️ ${tok.hp.current}/${tok.hp.max}`, color: '#34d399', bg: 'rgba(6, 78, 59, 0.85)' });
-    }
-    if (cfg.showStressCounter) {
-      badges.push({ text: `⚡ ${tok.stress?.current ?? 0}/${tok.stress?.max || 6}`, color: '#f472b6', bg: 'rgba(131, 24, 67, 0.85)' });
-    }
-    if (cfg.showArmorCounter) {
-      badges.push({ text: `🛡️ ${tok.armor?.current ?? 0}`, color: '#38bdf8', bg: 'rgba(12, 74, 110, 0.85)' });
-    }
+    if (!this.canSeeVitals(tok)) { ctx.restore(); return; }
 
-    if (badges.length > 0) {
-      const badgeY = radius + 24;
-      const bWidth = 48;
-      const spacing = 4;
-      const totalW = badges.length * bWidth + (badges.length - 1) * spacing;
-      let startX = -totalW / 2;
+    // 2. HP, Stress and Escudos: slim bars under the nameplate or segmented rings around the token
+    // (Ajustes → Vida en el mapa), readable when zoomed out.
+    const vitals = { scale: Math.max(1, Math.min(1.8, 0.9 / this.zoom)), hp: wants('hp') && tok.hp?.max ? tok.hp : null,
+      stress: wants('stress') && tok.stress?.max ? tok.stress : null, armor: wants('armor') && tok.armor?.max ? tok.armor : null };
+    if (vitalsStyle() === 'rings') drawVitalRings(ctx, { radius, ...vitals });
+    else drawSlimVitals(ctx, { y: radius + 22, width: nameWidth, ...vitals });
 
-      for (const b of badges) {
-        ctx.beginPath();
-        ctx.roundRect(startX, badgeY, bWidth, 14, 3);
-        ctx.fillStyle = b.bg;
-        ctx.fill();
-        ctx.strokeStyle = b.color;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.fillStyle = '#fff';
-        ctx.font = `bold 9px ${canvasFont('hud')}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(b.text, startX + bWidth / 2, badgeY + 7);
-
-        startX += bWidth + spacing;
-      }
-    }
-
-    // 4. Tactical Mini-Clock on Token (Top-Right Quadrant)
-    if (cfg.showClock) {
-      const clockRadius = 14;
-      const clockX = radius * 0.75;
-      const clockY = -radius * 0.75;
-      const segs = cfg.clockSegments || 4;
-      const prog = Math.min(segs, Math.max(0, cfg.clockProgress || 0));
-
+    // 3. A clock the Keeper put on the token by hand (not the sample one).
+    const clocks = custom ? overlays.filter(o => o.type === 'circular') : cfg.showClock && !/^hack$/i.test(cfg.clockLabel || '') ? [{ label: cfg.clockLabel, current: cfg.clockProgress, max: cfg.clockSegments, color: '#00f3ff' }] : [];
+    clocks.slice(0, 2).forEach((item, idx) => {
+      const cur = item.current ?? (cfg.clockProgress ?? 0), max = item.max ?? (item.segments || cfg.clockSegments || 4);
+      const color = item.color || '#00f3ff', r = 11;
       ctx.save();
-      ctx.translate(clockX, clockY);
-
-      // Dial background
-      ctx.beginPath();
-      ctx.arc(0, 0, clockRadius, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(10, 15, 26, 0.95)';
-      ctx.fill();
-      ctx.strokeStyle = '#00f3ff';
-      ctx.lineWidth = 1.8;
-      ctx.shadowColor = '#00f3ff';
-      ctx.shadowBlur = 6;
-      ctx.stroke();
-
-      // Slices
-      const sliceAngle = (Math.PI * 2) / segs;
-      for (let s = 0; s < segs; s++) {
-        const startAng = -Math.PI / 2 + s * sliceAngle;
-        const endAng = startAng + sliceAngle;
-
-        if (s < prog) {
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.arc(0, 0, clockRadius - 2, startAng, endAng);
-          ctx.closePath();
-          ctx.fillStyle = prog >= segs ? '#ef4444' : '#00f3ff';
-          ctx.fill();
-        }
-
-        // Divider ray
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(startAng) * clockRadius, Math.sin(startAng) * clockRadius);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+      ctx.translate(idx === 0 ? radius * 0.75 : -radius * 0.75, -radius * 0.75);
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(10, 15, 26, 0.95)'; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+      const seg = (Math.PI * 2) / Math.max(1, max);
+      for (let i = 0; i < max; i++) {
+        const a = -Math.PI / 2 + i * seg;
+        if (i < cur) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r - 1.5, a, a + seg); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); }
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); ctx.strokeStyle = 'rgba(15, 23, 42, 0.8)'; ctx.lineWidth = 1.2; ctx.stroke();
       }
-
-      // Center pivot
-      ctx.beginPath();
-      ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff';
-      ctx.fill();
-
-      // Clock label tag below
-      if (cfg.clockLabel) {
-        ctx.beginPath();
-        ctx.roundRect(-24, clockRadius + 2, 48, 12, 2);
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0, 243, 255, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.fillStyle = '#00f3ff';
-        ctx.font = `bold 8px ${canvasFont('hud')}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`${prog}/${segs} ${cfg.clockLabel}`, 0, clockRadius + 8);
-      }
-
+      if (item.label) { ctx.fillStyle = color; ctx.font = `bold 7px ${canvasFont('hud')}`; ctx.textAlign = 'center'; ctx.fillText(item.label, 0, r + 7); }
       ctx.restore();
-    }
-
+    });
     ctx.restore();
   }
 
