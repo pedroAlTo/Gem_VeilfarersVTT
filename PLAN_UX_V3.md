@@ -70,11 +70,12 @@ Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 - **Fase 3, tercera parte** hecha en v2.51.0: Neural Feedback como reacción, efectos por ronda (Energy Cascade, Inviolable Sanctum), Hivemind Convergence y Solar Avatar. De paso, «Ver cálculo» en el registro y ajuste de daño del Keeper (peticiones del usuario).
 - **Fase 3, cuarta parte** hecha en v2.52.0: Poderes de «elige dos» (Adaptive Evolution, Symbiotic Bloom, Biomorphic Arsenal) con armas temporales, Armor Slots temporales y bonos; Cordon of Will. **Fase 3 completa**: 34 Poderes con ficha.
 - **Fase 5, primera parte** hecha en v2.53.0: Prone, Restrained, Weakened, Dazed, Incapacitated, Hidden y Silenced cuentan solas en las tiradas, los ataques, el movimiento y el daño.
-- **Siguiente:** Fase 5, segunda parte: daño por ronda de On Fire y Poisoned, a confirmar con el usuario (Bleeding sigue manual, decisión 18). Fase 6 (accesibilidad) en paralelo.
+- **Fase 5, segunda parte** hecha en v2.54.0: On Fire (1d4 Energy Fire contra los umbrales) y Poisoned (1 Stress) se aplican solos al pulsar «Nueva ronda». **Fase 5 completa.**
+- **Siguiente:** Fase 6 (accesibilidad).
 
 ## Decisiones
 
 - Fase 1 aprobada: unirse con enlace sin cuenta y pregenerados de *Hearts in the Void* (24 nov 2026).
 - Fase 2 aprobada (25 nov 2026): quitar el clic «Enviar daño», anillo de acciones al tocar un token y Lucky
   Break con el dado más bajo por defecto.
-- Pendiente de confirmar en la fase 5: daño por ronda de On Fire y Poisoned (Bleeding sigue manual, decisión 18).
+- Fase 5 (25 nov 2026): On Fire y Poisoned se aplican solos al cerrar la ronda, sin gastar Armor Slots (el Keeper ajusta a mano). Bleeding sigue manual (decisión 18).

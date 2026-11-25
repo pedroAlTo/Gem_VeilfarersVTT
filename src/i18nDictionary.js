@@ -1926,6 +1926,15 @@ export const PAIRS = [
   // Fase 5: conditions that count by themselves (v2.53.0)
   ["Weakened: el daño pierde los modificadores fijos (los dados no cambian).", "Weakened: the damage loses its flat modifiers (the dice are unaffected)."],
   ["OCULTO", "HIDDEN"],
+  // Fase 5: On Fire and Poisoned each round (v2.54.0)
+  ["Sintético o máquina", "Synthetic or machine"],
+  ["inmune a toxinas", "immune to toxins"],
+  ["inmune a toxinas (equipo)", "immune to toxins (gear)"],
+  ["inmune", "immune"],
+  ["resiste", "resists"],
+  ["Sin Armor Slots: es un efecto continuo (el Keeper puede ajustarlo a mano).", "No Armor Slots: it is an ongoing effect (the Keeper can adjust it by hand)."],
+  ["Termina al apagarlo: tu Acción, la de un aliado, sumergirse o lo que diga la fuente.", "It ends when put out: your Action, an ally's, immersion or what the source says."],
+  ["Termina con First Aid (DC 10), un antídoto, un Long Rest o la duración de la fuente.", "It ends with First Aid (DC 10), an antidote, a Long Rest or the source's duration."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2140,4 +2149,10 @@ export const PATTERNS = [
   ["{_a} está Incapacitated: el ataque impacta automáticamente.", "{_a} is Incapacitated: the attack hits automatically."],
   ["{_a} está Incapacitated: impacta automáticamente.", "{_a} is Incapacitated: it hits automatically."],
   ["{_a} está Silenced: si este Poder necesita voz (componente verbal), no puede lanzarse; el Keeper decide.", "{_a} is Silenced: if this Power needs a voice (verbal component), it cannot be cast; the Keeper decides."],
+  ["{_a} arde: 1d4 [{_b}] Energy (Fire) → {c}, pierde {_d} HP ({_e} → {_f}).", "{_a} burns: 1d4 [{_b}] Energy (Fire) → {c}, loses {_d} HP ({_e} → {_f})."],
+  ["{_a} está Poisoned: marca 1 Stress ({_b}).", "{_a} is Poisoned: marks 1 Stress ({_b})."],
+  ["{_a} está Poisoned: marca 1 Stress ({_b}), ya no le queda Stress libre.", "{_a} is Poisoned: marks 1 Stress ({_b}), no Stress left to mark."],
+  ["{_a} ignora Poisoned ({b}).", "{_a} ignores Poisoned ({b})."],
+  ["Fin de la ronda {_a}: On Fire hace 1d4 Energy con el tag Fire (Corebook, cap. 10).", "End of round {_a}: On Fire deals 1d4 Energy with the Fire tag (Corebook, ch. 10)."],
+  ["Fin de la ronda {_a}: Poisoned marca 1 Stress (Corebook, cap. 10).", "End of round {_a}: Poisoned marks 1 Stress (Corebook, ch. 10)."],
 ];

@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.53.0**.
-Paquete: `VeilFarers_VTT_v2.53.0.zip`.
+Versión actual del VTT: **v2.54.0**.
+Paquete: `VeilFarers_VTT_v2.54.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.54.0] — 2026-11-25
+
+V3 · On Fire y Poisoned por ronda (Fase 5 completa)
+
+### Al pulsar «Nueva ronda»
+
+- On Fire: la mesa tira 1d4 en 3D y aplica el daño Energy (Fire) contra los umbrales como cualquier daño: cuentan las resistencias, la armadura Reflective y la penetración de Energy. No gasta Armor Slots del objetivo (es un efecto continuo); el Keeper puede ajustarlo a mano. Sigue ardiendo hasta que alguien lo apague.
+- Poisoned: el objetivo marca 1 Stress. Los Sintéticos, las máquinas y quien es inmune a las toxinas (por ejemplo, con el Filtro Hepático Bio-Sintético) lo ignoran, y el registro lo dice.
+- Cada uno deja su entrada en el registro con «Ver cálculo». Un personaje a 0 HP o en un estado de vida no recibe más. Bleeding sigue siendo manual (decisión 18).
 
 ## [2.53.0] — 2026-11-25
 

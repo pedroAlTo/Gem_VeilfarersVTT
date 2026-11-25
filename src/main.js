@@ -42,6 +42,8 @@ import { mountSettingsMenu } from './settingsMenu.js';
 import { applyFontSet } from './fontSets.js';
 import './fontSets.css';
 import { store } from './state.js';
+// On Fire and Poisoned act when the Keeper closes the round (v2.54.0).
+import './roundConditions.js';
 import { audio } from './audioEngine.js';
 import { network, getActiveSession, clearActiveSession } from './networkManager.js';
 import { CanvasEngine } from './canvasEngine.js';

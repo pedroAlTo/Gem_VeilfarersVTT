@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.54.0', date: '2026-11-25', title: 'V3 · On Fire y Poisoned por ronda (Fase 5 completa)',
+    sections: [
+      { title: 'Al pulsar «Nueva ronda»', items: [
+        'On Fire: la mesa tira 1d4 en 3D y aplica el daño Energy (Fire) contra los umbrales como cualquier daño: cuentan las resistencias, la armadura Reflective y la penetración de Energy. No gasta Armor Slots del objetivo (es un efecto continuo); el Keeper puede ajustarlo a mano. Sigue ardiendo hasta que alguien lo apague.',
+        'Poisoned: el objetivo marca 1 Stress. Los Sintéticos, las máquinas y quien es inmune a las toxinas (por ejemplo, con el Filtro Hepático Bio-Sintético) lo ignoran, y el registro lo dice.',
+        'Cada uno deja su entrada en el registro con «Ver cálculo». Un personaje a 0 HP o en un estado de vida no recibe más. Bleeding sigue siendo manual (decisión 18).',
+      ] },
+    ],
+  },
+  {
     version: '2.53.0', date: '2026-11-25', title: 'V3 · Condiciones que cuentan solas (Fase 5, primera parte)',
     sections: [
       { title: 'Tiradas', items: [
