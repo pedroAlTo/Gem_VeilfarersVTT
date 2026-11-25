@@ -18,7 +18,7 @@ import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { normalizeConditions, conditionDefinition, visibleConditions } from './conditions.js';
 import { openConditions } from './conditionUI.js';
-import { checkEdge, lifeStage, helplessTarget, rangedTargetBlock } from './combatState.js';
+import { checkEdge, lifeStage, helplessTarget, rangedTargetBlock, fearSource } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus, weaponTraitId } from './attackFlow.js';
 import { weaponAttackEdge, wielderEvasion, ignoresLineOfSight, weaponReadiness, availableFollowUps, FOLLOW_UPS, areaProcedure, zoneTargets } from './weaponFeatures.js';
 import { throwDice } from './tableDice.js';
@@ -499,7 +499,8 @@ export class PlayerActionBar {
     // Incapacitated is hit automatically.
     const hiddenBlock = rangedTargetBlock(target, !melee);
     const targetNotes = [hiddenBlock, !melee && !hiddenBlock && visibleConditions(target).includes('Prone') ? `${target.name} está Prone: Ventaja al atacarle a distancia.` : '',
-      helplessTarget(target) ? `${target.name} está Incapacitated: el ataque impacta automáticamente.` : ''];
+      helplessTarget(target) ? `${target.name} está Incapacitated: el ataque impacta automáticamente.` : '',
+      fearSource(roller) === target.id ? `${roller.name} está Frightened de ${target.name}: Desventaja contra él.` : ''];
     const props = weaponAttackBonus(weapon, gap.band), type = damageTypeOf(weapon || ''), pen = penetrationFor(type);
     const reasons = [check.disadvantage || !check.allowed ? check.reason : '',
       props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',

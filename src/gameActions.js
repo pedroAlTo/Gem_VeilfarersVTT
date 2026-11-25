@@ -104,7 +104,14 @@ function resolveGameAction(action, store) {
     if (actor.isPlayer !== false && LIFE_STATES.includes(name)) throw new Error('Utiliza los controles de progreso y estabilización.');
     const conditions = action.active ? normalizeConditions([...current, name]) : current.filter(c => c !== name);
     if (conditions.length > 30) throw new Error('Máximo 30 condiciones por token.');
-    store.updateToken(actor.id, { conditions });
+    // Frightened names its source (v2.55.0): a token of the same scene, or none (a reminder only).
+    const patch = { conditions };
+    if (name === 'Frightened' && action.active && action.sourceId !== undefined) {
+      const source = action.sourceId ? store.state.tokens.find(t => t.id === String(action.sourceId) && t.mapId === actor.mapId && t.id !== actor.id) : null;
+      if (action.sourceId && !source) throw new Error('La fuente del miedo no está en esta escena.');
+      patch.frightenedBy = source?.id || null;
+    }
+    store.updateToken(actor.id, patch);
     return { actorId: actor.id, conditions };
   }
   if (action.type === 'FTL') return resolveJump(store, actor, action, resolveGameAction);

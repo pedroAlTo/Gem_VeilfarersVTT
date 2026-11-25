@@ -71,6 +71,7 @@ Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 - **Fase 3, cuarta parte** hecha en v2.52.0: Poderes de «elige dos» (Adaptive Evolution, Symbiotic Bloom, Biomorphic Arsenal) con armas temporales, Armor Slots temporales y bonos; Cordon of Will. **Fase 3 completa**: 34 Poderes con ficha.
 - **Fase 5, primera parte** hecha en v2.53.0: Prone, Restrained, Weakened, Dazed, Incapacitated, Hidden y Silenced cuentan solas en las tiradas, los ataques, el movimiento y el daño.
 - **Fase 5, segunda parte** hecha en v2.54.0: On Fire (1d4 Energy Fire contra los umbrales) y Poisoned (1 Stress) se aplican solos al pulsar «Nueva ronda». **Fase 5 completa.**
+- **Fase 5, cierre** en v2.55.0: Frightened con su fuente (Desventaja contra ella y no acercarse).
 - **Siguiente:** Fase 6 (accesibilidad).
 
 ## Decisiones

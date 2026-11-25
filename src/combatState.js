@@ -41,6 +41,22 @@ export function movementBlock(token) {
   return '';
 }
 
+// Frightened (v2.55.0, Corebook ch. 10): «Disadvantage on rolls made against the source of the
+// fear, and you cannot willingly move closer to it». The source is the token the Keeper names when
+// marking the condition (`frightenedBy`), or the caster of a clock that carries it (`sourceId`).
+export function fearSource(token) {
+  if (!visibleConditions(token).includes('Frightened') || pathImmune(token, 'Frightened')) return '';
+  if ((token.conditions || []).includes('Frightened') && token.frightenedBy) return token.frightenedBy;
+  return (token.effectClocks || []).find(c => c.condition === 'Frightened' && c.sourceId)?.sourceId || '';
+}
+// Why a player's character cannot go from where it is to (x, y): closer to what frightens it.
+export function approachBlock(token, x, y, tokens = []) {
+  const id = fearSource(token), source = id && tokens.find(t => t.id === id && t.mapId === token.mapId && !t.inReserve);
+  if (!source) return '';
+  const before = Math.hypot(token.x - source.x, token.y - source.y), after = Math.hypot(x - source.x, y - source.y);
+  return after < before - 0.5 ? `${token.name} · Frightened: no puede acercarse voluntariamente a ${source.name}.` : '';
+}
+
 // Attacks against a target's conditions (v2.53.0, Corebook ch. 10): an Incapacitated target is
 // hit automatically; a Hidden one cannot be targeted directly by a ranged attack.
 export const helplessTarget = target => visibleConditions(target).includes('Incapacitated');
@@ -68,6 +84,7 @@ export function checkEdge(actor, target, advantage = false, disadvantage = false
     (conditions.includes('Restrained') && ['agility','strength'].includes(trait)) ||
     (conditions.includes('Weakened') && trait === 'strength') ||
     (conditions.includes('Prone') && !!target) || plainDazed ||
+    (!!target && !!fearSource(actor) && fearSource(actor) === target.id) ||
     (!!trait && ['knowledge','instinct'].includes(trait) && actor?.effectClocks?.some(c => c.condition === 'Dazed') && !pathImmune(actor, 'Dazed'));
   const jolt = ['agility', 'finesse'].includes(trait) && actor?.effectClocks?.some(c => c.name === 'Slipstream Jolt');
   const field = actor?.effectClocks?.find(c => c.name === 'Global Stimulus Field');
@@ -108,6 +125,7 @@ export function combatTransition(previous, next, map) {
     next = { ...next, conditions: next.conditions.filter(name => name !== 'Overwhelmed') };
   }
   if (next.conditions?.some(c => pathImmune(next, c))) next = { ...next, conditions: next.conditions.filter(c => !pathImmune(next, c)) };
+  if (next.frightenedBy && !next.conditions?.includes('Frightened')) next = { ...next, frightenedBy: null };
   if (character(next) && previous.hp?.current > 0 && next.hp?.current === 0) {
     next = { ...next, ...lifePatch(next, 'Dying'), lifeRollRound: null };
   }

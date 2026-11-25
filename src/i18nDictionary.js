@@ -1935,6 +1935,11 @@ export const PAIRS = [
   ["Sin Armor Slots: es un efecto continuo (el Keeper puede ajustarlo a mano).", "No Armor Slots: it is an ongoing effect (the Keeper can adjust it by hand)."],
   ["Termina al apagarlo: tu Acción, la de un aliado, sumergirse o lo que diga la fuente.", "It ends when put out: your Action, an ally's, immersion or what the source says."],
   ["Termina con First Aid (DC 10), un antídoto, un Long Rest o la duración de la fuente.", "It ends with First Aid (DC 10), an antidote, a Long Rest or the source's duration."],
+  // Fase 5: Frightened with its source (v2.55.0)
+  ["Frightened · ¿de quién tiene miedo?", "Frightened · afraid of whom?"],
+  ["Sin fuente en la escena (solo recordatorio)", "No source in the scene (reminder only)"],
+  ["Con una fuente, sus tiradas contra ella llevan Desventaja y no puede acercarse a ella por su cuenta.", "With a source, its rolls against it have Disadvantage and it cannot move closer to it on its own."],
+  ["La fuente del miedo no está en esta escena.", "The source of the fear is not in this scene."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2155,4 +2160,6 @@ export const PATTERNS = [
   ["{_a} ignora Poisoned ({b}).", "{_a} ignores Poisoned ({b})."],
   ["Fin de la ronda {_a}: On Fire hace 1d4 Energy con el tag Fire (Corebook, cap. 10).", "End of round {_a}: On Fire deals 1d4 Energy with the Fire tag (Corebook, ch. 10)."],
   ["Fin de la ronda {_a}: Poisoned marca 1 Stress (Corebook, cap. 10).", "End of round {_a}: Poisoned marks 1 Stress (Corebook, ch. 10)."],
+  ["{_a} · Frightened: no puede acercarse voluntariamente a {_b}.", "{_a} · Frightened: cannot willingly move closer to {_b}."],
+  ["{_a} está Frightened de {_b}: Desventaja contra él.", "{_a} is Frightened of {_b}: Disadvantage against it."],
 ];

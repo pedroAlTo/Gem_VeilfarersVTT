@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.55.0', date: '2026-11-25', title: 'V3 · Frightened con su fuente',
+    sections: [
+      { title: 'Frightened', items: [
+        'Al marcar Frightened en Condiciones aparece «¿de quién tiene miedo?» con los tokens de la escena. Con una fuente, las tiradas contra ella llevan Desventaja (la barra de ataque lo avisa al marcarla) y el jugador no puede acercar su personaje a ella, ni arrastrándolo ni con las flechas; alejarse sí. El Keeper puede moverlo igualmente.',
+        'Sin fuente, Frightened queda como recordatorio. Un reloj de un Poder o un arma que lleve Frightened cuenta a su lanzador como fuente. Al quitar la condición se olvida la fuente.',
+      ] },
+    ],
+  },
+  {
     version: '2.54.0', date: '2026-11-25', title: 'V3 · On Fire y Poisoned por ronda (Fase 5 completa)',
     sections: [
       { title: 'Al pulsar «Nueva ronda»', items: [

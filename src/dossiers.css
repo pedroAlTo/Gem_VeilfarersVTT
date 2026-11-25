@@ -300,3 +300,7 @@
 @media (max-width: 860px) { .eq-main-grid, .eq-catalog-body { grid-template-columns:1fr; } .eq-gear { grid-template-columns:1fr auto auto; } .eq-gear-use { display:none; } }
 .eq-outside { flex:none; font:700 9.5px/1 system-ui, sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#fecaca; padding:3px 6px; border:1px solid rgba(248,113,113,.5); border-radius:3px; background:rgba(127,29,29,.4); }
 .eq-pick .equip-outside { white-space:nowrap; }
+/* Frightened · the source of the fear (v2.55.0) */
+.condition-fear-source { margin: 10px 0 4px; padding: 8px 10px; border: 1px solid rgba(250, 204, 21, 0.35); border-radius: 8px; }
+.condition-fear-source .dossier-field { display: grid; gap: 4px; max-width: 420px; }
+.condition-fear-source p { margin: 6px 0 0; }

@@ -21,7 +21,7 @@ import { characterKey } from './characterImport.js';
 import { createActor, replaceActorSheet } from './actors.js';
 import { portableCharacter } from './cloudAccount.js';
 import { sameDamageDefenses } from './damageProtection.js';
-import { requireActive, movementBlock, LIFE_STATES, canChooseBlaze } from './combatState.js';
+import { requireActive, movementBlock, approachBlock, LIFE_STATES, canChooseBlaze } from './combatState.js';
 import { CAMPAIGN_KEYS, validTokenPatch, validateCampaign, finite } from './validation.js';
 import { notify } from './ui.js';
 import { TABLE, KEEPER, chatRequest, validateChatEntry, chatVisibleTo, chatHistoryFor, appendChat } from './chat.js';
@@ -1186,7 +1186,10 @@ export class NetworkManager {
         if (partial.conditions && token.isPlayer !== false && LIFE_STATES.some(stage => partial.conditions.includes(stage) !== !!token.conditions?.includes(stage)))
           throw new Error('Utiliza los controles de progreso y estabilización.');
         // A player's character that cannot act, or is Restrained, does not move (v2.53.0, fase 5).
-        if (('x' in partial && partial.x !== token.x) || ('y' in partial && partial.y !== token.y)) { const blocked = movementBlock(token); if (blocked) throw new Error(blocked); }
+        if (('x' in partial && partial.x !== token.x) || ('y' in partial && partial.y !== token.y)) {
+          const blocked = movementBlock(token) || approachBlock(token, partial.x ?? token.x, partial.y ?? token.y, this.store.state.tokens);
+          if (blocked) throw new Error(blocked);
+        }
         // A player who moves their character takes the Spotlight (an active action).
         if (('x' in partial || 'y' in partial) && (partial.x !== token.x || partial.y !== token.y) && token.isPlayer !== false && token.actorType !== 'drone' && !token.hasSpotlight) partial.hasSpotlight = true;
         // The host applies the same round and Fear rules as the Keeper's own sheet.

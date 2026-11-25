@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.54.0**.
-Paquete: `VeilFarers_VTT_v2.54.0.zip`.
+Versión actual del VTT: **v2.55.0**.
+Paquete: `VeilFarers_VTT_v2.55.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.55.0] — 2026-11-25
+
+V3 · Frightened con su fuente
+
+### Frightened
+
+- Al marcar Frightened en Condiciones aparece «¿de quién tiene miedo?» con los tokens de la escena. Con una fuente, las tiradas contra ella llevan Desventaja (la barra de ataque lo avisa al marcarla) y el jugador no puede acercar su personaje a ella, ni arrastrándolo ni con las flechas; alejarse sí. El Keeper puede moverlo igualmente.
+- Sin fuente, Frightened queda como recordatorio. Un reloj de un Poder o un arma que lleve Frightened cuenta a su lanzador como fuente. Al quitar la condición se olvida la fuente.
 
 ## [2.54.0] — 2026-11-25
 

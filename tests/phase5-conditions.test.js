@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { CREATOR_DATA as data } from '../src/creator/creatorData.js';
 import { setCardData } from '../src/cardData.js';
 import { performGameAction } from '../src/gameActions.js';
-import { checkEdge, combatTransition, movementBlock, requireActive, helplessTarget, rangedTargetBlock } from '../src/combatState.js';
+import { checkEdge, combatTransition, movementBlock, requireActive, helplessTarget, rangedTargetBlock, fearSource, approachBlock } from '../src/combatState.js';
 import { resolveDamageExpression } from '../src/equipment.js';
 import { isMeleeAttack } from '../src/attackFlow.js';
 import { npcSave } from '../src/weaponAftermath.js';
@@ -93,4 +93,23 @@ test('Weakened: the damage loses its flat modifiers, the dice are unaffected', (
   assert.equal(weak.rawDamage, 5); assert.equal(weak.flatModifier, 0);
   // A die rider (Sneak Attack) still counts: it arrives as a bonus.
   assert.equal(resolveDamageExpression('1d8+3 Physical', { ...opts, honed: 0, noFlat: true, bonus: 4 }).rawDamage, 9);
+});
+
+test('Frightened (v2.55.0): Disadvantage against its source, and no step closer to it', () => {
+  const s = table(pc('pc', rifle), foe(), { ...foe(), id: 'other', name: 'Otro', x: 64 * 3 });
+  performGameAction({ type: 'CONDITION', actorId: 'pc', name: 'Frightened', active: true }, s);
+  assert.equal(fearSource(s.state.tokens[0]), '', 'without a source it is a reminder');
+  performGameAction({ type: 'CONDITION', actorId: 'pc', name: 'Frightened', active: true, sourceId: 'foe' }, s);
+  const me = s.state.tokens.find(t => t.id === 'pc');
+  assert.equal(me.frightenedBy, 'foe'); assert.equal(fearSource(me), 'foe');
+  assert.equal(shoot(s).disadvVal, 4, 'against the source: Disadvantage');
+  assert.equal(checkEdge(me, s.state.tokens.find(t => t.id === 'other'), false, false, 'agility').disadvantage, false, 'against another, normal');
+  assert.match(approachBlock(me, 64 * 2, 64, s.state.tokens), /no puede acercarse voluntariamente a Pirata/);
+  assert.equal(approachBlock(me, 0, 64, s.state.tokens), '', 'moving away is fine');
+  assert.throws(() => performGameAction({ type: 'CONDITION', actorId: 'pc', name: 'Frightened', active: true, sourceId: 'nobody' }, s), /fuente del miedo/);
+  // Immune (Aura of Clarity) or the condition gone: no source.
+  performGameAction({ type: 'CONDITION', actorId: 'pc', name: 'Frightened', active: false }, s);
+  assert.equal(s.state.tokens.find(t => t.id === 'pc').frightenedBy, null);
+  // A clock that carries Frightened from a caster counts as its source.
+  assert.equal(fearSource(pc('a', { effectClocks: [{ id: 'c', name: 'Terror', condition: 'Frightened', sourceId: 'foe', segments: 1, filled: 0 }] })), 'foe');
 });

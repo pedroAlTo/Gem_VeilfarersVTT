@@ -23,7 +23,7 @@ import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
 import { pointInWater } from './waterGeometry.js';
 import { notify, confirmAction } from './ui.js';
-import { movementBlock } from './combatState.js';
+import { movementBlock, approachBlock } from './combatState.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { rangeBandFor, gapBandFor, tokenGapSquares, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
 import { drawEffectClocks } from './effectClocks.js';
@@ -693,6 +693,8 @@ export class CanvasEngine {
     const g = map.gridSize || 64, W = this.mapImage?.width || Infinity, H = this.mapImage?.height || Infinity;
     const x = Math.max(0, Math.min(W, tok.x + dx * g)), y = Math.max(0, Math.min(H, tok.y + dy * g));
     if (x === tok.x && y === tok.y) return true;
+    const afraid = state.userRole !== 'keeper' && approachBlock(tok, x, y, state.tokens);
+    if (afraid) { audio.playError?.(); notify(afraid, 'error'); return true; }
     if (state.userRole !== 'keeper') {
       const wall = (map.walls || []).find(w => {
         const type = w.wallType || (w.isDoor ? 'door' : (w.isWindow ? 'window' : 'wall'));
@@ -2041,6 +2043,9 @@ export class CanvasEngine {
               break;
             }
           }
+          // Frightened (v2.55.0): not closer to the source of the fear.
+          const afraid = !isBlocked && approachBlock({ ...this.draggedToken, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY }, finalX, finalY, state.tokens);
+          if (afraid) { isBlocked = true; blockedReason = afraid; notify(afraid, 'error'); }
         }
 
         if (isBlocked) {

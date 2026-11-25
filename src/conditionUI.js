@@ -23,6 +23,7 @@ export function openConditions(tokenId) {
     <h4 class="dossier-label" style="margin: 8px 0 4px 0; color: #38bdf8;">⚡ CONDICIONES TÁCTICAS DE COMBATE (18)</h4>
     <div class="condition-picker">${CONDITIONS.map(c => `<button type="button" class="condition-choice" data-condition="${esc(c.name)}" title="${esc(c.label)} (${esc(c.name)}): ${esc(c.rule)}" aria-pressed="false">${conditionIcon(c.name)}<span>${esc(c.label)}<small>${esc(c.name)}</small></span></button>`).join('')}</div>
     
+    <div class="condition-fear-source" data-fear-source hidden></div>
     <h4 class="dossier-label" style="margin: 12px 0 4px 0; color: #fbbf24;">💀 ESTADOS DE PERSONAJE Y CAMPAÑA</h4>
     <div class="condition-picker">${CAMPAIGN_STATES.map(c => `<button type="button" class="condition-choice" data-condition="${esc(c.name)}" title="${esc(c.label)} (${esc(c.name)}): ${esc(c.rule)}" aria-pressed="false" style="border-color: rgba(251, 191, 36, 0.3);">${conditionIcon(c.name)}<span style="color: #fde68a;">${esc(c.label)}<small>${esc(c.name)}</small></span></button>`).join('')}</div>
 
@@ -43,7 +44,7 @@ export function openConditions(tokenId) {
     modal.querySelector('[data-rule]').textContent = c?.rule || 'Marcador propio: consulta su efecto con el Keeper.';
   };
   const pending = new Set();
-  const apply = async (name, toggle = true) => {
+  const apply = async (name, toggle = true, extra = {}) => {
     if (!token() || !store.canEditToken(tokenId)) { error('Solo el Keeper y los jugadores asignados pueden cambiar estas condiciones.'); return; }
     const current = normalizeConditions(token().conditions);
     const normalized = normalizeConditions([name])[0];
@@ -54,7 +55,7 @@ export function openConditions(tokenId) {
     if (pending.has(normalized)) return;
     pending.add(normalized); refresh();
     try {
-      await network.requestAction({ type:'CONDITION', actorId:tokenId, name:normalized, active:!toggle || !current.includes(normalized) });
+      await network.requestAction({ type:'CONDITION', actorId:tokenId, name:normalized, active:!toggle || !current.includes(normalized), ...extra });
       error(''); explain(normalized); return true;
     } catch (e) { error(e.message); return false; }
     finally { pending.delete(normalized); if (modal.isConnected) refresh(); }
@@ -69,6 +70,19 @@ export function openConditions(tokenId) {
       button.setAttribute('aria-disabled', String(!editable));
       button.disabled = pending.has(button.dataset.condition) || (token()?.isPlayer !== false && LIFE_STATES.includes(button.dataset.condition));
     });
+    // Frightened (v2.55.0): of whom. With a source, the table gives Disadvantage on rolls against it
+    // and does not let the player move the character closer to it.
+    const fear = modal.querySelector('[data-fear-source]'), afraid = active.includes('Frightened');
+    fear.hidden = !afraid;
+    if (afraid) {
+      const others = store.state.tokens.filter(t => t.mapId === token().mapId && t.id !== tokenId && !t.inReserve && (!t.hidden || store.state.userRole === 'keeper'));
+      const signature = [token().frightenedBy || '', editable, ...others.map(t => t.id + t.name)].join('|');
+      if (fear.dataset.signature !== signature) {
+        fear.dataset.signature = signature;
+        fear.innerHTML = `<label class="dossier-field">Frightened · ¿de quién tiene miedo? <vf-select data-fear-select ${editable ? '' : 'disabled'}><option value="">Sin fuente en la escena (solo recordatorio)</option>${others.map(t => `<option value="${esc(t.id)}" ${t.id === token().frightenedBy ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</vf-select></label><p class="dossier-muted">Con una fuente, sus tiradas contra ella llevan Desventaja y no puede acercarse a ella por su cuenta.</p>`;
+        fear.querySelector('[data-fear-select]').addEventListener('change', event => apply('Frightened', false, { sourceId: event.target.value || '' }));
+      }
+    }
     modal.querySelector('[data-custom]').disabled = !editable;
     modal.querySelector('button[type=submit]').disabled = !editable;
     modal.querySelector('[data-permission]').textContent = editable ? (store.sessionRole === 'player' ? 'Los cambios se confirman al recibir la respuesta del Keeper.' : 'Los cambios se guardan al pulsar cada condición.') : 'Consulta: este token no está bajo tu control.';
