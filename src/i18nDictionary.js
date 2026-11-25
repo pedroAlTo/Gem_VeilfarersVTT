@@ -1887,6 +1887,17 @@ export const PAIRS = [
   ["Stunned hasta el final de su próximo Spotlight", "Stunned until the end of its next Spotlight"],
   ["marca 1 Stress", "marks 1 Stress"],
   ["Blinded hasta el cambio de ronda", "Blinded until the round changes"],
+  // Fase 3 (second batch) and Vanish (v2.50.0)
+  ["Resolve 1 · sin tirada · obtienes el estado Oculto (Hidden): Ventaja en tu próximo ataque; se va al atacar o lanzar un Poder", "Resolve 1 · no roll · you gain the Hidden state: Advantage on your next attack; it ends when you attack or cast a Power"],
+  ["Cada aliado gana HP temporales iguales a tu Presence: anótalos en su ficha.", "Each ally gains temporary HP equal to your Presence: note them on their sheet."],
+  ["Teletransporta hasta 3 criaturas dispuestas a un punto visible a Far: muévelas en el mapa.", "Teleport up to 3 willing creatures to a visible point within Far: move them on the map."],
+  ["No puedes usar Poderes Lux hasta tu próximo Long Rest.", "You cannot use Lux Powers until your next Long Rest."],
+  ["Fallo: sufres los efectos de la Veil Storm hasta limpiar 2 Stress.", "Failure: you suffer the Veil Storm effects until you clear 2 Stress."],
+  ["Toda la escena, los aliados a Far suman tu Presence a sus ataques, Reaction Rolls y umbrales de daño (no se acumula con Aura of Clarity). Al terminar, caes inconsciente 1 hora.", "For the scene, allies within Far add your Presence to their attacks, Reaction Rolls and Damage Thresholds (it does not stack with Aura of Clarity). When it ends, you fall unconscious for 1 hour."],
+  ["Fallo: la barrera se derrumba y hace 3d12 Physical (Kinetic) a quienes estaban dentro.", "Failure: the barrier collapses and deals 3d12 Physical (Kinetic) to those inside."],
+  ["Los enemigos Veil-Touched reciben el doble. Hasta el final de la escena no bajas de 1 HP y tus golpes desarmados suman 1d6 Energy (Radiant).", "Veil-Touched enemies take double. Until the end of the scene you cannot fall below 1 HP and your unarmed strikes add 1d6 Energy (Radiant)."],
+  ["Fallo: tu Knowledge baja 1 punto para siempre.", "Failure: your Knowledge permanently drops by 1."],
+  ["Stunned una ronda y Vulnerable la escena", "Stunned for one round and Vulnerable for the scene"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2074,4 +2085,6 @@ export const PATTERNS = [
   ["El daño se prepara contra {_a}.", "The damage is prepared against {_a}."],
   ["{_a} tira {_b} contra DC {c}; si falla, {d}.", "{_a} rolls {_b} against DC {c}; on a failure, {d}."],
   ["{_a} tiran {_b} contra DC {c}; si falla, {d}.", "{_a} roll {_b} against DC {c}; on a failure, {d}."],
+  ["{_a}: rompe la línea de visión y queda Hidden (Ventaja en su próximo ataque). Se va al atacar o al lanzar un Poder.", "{_a}: breaks line of sight and is Hidden (Advantage on their next attack). It ends when they attack or cast a Power."],
+  ["{_a} vuelve con 1 HP.", "{_a} comes back with 1 HP."],
 ];

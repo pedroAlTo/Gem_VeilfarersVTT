@@ -352,7 +352,7 @@ export class DiceRollerSidebar {
         if (!store.state.tokens.some(t => t.id === targetId)) continue;
         // The Keeper's window of the previous one must close first (the panel holds one damage).
         for (let waited = 0; document.getElementById('kdmg_apply') && waited < 300000; waited += 400) await new Promise(r => setTimeout(r, 400));
-        const power = { type: hit.type, tag: hit.tag, noArmor: hit.noArmor };
+        const power = { type: hit.type, tag: hit.tag, noArmor: hit.noArmor, direct: hit.direct };
         await this.autoCardDamage(actor.id, targetId, raw === null ? hit.formula : `${raw} ${hit.type[0].toUpperCase() + hit.type.slice(1)}`, secret, power);
         if (raw === null) raw = Number(this.lastDamage?.raw) || 0;
       }
@@ -396,6 +396,8 @@ export class DiceRollerSidebar {
     if (power?.tag) q('#dmg_delivery_tag').value = power.tag;
     // «Ignoring armor» (Mind Spike, Psychic Collapse): no Armor Slots can be spent against it.
     this.noArmorHit = !!power?.noArmor;
+    // Direct HP, no thresholds (Apotheosis).
+    if (power?.direct && q('#dmg_is_direct')) q('#dmg_is_direct').checked = true;
     for (const name of ['dmg_is_critical','dmg_is_direct','dmg_weapon_crushing','dmg_weapon_bleed']) if (q('#'+name)) q('#'+name).checked = false;
     q('#secret_roll').checked = !!secret;
     this.syncDamageMode();

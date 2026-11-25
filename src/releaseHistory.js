@@ -1,6 +1,23 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.50.0', date: '2026-11-25', title: 'V3 · Vanish automático y más Poderes con ficha (Fase 3, segunda parte)',
+    sections: [
+      { title: 'Vanish', items: [
+        'Vanish (Scoundrel, Resolve) se resuelve solo: gasta 1 Resolve y obtienes el estado Oculto (Hidden), con Ventaja en tu próximo ataque. Se va en cuanto atacas o lanzas un Poder. El texto de la carta y su resumen lo dicen.',
+      ] },
+      { title: 'Más Poderes con ficha', items: [
+        'Rallying Cry: los aliados a Close tienen +2 a todas sus tiradas hasta el cambio de ronda y no pueden quedar Frightened en la escena; con Hope, −1 Stress cada uno (los HP temporales se anotan a mano).',
+        'Lightbridge: los tres aliados más estresados a Far limpian 1 Stress (el traslado se hace moviendo los tokens).',
+        'Beacon of Resurrection: un aliado caído vuelve con 1 HP, con Desventaja hasta el final de su próximo Spotlight.',
+        'Temporal Maelstrom: Desventaja en todas las tiradas de quienes están a Close (tú incluido) durante la escena. Omniscient Eye: quedas Vulnerable mientras dura.',
+        'Psychic Fallout: 3d6 Void a todos los adversarios a Far; quien falle Instinct DC 15 queda Stunned una ronda y Vulnerable la escena. Si fallas el lanzamiento, Desventaja en todas tus tiradas durante 1d4 rondas.',
+        'Apotheosis: los aliados a Far curan tanto como su umbral Severe y limpian 1 Stress; los enemigos reciben 6d10 Energy directo que ignora la armadura. Universal Life Force (Restore: cura todos los HP marcados; Unmake: 4d12 Void sin armadura) y los fallos de Force Incarnate, Architect of Matter y Apotheosis hacen su daño a quien lanza (con su Fear).',
+        'Ya son 25 Poderes con ficha.',
+      ] },
+    ],
+  },
+  {
     version: '2.49.0', date: '2026-11-25', title: 'V3 · Poderes automáticos: fichas de procedimiento (Fase 3, primera parte)',
     sections: [
       { title: 'Fichas de procedimiento', items: [

@@ -48,6 +48,8 @@ export const SUMMARIES = {
   // Void
   'Slipstream Jolt': 'Objetivo Close · Desventaja en su próxima tirada de Agility o Finesse',
   'Temporal Cloak': 'Mejora · 10 min · Oculto · Ventaja en Agility para no ser visto',
+  // Vanish (v2.50.0, user decision): it resolves by itself.
+  'Vanish': 'Resolve 1 · sin tirada · obtienes el estado Oculto (Hidden): Ventaja en tu próximo ataque; se va al atacar o lanzar un Poder',
   'Vector Calculus': 'Próxima tirada · Agility o Finesse +nivel · Hope 10 o menos = 11',
   'Lucky Break': 'Reacción · relanza el Hope o el Fear de tu última tirada',
   'Spatial Shift': 'Movimiento · teletransporte a Close (la nave, a Far) · sin tirada',

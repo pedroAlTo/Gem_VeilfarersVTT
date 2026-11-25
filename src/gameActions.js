@@ -50,6 +50,8 @@ export function grantActorSpotlight(store, tokenId) {
   return grantSpotlight(store, operatorId || tokenId);
 }
 export const ACTIVE_CARD_KINDS = new Set(['power', 'archive', 'move', 'feature']);
+// The cards that are Powers (casting one ends Vanish).
+const POWER_KINDS = new Set(['power', 'archive']);
 // Who has Sneak Attack: every Scoundrel (the Awakened Shadow Operative and the Sleeping The Quiet
 // Network both print it, Corebook 12.06).
 export const sneakAttacker = token => /scoundrel/i.test(String(token?.characterClass || ''));
@@ -508,7 +510,9 @@ function resolveGameAction(action, store) {
     if (area) {
       targets = areaTargets(origin, area, store);
       // «Up to three creatures»: the most wounded first (Cellular Reconstruction · Distributed).
-      if (area.max) targets = [...targets].sort((a, b) => ((b.hp?.max || 0) - (b.hp?.current || 0)) - ((a.hp?.max || 0) - (a.hp?.current || 0))).slice(0, area.max);
+      // (Lightbridge: the most stressed first.)
+      const need = t => area.most === 'stress' ? (t.stress?.current || 0) : (t.hp?.max || 0) - (t.hp?.current || 0);
+      if (area.max) targets = [...targets].sort((a, b) => need(b) - need(a)).slice(0, area.max);
     } else if (procedure?.zone && procedure.zone.shape !== 'around') {
       // A point, a cone or a line: aimed at a token within its reach.
       const center = store.state.tokens.find(t => t.id === ids[0]);
@@ -586,7 +590,8 @@ function resolveGameAction(action, store) {
     // A Power that works on its caster without a roll (Temporal Cloak · Personal → Hidden).
     if (SELF_EFFECTS[card.name] && !result.roll && !result.failed) result.notes.push(applySelfEffect(store, card.name, actor.id, String(action.mode ?? '')));
     // Another Power of the Domain ends a self effect that says so (Temporal Cloak and Void).
-    const ended = card.domain && endSelfEffects(store.state.tokens.find(t => t.id === actor.id), { domain: card.domain, name: card.name });
+    // (Vanish: casting any Power ends it.)
+    const ended = (card.domain || POWER_KINDS.has(card.kind)) && endSelfEffects(store.state.tokens.find(t => t.id === actor.id), { domain: card.domain || '', name: card.name, power: POWER_KINDS.has(card.kind) });
     if (ended) { store.updateToken(actor.id, { effectClocks: ended.effectClocks, conditions: ended.conditions }); result.notes.push('Termina ' + ended.ended.join(', ') + '.'); }
     if (armedClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock((live.effectClocks || []).filter(c => c.name !== armedClock.name), armedClock) }); }
     if (kineticClock) { const live = store.state.tokens.find(t => t.id === actor.id); store.updateToken(actor.id, { effectClocks: addClock(live.effectClocks, kineticClock) }); }

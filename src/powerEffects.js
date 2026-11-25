@@ -17,6 +17,9 @@ export const CLOCK_BONUSES = {
   'Protective Dome': { evasion: 2 },
   // Shockwave Pulse · Protective (v2.49.0): +2 Evasion until the round changes.
   'Shockwave Pulse': { evasion: 2 },
+  // Rallying Cry (v2.50.0): +2 to all rolls for 1 round, and no fear for the scene.
+  'Rallying Cry': { rollTraits: ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'], rollBonus: 2 },
+  'Rallying Cry · sin miedo': { immune: ['Frightened'] },
 };
 export const tierOfLevel = level => { const l = Number(level) || 1; return l <= 4 ? 1 : l <= 7 ? 2 : 3; };
 export const NEXT_ROLL = {

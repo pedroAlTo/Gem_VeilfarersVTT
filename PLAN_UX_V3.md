@@ -66,7 +66,8 @@ Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 - **Fase 2, primera parte** hecha en v2.47.0: daño directo a la ventana del Keeper (sin «Enviar daño»), anillo de acciones al tocar un enemigo (atacar o lanzar en 2 clics), modo Básico/Avanzado de la mesa y Lucky Break con el dado más bajo en Básico.
 - **Fase 2, segunda parte** hecha en v2.48.0: cartas con ventana jugadas en un clic en Básico (atributo, Resolve mínimo, DC de la mesa) y atajos de teclado. **Fase 2 completa.**
 - **Fase 3, primera parte** hecha en v2.49.0: motor de fichas de procedimiento (`powerProcedures.js`) y 15 Poderes de combate con ficha (daño, áreas en punto/cono/línea, salvaciones con su fallo, curación, fallos con coste).
-- **Siguiente:** Fase 3, segunda parte: fichas para el resto de los Poderes con mecánica (de 55, quedan unos 30) y test por Poder. Después, Fase 5 (condiciones que cuentan solas; confirmar antes el daño por ronda de On Fire y Poisoned).
+- **Fase 3, segunda parte** hecha en v2.50.0: 25 Poderes con ficha (curación hasta el umbral, resurrección, daño directo, duraciones en dados) y Vanish automático (petición del usuario).
+- **Siguiente:** Fase 3, tercera parte: los que necesitan engancharse a otro momento (Neural Feedback como reacción al recibir daño, Energy Cascade y Inviolable Sanctum por ronda, Cordon of Will, Hivemind Convergence, Solar Avatar, Biomorphic Arsenal…) y test por Poder. Después, Fase 5 (condiciones que cuentan solas; confirmar antes el daño por ronda de On Fire y Poisoned).
 
 ## Decisiones
 

@@ -13,7 +13,9 @@
 //            (or a Critical); `failure` on a failed Spellcast.
 //   steps    { do: 'damage', to, dice, type, tag, noArmor }   rolled once for everyone it reaches
 //            { do: 'save', to, trait, dc, fail: { conditions, clock, stress }, failText }
-//            { do: 'heal', to, dice, hp, stress }             HP (dice or a number) and Stress cleared
+//            { do: 'heal', to, dice, hp, stress }             HP (dice, a number, 'severe' = the
+//                                                             target's Severe Threshold, 'all') and Stress
+//            { do: 'revive', to }                             back from 0 HP to 1 (its Dying states end)
 //            { do: 'condition', to, conditions }              plain conditions
 //            { do: 'clock', to, clock }                       an effect clock (condition, edge…)
 //            { do: 'mark', to, stress, hp }                   Stress or direct HP marked
@@ -67,11 +69,42 @@ export const PROCEDURES = {
       { do: 'note', text: 'Contra un objetivo de Tier menor, +10 al total antes de comparar con sus umbrales.' }] },
   'Temporal Freeze': { failure: [{ do: 'clock', to: 'self', clock: { name: 'Temporal Freeze · Stunned', condition: 'Stunned', expiry: 'round' } }, { do: 'mark', to: 'self', stress: 2 }] },
   'Phase Jump': { failure: [{ do: 'clock', to: 'self', clock: STUN_NEXT('Phase Jump') }, { do: 'mark', to: 'self', stress: 2 }] },
+  'Rallying Cry': { zone: { shape: 'around', reach: 'Close', who: 'allies' },
+    success: [{ do: 'clock', to: 'allies', clock: { name: 'Rallying Cry', expiry: 'round' } }, { do: 'clock', to: 'allies', clock: { name: 'Rallying Cry · sin miedo' } },
+      { do: 'note', text: 'Cada aliado gana HP temporales iguales a tu Presence: anótalos en su ficha.' }],
+    hope: [{ do: 'heal', to: 'allies', stress: 1 }] },
+  'Lightbridge': { zone: { shape: 'around', reach: 'Far', who: 'allies', max: 3, self: true, most: 'stress' },
+    success: [{ do: 'heal', to: 'allies', stress: 1 }, { do: 'note', text: 'Teletransporta hasta 3 criaturas dispuestas a un punto visible a Far: muévelas en el mapa.' }] },
+  'Beacon of Resurrection': { target: { who: 'party', reach: 'Far', self: false },
+    success: [{ do: 'revive' }, { do: 'clock', clock: { name: 'Beacon of Resurrection · Desventaja', edge: 'disadvantage', allRolls: true, expiry: 'spotlight-end' } },
+      { do: 'note', text: 'No puedes usar Poderes Lux hasta tu próximo Long Rest.' }] },
+  'Temporal Maelstrom': { zone: { shape: 'around', reach: 'Close', who: 'creatures', self: true },
+    success: [{ do: 'clock', to: 'targets', clock: { name: 'Temporal Maelstrom · Desventaja', edge: 'disadvantage', allRolls: true } }],
+    failure: [{ do: 'note', text: 'Fallo: sufres los efectos de la Veil Storm hasta limpiar 2 Stress.' }] },
   // ── Level 8 ──
+  'Omniscient Eye': { success: [{ do: 'clock', to: 'self', clock: { name: 'Omniscient Eye · Vulnerable', condition: 'Vulnerable' } }] },
   'Psychic Collapse': { target: { who: 'creature', reach: 'Extreme', self: false },
     success: [{ do: 'damage', dice: '3d8', type: 'void', noArmor: true },
       { do: 'clock', clock: { name: 'Psychic Collapse · Desventaja', edge: 'disadvantage', allRolls: true, expiry: 'round' } }],
     failure: [{ do: 'damage', to: 'self', dice: '1d8', type: 'void' }] },
+  // ── Level 9 ──
+  'Psychic Fallout': { zone: { shape: 'around', reach: 'Far', who: 'enemies' },
+    success: [{ do: 'damage', dice: '3d6', type: 'void' },
+      { do: 'save', trait: 'instinct', dc: 15, fail: { clock: { name: 'Psychic Fallout · Stunned', condition: 'Stunned', expiry: 'round' }, conditions: ['Vulnerable'] }, failText: 'Stunned una ronda y Vulnerable la escena' }],
+    failure: [{ do: 'clock', to: 'self', clock: { name: 'Psychic Fallout · Desventaja', edge: 'disadvantage', allRolls: true, expiry: 'round', rounds: '1d4' } }] },
+  'Stellar Chorus': { success: [{ do: 'note', text: 'Toda la escena, los aliados a Far suman tu Presence a sus ataques, Reaction Rolls y umbrales de daño (no se acumula con Aura of Clarity). Al terminar, caes inconsciente 1 hora.' }] },
+  'Indomitable Bastion': { failure: [{ do: 'note', text: 'Fallo: la barrera se derrumba y hace 3d12 Physical (Kinetic) a quienes estaban dentro.' }] },
+  // ── Level 10 ──
+  'Apotheosis': { zone: { shape: 'around', reach: 'Far', who: 'creatures', self: false },
+    success: [{ do: 'heal', to: 'allies', hp: 'severe', stress: 1 }, { do: 'damage', to: 'enemies', dice: '6d10', type: 'energy', tag: 'Radiant', direct: true, noArmor: true },
+      { do: 'note', text: 'Los enemigos Veil-Touched reciben el doble. Hasta el final de la escena no bajas de 1 HP y tus golpes desarmados suman 1d6 Energy (Radiant).' }],
+    failure: [{ do: 'damage', to: 'self', dice: '4d10', type: 'energy' }] },
+  'Universal Life Force': { modes: {
+    Restore: { target: { who: 'creature', reach: 'Extreme', self: true }, success: [{ do: 'heal', hp: 'all' }], failure: [{ do: 'damage', to: 'self', dice: '4d12', type: 'void' }] },
+    Unmake: { target: { who: 'creature', reach: 'Extreme', self: false }, success: [{ do: 'damage', dice: '4d12', type: 'void', noArmor: true }], failure: [{ do: 'damage', to: 'self', dice: '4d12', type: 'void' }] },
+  } },
+  'Force Incarnate': { failure: [{ do: 'damage', to: 'self', dice: '4d12', type: 'physical' }] },
+  'Architect of Matter': { failure: [{ do: 'damage', to: 'self', dice: '3d12', type: 'physical' }, { do: 'note', text: 'Fallo: tu Knowledge baja 1 punto para siempre.' }] },
 };
 
 // The procedure of a Power, in the mode it was played (the first mode by default).

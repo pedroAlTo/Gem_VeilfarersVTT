@@ -4,7 +4,7 @@ import { newId } from './persistence.js';
 import { distanceInfo, RANGE_BANDS } from './attackFlow.js';
 import { cardDuration, helpsOthers, addClock, newClock, MAX_SEGMENTS } from './effectClocks.js';
 import { CONDITIONS, normalizeConditions, specialState } from './conditions.js';
-import { canReceiveHealing, LIFE_STATES } from './combatState.js';
+import { canReceiveHealing, LIFE_STATES, lifePatch } from './combatState.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { facesRoller } from './tableDice.js';
 import { pathImmune } from './statePowers.js';
@@ -46,6 +46,10 @@ export const POWER_DAMAGE = {
 export const SELF_EFFECTS = {
   'Temporal Cloak': { modes: ['Personal', 'Vehículo'], when: 'Personal', condition: 'Hidden', endsOnAttack: true, endsOnDomain: 'Void',
     note: 'casi invisible 10 minutos: Hidden y Ventaja en Agility para no ser detectado. Termina si ataca o usa otro Poder Void.' },
+  // Vanish (Scoundrel, Resolve move; user decision, v2.50.0): it resolves by itself, Hidden until the
+  // character attacks or casts a Power (Hidden gives Advantage on the next attack).
+  'Vanish': { condition: 'Hidden', endsOnAttack: true, endsOnPower: true,
+    note: 'rompe la línea de visión y queda Hidden (Ventaja en su próximo ataque). Se va al atacar o al lanzar un Poder.' },
 };
 export function applySelfEffect(store, name, actorId, mode = '') {
   const rule = SELF_EFFECTS[name], actor = store.state.tokens.find(t => t.id === actorId);
@@ -56,8 +60,8 @@ export function applySelfEffect(store, name, actorId, mode = '') {
   return actor.name + ': ' + rule.note;
 }
 // What ends a self effect: an attack, or another Power of its Domain.
-export function endSelfEffects(actor, { attack = false, domain = '', name = '' } = {}) {
-  const ending = Object.entries(SELF_EFFECTS).filter(([key, rule]) => key !== name && actor?.effectClocks?.some(c => c.name === key) && ((attack && rule.endsOnAttack) || (domain && rule.endsOnDomain === domain)));
+export function endSelfEffects(actor, { attack = false, domain = '', name = '', power = false } = {}) {
+  const ending = Object.entries(SELF_EFFECTS).filter(([key, rule]) => key !== name && actor?.effectClocks?.some(c => c.name === key) && ((attack && rule.endsOnAttack) || (power && rule.endsOnPower) || (domain && rule.endsOnDomain === domain)));
   if (!ending.length) return null;
   const names = ending.map(([key]) => key), conditions = new Set(ending.map(([, rule]) => rule.condition));
   return { effectClocks: actor.effectClocks.filter(c => !names.includes(c.name)), conditions: (actor.conditions || []).filter(c => !conditions.has(c)), ended: names };
@@ -88,7 +92,7 @@ const AREA_METERS = { Melee: 1, 'Very Close': 5, Close: 10, Far: 25 };
 export function areaRule(card, mode = '') {
   // A Power procedure around the caster (Psychic Storm, Shockwave Pulse…), in the mode played.
   const proc = procedureFor(card?.name, mode);
-  if (proc) return proc.zone?.shape === 'around' ? { reach: proc.zone.reach, who: proc.zone.who, self: !!proc.zone.self, check: null, failure: null, procedure: true, max: proc.zone.max || 0 } : null;
+  if (proc) return proc.zone?.shape === 'around' ? { reach: proc.zone.reach, who: proc.zone.who, self: !!proc.zone.self, check: null, failure: null, procedure: true, max: proc.zone.max || 0, most: proc.zone.most || 'hp' } : null;
   const text = String(card?.text || '').replace(/\*+/g, '');
   if (/choose a point/i.test(text)) return null;
   // A zone printed another way: Protective Dome covers a Very Close zone around the caster.
@@ -392,8 +396,21 @@ export function runProcedure(store, record, roll, actor) {
     const who = pick(step.to);
     if (step.do === 'note') { notes.push(step.text); continue; }
     if (!who.length) continue;
-    if (step.do === 'damage') { damage.push({ formula: diceFormula(step.dice, actor), type: step.type || 'physical', tag: step.tag || '', noArmor: !!step.noArmor, targetIds: who.map(t => t.id) }); continue; }
+    if (step.do === 'damage') { damage.push({ formula: diceFormula(step.dice, actor), type: step.type || 'physical', tag: step.tag || '', noArmor: !!step.noArmor, ...(step.direct ? { direct: true } : {}), targetIds: who.map(t => t.id) }); continue; }
     if (step.do === 'heal') { heals.push({ dice: step.dice ? diceFormula(step.dice, actor) : '', hp: step.hp || 0, stress: step.stress || 0, targetIds: who.map(t => t.id) }); continue; }
+    if (step.do === 'revive') {
+      // Back from 0 HP to 1 (Beacon of Resurrection): the Dying states end, then the HP comes back.
+      for (const target of who) {
+        const live = fresh(target.id);
+        if (!live?.hp || live.hp.current > 0) { if (live) notes.push(live.name + ' no ha caído a 0 HP.'); continue; }
+        // Stabilized first: from there the usual recovery from 0 HP applies (combatTransition).
+        store.updateToken(live.id, lifePatch(live, 'Stabilized'));
+        const now = fresh(live.id);
+        store.updateToken(live.id, { hp: { ...now.hp, current: 1 } });
+        notes.push(live.name + ' vuelve con 1 HP.');
+      }
+      continue;
+    }
     if (step.do === 'save') {
       extra.replies = [...(extra.replies || record.replies || []), ...who.map(t => ({ id: newId(), actorId: t.id, traitId: step.trait, dc: step.dc }))];
       extra.saveFailure = step.fail; extra.saveFailText = step.failText || '';
@@ -403,7 +420,9 @@ export function runProcedure(store, record, roll, actor) {
     for (const target of who) {
       const live = fresh(target.id);
       if (step.do === 'condition' || step.do === 'clock') {
-        const { patch, named, immune } = outcomePatch(live, step.do === 'clock' ? { clock: step.clock } : { conditions: step.conditions }, record.name);
+        // A duration in dice («for 1d4 rounds»): rolled here.
+        const clock = step.clock && typeof step.clock.rounds === 'string' ? { ...step.clock, rounds: Math.max(1, Math.min(6, String(step.clock.rounds).split('d').reduce((qty, sides) => Array.from({ length: Number(qty) || 1 }, () => 1 + Math.floor(Math.random() * Number(sides))).reduce((a, b) => a + b, 0)))) } : step.clock;
+        const { patch, named, immune } = outcomePatch(live, step.do === 'clock' ? { clock } : { conditions: step.conditions }, record.name);
         if (named.length) store.updateToken(live.id, patch);
         notes.push(`${live.name}: ${named.length ? named.join(', ') : 'inmune a ' + immune.join(', ')}.`);
       } else if (step.do === 'mark') {
@@ -430,7 +449,9 @@ export function applyHeal(store, record, heal, total = 0) {
     const t = store.state.tokens.find(x => x.id === id && x.mapId === record.mapId);
     if (!t) continue;
     if (!canReceiveHealing(t)) { said.push(t.name + ' necesita estabilizarse antes de curarse'); continue; }
-    const hp = Math.max(0, total + (heal.hp || 0)), patch = {};
+    // 'severe': as much as the target's Severe Threshold; 'all': every marked HP.
+    const fixed = heal.hp === 'severe' ? Number(t.hp?.severeThreshold) || 0 : heal.hp === 'all' ? Math.max(0, (t.hp?.max || 0) - (t.hp?.current || 0)) : Number(heal.hp) || 0;
+    const hp = Math.max(0, total + fixed), patch = {};
     if (hp && t.hp) patch.hp = { ...t.hp, current: Math.min(t.hp.max, t.hp.current + hp) };
     if (heal.stress && t.stress) patch.stress = { ...t.stress, current: Math.max(0, t.stress.current - heal.stress) };
     if (Object.keys(patch).length) store.updateToken(t.id, patch);
@@ -545,7 +566,7 @@ export function completeCardRoll(store, record, roll, previous = null) {
       }
     }
   }
-  const failureFear = { 'Drone Whisper': 1, 'Cascading Upgrade': 3, 'Mass Deception': 2, 'Architect of Civilization': 6, 'Force Incarnate': 4 };
+  const failureFear = { 'Drone Whisper': 1, 'Cascading Upgrade': 3, 'Mass Deception': 2, 'Architect of Civilization': 6, 'Force Incarnate': 4, 'Universal Life Force': 4, 'Apotheosis': 4 };
   let failureFearGained = 0;
   if (!success && Object.hasOwn(failureFear, record.name)) {
     const before = store.state.fear;

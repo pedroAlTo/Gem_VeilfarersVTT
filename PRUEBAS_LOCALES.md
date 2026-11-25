@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.49.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.49.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.49.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.49.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.50.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.50.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.50.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.50.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -172,6 +172,8 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.49.0.zip**. Abre **AYUDA
 157. **(V3) Poderes de área.** Psychic Storm alcanza a todos los enemigos a Close (no a los aliados) con un solo total de daño, en ventanas sucesivas, y cada uno tira Presence DC 15 (si falla, +1 Stress). Photonic Detonation se apunta a un enemigo: alcanza a los que están en el cono Close hacia él; Blinded por una ronda a quien falle Agility DC 15. Orbital Lance se apunta a un token a cualquier distancia y alcanza a todos a Very Close de él.
 158. **(V3) Curación por procedimiento.** Cellular Reconstruction (doble clic → Distributed): cuesta 2 Hope, cura a los tres aliados más heridos a Close con un dado en 3D (Proficiency d6) y, con Hope, les quita 1 Stress. En Focused, se toca a un aliado: Proficiency d10 y −1 Stress.
 159. **(V3) Fallos con coste.** Temporal Freeze fallado: quien lanza queda Stunned (reloj) y marca 2 Stress. Psychic Collapse fallado: se prepara 1d8 Void contra quien lanza; si sale, el objetivo tiene Desventaja en todas sus tiradas hasta el cambio de ronda.
+160. **(V3) Vanish.** Con «Shadow» (Scoundrel Sleeping), un clic en Vanish: gasta 1 Resolve, sin tirada, y el token muestra Oculto (Hidden) con su reloj. Su resumen dice «obtienes el estado Oculto». Atacar a un enemigo: la tirada lleva Ventaja (y Sneak Attack si impacta) y Hidden desaparece. Si en vez de atacar lanza un Poder, Hidden también se va.
+161. **(V3) Segunda tanda de Poderes.** Rallying Cry con aliados a Close: muestran el reloj, sus tiradas llevan +2 hasta «Nueva ronda» y no pueden quedar Frightened. Beacon of Resurrection sobre un aliado a 0 HP: vuelve con 1 HP y su siguiente tirada lleva Desventaja. Apotheosis: los aliados curan su umbral Severe; el daño a los enemigos sale directo y sin escudos. Psychic Fallout fallado: quien lanza tiene Desventaja en todo durante 1 a 4 rondas.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 
