@@ -1,6 +1,22 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.47.0', date: '2026-11-25', title: 'V3 · Atacar en dos toques: anillo de acciones y daño directo al Keeper (Fase 2)',
+    sections: [
+      { title: 'Anillo de acciones', items: [
+        'Toca un enemigo en el mapa con tu personaje y se abre un anillo a su alrededor. En él salen tus armas en la mano, con su alcance o el motivo si no llega (fuera de alcance, descargada…), y los Poderes de la mano que pueden apuntarle. Elegir uno ataca o lanza el Poder sobre ese objetivo al momento. Esc, × o tocar fuera lo cierra.',
+        'Atacar pasa a dos toques (el enemigo y el arma); un Poder con objetivo, también. La barra y la mano siguen funcionando como antes.',
+      ] },
+      { title: 'Daño directo', items: [
+        'Al impactar, el daño llega solo a la ventana del Keeper: ya no hay que pulsar «Enviar daño». El Keeper decide escudos, aplicar o cancelar como siempre. El botón solo aparece cuando aún puedes añadir algo al daño: Bear Down (un Sleeping con Resolve) o un efecto como Combat Surge.',
+        'Lo mismo con el segundo objetivo de un arma y con cada criatura de un área.',
+      ] },
+      { title: 'Básico y Avanzado', items: [
+        'En «···» de la barra, «Modo: Básico / Avanzado». En Básico (por defecto), Lucky Break relanza sin preguntar el dado más bajo de tu última tirada (Fear si empatan). En Avanzado, abre su ventana para elegir el dado.',
+      ] },
+    ],
+  },
+  {
     version: '2.46.0', date: '2026-11-25', title: 'V3 · Segundo objetivo, áreas y Psionic (Fase 4 completa)',
     sections: [
       { title: 'Segundo objetivo', items: [

@@ -22,6 +22,7 @@ import { checkEdge, lifeStage } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus, weaponTraitId } from './attackFlow.js';
 import { weaponAttackEdge, wielderEvasion, ignoresLineOfSight, weaponReadiness, availableFollowUps, FOLLOW_UPS, areaProcedure, zoneTargets } from './weaponFeatures.js';
 import { throwDice } from './tableDice.js';
+import { isAdvanced, setTableMode } from './tableMode.js';
 import { hasSwarmTactics } from './adversaryPassives.js';
 import { openSwarmAttack } from './swarmAttackUI.js';
 import { proceduralAttack } from './adversaryWeapons.js';
@@ -233,6 +234,7 @@ export class PlayerActionBar {
       ${this.optionsOpen ? `<div class="pab-options">
         <label class="pab-dc">DC <select data-pab-dc>${[5, 10, 12, 15, 18, 20, 25, 30].map(v => `<option value="${v}" ${String(v) === String(dc) ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <button type="button" class="hud-btn hud-btn-xs" data-pab-panel>Más opciones de tirada</button>
+        <button type="button" class="hud-btn hud-btn-xs" data-pab-mode aria-pressed="${isAdvanced()}" title="Básico: la mesa elige lo habitual (Lucky Break relanza el dado más bajo). Avanzado: te pregunta y muestra todas las opciones.">Modo: ${isAdvanced() ? 'Avanzado' : 'Básico'}</button>
       </div>` : ''}
       <div class="pab-row">
         <span class="pab-label">Atacar</span>
@@ -256,6 +258,7 @@ export class PlayerActionBar {
     this.root.querySelectorAll('[data-pab-ready]').forEach(b => { b.onclick = () => network.requestAction({ type: 'WEAPON_READY', actorId: token.id, weaponId: b.dataset.pabReady, playerName: store.state.userName || '', tokenName: token.name })
       .then(r => { notify(r.mode === 'reload' ? 'Arma recargada (una Acción).' : 'Arma cargada: podrá disparar en un Spotlight posterior.'); this.signature = ''; this.render(); }).catch(error => notify(error.message, 'error')); });
     this.root.querySelector('[data-pab-options]').onclick = () => { this.optionsOpen = !this.optionsOpen; this.render(); };
+    this.root.querySelector('[data-pab-mode]')?.addEventListener('click', () => { const mode = setTableMode(isAdvanced() ? 'basic' : 'advanced'); notify(mode === 'advanced' ? 'Modo Avanzado: la mesa te pregunta antes y muestra todas las opciones.' : 'Modo Básico: la mesa elige lo habitual con menos clics.'); this.signature = ''; this.render(); });
     this.root.querySelectorAll('[data-pab-edge]').forEach(b => { b.onclick = () => this.tap({ kind: 'edge', id: b.dataset.pabEdge }); });
     this.root.querySelector('[data-pab-dc]')?.addEventListener('change', event => { const panel = document.getElementById('dice_dc_select'); if (panel) { panel.value = event.target.value; panel.dispatchEvent(new Event('change')); } this.signature = ''; this.render(); });
     this.root.querySelector('[data-pab-apply]')?.addEventListener('click', () => this.applyDamage());
@@ -600,6 +603,31 @@ export class PlayerActionBar {
     document.getElementById('apply_dmg_to_target_btn')?.click();
     setTimeout(() => { if (this.result) { this.result = this.readResult(this.result.targetName); this.render(); } }, 400);
   }
+  // Plan de UX V3, fase 2 (user decision, 25 Nov 2026): a hit's damage goes to the Keeper's window
+  // by itself, with no «Enviar daño» click. The button stays only while the player can still add
+  // to the damage: Bear Down (Resolve left) or an effect that rides on it (Combat Surge…).
+  canAddToDamage() {
+    const token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!token || !store.canEditToken(token.id)) return false;
+    const resolve = token.path === 'Sleeping' && (token.resolve?.current || 0) > 0;
+    return resolve || this.riders().some(r => r.enough);
+  }
+  autoApply() {
+    if (!this.result?.canApply || this.result.applied || this.canAddToDamage()) return false;
+    this.applyDamage();
+    return true;
+  }
+
+  // The action ring chose the weapon and the target (v2.47.0): the attack goes at once, no edge.
+  attackFromRing(weaponId, target) {
+    const actor = store.state.tokens.find(t => t.id === store.state.claimedTokenId);
+    if (!actor || !target) return;
+    if (this.tokenId !== actor.id) { store.update({ selectedTokenId: actor.id }); this.signature = ''; this.render(); }
+    this.stopTargeting(false);
+    this.swallowUntil = performance.now() + 700;
+    window.veilCanvas?.setAttackTarget?.(actor.id, target.id);
+    this.attack(weaponId, target, 'normal');
+  }
 
   // The marked target is attacked: a second touch on it (no edge), or Advantage/Disadvantage.
   confirmAttack(edge = 'normal') {
@@ -666,7 +694,7 @@ export class PlayerActionBar {
     this.resultRange = null;
     this.result = this.readResult(item.name);
     this.result.notes = [`${q.label}: ${share === 1 ? 'daño completo' : 'la mitad'} (${Math.floor(q.raw * share)} de ${q.raw}).`, ...(this.result.notes || [])];
-    this.signature = ''; this.render(); this.watchDamage();
+    this.signature = ''; this.render(); this.watchDamage(); this.autoApply();
   }
 
   // ── A second target or a second attack (v2.46.0) ─────────────────────────────────────────────
@@ -721,7 +749,7 @@ export class PlayerActionBar {
     this.resultRange = null; // the distance shown was the first target's
     this.result = this.readResult(target.name);
     this.result.notes = [`${rule.label}: ${rule.half ? 'la mitad del daño, sin tirada' : `${out.total} contra Evasion ${out.evasion}: impacta`}.`, ...(this.result.notes || [])];
-    this.signature = ''; this.render(); this.watchDamage();
+    this.signature = ''; this.render(); this.watchDamage(); this.autoApply();
   }
 
   async attack(weaponId, target, edge = 'normal', closingId = null, { followUp = false } = {}) {
@@ -760,6 +788,7 @@ export class PlayerActionBar {
       this.result = this.readResult(target.name);
       if (this.lastAttackCtx) this.lastAttackCtx.raw = Number(this.result.raw) || 0;
       this.signature = ''; this.render();
+      this.autoApply();
       if (this.reopenDrawer) { this.reopenDrawer = false; window.dispatchEvent(new CustomEvent('veil:open_sidebar_tab', { detail: { tab: 'sheet' } })); }
       // Bear Down can still raise the damage before it is applied: follow the panel.
       this.watchDamage();

@@ -24,6 +24,7 @@ import { droneCompatible } from './dronePowers.js';
 import { operatedDrone } from './droneControl.js';
 import { tokenAtPoint } from './playerActionBar.js';
 import { newId } from './persistence.js';
+import { isAdvanced, luckyBreakDie } from './tableMode.js';
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
 // Reactions this screen can see open by itself (v2.39.0): Lucky Break after the character's own
 // Duality roll (not rerolled yet), Bear Down after its roll or while its damage is still open.
@@ -267,6 +268,26 @@ export class CardHand {
     const drone = this.viaDroneId && store.state.tokens.find(t => t.id === this.viaDroneId);
     const origin = drone ? { ...token, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId } : token;
     startAim(card, origin, plan, targetIds => this.play(card, null, null, { ...options, targetIds }), { preselect: dropped });
+  }
+
+  // The action ring (v2.47.0): the Powers in hand that can be aimed at this token now, and casting
+  // one at it at once (the same as aiming it and touching the target).
+  ringCards(target) {
+    const token = store.state.tokens.find(t => t.id === this.tokenId), map = store.getActiveMap?.() || {};
+    if (!token || !target) return [];
+    return (this.cards || []).filter(card => {
+      if (!card.playable || KEEPER_KINDS.has(card.kind) || card.uncanny) return false;
+      const rule = TARGET_RULES[card.name];
+      let plan = quickPlan(card, token);
+      if (card.kind === 'archive' && plan === 'dialog') plan = 'play';
+      return plan === 'aim' && !!rule && target.id !== token.id && eligible(token, target, map, rule);
+    });
+  }
+  castAt(cardId, targetId) {
+    const card = (this.cards || []).find(c => c.id === cardId), token = store.state.tokens.find(t => t.id === this.tokenId);
+    if (!card || !token) return;
+    if (card.kind === 'archive') { this.uncannyCast(card, token, null, [targetId]); return; }
+    this.play(card, null, null, { rollNow: true, targetIds: [targetId], ...(defaultMode(card) ? { mode: defaultMode(card) } : {}) });
   }
 
   // Click inspects; dragging past a few pixels lifts the card so it can be dropped on the map.
@@ -559,6 +580,8 @@ export class CardHand {
   openLuckyBreak(token) {
     const dice = window.veilDiceRoller, last = dice?.lastResult;
     const usable = last && last.actorId === token.id && last.hopeVal != null && !last.keeperD20 && !last.luckyBreak;
+    // Básico (the default): no window, the lower die is rerolled at once (v2.47.0).
+    if (usable && !isAdvanced()) { void this.luckyBreak(token, luckyBreakDie(last)); return null; }
     const modal = tableDialog('Lucky Break', `<div class="kdmg">
       <p>${usable ? `Tu última tirada: Hope <b>${last.hopeVal}</b> · Fear <b>${last.fearVal}</b> → ${last.total} contra DC ${last.dc} (${e(last.outcomeTitle || '')}).` : 'Haz primero una tirada de Dualidad: Lucky Break relanza uno de sus dados.'}</p>
       <p class="dossier-muted">Marca 1 Stress y relanza un dado; te quedas con el nuevo resultado. Modo Personal o Vehículo (una Acción de la nave): el mismo relanzamiento.</p>
@@ -575,6 +598,17 @@ export class CardHand {
       } catch (err) { modal.querySelector('[role=alert]').textContent = err.message; modal.querySelectorAll('[data-lucky]').forEach(x => { x.disabled = false; }); }
     });
     return modal;
+  }
+
+  async luckyBreak(token, die) {
+    const dice = window.veilDiceRoller;
+    try {
+      const [face] = await throwDice([{ qty: 1, sides: 12, role: die === 'hope' ? 'Hope' : 'Fear' }], { label: 'Lucky Break · ' + token.name, actor: token });
+      const result = await network.requestAction({ type: 'LUCKY_BREAK', actorId: token.id, die, face, visibility: dice?.rollVisibility?.() || 'table' });
+      await dice?.applyBearDown?.(result);
+      notify(`Lucky Break: ${result.outcomeDesc}`);
+      return result;
+    } catch (err) { notify(err.message, 'error'); return null; }
   }
 
   openPowerUse(card, token, point = null) {

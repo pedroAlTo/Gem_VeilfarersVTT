@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.46.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.46.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.46.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.46.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.47.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.47.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.47.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.47.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -163,6 +163,9 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.46.0.zip**. Abre **AYUDA
 148. **(V3) Cleave y Quick.** Un arma Melee con Cleave: tras impactar, «Otro ataque a otro objetivo» abre un ataque normal contra otro a tu alcance (sin coste). Con Quick, «Segundo ataque» (1 Stress) ataca otra vez al mismo objetivo, también tras fallar. Cada opción una vez por ataque.
 149. **(V3) Granada (Explosive).** Atacar con un arma Explosive a un enemigo con otros cerca: no hay tirada de ataque; sale un d20 en 3D por cada adversario de la zona y el resultado lista quién falla (completo) o resiste (mitad). Un personaje en la zona muestra «Falla: completo / Resiste: mitad». Pulsar cada uno prepara su daño (la misma tirada para todos) y se aplica uno tras otro.
 150. **(V3) Psionic y Spray.** Un arma Psionic: el objetivo tira Presence contra la Feature DC; si resiste, «sin daño». Un arma Spray contra un enemigo con otro detrás en línea: tras el ataque, la barra lista al segundo con «impacta» o no según su Evasion, con el mismo daño.
+151. **(V3) Anillo de acciones.** Como jugador con tu personaje asignado, toca un enemigo: se abre un anillo sobre él con tus armas en la mano (las que no llegan, en gris con el motivo al pasar por encima) y los Poderes de la mano que pueden apuntarle; debajo, su nombre y la distancia. Pulsar un arma ataca al momento; pulsar un Poder lo lanza sobre él. Esc, × o tocar fuera lo cierra. Tocar un aliado no abre nada.
+152. **(V3) Daño directo al Keeper.** Con un personaje Awakened, atacar e impactar: sin pulsar nada, al Keeper se le abre la ventana de daño (en partida online, al jugador le sale «Enviado al Keeper»). Con un Sleeping que tenga Resolve, el botón «Enviar daño al Keeper» sigue ahí para poder hacer Bear Down antes.
+153. **(V3) Lucky Break en Básico y Avanzado.** Tras una tirada con Hope 3 y Fear 9, usar Lucky Break: en Básico relanza el Hope sin ventana y el registro lo dice. En «···» → «Modo: Avanzado», Lucky Break abre la ventana para elegir el dado. `npm run test:clicks`: «Atacar desde el anillo» 2 clics, «Atacar con arma (barra)» 3.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

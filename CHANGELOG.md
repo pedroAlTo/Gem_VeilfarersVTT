@@ -1,10 +1,28 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.46.0**.
-Paquete: `VeilFarers_VTT_v2.46.0.zip`.
+Versión actual del VTT: **v2.47.0**.
+Paquete: `VeilFarers_VTT_v2.47.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.47.0] — 2026-11-25
+
+V3 · Atacar en dos toques: anillo de acciones y daño directo al Keeper (Fase 2)
+
+### Anillo de acciones
+
+- Toca un enemigo en el mapa con tu personaje y se abre un anillo a su alrededor. En él salen tus armas en la mano, con su alcance o el motivo si no llega (fuera de alcance, descargada…), y los Poderes de la mano que pueden apuntarle. Elegir uno ataca o lanza el Poder sobre ese objetivo al momento. Esc, × o tocar fuera lo cierra.
+- Atacar pasa a dos toques (el enemigo y el arma); un Poder con objetivo, también. La barra y la mano siguen funcionando como antes.
+
+### Daño directo
+
+- Al impactar, el daño llega solo a la ventana del Keeper: ya no hay que pulsar «Enviar daño». El Keeper decide escudos, aplicar o cancelar como siempre. El botón solo aparece cuando aún puedes añadir algo al daño: Bear Down (un Sleeping con Resolve) o un efecto como Combat Surge.
+- Lo mismo con el segundo objetivo de un arma y con cada criatura de un área.
+
+### Básico y Avanzado
+
+- En «···» de la barra, «Modo: Básico / Avanzado». En Básico (por defecto), Lucky Break relanza sin preguntar el dado más bajo de tu última tirada (Fear si empatan). En Avanzado, abre su ventana para elegir el dado.
 
 ## [2.46.0] — 2026-11-25
 

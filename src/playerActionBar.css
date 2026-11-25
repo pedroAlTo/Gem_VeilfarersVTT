@@ -180,3 +180,15 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-follow { margin-top: 6px; }
 .pab-area.waiting button { opacity: .5; pointer-events: none; }
 .pab-wait { font-size: 11px; color: #fde68a; margin-right: 6px; }
+/* The action ring (v2.47.0): what your character can do to the enemy you touched. */
+.action-ring { position: fixed; z-index: 70; width: 0; height: 0; pointer-events: none; }
+.action-ring-name { position: absolute; padding: 3px 8px; border-radius: 4px; background: rgba(10, 6, 24, .88); border: 1px solid rgba(0, 243, 255, .45); color: #e2e8f0; font: 700 11px/1.2 'Chakra Petch', system-ui, sans-serif; white-space: nowrap; pointer-events: none; top: 0; left: 0; }
+.action-ring-item { position: absolute; left: 0; top: 0; pointer-events: auto; min-width: 92px; max-width: 150px; min-height: 44px; padding: 5px 8px; display: grid; gap: 2px; text-align: center; border-radius: 10px;
+  border: 1px solid rgba(0, 243, 255, .6); background: rgba(12, 8, 30, .94); color: #e2e8f0; cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, .55); font: 600 12px/1.15 'Chakra Petch', system-ui, sans-serif; }
+.action-ring-item span { font-size: 10px; color: #a5f3fc; font-weight: 500; }
+.action-ring-item.card { border-color: rgba(192, 132, 252, .7); }
+.action-ring-item.card span { color: #e9d5ff; }
+.action-ring-item.off { opacity: .55; border-style: dashed; }
+.action-ring-item:hover, .action-ring-item:focus-visible { border-color: #fde047; outline: none; }
+.action-ring-close { position: absolute; left: 0; top: 0; pointer-events: auto; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); background: rgba(10, 6, 24, .9); color: #e2e8f0; cursor: pointer; }
+@media (prefers-reduced-motion: no-preference) { .action-ring-item { animation: ring-in .14s ease-out; } @keyframes ring-in { from { opacity: 0; } to { opacity: 1; } } }

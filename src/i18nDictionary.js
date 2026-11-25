@@ -1869,6 +1869,13 @@ export const PAIRS = [
   ["sin daño", "no damage"],
   ["Toca otra vez el objetivo para confirmarlo", "Touch the target again to confirm it"],
   ["El mismo resultado del ataque contra su Evasion; el daño se tira aparte.", "The same attack result against its Evasion; damage is rolled separately."],
+  // Fase 2: action ring and table mode (v2.47.0)
+  ["Modo: Básico", "Mode: Basic"],
+  ["Modo: Avanzado", "Mode: Advanced"],
+  ["Básico: la mesa elige lo habitual (Lucky Break relanza el dado más bajo). Avanzado: te pregunta y muestra todas las opciones.", "Basic: the table picks the usual option (Lucky Break rerolls the lower die). Advanced: it asks you and shows every option."],
+  ["Modo Avanzado: la mesa te pregunta antes y muestra todas las opciones.", "Advanced mode: the table asks you first and shows every option."],
+  ["Modo Básico: la mesa elige lo habitual con menos clics.", "Basic mode: the table picks the usual option with fewer clicks."],
+  ["No llega.", "Out of reach."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2049,4 +2056,7 @@ export const PATTERNS = [
   ["Recibe la mitad del daño ({a}), sin tirada.", "Takes half the damage ({a}), with no roll."],
   ["Cuesta {a} Stress.", "Costs {a} Stress."],
   ["{_a}: elige otro objetivo distinto del primero.", "{_a}: choose a target other than the first."],
+  ["Acciones contra {_a}", "Actions against {_a}"],
+  ["Atacar a {_a}", "Attack {_a}"],
+  ["Lanzar sobre {_a}", "Cast on {_a}"],
 ];
