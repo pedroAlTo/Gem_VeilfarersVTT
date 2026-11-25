@@ -16,9 +16,9 @@ import { openActorPortrait } from './portraitPicker.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
-import { normalizeConditions, conditionDefinition } from './conditions.js';
+import { normalizeConditions, conditionDefinition, visibleConditions } from './conditions.js';
 import { openConditions } from './conditionUI.js';
-import { checkEdge, lifeStage } from './combatState.js';
+import { checkEdge, lifeStage, helplessTarget, rangedTargetBlock } from './combatState.js';
 import { distanceInfo, rangeCheck, weaponRangeBand, weaponAttackBonus, weaponTraitId } from './attackFlow.js';
 import { weaponAttackEdge, wielderEvasion, ignoresLineOfSight, weaponReadiness, availableFollowUps, FOLLOW_UPS, areaProcedure, zoneTargets } from './weaponFeatures.js';
 import { throwDice } from './tableDice.js';
@@ -494,15 +494,20 @@ export class PlayerActionBar {
     const heavy = weaponAttackEdge(token.actorType === 'drone' ? null : weapon, roller);
     const melee = weapon ? weaponRangeBand(weapon) === 'Melee' || (!weaponRangeBand(weapon) && gap.band === 'Melee') : gap.band === 'Melee';
     const held = wielderEvasion(tokenInventory(target).weapons, { melee });
-    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage || heavy.disadvantage, weaponTraitId(weapon));
+    const edge = checkEdge(roller, target, false, check.disadvantage || gear.disadvantage || heavy.disadvantage, weaponTraitId(weapon), { ranged: !melee });
+    // The target's conditions (v2.53.0): Hidden blocks a ranged attack; Prone gives it Advantage;
+    // Incapacitated is hit automatically.
+    const hiddenBlock = rangedTargetBlock(target, !melee);
+    const targetNotes = [hiddenBlock, !melee && !hiddenBlock && visibleConditions(target).includes('Prone') ? `${target.name} está Prone: Ventaja al atacarle a distancia.` : '',
+      helplessTarget(target) ? `${target.name} está Incapacitated: el ataque impacta automáticamente.` : ''];
     const props = weaponAttackBonus(weapon, gap.band), type = damageTypeOf(weapon || ''), pen = penetrationFor(type);
     const reasons = [check.disadvantage || !check.allowed ? check.reason : '',
       props.notes.length ? `Propiedades del arma: ${props.notes.join(', ')} al ataque.` : '',
       ...heavy.notes, held.notes.length ? `Evasion de ${target.name}: ${held.notes.join(', ')}.` : '', ...heavy.ahead,
       gap.blocked && ignoresLineOfSight(weapon) ? 'El arma no necesita línea de tiro.' : '',
-      pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
+      ...targetNotes, pen ? `Daño ${type === 'energy' ? 'Energy' : type === 'void' ? 'Void' : 'Neural'}: umbrales del objetivo −${pen} en este impacto.` : '', weapon && !check.reach ? 'El arma no indica su alcance: no se aplica límite de distancia.' : '', gear.disadvantage ? gear.text.trim() : '', token.pendingAdvantage ? 'Ventaja preparada' : ''].filter(Boolean);
     if (lifeStage(roller)) reasons.unshift('El personaje no puede atacar en este estado.');
-    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked && !ignoresLineOfSight(weapon), allowed: check.allowed && !lifeStage(roller), edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
+    targeting.preview = { name: target.name, band: gap.band, meters: gap.meters, blocked: gap.blocked && !ignoresLineOfSight(weapon), allowed: check.allowed && !lifeStage(roller) && !hiddenBlock, edge: edge.advantage ? 'adv' : edge.disadvantage ? 'dis' : 'normal', reasons };
     if (this.keeperAttack) this.keeperPanel();
     this.signature = ''; this.render();
   }
@@ -512,10 +517,13 @@ export class PlayerActionBar {
     if (this.onPick && canvas) canvas.removeEventListener('pointerdown', this.onPick, true);
     this.onPick = null;
     if (!this.targeting) return;
-    if (this.targeting.targetId && !keepMark) window.veilCanvas?.setAttackTarget?.(null, null);
+    // Cleared first (v2.53.0): clearing the mark updates the store, which redraws this bar.
+    const marked = this.targeting.targetId;
+    this.targeting = null;
+    if (marked && !keepMark) window.veilCanvas?.setAttackTarget?.(null, null);
     if (!keepMark) this.keeperAttack = false;
     document.getElementById('keeper_attack_panel')?.remove();
-    this.targeting = null; document.body.classList.remove('pab-targeting');
+    document.body.classList.remove('pab-targeting');
     if (redraw) this.render();
   }
 

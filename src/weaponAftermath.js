@@ -42,8 +42,8 @@ export function outcomePatch(target, apply, source) {
 // One NPC Reaction Roll: the d20 (and the Advantage or Disadvantage d6), against the DC.
 export function npcSave(target, save, faces = []) {
   // Of the Traits the target may choose (Knockdown: Agility or Strength), one without Disadvantage.
-  const trait = save.traits.find(t => !checkEdge(target, null, false, false, t).disadvantage) || save.traits[0];
-  const edge = checkEdge(target, null, false, false, trait);
+  const trait = save.traits.find(t => !checkEdge(target, null, false, false, t, { reaction: true }).disadvantage) || save.traits[0];
+  const edge = checkEdge(target, null, false, false, trait, { reaction: true });
   const roll = rollAdversaryCheck({ actorName: target.name, modifier: target.attackModifier ?? 0, dc: save.dc, hasAdvantage: edge.advantage, hasDisadvantage: edge.disadvantage, forcedD20: faces[0] ?? null, forcedD6: faces[1] ?? null });
   return { trait, edge, roll, failed: !roll.isCritical && roll.total < save.dc };
 }

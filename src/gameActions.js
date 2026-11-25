@@ -8,12 +8,12 @@ import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardR
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
-import { weaponRangeBand, rollAdversaryCheck, distanceInfo, rangeCheck } from './attackFlow.js';
+import { weaponRangeBand, rollAdversaryCheck, distanceInfo, rangeCheck, isMeleeAttack } from './attackFlow.js';
 import { finite } from './validation.js';
-import { normalizeConditions, specialState, SPECIAL_PREFIX } from './conditions.js';
+import { normalizeConditions, specialState, SPECIAL_PREFIX, visibleConditions } from './conditions.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { resolveJump } from './starshipJump.js';
-import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES } from './combatState.js';
+import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES, helplessTarget, rangedTargetBlock } from './combatState.js';
 import { validFaces, facesRoller } from './tableDice.js';
 import { newRest, chooseMoves, restComplete, resolveRest, REST_NAMES } from './rest.js';
 import { cardData } from './cardData.js';
@@ -147,7 +147,7 @@ function resolveGameAction(action, store) {
     if (rule.same) {
       const melee = weaponRangeBand(weapon) === 'Melee';
       out.evasion = droneEvasion(target) + wielderEvasion(tokenInventory(target).weapons, { melee }).mod;
-      out.hit = !!record.isCritical || record.total >= out.evasion;
+      out.hit = !!record.isCritical || record.total >= out.evasion || helplessTarget(target);
     }
     const said = rule.same ? `${record.total} contra la Evasion ${out.evasion} de ${target.name}: ${out.hit ? 'impacta' : 'falla'}` : rule.half ? `${target.name} recibe la mitad del daño, sin tirada` : rule.sameTarget ? `segundo ataque contra ${target.name}` : `otro ataque contra ${target.name}`;
     store.addLog({ sender: actor.name, type: 'EFFECT', title: `${rule.label} · ${weapon.name}`, details: `${said}${rule.stress ? ` (marca ${rule.stress} Stress)` : ''}.` });
@@ -604,6 +604,8 @@ function resolveGameAction(action, store) {
       for (const t of targets) store.updateToken(t.id, AREA_BOONS[card.name](store.state.tokens.find(x => x.id === t.id)));
       result.notes.push('Cada aliado del área: +2 a su próxima tirada.');
     }
+    // Silenced (v2.53.0, fase 5): the book does not mark which Powers are verbal, so the table says it.
+    if (POWER_KINDS.has(card.kind) && visibleConditions(actor).includes('Silenced')) result.notes.push(`${actor.name} está Silenced: si este Poder necesita voz (componente verbal), no puede lanzarse; el Keeper decide.`);
     const effect = !result.roll && !result.failed && resolveImmediate(store, actor, targets, card, action.effectFace);
     if (effect) result.notes.push(effect);
     // A Power, Move or Path feature used as an action gives the Spotlight (a Reaction does not).
@@ -689,7 +691,12 @@ function resolveGameAction(action, store) {
     const guard = melee && disciplinedDefense(target, actor, store.getActiveMap?.(), store.state.tokens);
     // Heavy (Rust & Steel 12.06): Strength below +1 attacks with Disadvantage.
     const heavy = weapon ? weaponAttackEdge(weapon, actor) : null;
-    const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty || !!heavy?.disadvantage, o.traitId);
+    // The target's conditions (v2.53.0, fase 5): a Hidden target cannot be shot at; a Prone one
+    // gives a ranged attack Advantage; an Incapacitated one is hit automatically.
+    const ranged = !!target && !isMeleeAttack(weapon, distanceInfo(actor, target, store.getActiveMap?.() || {}).band);
+    const hiddenBlock = target && target.id !== actor.id ? rangedTargetBlock(target, ranged) : '';
+    if (hiddenBlock) throw new Error(hiddenBlock);
+    const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty || !!heavy?.disadvantage, o.traitId, { ranged, reaction: !!action.cardReplyId });
     const keeperRoll = !player;
     // Powers in effect (Velocity Surge +2 Agility) and those armed for this roll (Silver Tongue,
     // Vector Calculus: a bonus and a Hope die that counts higher).
@@ -779,7 +786,12 @@ function resolveGameAction(action, store) {
       const ticked = tickClocks(actor.effectClocks, { kind: 'fear' });
       patch.effectClocks = ticked.list; integrityEnded = ticked.expired;
     }
-    const hit = ownAttack && (result.isCritical || result.total >= o.dc);
+    const helpless = ownAttack && helplessTarget(target);
+    const hit = ownAttack && (result.isCritical || result.total >= o.dc || helpless);
+    if (helpless && !result.isCritical && result.total < o.dc) {
+      weaponNotes.push(`${target.name} está Incapacitated: el ataque impacta automáticamente.`);
+      result.outcomeDesc = `${result.outcomeDesc || ''} ${weaponNotes.at(-1)}`.trim();
+    }
     const damageRiders = [];
     if (state && melee) {
       const opening = firstStrikeRider(actor, weapon);
@@ -825,8 +837,10 @@ function resolveGameAction(action, store) {
       patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => c.id !== state.id);
     }
     if (target && target.id !== actor.id && actor.effectClocks?.some(c => c.nextAttack)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAttack);
-    // Stagger and Disorienting: the next action of any kind has Disadvantage and spends them.
-    if (actor.effectClocks?.some(c => c.nextAction)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAction);
+    // Stagger and Disorienting: the next action of any kind has Disadvantage and spends them
+    // (a Reaction Roll is not an action). So does the plain Dazed condition (v2.53.0).
+    if (!action.cardReplyId && actor.effectClocks?.some(c => c.nextAction)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAction);
+    if (!action.cardReplyId && (patch.conditions || actor.conditions || []).includes('Dazed')) patch.conditions = (patch.conditions || actor.conditions).filter(c => c !== 'Dazed');
     // Brittle on the target: this Physical hit deals +1d6 and Brittle ends.
     const brittle = hit && target?.effectClocks?.find(c => c.brittle);
     if (brittle && (!weapon || damageTypeOf(weapon) === 'physical')) {

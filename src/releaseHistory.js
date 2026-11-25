@@ -1,6 +1,26 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.53.0', date: '2026-11-25', title: 'V3 · Condiciones que cuentan solas (Fase 5, primera parte)',
+    sections: [
+      { title: 'Tiradas', items: [
+        'Restrained: Desventaja en Agility y Strength. Weakened: Desventaja en Strength. Prone: Desventaja al atacar. Dazed: Desventaja en la siguiente acción, y se quita al hacerla (una Reaction Roll que pide una carta no la gasta).',
+        'Atacar a distancia a un objetivo Prone da Ventaja; cuerpo a cuerpo, no.',
+      ] },
+      { title: 'Ataques', items: [
+        'Un objetivo Hidden no se puede atacar a distancia: la barra lo dice al marcarlo y no deja tirar. Cuerpo a cuerpo o con un área, sí.',
+        'Contra un objetivo Incapacitated el ataque impacta siempre, aunque los dados no lleguen a su Evasion (el registro lo explica).',
+        'Weakened: el daño pierde los modificadores fijos (el +N del arma, Honed Edge y los extras fijos); los dados, y los extras que son dados como Sneak Attack, siguen. «Ver cálculo» lo indica.',
+      ] },
+      { title: 'Movimiento y acciones', items: [
+        'Un personaje Restrained no se mueve: ni arrastrándolo ni con las flechas, y la mesa dice cómo liberarlo. Incapacitated no actúa ni se mueve. El Keeper sí puede moverlos (movimiento forzado).',
+        'Moverse levanta de Prone (levantarse es gratis al moverse una banda).',
+        'Silenced: al lanzar un Poder, el registro recuerda que no puede lanzarse si necesita voz; el Keeper decide.',
+        'Corregido: dejar de apuntar al cambiar de vista (Keeper ↔ jugador) podía colgar la barra en un bucle.',
+      ] },
+    ],
+  },
+  {
     version: '2.52.0', date: '2026-11-25', title: 'V3 · Poderes de «elige dos» automáticos (Fase 3 completa)',
     sections: [
       { title: 'Elige dos', items: [

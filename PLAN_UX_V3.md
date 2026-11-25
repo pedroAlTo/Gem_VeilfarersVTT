@@ -69,7 +69,8 @@ Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 - **Fase 3, segunda parte** hecha en v2.50.0: 25 Poderes con ficha (curación hasta el umbral, resurrección, daño directo, duraciones en dados) y Vanish automático (petición del usuario).
 - **Fase 3, tercera parte** hecha en v2.51.0: Neural Feedback como reacción, efectos por ronda (Energy Cascade, Inviolable Sanctum), Hivemind Convergence y Solar Avatar. De paso, «Ver cálculo» en el registro y ajuste de daño del Keeper (peticiones del usuario).
 - **Fase 3, cuarta parte** hecha en v2.52.0: Poderes de «elige dos» (Adaptive Evolution, Symbiotic Bloom, Biomorphic Arsenal) con armas temporales, Armor Slots temporales y bonos; Cordon of Will. **Fase 3 completa**: 34 Poderes con ficha.
-- **Siguiente:** Fase 5 (condiciones que cuentan solas). Confirmar antes con el usuario el daño por ronda de On Fire y Poisoned (Bleeding sigue manual, decisión 18); lo demás de la fase no lo necesita. Después, Fase 5 (condiciones que cuentan solas; confirmar antes el daño por ronda de On Fire y Poisoned).
+- **Fase 5, primera parte** hecha en v2.53.0: Prone, Restrained, Weakened, Dazed, Incapacitated, Hidden y Silenced cuentan solas en las tiradas, los ataques, el movimiento y el daño.
+- **Siguiente:** Fase 5, segunda parte: daño por ronda de On Fire y Poisoned, a confirmar con el usuario (Bleeding sigue manual, decisión 18). Fase 6 (accesibilidad) en paralelo.
 
 ## Decisiones
 

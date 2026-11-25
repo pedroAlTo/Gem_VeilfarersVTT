@@ -111,11 +111,13 @@ export function resolveDamageExpression(expression, options = {}) {
   const parsed = damageExpressionGroups(expression);
   const proficiency = options.proficiency ?? 1, honed = options.honed ?? 0;
   if (!Number.isInteger(proficiency) || proficiency < 1 || proficiency > 10 || !Number.isInteger(honed) || honed < 0 || honed > 9) throw new Error('Revisa Proficiency y Honed Edge.');
-  const extra = honed + (Number.isInteger(options.bonus) ? options.bonus : 0);
+  // Weakened (v2.53.0): the roll loses its flat modifiers; the dice are unaffected.
+  const noFlat = !!options.noFlat;
+  const extra = (noFlat ? 0 : honed) + (Number.isInteger(options.bonus) ? options.bonus : 0);
   const pools = [], rolls = [];
   if (parsed.pools.reduce((n, p) => n + p.count, 0) + proficiency - 1 > 100) throw new Error('Máximo 100 dados antes del Critical.');
   const components = parsed.groups.map(({ pools: dice, flat, labels }, i) => {
-    let amount = flat + (i === 0 ? extra : 0);
+    let amount = (noFlat ? 0 : flat) + (i === 0 ? extra : 0);
     for (const pool of dice) {
       const count = pool.count + (!pools.length ? proficiency - 1 : 0);
       pools.push({ ...pool, count });
@@ -133,7 +135,7 @@ export function resolveDamageExpression(expression, options = {}) {
     return { amount: amount * (options.mountRating ?? 1), types: [...types] };
   });
   const result = resolveDamage({ ...options, diceCount: 0, components });
-  return { ...result, rolls, baseDiceTotal: rolls.reduce((n, face) => n + face, 0), flatModifier: parsed.flat + extra, formula: expression, pools };
+  return { ...result, rolls, baseDiceTotal: rolls.reduce((n, face) => n + face, 0), flatModifier: (noFlat ? 0 : parsed.flat) + extra, formula: expression, pools };
 }
 
 // What the target has against Penetration (Corebook ch. 10): Reflective armor cancels

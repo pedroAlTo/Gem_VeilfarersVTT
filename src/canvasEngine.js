@@ -23,6 +23,7 @@ import { audio } from './audioEngine.js';
 import { undoManager } from './undoManager.js';
 import { pointInWater } from './waterGeometry.js';
 import { notify, confirmAction } from './ui.js';
+import { movementBlock } from './combatState.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { rangeBandFor, gapBandFor, tokenGapSquares, DEFAULT_METERS_PER_SQUARE } from './attackFlow.js';
 import { drawEffectClocks } from './effectClocks.js';
@@ -686,6 +687,9 @@ export class CanvasEngine {
     if (!['select', 'measure'].includes(state.activeTool || 'select')) return false;
     if (state.userRole !== 'keeper' && !store.canEditToken(tok.id)) return false;
     if (state.rest && state.userRole !== 'keeper') { notify('La partida está en pausa: el grupo está descansando.', 'error'); return true; }
+    // Restrained, Stunned, Incapacitated…: a player cannot move the character (the Keeper can).
+    const blocked = state.userRole !== 'keeper' && movementBlock(tok);
+    if (blocked) { audio.playError?.(); notify(blocked, 'error'); return true; }
     const g = map.gridSize || 64, W = this.mapImage?.width || Infinity, H = this.mapImage?.height || Infinity;
     const x = Math.max(0, Math.min(W, tok.x + dx * g)), y = Math.max(0, Math.min(H, tok.y + dy * g));
     if (x === tok.x && y === tok.y) return true;
@@ -1206,7 +1210,11 @@ export class CanvasEngine {
           }
 
           if (clickedToken) {
-            const canMove = store.canEditToken(clickedToken.id);
+            // A player cannot drag a character that is Restrained or cannot act (v2.53.0).
+            const blocked = !isKeeper && movementBlock(clickedToken);
+            if (blocked && this.moveBlockNotice !== clickedToken.id + blocked) notify(blocked, 'error');
+            this.moveBlockNotice = blocked ? clickedToken.id + blocked : '';
+            const canMove = store.canEditToken(clickedToken.id) && !blocked;
             if (canMove) {
               this.beginTokenDrag(clickedToken);
               this.dragOffsetX = world.x - clickedToken.x;

@@ -1923,6 +1923,9 @@ export const PAIRS = [
   ["Si hace daño, el objetivo queda Weakened (una Strength Reaction Roll DC 15 lo termina).", "If it deals damage, the target is Weakened (a Strength Reaction Roll DC 15 ends it)."],
   ["Weakened (Strength DC 15 lo termina)", "Weakened (Strength DC 15 ends it)"],
   ["Cordón a Close: quien intente cruzarlo tira Presence DC 20; si falla, no pasa y queda Dazed (márcalo en su token). Un hostil decidido puede marcar 1 Stress para cruzarlo. Tiene Major 5, Severe 10 y 10 HP contra daño Neural; moverlo una banda cuesta una Acción.", "Cordon at Close: whoever tries to cross rolls Presence DC 20; on a failure it cannot pass and is Dazed (mark it on its token). A determined hostile may mark 1 Stress to cross. It has Major 5, Severe 10 and 10 HP against Neural damage; moving it one band costs an Action."],
+  // Fase 5: conditions that count by themselves (v2.53.0)
+  ["Weakened: el daño pierde los modificadores fijos (los dados no cambian).", "Weakened: the damage loses its flat modifiers (the dice are unaffected)."],
+  ["OCULTO", "HIDDEN"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2130,4 +2133,11 @@ export const PATTERNS = [
   ["Opciones: {_a}.", "Options: {_a}."],
   ["{_a}: {_b} en la mano ({_c}, {_d}) hasta el final de la escena.", "{_a}: {_b} in hand ({_c}, {_d}) until the end of the scene."],
   ["{_a}: termina {_b}.", "{_a}: {_b} ends."],
+  ["{_a} · Restrained: no puede moverse (un aliado lo libera con una Acción, o Strength DC 15 en su Spotlight).", "{_a} · Restrained: cannot move (an ally frees them with an Action, or Strength DC 15 on their Spotlight)."],
+  ["{_a} · Incapacitated: no puede actuar hasta que alguien lo reanime (Knowledge o Instinct DC 10).", "{_a} · Incapacitated: cannot act until someone rouses them (Knowledge or Instinct DC 10)."],
+  ["{_a} está Hidden: no se le puede apuntar con un ataque a distancia (sí cuerpo a cuerpo o con un área).", "{_a} is Hidden: it cannot be targeted by a ranged attack (it can in melee or with an area)."],
+  ["{_a} está Prone: Ventaja al atacarle a distancia.", "{_a} is Prone: Advantage on ranged attacks against it."],
+  ["{_a} está Incapacitated: el ataque impacta automáticamente.", "{_a} is Incapacitated: the attack hits automatically."],
+  ["{_a} está Incapacitated: impacta automáticamente.", "{_a} is Incapacitated: it hits automatically."],
+  ["{_a} está Silenced: si este Poder necesita voz (componente verbal), no puede lanzarse; el Keeper decide.", "{_a} is Silenced: if this Power needs a voice (verbal component), it cannot be cast; the Keeper decides."],
 ];
