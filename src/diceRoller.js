@@ -330,6 +330,35 @@ export class DiceRollerSidebar {
     return true;
   }
 
+  // A Power procedure's healing (v2.49.0): its dice thrown in 3D, then the table applies them.
+  async autoCardEffect(actor, record) {
+    try {
+      const faces = [];
+      for (const heal of record.effectPending) {
+        const [qty, sides] = String(heal.dice).split('d').map(Number);
+        faces.push(await throwDice([{ qty, sides, role: 'Curación' }], { label: `${record.name} · curación`, actor }));
+      }
+      const result = await network.requestAction({ type: 'CARD_EFFECT', actorId: actor.id, playId: record.id, faces });
+      if (result?.summary) notify(`${record.name}: ${result.summary}`);
+    } catch (error) { notify(error.message, 'error'); }
+  }
+  // A Power procedure's damage (v2.49.0): rolled once (in 3D) against the first target and the same
+  // total for everyone else it reaches, each through the Keeper's window, one after the other.
+  async autoPowerDamage(actor, record) {
+    const secret = this.rollVisibility() === 'keeper';
+    for (const hit of record.damagePending) {
+      let raw = null;
+      for (const targetId of hit.targetIds) {
+        if (!store.state.tokens.some(t => t.id === targetId)) continue;
+        // The Keeper's window of the previous one must close first (the panel holds one damage).
+        for (let waited = 0; document.getElementById('kdmg_apply') && waited < 300000; waited += 400) await new Promise(r => setTimeout(r, 400));
+        const power = { type: hit.type, tag: hit.tag, noArmor: hit.noArmor };
+        await this.autoCardDamage(actor.id, targetId, raw === null ? hit.formula : `${raw} ${hit.type[0].toUpperCase() + hit.type.slice(1)}`, secret, power);
+        if (raw === null) raw = Number(this.lastDamage?.raw) || 0;
+      }
+    }
+  }
+
   // The damage of a weapon against a second target with no new attack roll (Automatic, Salvo
   // Fire: «roll damage separately»; v2.46.0). It is left in the panel and the bar, to be applied as
   // any hit. `amount`: a damage already rolled, with the weapon's type (Arc: half of it; an area:
@@ -365,6 +394,8 @@ export class DiceRollerSidebar {
     q('#dmg_formula').value = formula; q('#dmg_proficiency').value = 1; q('#dmg_honed').value = 0;
     q('#dmg_damage_type').value = power?.type || 'auto';
     if (power?.tag) q('#dmg_delivery_tag').value = power.tag;
+    // «Ignoring armor» (Mind Spike, Psychic Collapse): no Armor Slots can be spent against it.
+    this.noArmorHit = !!power?.noArmor;
     for (const name of ['dmg_is_critical','dmg_is_direct','dmg_weapon_crushing','dmg_weapon_bleed']) if (q('#'+name)) q('#'+name).checked = false;
     q('#secret_roll').checked = !!secret;
     this.syncDamageMode();
@@ -373,6 +404,7 @@ export class DiceRollerSidebar {
   }
 
   prepareWeapon(tokenId, weaponId) {
+    this.noArmorHit = false;
     const actor = store.state.tokens.find(t => t.id === tokenId);
     if (!actor || !store.canEditToken(tokenId)) { notify('Selecciona uno de tus tokens asignados.'); return false; }
     const weapon = tokenInventory(actor).weapons.find(w => w.id === weaponId);
@@ -1343,6 +1375,12 @@ export class DiceRollerSidebar {
         if (power.heavy && /heavy/i.test(tokenInventory(target).items.map(i => [i.name, i.kind]).join(' '))) notify(power.heavy);
       }, 300);
     }
+    // A Power procedure (v2.49.0): its healing dice and its damage, on a success or a failure.
+    if (linked && !prepared.replyId) {
+      const record = resolutionLog(store, prepared.playId)?.resolution;
+      if (record?.effectPending?.length) setTimeout(() => this.autoCardEffect(actor, record), 300);
+      if (record?.damagePending?.length) setTimeout(() => this.autoPowerDamage(actor, record), record.effectPending?.length ? 1800 : 300);
+    }
     const math = checkMath(result);
     // Overlay 3D results banner
     if (this.is3D && typeof window !== 'undefined' && window.VFDice3D && typeof window.VFDice3D.showResults === 'function') {
@@ -2075,7 +2113,7 @@ export class DiceRollerSidebar {
       // Damage is always the Keeper's call (v2.27.5; v2.29.1: always, whatever the target, also
       // one the player controls): a window lets the Keeper choose its shields and apply or cancel
       // it. A connected player's hit goes to the Keeper with every option worked out.
-      const maxShields = isDirect ? 0 : currentArmorNow;
+      const maxShields = isDirect || this.noArmorHit ? 0 : currentArmorNow;
       const options = Array.from({ length: Math.min(maxShields, 10) + 1 }, (_, n) => planDamage(n).damagePayload);
       // Reaction Powers the target (or an ally) can use on this hit, each with its own options.
       const reactions = isDirect ? [] : damageReactions({ target: currentTarget, attacker: store.state.tokens.find(t => t.id === attackerId), components: dmgResult.components, tokens: store.state.tokens, map: store.getActiveMap(), data: cardData() })

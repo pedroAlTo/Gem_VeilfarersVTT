@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.48.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.48.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.48.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.48.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.49.0.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.49.0**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.49.0** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.49.0.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -168,6 +168,10 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.48.0.zip**. Abre **AYUDA
 153. **(V3) Lucky Break en Básico y Avanzado.** Tras una tirada con Hope 3 y Fear 9, usar Lucky Break: en Básico relanza el Hope sin ventana y el registro lo dice. En «···» → «Modo: Avanzado», Lucky Break abre la ventana para elegir el dado. `npm run test:clicks`: «Atacar desde el anillo» 2 clics, «Atacar con arma (barra)» 3.
 154. **(V3) Cartas en un clic (Básico).** Con un Vanguardia Awakened, un clic en Path to Nirvana lo activa con su mejor atributo de Agility/Instinct/Strength, sin ventana. Un Sleeping con Run It Down (Resolve variable) lo juega gastando el mínimo. Drone Whisper tira contra la DC elegida en la barra (15 por defecto). En «···» → «Modo: Avanzado», o con doble clic, se abre la ventana como antes.
 155. **(V3) Atajos.** Con tu personaje en la barra y el ratón sobre el mapa: «1» marca el arma primera (aviso «toca el objetivo»), un toque marca al enemigo y Enter ataca (sin abrir el chat). «0» sin armas ataca desarmado. «F» toma el foco. «?» muestra la lista. Escribiendo en el chat, los números no hacen nada. Los botones de arma muestran 1, 2, 3…
+156. **(V3) Mind Spike.** Un personaje nivel 5+ con Mind Spike toca un enemigo y elige Mind Spike en el anillo: tira Presence contra DC 20; si sale, se abre sola la ventana del Keeper con el daño (Proficiency d12 Void) y «sin escudos disponibles»; tras aplicarlo, el enemigo tiene pendiente Presence DC 15 («Tirar adversarios» en la bandeja del Keeper) y si falla queda Stunned hasta el final de su próximo Spotlight.
+157. **(V3) Poderes de área.** Psychic Storm alcanza a todos los enemigos a Close (no a los aliados) con un solo total de daño, en ventanas sucesivas, y cada uno tira Presence DC 15 (si falla, +1 Stress). Photonic Detonation se apunta a un enemigo: alcanza a los que están en el cono Close hacia él; Blinded por una ronda a quien falle Agility DC 15. Orbital Lance se apunta a un token a cualquier distancia y alcanza a todos a Very Close de él.
+158. **(V3) Curación por procedimiento.** Cellular Reconstruction (doble clic → Distributed): cuesta 2 Hope, cura a los tres aliados más heridos a Close con un dado en 3D (Proficiency d6) y, con Hope, les quita 1 Stress. En Focused, se toca a un aliado: Proficiency d10 y −1 Stress.
+159. **(V3) Fallos con coste.** Temporal Freeze fallado: quien lanza queda Stunned (reloj) y marca 2 Stress. Psychic Collapse fallado: se prepara 1d8 Void contra quien lanza; si sale, el objetivo tiene Desventaja en todas sus tiradas hasta el cambio de ronda.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

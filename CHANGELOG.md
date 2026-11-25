@@ -1,10 +1,27 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.48.0**.
-Paquete: `VeilFarers_VTT_v2.48.0.zip`.
+Versión actual del VTT: **v2.49.0**.
+Paquete: `VeilFarers_VTT_v2.49.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.49.0] — 2026-11-25
+
+V3 · Poderes automáticos: fichas de procedimiento (Fase 3, primera parte)
+
+### Fichas de procedimiento
+
+- Cada Poder con mecánica tiene una ficha revisada a mano a partir del Corebook: a quién alcanza, el daño, la tirada de reacción de sus objetivos y lo que trae un fallo, la curación, las condiciones con su duración y lo que cuesta fallar el lanzamiento. La mesa la aplica sola tras la tirada del Poder.
+- Primera tanda (15 Poderes): Precision Strike, Solar Judgment, Bio-Integration, Mind Spike, Shockwave Pulse, Cellular Reconstruction, Psychic Storm, Photonic Detonation, Orbital Lance, Corona Beam, Temporal Freeze, Phase Jump y Psychic Collapse.
+
+### Cómo se juegan
+
+- Daño: se tira una vez (en 3D) y llega a la ventana del Keeper para cada objetivo, uno tras otro, con el mismo total. «Ignora la armadura» (Mind Spike, Psychic Collapse) no deja gastar Armor Slots.
+- Áreas: alrededor de quien lanza (Psychic Storm: todos los enemigos a Close; Shockwave Pulse), en un punto (Solar Judgment, Orbital Lance: se apunta a un token y alcanza a los que están a Very Close de él), en cono (Photonic Detonation) o en línea (Corona Beam) hacia el token apuntado.
+- Tiradas de los objetivos: cada uno tira contra la DC impresa (los adversarios, con «Tirar adversarios» del Keeper) y quien falla recibe lo que dice la carta: Stunned, Blinded por una ronda, 1 Stress…
+- Curación: los dados se tiran en 3D y se aplican solos. Cellular Reconstruction elige modo: Focused (toque, Proficiency d10 + −1 Stress) o Distributed (2 Hope, los tres aliados más heridos a Close).
+- Fallos con coste: Temporal Freeze y Phase Jump dejan a quien lanza Stunned y con 2 Stress; Psychic Collapse le devuelve 1d8 Void.
 
 ## [2.48.0] — 2026-11-25
 

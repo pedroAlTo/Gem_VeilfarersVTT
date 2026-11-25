@@ -20,7 +20,7 @@ const TRAIT_NAME = { agility: 'Agility', strength: 'Strength', finesse: 'Finesse
 // The clock a weapon effect puts on the target.
 export function weaponClock(spec, source) {
   const base = newClock({ name: spec.name, segments: 1, tick: spec.tick || 'manual', ...(spec.perTick ? { perTick: spec.perTick } : {}), ...(spec.die ? { die: spec.die } : {}), scene: true }, { source });
-  const extra = Object.fromEntries(['condition', 'expiry', 'rounds', 'edge', 'nextAction', 'brittle', 'melting', 'dc'].filter(k => spec[k] !== undefined).map(k => [k, spec[k]]));
+  const extra = Object.fromEntries(['condition', 'expiry', 'rounds', 'edge', 'nextAction', 'allRolls', 'brittle', 'melting', 'dc'].filter(k => spec[k] !== undefined).map(k => [k, spec[k]]));
   return { ...base, ...extra };
 }
 

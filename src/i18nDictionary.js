@@ -1879,6 +1879,14 @@ export const PAIRS = [
   // Fase 2: keyboard shortcuts (v2.48.0)
   ["Atajos: 1–9 atacar con el arma de ese lugar (0 desarmado) · Enter ataca al objetivo marcado · F tomar foco · flechas mueven tu personaje · Esc cancela.", "Shortcuts: 1–9 attack with the weapon in that place (0 unarmed) · Enter attacks the marked target · F takes the Spotlight · arrows move your character · Esc cancels."],
   ["Atajos", "Shortcuts"],
+  // Fase 3: Power procedures (v2.49.0)
+  ["Ahora se tira la curación.", "Now the healing is rolled."],
+  ["Una criatura Veil-Touched o Void tira Instinct DC 15: si falla, Dazed y sin Poderes Void hasta el final de su próximo Spotlight.", "A Veil-Touched or Void creature rolls Instinct DC 15: on a failure, Dazed and no Void Powers until the end of its next Spotlight."],
+  ["Fallo: tira d8 (dirección) y 1d4 (bandas de alcance); el impacto cae allí. La nave pierde 1 Hull.", "Failure: roll d8 (direction) and 1d4 (range bands); the strike lands there. The ship loses 1 Hull."],
+  ["Contra un objetivo de Tier menor, +10 al total antes de comparar con sus umbrales.", "Against a lower-Tier target, +10 to the total before comparing with its thresholds."],
+  ["Stunned hasta el final de su próximo Spotlight", "Stunned until the end of its next Spotlight"],
+  ["marca 1 Stress", "marks 1 Stress"],
+  ["Blinded hasta el cambio de ronda", "Blinded until the round changes"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2063,4 +2071,7 @@ export const PATTERNS = [
   ["Atacar a {_a}", "Attack {_a}"],
   ["Lanzar sobre {_a}", "Cast on {_a}"],
   ["{_a}: toca el objetivo (Enter ataca al marcado, Esc cancela).", "{_a}: touch the target (Enter attacks the marked one, Esc cancels)."],
+  ["El daño se prepara contra {_a}.", "The damage is prepared against {_a}."],
+  ["{_a} tira {_b} contra DC {c}; si falla, {d}.", "{_a} rolls {_b} against DC {c}; on a failure, {d}."],
+  ["{_a} tiran {_b} contra DC {c}; si falla, {d}.", "{_a} roll {_b} against DC {c}; on a failure, {d}."],
 ];

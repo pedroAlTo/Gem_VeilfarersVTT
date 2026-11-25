@@ -15,6 +15,8 @@ export const CLOCK_BONUSES = {
   'Velocity Surge': { rollTraits: ['agility'], rollBonus: 2 },
   'Aura of Clarity': { thresholds: 1, immune: ['Frightened', 'Dazed'] },
   'Protective Dome': { evasion: 2 },
+  // Shockwave Pulse · Protective (v2.49.0): +2 Evasion until the round changes.
+  'Shockwave Pulse': { evasion: 2 },
 };
 export const tierOfLevel = level => { const l = Number(level) || 1; return l <= 4 ? 1 : l <= 7 ? 2 : 3; };
 export const NEXT_ROLL = {

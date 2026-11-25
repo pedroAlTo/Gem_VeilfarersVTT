@@ -51,10 +51,12 @@ export function checkEdge(actor, target, advantage = false, disadvantage = false
   const nextAttack = !!target && actor?.effectClocks?.some(c => c.nextAttack && c.edge === 'disadvantage');
   // «Disadvantage on its next action» (Stagger, Disorienting → Dazed): any roll, spent by it.
   const nextAction = actor?.effectClocks?.some(c => c.nextAction && c.edge === 'disadvantage');
+  // An edge on all rolls while a clock lasts (Psychic Collapse: Disadvantage on all rolls for 1 round).
+  const allRollsDis = actor?.effectClocks?.some(c => c.allRolls && c.edge === 'disadvantage'), allRollsAdv = actor?.effectClocks?.some(c => c.allRolls && c.edge === 'advantage');
   // Attacking from stealth (v2.43.5, user note): a Hidden or invisible attacker has Advantage
   // (Corebook ch. 10: Hidden gives Advantage on the next attack; a Hidden attacker surprises).
   const unseen = !!target && conditions.some(c => c === 'Hidden' || /invisib/i.test(c));
-  return netEdge(advantage || unseen || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || nextAction || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
+  return netEdge(advantage || unseen || allRollsAdv || field?.edge === 'advantage' || (!!trait && activePath(actor)?.trait === trait) || !!actor?.pendingAdvantage || !!target?.conditions?.includes('Vulnerable'), disadvantage || field?.edge === 'disadvantage' || nextAttack || nextAction || allRollsDis || probabilityDefense(target) || conditionPenalty || jolt || !!overwhelmed);
 }
 
 export const roundKey = (map = {}) => `${map.id}/${map.spotlightRound || 1}`;

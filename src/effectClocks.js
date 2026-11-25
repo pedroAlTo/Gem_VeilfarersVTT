@@ -112,13 +112,16 @@ export function editClock(list = [], id, patch = {}) {
   });
 }
 
+// The conditions a clock may carry while it lasts (v2.49.0: Power procedures put any of them).
+export const CLOCK_CONDITIONS = ['Dazed', 'Stunned', 'Blinded', 'Vulnerable', 'Prone', 'Restrained', 'Frightened', 'Weakened', 'Incapacitated', 'Hidden', 'Silenced', 'Cornered', 'On Fire', 'Poisoned', 'Bleeding'];
 export function validEffectClocks(v) {
   return Array.isArray(v) && v.length <= MAX_CLOCKS && v.every(c => c && typeof c === 'object'
     && typeof c.id === 'string' && c.id.length <= 60 && typeof c.name === 'string' && c.name.length <= 80
     && Number.isInteger(c.segments) && c.segments >= 1 && c.segments <= MAX_SEGMENTS
     && Number.isInteger(c.filled) && c.filled >= 0 && c.filled <= c.segments
     && ['spotlight', 'fear', 'manual'].includes(c.tick)
-    && (c.condition === undefined || ['Dazed', 'Stunned'].includes(c.condition))
+    && (c.condition === undefined || CLOCK_CONDITIONS.includes(c.condition))
+    && (c.allRolls === undefined || typeof c.allRolls === 'boolean')
     && (c.expiry === undefined || ['round','spotlight-end'].includes(c.expiry))
     && (c.seenSpotlight === undefined || typeof c.seenSpotlight === 'boolean')
     && (c.edge === undefined || ['advantage','disadvantage'].includes(c.edge))

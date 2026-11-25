@@ -4,7 +4,7 @@ import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS, damageTypeOf } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration } from './cardResolution.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration, procedureZone, applyHeal } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
@@ -22,6 +22,7 @@ import { droneCompatible } from './dronePowers.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { weaponAttackEdge, afterAttackStress, weaponDamageRiders, weaponReadiness, afterShot, FOLLOW_UPS, wielderEvasion, areaProcedure, zoneTargets } from './weaponFeatures.js';
 import { npcSave } from './weaponAftermath.js';
+import { PROCEDURES, procedureFor } from './powerProcedures.js';
 import { hasTag } from './weaponTags.js';
 import { droneEvasion } from './drones.js';
 import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
@@ -283,6 +284,20 @@ function resolveGameAction(action, store) {
   }
   // The duration die of a card that succeeded (v2.41.0): thrown after the roll, in 3D, by whoever
   // cast it; the table applies the clock (Rapid Regeneration: +1 HP now and each Spotlight).
+  // The healing dice of a Power procedure (v2.49.0), thrown in 3D by the caster's screen.
+  if (action.type === 'CARD_EFFECT') {
+    const row = resolutionLog(store, String(action.playId ?? '')), record = row?.resolution;
+    if (!record || record.actorId !== actor.id || !Array.isArray(record.effectPending) || !record.effectPending.length || record.mapId !== store.state.activeMapId) throw new Error('Esta carta no espera su curación.');
+    const said = record.effectPending.map((heal, i) => {
+      const [qty, sides] = String(heal.dice).split('d').map(Number);
+      const faces = Array.isArray(action.faces?.[i]) && validFaces(action.faces[i], qty, sides) ? action.faces[i] : Array.from({ length: qty }, () => 1 + Math.floor(Math.random() * sides));
+      return applyHeal(store, record, heal, faces.reduce((a, b) => a + b, 0));
+    }).filter(Boolean).join(' ');
+    updateResolution(store, record.id, { effectPending: null, notes: [...(record.notes || []).filter(n => n !== 'Ahora se tira la curación.'), said].filter(Boolean) });
+    const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + record.name + ' · curación', details: said };
+    store.addLog(log);
+    return { id: newId(), actorId: actor.id, log, summary: said };
+  }
   if (action.type === 'CARD_DURATION') {
     const row = resolutionLog(store, String(action.playId ?? '')), record = row?.resolution;
     if (!record || record.actorId !== actor.id || record.phase !== 'ready' || !record.durationAwaiting || record.mapId !== store.state.activeMapId) throw new Error('Esta carta no espera su duración.');
@@ -477,7 +492,8 @@ function resolveGameAction(action, store) {
     if (usedBy(actor,use)) throw new Error(card.name + ' ya está gastado (' + use.label + ').');
     const ids = action.targetIds ?? (action.targetId ? [action.targetId] : []);
     // An area around the caster («all enemies within Close range»): everyone inside is a target.
-    const area = areaRule(card);
+    const mode = String(action.mode ?? '').slice(0, 30), procedure = procedureFor(card.name, mode);
+    const area = areaRule(card, mode);
     // A Power used through the drone the character operates: range, targets and line of sight are
     // measured from the drone (Corebook ch. 14, «Domain Powers Through a Drone»).
     let origin = actor, drone = null;
@@ -488,8 +504,24 @@ function resolveGameAction(action, store) {
       if (!droneCompatible(card)) throw new Error(card.name + ' no puede usarse a través de un dron: necesita tu cuerpo, tu toque o tu presencia.');
       origin = { ...actor, x: drone.x, y: drone.y, size: drone.size || 1, mapId: drone.mapId };
     }
-    const targets = area ? areaTargets(origin, area, store) : cardTargets(origin, card, ids, store);
+    let targets;
+    if (area) {
+      targets = areaTargets(origin, area, store);
+      // «Up to three creatures»: the most wounded first (Cellular Reconstruction · Distributed).
+      if (area.max) targets = [...targets].sort((a, b) => ((b.hp?.max || 0) - (b.hp?.current || 0)) - ((a.hp?.max || 0) - (a.hp?.current || 0))).slice(0, area.max);
+    } else if (procedure?.zone && procedure.zone.shape !== 'around') {
+      // A point, a cone or a line: aimed at a token within its reach.
+      const center = store.state.tokens.find(t => t.id === ids[0]);
+      if (!center || !eligible(origin, center, store.getActiveMap?.(), { reach: procedure.zone.reach, self: false })) throw new Error(`Elige ${procedure.zone.shape === 'point' ? 'el punto (un token)' : 'la dirección (un token)'} de ${card.name} a alcance ${procedure.zone.reach}.`);
+      targets = procedureZone(origin, procedure.zone, center, store);
+    } else targets = cardTargets(origin, card, ids, store);
     const result = playCard(actor, card, { resolveSpent: finite(action.resolveSpent, 1, 12) ? action.resolveSpent : null });
+    // A mode that costs more than the printed first cost (Cellular Reconstruction · Distributed: 2 Hope).
+    const extraHope = Math.max(0, (procedure?.cost?.hope || 0) - (card.cost?.hope || 0));
+    if (extraHope && !result.failed) {
+      if ((result.token.hope || 0) < extraHope) throw new Error(`${card.name} · ${procedure.mode} cuesta ${procedure.cost.hope} Hope.`);
+      result.token.hope -= extraHope;
+    }
     const areaChecks = area?.check && !result.roll && !result.failed;
     if (drone) result.notes.push(`A través de ${drone.name}.`);
     // Kinetic Blast (v2.32.0): spend 1 Hope (+ up to 2 to Empower) and the next melee attack carries it.
@@ -600,7 +632,7 @@ function resolveGameAction(action, store) {
     }
     if (action.durationFaces) resolution.durationFaces = action.durationFaces.slice(0, 4);
     // With a roll, the duration die waits for the success (v2.41.0).
-    else if (result.roll && !result.failed && durationDice(card)) resolution.durationPending = true;
+    else if (result.roll && !result.failed && durationDice(card) && !PROCEDURES[card.name]) resolution.durationPending = true;
     const log = { sender: actor.name, type: 'CARD', title: actor.name + ': ' + card.name, details: special ? [result.summary, ...result.notes].join(' ') : details, resolution };
     store.addLog(log);
     // The Keeper's table shows the card that was just used.
