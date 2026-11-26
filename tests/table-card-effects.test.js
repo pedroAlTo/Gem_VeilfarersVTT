@@ -8,7 +8,9 @@ import { resolutionLog, createResolution, adjudicateCard, requestCardChecks } fr
 import { printedChecks, printedPools } from '../src/cardProcedures.js';
 import {beginCardSession,beginUnassignedArc,cardUse,resetCardUses} from '../src/cardLimits.js';
 import { activePath } from '../src/statePowers.js';
-import { getHoveredCondition, visibleConditions } from '../src/conditions.js';
+import { getHoveredCondition, visibleConditions, conditionMarkerLayout } from '../src/conditions.js';
+// The first marker, inside the token (v2.58.0: the states sit inside it, over the class flag).
+const firstMarker = t => { const m = conditionMarkerLayout(1, 32)[0]; return { x: t.x + m.x, y: t.y + m.y }; };
 import { nextSpotlightRound, combatTransition, checkEdge, disciplinedDefense, markMeleeDefense, requireActive } from '../src/combatState.js';
 import { swarmTargets, hasSwarmTactics, bloodiedAttack } from '../src/adversaryPassives.js';
 import { loadAdversaries } from '../scripts/adversary-library.mjs';
@@ -44,7 +46,7 @@ test('the caster chooses a Trait before paying, sees the state on the map and th
   play(s,'v','Path to Nirvana',{trait:'agility'});
   const v=get(s,'v'), clock=activePath(v);
   assert.equal(v.hope,3); assert.equal(clock.segments,6); assert.ok(validEffectClocks(v.effectClocks));
-  assert.match(getHoveredCondition(v,{x:v.x+45,y:v.y},32).label,/agility/);
+  assert.match(getHoveredCondition(v,firstMarker(v),32).label,/agility/);
   const reverse=characterCards(v,data).find(c=>c.reverse);
   assert.equal(reverse.name,'Breaking Point'); assert.match(reverse.text,/after any multipliers/i);
   assert.throws(()=>performGameAction({type:'CONDITION',actorId:'v',name:'Stunned',active:true},s),/inmune/);
@@ -525,7 +527,7 @@ test('the Special state: free text put by a Power (at once, on a success or on w
   assert.equal(spark.roll, null);
   assert.ok(get(s, 'ally').conditions.includes('Special: Inspirado · +1 a la próxima'));
   assert.match(spark.notes.join(' '), /Special: Inspirado/);
-  assert.match(getHoveredCondition(get(s, 'ally'), { x: get(s, 'ally').x + 45, y: get(s, 'ally').y }, 32).label, /Special · Inspirado/);
+  assert.match(getHoveredCondition(get(s, 'ally'), firstMarker(get(s, 'ally')), 32).label, /Special · Inspirado/);
   // With a roll (Biological Scan, Knowledge DC 10) it waits for the roll.
   const bio = table(withPower('Biological Scan'), { ...hostile('e'), x: 128 });
   assert.match(play(bio, 'caster', 'Biological Scan', { targetIds: ['e'], special: 'Escaneado' }).notes.join(' '), /preparado/);

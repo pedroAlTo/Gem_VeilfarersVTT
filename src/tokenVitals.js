@@ -38,3 +38,74 @@ export function drawTokenGauge(ctx, { x, y, width, current, max, key = 'hp', lab
   }
   ctx.restore();
 }
+
+// ── The stats on the map (v2.58.0, places of v2.59.0: tokenLayout.js) ───────────────────────
+// Bars: one row per stat, a black pixel between points so the segments read at a glance.
+// rows: [[key, { current, max }]]; y is the top of the first row (rows go down) unless `up`.
+export function drawStatBars(ctx, { y, width, scale = 1, rows = [], up = false }) {
+  if (!rows.length) return;
+  const h = 3.5 * scale, gap = 1.5 * scale, w = width, total = rows.length * h + (rows.length - 1) * gap;
+  const top0 = up ? y - total : y;
+  ctx.save();
+  ctx.fillStyle = 'rgba(4,12,23,0.88)';
+  ctx.beginPath(); ctx.roundRect(-w / 2 - 2, top0 - 2, w + 4, total + 4, 2); ctx.fill();
+  rows.forEach(([key, stat], i) => {
+    const g = gaugeState(stat.current, stat.max, key), top = top0 + i * (h + gap);
+    ctx.fillStyle = '#213246'; ctx.fillRect(-w / 2, top, w, h);
+    ctx.fillStyle = g.color; ctx.fillRect(-w / 2, top, w * g.ratio, h);
+    // One black pixel between points, so the segments read at a glance (user request).
+    const n = Math.max(1, Math.min(40, Math.round(g.limit))), px = 1 / (ctx.getTransform?.()?.a || 1);
+    ctx.fillStyle = '#000';
+    for (let k = 1; k < n; k++) ctx.fillRect(-w / 2 + (w * k) / n - px / 2, top, px, h);
+  });
+  ctx.restore();
+}
+// The v2.58.0 call: HP, Stress and Escudos under the name.
+export function drawSlimVitals(ctx, { y, width, scale = 1, hp = null, stress = null, armor = null }) {
+  drawStatBars(ctx, { y, width, scale, rows: [hp && ['hp', hp], stress && ['stress', stress], armor && ['armor', armor]].filter(Boolean) });
+}
+
+// A ring around the token's centre: one segment per point, filled from the top clockwise.
+export function drawStatRing(ctx, { r, width, key, stat }) {
+  if (!stat?.max) return;
+  const g = gaugeState(stat.current, stat.max, key), n = Math.max(1, Math.min(40, Math.round(g.limit)));
+  const step = (Math.PI * 2) / n, gap = Math.min(0.12, step * 0.22);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.lineWidth = width + 2; ctx.strokeStyle = 'rgba(4,12,23,0.7)'; ctx.stroke();
+  ctx.lineWidth = width; ctx.lineCap = 'butt';
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + i * step + gap / 2;
+    ctx.beginPath(); ctx.arc(0, 0, r, a, a + step - gap);
+    ctx.strokeStyle = i < Math.max(0, Math.min(n, g.value)) ? g.color : 'rgba(33,50,70,0.92)';
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+// Where each ring goes for a token of this radius.
+export const ringRadius = (place, radius, scale = 1) => place === 'inner1' ? Math.max(4, radius - 3.5 * scale) : place === 'outer1' ? radius + 3.5 * scale : radius + 7.5 * scale;
+
+// Small tokens beside the token (Armor, Resolve): 8 × 8 px each, full or empty, in columns of up
+// to six. Armor: a shield. Resolve: a triangle (d4) or a square (d6).
+export function drawStatPips(ctx, { side = 'right', radius, scale = 1, key, stat, offset = 0 }) {
+  if (!stat?.max) return;
+  const size = 8 * scale, gap = 2 * scale, per = 6, n = Math.max(0, Math.min(24, Math.round(stat.max)));
+  const color = key === 'armor' ? '#79cef9' : '#c4a7ff', dir = side === 'left' ? -1 : 1;
+  const columns = Math.ceil(n / per);
+  ctx.save();
+  for (let i = 0; i < n; i++) {
+    const col = Math.floor(i / per), row = i % per, rows = Math.min(per, n - col * per);
+    const x = dir * (radius + 4 * scale + offset + size / 2 + col * (size + gap));
+    const y = (row - (rows - 1) / 2) * (size + gap);
+    const full = i < stat.current;
+    ctx.beginPath();
+    if (key === 'armor') {
+      const s = size / 2;
+      ctx.moveTo(x, y - s); ctx.lineTo(x + s, y - s * 0.6); ctx.lineTo(x + s * 0.8, y + s * 0.35); ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.8, y + s * 0.35); ctx.lineTo(x - s, y - s * 0.6); ctx.closePath();
+    } else if (stat.die === 'd6') ctx.rect(x - size / 2, y - size / 2, size, size);
+    else { ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y + size / 2); ctx.lineTo(x - size / 2, y + size / 2); ctx.closePath(); }
+    ctx.fillStyle = full ? color : 'rgba(4,12,23,0.85)'; ctx.fill();
+    ctx.lineWidth = Math.max(1, scale); ctx.strokeStyle = full ? '#0b1220' : color; ctx.stroke();
+  }
+  ctx.restore();
+  return columns * (size + gap);
+}

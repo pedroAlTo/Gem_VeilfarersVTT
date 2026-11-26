@@ -311,3 +311,50 @@ body.card-aiming #tactical_canvas { cursor: crosshair; }
 .keeper-invite-link { display: flex; gap: 6px; }
 .keeper-invite-link input { flex: 1; min-width: 0; }
 .keeper-invite-code { font-size: 12px; }
+
+/* ── The hand in decks (v2.57.0, the user's idea) ─────────────────────────────────────────────
+   One pile per kind; pointing at a pile (a tap, or Enter) fans its cards out above it. A reaction
+   that can be used now waits on top of the piles, one click away. */
+.card-hand.decked { height: auto; min-height: 0; width: auto !important; gap: 6px; }
+.card-hand.decked .card-hand-label { padding-bottom: 0; }
+.hand-decks { pointer-events: auto; display: flex; align-items: flex-end; gap: 14px; margin-right: 62px; padding-bottom: 8px; }
+.hand-deck { position: relative; }
+.hand-deck-pile { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px;
+  width: 82px; height: 108px; padding-bottom: 6px; cursor: pointer; --deck: #a855f7; }
+.hand-deck[data-deck="moves"] .hand-deck-pile { --deck: #f59e0b; }
+.hand-deck[data-deck="origin"] .hand-deck-pile { --deck: #34d399; }
+.hand-deck[data-deck="class"] .hand-deck-pile { --deck: #f472b6; }
+.hand-deck-stack { position: absolute; inset: 0 12px 30px; }
+.hand-deck-stack i { position: absolute; inset: 0; border-radius: 7px; border: 2px solid #e9a93a; box-shadow: 0 4px 10px rgba(0,0,0,.55);
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 2px, transparent 2px 7px), linear-gradient(160deg, color-mix(in srgb, var(--deck) 55%, #12062a), #0d0420); }
+.hand-deck-stack i:nth-last-child(2) { transform: translate(-4px, 3px) rotate(-4deg); }
+.hand-deck-stack i:nth-last-child(3) { transform: translate(-7px, 6px) rotate(-8deg); }
+.hand-deck-stack i:last-child { box-shadow: 0 4px 10px rgba(0,0,0,.55), inset 0 0 0 1px color-mix(in srgb, var(--deck) 60%, transparent); }
+.hand-deck-pile b { position: relative; font: 700 10px/1.15 'Chakra Petch', system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #f5f3ff;
+  background: rgba(13,4,32,.92); padding: 3px 5px; border: 1px solid color-mix(in srgb, var(--deck) 70%, transparent); max-width: 100px; text-align: center; }
+.hand-deck-pile small { position: relative; font: 600 10px/1.2 ui-monospace, monospace; color: #e9d5ff; text-shadow: 0 1px 2px #000; }
+.hand-deck-pile:hover .hand-deck-stack i:last-child, .hand-deck.open .hand-deck-stack i:last-child, .hand-deck-pile:focus-visible .hand-deck-stack i:last-child {
+  border-color: #00f3ff; box-shadow: 0 0 16px rgba(0,243,255,.55); transform: translateY(-4px); }
+/* The fan of a deck: hidden until the deck opens, above its pile. */
+.card-hand-fan.hand-deck-fan { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); flex: none; height: 196px; margin: 0;
+  visibility: hidden; opacity: 0; pointer-events: none; transition: opacity .14s ease, visibility 0s linear .14s; z-index: 80; }
+.hand-deck.open .hand-deck-fan, .hand-deck:has(.vf-card:focus) .hand-deck-fan { visibility: visible; opacity: 1; pointer-events: auto; transition: opacity .14s ease; }
+.hand-deck-fan .vf-card, .hand-live-fan .vf-card { bottom: 6px; }
+/* A bridge between the pile and its fan, so the pointer can go up without closing it. */
+.hand-deck.open::after { content: ''; position: absolute; left: -12px; right: -12px; bottom: 100%; height: 24px; }
+/* Reactions usable now: out of their deck, on top, one click away. */
+.hand-live { pointer-events: auto; display: flex; align-items: center; gap: 4px; margin-right: 62px; }
+.hand-live-label { max-width: 76px; text-align: right; font: 800 10px/1.3 'Chakra Petch', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #22d3ee; text-shadow: 0 0 10px rgba(34,211,238,.6); }
+.card-hand-fan.hand-live-fan { flex: none; height: 186px; }
+.hand-live-fan .vf-card .vf-card-frame { box-shadow: 0 0 0 2px #22d3ee, 0 0 22px rgba(34,211,238,.55); }
+@media (max-width: 1024px) {
+  .hand-deck-pile { width: 70px; height: 94px; }
+  .card-hand-fan.hand-deck-fan { height: 166px; }
+}
+@media (prefers-reduced-motion: reduce) { .card-hand-fan.hand-deck-fan { transition: none; } }
+/* The back of the cards (v2.57.0, the user's art: «usa esto para el reverso de las cartas»):
+   the decks of the hand and the Vault deck show it; until the file is there, the old back. */
+.hand-deck-stack i, .card-deck-stack i {
+  background: url('/assets/cards/card-back.webp') center top / cover no-repeat,
+    repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 2px, transparent 2px 7px), linear-gradient(160deg, color-mix(in srgb, var(--deck, #a855f7) 55%, #12062a), #0d0420);
+}

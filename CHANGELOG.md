@@ -1,10 +1,138 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.55.0**.
-Paquete: `VeilFarers_VTT_v2.55.0.zip`.
+Versión actual del VTT: **v2.61.0**.
+Paquete: `VeilFarers_VTT_v2.61.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.61.0] — 2026-11-26
+
+V3 · Las cartas en cuatro grupos
+
+### La mano
+
+- La mano del jugador se organiza en cuatro mazos: «Bear Down · Moves» (Bear Down, los Resolve Moves y los Common Efforts de los Sleeping), «Poderes de dominio», «Ancestry · Community · Aumentos» (juntas) y «Clase» (los rasgos de la clase).
+- Una reacción que se puede usar ahora sigue saliendo de su mazo y queda encima, a un clic; las que no se pueden usar se quedan en el mazo de lo que son (ya no hay mazo de Reacciones).
+- Con un mazo abierto, pasar por encima del montón de al lado ya no lo cambia al instante: hay que detenerse un momento sobre él. Así se puede subir en diagonal hasta una carta sin que se abra otro mazo.
+
+### El mazo (todas las cartas)
+
+- El catálogo del mazo usa los mismos cuatro grupos: Bear Down y los Common Efforts, y los Resolve Moves de cada clase Sleeping; los Poderes de dominio; las Ancestry, las Community y los aumentos que se juegan como carta; y los rasgos de cada clase (Awakened o Sleeping).
+
+## [2.60.1] — 2026-11-26
+
+V3 · Retrato y token en una sola ventana
+
+### Retrato y token
+
+- Los controles del token están ahora en la selección de retrato: una sola ventana «Retrato y token» con los retratos arriba y, debajo, la vista previa, el marco, el nombre, la insignia y dónde va cada stat. Todo se aplica al momento; elegir un retrato ya no cierra la ventana, se cierra con «Listo».
+- El jugador la abre tocando su retrato en la barra del personaje; el Keeper, con «Elegir retrato» en la ficha del token (el botón aparte de la v2.60.0 desaparece). Guardar la ficha conserva el retrato y el marco ya aplicados.
+
+### Marcos
+
+- Marco «Carbono»: las zonas oscuras de la fibra de carbono ya no se ven transparentes; el anillo es macizo entre el hueco del retrato y el borde.
+- Corregida la vista previa del marco, que salía pequeña en una esquina.
+
+## [2.60.0] — 2026-11-26
+
+V3 · Marcos de token, «Mi token» y la mano del Keeper
+
+### Marcos
+
+- 30 marcos para diferenciar cada token (arte del usuario). El metal tapa el borde del retrato y la luz se suma sobre la imagen y el mapa (el negro no tapa nada), como en un HUD luminoso. El retrato llena el hueco del marco; el nombre, las barras, los anillos y las fichas se colocan alrededor.
+- Al elegir un marco, el token toma su color predominante, que es el de su nombre y el del chat.
+
+### «Mi token»
+
+- El jugador abre «Mi token» tocando su retrato en la barra del personaje: cambia el retrato, elige el marco (con vista previa) y decide qué muestra su token en el mapa (nombre, insignia y dónde va cada stat). El Keeper llega desde la ficha del token («Marco, nombre y barras del token…»).
+
+### La mano del Keeper
+
+- El Keeper puede quitar cualquier estado, también los de vida (Dying, Final, Last Act, Dead, Stabilized), desde Condiciones del token o desde «Retirar condición» de una carta. Si el personaje estaba a 0 HP y ya no le queda ningún estado de vida, vuelve con 1 HP.
+- El Keeper puede dar HP a un personaje en cualquier estado (con +1 en la barra, la ficha o una carta): los estados de vida se quitan y el personaje se queda con esos HP. La curación normal del juego (Poderes, objetos) sigue necesitando estabilizarlo antes.
+
+## [2.59.0] — 2026-11-25
+
+V3 · Qué muestra cada token y dónde
+
+### En el mapa (ficha del token)
+
+- Nombre (sí/no) e Insignia de clase (sí/no). Para HP, Effort/Hope, Stress, Armadura y Resolve se elige dónde: barra inferior, barra superior, círculo interior, círculo exterior 1 o círculo exterior 2 (por fuera del 1), o no mostrarlo. Armadura y Resolve también pueden ir como fichas de 8 px a la derecha o a la izquierda del token: escudos llenos o vacíos, y Resolve en triángulos (d4) o cuadrados (d6). Cada círculo y cada lado es de un solo stat: elegir uno ocupado lo quita del otro; las barras se apilan.
+- Corregido: elegir «Sin insignia» al cambiar el retrato no quitaba la bandera de clase del token. Ahora la quita (y la casilla de la ficha también).
+- Sustituye a la opción «Vida en el mapa» de Ajustes: ahora cada token tiene su propia configuración.
+
+### Lo que ve cada uno
+
+- La visión por vibración (ondas y contactos) solo la ven el personaje que la tiene y el Keeper.
+- Tecla V: cada jugador muestra u oculta los nombres de los tokens en su pantalla (se recuerda en su navegador). El Keeper sigue viendo los nombres y su V sigue siendo «Mover».
+
+### Cartas
+
+- La ventana con los detalles de una carta espera 3 segundos con el ratón encima antes de aparecer, para no tapar el mapa al recorrer un mazo.
+
+## [2.58.1] — 2026-11-25
+
+V3 · Reverso de las cartas
+
+### Cartas
+
+- Los mazos de la mano y el del Vault muestran el reverso de Veilfarers: «Chronicles of the Silence», con el planeta y la tripulación. Los mazos tienen ahora forma de carta para que se vea el logo.
+
+## [2.58.0] — 2026-11-25
+
+V3 · Tokens limpios: cada uno ve lo suyo
+
+### Lo que ve cada uno
+
+- El jugador solo ve los datos de su personaje: en el mapa no aparecen el HP ni el Stress de los aliados ni de los enemigos, y al seleccionar otro token la barra muestra su nombre, su papel y sus condiciones, sin números ni botones de ficha. El Keeper ve los de todos.
+
+### Barras y anillos
+
+- El HP, el Stress y los Escudos son ahora barras finas bajo el nombre, con un punto negro entre segmento y segmento; ya no hay placas grandes encima del token ni la fila de contadores («❤ 16/16», «🛡 3»): los números están en la barra del personaje al seleccionarlo.
+- Opción en Ajustes → Vida en el mapa: «Anillos», con un segmento por punto alrededor del token: dos anillos exteriores (HP y Stress) y uno interior (Escudos). Es de cada persona y se recuerda en su navegador.
+- En la ficha del token, «En el mapa» se reduce a tres casillas: Barra de HP, Barra de Stress y Escudos.
+- Fuera el reloj de ejemplo «HACK 2/4» que traían algunos tokens.
+
+### Estados
+
+- Los estados se ven dentro del token, en un bloque en su esquina inferior derecha, encima de la bandera de clase si la tiene. Al pasar el ratón por uno se lee su regla, como antes.
+
+## [2.57.0] — 2026-11-25
+
+V3 · La mano en mazos (idea del usuario)
+
+### Mazos
+
+- La mano del personaje son mazos por tipo: Reacciones, Poderes, Moves y Rasgos, cada uno con cuántas cartas tiene y cuántas puedes usar ahora. Al pasar el ratón por un mazo se abren sus cartas en abanico encima de él; con un clic queda abierto hasta otro clic, Esc o tocar fuera. En tableta se abre tocándolo; con el teclado, Enter abre el mazo y pone el foco en la primera carta.
+- Una reacción que puedes usar ahora (la ilumina el Keeper, Lucky Break tras tu tirada, Bear Down) sale de su mazo y queda encima con «¡Úsala ahora!»: un clic y se usa.
+- Desaparecen el abanico único y los filtros Todas, Poderes, Reacciones y Usables: los mazos ya separan las cartas y ocupan mucho menos mapa. Las cartas se juegan igual: clic, doble clic para sus opciones o arrastrar al mapa.
+- Si la mano taparía la barra del personaje (pantallas más estrechas), se coloca justo encima. Corregido: el aviso «Sin cartas» quedaba fuera de la pantalla en tableta.
+- El reverso de las cartas (mazos y Vault) usa el arte de Veilfarers en cuanto su archivo esté en la app.
+
+## [2.56.0] — 2026-11-25
+
+V3 · Accesibilidad: «¿Qué puedo hacer?», tamaño, táctil y teclado (Fase 6)
+
+### ¿Qué puedo hacer?
+
+- Nuevo botón «¿Qué puedo hacer?» en la barra del personaje (o la tecla ?): dice lo que puedes hacer ahora (tirar, atacar con cada arma lista, recargar, las cartas que puedes pagar, tomar el foco, moverte), lo que te limita (cada condición con lo que hace en la mesa, Hope a 0, Stress lleno) y cómo hacerlo.
+- Las condiciones del personaje se ven en la barra con su icono, su nombre y lo que hacen («Restringido: no puedes moverte; Desventaja en Agility y Strength…»), con un botón a Condiciones.
+
+### Tamaño y pantallas táctiles
+
+- Ajustes → Tamaño: Compacto, Normal, Grande o Muy grande. Crecen la cabecera, las herramientas, el panel lateral, la barra del personaje, las ventanas y los menús; el mapa conserva su zoom. Se recuerda en este navegador.
+- En pantallas táctiles todos los botones miden al menos 44 px; la barra rápida reparte sus valores en dos filas para que no se pisen, y el aviso «Sin cartas» va encima de la barra.
+
+### Teclado
+
+- T abre el anillo de acciones sobre el enemigo visible más cercano (otra vez, el siguiente); las flechas recorren el anillo, Enter elige y Esc lo cierra. Con 1–9, Enter, F y las flechas se juega sin ratón.
+- Foco visible en todos los controles; las ventanas mantienen el foco dentro también en desplegables y enlaces.
+
+### Más
+
+- Retratos e imágenes con texto alternativo. Con «reducir movimiento» del sistema, las animaciones se detienen.
+- Contraste revisado: todos los textos de la barra, la cabecera y el panel superan el nivel AA.
 
 ## [2.55.0] — 2026-11-25
 

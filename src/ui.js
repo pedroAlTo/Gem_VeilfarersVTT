@@ -176,11 +176,13 @@ if (typeof customElements !== 'undefined' && !customElements.get('vf-select')) {
         list.append(b);
       }
       document.body.append(list);
-      const r = this.getBoundingClientRect();
-      list.style.width = `${Math.max(180, Math.min(r.width, innerWidth - 24))}px`;
-      list.style.left = `${Math.min(r.left, innerWidth - list.offsetWidth - 12)}px`;
-      list.style.maxHeight = `${Math.min(280, innerHeight - 32)}px`;
-      list.style.top = `${r.bottom + list.offsetHeight > innerHeight ? Math.max(12, r.top - list.offsetHeight - 4) : r.bottom + 4}px`;
+      // Its own size (Ajustes → Tamaño) scales `left` and `top` too: divide by it.
+      const r = this.getBoundingClientRect(), z = parseFloat(getComputedStyle(list).zoom) || 1; // a child of body: its own zoom
+      list.style.width = `${Math.max(180, Math.min(r.width, innerWidth - 24)) / z}px`;
+      list.style.maxHeight = `${Math.min(280, innerHeight - 32) / z}px`;
+      const lw = list.getBoundingClientRect().width, lh = list.getBoundingClientRect().height;
+      list.style.left = `${Math.min(r.left, innerWidth - lw - 12) / z}px`;
+      list.style.top = `${(r.bottom + lh > innerHeight ? Math.max(12, r.top - lh - 4) : r.bottom + 4) / z}px`;
       this.trigger.setAttribute('aria-expanded', 'true');
       (list.querySelector('[aria-selected="true"]') || list.querySelector('button'))?.focus();
       list.onkeydown = (e) => {

@@ -1,3 +1,5 @@
+import { frameById } from './tokenFrames.js';
+import { validLayout } from './tokenLayout.js';
 import { isEncounterMarker } from './bestiaryProfiles.js';
 import { validRest } from './rest.js';
 import { validateDroneState } from './drones.js';
@@ -111,6 +113,8 @@ export function validateCampaign(data) {
     validateActor(t);
     if (t.blazeChoice != null) assert(typeof t.blazeChoice === 'string' && t.blazeChoice.length <= 60, 'Invalid Death Move.');
     if (t.lifeProgress !== undefined) assert(Number.isInteger(t.lifeProgress) && finite(t.lifeProgress, 0, 1), 'Invalid life progress.');
+    if (t.vitalsLayout != null) assert(validLayout(t.vitalsLayout), 'Invalid map layout.');
+    if (t.frame != null) assert(t.frame === '' || !!frameById(t.frame), 'Invalid token frame.');
     if (t.frightenedBy != null) assert(typeof t.frightenedBy === 'string' && t.frightenedBy.length <= 200, 'Invalid fear source.');
     for (const stamp of [t.roundSpotlight, t.lifeRollRound, t.ftlRound]) if (stamp != null) assert(typeof stamp === 'string' && stamp.length <= 220, 'Invalid Spotlight round.');
     assert(t.mapId === 'reserve' || t.inReserve || data.maps.some(m => m.id === t.mapId), 'Token refers to an unknown map.');
@@ -162,7 +166,7 @@ export function validateCampaign(data) {
 }
 
 // What a player may change on a token they control (the table checks every field).
-export const PLAYER_TOKEN_FIELDS = ['x', 'y', 'rotation', 'facingAngle', 'hp', 'armor', 'stress', 'hope', 'effort', 'effortTrack', 'resolve', 'conditions', 'inventory', 'hasSpotlight', 'effectClocks', 'avatarUrl', 'portraitOverride', 'color'];
+export const PLAYER_TOKEN_FIELDS = ['x', 'y', 'rotation', 'facingAngle', 'hp', 'armor', 'stress', 'hope', 'effort', 'effortTrack', 'resolve', 'conditions', 'inventory', 'hasSpotlight', 'effectClocks', 'avatarUrl', 'portraitOverride', 'color', 'vitalsLayout', 'frame'];
 export const pickPlayerFields = patch => Object.fromEntries(Object.entries(patch || {}).filter(([k]) => PLAYER_TOKEN_FIELDS.includes(k)));
 
 export function validTokenPatch(p) {
@@ -189,6 +193,8 @@ export function validTokenPatch(p) {
           'avatarUrl',
           'portraitOverride',
           'color',
+          'vitalsLayout',
+          'frame',
         ].includes(k)
     )
   )
@@ -197,6 +203,8 @@ export function validTokenPatch(p) {
     if (!(p.portraitOverride === true && isPlayerPortrait(p.avatarUrl)) && !(p.portraitOverride === false && p.avatarUrl === '')) return false;
   }
   for (const k of ['x', 'y', 'rotation', 'facingAngle']) if (k in p && !finite(p[k])) return false;
+  if ('vitalsLayout' in p && !validLayout(p.vitalsLayout)) return false;
+  if ('frame' in p && !(p.frame === '' || frameById(p.frame))) return false;
   // The token's own colour (border, name, chat, subtitles): a plain hex colour (v2.29.2).
   if ('color' in p && !(typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color))) return false;
   for (const k of ['hope', 'effort']) if (k in p && !finite(p[k], 0, 6)) return false;

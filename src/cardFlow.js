@@ -62,6 +62,9 @@ const chipsHTML = chips => chips.map(([tone, text]) => `<span class="card-chip $
 
 // ── Hover: the card, large and readable ──────────────────────────────────────────────────────
 let previewTimer = null;
+// The card's details wait 3 s under the pointer (v2.59.0, user request: «espera al menos 3 s»), so
+// passing over the cards of an open deck does not cover the map with them.
+export const PREVIEW_DELAY = 3000;
 export function showPreview(hand, card, token, faceHTML) {
   clearTimeout(previewTimer);
   previewTimer = setTimeout(() => {
@@ -83,7 +86,7 @@ export function showPreview(hand, card, token, faceHTML) {
         ${card.playable ? '<p class="card-preview-hint"><b>Clic</b> o arrastrar al mapa: usar · <b>Doble clic</b>: opciones</p>' : ''}
       </div>`);
     document.body.append(panel);
-  }, 280);
+  }, PREVIEW_DELAY);
 }
 export function hidePreview() { clearTimeout(previewTimer); document.getElementById('card_preview')?.remove(); }
 
@@ -285,3 +288,29 @@ export function trackPlay(hand, card, token, result) {
 
 // The default mode of a card with modes (the first printed).
 export const defaultMode = card => CARD_MODES[card.name]?.[0];
+
+// ── The hand in decks (v2.57.0, the user's idea, 25 nov 2026) ──────────────────────────────────
+// «Montar mazos: haces mouse over y se muestran las cartas; si una se puede usar como reacción
+// aparece como opción seleccionable directamente.» Each card goes to one deck, by what it is;
+// a reaction that can be used now leaves its deck and waits on top, one click away.
+// The decks (v2.61.0, user request: «las cartas organízalas por: Bear Down moves (Sleeper),
+// Poderes de dominio, Ancestry/Community/Augmentation (juntas) y Class»): a reaction that cannot be
+// used now stays in the deck of what it is.
+export const HAND_DECKS = [
+  ['moves', 'Bear Down · Moves'], ['powers', 'Poderes de dominio'], ['origin', 'Ancestry · Community · Aumentos'], ['class', 'Clase'],
+];
+export function deckOf(card) {
+  if (['beardown', 'move', 'effort'].includes(card.kind)) return 'moves';
+  if (['power', 'archive', 'vault'].includes(card.kind)) return 'powers';
+  if (['ancestry', 'community', 'augment'].includes(card.kind)) return 'origin';
+  return 'class';
+}
+// cards: the hand; isLive(card): usable as a reaction right now; isUsable(card): can be paid now.
+export function handDecks(cards, { isLive = () => false, isUsable = () => true } = {}) {
+  const live = cards.filter(isLive);
+  const decks = HAND_DECKS.map(([id, label]) => {
+    const list = cards.filter(c => deckOf(c) === id && !live.includes(c));
+    return { id, label, cards: list, usable: list.filter(isUsable).length };
+  }).filter(d => d.cards.length);
+  return { live, decks };
+}

@@ -5,6 +5,7 @@ import { printedChecks, printedPools } from './cardProcedures.js';
 import { currentArc } from './cardLimits.js';
 import { throwDice } from './tableDice.js';
 import { CONDITIONS, SPECIAL_MAX } from './conditions.js';
+import { LIFE_STATES } from './combatState.js';
 import { EFFECT_OPTIONS, TARGET_RULES, eligible, adjudicateCard, requestCardChecks, cardRollOptions, resolutionLog, areaRule, areaTargets, SELF_EFFECTS, POWER_DAMAGE, CARD_MODES } from './cardResolution.js';
 import { PROCEDURES } from './powerProcedures.js';
 import { PATH_TRAITS } from './statePowers.js';
@@ -89,7 +90,7 @@ export function openResolution(id) {
   const controls = editable && record.phase === 'ready' ? '<fieldset><legend>Consecuencia según la ficha</legend><div class="card-targets">' + options + '</div>' + tools +
     field('Aplicar', '<vf-select name="kind">' + Object.entries(EFFECT_OPTIONS).map(([k,label]) => opt(k,label,k===preferred)).join('') + '</vf-select>') +
     field('Cantidad (+/−)', '<input name="amount" type="number" min="-100" max="100" value="1">') +
-    field('Condición', '<vf-select name="condition">' + CONDITIONS.map(c => opt(c.name,c.name,ruleText.includes(c.name))).join('') + '</vf-select>') +
+    field('Condición', '<vf-select name="condition">' + CONDITIONS.map(c => opt(c.name,c.name,ruleText.includes(c.name))).join('') + LIFE_STATES.map(s => opt(s, s + ' (estado de vida · solo retirar)', false)).join('') + '</vf-select>') +
     field('Texto del estado Special', '<input name="special_text" maxlength="' + SPECIAL_MAX + '" placeholder="Ej.: Marcado · −1 Evasion">') +
     field('Decisión de mesa', '<input name="note" maxlength="500">') +
     '<button type="button" class="hud-btn" data-effect="apply">Aplicar consecuencia</button></fieldset>' : '';

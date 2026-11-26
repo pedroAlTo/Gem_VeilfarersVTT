@@ -241,10 +241,15 @@ function effectPatch(token, kind, value, condition, record) {
     return { conditions: normalizeConditions([...current, state]) };
   }
   if (kind === 'condition' || kind === 'clear') {
-    if (!CONDITIONS.some(c => c.name === condition) || LIFE_STATES.includes(condition)) throw new Error('Elige una condición de la lista.');
+    // The Keeper may take away any state, the life stages too (v2.60.0, user decision); they are
+    // put on with the life controls.
+    const life = LIFE_STATES.includes(condition);
+    if (!CONDITIONS.some(c => c.name === condition) && !life) throw new Error('Elige una condición de la lista.');
+    if (life && kind === 'condition') throw new Error('Los estados de vida se marcan con sus controles (Condiciones del token).');
     if (kind === 'condition' && pathImmune(token, condition)) throw new Error(token.name + ' es inmune a ' + condition + '.');
     const current = normalizeConditions(token.conditions);
-    return { conditions: kind === 'clear' ? current.filter(c => c !== condition) : normalizeConditions([...current, condition]) };
+    if (kind === 'clear') return keeperClears(token, current.filter(c => c !== condition), life);
+    return { conditions: normalizeConditions([...current, condition]) };
   }
   if (kind === 'advantage') return { pendingAdvantage: true };
   if (!Number.isInteger(value) || !value || Math.abs(value) > 100) throw new Error('Indica una cantidad entre −100 y 100 distinta de cero.');
@@ -262,8 +267,15 @@ function effectPatch(token, kind, value, condition, record) {
   }
   const track = token[kind];
   if (!['hp', 'armor', 'stress'].includes(kind) || !Number.isFinite(track?.max)) throw new Error('El objetivo carece de ese recurso.');
-  if (kind === 'hp' && value > 0 && !canReceiveHealing(token)) throw new Error('Estabiliza al personaje antes de curarlo.');
+  // Only the Keeper adjudicates: HP may be given to a character in any state (v2.60.0).
   return { [kind]: { ...track, current: Math.max(0, Math.min(track.max, track.current + value)) } };
+}
+// The Keeper takes a life stage away: a character at 0 HP with no stage left comes back with 1 HP
+// (at 0 HP it would still be Dying).
+export function keeperClears(token, conditions, life) {
+  const down = conditions.some(c => LIFE_STATES.includes(c));
+  if (life && !down && token.isPlayer !== false && token.actorType !== 'drone' && token.hp && (token.hp.current || 0) === 0) return { conditions, hp: { ...token.hp, current: 1 } };
+  return { conditions };
 }
 
 // These are adjudicated consequences of a specific play. Only the Keeper can submit them.

@@ -1,6 +1,6 @@
 import { isEncounterMarker } from './bestiaryProfiles.js';
 import { actorPortrait } from './tokenAvatars.js';
-import { actorCollection, openPortraitPicker } from './portraitPicker.js';
+import { openActorPortrait } from './portraitPicker.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
@@ -83,6 +83,9 @@ export class TokenHUD {
     const isOverwhelmed = maxStress > 0 && (token.stress?.current || 0) >= maxStress;
 
     const canEdit = store.canEditToken(token.id);
+    // A player sees only their own character's numbers (v2.58.0, user decision): of an ally or an
+    // enemy, the name, the role and the conditions; the Keeper sees everyone's.
+    const sees = isKeeper || canEdit;
 
     if (isEncounterMarker(token)) {
       this.container.innerHTML = sanitizeHTML(`<div class="token-quickbar glass-panel tok-qb-compact"><div class="tok-qb-avatar-group"><img src="${escapeHTML(actorPortrait(token))}" alt="" class="tok-qb-avatar"><span class="tok-qb-name">${escapeHTML(displayName)}</span></div>${canEdit ? '<button class="hud-btn" data-encounter>Ficha de encuentro</button>' : ''}</div>`);
@@ -91,12 +94,12 @@ export class TokenHUD {
     }
 
     // --- COMPACT MINIMIZED QUICKBAR (DEFAULT) ---
-    if (!this.isExpanded) {
+    if (!this.isExpanded || !sees) {
       this.container.innerHTML = sanitizeHTML(`
         <div class="token-quickbar glass-panel tok-qb-compact">
           <!-- Token Avatar & Name -->
           <div class="tok-qb-avatar-group">
-            <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" />
+            <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" alt="" />
             <div class="tok-qb-meta">
               <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
               <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
@@ -104,7 +107,7 @@ export class TokenHUD {
             </div>
           </div>
 
-          <div class="tok-qb-divider"></div>
+          ${sees ? `<div class="tok-qb-divider"></div>
 
           <div class="token-telemetry-grid">
             ${quickStat('hp', 'HP', token.hp?.current, token.hp?.max, canEdit, 'Restar 1 HP', 'Sumar 1 HP')}
@@ -115,17 +118,17 @@ export class TokenHUD {
               : quickStat('hope', 'HOPE', token.hope ?? 0, token.hopeMax ?? 6, canEdit, 'Gastar 1 Esperanza', 'Ganar 1 Esperanza', 'path'))
               : `<div class="dossier-eyebrow">EVASION ${token.evasion ?? '—'}<br>ATTACK ${token.attackModifier ?? '—'}</div>`}
             ${isPC && token.path === 'Sleeping' ? quickStat('resolve', 'Resolve · ' + (token.resolve?.dieType === 'd6' ? 'd6' : 'd4'), token.resolve?.current ?? 0, token.resolve?.max ?? 2, canEdit, 'Gastar 1 dado de Resolve', 'Recuperar 1 dado de Resolve') : ''}
-          </div>
+          </div>` : ''}
 
           <!-- Compact Action Controls -->
           <div class="tok-qb-actions">
             ${isKeeper && !isPC && token.actorType !== 'drone' ? `<button class="hud-btn hud-btn-xs hud-btn-primary" id="quick_attack_btn" title="Ataque normal: toca el objetivo en el mapa y vuelve a tocarlo para atacar">⚔ ATACAR</button>` : ''}
             <button class="hud-btn hud-btn-xs qb-focus-btn ${token.hasSpotlight ? 'is-on' : ''}" id="quick_spotlight_btn" aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tiene el foco · pulsa para quitarlo' : 'Tomar el foco'}">${token.hasSpotlight ? '✨ CON FOCO' : '✨ FOCO'}</button>
             <button class="hud-btn hud-btn-xs" id="open_conditions_btn">ESTADOS</button>
-            <button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
-            <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>
+            ${sees ? `<button class="hud-btn hud-btn-xs" id="open_equipment_btn" ${canEdit ? '' : 'disabled'}>EQUIPO</button>
+            <button class="hud-btn hud-btn-xs hud-btn-secondary" id="open_sheet_btn" title="Abrir Ficha Holográfica Completa">FICHA</button>` : ''}
             ${isKeeper || canEdit ? `<button class="hud-btn hud-btn-xs" id="quick_reserve_btn" title="Retirar a Reserva (Ocultar del mapa sin borrar)">📦 RESERVA</button>` : ''}
-            <button class="hud-btn hud-btn-xs hud-btn-primary" id="toggle_expand_btn" title="Expandir Panel Completo">▲ EXPANDIR</button>
+            ${sees ? '<button class="hud-btn hud-btn-xs hud-btn-primary" id="toggle_expand_btn" title="Expandir Panel Completo">▲ EXPANDIR</button>' : ''}
           </div>
         </div>
       `);
@@ -138,7 +141,7 @@ export class TokenHUD {
       <div class="token-quickbar glass-panel tok-qb-expanded">
         <!-- Token Header / Avatar -->
         <div class="tok-qb-avatar-group">
-          <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" />
+          <img src="${escapeHTML(actorPortrait(token))}" class="tok-qb-avatar" alt="" />
           <div class="tok-qb-meta">
             <span class="tok-qb-name" style="${isMasked ? 'color: #f43f5e; font-weight: bold;' : ''}">${escapeHTML(displayName)}</span>
             <span class="tok-qb-role">${escapeHTML(displayRole)}</span>
@@ -623,7 +626,7 @@ export class TokenHUD {
             <!-- Left Column: Portrait & Identity -->
             <div class="sheet-col-left">
               <div class="sheet-avatar-frame">
-                <img src="${escapeHTML(actorPortrait(token))}" id="sheet_avatar_preview" class="sheet-avatar-img" />
+                <img src="${escapeHTML(actorPortrait(token))}" id="sheet_avatar_preview" class="sheet-avatar-img" alt="Retrato de ${escapeHTML(token.name || '')}" />
               </div>
 
               <div class="form-group" style="margin-top: 10px;">
@@ -904,16 +907,9 @@ export class TokenHUD {
                 </div>
               </div>
 
-              <!-- MAP OVERLAYS & MODULAR INDICATOR SELECTION -->
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; border-bottom: 1px solid rgba(0, 243, 255, 0.3); padding-bottom: 4px;">
-                <h4 class="sheet-section-title" style="margin: 0; color: #00f3ff; border: none;">
-                  📊 INDICADORES EN TOKEN // BARRAS, CONTADORES Y RELOJES
-                </h4>
-                <button type="button" class="hud-btn hud-btn-xs hud-btn-primary" id="sheet_add_overlay_btn">+ AÑADIR INDICADOR</button>
-              </div>
-              <div class="overlay-indicators-list" id="sheet_overlays_list">
-                <!-- Rendered dynamically -->
-              </div>
+              <!-- On the map (v2.60.1): the frame, name, insignia and stats are chosen with the portrait. -->
+              <h4 class="sheet-section-title" style="margin-top: 18px; color: #00f3ff;">📊 EN EL MAPA</h4>
+              <p class="dossier-muted" style="margin: 6px 0 0;">El marco, el nombre, la insignia y las barras se eligen junto al retrato («Elegir retrato»). El marco da su color al token (nombre y chat).</p>
             </div>
           </div>
 
@@ -977,91 +973,17 @@ export class TokenHUD {
     if (token.displayOverlays && Array.isArray(token.displayOverlays) && token.displayOverlays.length > 0) {
       currentOverlays = JSON.parse(JSON.stringify(token.displayOverlays));
     } else {
+      // HP and Stress (v2.58.0): the map draws them as two slim bars; no sample clock.
       currentOverlays = [
         { id: 'ov_hp_bar', statKey: 'hp', type: 'bar', color: '#10b981', label: 'HP' },
-        { id: 'ov_stress_bar', statKey: 'stress', type: 'bar', color: '#d946ef', label: 'ESTRÉS' },
-        { id: 'ov_hp_cnt', statKey: 'hp', type: 'linear', color: '#34d399', label: '❤️' },
-        { id: 'ov_armor_cnt', statKey: 'armor', type: 'linear', color: '#38bdf8', label: '🛡️' },
-        { id: 'ov_clock', statKey: 'clock', type: 'circular', color: '#00f3ff', label: 'HACK', segments: 4, current: 2 }
+        { id: 'ov_stress_bar', statKey: 'stress', type: 'bar', color: '#d946ef', label: 'ESTRÉS' }
       ];
     }
 
-    const overlaysListEl = modal.querySelector('#sheet_overlays_list');
-    const renderOverlayCards = () => {
-      overlaysListEl.innerHTML = sanitizeHTML('');
-      currentOverlays.forEach((ov, index) => {
-        const card = document.createElement('div');
-        card.className = 'overlay-indicator-card';
-        card.innerHTML = sanitizeHTML(`
-          <div style="flex: 1.5; min-width: 140px;">
-            <label style="font-size: 9px; color: var(--text-dim); display: block; margin-bottom: 2px;">Elemento de Ficha</label>
-            <vf-select class="overlay-stat hud-select hud-select-xs">
-              ${AVAILABLE_STATS.map(st => `
-                <option value="${st.id}" ${ov.statKey === st.id ? 'selected' : ''}>${st.name}</option>
-              `).join('')}
-            </vf-select>
-          </div>
-          <div style="flex: 1.2; min-width: 130px;">
-            <label style="font-size: 9px; color: var(--text-dim); display: block; margin-bottom: 2px;">Tipo Visual</label>
-            <vf-select class="overlay-type hud-select hud-select-xs">
-              <option value="bar" ${ov.type === 'bar' ? 'selected' : ''}>█ Barra Superior</option>
-              <option value="linear" ${ov.type === 'linear' ? 'selected' : ''}>🏷️ Contador Linear</option>
-              <option value="circular" ${ov.type === 'circular' ? 'selected' : ''}>⏱️ Contador Circular / Reloj</option>
-            </vf-select>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: center; width: 36px;">
-            <label style="font-size: 9px; color: var(--text-dim); margin-bottom: 2px;">Color</label>
-            <button type="button" class="overlay-color-btn" style="background: ${ov.color || '#00f3ff'};" title="Elegir Color"></button>
-          </div>
-          <div style="flex: 1; min-width: 80px;">
-            <label style="font-size: 9px; color: var(--text-dim); display: block; margin-bottom: 2px;">Etiqueta</label>
-            <input type="text" class="overlay-label hud-input hud-input-xs" value="${ov.label || ''}" placeholder="ej. HP" />
-          </div>
-          <div style="display: flex; align-items: flex-end;">
-            <button type="button" class="hud-btn hud-btn-xs hud-btn-danger overlay-del" title="Eliminar Indicador" style="margin-top: 14px;">✕</button>
-          </div>
-        `);
-
-        const statSel = card.querySelector('.overlay-stat');
-        const typeSel = card.querySelector('.overlay-type');
-        const colorBtn = card.querySelector('.overlay-color-btn');
-        const labelInp = card.querySelector('.overlay-label');
-        const delBtn = card.querySelector('.overlay-del');
-
-        statSel.onchange = (e) => { ov.statKey = e.target.value; };
-        typeSel.onchange = (e) => { ov.type = e.target.value; };
-        labelInp.oninput = (e) => { ov.label = e.target.value; };
-
-        colorBtn.onclick = (e) => {
-          e.stopPropagation();
-          openColorPickerPopover(colorBtn, ov.color || '#00f3ff', (newCol) => {
-            ov.color = newCol;
-            colorBtn.style.background = newCol;
-          });
-        };
-
-        delBtn.onclick = () => {
-          currentOverlays.splice(index, 1);
-          renderOverlayCards();
-        };
-
-        overlaysListEl.appendChild(card);
-      });
-    };
-
-    renderOverlayCards();
-
-    // Add Overlay Button
-    modal.querySelector('#sheet_add_overlay_btn').onclick = () => {
-      currentOverlays.push({
-        id: 'ov_' + Date.now(),
-        statKey: 'hp',
-        type: 'bar',
-        color: '#00f3ff',
-        label: 'STAT'
-      });
-      renderOverlayCards();
-    };
+    // Where each stat goes (v2.59.0): the token's layout; choosing a ring or a side for one stat
+    // frees it from another (placeStat). A clock put on the token by hand is kept as it was.
+    const sampleClock = o => o?.type === 'circular' && o.statKey === 'clock' && /^hack$/i.test(o.label || '') && (o.id === 'ov_clock' || o.current === 2);
+    currentOverlays = currentOverlays.filter(o => !sampleClock(o));
 
     // Toggle sleeping section when path select changes
     const pathSelect = modal.querySelector('#sheet_path');
@@ -1070,15 +992,13 @@ export class TokenHUD {
       sleepingSection.style.display = pathSelect.value === 'Sleeping' ? 'block' : 'none';
     };
 
-    let chosenIllustration = null;
     const preview = modal.querySelector('#sheet_avatar_preview');
-    modal.querySelector('#sheet_portrait_picker').onclick = () => openPortraitPicker({
-      current: preview.getAttribute('src'), collection: actorCollection(token), allowCustom: true, cloud: true,
-      onChoose(url) {
-        chosenIllustration = url;
-        preview.src = actorPortrait({ ...token, avatarUrl: url, portraitOverride: Boolean(url) });
-      },
-    });
+    // The portrait and the token's controls (v2.60.1): applied at once; this sheet follows them.
+    modal.querySelector('#sheet_portrait_picker').onclick = () => openActorPortrait(token.id, url => { preview.src = url; }, { onChange: patch => {
+      if (!patch.color) return;
+      const val = modal.querySelector('#sheet_token_color_val'), btn = modal.querySelector('#sheet_token_color_btn');
+      if (val) val.value = patch.color; if (btn) btn.style.background = patch.color;
+    } });
 
     // Reserve token
     const sheetReserveBtn = modal.querySelector('#sheet_reserve_btn');
@@ -1115,18 +1035,12 @@ export class TokenHUD {
         subtraits[st.id] = parseInt(modal.querySelector(`#sheet_subtrait_${st.id}`).value, 10) || 0;
       });
 
-      // Synchronize latest values from overlay cards
-      const cardEls = modal.querySelectorAll('.overlay-indicator-card');
-      cardEls.forEach((card, idx) => {
-        if (currentOverlays[idx]) {
-          currentOverlays[idx].statKey = card.querySelector('.overlay-stat').value;
-          currentOverlays[idx].type = card.querySelector('.overlay-type').value;
-          currentOverlays[idx].label = card.querySelector('.overlay-label').value.trim() || currentOverlays[idx].statKey.toUpperCase();
-        }
-      });
+      // Only a clock put on the token by hand stays in the old overlays; the rest is the layout.
+      currentOverlays = currentOverlays.filter(o => o.type === 'circular');
 
       const actorTypeVal = modal.querySelector('#sheet_actor_type')?.value || 'player';
-      const avatarUrl = chosenIllustration ?? token.avatarUrl;
+      // The portrait was applied when it was chosen; keep what the token has now.
+      const live = store.state.tokens.find(t => t.id === token.id) || token;
       const updated = {
         name: modal.querySelector('#sheet_name').value.trim() || token.name,
         roleTag: modal.querySelector('#sheet_role').value.trim(),
@@ -1134,8 +1048,8 @@ export class TokenHUD {
         isPlayer: actorTypeVal === 'player',
         hideName: modal.querySelector('#sheet_hide_name')?.checked ?? false,
         species: modal.querySelector('#sheet_species')?.value.trim() || token.species,
-        avatarUrl,
-        portraitOverride: chosenIllustration === null ? token.portraitOverride === true : Boolean(chosenIllustration),
+        avatarUrl: live.avatarUrl,
+        portraitOverride: live.portraitOverride === true,
         path: pathSelect.value,
         size: parseInt(modal.querySelector('#sheet_size').value, 10),
         hp: {
@@ -1181,13 +1095,9 @@ export class TokenHUD {
           intensity: parseFloat(modal.querySelector('#sheet_spotlight_intensity')?.value) || 0.85
         },
         hidden: modal.querySelector('#sheet_is_hidden').checked,
+        // What the token shows and where is saved with the portrait (v2.60.1); a hand-made clock stays here.
         displayOverlays: currentOverlays,
         displayConfig: {
-          showHpBar: currentOverlays.some(o => o.statKey === 'hp' && o.type === 'bar'),
-          showStressBar: currentOverlays.some(o => o.statKey === 'stress' && o.type === 'bar'),
-          showHpCounter: currentOverlays.some(o => o.statKey === 'hp' && o.type === 'linear'),
-          showStressCounter: currentOverlays.some(o => o.statKey === 'stress' && o.type === 'linear'),
-          showArmorCounter: currentOverlays.some(o => o.statKey === 'armor' && o.type === 'linear'),
           showClock: currentOverlays.some(o => o.type === 'circular'),
           clockLabel: currentOverlays.find(o => o.type === 'circular')?.label || 'CLOCK',
           clockSegments: 4,
@@ -1195,7 +1105,7 @@ export class TokenHUD {
         }
       };
 
-      try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
+      try { validateActor({ ...live, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
       // A connected player sends only what a player may change (its resources and colour); the
       // whole sheet would be refused by the table and nothing, the colour included, would apply.
       if (!store.updateToken(token.id, store.sessionRole === 'player' ? pickPlayerFields(updated) : updated)) return;

@@ -46,7 +46,7 @@ export class RosterManager {
             const isSelected = tok.id === state.selectedTokenId;
             return `
               <div class="roster-token-card glass-panel ${isSelected ? 'selected' : ''}" data-id="${tok.id}">
-                <img src="${escapeHTML(actorPortrait(tok))}" class="roster-token-avatar" />
+                <img src="${escapeHTML(actorPortrait(tok))}" class="roster-token-avatar" alt="" />
                 <div class="roster-token-info">
                   <div class="roster-name-row">
                     <span class="roster-name">${escapeHTML(tok.name)}</span>
@@ -88,7 +88,7 @@ export class RosterManager {
             ${reserveTokens.map(tok => {
               return `
                 <div class="roster-token-card glass-panel reserve-token-card" data-id="${tok.id}" style="border-color: rgba(245, 158, 11, 0.35); background: rgba(15, 23, 42, 0.7); cursor: pointer;" title="Haz clic para ver o editar su ficha">
-                  <img src="${escapeHTML(actorPortrait(tok))}" class="roster-token-avatar" style="border: 2px solid #f59e0b;" />
+                  <img src="${escapeHTML(actorPortrait(tok))}" class="roster-token-avatar" style="border: 2px solid #f59e0b;" alt="" />
                   <div class="roster-token-info">
                     <div class="roster-name-row">
                       <span class="roster-name" style="color: #fbbf24;">${escapeHTML(tok.name)}</span>

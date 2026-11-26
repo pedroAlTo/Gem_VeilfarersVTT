@@ -1,3 +1,5 @@
+import { tokenLayout } from './tokenLayout.js';
+import { tokenControlsHTML, bindTokenControls } from './tokenLook.js';
 import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e } from './ui.js';
 import { store } from './state.js';
@@ -36,8 +38,10 @@ async function readFile(file, cloud) {
   finally { URL.revokeObjectURL(url); }
 }
 
+// extraHTML / onMount (v2.60.1): a section after the portraits (the token's controls); with it the
+// window stays open after a choice and closes with «Listo».
 export function openPortraitPicker({ title = 'Elegir retrato', current = '', collection = 'human', allowCustom = false,
-  cloud = false, sceneTokens = [], onChoose, resetLabel = 'Usar retrato automático' }) {
+  cloud = false, sceneTokens = [], onChoose, resetLabel = 'Usar retrato automático', extraHTML = '', onMount = null }) {
   const preset = collection === 'scene' ? null : presetLocation(current);
   collection = preset?.collection || collection;
   const collections = [...(sceneTokens.length ? [['scene', 'Tokens de la escena']] : []),
@@ -48,7 +52,8 @@ export function openPortraitPicker({ title = 'Elegir retrato', current = '', col
     <div class="portrait-grid" aria-label="Retratos disponibles"></div>
     ${allowCustom ? `<div class="portrait-custom"><button type="button" class="hud-btn" data-upload>Subir imagen</button><input type="file" accept="image/*" data-file hidden>
       <label class="dossier-field"><span>URL de imagen</span><input type="url" class="hud-input" data-url placeholder="https://…"></label><button type="button" class="hud-btn" data-use-url>Usar URL</button></div>` : ''}
-    <p class="dossier-error" role="alert"></p><footer class="portrait-footer"><button type="button" class="hud-btn" data-auto>${e(resetLabel)}</button></footer>`, 'portrait-picker');
+    <p class="dossier-error" role="alert"></p><footer class="portrait-footer"><button type="button" class="hud-btn" data-auto>${e(resetLabel)}</button></footer>
+    ${extraHTML}${extraHTML ? '<div class="look-actions"><button type="button" class="hud-btn hud-btn-primary" data-done>Listo</button></div>' : ''}`, 'portrait-picker');
   const group = modal.querySelector('[data-collection]'), cls = modal.querySelector('[data-class]');
   group.value = collection;
   cls.value = preset?.cls || '';
@@ -63,9 +68,13 @@ export function openPortraitPicker({ title = 'Elegir retrato', current = '', col
       let url = await getSource();
       if (allowCustom && typeof url === 'string' && url.startsWith('data:image/') && !isPortraitSource(url)) url = await resizePortrait(url);
       if (url !== '' && !(allowCustom ? isPortraitSource(url) : isPresetPortrait(url))) throw new Error('Selecciona una imagen válida.');
-      if (await onChoose(url) === false) throw new Error('No se ha podido cambiar el retrato. Comprueba la conexión y la asignación del token.');
+      // The class filter as it is when choosing (v2.59.0): «Sin insignia» means no insignia on the token.
+      const insignia = modal.querySelector('[data-class-filter]').hidden ? null : cls.value !== '';
+      if (await onChoose(url, { insignia }) === false) throw new Error('No se ha podido cambiar el retrato. Comprueba la conexión y la asignación del token.');
       delete modal.dataset.busy;
-      close.click();
+      // With the token's controls the window stays open: the choice shows in the grid and the preview.
+      if (extraHTML) { current = url; render(); modal.dispatchEvent(new CustomEvent('portrait-chosen')); }
+      else close.click();
     } catch (err) { error.textContent = err.message; }
     finally { delete modal.dataset.busy; modal.removeAttribute('aria-busy'); }
   }
@@ -97,6 +106,8 @@ export function openPortraitPicker({ title = 'Elegir retrato', current = '', col
     url.onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); void useUrl(); } };
   }
   render();
+  modal.querySelector('[data-done]')?.addEventListener('click', () => close.click());
+  onMount?.(modal);
   return modal;
 }
 
@@ -105,17 +116,27 @@ export function actorCollection(token) {
   return token.isPlayer === false || token.actorType === 'adversary' ? 'bestiary' : 'human';
 }
 
-export function openActorPortrait(tokenId, onApplied) {
+// The token's portrait and, below it, its controls (frame, name, insignia, stats on the map).
+export function openActorPortrait(tokenId, onApplied, { onChange } = {}) {
   const token = store.state.tokens.find(t => t.id === tokenId);
   if (!token || !store.canEditToken(tokenId)) return;
   const keeper = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
   const campaign = store.state.campaignId;
-  return openPortraitPicker({ current: actorPortrait(token), collection: actorCollection(token), allowCustom: true, cloud: keeper(),
-    onChoose(url) {
+  let controls = null;
+  return openPortraitPicker({ title: `Retrato y token · ${token.name}`, current: actorPortrait(token), collection: actorCollection(token), allowCustom: true, cloud: keeper(),
+    extraHTML: tokenControlsHTML(),
+    onMount(modal) {
+      controls = bindTokenControls(modal, tokenId, { onChange });
+      modal.addEventListener('portrait-chosen', () => controls?.paint());
+    },
+    onChoose(url, { insignia = null } = {}) {
       if (campaign !== store.state.campaignId || !store.canEditToken(tokenId) || (url && !keeper() && !isPlayerPortrait(url))) return false;
       const patch = { avatarUrl: url, portraitOverride: Boolean(url) };
+      // «Insignia de clase: Sin insignia» (v2.59.0, user report: it kept showing): the token hides it.
+      const live = store.state.tokens.find(t => t.id === tokenId);
+      if (typeof insignia === 'boolean' && live && tokenLayout(live).insignia !== insignia) patch.vitalsLayout = { ...tokenLayout(live), insignia };
       if (!store.updateToken(tokenId, patch)) return false;
-      onApplied?.(actorPortrait({ ...token, ...patch }));
+      onApplied?.(actorPortrait({ ...(live || token), ...patch }));
       return true;
     },
   });

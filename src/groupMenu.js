@@ -3,6 +3,7 @@
 // else goes into «Más…» inside that menu. The original buttons are never moved: they are hidden
 // and the menu presses them, so every handler the app already has keeps working, wherever it
 // looks for them. It applies only while `when()` is true (for now, the player's view).
+import { zoomOf } from './uiScale.js';
 import { sanitizeHTML, escapeHTML as e } from './ui.js';
 
 export const VISIBLE = 3, SECOND = 5;
@@ -104,11 +105,12 @@ export class GroupMenu {
       if (moreBtn) moreBtn.onclick = () => { moreOpen = !moreOpen; paint(); place(); box.querySelector('.gm-level2 .gm-item')?.focus(); };
     };
     const place = () => {
-      const r = this.trigger.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
+      // Measured as drawn (Ajustes → Tamaño may zoom the menu).
+      const r = this.trigger.getBoundingClientRect(), drawn = box.getBoundingClientRect(), w = drawn.width, h = drawn.height;
       let left = this.placement === 'right' ? r.right + 6 : r.right - w, top = this.placement === 'right' ? r.top : r.bottom + 6;
       if (this.placement === 'above') top = r.top - h - 6;
       left = Math.max(8, Math.min(left, innerWidth - w - 8)); top = Math.max(8, Math.min(top, innerHeight - h - 8));
-      box.style.left = `${Math.round(left)}px`; box.style.top = `${Math.round(top)}px`;
+      const z = zoomOf(box); box.style.left = `${Math.round(left / z)}px`; box.style.top = `${Math.round(top / z)}px`;
     };
     paint(); place();
     this.trigger.classList.add('active'); this.trigger.setAttribute('aria-expanded', 'true');

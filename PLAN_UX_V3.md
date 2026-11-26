@@ -72,7 +72,9 @@ Orden: 0 → 1 → 4 → 2 → 3 → 5, con la 6 en paralelo.
 - **Fase 5, primera parte** hecha en v2.53.0: Prone, Restrained, Weakened, Dazed, Incapacitated, Hidden y Silenced cuentan solas en las tiradas, los ataques, el movimiento y el daño.
 - **Fase 5, segunda parte** hecha en v2.54.0: On Fire (1d4 Energy Fire contra los umbrales) y Poisoned (1 Stress) se aplican solos al pulsar «Nueva ronda». **Fase 5 completa.**
 - **Fase 5, cierre** en v2.55.0: Frightened con su fuente (Desventaja contra ella y no acercarse).
-- **Siguiente:** Fase 6 (accesibilidad).
+- **Fase 6** hecha en v2.56.0: «¿Qué puedo hacer?», condiciones con icono y texto en la barra, tamaño de la interfaz en Ajustes, botones de 44 px en pantallas táctiles, teclado completo (T para el anillo de acciones), foco visible, textos alternativos, movimiento reducido y contraste AA comprobado. **Plan de UX V3 completo.**
+- **Después del plan** (v2.57.0, idea del usuario): la mano en mazos con las reacciones vivas a un clic (decisión 23 del HANDOVER). Desde v2.61.0 los mazos son los grupos que pidió el usuario: Bear Down · Moves, Poderes de dominio, Ancestry · Community · Aumentos y Clase (también en el catálogo del mazo).
+- **Pendiente del usuario:** activar el acceso anónimo en Firebase, la prueba online con dos navegadores (PRUEBAS 128-132) y revisar los Poderes de reacción de nivel 1–2.
 
 ## Decisiones
 

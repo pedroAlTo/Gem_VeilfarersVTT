@@ -14,6 +14,7 @@ import './connect.css';
 import './playerActionBar.css';
 import './diceDock.css';
 import './groupMenu.css';
+import './a11y.css';
 import { startTranslation } from './i18n.js';
 import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';
@@ -746,6 +747,11 @@ function setupKeyboardShortcuts() {
     }
 
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // V for a player: the tokens' names on or off on this screen (v2.59.0); for the Keeper it stays «Mover».
+    if (key === 'v' && store.getState().userRole !== 'keeper') {
+      import('./tokenLayout.js').then(({ toggleNames }) => notify(toggleNames() ? 'Nombres de los tokens ocultos (V para verlos).' : 'Nombres de los tokens visibles.'));
+      return;
+    }
     if (key === 'b') store.update({ activeTool: 'draw' });
     if (key === 'd') store.update({ activeTool: 'erase_draw' });
     if (key === 'm' || key === 'v') document.getElementById('tool_select')?.click();

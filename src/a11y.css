@@ -1,0 +1,46 @@
+/* Accessibility (v2.56.0, Plan de UX V3, fase 6). */
+
+/* Interface size (Ajustes → Tamaño): panels, bars, menus and windows; the map keeps its own zoom. */
+:root { --ui-zoom: 1; }
+.header-hud, #main_left_toolbar, #main_right_sidebar, #token_quickbar_root, .dossier-modal,
+.settings-pop, #toast_stack, .dice-dock-panel, .gm-popover, .orbital-listbox, .vf-roll-banner { zoom: var(--ui-zoom); }
+
+/* A visible focus everywhere the keyboard lands. */
+:where(button, a[href], input, select, textarea, summary, [tabindex="0"], .orbital-select-trigger):focus-visible {
+  outline: 2px solid #92eaff; outline-offset: 2px;
+}
+
+/* Touch screens: every control is at least 44 px (WCAG 2.5.5). Dense steppers keep their look and
+   get the size through padding. */
+@media (pointer: coarse) {
+  :is(.header-hud, #main_left_toolbar, #main_right_sidebar, #token_quickbar_root, .dossier-modal, .settings-pop,
+    .dice-dock-panel, .gm-popover, .orbital-listbox, .action-ring, #fear_meter_root, .card-hand, .table-action-panel, #clocks_layer_overlay)
+    :is(button, [role="button"], summary, .orbital-select-trigger, a[href]) { min-height: 44px !important; min-width: 44px !important; }
+  .quick-stat-stepper .hud-btn, #fear_meter_root button { height: 44px !important; font-size: 16px; }
+  .tok-qb-compact .tok-qb-actions button, .tok-qb-actions .gm-trigger { height: 44px !important; padding: 0 10px !important; }
+  #dice_dock_btn, .dice-dock-btn { width: 48px; height: 48px; }
+  /* Room for the bigger buttons: the stats wrap instead of overlapping, the «⋯» takes its own line. */
+  .token-telemetry-grid { flex-wrap: wrap; }
+  .token-telemetry-grid .stat-telemetry-col { min-width: 96px; }
+  .quick-stat-stepper { gap: 4px; }
+  .pab-more { position: static; align-self: flex-end; display: grid; place-items: center; }
+  .condition-choice, .settings-item, .gm-item { min-height: 48px; }
+  input[type="checkbox"], input[type="radio"] { width: 24px; height: 24px; }
+  .pab-key { display: none; }
+}
+
+/* Less motion when the system asks for it. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+
+/* The character's conditions with icon and words, and «¿Qué puedo hacer?» (player bar). */
+.pab-status { display: flex; flex-direction: column; gap: 6px; }
+.pab-conditions { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pab-condition { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border: 1px solid rgba(223, 186, 118, .45); background: rgba(57, 47, 34, .55); color: #ffebbd; }
+.pab-condition svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; color: #f3d9a8; }
+.pab-condition b { display: block; font-size: 12px; letter-spacing: .04em; }
+.pab-condition small { display: block; font-size: 11px; line-height: 1.35; color: #e9dcc0; }
+.pab-status-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.what-now-list { margin: 4px 0 12px; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; line-height: 1.5; color: #d8e4ee; }

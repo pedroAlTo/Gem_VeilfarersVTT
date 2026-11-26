@@ -38,14 +38,32 @@ class Journey {
   constructor(page, name, budget, meta = budget) { Object.assign(this, { page, name, budget, meta, clicks: 0 }); }
   async click(selector) { await this.page.click(selector); this.clicks++; await this.page.waitForTimeout(350); }
   async clickCard(name) {
+    // The hand is in decks (v2.57.0): pointing at the card's deck opens it (pointing is not a click).
+    const pile = await this.page.evaluate(n => {
+      const card = [...document.querySelectorAll('#card_hand_root .vf-card')].find(c => c.getAttribute('aria-label')?.startsWith(n + ' ·'));
+      const r = card?.closest('.hand-deck')?.querySelector('[data-deck-toggle]')?.getBoundingClientRect();
+      return r && { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }, name);
+    if (pile) { await this.page.mouse.move(pile.x, pile.y, { steps: 3 }); await this.page.waitForTimeout(250); }
     const box = await this.page.evaluate(n => {
       const card = [...document.querySelectorAll('#card_hand_root .vf-card')].find(c => c.getAttribute('aria-label')?.startsWith(n + ' ·'));
       const r = card?.getBoundingClientRect();
-      return r && { x: r.x + 14, y: r.y + 30 };
+      return r && { x: r.x + 14, y: r.y + 30, w: r.width };
     }, name);
     if (!box) throw new Error(`No está la carta ${name} en la mano.`);
-    await this.page.mouse.move(5, 5);
-    await this.page.mouse.click(box.x, box.y); this.clicks++;
+    let point = { x: box.x, y: box.y };
+    if (!pile) await this.page.mouse.move(5, 5);
+    else {
+      // The card under the pointer rises over its neighbours: point where this card is seen, as a
+      // person would (moving the pointer is not a click).
+      for (const dx of [0, box.w * 0.3, box.w * 0.55, box.w * 0.8]) {
+        point = { x: box.x + dx, y: box.y };
+        await this.page.mouse.move(point.x, point.y, { steps: 3 }); await this.page.waitForTimeout(120);
+        const seen = await this.page.evaluate(({ n, x, y }) => document.elementFromPoint(x, y)?.closest('.vf-card')?.getAttribute('aria-label')?.startsWith(n + ' ·'), { n: name, ...point });
+        if (seen) break;
+      }
+    }
+    await this.page.mouse.click(point.x, point.y); this.clicks++;
     await this.page.waitForTimeout(450); // past the double-click window
   }
   async clickToken(id) {
@@ -141,6 +159,18 @@ const JOURNEYS = [
     await j.click('[data-pab-pregen="spark"]');
     await j.until(() => { const s = window.__s, t = s.state.tokens.find(x => /Spark/.test(x.name)); return !!t && s.state.claimedTokenId === t.id; }, null, 'Spark en la mesa y asignada');
   }, true, async page => page.evaluate(() => window.__s.update({ claimedTokenId: null, selectedTokenId: null }))],
+  // The hand in decks (v2.57.0): a reaction usable now leaves its deck and waits on top.
+  ['Reacción desde la mano (fuera del mazo)', 1, 1, async j => {
+    await j.click('.hand-live .vf-card');
+    await j.until(() => window.__answered === true, null, 'la respuesta al Keeper');
+  }, true, async (page, ids) => page.evaluate(async id => {
+    const s = window.__s, h = s.state.tokens.find(t => t.id === id);
+    s.update({ userRole: 'keeper' }); s.updateToken(id, { level: 3, hope: 4, sheetFields: { ...(h.sheetFields || {}), a_pwr_5_n: 'Tactical Overwatch' } }); s.update({ userRole: 'player' });
+    window.__answered = undefined;
+    const { sendOffer } = await import('/src/reactionOffers.js');
+    sendOffer({ name: 'Tactical Overwatch', reactors: [{ id, name: h.name }], text: 'Prueba', cost: '1 Hope' }, ({ use }) => { window.__answered = use; });
+    await new Promise(r => setTimeout(r, 600));
+  }, ids.harker)],
   ['Reacción iluminada', 1, 1, async j => {
     await j.click('.reaction-toast [data-use]');
     await j.until(() => window.__answered === true, null, 'la respuesta al Keeper');

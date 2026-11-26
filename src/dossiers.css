@@ -304,3 +304,32 @@
 .condition-fear-source { margin: 10px 0 4px; padding: 8px 10px; border: 1px solid rgba(250, 204, 21, 0.35); border-radius: 8px; }
 .condition-fear-source .dossier-field { display: grid; gap: 4px; max-width: 420px; }
 .condition-fear-source p { margin: 6px 0 0; }
+/* The token's sheet · «En el mapa» (v2.59.0): name, insignia and where each stat goes. */
+.sheet-map-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 14px; align-items: end; margin-top: 6px; }
+.sheet-layout-stat { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-dim, #9fb3c8); }
+.sheet-layout-stat select { width: 100%; }
+/* The token's controls inside the portrait selection (v2.60.1): the portrait in its frame, the 30
+   frames and what the map shows, below the portraits; both grids shorter so the window stays short. */
+.portrait-picker:has(.token-look) .dossier-modal { width: min(820px, 95vw); }
+.portrait-picker:has(.token-look) .portrait-grid { max-height: min(26vh, 200px); }
+.token-look { margin-top: 12px; padding-top: 10px; border-top: 1px solid #2b4056; display: flex; flex-direction: column; gap: 6px; }
+.token-look .look-frames { max-height: min(28vh, 220px); }
+.look-top { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.look-preview { position: relative; width: 132px; height: 132px; flex-shrink: 0; display: grid; place-items: center; }
+.look-portrait { width: var(--hole, 100%); height: var(--hole, 100%); border-radius: 50%; object-fit: cover; }
+.look-preview-frame, .look-preview-frame .look-frame-art { position: absolute; inset: 0; }
+.look-side { display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
+.look-color { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.look-color i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #fff8; display: inline-block; }
+.look-frames { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; max-height: 300px; overflow: auto; padding: 4px; }
+.look-frame { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border: 1px solid transparent; border-radius: 8px; background: rgba(13, 4, 32, 0.6); }
+.look-frame span:last-child { font-size: 10px; line-height: 1.2; text-align: center; color: #cbd5e1; }
+.look-frame:hover, .look-frame:focus-visible { border-color: color-mix(in srgb, var(--frame-color, #00f3ff) 70%, transparent); }
+.look-frame[aria-checked="true"] { border-color: var(--frame-color, #00f3ff); box-shadow: 0 0 0 1px var(--frame-color, #00f3ff), 0 0 12px color-mix(in srgb, var(--frame-color, #00f3ff) 50%, transparent); }
+.look-frame-art { position: relative; width: 64px; height: 64px; display: block; }
+.look-frame .look-frame-art img, .look-preview-frame img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.look-preview-frame .look-frame-art { width: 100%; height: 100%; }
+/* The light is added to what is under it (black adds nothing), as on the map. */
+.look-light { mix-blend-mode: screen; }
+.look-frame-none { display: grid; place-items: center; font-size: 26px; color: #64748b; border: 2px dashed #475569; border-radius: 50%; box-sizing: border-box; }
+.look-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
