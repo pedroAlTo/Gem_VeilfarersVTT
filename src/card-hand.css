@@ -321,17 +321,17 @@ body.card-aiming #tactical_canvas { cursor: crosshair; }
 .hand-deck { position: relative; }
 .hand-deck-pile { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px;
   width: 82px; height: 108px; padding-bottom: 6px; cursor: pointer; --deck: #a855f7; }
-.hand-deck[data-deck="reactions"] .hand-deck-pile { --deck: #22d3ee; }
 .hand-deck[data-deck="moves"] .hand-deck-pile { --deck: #f59e0b; }
-.hand-deck[data-deck="traits"] .hand-deck-pile { --deck: #34d399; }
+.hand-deck[data-deck="origin"] .hand-deck-pile { --deck: #34d399; }
+.hand-deck[data-deck="class"] .hand-deck-pile { --deck: #f472b6; }
 .hand-deck-stack { position: absolute; inset: 0 12px 30px; }
 .hand-deck-stack i { position: absolute; inset: 0; border-radius: 7px; border: 2px solid #e9a93a; box-shadow: 0 4px 10px rgba(0,0,0,.55);
   background: repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 2px, transparent 2px 7px), linear-gradient(160deg, color-mix(in srgb, var(--deck) 55%, #12062a), #0d0420); }
 .hand-deck-stack i:nth-last-child(2) { transform: translate(-4px, 3px) rotate(-4deg); }
 .hand-deck-stack i:nth-last-child(3) { transform: translate(-7px, 6px) rotate(-8deg); }
 .hand-deck-stack i:last-child { box-shadow: 0 4px 10px rgba(0,0,0,.55), inset 0 0 0 1px color-mix(in srgb, var(--deck) 60%, transparent); }
-.hand-deck-pile b { position: relative; font: 700 10px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #f5f3ff;
-  background: rgba(13,4,32,.92); padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--deck) 70%, transparent); }
+.hand-deck-pile b { position: relative; font: 700 10px/1.15 'Chakra Petch', system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #f5f3ff;
+  background: rgba(13,4,32,.92); padding: 3px 5px; border: 1px solid color-mix(in srgb, var(--deck) 70%, transparent); max-width: 100px; text-align: center; }
 .hand-deck-pile small { position: relative; font: 600 10px/1.2 ui-monospace, monospace; color: #e9d5ff; text-shadow: 0 1px 2px #000; }
 .hand-deck-pile:hover .hand-deck-stack i:last-child, .hand-deck.open .hand-deck-stack i:last-child, .hand-deck-pile:focus-visible .hand-deck-stack i:last-child {
   border-color: #00f3ff; box-shadow: 0 0 16px rgba(0,243,255,.55); transform: translateY(-4px); }

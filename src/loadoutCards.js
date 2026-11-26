@@ -2,7 +2,8 @@ import { hasSwarmTactics } from './adversaryPassives.js';
 import { pathCard } from './statePowers.js';
 import { actionArt } from './actionCardArt.js';
 import { tokenInventory } from './equipment.js';
-import { installedAugments, augmentRule, catalogEntry } from './gear.js';
+import { installedAugments, augmentRule, catalogEntry, AUGMENTS } from './gear.js';
+import { EQUIPMENT_CATALOG } from './equipmentLibrary.js';
 import { equipmentPicture } from './equipmentArtwork.js';
 import { enemyCategory } from './adversaryCardCategories.js';
 // The hand of a player character: what it can play, what playing it costs and how Powers move
@@ -281,6 +282,8 @@ const PASSIVE_PARTS = new Set(['sneak attack', 'trained body', 'pilot surge die'
 // The deck's reference catalog besides the Powers (user request, 18 Nov 2026): every Ancestry
 // Gift, every Community benefit and the class cards, Awakened and Sleeping, grouped by class.
 // Read-only cards (they are consulted, not played from here).
+// Grouped as the hand (v2.61.0): Bear Down and the Resolve Moves (Sleeping) apart from the class
+// features; Ancestry, Community and the augmentations that are played as cards, together.
 export function catalogGroups(data) {
   const read = card => ({ zone: 'catalog', roll: null, rollText: '', rc: 0, playable: false, ...card });
   const ancestry = (data.ancestries || []).map(a => ({ group: a.name, cards: (a.gifts || []).map(g => read({ id: `cat:ancestry:${a.id}:${slug(g.name)}`, kind: 'ancestry', name: g.name, subtitle: `Ancestry · ${a.name}`, color: a.color || '#94a3b8', art: cornerArt('ancestry', a.id), costText: usableGift(g) ? costLabel(giftCost(g)) : 'Pasivo', cost: giftCost(g), text: text(g.text), limit: giftLimit(g) })) }));
@@ -289,10 +292,19 @@ export function catalogGroups(data) {
   const awakened = (data.classes || []).map(cls => ({ group: cls.name, cards: [feature(cls, cls.hopeFeature, 'Hope Feature', 'aw'), ...splitFeature(cls.classFeature, 'awakened').map(f => feature(cls, f, 'Class Feature', 'aw'))].filter(Boolean) }));
   const sleeping = (data.classes || []).filter(c => c.sleepingRules).map(cls => {
     const r = cls.sleepingRules;
-    const moves = (data.resolveMoves || []).filter(m => lower(m.class) === lower(cls.name)).map(m => read({ id: `cat:move:${slug(m.class)}:${slug(m.name)}`, kind: 'move', name: m.name, subtitle: ['Resolve Move', m.subclass || m.class].filter(Boolean).join(' · '), color: cls.color || '#fb923c', art: actionArt(m.name, classArt(cls)), costText: m.cost, cost: parseCost(m.cost, 'move'), text: text(m.text) }));
-    return { group: cls.name, cards: [feature(cls, r.effortFeature, 'Effort Feature', 'sl'), ...splitFeature(r.classFeature, 'sleeping').map(f => feature(cls, f, 'Class Feature', 'sl')), ...moves].filter(Boolean) };
+    return { group: cls.name, cards: [feature(cls, r.effortFeature, 'Effort Feature', 'sl'), ...splitFeature(r.classFeature, 'sleeping').map(f => feature(cls, f, 'Class Feature', 'sl'))].filter(Boolean) };
   });
-  return { ancestry, community, awakened, sleeping };
+  const common = sleepingCommonCards({ path: 'Sleeping', resolve: { dieType: 'd4' } }, { optionalEfforts: true }).map(c => read({ ...c, id: `cat:${c.id}`, zone: 'catalog', playable: false }));
+  const moves = [{ group: 'Bear Down y Common Efforts (todos los Sleeping)', cards: common },
+    ...(data.classes || []).filter(c => c.sleepingRules).map(cls => {
+      const moves = (data.resolveMoves || []).filter(m => lower(m.class) === lower(cls.name)).map(m => read({ id: `cat:move:${slug(m.class)}:${slug(m.name)}`, kind: 'move', name: m.name, subtitle: ['Resolve Move', m.subclass || m.class].filter(Boolean).join(' · '), color: cls.color || '#fb923c', art: actionArt(m.name, classArt(cls)), costText: m.cost, cost: parseCost(m.cost, 'move'), text: text(m.text) }));
+      return { group: `Resolve Moves · ${cls.name}`, cards: moves };
+    }).filter(g => g.cards.length)];
+  const augments = [{ group: 'Aumentos', cards: EQUIPMENT_CATALOG.filter(item => AUGMENTS[item.id]?.active).map(item => {
+    const rule = AUGMENTS[item.id].active;
+    return read({ id: `cat:augment:${item.id}`, kind: 'augment', name: item.name, subtitle: `Aumento${item.tier ? ` · ${item.tier}` : ''}`, color: '#22d3ee', art: { flag: '', band: '/assets/cards/plain-band.png', layout: 'band', ...(equipmentPicture(item) || {}) }, costText: rule.stress ? `${rule.stress} Stress` : '—', cost: parseCost(rule.stress ? `${rule.stress} Stress` : ''), text: rule.text, limit: rule.limit, reaction: !!rule.reaction });
+  }) }].filter(g => g.cards.length);
+  return { ancestry, community, augments, awakened, sleeping, moves };
 }
 
 const need = (have, cost, label) => { if (cost > have) throw new Error(`No hay ${label} suficiente: hacen falta ${cost} y quedan ${have}.`); };

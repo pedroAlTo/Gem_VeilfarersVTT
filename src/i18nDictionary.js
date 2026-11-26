@@ -2059,6 +2059,10 @@ export const PAIRS = [
   ["El color sale del marco elegido. Los cambios se aplican al momento.", "The colour comes from the chosen frame. Changes apply at once."],
   ["Un círculo o un lado por stat (elegir uno ocupado lo quita del otro); las barras se apilan. Los stats solo los ven el Keeper y el jugador de este personaje.", "One ring or one side per stat (choosing a taken one frees it from the other); bars stack. Only the Keeper and this character's player see the stats."],
   ["El marco, el nombre, la insignia y las barras se eligen junto al retrato («Elegir retrato»). El marco da su color al token (nombre y chat).", "The frame, name, insignia and bars are chosen with the portrait (\"Choose portrait\"). The frame gives the token its colour (name and chat)."],
+  // The hand and the deck in four groups (v2.61.0)
+  ["Poderes de dominio", "Domain Powers"],
+  ["Bear Down · Moves", "Bear Down · Moves"],
+  ["Ancestry · Community · Aumentos", "Ancestry · Community · Augments"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2296,4 +2300,6 @@ export const PATTERNS = [
   ["Mi token · {_a}", "My token · {_a}"],
   ["{_a} (estado de vida · solo retirar)", "{_a} (life stage · remove only)"],
   ["Retrato y token · {_a}", "Portrait and token · {_a}"],
+  ["Bear Down y Common Efforts (todos los Sleeping) · {_n}", "Bear Down and Common Efforts (every Sleeping) · {_n}"],
+  ["Aumentos · {_n}", "Augments · {_n}"],
 ];

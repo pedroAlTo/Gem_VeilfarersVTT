@@ -116,20 +116,24 @@ const deckButton = title => `<button type="button" class="card-deck card-deck-ca
 
 // The deck also holds every Ancestry, Community and class card to read (user request): a chip
 // row picks what to show; the classes are grouped Awakened / Sleeping, then by class.
-const DECK_KINDS = [['powers', 'Poderes'], ['ancestry', 'Ancestry'], ['community', 'Community'], ['class', 'Clases']];
+// The same four groups as the hand (v2.61.0): Bear Down and the Resolve Moves, the Domain Powers,
+// Ancestry · Community · Augmentations together, and the class features.
+const DECK_KINDS = [['moves', 'Bear Down · Moves'], ['powers', 'Poderes de dominio'], ['origin', 'Ancestry · Community · Aumentos'], ['class', 'Clase']];
 const deckKindChips = choice => `<div class="equip-chips card-drawer-kinds" role="group" aria-label="Tipo de carta">${DECK_KINDS.map(([id, label]) => `<button type="button" class="equip-chip ${choice.kind === id ? 'active' : ''}" data-drawer-kind="${id}" aria-pressed="${choice.kind === id}">${label}</button>`).join('')}</div>`;
 let groupsCache = null;
 const referenceGroups = data => (groupsCache?.data === data ? groupsCache.groups : (groupsCache = { data, groups: catalogGroups(data) }).groups);
 function referenceHTML(data, choice) {
   const all = referenceGroups(data);
-  const groups = choice.kind === 'class' ? (choice.path === 'sleeping' ? all.sleeping : all.awakened) : all[choice.kind] || [];
+  const groups = choice.kind === 'class' ? (choice.path === 'sleeping' ? all.sleeping : all.awakened)
+    : choice.kind === 'origin' ? [...all.ancestry.map(g => ({ ...g, group: `Ancestry · ${g.group}` })), ...all.community.map(g => ({ ...g, group: `Community · ${g.group}` })), ...all.augments]
+    : all[choice.kind] || [];
   const paths = choice.kind === 'class' ? `<div class="equip-chips" role="group" aria-label="Senda">${[['awakened', 'Awakened'], ['sleeping', 'Sleeping']].map(([id, label]) => `<button type="button" class="equip-chip ${choice.path === id ? 'active' : ''}" data-drawer-path="${id}">${label}</button>`).join('')}</div>` : '';
   return `${paths}${groups.map(g => `<h5 class="card-drawer-group">${e(g.group)} · ${g.cards.length}</h5><div class="card-drawer-row card-drawer-catalog">${g.cards.map(c => `<button type="button" class="vf-card vf-card-mini" data-drawer-ref="${e(c.id)}" title="${e(c.name)} · ${e(c.subtitle)}">${cardFace(c)}</button>`).join('')}</div>`).join('')}`;
 }
 function bindReference(drawer, data, choice, redraw, inspect) {
   drawer.querySelectorAll('[data-drawer-kind]').forEach(b => b.onclick = () => { choice.kind = b.dataset.drawerKind; redraw(); });
   drawer.querySelectorAll('[data-drawer-path]').forEach(b => b.onclick = () => { choice.path = b.dataset.drawerPath; redraw(); });
-  const all = referenceGroups(data), cards = [...all.ancestry, ...all.community, ...all.awakened, ...all.sleeping].flatMap(g => g.cards);
+  const all = referenceGroups(data), cards = [...all.ancestry, ...all.community, ...all.augments, ...all.awakened, ...all.sleeping, ...all.moves].flatMap(g => g.cards);
   drawer.querySelectorAll('[data-drawer-ref]').forEach(b => b.onclick = () => { const card = cards.find(c => c.id === b.dataset.drawerRef); if (card) inspect(card); });
 }
 
@@ -280,8 +284,16 @@ export class CardHand {
     // open until another click, Esc or a press outside the hand.
     for (const deck of this.root.querySelectorAll('.hand-deck')) {
       const id = deck.dataset.deck, pile = deck.querySelector('[data-deck-toggle]');
-      deck.onpointerenter = event => { if (event.pointerType !== 'touch') this.openDeck(id); };
-      deck.onpointerleave = event => { if (event.pointerType !== 'touch' && this.openDeckId !== id) this.closeDecks(260); };
+      // With another deck open, the pointer must rest on this one a moment (v2.61.0): going up from a
+      // pile to a card of its fan may cross the next pile, and that must not swap the decks.
+      deck.onpointerenter = event => {
+        if (event.pointerType === 'touch') return;
+        clearTimeout(this.switchTimer);
+        const other = this.root.querySelector('.hand-deck.open');
+        if (!other || other === deck) { this.openDeck(id); return; }
+        this.switchTimer = setTimeout(() => { if (deck.isConnected && deck.matches(':hover')) this.openDeck(id); }, 220);
+      };
+      deck.onpointerleave = event => { clearTimeout(this.switchTimer); if (event.pointerType !== 'touch' && this.openDeckId !== id) this.closeDecks(260); };
       pile.onclick = event => {
         if (this.openDeckId === id) { this.closeDecks(); return; }
         this.openDeck(id, true);

@@ -48,12 +48,22 @@ class Journey {
     const box = await this.page.evaluate(n => {
       const card = [...document.querySelectorAll('#card_hand_root .vf-card')].find(c => c.getAttribute('aria-label')?.startsWith(n + ' ·'));
       const r = card?.getBoundingClientRect();
-      return r && { x: r.x + 14, y: r.y + 30 };
+      return r && { x: r.x + 14, y: r.y + 30, w: r.width };
     }, name);
     if (!box) throw new Error(`No está la carta ${name} en la mano.`);
+    let point = { x: box.x, y: box.y };
     if (!pile) await this.page.mouse.move(5, 5);
-    else await this.page.mouse.move(box.x, box.y, { steps: 3 });
-    await this.page.mouse.click(box.x, box.y); this.clicks++;
+    else {
+      // The card under the pointer rises over its neighbours: point where this card is seen, as a
+      // person would (moving the pointer is not a click).
+      for (const dx of [0, box.w * 0.3, box.w * 0.55, box.w * 0.8]) {
+        point = { x: box.x + dx, y: box.y };
+        await this.page.mouse.move(point.x, point.y, { steps: 3 }); await this.page.waitForTimeout(120);
+        const seen = await this.page.evaluate(({ n, x, y }) => document.elementFromPoint(x, y)?.closest('.vf-card')?.getAttribute('aria-label')?.startsWith(n + ' ·'), { n: name, ...point });
+        if (seen) break;
+      }
+    }
+    await this.page.mouse.click(point.x, point.y); this.clicks++;
     await this.page.waitForTimeout(450); // past the double-click window
   }
   async clickToken(id) {

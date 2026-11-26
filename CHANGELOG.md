@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.60.1**.
-Paquete: `VeilFarers_VTT_v2.60.1.zip`.
+Versión actual del VTT: **v2.61.0**.
+Paquete: `VeilFarers_VTT_v2.61.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.61.0] — 2026-11-26
+
+V3 · Las cartas en cuatro grupos
+
+### La mano
+
+- La mano del jugador se organiza en cuatro mazos: «Bear Down · Moves» (Bear Down, los Resolve Moves y los Common Efforts de los Sleeping), «Poderes de dominio», «Ancestry · Community · Aumentos» (juntas) y «Clase» (los rasgos de la clase).
+- Una reacción que se puede usar ahora sigue saliendo de su mazo y queda encima, a un clic; las que no se pueden usar se quedan en el mazo de lo que son (ya no hay mazo de Reacciones).
+- Con un mazo abierto, pasar por encima del montón de al lado ya no lo cambia al instante: hay que detenerse un momento sobre él. Así se puede subir en diagonal hasta una carta sin que se abra otro mazo.
+
+### El mazo (todas las cartas)
+
+- El catálogo del mazo usa los mismos cuatro grupos: Bear Down y los Common Efforts, y los Resolve Moves de cada clase Sleeping; los Poderes de dominio; las Ancestry, las Community y los aumentos que se juegan como carta; y los rasgos de cada clase (Awakened o Sleeping).
 
 ## [2.60.1] — 2026-11-26
 

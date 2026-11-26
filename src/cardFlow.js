@@ -293,14 +293,17 @@ export const defaultMode = card => CARD_MODES[card.name]?.[0];
 // «Montar mazos: haces mouse over y se muestran las cartas; si una se puede usar como reacción
 // aparece como opción seleccionable directamente.» Each card goes to one deck, by what it is;
 // a reaction that can be used now leaves its deck and waits on top, one click away.
+// The decks (v2.61.0, user request: «las cartas organízalas por: Bear Down moves (Sleeper),
+// Poderes de dominio, Ancestry/Community/Augmentation (juntas) y Class»): a reaction that cannot be
+// used now stays in the deck of what it is.
 export const HAND_DECKS = [
-  ['reactions', 'Reacciones'], ['powers', 'Poderes'], ['moves', 'Moves'], ['traits', 'Rasgos'],
+  ['moves', 'Bear Down · Moves'], ['powers', 'Poderes de dominio'], ['origin', 'Ancestry · Community · Aumentos'], ['class', 'Clase'],
 ];
 export function deckOf(card) {
-  if (card.reaction || card.name === 'Lucky Break' || card.kind === 'beardown') return 'reactions';
-  if (['power', 'archive'].includes(card.kind) || card.uncanny) return 'powers';
-  if (['move', 'effort'].includes(card.kind)) return 'moves';
-  return 'traits';
+  if (['beardown', 'move', 'effort'].includes(card.kind)) return 'moves';
+  if (['power', 'archive', 'vault'].includes(card.kind)) return 'powers';
+  if (['ancestry', 'community', 'augment'].includes(card.kind)) return 'origin';
+  return 'class';
 }
 // cards: the hand; isLive(card): usable as a reaction right now; isUsable(card): can be paid now.
 export function handDecks(cards, { isLive = () => false, isUsable = () => true } = {}) {
