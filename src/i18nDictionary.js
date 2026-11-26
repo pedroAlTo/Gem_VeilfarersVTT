@@ -2053,6 +2053,12 @@ export const PAIRS = [
   ["🎨 Marco, nombre y barras del token…", "🎨 Token frame, name and bars…"],
   ["El marco da su color al token (nombre y chat). El jugador de este personaje puede cambiarlo también desde su retrato.", "The frame gives the token its colour (name and chat). This character's player can also change it from their portrait."],
   ["Los estados de vida se marcan con sus controles (Condiciones del token).", "Life stages are marked with their controls (the token's Conditions)."],
+  // The token's controls inside the portrait selection (v2.60.1)
+  ["Token", "Token"],
+  ["Listo", "Done"],
+  ["El color sale del marco elegido. Los cambios se aplican al momento.", "The colour comes from the chosen frame. Changes apply at once."],
+  ["Un círculo o un lado por stat (elegir uno ocupado lo quita del otro); las barras se apilan. Los stats solo los ven el Keeper y el jugador de este personaje.", "One ring or one side per stat (choosing a taken one frees it from the other); bars stack. Only the Keeper and this character's player see the stats."],
+  ["El marco, el nombre, la insignia y las barras se eligen junto al retrato («Elegir retrato»). El marco da su color al token (nombre y chat).", "The frame, name, insignia and bars are chosen with the portrait (\"Choose portrait\"). The frame gives the token its colour (name and chat)."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2289,4 +2295,5 @@ export const PATTERNS = [
   ["{_n} · {_m} usables", "{_n} · {_m} usable"],
   ["Mi token · {_a}", "My token · {_a}"],
   ["{_a} (estado de vida · solo retirar)", "{_a} (life stage · remove only)"],
+  ["Retrato y token · {_a}", "Portrait and token · {_a}"],
 ];

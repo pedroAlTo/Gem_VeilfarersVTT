@@ -256,7 +256,7 @@ export class PlayerActionBar {
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
       ${this.result ? this.resultRow() : ''}`);
-    // The portrait opens «Mi token» (v2.60.0): portrait, frame, name, insignia and stats on the map.
+    // The portrait opens its selection with the token's controls (v2.60.1): frame, name, insignia and stats.
     this.root.querySelector('[data-pab-portrait]')?.addEventListener('click', () => import('./tokenLook.js').then(({ openTokenLook }) => openTokenLook(token.id)));
     this.root.querySelector('[data-pab-help]')?.addEventListener('click', () => this.openHelp());
     this.root.querySelector('[data-pab-conditions]')?.addEventListener('click', () => openConditions(token.id));

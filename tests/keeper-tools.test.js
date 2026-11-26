@@ -303,3 +303,38 @@ test('the player can browse every ancestry from their dossier and only change an
   assert.equal(store.state.tokens.find(t => t.id === token.id).portraitOverride, false);
   assert.notEqual(dossier.querySelector('.dossier-portrait').getAttribute('src'), url);
 });
+
+test('the token controls live in the portrait selection: one window, applied at once, closed with «Listo»', async () => {
+  const { openActorPortrait } = await import('../src/portraitPicker.js');
+  document.querySelectorAll('.portrait-picker').forEach(m => m.remove());
+  const token = store.state.tokens.find(t => t.isPlayer);
+  store.update({ userRole:'player', claimedTokenId:token.id });
+  const changes = [];
+  const picker = openActorPortrait(token.id, null, { onChange: patch => changes.push(patch) });
+  assert.equal(document.querySelectorAll('.portrait-picker').length, 1);
+  assert.match(picker.querySelector('h3').textContent, /^Retrato y token · /);
+  assert.ok(picker.querySelector('.portrait-grid') && picker.querySelector('[data-token-look]'));
+  assert.equal(picker.querySelectorAll('[data-look-frame]').length, 31);
+  // The frame and its colour apply at once.
+  picker.querySelector('[data-look-frame="frame-15"]').click();
+  let live = store.state.tokens.find(t => t.id === token.id);
+  assert.equal(live.frame, 'frame-15'); assert.equal(live.color, '#d1d1d1');
+  assert.equal(changes.at(-1).color, '#d1d1d1');
+  assert.equal(picker.querySelector('[data-look-frame="frame-15"]').getAttribute('aria-checked'), 'true');
+  // A stat's place, and the name.
+  const hp = picker.querySelector('[data-layout-stat="hp"]'); hp.value = 'outer1'; hp.dispatchEvent(new Event('change'));
+  const name = picker.querySelector('[data-look-name]'); name.checked = false; name.dispatchEvent(new Event('change'));
+  live = store.state.tokens.find(t => t.id === token.id);
+  assert.equal(live.vitalsLayout.hp, 'outer1'); assert.equal(live.vitalsLayout.name, false);
+  // Choosing a portrait keeps the window open, with the controls as they are.
+  const group = picker.querySelector('[data-collection]'); group.value = 'crew'; group.dispatchEvent(new Event('change'));
+  const tile = picker.querySelector('.portrait-choice'), url = tile.querySelector('img').getAttribute('src');
+  tile.click(); await new Promise(r => setTimeout(r, 0));
+  assert.equal(store.state.tokens.find(t => t.id === token.id).avatarUrl, url);
+  assert.ok(picker.isConnected);
+  assert.equal(picker.querySelector('.portrait-choice[aria-pressed=true] img').getAttribute('src'), url);
+  assert.equal(picker.querySelector('[data-layout-stat="hp"]').value, 'outer1');
+  assert.equal(store.state.tokens.find(t => t.id === token.id).frame, 'frame-15');
+  picker.querySelector('[data-done]').click();
+  assert.equal(picker.isConnected, false);
+});

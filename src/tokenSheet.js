@@ -1,6 +1,6 @@
 import { isEncounterMarker } from './bestiaryProfiles.js';
 import { actorPortrait } from './tokenAvatars.js';
-import { actorCollection, openPortraitPicker } from './portraitPicker.js';
+import { openActorPortrait } from './portraitPicker.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
@@ -907,10 +907,9 @@ export class TokenHUD {
                 </div>
               </div>
 
-              <!-- On the map (v2.60.0): «Mi token» holds the frame, name, insignia and stats. -->
+              <!-- On the map (v2.60.1): the frame, name, insignia and stats are chosen with the portrait. -->
               <h4 class="sheet-section-title" style="margin-top: 18px; color: #00f3ff;">📊 EN EL MAPA</h4>
-              <button type="button" class="hud-btn" id="sheet_token_look">🎨 Marco, nombre y barras del token…</button>
-              <p class="dossier-muted" style="margin: 6px 0 0;">El marco da su color al token (nombre y chat). El jugador de este personaje puede cambiarlo también desde su retrato.</p>
+              <p class="dossier-muted" style="margin: 6px 0 0;">El marco, el nombre, la insignia y las barras se eligen junto al retrato («Elegir retrato»). El marco da su color al token (nombre y chat).</p>
             </div>
           </div>
 
@@ -985,12 +984,6 @@ export class TokenHUD {
     // frees it from another (placeStat). A clock put on the token by hand is kept as it was.
     const sampleClock = o => o?.type === 'circular' && o.statKey === 'clock' && /^hack$/i.test(o.label || '') && (o.id === 'ov_clock' || o.current === 2);
     currentOverlays = currentOverlays.filter(o => !sampleClock(o));
-    // «Mi token» (v2.60.0): saved at once; the colour box here follows the frame's colour.
-    modal.querySelector('#sheet_token_look').onclick = () => import('./tokenLook.js').then(({ openTokenLook }) => openTokenLook(token.id, { onSaved: patch => {
-      if (!patch.color) return;
-      const val = modal.querySelector('#sheet_token_color_val'), btn = modal.querySelector('#sheet_token_color_btn');
-      if (val) val.value = patch.color; if (btn) btn.style.background = patch.color;
-    } }));
 
     // Toggle sleeping section when path select changes
     const pathSelect = modal.querySelector('#sheet_path');
@@ -999,15 +992,13 @@ export class TokenHUD {
       sleepingSection.style.display = pathSelect.value === 'Sleeping' ? 'block' : 'none';
     };
 
-    let chosenIllustration = null;
     const preview = modal.querySelector('#sheet_avatar_preview');
-    modal.querySelector('#sheet_portrait_picker').onclick = () => openPortraitPicker({
-      current: preview.getAttribute('src'), collection: actorCollection(token), allowCustom: true, cloud: true,
-      onChoose(url) {
-        chosenIllustration = url;
-        preview.src = actorPortrait({ ...token, avatarUrl: url, portraitOverride: Boolean(url) });
-      },
-    });
+    // The portrait and the token's controls (v2.60.1): applied at once; this sheet follows them.
+    modal.querySelector('#sheet_portrait_picker').onclick = () => openActorPortrait(token.id, url => { preview.src = url; }, { onChange: patch => {
+      if (!patch.color) return;
+      const val = modal.querySelector('#sheet_token_color_val'), btn = modal.querySelector('#sheet_token_color_btn');
+      if (val) val.value = patch.color; if (btn) btn.style.background = patch.color;
+    } });
 
     // Reserve token
     const sheetReserveBtn = modal.querySelector('#sheet_reserve_btn');
@@ -1048,7 +1039,8 @@ export class TokenHUD {
       currentOverlays = currentOverlays.filter(o => o.type === 'circular');
 
       const actorTypeVal = modal.querySelector('#sheet_actor_type')?.value || 'player';
-      const avatarUrl = chosenIllustration ?? token.avatarUrl;
+      // The portrait was applied when it was chosen; keep what the token has now.
+      const live = store.state.tokens.find(t => t.id === token.id) || token;
       const updated = {
         name: modal.querySelector('#sheet_name').value.trim() || token.name,
         roleTag: modal.querySelector('#sheet_role').value.trim(),
@@ -1056,8 +1048,8 @@ export class TokenHUD {
         isPlayer: actorTypeVal === 'player',
         hideName: modal.querySelector('#sheet_hide_name')?.checked ?? false,
         species: modal.querySelector('#sheet_species')?.value.trim() || token.species,
-        avatarUrl,
-        portraitOverride: chosenIllustration === null ? token.portraitOverride === true : Boolean(chosenIllustration),
+        avatarUrl: live.avatarUrl,
+        portraitOverride: live.portraitOverride === true,
         path: pathSelect.value,
         size: parseInt(modal.querySelector('#sheet_size').value, 10),
         hp: {
@@ -1103,7 +1095,7 @@ export class TokenHUD {
           intensity: parseFloat(modal.querySelector('#sheet_spotlight_intensity')?.value) || 0.85
         },
         hidden: modal.querySelector('#sheet_is_hidden').checked,
-        // What the token shows and where is saved by «Mi token» (v2.60.0); a hand-made clock stays here.
+        // What the token shows and where is saved with the portrait (v2.60.1); a hand-made clock stays here.
         displayOverlays: currentOverlays,
         displayConfig: {
           showClock: currentOverlays.some(o => o.type === 'circular'),
@@ -1113,7 +1105,7 @@ export class TokenHUD {
         }
       };
 
-      try { validateActor({ ...token, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
+      try { validateActor({ ...live, ...updated }); } catch (err) { notify(err.message, 'error'); return; }
       // A connected player sends only what a player may change (its resources and colour); the
       // whole sheet would be refused by the table and nothing, the colour included, would apply.
       if (!store.updateToken(token.id, store.sessionRole === 'player' ? pickPlayerFields(updated) : updated)) return;

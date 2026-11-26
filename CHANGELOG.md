@@ -1,10 +1,24 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.60.0**.
-Paquete: `VeilFarers_VTT_v2.60.0.zip`.
+Versión actual del VTT: **v2.60.1**.
+Paquete: `VeilFarers_VTT_v2.60.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.60.1] — 2026-11-26
+
+V3 · Retrato y token en una sola ventana
+
+### Retrato y token
+
+- Los controles del token están ahora en la selección de retrato: una sola ventana «Retrato y token» con los retratos arriba y, debajo, la vista previa, el marco, el nombre, la insignia y dónde va cada stat. Todo se aplica al momento; elegir un retrato ya no cierra la ventana, se cierra con «Listo».
+- El jugador la abre tocando su retrato en la barra del personaje; el Keeper, con «Elegir retrato» en la ficha del token (el botón aparte de la v2.60.0 desaparece). Guardar la ficha conserva el retrato y el marco ya aplicados.
+
+### Marcos
+
+- Marco «Carbono»: las zonas oscuras de la fibra de carbono ya no se ven transparentes; el anillo es macizo entre el hueco del retrato y el borde.
+- Corregida la vista previa del marco, que salía pequeña en una esquina.
 
 ## [2.60.0] — 2026-11-26
 

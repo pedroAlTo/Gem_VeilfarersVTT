@@ -1,6 +1,19 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.60.1', date: '2026-11-26', title: 'V3 · Retrato y token en una sola ventana',
+    sections: [
+      { title: 'Retrato y token', items: [
+        'Los controles del token están ahora en la selección de retrato: una sola ventana «Retrato y token» con los retratos arriba y, debajo, la vista previa, el marco, el nombre, la insignia y dónde va cada stat. Todo se aplica al momento; elegir un retrato ya no cierra la ventana, se cierra con «Listo».',
+        'El jugador la abre tocando su retrato en la barra del personaje; el Keeper, con «Elegir retrato» en la ficha del token (el botón aparte de la v2.60.0 desaparece). Guardar la ficha conserva el retrato y el marco ya aplicados.',
+      ] },
+      { title: 'Marcos', items: [
+        'Marco «Carbono»: las zonas oscuras de la fibra de carbono ya no se ven transparentes; el anillo es macizo entre el hueco del retrato y el borde.',
+        'Corregida la vista previa del marco, que salía pequeña en una esquina.',
+      ] },
+    ],
+  },
+  {
     version: '2.60.0', date: '2026-11-26', title: 'V3 · Marcos de token, «Mi token» y la mano del Keeper',
     sections: [
       { title: 'Marcos', items: [
