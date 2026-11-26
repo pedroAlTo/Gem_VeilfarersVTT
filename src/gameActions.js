@@ -4,7 +4,7 @@ import { cardDuration, newClock, addClock, tickClocks, helpsOthers, durationDice
 import { rollVeilfarersCheck, checkMath, TRAITS, SUBTRAITS, damageTypeOf } from './rulesEngine.js';
 import { cardUse, usedBy, resetCardUses } from './cardLimits.js';
 import { activePath, PATH_TRAITS, pathImmune, pathBranch, contextualEdges, CONTEXT_EDGES } from './statePowers.js';
-import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration, procedureZone, applyHeal } from './cardResolution.js';
+import { cardTargets, createResolution, awaitingRoll, cardToAmend, completeCardRoll, projectSize, resolveImmediate, cardRollOptions, areaRule, areaTargets, areaRadius, AREA_BOONS, SELF_EFFECTS, applySelfEffect, endSelfEffects, CARD_MODES, SUSTAINED, eligible, applySpecial, resolutionLog, updateResolution, applyCardDuration, procedureZone, applyHeal, keeperClears } from './cardResolution.js';
 import { firstStrikeRider } from './damageRiders.js';
 import { REACTIONS, holdsReaction, canPay } from './powerReactions.js';
 import { rollBonus, armedRoll, NEXT_ROLL, barrier } from './powerEffects.js';
@@ -101,11 +101,14 @@ function resolveGameAction(action, store) {
     if (typeof action.name !== 'string' || !action.name.trim() || action.name.length > 100 || typeof action.active !== 'boolean') throw new Error('Condición inválida.');
     const name = normalizeConditions([action.name])[0], current = normalizeConditions(actor.conditions);
     if (action.active && pathImmune(actor, name)) throw new Error(actor.name + ' es inmune a ' + name + '.');
-    if (actor.isPlayer !== false && LIFE_STATES.includes(name)) throw new Error('Utiliza los controles de progreso y estabilización.');
+    // The Keeper may add or remove any state, life stages included (v2.60.0, user decision);
+    // a player uses the progress and stabilisation controls.
+    if (actor.isPlayer !== false && LIFE_STATES.includes(name) && action.byKeeper !== true) throw new Error('Utiliza los controles de progreso y estabilización.');
     const conditions = action.active ? normalizeConditions([...current, name]) : current.filter(c => c !== name);
     if (conditions.length > 30) throw new Error('Máximo 30 condiciones por token.');
     // Frightened names its source (v2.55.0): a token of the same scene, or none (a reminder only).
-    const patch = { conditions };
+    // The Keeper takes away the last life stage of a character at 0 HP: it comes back with 1 HP.
+    const patch = !action.active && action.byKeeper === true && LIFE_STATES.includes(name) ? { ...keeperClears(actor, conditions, true), keeperOverride: true } : { conditions };
     if (name === 'Frightened' && action.active && action.sourceId !== undefined) {
       const source = action.sourceId ? store.state.tokens.find(t => t.id === String(action.sourceId) && t.mapId === actor.mapId && t.id !== actor.id) : null;
       if (action.sourceId && !source) throw new Error('La fuente del miedo no está en esta escena.');

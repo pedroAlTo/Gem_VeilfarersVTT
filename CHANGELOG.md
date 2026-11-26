@@ -1,10 +1,28 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.59.0**.
-Paquete: `VeilFarers_VTT_v2.59.0.zip`.
+Versión actual del VTT: **v2.60.0**.
+Paquete: `VeilFarers_VTT_v2.60.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.60.0] — 2026-11-26
+
+V3 · Marcos de token, «Mi token» y la mano del Keeper
+
+### Marcos
+
+- 30 marcos para diferenciar cada token (arte del usuario). El metal tapa el borde del retrato y la luz se suma sobre la imagen y el mapa (el negro no tapa nada), como en un HUD luminoso. El retrato llena el hueco del marco; el nombre, las barras, los anillos y las fichas se colocan alrededor.
+- Al elegir un marco, el token toma su color predominante, que es el de su nombre y el del chat.
+
+### «Mi token»
+
+- El jugador abre «Mi token» tocando su retrato en la barra del personaje: cambia el retrato, elige el marco (con vista previa) y decide qué muestra su token en el mapa (nombre, insignia y dónde va cada stat). El Keeper llega desde la ficha del token («Marco, nombre y barras del token…»).
+
+### La mano del Keeper
+
+- El Keeper puede quitar cualquier estado, también los de vida (Dying, Final, Last Act, Dead, Stabilized), desde Condiciones del token o desde «Retirar condición» de una carta. Si el personaje estaba a 0 HP y ya no le queda ningún estado de vida, vuelve con 1 HP.
+- El Keeper puede dar HP a un personaje en cualquier estado (con +1 en la barra, la ficha o una carta): los estados de vida se quitan y el personaje se queda con esos HP. La curación normal del juego (Poderes, objetos) sigue necesitando estabilizarlo antes.
 
 ## [2.59.0] — 2026-11-25
 

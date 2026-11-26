@@ -67,3 +67,21 @@ test('the states sit inside the token, in its lower-right quarter (over the clas
     }
   }
 });
+
+test('the 30 frames: two layers each, a colour for the chat, a hole for the portrait (v2.60.0)', async () => {
+  const { TOKEN_FRAMES, frameById, frameGeometry, frameBody, frameLight } = await import('../src/tokenFrames.js');
+  const { existsSync } = await import('node:fs');
+  assert.equal(TOKEN_FRAMES.length, 30);
+  for (const f of TOKEN_FRAMES) {
+    assert.match(f.color, /^#[0-9a-f]{6}$/, f.id);
+    assert.ok(f.inner > 0.4 && f.inner < f.outer && f.outer <= 1, f.id);
+    assert.ok(existsSync('public' + frameBody(f)) && existsSync('public' + frameLight(f)), f.id + ' files');
+    const g = frameGeometry(f, 32);
+    assert.ok(Math.abs(g.half * f.outer - 32 * 1.2) < 1e-9 && g.hole < 32, 'outer edge at 1.2 r, portrait inside');
+  }
+  assert.equal(frameById('frame-99'), null);
+  const { validTokenPatch } = await import('../src/validation.js');
+  assert.equal(validTokenPatch({ frame: 'frame-05', color: '#d69b3d' }), true, 'a player may change their frame and colour');
+  assert.equal(validTokenPatch({ frame: 'frame-99' }), false);
+  assert.equal(validTokenPatch({ keeperOverride: true }), false, 'never the Keeper mark');
+});

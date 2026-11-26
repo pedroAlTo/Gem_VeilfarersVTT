@@ -120,6 +120,15 @@ export function markMeleeDefense(store, target, guard) {
 // Run on the authoritative table, as part of the token write. Reconnecting or
 // toggling the visual marker cannot replay healing or consume another turn.
 export function combatTransition(previous, next, map) {
+  if (next && 'keeperOverride' in next) {
+    const { keeperOverride, ...rest } = next;
+    next = rest;
+    // The Keeper gives HP to a character in any state (v2.60.0): the life stages go, the HP stays.
+    if (keeperOverride && previous && character(next) && (previous.hp?.current ?? 0) === 0 && (next.hp?.current ?? 0) > 0 && !canReceiveHealing(previous)) {
+      next = { ...next, ...lifePatch(next, ''), lifeRollRound: null };
+      previous = { ...previous, conditions: next.conditions, hp: next.hp };
+    }
+  }
   if (!previous || next === previous) return next;
   if (previous.stress?.current >= previous.stress?.max && next.stress?.current < next.stress?.max && next.conditions?.includes('Overwhelmed')) {
     next = { ...next, conditions: next.conditions.filter(name => name !== 'Overwhelmed') };

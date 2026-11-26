@@ -79,9 +79,13 @@ test('damage at the table marks Dying, blocks normal actions and preserves Hope'
   await assert.rejects(dice.executeAttack(), /Dying/);
   assert.throws(() => act(pc, 'CHECK', { options: { dc: 10, traitId: 'knowledge' } }), /Dying/);
   assert.equal(get(pc).hope, 2);
-  store.updateToken(pc.id, { hp: { ...get(pc).hp, current: 4 } });
+  // Ordinary healing (a game action at the table) requires stabilization…
+  store.tableActing = true; store.updateToken(pc.id, { hp: { ...get(pc).hp, current: 4 } }); store.tableActing = false;
   assert.equal(get(pc).hp.current, 0, 'ordinary healing requires stabilization');
   assert.equal(lifeStage({ ...get(pc), conditions: [] }), 'Dying', 'older saved characters');
+  // …but the Keeper's own hand gives HP in any state (v2.60.0, user decision).
+  store.updateToken(pc.id, { hp: { ...get(pc).hp, current: 4 } });
+  assert.deepEqual([get(pc).hp.current, lifeStage(get(pc))], [4, ''], 'the Keeper revives by hand');
 });
 
 test('Dying and Final progress once per Spotlight, stabilize at zero and return with Long Bruise', t => {
@@ -118,8 +122,11 @@ test('two Final marks or a voluntarily resolved Blaze end the character', () => 
   assert.equal(lifeStage(get(other)), 'Last Act');
   assert.throws(() => act(other, 'LIFE_TURN', { face: 8 }), /Spotlight/);
   act(other, 'LIFE_TURN', { finish: true });
-  store.updateToken(other.id, { hp: { current: 1, max: 6 } });
-  assert.deepEqual([lifeStage(get(other)), get(other).hp.current], ['Dead', 0]);
+  store.tableActing = true; store.updateToken(other.id, { hp: { current: 1, max: 6 } }); store.tableActing = false;
+  assert.deepEqual([lifeStage(get(other)), get(other).hp.current], ['Dead', 0], 'no ordinary healing for the dead');
+  // The Keeper may still bring a character back by hand (v2.60.0, user decision).
+  store.updateToken(other.id, { hp: { current: 2, max: 6 } });
+  assert.deepEqual([lifeStage(get(other)), get(other).hp.current], ['', 2]);
 });
 
 test('Overwhelmed, Vulnerable and cancellation reach the resolved roll through the attack panel', async () => {

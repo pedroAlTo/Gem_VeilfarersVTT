@@ -11,6 +11,7 @@ import { DAYLIGHT_BELOW } from './fogEngine.js';
 import { drawWaterSurface, traceWater, waterBounds, drawRainRipples, renderWeatherRain, renderWeatherFog, drawLavaGlow } from './surfaceFX.js';
 import { drawStatBars, drawStatRing, drawStatPips, ringRadius } from './tokenVitals.js';
 import { tokenLayout, statFor, LAYOUT_STATS, namesHidden } from './tokenLayout.js';
+import { frameById, frameGeometry, frameBody, frameLight } from './tokenFrames.js';
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
 import { healedTokens } from './healFX.js';
@@ -3976,9 +3977,12 @@ export class CanvasEngine {
       const bossPending = tok.boss ? !tok.boss.defeated && (tok.boss.index < tok.boss.states.length - 1 || tok.boss.states[tok.boss.index].defeat === 'objective') : tok.bossStatus?.pending;
       const isDead = tok.boss?.defeated || tok.bossStatus?.defeated || (!isEncounterMarker(tok) && typeof tok.hp?.current === 'number' && tok.hp.current <= 0 && !bossPending);
 
+      // A frame (v2.60.0): the portrait fills its hole; the frame is drawn after the rim.
+      const frame = frameById(tok.frame), frameFit = frame && frameGeometry(frame, radius);
+      const portraitR = frameFit ? Math.min(radius, frameFit.hole + 1) : radius;
       ctx.save();
       ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.arc(0, 0, portraitR, 0, Math.PI * 2);
       ctx.clip();
 
       if (isDead) {
@@ -3999,7 +4003,7 @@ export class CanvasEngine {
       } else {
         const img = this.getTokenImage(layers.portrait);
         if (img && img.complete && img.naturalWidth > 0) {
-          ctx.drawImage(img, -radius, -radius, radius * 2, radius * 2);
+          ctx.drawImage(img, -portraitR, -portraitR, portraitR * 2, portraitR * 2);
         } else {
           ctx.fillStyle = '#1e293b';
           ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
@@ -4099,13 +4103,17 @@ export class CanvasEngine {
         else if (!tok.isPlayer) rimColor = tok.color || (tok.actorType === 'drone' ? '#72dfce' : '#ef4444');
         if (tok.hidden) rimColor = '#a855f7';
 
-        ctx.strokeStyle = rimColor;
-        ctx.lineWidth = isSelected ? 4 : (isDead ? 3 : 2.5);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-        ctx.stroke();
+        // With a frame, the frame is the rim; a hidden or fallen token still shows its colour.
+        if (!frameFit || tok.hidden || isDead) {
+          ctx.strokeStyle = rimColor;
+          ctx.lineWidth = isSelected ? 4 : (isDead ? 3 : 2.5);
+          ctx.beginPath();
+          ctx.arc(0, 0, frameFit ? frameFit.half * frame.outer : radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
         ctx.restore();
       }
+      if (frameFit) this.drawTokenFrame(ctx, frame, frameFit);
 
       // The class insignia, unless the token's layout hides it (v2.59.0).
       if (tokenLayout(tok).insignia) this.drawClassBanner(ctx, layers.flag, radius);
@@ -4276,6 +4284,15 @@ export class CanvasEngine {
   }
 
   // --- Render Ghost / Last Known Position of Enemy in Fog of War ---
+  // The frame: its body over the portrait's edge, then its light with «screen» (black adds nothing).
+  drawTokenFrame(ctx, frame, { half }) {
+    const body = this.getTokenImage(frameBody(frame)), light = this.getTokenImage(frameLight(frame));
+    ctx.save();
+    if (body?.complete && body.naturalWidth) ctx.drawImage(body, -half, -half, half * 2, half * 2);
+    if (light?.complete && light.naturalWidth) { ctx.globalCompositeOperation = 'screen'; ctx.drawImage(light, -half, -half, half * 2, half * 2); }
+    ctx.restore();
+  }
+
   drawClassBanner(ctx, url, radius) {
     const flag = url && this.getTokenImage(url);
     if (!flag?.complete || !flag.naturalWidth || !flag.naturalHeight) return;
@@ -4627,8 +4644,11 @@ export class CanvasEngine {
     if (isEncounterMarker(tok)) return;
     ctx.save();
     const layout = tokenLayout(tok), scale = Math.max(1, Math.min(1.8, 0.9 / this.zoom));
+    // Around the frame, if it has one (v2.60.0): outside its edge and inside its hole.
+    const frame = frameById(tok.frame), fit = frame && frameGeometry(frame, radius);
+    const outR = fit ? fit.half * frame.outer : radius, inR = fit ? Math.min(radius, fit.hole + 1) : radius;
     const nameWidth = Math.max(radius * 2, 70);
-    let below = radius + 4;
+    let below = outR + 4;
     // A player may hide every name on their screen with V; the Keeper always sees them (v2.59.0).
     const namesOff = namesHidden() && store.getState().userRole !== 'keeper';
     if (layout.name && !namesOff) {
@@ -4636,7 +4656,7 @@ export class CanvasEngine {
       ctx.strokeStyle = tok.color ? tok.color : 'rgba(0, 243, 255, 0.3)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(-nameWidth / 2, radius + 4, nameWidth, 16, 3);
+      ctx.roundRect(-nameWidth / 2, outR + 4, nameWidth, 16, 3);
       ctx.fill();
       ctx.stroke();
       const isKeeper = store.getState().userRole === 'keeper';
@@ -4649,20 +4669,20 @@ export class CanvasEngine {
       ctx.font = `bold 11px ${canvasFont('hud')}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(displayName, 0, radius + 12);
-      below = radius + 22;
+      ctx.fillText(displayName, 0, outR + 12);
+      below = outR + 22;
     }
     if (!this.canSeeVitals(tok)) { ctx.restore(); return; }
 
     const placed = place => LAYOUT_STATS.map(([key]) => key).filter(key => layout[key] === place).map(key => [key, statFor(tok, key)]).filter(([, stat]) => stat);
     // Bars below (under the name) and above the token.
     drawStatBars(ctx, { y: below + 2, width: nameWidth, scale, rows: placed('bottom') });
-    drawStatBars(ctx, { y: -radius - 6, width: nameWidth, scale, rows: placed('top'), up: true });
+    drawStatBars(ctx, { y: -outR - 6, width: nameWidth, scale, rows: placed('top'), up: true });
     // Rings: the inner one inside the rim, the outer ones around it.
-    for (const ring of ['inner1', 'outer1', 'outer2']) for (const [key, stat] of placed(ring)) drawStatRing(ctx, { r: ringRadius(ring, radius, scale), width: 3 * scale, key, stat });
+    for (const ring of ['inner1', 'outer1', 'outer2']) for (const [key, stat] of placed(ring)) drawStatRing(ctx, { r: ringRadius(ring, ring === 'inner1' ? inR : outR, scale), width: 3 * scale, key, stat });
     // Small tokens beside it; past the outer rings when there are any.
     const ringsOut = placed('outer2').length ? 9.5 * scale : placed('outer1').length ? 5.5 * scale : 0;
-    for (const side of ['right', 'left']) for (const [key, stat] of placed(side)) drawStatPips(ctx, { side, radius, scale, key, stat, offset: ringsOut });
+    for (const side of ['right', 'left']) for (const [key, stat] of placed(side)) drawStatPips(ctx, { side, radius: outR, scale, key, stat, offset: ringsOut });
 
     // A clock the Keeper put on the token by hand (not the sample one).
     const cfg = tok.displayConfig || {};

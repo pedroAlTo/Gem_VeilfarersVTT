@@ -113,3 +113,17 @@ test('Frightened (v2.55.0): Disadvantage against its source, and no step closer 
   // A clock that carries Frightened from a caster counts as its source.
   assert.equal(fearSource(pc('a', { effectClocks: [{ id: 'c', name: 'Terror', condition: 'Frightened', sourceId: 'foe', segments: 1, filled: 0 }] })), 'foe');
 });
+
+test('the Keeper removes any state, the life stages too, and a character at 0 HP comes back with 1 HP (v2.60.0)', async () => {
+  const { keeperClears } = await import('../src/cardResolution.js');
+  const s = table(pc('pc', { conditions: ['Dying', 'Bleeding'], hp: { current: 0, max: 6 } }));
+  assert.throws(() => performGameAction({ type: 'CONDITION', actorId: 'pc', name: 'Dying', active: false }, s), /progreso/, 'a player uses the life controls');
+  performGameAction({ type: 'CONDITION', actorId: 'pc', name: 'Dying', active: false, byKeeper: true }, s);
+  const t = s.state.tokens[0];
+  assert.deepEqual([t.conditions, t.hp.current], [['Bleeding'], 1], 'out of Dying with 1 HP');
+  assert.equal('keeperOverride' in t, false, 'the mark is not kept');
+  // A card's «Retirar condición» does the same with Dead; with another stage left, HP stays.
+  assert.deepEqual(keeperClears(pc('x', { hp: { current: 0, max: 6 } }), [], true).hp.current, 1);
+  assert.equal(keeperClears(pc('x', { hp: { current: 0, max: 6 } }), ['Stabilized'], true).hp, undefined);
+  assert.equal(keeperClears(pc('x', { hp: { current: 3, max: 6 } }), [], true).hp, undefined);
+});

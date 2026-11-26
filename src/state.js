@@ -396,9 +396,12 @@ class StateStore {
       this.spendFear(1, 'Foco en adversario: ' + target.name);
     }
     this._beforeTacticalMutation('Modificar Operativo', 'tok_' + tokenId);
+    // The Keeper's own hand (v2.60.0, user decision): HP for a character in any state. Not a game
+    // action (tableActing) nor a player's change arriving (remoteApplying).
+    const keeperHand = this.sessionRole !== 'player' && this.state.userRole === 'keeper' && !this.tableActing && !this.remoteApplying;
     const tokens = this.state.tokens.map(t => {
       if (t.id === tokenId) {
-        return { ...t, ...partial };
+        return { ...t, ...partial, ...(keeperHand ? { keeperOverride: true } : {}) };
       }
       if (turningOnSpotlight && (t.hasSpotlight || t.spotlight?.enabled)) {
         return { ...t, hasSpotlight: false, spotlight: { ...(t.spotlight || {}), enabled: false } };

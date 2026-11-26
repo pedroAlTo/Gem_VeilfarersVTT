@@ -1219,6 +1219,8 @@ export class NetworkManager {
           !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS', 'ARCHIVE_EDIT', 'REACTION_PAY', 'POWER_USE', 'LUCKY_BREAK', 'CARD_DURATION', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL', 'GEAR_INSTALL', 'GEAR_REMOVE', 'GEAR_WEAR', 'WEAPON_READY', 'WEAPON_FOLLOWUP', 'WEAPON_AREA', 'CARD_EFFECT'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
+        // A player's action never carries the Keeper's hand (v2.60.0).
+        if (data.action && typeof data.action === 'object') delete data.action.byKeeper;
         const result = await this.performAction(data.action, this.members.get(senderId)?.id || senderId);
         this.syncAll();
         conn?.send(this.envelope({ type: 'ACTION_RESULT', requestId: data.requestId, result }));

@@ -4,7 +4,6 @@ import { actorCollection, openPortraitPicker } from './portraitPicker.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
 import { openDossier } from './dossierUI.js';
-import { tokenLayout, placeStat, placesFor, LAYOUT_STATS } from './tokenLayout.js';
 import { validateActor, pickPlayerFields } from './validation.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { tokenInventory } from './equipment.js';
@@ -908,14 +907,10 @@ export class TokenHUD {
                 </div>
               </div>
 
-              <!-- On the map (v2.59.0, the user's design): name, insignia and where each stat goes. -->
+              <!-- On the map (v2.60.0): «Mi token» holds the frame, name, insignia and stats. -->
               <h4 class="sheet-section-title" style="margin-top: 18px; color: #00f3ff;">📊 EN EL MAPA</h4>
-              <div class="sheet-map-layout">
-                <label class="checkbox-label"><input type="checkbox" id="sheet_layout_name"> Nombre</label>
-                <label class="checkbox-label"><input type="checkbox" id="sheet_layout_insignia"> Insignia de clase</label>
-                ${LAYOUT_STATS.map(([stat, label]) => `<label class="sheet-layout-stat"><span>${label}</span><select class="hud-input" data-layout-stat="${stat}">${placesFor(stat).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}</select></label>`).join('')}
-              </div>
-              <p class="dossier-muted" style="margin: 6px 0 0;">Un círculo o un lado por stat (elegir uno ocupado lo quita del otro); las barras se apilan. Las fichas son de 8 px: Armadura llena o vacía; Resolve, triángulo (d4) o cuadrado (d6). Los stats solo los ven el Keeper y el jugador de este personaje.</p>
+              <button type="button" class="hud-btn" id="sheet_token_look">🎨 Marco, nombre y barras del token…</button>
+              <p class="dossier-muted" style="margin: 6px 0 0;">El marco da su color al token (nombre y chat). El jugador de este personaje puede cambiarlo también desde su retrato.</p>
             </div>
           </div>
 
@@ -990,16 +985,12 @@ export class TokenHUD {
     // frees it from another (placeStat). A clock put on the token by hand is kept as it was.
     const sampleClock = o => o?.type === 'circular' && o.statKey === 'clock' && /^hack$/i.test(o.label || '') && (o.id === 'ov_clock' || o.current === 2);
     currentOverlays = currentOverlays.filter(o => !sampleClock(o));
-    let layout = tokenLayout(token);
-    const paintLayout = () => {
-      modal.querySelector('#sheet_layout_name').checked = layout.name;
-      modal.querySelector('#sheet_layout_insignia').checked = layout.insignia;
-      modal.querySelectorAll('[data-layout-stat]').forEach(select => { select.value = layout[select.dataset.layoutStat]; });
-    };
-    modal.querySelectorAll('[data-layout-stat]').forEach(select => select.addEventListener('change', () => { layout = placeStat(layout, select.dataset.layoutStat, select.value); paintLayout(); }));
-    modal.querySelector('#sheet_layout_name').onchange = event => { layout = { ...layout, name: event.target.checked }; };
-    modal.querySelector('#sheet_layout_insignia').onchange = event => { layout = { ...layout, insignia: event.target.checked }; };
-    paintLayout();
+    // «Mi token» (v2.60.0): saved at once; the colour box here follows the frame's colour.
+    modal.querySelector('#sheet_token_look').onclick = () => import('./tokenLook.js').then(({ openTokenLook }) => openTokenLook(token.id, { onSaved: patch => {
+      if (!patch.color) return;
+      const val = modal.querySelector('#sheet_token_color_val'), btn = modal.querySelector('#sheet_token_color_btn');
+      if (val) val.value = patch.color; if (btn) btn.style.background = patch.color;
+    } }));
 
     // Toggle sleeping section when path select changes
     const pathSelect = modal.querySelector('#sheet_path');
@@ -1112,8 +1103,7 @@ export class TokenHUD {
           intensity: parseFloat(modal.querySelector('#sheet_spotlight_intensity')?.value) || 0.85
         },
         hidden: modal.querySelector('#sheet_is_hidden').checked,
-        // What the token shows and where (v2.59.0); a hand-made clock stays in the overlays.
-        vitalsLayout: layout,
+        // What the token shows and where is saved by «Mi token» (v2.60.0); a hand-made clock stays here.
         displayOverlays: currentOverlays,
         displayConfig: {
           showClock: currentOverlays.some(o => o.type === 'circular'),

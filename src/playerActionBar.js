@@ -12,7 +12,6 @@ import { store } from './state.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { TRAITS } from './rulesEngine.js';
 import { tokenInventory } from './equipment.js';
-import { openActorPortrait } from './portraitPicker.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { characterDetails } from './characterImport.js';
 import { statGaugeHTML } from './tokenVitals.js';
@@ -226,7 +225,7 @@ export class PlayerActionBar {
     const stage = lifeStage(token);
     const subtitle = [token.characterClass, token.path].filter(Boolean).join(' · ');
     this.root.innerHTML = sanitizeHTML(`
-      <header class="pab-head">${store.canEditToken(token.id) ? `<button type="button" class="actor-portrait-button pab-portrait-button" data-pab-portrait title="Cambiar retrato" aria-label="Cambiar retrato"><img src="${e(actorPortrait(token))}" alt=""></button>` : ''}<div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
+      <header class="pab-head">${store.canEditToken(token.id) ? `<button type="button" class="actor-portrait-button pab-portrait-button" data-pab-portrait title="Mi token: retrato, marco y barras" aria-label="Mi token: retrato, marco y barras"><img src="${e(actorPortrait(token))}" alt=""></button>` : ''}<div><strong data-no-i18n>${e(token.name || '')}</strong>${subtitle ? `<small>${e(subtitle)}</small>` : ''}</div>
         <button type="button" class="pab-focus ${token.hasSpotlight ? 'is-on' : ''}" data-pab-focus aria-pressed="${!!token.hasSpotlight}" title="${token.hasSpotlight ? 'Tienes el foco · pulsa para quitarlo' : 'Tomar el foco'}" ${store.canEditToken(token.id) ? '' : 'disabled'}>✨ ${token.hasSpotlight ? 'Con el foco' : 'Tomar foco'}</button></header>
       ${this.statsHTML(stats)}
       ${this.statusHTML(token)}
@@ -257,7 +256,8 @@ export class PlayerActionBar {
       </div>
       ${this.targeting ? (this.targeting.preview ? this.targetHint(this.targeting.preview) : '<p class="pab-hint" role="status">Toca el objetivo en el mapa · Esc para cancelar</p>') : ''}
       ${this.result ? this.resultRow() : ''}`);
-    this.root.querySelector('[data-pab-portrait]')?.addEventListener('click', () => openActorPortrait(token.id));
+    // The portrait opens «Mi token» (v2.60.0): portrait, frame, name, insignia and stats on the map.
+    this.root.querySelector('[data-pab-portrait]')?.addEventListener('click', () => import('./tokenLook.js').then(({ openTokenLook }) => openTokenLook(token.id)));
     this.root.querySelector('[data-pab-help]')?.addEventListener('click', () => this.openHelp());
     this.root.querySelector('[data-pab-conditions]')?.addEventListener('click', () => openConditions(token.id));
     this.root.querySelector('[data-pab-focus]')?.addEventListener('click', () => { if (toggleSpotlight(token.id)) { this.signature = ''; this.render(); } });

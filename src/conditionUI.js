@@ -15,6 +15,7 @@ export function conditionBadges(token) {
   }).join('');
 }
 
+const keeperTable = () => store.sessionRole !== 'player' && store.state.userRole === 'keeper';
 export function openConditions(tokenId) {
   const token = () => store.state.tokens.find(t => t.id === tokenId);
   if (!token()) return;
@@ -55,7 +56,7 @@ export function openConditions(tokenId) {
     if (pending.has(normalized)) return;
     pending.add(normalized); refresh();
     try {
-      await network.requestAction({ type:'CONDITION', actorId:tokenId, name:normalized, active:!toggle || !current.includes(normalized), ...extra });
+      await network.requestAction({ type:'CONDITION', actorId:tokenId, name:normalized, active:!toggle || !current.includes(normalized), ...extra, ...(keeperTable() ? { byKeeper: true } : {}) });
       error(''); explain(normalized); return true;
     } catch (e) { error(e.message); return false; }
     finally { pending.delete(normalized); if (modal.isConnected) refresh(); }
@@ -68,7 +69,8 @@ export function openConditions(tokenId) {
     modal.querySelectorAll('[data-condition]').forEach(button => {
       button.setAttribute('aria-pressed', String(active.includes(button.dataset.condition)));
       button.setAttribute('aria-disabled', String(!editable));
-      button.disabled = pending.has(button.dataset.condition) || (token()?.isPlayer !== false && LIFE_STATES.includes(button.dataset.condition));
+      // The Keeper may change any state, life stages included (v2.60.0).
+      button.disabled = pending.has(button.dataset.condition) || (!keeperTable() && token()?.isPlayer !== false && LIFE_STATES.includes(button.dataset.condition));
     });
     // Frightened (v2.55.0): of whom. With a source, the table gives Disadvantage on rolls against it
     // and does not let the player move the character closer to it.
