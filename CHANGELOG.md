@@ -1,10 +1,28 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.61.2**.
-Paquete: `VeilFarers_VTT_v2.61.2.zip`.
+Versión actual del VTT: **v2.62.0**.
+Paquete: `VeilFarers_VTT_v2.62.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.62.0] — 2026-11-26
+
+V3 · La sala de Hearts in the Void
+
+### Módulo Hearts in the Void
+
+- Sesiones → Módulos → «Hearts in the Void» crea una sesión con la aventura preparada: una escena por lámina de mapa (A, B y 1–5) más Crossroads, el tránsito del Velo y el epílogo, organizadas en cuatro actos. Solo falta poner las imágenes de los mapas.
+- En la reserva de tokens, los PNJ con su retrato y su descripción (Zara, Korren, Thex, Brix, Alexei, Madame Silk, Scalpel, Maya, Nyx, ARIA-7 y la gente de Crossroads) y los adversarios del módulo: dos Hunger Weavers, un obrero Weaver y la Reina Weaver como boss de dos fases.
+- Los seis relojes del módulo (Hambre, Ruta de escape, Desesperación de Korren, Sobrecarga del núcleo, Fallo estructural y Convergencia Weaver), ocultos hasta que el Keeper los muestra.
+- Dossieres en español e inglés: guías del Keeper (antes de empezar, pagos, seguimiento de PNJ, relojes, registro de la escena 8, reglas rápidas y láminas), notas por escena, fichas de PNJ, 25 documentos para los jugadores (mensajes, logs de terminal, carteles, el datapad de Alexei, sus poemas…) y el texto original del módulo por capítulos.
+
+### Dossieres
+
+- Carpetas plegables y buscador cuando hay muchos dossieres.
+- «Compartir»: el jugador conserva el dossier en su lista (además de poder transmitirlo como hasta ahora).
+- Marca «Solo Keeper» para las notas privadas: no se pueden transmitir ni compartir, ni por error; nunca llegan a los jugadores.
+- Un dossier escrito en dos idiomas se muestra en el de la interfaz, con botones ES / EN para cambiar.
 
 ## [2.61.2] — 2026-11-26
 

@@ -17,13 +17,14 @@ export async function openSessionManager() {
       <section class="session-current"><span class="dossier-eyebrow">SESIÓN ACTIVA</span><div><input class="hud-input" aria-label="Nombre de la sesión activa" id="session_name" value="${e(store.state.campaignName)}"><button class="hud-btn" id="session_rename">Renombrar</button><button class="hud-btn hud-btn-primary" id="session_save">Guardar ahora</button></div><small>${e(store.state.saveStatus === 'saved' ? 'Guardada en este navegador' : 'Guardado pendiente')}</small></section>
       <div class="session-list">${sessions.map(s => `<article class="session-card ${s.id === store.state.campaignId ? 'current' : ''}"><div><span class="dossier-eyebrow">${s.id === store.state.campaignId ? 'ACTIVA' : 'GUARDADA'}</span><h3>${e(s.name)}</h3><p>${s.maps || 0} escenas · ${s.tokens || 0} actores · ${s.clocks || 0} clocks</p><small>${s.savedAt ? e(new Date(s.savedAt).toLocaleString()) : 'Guardado anterior'}</small></div><button class="hud-btn" data-open-session="${e(s.id)}" ${s.id === store.state.campaignId || s.damaged ? 'disabled' : ''}>Abrir</button></article>`).join('')}</div>
       <section class="session-new"><h4 class="dossier-label">CREAR SESIÓN</h4><div><input class="hud-input" id="session_new_name" aria-label="Nombre de nueva sesión" placeholder="Nombre de la nueva sesión" maxlength="500"><button class="hud-btn hud-btn-primary" id="session_create">Nueva vacía</button><button class="hud-btn" id="session_copy">Duplicar activa</button></div><small>La sesión vacía comienza con una escena sin actores. Fear se inicia en 0 para que lo ajustes al preparar la partida.</small></section>
+      <section class="session-new session-modules"><h4 class="dossier-label">MÓDULOS</h4><div><button class="hud-btn hud-btn-primary" data-module="hearts-in-the-void">Hearts in the Void</button></div><small>Crea una sesión nueva con la aventura preparada: escenas por lámina (pon tus mapas), PNJ y adversarios en la reserva, relojes y dossieres para el Keeper y los jugadores, en español e inglés.</small></section>
       <p class="dossier-error" role="alert"></p><footer class="dossier-footer"><button class="hud-btn" id="session_actors">Importar personajes</button><button class="hud-btn" id="session_export">Exportar sesión JSON</button><label class="hud-btn session-file">Importar sesión JSON<input type="file" id="session_import" accept=".json,application/json"></label></footer>
     `);
     if (store.sessionRole !== 'local' || store.state.isHosting || store.state.isConnected) {
       const message = document.createElement('p'); message.className = 'import-warning';
       message.textContent = 'Para abrir, crear o importar otra sesión, cierra la partida desde «Partida y tripulación». Tus sesiones guardadas se conservan.';
       body.prepend(message);
-      body.querySelectorAll('#session_rename,#session_create,#session_copy,#session_import,#session_actors,[data-open-session]').forEach(b => { b.disabled = true; });
+      body.querySelectorAll('#session_rename,#session_create,#session_copy,#session_import,#session_actors,[data-open-session],[data-module]').forEach(b => { b.disabled = true; });
       if (store.sessionRole === 'player') body.querySelector('#session_save').disabled = true;
     }
     const execute = async action => {
@@ -40,6 +41,13 @@ export async function openSessionManager() {
     body.querySelector('#session_copy').onclick = () => execute(() => store.createSession(body.querySelector('#session_new_name').value, true));
     body.querySelectorAll('[data-open-session]').forEach(b => { b.onclick = () => execute(() => store.openSession(b.dataset.openSession)); });
     body.querySelector('#session_export').onclick = () => store.exportCampaignJSON();
+    // A prepared adventure (v2.62.0): a new, independent session from public/campaigns/<id>.json.
+    body.querySelectorAll('[data-module]').forEach(b => { b.onclick = () => execute(async () => {
+      const response = await fetch(`/campaigns/${b.dataset.module}.json`);
+      if (!response.ok) throw new Error('No se ha podido descargar el módulo. Comprueba la conexión.');
+      if (!await store.importCampaignJSON(await response.text())) throw new Error('No se ha podido crear la sesión del módulo.');
+      notify(`${b.textContent}: sesión creada. Abre Escenas para poner los mapas y Dossiers para las notas.`);
+    }); });
     body.querySelector('#session_actors').onclick = () => { modal.remove(); openCharacterImport(); };
     body.querySelector('#session_import').onchange = event => {
       const file = event.target.files[0]; if (!file) return;

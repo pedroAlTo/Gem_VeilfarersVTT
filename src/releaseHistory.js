@@ -1,6 +1,23 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.62.0', date: '2026-11-26', title: 'V3 · La sala de Hearts in the Void',
+    sections: [
+      { title: 'Módulo Hearts in the Void', items: [
+        'Sesiones → Módulos → «Hearts in the Void» crea una sesión con la aventura preparada: una escena por lámina de mapa (A, B y 1–5) más Crossroads, el tránsito del Velo y el epílogo, organizadas en cuatro actos. Solo falta poner las imágenes de los mapas.',
+        'En la reserva de tokens, los PNJ con su retrato y su descripción (Zara, Korren, Thex, Brix, Alexei, Madame Silk, Scalpel, Maya, Nyx, ARIA-7 y la gente de Crossroads) y los adversarios del módulo: dos Hunger Weavers, un obrero Weaver y la Reina Weaver como boss de dos fases.',
+        'Los seis relojes del módulo (Hambre, Ruta de escape, Desesperación de Korren, Sobrecarga del núcleo, Fallo estructural y Convergencia Weaver), ocultos hasta que el Keeper los muestra.',
+        'Dossieres en español e inglés: guías del Keeper (antes de empezar, pagos, seguimiento de PNJ, relojes, registro de la escena 8, reglas rápidas y láminas), notas por escena, fichas de PNJ, 25 documentos para los jugadores (mensajes, logs de terminal, carteles, el datapad de Alexei, sus poemas…) y el texto original del módulo por capítulos.',
+      ] },
+      { title: 'Dossieres', items: [
+        'Carpetas plegables y buscador cuando hay muchos dossieres.',
+        '«Compartir»: el jugador conserva el dossier en su lista (además de poder transmitirlo como hasta ahora).',
+        'Marca «Solo Keeper» para las notas privadas: no se pueden transmitir ni compartir, ni por error; nunca llegan a los jugadores.',
+        'Un dossier escrito en dos idiomas se muestra en el de la interfaz, con botones ES / EN para cambiar.',
+      ] },
+    ],
+  },
+  {
     version: '2.61.2', date: '2026-11-26', title: 'V3 · Retrato y token, rápido en tablet',
     sections: [
       { title: 'Retrato y token en tablet', items: [

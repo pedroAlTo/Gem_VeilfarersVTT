@@ -2073,6 +2073,23 @@ body, html {
   align-items: center;
 }
 
+/* Dossier folders, search, badges and the language switch (v2.62.0, Hearts in the Void room). */
+.handout-search { width: 100%; box-sizing: border-box; margin: 0 0 8px; }
+.handout-folder { border: 1px solid rgba(0, 243, 255, 0.18); border-radius: 4px; padding: 0 6px 6px; background: rgba(13, 4, 32, 0.35); }
+.handout-folder > summary { cursor: pointer; padding: 6px 2px; font-family: var(--font-hud, system-ui); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #a5f3fc; }
+.handout-folder > .handout-card { margin-top: 6px; }
+.handout-folder[hidden], .handout-card[hidden] { display: none !important; }
+.handout-card.keeper-only { border-left-color: #f5b942; }
+.handout-header { flex-wrap: wrap; gap: 4px; }
+.handout-badge { font-size: 9px; letter-spacing: .08em; padding: 1px 5px; border: 1px solid #f5b942; color: #f5b942; border-radius: 3px; }
+.handout-badge.shared { border-color: #34d399; color: #34d399; }
+.handout-actions { flex-wrap: wrap; }
+.handout-lang { display: flex; gap: 4px; justify-content: flex-end; margin: 0 0 8px; }
+.handout-lang button[aria-pressed="true"] { border-color: var(--cyan-pearl); color: var(--cyan-pearl); }
+.transmission-content-area [hidden] { display: none !important; }
+.transmission-content-area table { width: 100%; border-collapse: collapse; }
+.transmission-content-area th, .transmission-content-area td { text-align: left; vertical-align: top; padding: 4px; border-bottom: 1px solid rgba(148, 163, 184, .2); }
+
 .handout-title {
   font-family: var(--font-hud);
   font-size: 13px;

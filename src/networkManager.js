@@ -429,7 +429,7 @@ export class NetworkManager {
           return copy;
         }),
       clocks: s.clocks.filter((c) => !c.isKeeperOnly),
-      handouts: s.handouts.filter((h) => h.sharedWithPlayers),
+      handouts: s.handouts.filter((h) => h.sharedWithPlayers && !h.keeperOnly),
       claimedTokenId: s.tokens.find((t) => !isDrone(t) && (t.ownerId === memberId || t.controllerIds?.includes(memberId)))?.id || s.tokens.find((t) => controlsToken(t, memberId))?.id || null,
     };
   }

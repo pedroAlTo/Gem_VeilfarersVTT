@@ -2063,6 +2063,20 @@ export const PAIRS = [
   ["Poderes de dominio", "Domain Powers"],
   ["Bear Down · Moves", "Bear Down · Moves"],
   ["Ancestry · Community · Aumentos", "Ancestry · Community · Augments"],
+  // Dossier folders, sharing and the Hearts in the Void module (v2.62.0)
+  ["Buscar dossier…", "Search dossiers…"],
+  ["Buscar dossier", "Search dossiers"],
+  ["COMPARTIR", "SHARE"],
+  ["DEJAR DE COMPARTIR", "STOP SHARING"],
+  ["🔒 SOLO KEEPER", "🔒 KEEPER ONLY"],
+  ["Los jugadores lo conservan en su lista de dossieres", "The players keep it in their dossier list"],
+  ["Carpeta", "Folder"],
+  ["p. ej. Jugadores · Documentos", "e.g. Players · Documents"],
+  ["Solo Keeper (no se transmite ni se comparte)", "Keeper only (never transmitted or shared)"],
+  ["Idioma del dossier", "Dossier language"],
+  ["Crea una sesión nueva con la aventura preparada: escenas por lámina (pon tus mapas), PNJ y adversarios en la reserva, relojes y dossieres para el Keeper y los jugadores, en español e inglés.", "Creates a new session with the adventure prepared: one scene per map plate (add your maps), NPCs and adversaries in the reserve, clocks, and dossiers for the Keeper and the players, in Spanish and English."],
+  ["No se ha podido descargar el módulo. Comprueba la conexión.", "The module could not be downloaded. Check the connection."],
+  ["No se ha podido crear la sesión del módulo.", "The module session could not be created."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2301,4 +2315,7 @@ export const PATTERNS = [
   ["Retrato y token · {_a}", "Portrait and token · {_a}"],
   ["Bear Down y Common Efforts (todos los Sleeping) · {_n}", "Bear Down and Common Efforts (every Sleeping) · {_n}"],
   ["Aumentos · {_n}", "Augments · {_n}"],
+  ["«{_a}» ya no está en la lista de los jugadores.", "“{_a}” is no longer in the players’ list."],
+  ["«{_a}» compartido: los jugadores lo tienen en sus dossieres.", "“{_a}” shared: the players have it in their dossiers."],
+  ["{_a}: sesión creada. Abre Escenas para poner los mapas y Dossiers para las notas.", "{_a}: session created. Open Scenes to set the maps and Dossiers for the notes."],
 ];

@@ -1,4 +1,5 @@
-import { sanitizeHTML, confirmAction, notify } from './ui.js';
+import { sanitizeHTML, confirmAction, notify, escapeHTML as e } from './ui.js';
+import { currentLanguage } from './i18n.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 // src/handoutManager.js
 // Classified Transmissions, Dossiers, and Enriched Text Handouts with Images
@@ -27,10 +28,42 @@ export class HandoutManager {
     });
   }
 
+  // The list (v2.62.0, Hearts in the Void room): dossiers grouped in folders, a search box, and for
+  // the Keeper a «Compartir» switch (the players keep a shared dossier in their list) and the
+  // «solo Keeper» mark (private notes: never transmitted nor shared, not even by mistake).
   render() {
     const state = store.getState();
     const isKeeper = state.userRole === 'keeper';
-    const handouts = state.handouts || [];
+    const handouts = (state.handouts || []).filter(doc => isKeeper || (doc.sharedWithPlayers && !doc.keeperOnly));
+    const folders = new Map();
+    for (const doc of handouts) {
+      const folder = doc.folder || 'Dossiers';
+      if (!folders.has(folder)) folders.set(folder, []);
+      folders.get(folder).push(doc);
+    }
+    this.openFolders ??= new Set([...folders.keys()].slice(0, 1));
+    const card = doc => `
+            <div class="handout-card glass-panel ${doc.keeperOnly ? 'keeper-only' : ''}" data-id="${e(doc.id)}" data-search="${e(`${doc.title} ${doc.sender || ''} ${doc.folder || ''}`.toLowerCase())}">
+              <div class="handout-header">
+                <span class="handout-title" data-no-i18n>${e(doc.title)}</span>
+                ${doc.imageUrl ? '<span class="handout-img-indicator">📷 IMAGE</span>' : ''}
+                ${isKeeper && doc.keeperOnly ? '<span class="handout-badge">🔒 SOLO KEEPER</span>' : ''}
+                ${isKeeper && doc.sharedWithPlayers && !doc.keeperOnly ? '<span class="handout-badge shared">COMPARTIDO</span>' : ''}
+              </div>
+              <div class="handout-meta">
+                <span data-no-i18n>${e(doc.sender || 'Command')}</span>
+                <span data-no-i18n>${e(doc.timestamp || '')}</span>
+              </div>
+              <div class="handout-actions">
+                <button class="hud-btn hud-btn-xs preview-handout-btn" data-id="${e(doc.id)}">VIEW</button>
+                ${isKeeper ? `
+                  ${doc.keeperOnly ? '' : `<button class="hud-btn hud-btn-xs hud-btn-primary broadcast-handout-btn" data-id="${e(doc.id)}" title="Broadcast transmission to all players">TRANSMIT 📡</button>
+                  <button class="hud-btn hud-btn-xs share-handout-btn" data-id="${e(doc.id)}" aria-pressed="${!!doc.sharedWithPlayers}" title="Los jugadores lo conservan en su lista de dossieres">${doc.sharedWithPlayers ? 'DEJAR DE COMPARTIR' : 'COMPARTIR'}</button>`}
+                  <button class="hud-btn hud-btn-xs hud-btn-secondary edit-handout-btn" data-id="${e(doc.id)}">EDIT</button>
+                  <button class="hud-btn hud-btn-xs hud-btn-danger delete-handout-btn" data-id="${e(doc.id)}" aria-label="Delete">✕</button>
+                ` : ''}
+              </div>
+            </div>`;
 
     this.container.innerHTML = sanitizeHTML(`
       <div class="handouts-sidebar-content">
@@ -44,32 +77,16 @@ export class HandoutManager {
         <p class="modal-intro" style="margin: 8px 0;">
           Classified intelligence reports, star charts, mission briefings, and decoded alien archives.
         </p>
+        ${handouts.length > 6 ? '<input type="search" class="hud-input handout-search" id="handout_search" placeholder="Buscar dossier…" aria-label="Buscar dossier">' : ''}
 
         <div class="handouts-list">
           ${handouts.length === 0 ? `
             <div class="log-empty-state">No classified transmissions stored. Create a dossier to broadcast to your crew.</div>
-          ` : handouts.map(doc => `
-            <div class="handout-card glass-panel" data-id="${doc.id}">
-              <div class="handout-header">
-                <span class="handout-title">${doc.title}</span>
-                ${doc.imageUrl ? '<span class="handout-img-indicator">📷 IMAGE</span>' : ''}
-              </div>
-              <div class="handout-meta">
-                <span>Source: ${doc.sender || 'Command'}</span>
-                <span>${doc.timestamp}</span>
-              </div>
-              <div class="handout-actions">
-                <button class="hud-btn hud-btn-xs preview-handout-btn" data-id="${doc.id}">VIEW</button>
-                ${isKeeper ? `
-                  <button class="hud-btn hud-btn-xs hud-btn-primary broadcast-handout-btn" data-id="${doc.id}" title="Broadcast transmission to all players">
-                    TRANSMIT 📡
-                  </button>
-                  <button class="hud-btn hud-btn-xs hud-btn-secondary edit-handout-btn" data-id="${doc.id}">EDIT</button>
-                  <button class="hud-btn hud-btn-xs hud-btn-danger delete-handout-btn" data-id="${doc.id}">✕</button>
-                ` : ''}
-              </div>
-            </div>
-          `).join('')}
+          ` : folders.size === 1 && [...folders.keys()][0] === 'Dossiers' ? handouts.map(card).join('') : [...folders].map(([folder, docs]) => `
+            <details class="handout-folder" data-folder="${e(folder)}" ${this.openFolders.has(folder) ? 'open' : ''}>
+              <summary><span data-no-i18n>${e(folder)}</span> · ${docs.length}</summary>
+              ${docs.map(card).join('')}
+            </details>`).join('')}
         </div>
       </div>
     `);
@@ -79,12 +96,26 @@ export class HandoutManager {
 
   initEvents() {
     const isKeeper = store.getState().userRole === 'keeper';
+    const find = id => store.getState().handouts.find(h => h.id === id);
+    this.container.querySelectorAll('.handout-folder').forEach(folder => folder.addEventListener('toggle', () => {
+      if (folder.open) this.openFolders.add(folder.dataset.folder); else this.openFolders.delete(folder.dataset.folder);
+    }));
+    // The search hides what does not match and opens the folders that hold a match (no re-render).
+    const search = this.container.querySelector('#handout_search');
+    if (search) search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      this.container.querySelectorAll('.handout-card').forEach(c => { c.hidden = !!q && !c.dataset.search.includes(q); });
+      this.container.querySelectorAll('.handout-folder').forEach(f => {
+        const any = [...f.querySelectorAll('.handout-card')].some(c => !c.hidden);
+        f.hidden = !any;
+        if (q) f.open = any; else f.open = this.openFolders.has(f.dataset.folder);
+      });
+    };
 
     // View Handout
     this.container.querySelectorAll('.preview-handout-btn').forEach(btn => {
       btn.onclick = () => {
-        const docId = btn.dataset.id;
-        const doc = store.getState().handouts.find(h => h.id === docId);
+        const doc = find(btn.dataset.id);
         if (doc) this.displayTransmissionPopup(doc);
       };
     });
@@ -99,8 +130,7 @@ export class HandoutManager {
       // Edit Handout
       this.container.querySelectorAll('.edit-handout-btn').forEach(btn => {
         btn.onclick = () => {
-          const docId = btn.dataset.id;
-          const doc = store.getState().handouts.find(h => h.id === docId);
+          const doc = find(btn.dataset.id);
           if (doc) this.openEditorModal(doc);
         };
       });
@@ -114,12 +144,22 @@ export class HandoutManager {
         };
       });
 
+      // Share with the players: they keep it in their list (a private note can never be shared).
+      this.container.querySelectorAll('.share-handout-btn').forEach(btn => {
+        btn.onclick = () => {
+          const doc = find(btn.dataset.id);
+          if (!doc || doc.keeperOnly) return;
+          store.updateHandout(doc.id, { sharedWithPlayers: !doc.sharedWithPlayers });
+          network.syncAll?.();
+          notify(doc.sharedWithPlayers ? `«${doc.title}» ya no está en la lista de los jugadores.` : `«${doc.title}» compartido: los jugadores lo tienen en sus dossieres.`);
+        };
+      });
+
       // Broadcast Handout to Players
       this.container.querySelectorAll('.broadcast-handout-btn').forEach(btn => {
         btn.onclick = () => {
-          const docId = btn.dataset.id;
-          const doc = store.getState().handouts.find(h => h.id === docId);
-          if (doc) {
+          const doc = find(btn.dataset.id);
+          if (doc && !doc.keeperOnly) {
             network.broadcast({
               type: 'TRANSMISSION',
               handout: doc
@@ -158,6 +198,13 @@ export class HandoutManager {
               <label>Origin / Source</label>
               <input type="text" id="doc_sender" class="hud-input" placeholder="e.g. Free Fleet Vanguard" value="${existingDoc ? existingDoc.sender : 'Naval Intelligence'}" />
             </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <label>Carpeta</label>
+              <input type="text" id="doc_folder" class="hud-input" placeholder="p. ej. Jugadores · Documentos" value="${e(existingDoc?.folder || '')}" />
+            </div>
+            <label class="checkbox-label" style="flex: 1; align-self: end;"><input type="checkbox" id="doc_keeper_only" ${existingDoc?.keeperOnly ? 'checked' : ''}> Solo Keeper (no se transmite ni se comparte)</label>
           </div>
 
           <div class="form-group">
@@ -237,15 +284,43 @@ export class HandoutManager {
       const sender = modal.querySelector('#doc_sender').value.trim() || 'Command';
       const imageUrl = urlInput.value.trim();
       const contentHtml = modal.querySelector('#doc_content').value.trim();
+      const folder = modal.querySelector('#doc_folder').value.trim();
+      const keeperOnly = modal.querySelector('#doc_keeper_only').checked;
 
       if (isEdit) {
-        store.updateHandout(existingDoc.id, { title, sender, imageUrl, contentHtml });
+        store.updateHandout(existingDoc.id, { title, sender, imageUrl, contentHtml, folder, keeperOnly, ...(keeperOnly ? { sharedWithPlayers: false } : {}) });
       } else {
-        store.addHandout({ title, sender, imageUrl, contentHtml });
+        const doc = store.addHandout({ title, sender, imageUrl, contentHtml });
+        store.updateHandout(doc.id, { folder, keeperOnly });
       }
 
       modal.remove();
     };
+  }
+
+  // A dossier written in two languages (v2.62.0, [data-lang] blocks) shows one at a time: the
+  // interface's, with ES / EN buttons to switch.
+  languageSwitch(popup) {
+    const blocks = [...popup.querySelectorAll('.transmission-content-area [data-lang]')];
+    const langs = [...new Set(blocks.map(b => b.dataset.lang))];
+    if (langs.length < 2) return;
+    const bar = document.createElement('div');
+    bar.className = 'handout-lang';
+    bar.setAttribute('role', 'group');
+    bar.setAttribute('aria-label', 'Idioma del dossier');
+    const show = lang => {
+      blocks.forEach(b => { b.hidden = b.dataset.lang !== lang; });
+      bar.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.showLang === lang)));
+    };
+    for (const lang of langs) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'hud-btn hud-btn-xs'; button.dataset.showLang = lang;
+      button.textContent = lang.toUpperCase(); button.setAttribute('data-no-i18n', '');
+      button.onclick = () => show(lang);
+      bar.append(button);
+    }
+    popup.querySelector('.transmission-content-area').before(bar);
+    show(langs.includes(currentLanguage()) ? currentLanguage() : langs[0]);
   }
 
   displayTransmissionPopup(doc) {
@@ -292,6 +367,7 @@ export class HandoutManager {
     `);
 
     document.body.appendChild(popup);
+    this.languageSwitch(popup);
 
     popup.querySelectorAll('.modal-close-btn').forEach(btn => {
       btn.onclick = () => popup.remove();
