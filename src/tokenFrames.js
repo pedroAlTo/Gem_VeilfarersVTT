@@ -37,6 +37,10 @@ export const TOKEN_FRAMES = [
 export const frameById = id => TOKEN_FRAMES.find(f => f.id === id) || null;
 export const frameBody = frame => `/assets/tokens/frames/${frame.id}.webp`;
 export const frameLight = frame => `/assets/tokens/frames/${frame.id}-light.webp`;
+// For the window (v2.61.2): one image with the light already added (scripts/token-thumbs.py), so
+// the window needs no CSS blend mode (tablets left those areas blank while scrolling).
+export const frameThumb = frame => `/assets/tokens/frames/${frame.id}-thumb.webp`;
+export const frameFlat = frame => `/assets/tokens/frames/${frame.id}-flat.webp`;
 // The frame's outer edge sits at 1.2 × the token's radius; the portrait fills its hole.
 export const FRAME_REACH = 1.2;
 export const frameGeometry = (frame, radius) => {

@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.61.1**.
-Paquete: `VeilFarers_VTT_v2.61.1.zip`.
+Versión actual del VTT: **v2.61.2**.
+Paquete: `VeilFarers_VTT_v2.61.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.61.2] — 2026-11-26
+
+V3 · Retrato y token, rápido en tablet
+
+### Retrato y token en tablet
+
+- La ventana carga miniaturas: los retratos en pequeño (unos 5 KB en lugar de 50–170 KB cada uno) y cada marco en una sola imagen con su luz ya incluida, en lugar de dos capas mezcladas. Las imágenes que no se ven todavía se cargan al llegar a ellas.
+- Corregido: en tablet, al hacer scroll desaparecían los retratos, la vista previa y los marcos. En pantallas táctiles las ventanas ya no difuminan el mapa de fondo (le costaba demasiado a la tablet) y la rejilla de marcos ya no tiene un scroll propio dentro del de la ventana.
+- Las imágenes se guardan un día en el navegador: al volver a la partida no se piden otra vez.
 
 ## [2.61.1] — 2026-11-26
 

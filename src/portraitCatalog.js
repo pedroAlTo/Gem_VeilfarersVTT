@@ -28,6 +28,9 @@ for (const collection of ['bestiary', 'bestiary-2', 'crew', ...ANCESTRY_IDS]) {
   for (const cls of classes) for (const { url } of portraitChoices(collection, cls)) presets.set(url, { collection, cls });
 }
 export const isPresetPortrait = url => presets.has(url);
+// The small image of a preset portrait for the window's grid (v2.61.2, scripts/token-thumbs.py;
+// the class portraits' thumbnails come from scripts/token-portraits.mjs). Others stay as they are.
+export const portraitThumb = url => isPresetPortrait(url) ? url.replace('/assets/tokens/', '/assets/tokens/thumbs/').replace(/\.(jpe?g|png)$/i, '.webp') : url;
 export const presetLocation = url => presets.get(url);
 
 // Only short references may be copied into individual messages, including historical ones.

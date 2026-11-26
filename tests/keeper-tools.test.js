@@ -159,7 +159,7 @@ test('the Keeper can pick a Refuge portrait, preview it and keep it when the tok
   const choices = [...picker.querySelectorAll('.portrait-choice')];
   assert.equal(choices.length, 13);
   const queen = choices.find(b => b.textContent === 'Weaver Queen');
-  const url = queen.querySelector('img').getAttribute('src');
+  const url = queen.dataset.portrait;
   queen.click(); await new Promise(r => setTimeout(r, 0));
   assert.equal(document.querySelector('#sheet_avatar_preview').getAttribute('src'), url);
   document.querySelector('#sheet_name').value = 'Hunger Weaver';
@@ -294,7 +294,7 @@ test('the player can browse every ancestry from their dossier and only change an
   group.value = 'rift_spinner'; group.dispatchEvent(new Event('change'));
   const cls = picker.querySelector('[data-class]'); cls.value = ''; cls.dispatchEvent(new Event('change'));
   const tile = picker.querySelector('.portrait-choice');
-  const url = tile.querySelector('img').getAttribute('src');
+  const url = tile.dataset.portrait;
   tile.click(); await new Promise(r => setTimeout(r,0));
   assert.equal(store.state.tokens.find(t => t.id === token.id).avatarUrl, url);
   assert.equal(dossier.querySelector('.dossier-portrait').getAttribute('src'), url);
@@ -328,11 +328,14 @@ test('the token controls live in the portrait selection: one window, applied at 
   assert.equal(live.vitalsLayout.hp, 'outer1'); assert.equal(live.vitalsLayout.name, false);
   // Choosing a portrait keeps the window open, with the controls as they are.
   const group = picker.querySelector('[data-collection]'); group.value = 'crew'; group.dispatchEvent(new Event('change'));
-  const tile = picker.querySelector('.portrait-choice'), url = tile.querySelector('img').getAttribute('src');
+  const tile = picker.querySelector('.portrait-choice'), url = tile.dataset.portrait;
   tile.click(); await new Promise(r => setTimeout(r, 0));
   assert.equal(store.state.tokens.find(t => t.id === token.id).avatarUrl, url);
   assert.ok(picker.isConnected);
-  assert.equal(picker.querySelector('.portrait-choice[aria-pressed=true] img').getAttribute('src'), url);
+  assert.equal(picker.querySelector('.portrait-choice[aria-pressed=true]').dataset.portrait, url);
+  const { portraitThumb } = await import('../src/portraitCatalog.js');
+  assert.equal(picker.querySelector('.portrait-choice[aria-pressed=true] img').getAttribute('src'), portraitThumb(url), 'the tile shows the thumbnail (v2.61.2)');
+  assert.match(portraitThumb(url), /^\/assets\/tokens\/thumbs\/.+\.webp$/);
   assert.equal(picker.querySelector('[data-layout-stat="hp"]').value, 'outer1');
   assert.equal(store.state.tokens.find(t => t.id === token.id).frame, 'frame-15');
   picker.querySelector('[data-done]').click();

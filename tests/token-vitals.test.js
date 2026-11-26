@@ -85,3 +85,29 @@ test('the 30 frames: two layers each, a colour for the chat, a hole for the port
   assert.equal(validTokenPatch({ frame: 'frame-99' }), false);
   assert.equal(validTokenPatch({ keeperOverride: true }), false, 'never the Keeper mark');
 });
+
+test('the portrait window has small, flat images for every frame and preset portrait (v2.61.2)', async () => {
+  const { existsSync } = await import('node:fs');
+  const { TOKEN_FRAMES, frameThumb, frameFlat } = await import('../src/tokenFrames.js');
+  const { portraitChoices, portraitThumb } = await import('../src/portraitCatalog.js');
+  const { ANCESTRY_IDS, TOKEN_CLASSES } = await import('../src/tokenAvatars.js');
+  const file = url => new URL('../public' + url, import.meta.url);
+  for (const frame of TOKEN_FRAMES) {
+    assert.ok(existsSync(file(frameThumb(frame))), frameThumb(frame));
+    assert.ok(existsSync(file(frameFlat(frame))), frameFlat(frame));
+  }
+  let checked = 0;
+  for (const collection of ['bestiary', 'bestiary-2', 'crew', ...ANCESTRY_IDS]) {
+    for (const cls of ANCESTRY_IDS.includes(collection) ? ['', ...TOKEN_CLASSES] : ['']) {
+      for (const { url } of portraitChoices(collection, cls)) {
+        const thumb = portraitThumb(url);
+        assert.notEqual(thumb, url, `${url} has a thumbnail`);
+        assert.match(thumb, /^\/assets\/tokens\/thumbs\//);
+        // The class portraits are drawn by the build (scripts/token-portraits.mjs) from the crew thumbnails.
+        if (!thumb.endsWith('.svg')) { assert.ok(existsSync(file(thumb)), thumb); checked++; }
+      }
+    }
+  }
+  assert.ok(checked > 60);
+  assert.equal(portraitThumb('data:image/webp;base64,AAAA'), 'data:image/webp;base64,AAAA', 'an uploaded image stays as it is');
+});

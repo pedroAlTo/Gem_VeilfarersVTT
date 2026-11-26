@@ -4,7 +4,7 @@ import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e } from './ui.js';
 import { store } from './state.js';
 import { actorPortrait, ANCESTRY_IDS, normalizeAncestryId, TOKEN_CLASSES } from './tokenAvatars.js';
-import { ancestryNames, isPlayerPortrait, isPortraitReference, isPortraitSource, isPresetPortrait, portraitChoices, presetLocation } from './portraitCatalog.js';
+import { ancestryNames, isPlayerPortrait, isPortraitReference, isPortraitSource, isPresetPortrait, portraitChoices, portraitThumb, presetLocation } from './portraitCatalog.js';
 
 const option = (value, label, current) => `<option value="${e(value)}" ${value === current ? 'selected' : ''}>${e(label)}</option>`;
 export const portraitGenderOptions = value => [['', 'Según los pronombres'], ['f', 'Femenino'], ['m', 'Masculino'], ['n', 'Neutro']]
@@ -84,7 +84,11 @@ export function openPortraitPicker({ title = 'Elegir retrato', current = '', col
     const buttons = choices.map(({ name, url }) => {
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'portrait-choice'; button.setAttribute('aria-pressed', String(url === current));
-      const image = document.createElement('img'); image.alt = ''; image.src = url;
+      button.dataset.portrait = url; // the image it applies (the tile shows its thumbnail)
+      // The thumbnail, loaded when it comes into view; the full image if there is no thumbnail.
+      const image = document.createElement('img'); image.alt = ''; image.loading = 'lazy'; image.decoding = 'async';
+      image.onerror = () => { image.onerror = null; image.src = url; };
+      image.src = portraitThumb(url);
       const label = document.createElement('span'); label.textContent = name;
       button.append(image, label); button.onclick = () => choose(() => url);
       return button;

@@ -88,6 +88,12 @@ html body .roll-trigger-btn { border-radius: 0; background: linear-gradient(105d
 
 html body .veil-modal-backdrop,
 html body .dossier-backdrop { background: rgba(13, 4, 32, 0.86); backdrop-filter: blur(6px); }
+/* Tablets and phones (v2.61.2, user report: the window's images vanished while scrolling): blurring
+   the whole live map behind a window exhausted the GPU; a plain, darker background instead. */
+@media (pointer: coarse) {
+  html body .veil-modal-backdrop,
+  html body .dossier-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(13, 4, 32, 0.95); }
+}
 html body .veil-modal-box,
 html body .dossier-modal.veil-modal-box,
 html body .sheet-modal-box {

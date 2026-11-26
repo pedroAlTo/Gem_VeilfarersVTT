@@ -196,7 +196,7 @@ test('the Keeper can use a scene token as the campaign portrait and players rece
   assert.equal(picker.querySelector('[data-collection]').value,'scene');
   assert.ok(picker.querySelector('[data-upload]'));
   const choice = [...picker.querySelectorAll('.portrait-choice')].find(el => el.textContent === token.name);
-  const url = choice.querySelector('img').getAttribute('src');
+  const url = choice.dataset.portrait;
   choice.click(); await new Promise(r => setTimeout(r,0));
   assert.equal(store.state.keeperPortrait,url);
   assert.equal(validateCampaign(store.serializeCampaign()).keeperPortrait,url);
