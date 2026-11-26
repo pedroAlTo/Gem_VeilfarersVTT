@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.62.2', date: '2026-11-26', title: 'V3 · Hearts in the Void en el inicio',
+    sections: [
+      { title: 'Inicio', items: [
+        'En la pantalla de inicio, junto a «Crear partida», está «Hearts in the Void». Con cuenta crea la partida online con la aventura preparada y copia el enlace de invitación, como «Crear partida»; sin cuenta la abre en la mesa local. Entras como Keeper; solo faltan tus mapas.',
+      ] },
+    ],
+  },
+  {
     version: '2.62.1', date: '2026-11-26', title: 'V3 · El aviso de la tecla V, breve',
     sections: [
       { title: 'Nombres de los tokens', items: [

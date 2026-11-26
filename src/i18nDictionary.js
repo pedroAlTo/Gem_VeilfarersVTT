@@ -2077,6 +2077,9 @@ export const PAIRS = [
   ["Crea una sesión nueva con la aventura preparada: escenas por lámina (pon tus mapas), PNJ y adversarios en la reserva, relojes y dossieres para el Keeper y los jugadores, en español e inglés.", "Creates a new session with the adventure prepared: one scene per map plate (add your maps), NPCs and adversaries in the reserve, clocks, and dossiers for the Keeper and the players, in Spanish and English."],
   ["No se ha podido descargar el módulo. Comprueba la conexión.", "The module could not be downloaded. Check the connection."],
   ["No se ha podido crear la sesión del módulo.", "The module session could not be created."],
+  // The prepared adventure on the home screen (v2.62.2)
+  ["Aventura preparada: escenas, PNJ, relojes y dossieres. Diriges tú (Keeper); solo faltan tus mapas.", "Prepared adventure: scenes, NPCs, clocks and dossiers. You run it (Keeper); only your maps are missing."],
+  ["No se pudo preparar la aventura en la mesa local.", "The adventure could not be prepared on the local table."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2318,4 +2321,5 @@ export const PATTERNS = [
   ["«{_a}» ya no está en la lista de los jugadores.", "“{_a}” is no longer in the players’ list."],
   ["«{_a}» compartido: los jugadores lo tienen en sus dossieres.", "“{_a}” shared: the players have it in their dossiers."],
   ["{_a}: sesión creada. Abre Escenas para poner los mapas y Dossiers para las notas.", "{_a}: session created. Open Scenes to set the maps and Dossiers for the notes."],
+  ["No se pudo descargar la aventura: {_a}", "The adventure could not be downloaded: {_a}"],
 ];

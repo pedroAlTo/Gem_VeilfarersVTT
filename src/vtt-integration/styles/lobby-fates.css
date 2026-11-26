@@ -642,6 +642,14 @@
     url('/assets/lobby/boarding.webp') 60% 45% / cover no-repeat, #2a0b5c;
   box-shadow: inset 0 3px 0 var(--fx-accent);
 }
+/* A prepared adventure (v2.62.2): the Weaver Queen's lair under the veil, when the art is there. */
+#vf-lobby-gateway .vf-quick-module {
+  background:
+    linear-gradient(90deg, rgba(13, 4, 32, 0.95) 0%, rgba(26, 6, 64, 0.85) 50%, rgba(14, 116, 144, 0.35) 100%),
+    url('/campaigns/hearts-in-the-void/queen-lair.webp') 50% 50% / cover no-repeat, #0d0420;
+  box-shadow: inset 0 3px 0 #22d3ee;
+}
+#vf-lobby-gateway .vf-quick-module .quick-icon { color: #67e8f9; }
 #vf-lobby-gateway .vf-quick-join {
   background:
     linear-gradient(90deg, rgba(13, 4, 32, 0.95) 0%, rgba(13, 4, 32, 0.82) 50%, rgba(13, 4, 32, 0.45) 100%),

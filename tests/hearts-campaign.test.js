@@ -89,3 +89,26 @@ test('the V toast is short and does not pile up (v2.62.1)', async t => {
   t.mock.timers.tick(5999); assert.ok(document.querySelector('#toast_stack .orbital-toast'), 'other toasts keep their 6 s');
   t.mock.timers.tick(1);
 });
+
+test('the home menu creates an online room that holds the adventure (v2.62.2)', async () => {
+  const { RoomController } = await import('../src/roomController.js');
+  let sent = null;
+  const service = { ready: async () => {}, create: async (name, campaign) => { sent = { name, campaign }; return { id: 'room-hv', inviteCode: 'HEA-123' }; } };
+  const controller = new RoomController({ service, stateStore: store, networkManager: { disconnect() {} } });
+  controller.enter = async () => {}; // the connection itself is the rooms' integration test
+  const before = store.state.campaignId;
+  await controller.create('Hearts in the Void · 26 nov', { campaign: file });
+  assert.equal(sent.name, 'Hearts in the Void · 26 nov');
+  assert.equal(sent.campaign.campaignName, 'Hearts in the Void · 26 nov');
+  assert.equal(sent.campaign.maps.length, 10);
+  assert.equal(sent.campaign.handouts.length, file.handouts.length);
+  assert.notEqual(sent.campaign.campaignId, file.campaignId, 'a new campaign id for every room');
+  assert.notEqual(store.state.campaignId, before);
+  assert.ok(sent.campaign.tokens.every(t => !t.ownerId), 'nobody owns a token in a new room');
+});
+
+test('the home screen offers the adventure next to Crear partida (v2.62.2)', () => {
+  const lobby = readFileSync(new URL('../src/vtt-integration/modules/lobbyGateway.js', import.meta.url), 'utf8');
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  for (const html of [lobby, index]) assert.match(html, /id="vf-quick-module"[^>]*data-module="hearts-in-the-void"/);
+});

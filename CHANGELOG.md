@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.62.1**.
-Paquete: `VeilFarers_VTT_v2.62.1.zip`.
+Versión actual del VTT: **v2.62.2**.
+Paquete: `VeilFarers_VTT_v2.62.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.62.2] — 2026-11-26
+
+V3 · Hearts in the Void en el inicio
+
+### Inicio
+
+- En la pantalla de inicio, junto a «Crear partida», está «Hearts in the Void». Con cuenta crea la partida online con la aventura preparada y copia el enlace de invitación, como «Crear partida»; sin cuenta la abre en la mesa local. Entras como Keeper; solo faltan tus mapas.
 
 ## [2.62.1] — 2026-11-26
 

@@ -42,10 +42,13 @@ export class RoomController {
     let id; try { id = localStorage.getItem(activeRoomKey(this.service.uid)); } catch {}
     if (id) await this.enter(id);
   }
-  async create(name) {
+  // campaign (v2.62.2): a prepared adventure becomes the room's session instead of a copy of the
+  // active one.
+  async create(name, { campaign = null } = {}) {
     if (this.room) throw new Error('Sal de la sala actual antes de crear otra.');
     await this.service.ready();
-    await this.store.createSession(name, true);
+    if (campaign) await this.store.changeSession(() => this.store.normalizeCampaign({ ...structuredClone(campaign), campaignId: newId(), campaignName: name }));
+    else await this.store.createSession(name, true);
     // A new room has its own roster; a copied campaign cannot grant old seats access.
     this.store.update({ players: [], tokens: this.store.state.tokens.map(t => ({ ...t, ownerId: '', controllerIds: [] })) });
     const room = await this.service.create(name, this.store.serializeCampaign());
