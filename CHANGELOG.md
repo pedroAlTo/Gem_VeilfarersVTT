@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.62.0**.
-Paquete: `VeilFarers_VTT_v2.62.0.zip`.
+Versión actual del VTT: **v2.62.1**.
+Paquete: `VeilFarers_VTT_v2.62.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.62.1] — 2026-11-26
+
+V3 · El aviso de la tecla V, breve
+
+### Nombres de los tokens
+
+- Al pulsar V, el aviso «Nombres de los tokens ocultos / visibles» desaparece en algo más de un segundo (antes, seis) y no se apilan aunque pulses V varias veces seguidas.
 
 ## [2.62.0] — 2026-11-26
 

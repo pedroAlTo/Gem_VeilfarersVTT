@@ -749,7 +749,8 @@ function setupKeyboardShortcuts() {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     // V for a player: the tokens' names on or off on this screen (v2.59.0); for the Keeper it stays «Mover».
     if (key === 'v' && store.getState().userRole !== 'keeper') {
-      import('./tokenLayout.js').then(({ toggleNames }) => notify(toggleNames() ? 'Nombres de los tokens ocultos (V para verlos).' : 'Nombres de los tokens visibles.'));
+      // A short toast (v2.62.1, user request: «hazlo desaparecer mucho más rápido»), one at a time.
+      import('./tokenLayout.js').then(({ toggleNames }) => notify(toggleNames() ? 'Nombres de los tokens ocultos (V para verlos).' : 'Nombres de los tokens visibles.', 'info', { duration: 1200, key: 'names' }));
       return;
     }
     if (key === 'b') store.update({ activeTool: 'draw' });

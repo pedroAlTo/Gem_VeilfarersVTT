@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.62.1', date: '2026-11-26', title: 'V3 · El aviso de la tecla V, breve',
+    sections: [
+      { title: 'Nombres de los tokens', items: [
+        'Al pulsar V, el aviso «Nombres de los tokens ocultos / visibles» desaparece en algo más de un segundo (antes, seis) y no se apilan aunque pulses V varias veces seguidas.',
+      ] },
+    ],
+  },
+  {
     version: '2.62.0', date: '2026-11-26', title: 'V3 · La sala de Hearts in the Void',
     sections: [
       { title: 'Módulo Hearts in the Void', items: [

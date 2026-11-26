@@ -74,3 +74,18 @@ test('the dossier window shows one language at a time and the private notes cann
   popup.remove(); pane.remove();
   store.update({ handouts: saved });
 });
+
+test('the V toast is short and does not pile up (v2.62.1)', async t => {
+  const { notify } = await import('../src/ui.js');
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  notify('Nombres de los tokens ocultos (V para verlos).', 'info', { duration: 1200, key: 'names' });
+  notify('Nombres de los tokens visibles.', 'info', { duration: 1200, key: 'names' });
+  const toasts = () => [...document.querySelectorAll('#toast_stack .orbital-toast')].filter(el => el.dataset.toastKey === 'names');
+  assert.equal(toasts().length, 1, 'one toast, the latest');
+  assert.equal(toasts()[0].textContent, 'Nombres de los tokens visibles.');
+  t.mock.timers.tick(1199); assert.equal(toasts().length, 1);
+  t.mock.timers.tick(1); assert.equal(toasts().length, 0, 'gone after 1.2 s');
+  notify('Aviso normal.');
+  t.mock.timers.tick(5999); assert.ok(document.querySelector('#toast_stack .orbital-toast'), 'other toasts keep their 6 s');
+  t.mock.timers.tick(1);
+});
