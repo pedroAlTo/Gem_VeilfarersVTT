@@ -7,7 +7,9 @@ const sources = new Map();
 for (const ancestry of ANCESTRY_IDS) for (const gender of PORTRAIT_GENDERS) {
   for (const cls of TOKEN_CLASSES) {
     const image = crewPortraitPath(ancestry, gender, cls);
-    sources.set(classPortraitPath(ancestry, cls, gender), { image, cls });
+    sources.set(classPortraitPath(ancestry, cls, gender), { image, cls, size: 768 });
+    // Its thumbnail for the portrait window (v2.61.2): the crew thumbnail with the same insignia.
+    sources.set(classPortraitPath(ancestry, cls, gender).replace('/assets/tokens/', '/assets/tokens/thumbs/'), { image: image.replace('/assets/tokens/', '/assets/tokens/thumbs/'), cls, size: 128 });
   }
 }
 
@@ -17,10 +19,11 @@ export function tokenPortraitsPlugin() {
     if (!encoded.has(path)) encoded.set(path, readFileSync(new URL(path, import.meta.url)).toString('base64'));
     return encoded.get(path);
   }
-  function render({ image, cls }) {
+  function render({ image, cls, size = 768 }) {
     const portrait = asset('../public' + image);
     const badge = asset('../public/assets/cards/class-' + cls + '-flag.png');
-    return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="768" height="768" viewBox="0 0 768 768">' +
+    // The drawing keeps its 768 units; only the pixels of the embedded portrait change.
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${size}" height="${size}" viewBox="0 0 768 768">` +
       '<image width="768" height="768" xlink:href="data:image/webp;base64,' + portrait + '"/>' +
       '<image x="498" y="495" width="84" height="160" xlink:href="data:image/png;base64,' + badge + '"/></svg>';
   }

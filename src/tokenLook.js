@@ -6,11 +6,12 @@
 import { store } from './state.js';
 import { escapeHTML as e, notify } from './ui.js';
 import { actorPortrait } from './tokenAvatars.js';
-import { TOKEN_FRAMES, frameById, frameBody, frameLight } from './tokenFrames.js';
+import { TOKEN_FRAMES, frameById, frameThumb, frameFlat } from './tokenFrames.js';
 import { tokenLayout, placeStat, placesFor, LAYOUT_STATS } from './tokenLayout.js';
 
+// One flat image per frame (v2.61.2): no blend mode, loaded when the grid comes into view.
 const thumb = frame => frame
-  ? `<span class="look-frame-art"><img src="${frameBody(frame)}" alt=""><img class="look-light" src="${frameLight(frame)}" alt=""></span>`
+  ? `<span class="look-frame-art"><img src="${frameThumb(frame)}" alt="" loading="lazy" decoding="async"></span>`
   : '<span class="look-frame-art look-frame-none">∅</span>';
 
 // The section, to put after the portraits.
@@ -56,7 +57,7 @@ export function bindTokenControls(root, tokenId, { onChange } = {}) {
     portrait.src = actorPortrait(token);
     // The portrait fills the frame's hole, as on the map.
     portrait.style.setProperty('--hole', f ? `${Math.round(f.inner * 100) + 1}%` : '86%');
-    section.querySelector('.look-preview-frame').innerHTML = f ? thumb(f) : '';
+    section.querySelector('.look-preview-frame').innerHTML = f ? `<span class="look-frame-art"><img src="${frameFlat(f)}" alt="" decoding="async"></span>` : '';
     section.querySelectorAll('[data-look-frame]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.lookFrame === (f?.id || ''))));
     section.querySelector('[data-look-swatch]').style.background = color;
     section.querySelector('[data-look-color]').textContent = color;

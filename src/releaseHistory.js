@@ -1,6 +1,25 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.61.2', date: '2026-11-26', title: 'V3 · Retrato y token, rápido en tablet',
+    sections: [
+      { title: 'Retrato y token en tablet', items: [
+        'La ventana carga miniaturas: los retratos en pequeño (unos 5 KB en lugar de 50–170 KB cada uno) y cada marco en una sola imagen con su luz ya incluida, en lugar de dos capas mezcladas. Las imágenes que no se ven todavía se cargan al llegar a ellas.',
+        'Corregido: en tablet, al hacer scroll desaparecían los retratos, la vista previa y los marcos. En pantallas táctiles las ventanas ya no difuminan el mapa de fondo (le costaba demasiado a la tablet) y la rejilla de marcos ya no tiene un scroll propio dentro del de la ventana.',
+        'Las imágenes se guardan un día en el navegador: al volver a la partida no se piden otra vez.',
+      ] },
+    ],
+  },
+  {
+    version: '2.61.1', date: '2026-11-26', title: 'V3 · Limpieza tras publicar la v2.61.0',
+    sections: [
+      { title: 'Mantenimiento', items: [
+        'Retirados los restos de los filtros de la mano (Todas, Poderes, Reacciones, Rasgos, Moves), que los mazos sustituyeron en la v2.57.0: el navegador ya no guarda esa preferencia.',
+        'Documentación: la versión publicada (rama main, Netlify) es ya la v2.61.0.',
+      ] },
+    ],
+  },
+  {
     version: '2.61.0', date: '2026-11-26', title: 'V3 · Las cartas en cuatro grupos',
     sections: [
       { title: 'La mano', items: [
