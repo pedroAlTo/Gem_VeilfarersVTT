@@ -28,16 +28,6 @@ import { isAdvanced, luckyBreakDie } from './tableMode.js';
 const KEEPER_KINDS = new Set(['fear', 'adversary']);
 // Reactions this screen can see open by itself (v2.39.0): Lucky Break after the character's own
 // Duality roll (not rerolled yet), Bear Down after its roll or while its damage is still open.
-const HAND_GROUPS = [['all', 'Todas'], ['powers', 'Poderes'], ['reactions', 'Reacciones'], ['traits', 'Rasgos'], ['moves', 'Moves']];
-const groupTest = {
-  all: () => true,
-  powers: c => ['power', 'archive'].includes(c.kind) || !!c.uncanny,
-  reactions: c => !!c.reaction || c.name === 'Lucky Break' || c.kind === 'beardown',
-  traits: c => ['feature', 'ancestry', 'community', 'augment'].includes(c.kind),
-  moves: c => ['move', 'effort', 'beardown'].includes(c.kind) && !c.uncanny,
-};
-function savePrefs(hand) { try { localStorage.setItem('veil.hand.view', JSON.stringify({ group: hand.group, onlyUsable: !!hand.onlyUsable })); } catch {} }
-function loadPrefs() { try { return JSON.parse(localStorage.getItem('veil.hand.view') || '{}') || {}; } catch { return {}; } }
 function localLive(card, token) {
   if (!card.playable) return false;
   const dice = typeof window !== 'undefined' ? window.veilDiceRoller : null, last = dice?.lastResult;
@@ -140,7 +130,6 @@ function bindReference(drawer, data, choice, redraw, inspect) {
 export class CardHand {
   constructor(quickbar) {
     this.quickbar = quickbar; this.signature = ''; this.cards = []; this.tokenId = null;
-    const prefs = loadPrefs(); this.group = prefs.group || 'all'; this.onlyUsable = !!prefs.onlyUsable;
     this.root = document.createElement('div');
     this.root.id = 'card_hand_root'; this.root.className = 'card-hand hidden';
     quickbar.parentElement.append(this.root);
@@ -194,7 +183,7 @@ export class CardHand {
     this.viaDroneId = drone?.id || null;
     const cards = characterCards(token, data, { optionalEfforts: !!store.state.optionalEfforts })
       .map(card => !drone ? card : droneCompatible(card) ? { ...card, viaDrone: drone.name } : { ...card, playable: false, droneBlocked: true });
-    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, this.group, this.onlyUsable, liveReactions().map(o => o.offerId), window.veilDiceRoller?.lastResult?.id, window.veilDiceRoller?.lastRollKind, !!window.veilDiceRoller?.lastDamage?.applied, drone?.id, drone?.x, drone?.y, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
+    const signature = JSON.stringify([token.id, token.hope, token.effort, token.stress?.current, token.resolve?.current, token.cardUses, token.uncanny, liveReactions().map(o => o.offerId), window.veilDiceRoller?.lastResult?.id, window.veilDiceRoller?.lastRollKind, !!window.veilDiceRoller?.lastDamage?.applied, drone?.id, drone?.x, drone?.y, store.state.activeMapId, cards.map(c => [c.id, c.reverse && c.subtitle])]);
     if (signature === this.signature) return;
     this.signature = signature; this.cards = cards; this.tokenId = token.id;
     // The hand by kind, and only what can be used now (v2.39.0). Lit reactions always show.
@@ -275,9 +264,6 @@ export class CardHand {
   }
 
   bind() {
-    this.root.querySelectorAll('[data-hand-group]').forEach(b => b.onclick = () => { this.group = b.dataset.handGroup; savePrefs(this); this.refresh(); });
-    const usableToggle = this.root.querySelector('[data-hand-usable]');
-    if (usableToggle) usableToggle.onclick = () => { this.onlyUsable = !this.onlyUsable; savePrefs(this); this.refresh(); };
     const vault = this.root.querySelector('[data-open-vault]');
     if (vault) vault.onclick = () => this.toggleDrawer();
     // The decks (v2.57.0): pointing opens one for a moment, a click (or a tap, or Enter) keeps it

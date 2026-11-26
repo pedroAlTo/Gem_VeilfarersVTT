@@ -2297,7 +2297,6 @@ export const PATTERNS = [
   ["{a}: {_n} cartas, {_m} se pueden usar ahora", "{a}: {_n} cards, {_m} can be used now"],
   ["{a}: 1 carta, {_m} se pueden usar ahora", "{a}: 1 card, {_m} can be used now"],
   ["{_n} · {_m} usables", "{_n} · {_m} usable"],
-  ["Mi token · {_a}", "My token · {_a}"],
   ["{_a} (estado de vida · solo retirar)", "{_a} (life stage · remove only)"],
   ["Retrato y token · {_a}", "Portrait and token · {_a}"],
   ["Bear Down y Common Efforts (todos los Sleeping) · {_n}", "Bear Down and Common Efforts (every Sleeping) · {_n}"],

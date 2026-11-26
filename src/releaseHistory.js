@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.61.1', date: '2026-11-26', title: 'V3 · Limpieza tras publicar la v2.61.0',
+    sections: [
+      { title: 'Mantenimiento', items: [
+        'Retirados los restos de los filtros de la mano (Todas, Poderes, Reacciones, Rasgos, Moves), que los mazos sustituyeron en la v2.57.0: el navegador ya no guarda esa preferencia.',
+        'Documentación: la versión publicada (rama main, Netlify) es ya la v2.61.0.',
+      ] },
+    ],
+  },
+  {
     version: '2.61.0', date: '2026-11-26', title: 'V3 · Las cartas en cuatro grupos',
     sections: [
       { title: 'La mano', items: [

@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.61.0**.
-Paquete: `VeilFarers_VTT_v2.61.0.zip`.
+Versión actual del VTT: **v2.61.1**.
+Paquete: `VeilFarers_VTT_v2.61.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.61.1] — 2026-11-26
+
+V3 · Limpieza tras publicar la v2.61.0
+
+### Mantenimiento
+
+- Retirados los restos de los filtros de la mano (Todas, Poderes, Reacciones, Rasgos, Moves), que los mazos sustituyeron en la v2.57.0: el navegador ya no guarda esa preferencia.
+- Documentación: la versión publicada (rama main, Netlify) es ya la v2.61.0.
 
 ## [2.61.0] — 2026-11-26
 
