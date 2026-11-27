@@ -80,14 +80,16 @@ const arcs = [
 ];
 
 // ── Clocks: created hidden and collapsed; the Keeper reveals them when the module says so ─────
-const clock = (id, title, segments, filled, x, y) => ({ id: 'hv_clock_' + id, title, segments, filled, category: 'danger', isKeeperOnly: true, posX: x, posY: y, collapsed: true });
+// Each clock lives on the scenes where the module uses it (v2.62.3, user request: «los relojes
+// deberían ir asociados a cada mapa»).
+const clock = (id, title, segments, filled, x, y, plates) => ({ id: 'hv_clock_' + id, title, segments, filled, category: 'danger', isKeeperOnly: true, posX: x, posY: y, collapsed: true, mapIds: plates.map(p => 'hv_map_plate_' + p) });
 const clocks = [
-  clock('hunger', 'Hambre · Hunger', 4, 0, 80, 70),
-  clock('escape', 'Ruta de escape · Escape Route', 3, 0, 80, 150),
-  clock('korren', 'Desesperación de Korren · Korren’s Desperation', 4, 1, 80, 230),
-  clock('core', 'Sobrecarga del núcleo · Core Overload', 6, 0, 80, 310),
-  clock('structure', 'Fallo estructural · Structural Failure', 6, 1, 80, 390),
-  clock('convergence', 'Convergencia Weaver · Weaver Convergence', 4, 0, 80, 470),
+  clock('hunger', 'Hambre · Hunger', 4, 0, 80, 70, ['5']),
+  clock('escape', 'Ruta de escape · Escape Route', 3, 0, 80, 150, ['5']),
+  clock('korren', 'Desesperación de Korren · Korren’s Desperation', 4, 1, 80, 70, ['4', '3']),
+  clock('core', 'Sobrecarga del núcleo · Core Overload', 6, 0, 80, 150, ['4']),
+  clock('structure', 'Fallo estructural · Structural Failure', 6, 1, 80, 230, ['4', '1', '2', '5']),
+  clock('convergence', 'Convergencia Weaver · Weaver Convergence', 4, 0, 80, 310, ['4', '1', '2', '5']),
 ];
 
 // ── The module's own text, chapter by chapter, for the Keeper (English original) ──────────────
@@ -130,7 +132,8 @@ const original = chapters.map((c, i) => ({
 // ── Dossiers ──────────────────────────────────────────────────────────────────────────────────
 // The user's art (v2.62.0, «te voy a pasar material gráfico»): public/campaigns/hearts-in-the-void/
 // <name>.webp; a dossier shows it when the file is there.
-const ART = { hv_p_nexus: 'musician', hv_p_signs: 'props', hv_p_commercial: 'props', hv_p_wrist_terminal: 'technician', hv_p_sterilize: 'sterilize', hv_p_core_lost: 'sterilize', hv_p_queen_lair: 'queen-lair' };
+const ART = { hv_p_nexus: 'musician', hv_p_signs: 'props', hv_p_commercial: 'props', hv_p_wrist_terminal: 'technician', hv_p_sterilize: 'sterilize', hv_p_core_lost: 'sterilize', hv_p_queen_lair: 'queen-lair',
+  hv_p_rec_room: 'last-game', hv_p_poetry: 'notebook', hv_p_dock_k17: 'dock-k17', hv_p_pack: 'pack' };
 const art = id => ART[id] && existsSync(fileURLToPath(new URL(`../public/campaigns/hearts-in-the-void/${ART[id]}.webp`, import.meta.url))) ? `/campaigns/hearts-in-the-void/${ART[id]}.webp` : '';
 const stamp = d => ({ imageUrl: art(d.id), sharedWithPlayers: false, keeperOnly: false, ...d });
 const handouts = [...GUIDE_DOCS, ...SCENE_DOCS, ...NPCS.map(npcDossier), ...PLAYER_DOCS, ...original].map(stamp);

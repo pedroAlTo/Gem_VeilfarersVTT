@@ -59,6 +59,12 @@ export const PLAYER_DOCS = [
 > The Collector is not for local collections only. Keep her ready.
 [CONTACT IDENTITY: CONCEALED]`) + `<p class="dossier-muted">Decrypt the protected datapad (Knowledge · Tech): DC 10 confirms regular reporting to a Volkov contact; DC 15 recovers payment records, surveillance orders and references to Alexei; DC 20 recovers routing and authentication data usable as future leverage.</p>`),
 
+  doc('dock_k17', 'Dock K-17: The Collector · Dock K-17: The Collector', 'Harrow Dock', 'Crossroads · Dock K-17',
+    `<p><em>The Collector</em> espera en el centro del hangar, bajo una grúa móvil. Proa roma, tren de aterrizaje grueso y la postura de algo hecho para abrirse paso a empujones entre malas decisiones. Su casco fue rojo oscuro; años de reparaciones lo han cambiado por placas desparejadas, soldaduras a la vista y quemaduras. Una mandíbula blanca cruza la proa: alguien le puso demasiados dientes. Cuatro anclajes la sujetan en su cuna; líneas de combustible, refrigerante y energía entran en el casco. Una luz amarilla sale de la rampa de carga abierta.</p>
+     <p>El altavoz exterior chisporrotea:</p>` + terminal('«LA VENTANA DE PAGO DE SEGURIDAD COMUNITARIA SE CIERRA EN VEINTISIETE MINUTOS.»') + `<p>Un operario de carga baja la mirada y sigue trabajando.</p>`,
+    `<p><em>The Collector</em> waits in the centre of the hangar beneath a travelling crane. A blunt forward profile, thick landing gear, and the posture of something built to shoulder its way through bad decisions. Its hull was once dark red; years of repairs have replaced that colour with mismatched armor plates, exposed welds and scorching. A white jawbone stretches across the forward hull: someone added too many teeth. Four docking clamps hold the ship in its cradle; fuel, coolant and power lines run into the hull. Yellow utility light spills from the open loading ramp.</p>
+     <p>The external speaker crackles:</p>` + terminal('“COMMUNITY SECURITY PAYMENT WINDOW CLOSES IN TWENTY-SEVEN MINUTES.”') + `<p>A loader operator lowers their eyes and keeps moving.</p>`),
+
   doc('subscriptions', 'Contabilidad de los Bone Dogs · Bone Dogs Ledger', 'Sistema contable de The Collector', 'Dock K-17',
     terminal(`CONCEPTO DE LOS COBROS DE EXTORSIÓN:
 <strong>SUSCRIPCIONES DE SEGURIDAD COMUNITARIA</strong>
@@ -199,6 +205,12 @@ NO REFUNDS AFTER EVACUATION`) +
     `<p>La cámara es circular. Una luz azul y fría sube de los packs de energía apilados en el anillo exterior; algunos siguen en sus marcos de transporte, otros se han desmontado e incorporado al nido. Un crecimiento cristalino irradia desde el centro como los pétalos de una flor transparente. La Reina Weaver descansa dentro. Cada pack activo le envía una fina línea de luz. Weavers más pequeños van y vienen entre las reservas y el nido con la urgencia repetitiva de obreros que mantienen viva una colonia hambrienta.</p>`,
     `<p>The chamber is circular. Cold blue light rises from energy packs stacked around the outer ring; some remain secured in transport frames, others have been pulled apart and incorporated into the nest. Crystalline growth radiates from the centre like the petals of a transparent flower. The Weaver Queen rests within it. Every active pack feeds a thin line of light toward her. Smaller Weavers move between the reserves and the nest with the repetitive urgency of workers preserving a starving colony.</p>`),
 
+  doc('pack', 'Pack de energía de reserva · Reserve Power Pack', 'Laboratorios Kurogane', 'Charon’s Refuge · Sector F',
+    `<p>Un pack de energía portátil de la reserva de emergencia de la estación, todavía cargado: sus rejillas brillan con una luz azul y fría. El casco tiene zarpazos profundos y los conectores están cubiertos de un residuo translúcido y pegajoso. En los registros de alimentación del laboratorio, estos packs figuran como «sustento de emergencia».</p>
+     <p class="dossier-muted">Moverlo es automático con equipo de carga, tiempo y una ruta segura; sin equipo o bajo presión, Strength CD 10 (CD 15 durante un ataque o una extracción precipitada).</p>`,
+    `<p>A portable power pack from the station’s emergency reserve, still charged: its vents glow with a cold blue light. The casing carries deep claw marks and the connectors are coated in a sticky, translucent residue. In the lab’s feeding logs these packs appear as “emergency sustenance”.</p>
+     <p class="dossier-muted">Moving one is automatic with lifting equipment, time and a secure route; without equipment or under pressure, Strength DC 10 (DC 15 during an attack or a rushed extraction).</p>`),
+
   doc('alexei_datapad', 'Datapad seguro de Alexei · Alexei’s Secured Datapad', 'Alexei Joric', 'Charon’s Refuge · Ingeniería',
     `<p>Autenticación Joric verificable (Knowledge DC 10). Contiene:</p><ul>
      <li>Correspondencia que prueba que Alexei <strong>organizó su propia desaparición</strong>.</li>
@@ -214,10 +226,14 @@ NO REFUNDS AFTER EVACUATION`) +
      <li>Several poems that should not be considered evidence of anything except sincerity and catastrophic judgment.</li></ul>`),
 
   doc('poetry', 'Poemas de Alexei · Alexei’s Poetry', 'Cuaderno de Alexei', 'Sin fecha',
-    `<blockquote><em>Tus ojos son como las estrellas de arriba,<br>pero más cerca, y con más… cosas.<br>Cuando contemplo tu rostro tan brillante,<br>siento sentimientos. Profundos. De noche.</em></blockquote>
+    `<p><strong>Su obra actual: «Bulkheads of the Heart» (Mamparos del corazón).</strong> La primera estrofa compara el compromiso romántico con la integridad de presión. La segunda rima <em>nebula</em> con <em>spatula</em>. La tercera describe el entrelazamiento cuántico de forma tan inexacta que Thex se altera visiblemente: «Eso no es lo que significa entrelazamiento». «Es metafórico.» «La metáfora sigue siendo ofensiva en los hechos.»</p>
+     <p>Entre las páginas, sujeto en el lomo, hay un chip de datos.</p>
+     <blockquote><em>Tus ojos son como las estrellas de arriba,<br>pero más cerca, y con más… cosas.<br>Cuando contemplo tu rostro tan brillante,<br>siento sentimientos. Profundos. De noche.</em></blockquote>
      <blockquote><em>Oh, Zara, piloto de mi corazón,<br>se te da bien… lo de volar.<br>Por el Velo y la tormenta vas con valor,<br>te quiero más que… cosas. No sé qué más.</em></blockquote>
      <p class="dossier-muted">(Traducción libre: en el original rima todavía peor. Una vez rimó <em>nebula</em> con <em>spatula</em>.)</p>`,
-    `<blockquote><em>Your eyes are like the stars above,<br>But closer, and with more… stuff.<br>When I gaze upon your face so bright,<br>I feel feelings. Deep feelings. At night.</em></blockquote>
+    `<p><strong>His current work: “Bulkheads of the Heart”.</strong> The opening compares romantic commitment to pressure integrity. The second stanza rhymes <em>nebula</em> with <em>spatula</em>. The third describes quantum entanglement so inaccurately that Thex becomes visibly distressed: “That is not what entanglement means.” “It is metaphorical.” “The metaphor remains factually offensive.”</p>
+     <p>Between the pages, held in the spine, there is a data chip.</p>
+     <blockquote><em>Your eyes are like the stars above,<br>But closer, and with more… stuff.<br>When I gaze upon your face so bright,<br>I feel feelings. Deep feelings. At night.</em></blockquote>
      <blockquote><em>Oh Zara, pilot of my heart,<br>You are good at… the flying part.<br>Through Veil and storm you boldly go,<br>I love you more than… things. I do not know.</em></blockquote>`),
 
   doc('korren_comm', 'Comunicador de Korren · Korren’s Communicator', 'Canal cifrado · relé de la Casa Joric', 'Charon’s Refuge',

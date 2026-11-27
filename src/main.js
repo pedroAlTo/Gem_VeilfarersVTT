@@ -33,7 +33,7 @@ import './tableActions.css';
 import { checkBackupReminder } from './sessionManager.js';
 import { LOCAL_ONLY, LAN_SESSIONS } from './runtimeMode.js';
 import { cloudConfigured } from './cloudAccount.js';
-import { sanitizeHTML, confirmAction, notify } from './ui.js';
+import { sanitizeHTML, confirmAction, notify, escapeHTML } from './ui.js';
 // src/main.js
 // Application entry point for VEILVTT
 
@@ -50,6 +50,7 @@ import { network, getActiveSession, clearActiveSession } from './networkManager.
 import { CanvasEngine } from './canvasEngine.js';
 import { FearMeterHUD } from './fearMeter.js';
 import { ClocksManager } from './clocksManager.js';
+import { clockOnScene, clockScenesLabel, openClockScenes } from './clockScenes.js';
 import { TokenHUD } from './tokenSheet.js';
 import { DiceRollerSidebar } from './diceRoller.js';
 import { SceneManager } from './sceneManager.js';
@@ -195,7 +196,9 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
   function update() {
     const state = store.getState();
     const isKeeper = state.userRole === 'keeper';
-    const visibleClocks = state.clocks.filter(c => isKeeper || !c.isKeeperOnly);
+    // This scene's clocks; the Keeper also sees, apart, those of the other scenes (v2.62.3).
+    const visibleClocks = state.clocks.filter(c => (isKeeper || !c.isKeeperOnly) && clockOnScene(c, state.activeMapId));
+    const otherClocks = isKeeper ? state.clocks.filter(c => !clockOnScene(c, state.activeMapId)) : [];
 
     paneEl.innerHTML = sanitizeHTML(`
       <div class="clocks-sidebar-content">
@@ -212,8 +215,9 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
 
         <button class="hud-btn clock-arrange-btn" id="arrange_clocks_btn">ARRANGE ON MAP</button>
         <div class="scene-cards-list">
-          ${visibleClocks.map(c => `
-            <div class="log-card glass-panel" style="border-left: 3px solid ${c.isKeeperOnly ? 'var(--purple-void)' : 'var(--cyan-pearl)'};">
+          ${[...visibleClocks, ...otherClocks].map((c, i) => `
+            ${i === visibleClocks.length && otherClocks.length ? `<h5 class="clock-other-scenes">EN OTRAS ESCENAS · ${otherClocks.length}</h5>` : ''}
+            <div class="log-card glass-panel ${i >= visibleClocks.length ? 'clock-elsewhere' : ''}" style="border-left: 3px solid ${c.isKeeperOnly ? 'var(--purple-void)' : 'var(--cyan-pearl)'};">
               <div class="log-card-header">
                 <span style="font-weight: 700; color: #fff;">${c.title}</span>
                 ${isKeeper ? `
@@ -224,6 +228,7 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
                   <span class="clock-badge-shared">SHARED</span>
                 `}
               </div>
+              ${isKeeper ? `<div class="clock-scenes-line"><span>📍 ${escapeHTML(clockScenesLabel(c, state.maps))}</span><button class="hud-btn hud-btn-xs clock-sidebar-scenes" data-id="${c.id}">Escenas</button></div>` : ''}
               <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-top: 6px;">
                 <span style="font-family: var(--font-display); font-size: 14px; font-weight: 700;">${c.filled} / ${c.segments} SEGMENTS</span>
                 ${isKeeper ? `
@@ -258,6 +263,8 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
         };
       });
 
+      paneEl.querySelectorAll('.clock-sidebar-scenes').forEach(btn => { btn.onclick = () => openClockScenes(btn.dataset.id); });
+
       paneEl.querySelectorAll('.clock-sidebar-step-up').forEach(btn => {
         btn.onclick = () => {
           store.advanceClock(btn.dataset.id, 1);
@@ -277,7 +284,7 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
 
   update();
   store.subscribe((state, keys) => {
-    if (keys.includes('clocks') || keys.includes('userRole')) {
+    if (keys.includes('clocks') || keys.includes('userRole') || keys.includes('activeMapId') || keys.includes('maps')) {
       update();
     }
   });

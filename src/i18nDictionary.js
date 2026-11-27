@@ -2080,6 +2080,14 @@ export const PAIRS = [
   // The prepared adventure on the home screen (v2.62.2)
   ["Aventura preparada: escenas, PNJ, relojes y dossieres. Diriges tú (Keeper); solo faltan tus mapas.", "Prepared adventure: scenes, NPCs, clocks and dossiers. You run it (Keeper); only your maps are missing."],
   ["No se pudo preparar la aventura en la mesa local.", "The adventure could not be prepared on the local table."],
+  // Clocks by scene (v2.62.3)
+  ["Todas las escenas", "All scenes"],
+  ["Escenas", "Scenes"],
+  ["Solo esta escena", "This scene only"],
+  ["Todo el arco de esta escena", "This scene’s whole arc"],
+  ["El reloj aparece solo en las escenas marcadas (para el Keeper y, si es visible, para los jugadores).", "The clock appears only on the ticked scenes (for the Keeper and, when visible, for the players)."],
+  ["Marca al menos una escena o «Todas las escenas».", "Tick at least one scene or “All scenes”."],
+  ["(activa)", "(active)"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if
@@ -2322,4 +2330,9 @@ export const PATTERNS = [
   ["«{_a}» compartido: los jugadores lo tienen en sus dossieres.", "“{_a}” shared: the players have it in their dossiers."],
   ["{_a}: sesión creada. Abre Escenas para poner los mapas y Dossiers para las notas.", "{_a}: session created. Open Scenes to set the maps and Dossiers for the notes."],
   ["No se pudo descargar la aventura: {_a}", "The adventure could not be downloaded: {_a}"],
+  ["Escenas del reloj · {_a}", "Clock scenes · {_a}"],
+  ["Escenas: {_a}", "Scenes: {_a}"],
+  ["Escenas del reloj: {_a}", "Clock scenes: {_a}"],
+  ["{_n} escenas", "{_n} scenes"],
+  ["EN OTRAS ESCENAS · {_n}", "ON OTHER SCENES · {_n}"],
 ];

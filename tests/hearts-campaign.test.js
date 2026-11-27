@@ -112,3 +112,52 @@ test('the home screen offers the adventure next to Crear partida (v2.62.2)', () 
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   for (const html of [lobby, index]) assert.match(html, /id="vf-quick-module"[^>]*data-module="hearts-in-the-void"/);
 });
+
+test('clocks belong to scenes: a new clock to the active one; only the active scene’s clocks are drawn (v2.62.3)', async () => {
+  const { clockOnScene, scopeMapIds, clockScenesLabel } = await import('../src/clockScenes.js');
+  const { ClocksManager } = await import('../src/clocksManager.js');
+  const { validateCampaign } = await import('../src/validation.js');
+  const saved = structuredClone({ maps: store.state.maps, arcs: store.state.arcs, clocks: store.state.clocks, activeMapId: store.state.activeMapId, userRole: store.state.userRole });
+  const maps = [{ ...structuredClone(store.state.maps[0]), id: 'm_a', name: 'A' }, { ...structuredClone(store.state.maps[0]), id: 'm_b', name: 'B' }, { ...structuredClone(store.state.maps[0]), id: 'm_c', name: 'C' }];
+  store.update({ userRole: 'keeper', maps, arcs: [{ id: 'arc1', name: 'Uno', description: '', sceneIds: ['m_a', 'm_b'], tokenIds: [], images: [] }, { id: 'arc2', name: 'Dos', description: '', sceneIds: ['m_c'], tokenIds: [], images: [] }], clocks: [], activeMapId: 'm_a' });
+  try {
+    const here = store.addClock({ title: 'Aquí', segments: 4 });
+    assert.deepEqual(here.mapIds, ['m_a'], 'a new clock belongs to the active scene');
+    const everywhere = store.addClock({ title: 'Siempre', segments: 4, mapIds: null });
+    assert.equal(everywhere.mapIds, undefined);
+    const arc = store.addClock({ title: 'Arco', segments: 6, mapIds: scopeMapIds('arc') });
+    assert.deepEqual(arc.mapIds, ['m_a', 'm_b']);
+    const legacy = { id: 'old', title: 'Antiguo', segments: 4, filled: 0 };
+    assert.ok(clockOnScene(legacy, 'm_c') && clockOnScene(everywhere, 'm_c') && !clockOnScene(here, 'm_c'));
+    assert.equal(clockScenesLabel(here), 'A'); assert.equal(clockScenesLabel(arc), '2 escenas'); assert.equal(clockScenesLabel(everywhere), 'Todas las escenas');
+    const overlay = document.createElement('div'); document.body.append(overlay);
+    new ClocksManager(overlay);
+    const drawn = () => [...overlay.querySelectorAll('.clock-widget .clock-title')].map(t => t.textContent).sort();
+    assert.deepEqual(drawn(), ['Aquí', 'Arco', 'Siempre']);
+    store.update({ activeMapId: 'm_c' });
+    assert.deepEqual(drawn(), ['Siempre'], 'another scene shows only its own clocks');
+    store.update({ activeMapId: 'm_b' });
+    assert.deepEqual(drawn(), ['Arco', 'Siempre']);
+    // Deleting a scene frees its clocks; a clock left without scenes is shown everywhere, never lost.
+    store.update({ activeMapId: 'm_c' });
+    store.deleteScene('m_a');
+    assert.deepEqual(store.state.clocks.find(c => c.title === 'Aquí').mapIds, []);
+    assert.deepEqual(store.state.clocks.find(c => c.title === 'Arco').mapIds, ['m_b']);
+    assert.ok(drawn().includes('Aquí'));
+    overlay.remove();
+    assert.throws(() => validateCampaign({ ...store.serializeCampaign(), clocks: [{ ...here, mapIds: [42] }] }), /clock/i);
+  } finally { store.update(saved); }
+});
+
+test('the room’s clocks live on their plates and the user’s art is linked (v2.62.3)', () => {
+  const plate = id => 'hv_map_plate_' + id;
+  const clocks = Object.fromEntries(file.clocks.map(c => [c.id.replace('hv_clock_', ''), c.mapIds]));
+  assert.deepEqual(clocks.hunger, [plate(5)]);
+  assert.deepEqual(clocks.core, [plate(4)]);
+  assert.deepEqual(clocks.structure, [plate(4), plate(1), plate(2), plate(5)]);
+  const art = Object.fromEntries(file.handouts.filter(h => h.imageUrl).map(h => [h.id, h.imageUrl]));
+  for (const [id, name] of [['hv_p_rec_room', 'last-game'], ['hv_p_poetry', 'notebook'], ['hv_p_dock_k17', 'dock-k17'], ['hv_p_pack', 'pack'], ['hv_p_signs', 'props'], ['hv_p_commercial', 'props']]) {
+    assert.equal(art[id], `/campaigns/hearts-in-the-void/${name}.webp`, id);
+    assert.ok(readFileSync(new URL(`../public${art[id]}`, import.meta.url)).length > 10000, name);
+  }
+});

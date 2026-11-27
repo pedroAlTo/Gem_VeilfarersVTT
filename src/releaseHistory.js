@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.62.3', date: '2026-11-27', title: 'V3 · Relojes por escena e imágenes de Hearts in the Void',
+    sections: [
+      { title: 'Relojes por escena', items: [
+        'Cada reloj pertenece a sus escenas: en el mapa y en la pestaña Relojes solo aparecen los de la escena activa (el Keeper ve aparte, atenuados, los de las otras escenas).',
+        'Al crear un reloj se elige «Solo esta escena» (por defecto), «Todo el arco de esta escena» o «Todas las escenas». El botón 📍 del reloj (o «Escenas» en la pestaña Relojes) permite marcar sus escenas, agrupadas por arco.',
+        'Los relojes que ya existían siguen apareciendo en todas las escenas. Si se borra una escena, sus relojes no se pierden.',
+      ] },
+      { title: 'Hearts in the Void', items: [
+        'Los relojes de la aventura están en sus láminas: Hambre y Ruta de escape en la 5; Desesperación de Korren en la 4 y la 3; Sobrecarga del núcleo en la 4; Fallo estructural y Convergencia Weaver en la 4, 1, 2 y 5.',
+        'Arte del usuario en los dossieres: los objetos del anillo de atraque, la pantalla «LAST GAME», el cuaderno de Alexei con su chip escondido, y dos dossieres nuevos: «Dock K-17: The Collector» y «Pack de energía de reserva». La tarjeta de la aventura en el inicio usa la imagen del Dock K-17.',
+      ] },
+    ],
+  },
+  {
     version: '2.62.2', date: '2026-11-26', title: 'V3 · Hearts in the Void en el inicio',
     sections: [
       { title: 'Inicio', items: [

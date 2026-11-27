@@ -125,7 +125,8 @@ export function validateCampaign(data) {
         Number.isInteger(c.segments) &&
         finite(c.segments, 1, 32) &&
         Number.isInteger(c.filled) &&
-        finite(c.filled, 0, c.segments),
+        finite(c.filled, 0, c.segments) &&
+        (c.mapIds == null || (Array.isArray(c.mapIds) && c.mapIds.length <= 100 && c.mapIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 200))),
       'Invalid clock.'
     );
   for (const h of data.handouts)

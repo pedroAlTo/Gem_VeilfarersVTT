@@ -301,6 +301,8 @@ class StateStore {
       filled: 0,
       category: clockData.category || 'danger',
       isKeeperOnly: clockData.isKeeperOnly ?? false,
+      // Its scenes (v2.62.3): the active one unless said otherwise; null = every scene.
+      ...(clockData.mapIds === null ? {} : { mapIds: Array.isArray(clockData.mapIds) ? [...clockData.mapIds] : [this.state.activeMapId] }),
       posX: 80,
       posY: 100 + (this.state.clocks.length * 80),
       collapsed: false
@@ -909,6 +911,8 @@ class StateStore {
     updatedTokens = updatedTokens.map(t => t.mapId === mapId ? { ...t, mapId: 'reserve', inReserve: true } : t);
     const remainingMaps = maps.filter(m => m.id !== mapId);
 
+    // Its clocks lose that scene; a clock left with none is shown on every scene (never lost).
+    const updatedClocks = (this.state.clocks || []).map(c => Array.isArray(c.mapIds) && c.mapIds.includes(mapId) ? { ...c, mapIds: c.mapIds.filter(id => id !== mapId) } : c);
     const updatedArcs = (this.state.arcs || []).map(arc => ({
       ...arc,
       sceneIds: (arc.sceneIds || []).filter(id => id !== mapId)
@@ -919,6 +923,7 @@ class StateStore {
       activeMapId: nextActiveMapId,
       tokens: updatedTokens,
       arcs: updatedArcs,
+      clocks: updatedClocks,
       selectedWallId: null,
       selectedLightId: null,
       selectedWaterId: null

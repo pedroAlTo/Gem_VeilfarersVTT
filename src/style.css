@@ -2995,3 +2995,12 @@ body, html {
 .log-calc[open] summary::before { content: '▾ '; }
 .log-calc ol { margin: 6px 0 0; padding: 6px 8px 6px 24px; border-left: 2px solid rgba(103, 232, 249, .35); background: rgba(8, 12, 28, .45); border-radius: 0 4px 4px 0; display: grid; gap: 2px; }
 .log-calc li { line-height: 1.35; font-variant-numeric: tabular-nums; }
+
+/* Clocks by scene (v2.62.3). */
+.clock-scenes-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; font-size: 11px; color: #94a3b8; }
+.clock-other-scenes { margin: 10px 0 4px; font-family: var(--font-hud, system-ui); font-size: 10px; letter-spacing: .1em; color: #94a3b8; }
+.log-card.clock-elsewhere { opacity: .6; }
+.clock-scenes-dialog fieldset { border: 1px solid rgba(0, 243, 255, .2); border-radius: 4px; margin: 8px 0; padding: 6px 10px; display: grid; gap: 4px; }
+.clock-scenes-dialog legend { font-size: 11px; letter-spacing: .06em; color: #a5f3fc; padding: 0 4px; }
+.clock-scenes-dialog [hidden] { display: none !important; }
+.clock-scenes-all { margin: 8px 0; }
