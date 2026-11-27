@@ -42,11 +42,15 @@ export const wallValues = walls => walls.flatMap(w => [w.x1, w.y1, w.x2, w.y2, w
 
 // Sight does not end in a line: it is full up to most of its range and fades over the rest.
 export const VISION_FADE_START = 0.72;
-export function visionFill(ctx, x, y, radius) {
+// The vision range fades with distance (v2.64.0, user request from the mockup: «me gusta el
+// degradado»): clear near the character, half-seen at mid range, and at the end of its range the
+// same as an explored area. It is how much fog the sight removes, not darkness laid on top: where
+// the fog left is the explored veil, the far end of the cone is exactly that veil (the % the Keeper
+// chose), never a darker band («que no se note un corte más oscuro»).
+export const VISION_FADE = [[0, 1], [0.25, 1], [0.45, 0.86], [0.65, 0.56], [0.85, 0.22], [1, 0]];
+export function visionFill(ctx, x, y, radius, long = false) {
   if (typeof ctx.createRadialGradient !== 'function' || !(radius > 0)) return 'rgba(0, 0, 0, 1.0)';
   const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-  gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-  gradient.addColorStop(VISION_FADE_START, 'rgba(0, 0, 0, 1)');
-  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  for (const [at, clear] of long ? VISION_FADE : [[0, 1], [VISION_FADE_START, 1], [1, 0]]) gradient.addColorStop(at, `rgba(0, 0, 0, ${clear})`);
   return gradient;
 }

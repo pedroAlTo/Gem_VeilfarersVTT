@@ -258,7 +258,8 @@ test('unconfirmed edits time out to the latest authoritative token, not the loca
 
 test('unconfirmed movement does not reveal rooms or adversaries before Keeper acknowledgement', async () => {
   const f = await endpoints();
-  f.hostStore.updateToken(f.tokenId, { visionRange: 400, visionAngle: 90, facingAngle: 0 }); f.host.syncAll(); await f.deliverGuest();
+  // 12.5 m: 400 px on the default 64 px / 2 m grid (v2.63.0: vision in metres).
+  f.hostStore.updateToken(f.tokenId, { visionMeters: 12.5, visionAngle: 90, facingAngle: 0 }); f.host.syncAll(); await f.deliverGuest();
   const enemy = { id: 'unseen-contact', x: 650, y: 100, isPlayer: false }, map = store.getActiveMap();
   store.updateToken(f.tokenId, { x: 600, y: 100 });
   assert.equal(store.state.tokens[0].x, 600, 'the token displays the proposed location');

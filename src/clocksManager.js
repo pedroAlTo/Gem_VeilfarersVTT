@@ -5,6 +5,7 @@ import { sanitizeHTML, escapeHTML } from './ui.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
+import { clockOnScene, clockScenesLabel, openClockScenes, scopeMapIds } from './clockScenes.js';
 
 export class ClocksManager {
   constructor(overlayContainer) {
@@ -18,7 +19,7 @@ export class ClocksManager {
     this.pendingRender = false;
     this.render();
     store.subscribe((state, keys) => {
-      if (keys.includes('clocks') || keys.includes('userRole')) {
+      if (keys.includes('clocks') || keys.includes('userRole') || keys.includes('activeMapId')) {
         if (this.draggedWidget) this.pendingRender = true;
         else this.render();
       }
@@ -94,11 +95,8 @@ export class ClocksManager {
     const state = store.getState();
     const isKeeper = state.userRole === 'keeper';
 
-    // Filter clocks based on role
-    const visibleClocks = state.clocks.filter(c => {
-      if (isKeeper) return true;
-      return !c.isKeeperOnly;
-    });
+    // Filter clocks by role and by the active scene (v2.62.3).
+    const visibleClocks = state.clocks.filter(c => (isKeeper || !c.isKeeperOnly) && clockOnScene(c, state.activeMapId));
 
     this.container.innerHTML = sanitizeHTML(visibleClocks.map(clock => this.renderClockWidget(clock, isKeeper)).join(''));
     this.attachWidgetListeners();
@@ -158,6 +156,7 @@ export class ClocksManager {
           </div>
           <div class="clock-badges">
             ${isKeeper ? `
+              <button class="clock-badge-btn clock-scenes-btn" title="Escenas: ${escapeHTML(clockScenesLabel(clock))}" aria-label="Escenas del reloj: ${escapeHTML(clockScenesLabel(clock))}">📍</button>
               <button class="clock-badge-btn ${clock.isKeeperOnly ? 'clock-badge-keeper' : 'clock-badge-shared'} clock-visibility-toggle" title="Click to Toggle GM Private vs Shared with Players">
                 ${clock.isKeeperOnly ? 'PRIVATE' : 'SHARED'}
               </button>
@@ -231,6 +230,8 @@ export class ClocksManager {
 
       // Visibility toggle (Keeper only)
       if (isKeeper) {
+        const scenesBtn = widget.querySelector('.clock-scenes-btn');
+        if (scenesBtn) scenesBtn.onclick = event => { event.stopPropagation(); openClockScenes(clockId); };
         const visToggle = widget.querySelector('.clock-visibility-toggle');
         if (visToggle) {
           visToggle.onclick = (e) => {
@@ -309,7 +310,7 @@ export class ClocksManager {
 
   arrangeClocks() {
     this.expanded.clear();
-    const visible = store.state.clocks.filter(c => store.state.userRole === 'keeper' || !c.isKeeperOnly);
+    const visible = store.state.clocks.filter(c => (store.state.userRole === 'keeper' || !c.isKeeperOnly) && clockOnScene(c, store.state.activeMapId));
     const { width, height } = this.container.getBoundingClientRect();
     this.render();
     const cardWidth = this.container.querySelector('.clock-widget')?.offsetWidth || 218;
@@ -362,6 +363,15 @@ export class ClocksManager {
             </div>
           </div>
 
+          <div class="form-group">
+            <label>Escenas</label>
+            <vf-select id="new_clock_scope" class="hud-select">
+              <option value="scene" selected>Solo esta escena</option>
+              <option value="arc">Todo el arco de esta escena</option>
+              <option value="all">Todas las escenas</option>
+            </vf-select>
+          </div>
+
           <div class="form-group checkbox-group">
             <label class="hud-checkbox-label">
               <input type="checkbox" id="new_clock_private" />
@@ -387,12 +397,14 @@ export class ClocksManager {
       const segments = parseInt(modal.querySelector('#new_clock_segments').value, 10);
       const category = modal.querySelector('#new_clock_category').value;
       const isKeeperOnly = modal.querySelector('#new_clock_private').checked;
+      const mapIds = scopeMapIds(modal.querySelector('#new_clock_scope').value || 'scene');
 
       const newClock = store.addClock({
         title,
         segments,
         category,
-        isKeeperOnly
+        isKeeperOnly,
+        mapIds
       });
 
       if (!isKeeperOnly) {

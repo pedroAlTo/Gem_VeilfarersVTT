@@ -36,7 +36,8 @@ import { cardData } from './cardData.js';
 import { characterCards } from './loadoutCards.js';
 import { network } from './networkManager.js';
 import { toggleSpotlight } from './spotlight.js';
-import { PREGENS, pregenSheet } from './pregens.js';
+import { PREGENS, pregenSheet, pregenPortrait } from './pregens.js';
+import { portraitThumb } from './portraitCatalog.js';
 
 const sign = n => (n >= 0 ? `+${n}` : `${n}`);
 const usableWeapon = w => w && w.damage && !/^(?:n\/?a|none|—|-)$/i.test(String(w.damage).trim());
@@ -76,7 +77,7 @@ function choosePanelHTML(taken) {
   return `<section class="pab-choose" aria-label="Elige tu personaje">
     <h4 class="pab-choose-title">Elige tu personaje</h4>
     <p class="pab-empty">Elige uno listo para jugar, trae uno tuyo o pide al Keeper que te asigne un token.</p>
-    <div class="pab-pregens" role="list">${PREGENS.map(p => `<button type="button" role="listitem" class="pab-pregen" data-pab-pregen="${e(p.id)}" ${taken.has(p.name) ? 'disabled aria-disabled="true" title="Ya está en la mesa"' : ''}><b data-no-i18n>${e(p.name)}</b><small>${e(p.blurb)}</small></button>`).join('')}</div>
+    <div class="pab-pregens" role="list">${PREGENS.map(p => `<button type="button" role="listitem" class="pab-pregen" data-pab-pregen="${e(p.id)}" ${taken.has(p.name) ? 'disabled aria-disabled="true" title="Ya está en la mesa"' : ''}>${pregenPortrait(p) ? `<img class="pab-pregen-face" src="${e(portraitThumb(pregenPortrait(p)))}" alt="" loading="lazy" decoding="async">` : ''}<b data-no-i18n>${e(p.name)}</b><small>${e(p.blurb)}</small></button>`).join('')}</div>
     <p class="pab-choose-source">Pregenerados de <i>Hearts in the Void</i> · nivel 1, Sleeping.</p>
     <div class="pab-choose-more"><button type="button" class="hud-btn" data-pab-mine>Mis personajes</button><button type="button" class="hud-btn" data-pab-create>Crear personaje</button></div>
   </section>`;
@@ -85,7 +86,9 @@ export async function pregenToken(id) {
   const pregen = PREGENS.find(p => p.id === id);
   if (!pregen) throw new Error('Ese personaje no existe.');
   const [{ CREATOR_DATA }, { parseCharacterJSON }] = await Promise.all([import('./creator/creatorData.js'), import('./characterImport.js')]);
-  return parseCharacterJSON(pregenSheet(pregen, CREATOR_DATA)).token;
+  const token = parseCharacterJSON(pregenSheet(pregen, CREATOR_DATA)).token;
+  // Their own portrait (v2.62.5); the player can change it as with any other.
+  return pregenPortrait(pregen) ? { ...token, avatarUrl: pregenPortrait(pregen), portraitOverride: true } : token;
 }
 
 export function tapPick(pick, tap) {

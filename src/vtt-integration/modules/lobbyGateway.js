@@ -239,6 +239,11 @@ export class VeilfarersLobbyGateway {
             <span class="quick-title">CREAR PARTIDA</span>
             <span class="quick-hint">Diriges tú (Keeper). El enlace de invitación se copia solo.</span>
           </button>
+          <button type="button" id="vf-quick-module" class="vf-quick-action vf-quick-module" data-module="hearts-in-the-void">
+            <span class="quick-icon">📖</span>
+            <span class="quick-title">HEARTS IN THE VOID</span>
+            <span class="quick-hint">Aventura preparada: escenas, PNJ, relojes y dossieres. Diriges tú (Keeper); solo faltan tus mapas.</span>
+          </button>
           <div class="vf-quick-action vf-quick-join">
             <span class="quick-icon">⌖</span>
             <span class="quick-title">UNIRME</span>
@@ -552,6 +557,7 @@ export class VeilfarersLobbyGateway {
 
     // Inicio rápido (V3): crear con un clic y volver a la última partida.
     document.getElementById('vf-quick-create')?.addEventListener('click', () => this.quickCreate());
+    document.getElementById('vf-quick-module')?.addEventListener('click', event => this.quickModule(event.currentTarget.dataset.module));
     document.getElementById('vf-quick-continue')?.addEventListener('click', event => {
       const { roomId, role } = event.currentTarget.dataset;
       if (roomId) this.enterRoomTarget(roomId, role || 'player');
@@ -941,6 +947,28 @@ export class VeilfarersLobbyGateway {
     this.createNewRoom(`${who ? `Partida de ${who}` : 'Nueva partida'} · ${day}`);
   }
 
+  // A prepared adventure (v2.62.2, user request: «no veo cómo crear la partida de Hearts; añádelo al
+  // menú de selección de partidas»): with an account, a new online room holding the adventure (the
+  // invitation is copied, as in Crear partida); without one, the adventure on the local table.
+  async quickModule(id) {
+    this.showHubError('');
+    let campaign;
+    try {
+      const response = await fetch(`/campaigns/${id}.json`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      campaign = await response.json();
+    } catch (err) { this.showHubError(`No se pudo descargar la aventura: ${err?.message || err}`); return; }
+    const name = campaign.campaignName || 'Aventura';
+    if (!this.hasCloudAccount()) {
+      const { store } = await import('../../state.js');
+      if (!await store.importCampaignJSON(JSON.stringify(campaign))) { this.showHubError('No se pudo preparar la aventura en la mesa local.'); return; }
+      this.enterRoomTarget('mesa-principal', 'keeper');
+      return;
+    }
+    const day = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    this.createNewRoom(`${name} · ${day}`, campaign);
+  }
+
   // The invitation of a room just created: the link is copied and said in a notice.
   async shareInvite(room) {
     const code = room?.inviteCode;
@@ -954,7 +982,7 @@ export class VeilfarersLobbyGateway {
     } catch {}
   }
 
-  createNewRoom(name) {
+  createNewRoom(name, campaign = null) {
     const trimmed = String(name || '').trim() || 'Sector Nuevo';
     this.selectedRole = 'keeper';
     this.hideLobby();
@@ -969,7 +997,7 @@ export class VeilfarersLobbyGateway {
         activeCharId: null
       });
     }
-    this.runRoomAction(async rooms => { const room = await rooms.create(trimmed); this.shareInvite(room); }, 'No se pudo crear la sala');
+    this.runRoomAction(async rooms => { const room = await rooms.create(trimmed, { campaign }); this.shareInvite(room); }, 'No se pudo crear la sala');
   }
 
   // The library is the signed-in user's own (Firestore users/{uid}/characters); nobody else

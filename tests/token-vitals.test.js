@@ -97,7 +97,7 @@ test('the portrait window has small, flat images for every frame and preset port
     assert.ok(existsSync(file(frameFlat(frame))), frameFlat(frame));
   }
   let checked = 0;
-  for (const collection of ['bestiary', 'bestiary-2', 'crew', ...ANCESTRY_IDS]) {
+  for (const collection of ['bestiary', 'bestiary-2', 'crew', 'npc', 'pregens', ...ANCESTRY_IDS]) {
     for (const cls of ANCESTRY_IDS.includes(collection) ? ['', ...TOKEN_CLASSES] : ['']) {
       for (const { url } of portraitChoices(collection, cls)) {
         const thumb = portraitThumb(url);

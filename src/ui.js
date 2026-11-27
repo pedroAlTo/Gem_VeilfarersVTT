@@ -12,7 +12,9 @@ export const escapeHTML = (value) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
   );
-export function notify(message, kind = 'info') {
+// options (v2.62.1): duration in ms (6 s by default); key replaces the previous toast with that key
+// (a key pressed several times shows one toast, not a stack).
+export function notify(message, kind = 'info', { duration = 6000, key = '' } = {}) {
   if (typeof document === 'undefined') return;
   let root = document.getElementById('toast_stack');
   if (!root) {
@@ -21,12 +23,14 @@ export function notify(message, kind = 'info') {
     root.setAttribute('aria-live', 'polite');
     document.body.append(root);
   }
+  if (key) root.querySelectorAll('.orbital-toast').forEach(t => { if (t.dataset.toastKey === key) t.remove(); });
   const el = document.createElement('div');
   el.className = `orbital-toast ${kind}`;
+  if (key) el.dataset.toastKey = key;
   // Shown in the interface language; messages the dictionary does not know stay as written.
   el.textContent = translate(String(message ?? '')) ?? message;
   root.append(el);
-  setTimeout(() => el.remove(), 6000);
+  setTimeout(() => el.remove(), duration);
 }
 export function confirmAction(message, options = {}) {
   return new Promise((resolve) => {

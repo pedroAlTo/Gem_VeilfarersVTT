@@ -269,7 +269,8 @@ test('a player portrait patch must choose a complete catalog entry or reset it a
   const { validTokenPatch } = await import('../src/validation.js');
   const { portraitChoices, presetLocation } = await import('../src/portraitCatalog.js');
   const base = portraitChoices('rift_spinner');
-  assert.equal(new Set(base.map(x => x.url)).size, 5);
+  // Five crew portraits and the user's Rift Spinners (Threnody, Madame Silk; v2.62.5), all distinct.
+  assert.equal(new Set(base.map(x => x.url)).size, 7);
   for (const option of [...base, ...portraitChoices('kryx', 'mystic'), ...portraitChoices('bestiary')]) {
     assert.ok(presetLocation(option.url));
     assert.ok(validTokenPatch({ avatarUrl: option.url, portraitOverride:true }));

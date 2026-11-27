@@ -163,6 +163,9 @@ body.pab-hope-pending #token_quickbar_root .telemetry-stat:has(.telemetry-track[
 .pab-pregens { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
 .pab-pregen { all: unset; box-sizing: border-box; display: grid; gap: 3px; min-height: 44px; padding: 8px 10px; border: 1px solid rgba(192,132,252,.35); background: rgba(13,4,32,.6); cursor: pointer; }
 .pab-pregen b { font-size: 12.5px; color: #ede9fe; }
+/* Their portrait (v2.62.5), beside the name and the blurb. */
+.pab-pregen:has(.pab-pregen-face) { grid-template-columns: 40px 1fr; column-gap: 10px; align-items: center; }
+.pab-pregen-face { grid-row: span 2; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(192,132,252,.5); background: rgba(13,4,32,.9); }
 .pab-pregen small { font-size: 11px; line-height: 1.35; color: var(--text-dim, #a5a3c4); }
 .pab-pregen:hover:not([disabled]), .pab-pregen:focus-visible { border-color: #22d3ee; background: rgba(34,211,238,.1); }
 .pab-pregen:focus-visible { outline: 2px solid #22d3ee; outline-offset: 1px; }

@@ -1,3 +1,4 @@
+import { publicDossier } from './dossierPrivacy.js';
 import { isEncounterMarker } from './bestiaryProfiles.js';
 import { LanPeer } from './lanPeer.js';
 import { requireNetworkMode, LAN_SESSIONS } from './runtimeMode.js';
@@ -429,7 +430,8 @@ export class NetworkManager {
           return copy;
         }),
       clocks: s.clocks.filter((c) => !c.isKeeperOnly),
-      handouts: s.handouts.filter((h) => h.sharedWithPlayers),
+      // The players never receive the «Solo para Keeper» part (v2.63.0).
+      handouts: s.handouts.filter((h) => h.sharedWithPlayers && !h.keeperOnly).map(publicDossier),
       claimedTokenId: s.tokens.find((t) => !isDrone(t) && (t.ownerId === memberId || t.controllerIds?.includes(memberId)))?.id || s.tokens.find((t) => controlsToken(t, memberId))?.id || null,
     };
   }
@@ -691,6 +693,7 @@ export class NetworkManager {
       this.syncAll();
       return;
     }
+    if (message.type === 'TRANSMISSION' && message.handout) message = { ...message, handout: publicDossier(message.handout) };
     if (['DICE_ROLL', 'PING', 'SPECIAL_FX', 'ATTACK_FX', 'TARGET_SELECT', 'TRANSMISSION', 'ANNOUNCEMENT', 'MAP_LOAD_STATUS'].includes(message.type))
       for (const conn of this.connections.values())
         if (conn.open) conn.send(this.envelope(message));
@@ -1277,7 +1280,7 @@ export class NetworkManager {
       window.dispatchEvent(new CustomEvent('veil:reaction-closed', { detail: { offerId: data.offerId } }));
     if (data.type === 'TRANSMISSION' && data.handout)
       window.dispatchEvent(
-        new CustomEvent('veil:incoming_transmission', { detail: { handout: data.handout } })
+        new CustomEvent('veil:incoming_transmission', { detail: { handout: publicDossier(data.handout) } })
       );
     if (data.type === 'SPECIAL_FX' && data.params)
       window.veilCanvas?.triggerFX(data.fxType, data.params);

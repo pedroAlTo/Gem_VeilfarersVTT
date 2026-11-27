@@ -2073,6 +2073,23 @@ body, html {
   align-items: center;
 }
 
+/* Dossier folders, search, badges and the language switch (v2.62.0, Hearts in the Void room). */
+.handout-search { width: 100%; box-sizing: border-box; margin: 0 0 8px; }
+.handout-folder { border: 1px solid rgba(0, 243, 255, 0.18); border-radius: 4px; padding: 0 6px 6px; background: rgba(13, 4, 32, 0.35); }
+.handout-folder > summary { cursor: pointer; padding: 6px 2px; font-family: var(--font-hud, system-ui); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #a5f3fc; }
+.handout-folder > .handout-card { margin-top: 6px; }
+.handout-folder[hidden], .handout-card[hidden] { display: none !important; }
+.handout-card.keeper-only { border-left-color: #f5b942; }
+.handout-header { flex-wrap: wrap; gap: 4px; }
+.handout-badge { font-size: 9px; letter-spacing: .08em; padding: 1px 5px; border: 1px solid #f5b942; color: #f5b942; border-radius: 3px; }
+.handout-badge.shared { border-color: #34d399; color: #34d399; }
+.handout-actions { flex-wrap: wrap; }
+.handout-lang { display: flex; gap: 4px; justify-content: flex-end; margin: 0 0 8px; }
+.handout-lang button[aria-pressed="true"] { border-color: var(--cyan-pearl); color: var(--cyan-pearl); }
+.transmission-content-area [hidden] { display: none !important; }
+.transmission-content-area table { width: 100%; border-collapse: collapse; }
+.transmission-content-area th, .transmission-content-area td { text-align: left; vertical-align: top; padding: 4px; border-bottom: 1px solid rgba(148, 163, 184, .2); }
+
 .handout-title {
   font-family: var(--font-hud);
   font-size: 13px;
@@ -2120,8 +2137,9 @@ body, html {
 }
 
 .transmission-image-frame {
-  width: 100%;
-  max-height: 280px;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
   overflow: hidden;
   border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 243, 255, 0.3);
@@ -2133,19 +2151,41 @@ body, html {
 }
 
 .transmission-attached-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 380px;
+  object-fit: contain;
 }
 
+/* The whole dossier scrolls in its window (up to v2.62 the text scrolled inside a 260 px box and
+   the rest of a long dossier looked missing). */
 .transmission-content-area {
   font-size: 13px;
   line-height: 1.6;
   color: #e2e8f0;
-  max-height: 260px;
-  overflow-y: auto;
   padding-right: 6px;
 }
+.transmission-content-area ul { margin: 0 0 8px 18px; }
+
+/* Two parts (v2.63.0): for the players and «Solo para Keeper», side by side for the Keeper. */
+.transmission-popup-box.has-keeper-part { max-width: min(1180px, 96vw); }
+.transmission-columns { display: grid; gap: 18px; }
+.has-keeper-part .transmission-columns { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+.transmission-keeper { border-left: 1px solid rgba(245, 185, 66, 0.35); padding-left: 18px; }
+.transmission-part-label { font: 700 10px var(--font-hud); letter-spacing: .16em; color: var(--text-dim); margin: 0 0 10px; }
+.transmission-keeper .transmission-part-label { color: #f5b942; }
+@media (max-width: 860px) {
+  .has-keeper-part .transmission-columns { grid-template-columns: 1fr; }
+  .transmission-keeper { border-left: 0; border-top: 1px solid rgba(245, 185, 66, 0.35); padding: 14px 0 0; }
+}
+.dossier-editor-box { max-width: min(1120px, 96vw); }
+.dossier-editor-parts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.dossier-editor-parts small { font-weight: 400; letter-spacing: 0; text-transform: none; }
+.dossier-keeper-part label { color: #f5b942; }
+@media (max-width: 860px) { .dossier-editor-parts { grid-template-columns: 1fr; } }
+.handout-badge.keeper-notes { color: #f5b942; border-color: rgba(245, 185, 66, 0.45); }
 
 .transmission-content-area h2, 
 .transmission-content-area h3 {
@@ -2965,6 +3005,9 @@ body, html {
 .weather-darkness { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 11px; color: #cbd5e1; }
 .weather-darkness span { display: flex; justify-content: space-between; }
 .weather-darkness b { color: #fde68a; font-weight: 600; }
+.fog-veil-row { display: flex; flex-direction: column; gap: 4px; margin: 2px 4px 4px; font-size: 11px; color: #cbd5e1; }
+.fog-veil-row span { display: flex; justify-content: space-between; }
+.fog-veil-row b { color: #fde68a; font-weight: 600; }
 .weather-note { margin-top: 4px; }
 /* V3: light switch inspector */
 .insp-switch-lights { display: flex; flex-wrap: wrap; gap: 4px 12px; max-height: 96px; overflow: auto; }
@@ -2978,3 +3021,12 @@ body, html {
 .log-calc[open] summary::before { content: '▾ '; }
 .log-calc ol { margin: 6px 0 0; padding: 6px 8px 6px 24px; border-left: 2px solid rgba(103, 232, 249, .35); background: rgba(8, 12, 28, .45); border-radius: 0 4px 4px 0; display: grid; gap: 2px; }
 .log-calc li { line-height: 1.35; font-variant-numeric: tabular-nums; }
+
+/* Clocks by scene (v2.62.3). */
+.clock-scenes-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; font-size: 11px; color: #94a3b8; }
+.clock-other-scenes { margin: 10px 0 4px; font-family: var(--font-hud, system-ui); font-size: 10px; letter-spacing: .1em; color: #94a3b8; }
+.log-card.clock-elsewhere { opacity: .6; }
+.clock-scenes-dialog fieldset { border: 1px solid rgba(0, 243, 255, .2); border-radius: 4px; margin: 8px 0; padding: 6px 10px; display: grid; gap: 4px; }
+.clock-scenes-dialog legend { font-size: 11px; letter-spacing: .06em; color: #a5f3fc; padding: 0 4px; }
+.clock-scenes-dialog [hidden] { display: none !important; }
+.clock-scenes-all { margin: 8px 0; }

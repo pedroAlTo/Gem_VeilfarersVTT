@@ -90,6 +90,8 @@ export function validateCampaign(data) {
       typeof m.name === 'string' && typeof m.imageUrl === 'string' && finite(m.gridSize, 1, 1000),
       'Invalid map name, image or grid.'
     );
+    // The explored veil of this scene (v2.64.0), set by the Keeper for everyone.
+    if (m.fogExploredOpacity != null) assert(finite(m.fogExploredOpacity, 0.05, 0.95), 'Invalid explored fog opacity.');
     for (const k of ['walls', 'lights', 'effects', 'waterZones', 'switches']) {
       assert(
         m[k] === undefined ||
@@ -125,11 +127,12 @@ export function validateCampaign(data) {
         Number.isInteger(c.segments) &&
         finite(c.segments, 1, 32) &&
         Number.isInteger(c.filled) &&
-        finite(c.filled, 0, c.segments),
+        finite(c.filled, 0, c.segments) &&
+        (c.mapIds == null || (Array.isArray(c.mapIds) && c.mapIds.length <= 100 && c.mapIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 200))),
       'Invalid clock.'
     );
   for (const h of data.handouts)
-    assert(typeof h.title === 'string' && typeof h.contentHtml === 'string', 'Invalid dossier.');
+    assert(typeof h.title === 'string' && typeof h.contentHtml === 'string' && (h.keeperHtml == null || (typeof h.keeperHtml === 'string' && h.keeperHtml.length <= 500000)), 'Invalid dossier.');
   assert(finite(data.fear, 0, 12) && Number.isInteger(data.fear), 'Fear must be between 0 and 12.');
   if (data.starship) {
     const s = data.starship;

@@ -156,14 +156,12 @@ export class LayerManagerHUD {
           ${isKeeper ? `
             <div class="layer-fow-section" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0, 243, 255, 0.25);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: var(--font-hud);">🌫️ NIEBLA DE COMBATE (FOG OF WAR)</span>
-                <button class="hud-btn hud-btn-xs ${state.fogOfWar !== false ? 'active' : ''}" id="btn_toggle_fow_layer" style="font-size: 10px; padding: 2px 8px;">
-                  ${state.fogOfWar !== false ? 'ON' : 'OFF'}
-                </button>
+                <span style="font-size: 11px; font-weight: bold; color: #00f3ff; font-family: var(--font-hud);">🌫️ NIEBLA (LO DESCUBIERTO)</span>
+
               </div>
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 10px; color: #94a3b8;">
-                <span id="lbl_fow_opacity">Atenuación Explorada (${Math.round((state.fogExploredOpacity ?? 0.50) * 100)}%):</span>
-                <input type="range" id="input_fow_opacity" min="10" max="90" step="5" value="${Math.round((state.fogExploredOpacity ?? 0.50) * 100)}" style="width: 75px; accent-color: #00f3ff; cursor: pointer;">
+                <span id="lbl_fow_opacity">Atenuación Explorada (${Math.round((store.getActiveMap()?.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.50) * 100)}%):</span>
+                <input type="range" id="input_fow_opacity" min="10" max="90" step="5" value="${Math.round((store.getActiveMap()?.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.50) * 100)}" style="width: 75px; accent-color: #00f3ff; cursor: pointer;">
               </div>
               <div style="display: flex; gap: 6px;">
                 <button class="hud-btn hud-btn-xs" id="btn_reset_fow" style="flex: 1; font-size: 9px; padding: 4px;" title="Reiniciar exploración (todo el mapa oscuro)">
@@ -255,12 +253,6 @@ export class LayerManagerHUD {
       };
     });
 
-    const fowToggleBtn = this.container.querySelector('#btn_toggle_fow_layer');
-    if (fowToggleBtn) {
-      fowToggleBtn.onclick = () => {
-        store.toggleFogOfWar();
-      };
-    }
 
     const fowSlider = this.container.querySelector('#input_fow_opacity');
     const fowLabel = this.container.querySelector('#lbl_fow_opacity');
@@ -268,7 +260,8 @@ export class LayerManagerHUD {
       fowSlider.oninput = (e) => {
         const val = parseInt(e.target.value, 10);
         if (fowLabel) fowLabel.textContent = `Atenuación Explorada (${val}%):`;
-        store.setFogExploredOpacity(val / 100);
+        // For this scene and everyone at the table (v2.64.0), as in the fog panel of the toolbar.
+        store.updateActiveMap({ fogExploredOpacity: val / 100 });
       };
     }
 

@@ -33,7 +33,7 @@ import './tableActions.css';
 import { checkBackupReminder } from './sessionManager.js';
 import { LOCAL_ONLY, LAN_SESSIONS } from './runtimeMode.js';
 import { cloudConfigured } from './cloudAccount.js';
-import { sanitizeHTML, confirmAction, notify } from './ui.js';
+import { sanitizeHTML, confirmAction, notify, escapeHTML } from './ui.js';
 // src/main.js
 // Application entry point for VEILVTT
 
@@ -50,6 +50,7 @@ import { network, getActiveSession, clearActiveSession } from './networkManager.
 import { CanvasEngine } from './canvasEngine.js';
 import { FearMeterHUD } from './fearMeter.js';
 import { ClocksManager } from './clocksManager.js';
+import { clockOnScene, clockScenesLabel, openClockScenes } from './clockScenes.js';
 import { TokenHUD } from './tokenSheet.js';
 import { DiceRollerSidebar } from './diceRoller.js';
 import { SceneManager } from './sceneManager.js';
@@ -195,7 +196,9 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
   function update() {
     const state = store.getState();
     const isKeeper = state.userRole === 'keeper';
-    const visibleClocks = state.clocks.filter(c => isKeeper || !c.isKeeperOnly);
+    // This scene's clocks; the Keeper also sees, apart, those of the other scenes (v2.62.3).
+    const visibleClocks = state.clocks.filter(c => (isKeeper || !c.isKeeperOnly) && clockOnScene(c, state.activeMapId));
+    const otherClocks = isKeeper ? state.clocks.filter(c => !clockOnScene(c, state.activeMapId)) : [];
 
     paneEl.innerHTML = sanitizeHTML(`
       <div class="clocks-sidebar-content">
@@ -212,8 +215,9 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
 
         <button class="hud-btn clock-arrange-btn" id="arrange_clocks_btn">ARRANGE ON MAP</button>
         <div class="scene-cards-list">
-          ${visibleClocks.map(c => `
-            <div class="log-card glass-panel" style="border-left: 3px solid ${c.isKeeperOnly ? 'var(--purple-void)' : 'var(--cyan-pearl)'};">
+          ${[...visibleClocks, ...otherClocks].map((c, i) => `
+            ${i === visibleClocks.length && otherClocks.length ? `<h5 class="clock-other-scenes">EN OTRAS ESCENAS · ${otherClocks.length}</h5>` : ''}
+            <div class="log-card glass-panel ${i >= visibleClocks.length ? 'clock-elsewhere' : ''}" style="border-left: 3px solid ${c.isKeeperOnly ? 'var(--purple-void)' : 'var(--cyan-pearl)'};">
               <div class="log-card-header">
                 <span style="font-weight: 700; color: #fff;">${c.title}</span>
                 ${isKeeper ? `
@@ -224,6 +228,7 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
                   <span class="clock-badge-shared">SHARED</span>
                 `}
               </div>
+              ${isKeeper ? `<div class="clock-scenes-line"><span>📍 ${escapeHTML(clockScenesLabel(c, state.maps))}</span><button class="hud-btn hud-btn-xs clock-sidebar-scenes" data-id="${c.id}">Escenas</button></div>` : ''}
               <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-top: 6px;">
                 <span style="font-family: var(--font-display); font-size: 14px; font-weight: 700;">${c.filled} / ${c.segments} SEGMENTS</span>
                 ${isKeeper ? `
@@ -258,6 +263,8 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
         };
       });
 
+      paneEl.querySelectorAll('.clock-sidebar-scenes').forEach(btn => { btn.onclick = () => openClockScenes(btn.dataset.id); });
+
       paneEl.querySelectorAll('.clock-sidebar-step-up').forEach(btn => {
         btn.onclick = () => {
           store.advanceClock(btn.dataset.id, 1);
@@ -277,7 +284,7 @@ function renderClocksSidebarPane(paneEl, clocksManager) {
 
   update();
   store.subscribe((state, keys) => {
-    if (keys.includes('clocks') || keys.includes('userRole')) {
+    if (keys.includes('clocks') || keys.includes('userRole') || keys.includes('activeMapId') || keys.includes('maps')) {
       update();
     }
   });
@@ -357,10 +364,34 @@ function updateKeeperUIVisibility(isKeeper) {
 
 // --- Toolbar Events ---
 function setupToolbarEvents() {
-  const tools = ['select', 'measure', 'template', 'fx', 'ping', 'wall', 'light', 'fx_emitter', 'water', 'draw', 'erase_draw'];
+  const tools = ['select', 'measure', 'template', 'fx', 'ping', 'wall', 'light', 'fx_emitter', 'water', 'fog_brush', 'draw', 'erase_draw'];
   const templateFlyout = document.getElementById('template_flyout');
   const fxFlyout = document.getElementById('fx_flyout');
   const waterFlyout = document.getElementById('water_flyout');
+  // Fog brush (v2.63.0): mode and radius.
+  const fogBrushFlyout = document.getElementById('fog_brush_flyout');
+  fogBrushFlyout?.querySelectorAll('[data-fog-brush-mode]').forEach(button => button.onclick = () => {
+    store.update({ fogBrushMode: button.dataset.fogBrushMode });
+    fogBrushFlyout.querySelectorAll('[data-fog-brush-mode]').forEach(b => b.classList.toggle('active', b === button));
+  });
+  // The explored veil of this scene (v2.64.0, user request: «en fog of war debería poder definir el
+  // % de oscurecimiento de las zonas ya exploradas»): the Keeper sets it for everyone at the table.
+  const veil = document.getElementById('fog_veil'), veilValue = document.getElementById('fog_veil_value');
+  const showVeil = () => {
+    if (!veil) return;
+    const value = Math.round((store.getActiveMap()?.fogExploredOpacity ?? store.state.fogExploredOpacity ?? 0.5) * 100);
+    if (document.activeElement !== veil) veil.value = value;
+    veilValue.textContent = `${value} %`;
+  };
+  if (veil) {
+    veil.oninput = () => { veilValue.textContent = `${veil.value} %`; store.updateActiveMap({ fogExploredOpacity: Number(veil.value) / 100 }); };
+    store.subscribe((state, keys) => { if (!Array.isArray(keys) || keys.includes('maps') || keys.includes('activeMapId') || keys.includes('fogExploredOpacity')) showVeil(); });
+    showVeil();
+  }
+  fogBrushFlyout?.querySelectorAll('[data-fog-brush-size]').forEach(button => button.onclick = () => {
+    store.update({ fogBrushSize: Number(button.dataset.fogBrushSize) });
+    fogBrushFlyout.querySelectorAll('[data-fog-brush-size]').forEach(b => b.classList.toggle('active', b === button));
+  });
   const drawingFlyout = document.getElementById('drawing_flyout');
   const drawingColor = document.getElementById('drawing_color');
   drawingColor.onclick = () => openColorPickerPopover(drawingColor, store.state.drawingColor || '#00dfff', color => {
@@ -394,6 +425,10 @@ function setupToolbarEvents() {
         }
         if (waterFlyout) {
           waterFlyout.style.display = toolName === 'water' ? 'flex' : 'none';
+        }
+        if (fogBrushFlyout) {
+          fogBrushFlyout.style.display = toolName === 'fog_brush' ? 'flex' : 'none';
+          if (toolName === 'fog_brush') fogBrushFlyout.style.top = `${Math.max(8, btn.offsetTop - 24)}px`;
         }
       };
     }
@@ -504,18 +539,13 @@ function setupToolbarEvents() {
     };
   }
 
-  // Fog of War Toggle
-  const fogBtn = document.getElementById('toggle_fog_of_war');
-  if (fogBtn) {
-    fogBtn.onclick = () => {
-      const state = store.getState();
-      const newVal = !state.fogOfWar;
-      store.update({ fogOfWar: newVal });
-      fogBtn.classList.toggle('active', newVal);
-      fogBtn.title = newVal ? '[Keeper] Fog of War Activa (Zonas inexploradas oscuras) [Shift+F]' : '[Keeper] Fog of War Desactivada [Shift+F]';
-      audio.playClockTick();
-    };
-  }
+  // «Borrar todo lo descubierto» (v2.64.4): the whole scene undiscovered again, for everyone.
+  const fogClearAll = document.getElementById('fog_clear_all');
+  if (fogClearAll) fogClearAll.onclick = async () => {
+    if (!await confirmAction('¿Borrar todo lo descubierto en esta escena? Vuelve a estar a oscuras para todos los jugadores.')) return;
+    store.resetMapFog();
+    audio.playClockTick();
+  };
 
   // Grid Toggle
   const gridBtn = document.getElementById('toggle_grid');
@@ -749,7 +779,8 @@ function setupKeyboardShortcuts() {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     // V for a player: the tokens' names on or off on this screen (v2.59.0); for the Keeper it stays «Mover».
     if (key === 'v' && store.getState().userRole !== 'keeper') {
-      import('./tokenLayout.js').then(({ toggleNames }) => notify(toggleNames() ? 'Nombres de los tokens ocultos (V para verlos).' : 'Nombres de los tokens visibles.'));
+      // A short toast (v2.62.1, user request: «hazlo desaparecer mucho más rápido»), one at a time.
+      import('./tokenLayout.js').then(({ toggleNames }) => notify(toggleNames() ? 'Nombres de los tokens ocultos (V para verlos).' : 'Nombres de los tokens visibles.', 'info', { duration: 1200, key: 'names' }));
       return;
     }
     if (key === 'b') store.update({ activeTool: 'draw' });
@@ -768,7 +799,7 @@ function setupKeyboardShortcuts() {
       return;
     }
     if (e.shiftKey && key === 'f' && store.getState().userRole === 'keeper') {
-      document.getElementById('toggle_fog_of_war')?.click();
+      document.getElementById('tool_fog_brush')?.click();
       return;
     }
     if (key === 'g') document.getElementById('toggle_grid')?.click();

@@ -1,10 +1,161 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.61.2**.
-Paquete: `VeilFarers_VTT_v2.61.2.zip`.
+Versión actual del VTT: **v2.64.4**.
+Paquete: `VeilFarers_VTT_v2.64.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.64.4] — 2026-11-27
+
+V3 · Una sola niebla, que recuerda lo descubierto
+
+### Niebla
+
+- Hay una sola niebla: la oscuridad de la escena (Clima o su luz ambiente), que ya funcionaba con las luces y las linternas. Ahora recuerda lo descubierto: lo que un personaje ve queda con el % de oscurecimiento elegido en vez de volver a negro.
+- Se elimina la «niebla de guerra» que se activaba con el botón: dibujaba una segunda capa encima que no funcionaba bien y se veía peor.
+- El botón «Niebla» de la barra del Keeper abre sus herramientas: pintar niebla (vuelve a estar sin descubrir) o borrar niebla (queda descubierto) con radio de 1 a 8 casillas, el % de oscurecimiento de lo descubierto y «Borrar todo lo descubierto». El botón «Pincel» aparte desaparece; Shift+F abre el panel.
+- De noche, las puertas e interruptores sin descubrir no se ven; de día o una vez descubiertos, sí.
+
+## [2.64.3] — 2026-11-27
+
+V3 · Hearts in the Void con niebla de guerra
+
+### Hearts in the Void
+
+- La aventura se crea con la niebla de guerra activada. Desde la v2.62.0 venía apagada por error: de noche solo se veía lo iluminado y lo descubierto no se recordaba (al girar al personaje volvía la oscuridad).
+- «⟳ Actualizar módulo» activa la niebla en las partidas que ya se crearon así.
+
+## [2.64.2] — 2026-11-27
+
+V3 · La niebla explorada no se pierde en partidas online
+
+### Niebla
+
+- Lo que tu pantalla ya ha explorado solo se sustituye por la copia de la mesa cuando hay un reinicio, un «Revelar» o un trazo del pincel más recientes. Desde la v2.63.0 bastaba una marca distinta (por ejemplo, un mapa que llega tarde en una partida online) para cambiar lo explorado por una copia anterior, y lo recién visto volvía a negro.
+
+## [2.64.1] — 2026-11-27
+
+V3 · Lo que ven los PNJ queda explorado en la pantalla del Keeper
+
+### Niebla
+
+- En la pantalla del Keeper, lo que ve un PNJ o un enemigo queda con el velo de lo explorado cuando deja de mirarlo (antes volvía a negro). Es una memoria solo del Keeper: no se guarda en la exploración de la mesa ni llega a los jugadores, que siguen explorando solo con los personajes del grupo.
+- Reiniciar la niebla y el pincel «Oscurecer» también la borran.
+
+## [2.64.0] — 2026-11-27
+
+V3 · Visión con límite de día y de noche, degradado y velo de lo explorado por escena
+
+### Visión
+
+- Nada se ve más allá del alcance de visión del token (25 m por defecto). Antes, una zona iluminada se veía a cualquier distancia: con luces grandes el cono llegaba al final del mapa.
+- De noche (Clima al 50 % o más), en lo oscuro cada personaje solo distingue su «visión en la oscuridad» (5 m por defecto, en la ficha del token); lo iluminado lo ve hasta su alcance. De día, o sin ajustar el Clima, ve hasta su alcance. Es el modelo de Foundry VTT (Basic Sight y Light Perception), con la luz limitada al alcance.
+- El cono se degrada con la distancia: nítido cerca del personaje y, al final de su alcance, igual que una zona ya explorada. Nunca queda más oscuro que el velo de lo explorado.
+- Los enemigos que ve el jugador siguen la misma regla.
+
+### Niebla
+
+- El Keeper fija el oscurecimiento de las zonas ya exploradas de cada escena desde el panel del pincel de niebla (o desde Capas tácticas); se aplica a todos en esa escena. Ajustes queda como valor por defecto.
+
+## [2.63.0] — 2026-11-27
+
+V3 · Niebla de guerra arreglada, visión en metros, pincel de niebla y dossieres en dos partes
+
+### Niebla de guerra
+
+- La visión de los tokens se mide en metros y cada escena la convierte con su escala (Escenas → rejilla): en un mapa grande el cono de visión ya no se queda en un par de casillas. Por defecto, 25 m de visión (Far), 10 m de luz propia y 10 m de vibración; se cambian en la ficha del token.
+- Ya no hay «dos nieblas»: la exploración guardada (la que se envía a los jugadores y se recupera al recargar) salía en escalones de 32 px junto al borde suave de lo visto en directo. Ahora usa celdas que siguen el tamaño del mapa y bordes suaves.
+- En la pantalla del Keeper, la visión de los PNJ y enemigos despeja la niebla (solo en su pantalla y sin explorar el mapa); los jugadores siguen sin ver lo que ven ellos.
+- Nuevo pincel de niebla para el Keeper (botón «Pincel» en la barra de herramientas): «Oscurecer» devuelve a la niebla zonas ya descubiertas y «Descubrir» las descubre, con radio de 1, 2, 4 u 8 casillas. Los jugadores lo ven al soltar.
+- Las puertas en el borde de lo visto se muestran siempre que se haya visto uno de sus lados.
+
+### Dossieres
+
+- Cada dossier tiene dos partes: la de los jugadores (la que se comparte y se transmite) y «Solo para Keeper», que nunca se envía. El Keeper las ve una al lado de la otra; el jugador, solo la suya.
+- El texto de un dossier ya no se corta: la ventana entera se desplaza (antes el texto quedaba en un recuadro de 260 px y parecía que faltaba). La imagen se ve completa.
+
+### Hearts in the Void
+
+- Los dossieres de los PNJ se pueden compartir: la parte pública dice quiénes son, con su imagen; sus motivaciones y secretos van en «Solo para Keeper». El token de cada PNJ solo lleva la parte pública.
+- Botón «Actualizar módulo» en Dossieres: trae a una partida ya creada las imágenes, los dossieres y los PNJ nuevos del módulo sin tocar los mapas, las posiciones, los relojes ni los dossieres propios.
+
+## [2.62.5] — 2026-11-27
+
+V3 · Personajes de Hearts in the Void como retratos
+
+### Retratos
+
+- Los personajes de Hearts in the Void que aporta el usuario son retratos de token: cada uno aparece también entre los de su ascendencia (por ejemplo, Rourke y Brix entre los Kryx; Lyra, Korren y Parel entre los Kryllian; Threnody y Madame Silk entre los Rift Spinner).
+- Dos colecciones nuevas en la selección de retrato: «Pregenerados · Hearts in the Void» (los diez pregenerados) y «PNJ», que ahora reúne a todos los personajes secundarios (Zara, Korren, Thex, Brix, Alexei con y sin uniforme de gala, Silk, Scalpel, Maya, Nyx, Maximus y Lydia, el oficial de la Casa Joric, Orla Venn, un piloto de carga, Parel y Blue).
+- Los pregenerados llevan su retrato: al elegir uno en «Elige tu personaje» su token sale ya con su cara, y la lista muestra la cara de cada pregenerado.
+
+### Hearts in the Void
+
+- Los tokens de los PNJ llevan el retrato de su personaje y su dossier del Keeper muestra la imagen completa.
+- Tres PNJ nuevos con su token y su dossier: el Lord Comandante Maximus Joric, Lydia Valerius y un oficial de recuperación de la Casa Joric. El dossier «Dos imágenes de Alexei» muestra la imagen de Alexei con uniforme de gala.
+
+## [2.62.4] — 2026-11-27
+
+V3 · Retratos de PNJ y más arte de Hearts in the Void
+
+### Retratos
+
+- Nueva colección «PNJ» en la selección de retrato, con los personajes secundarios que aporta el usuario (por ahora Parel Dho y Blue Casta). Cualquier token puede usarlos.
+
+### Hearts in the Void
+
+- Parel Dho y Blue Casta llevan su retrato en el token y en su ficha del Keeper.
+- Más arte en los dossieres: el Nexus Inferior con su músico, la hoja de registros experimentales («Deprivation increases aggression…») en el Archivo Kurogane y la pantalla del comunicador de Korren.
+
+## [2.62.3] — 2026-11-27
+
+V3 · Relojes por escena e imágenes de Hearts in the Void
+
+### Relojes por escena
+
+- Cada reloj pertenece a sus escenas: en el mapa y en la pestaña Relojes solo aparecen los de la escena activa (el Keeper ve aparte, atenuados, los de las otras escenas).
+- Al crear un reloj se elige «Solo esta escena» (por defecto), «Todo el arco de esta escena» o «Todas las escenas». El botón 📍 del reloj (o «Escenas» en la pestaña Relojes) permite marcar sus escenas, agrupadas por arco.
+- Los relojes que ya existían siguen apareciendo en todas las escenas. Si se borra una escena, sus relojes no se pierden.
+
+### Hearts in the Void
+
+- Los relojes de la aventura están en sus láminas: Hambre y Ruta de escape en la 5; Desesperación de Korren en la 4 y la 3; Sobrecarga del núcleo en la 4; Fallo estructural y Convergencia Weaver en la 4, 1, 2 y 5.
+- Arte del usuario en los dossieres: los objetos del anillo de atraque, la pantalla «LAST GAME», el cuaderno de Alexei con su chip escondido, y dos dossieres nuevos: «Dock K-17: The Collector» y «Pack de energía de reserva». La tarjeta de la aventura en el inicio usa la imagen del Dock K-17.
+
+## [2.62.2] — 2026-11-26
+
+V3 · Hearts in the Void en el inicio
+
+### Inicio
+
+- En la pantalla de inicio, junto a «Crear partida», está «Hearts in the Void». Con cuenta crea la partida online con la aventura preparada y copia el enlace de invitación, como «Crear partida»; sin cuenta la abre en la mesa local. Entras como Keeper; solo faltan tus mapas.
+
+## [2.62.1] — 2026-11-26
+
+V3 · El aviso de la tecla V, breve
+
+### Nombres de los tokens
+
+- Al pulsar V, el aviso «Nombres de los tokens ocultos / visibles» desaparece en algo más de un segundo (antes, seis) y no se apilan aunque pulses V varias veces seguidas.
+
+## [2.62.0] — 2026-11-26
+
+V3 · La sala de Hearts in the Void
+
+### Módulo Hearts in the Void
+
+- Sesiones → Módulos → «Hearts in the Void» crea una sesión con la aventura preparada: una escena por lámina de mapa (A, B y 1–5) más Crossroads, el tránsito del Velo y el epílogo, organizadas en cuatro actos. Solo falta poner las imágenes de los mapas.
+- En la reserva de tokens, los PNJ con su retrato y su descripción (Zara, Korren, Thex, Brix, Alexei, Madame Silk, Scalpel, Maya, Nyx, ARIA-7 y la gente de Crossroads) y los adversarios del módulo: dos Hunger Weavers, un obrero Weaver y la Reina Weaver como boss de dos fases.
+- Los seis relojes del módulo (Hambre, Ruta de escape, Desesperación de Korren, Sobrecarga del núcleo, Fallo estructural y Convergencia Weaver), ocultos hasta que el Keeper los muestra.
+- Dossieres en español e inglés: guías del Keeper (antes de empezar, pagos, seguimiento de PNJ, relojes, registro de la escena 8, reglas rápidas y láminas), notas por escena, fichas de PNJ, 25 documentos para los jugadores (mensajes, logs de terminal, carteles, el datapad de Alexei, sus poemas…) y el texto original del módulo por capítulos.
+
+### Dossieres
+
+- Carpetas plegables y buscador cuando hay muchos dossieres.
+- «Compartir»: el jugador conserva el dossier en su lista (además de poder transmitirlo como hasta ahora).
+- Marca «Solo Keeper» para las notas privadas: no se pueden transmitir ni compartir, ni por error; nunca llegan a los jugadores.
+- Un dossier escrito en dos idiomas se muestra en el de la interfaz, con botones ES / EN para cambiar.
 
 ## [2.61.2] — 2026-11-26
 

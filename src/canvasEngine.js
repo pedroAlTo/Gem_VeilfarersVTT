@@ -15,8 +15,10 @@ import { frameById, frameGeometry, frameBody, frameLight } from './tokenFrames.j
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
 import { healedTokens } from './healFX.js';
-import { FogOfWarEngine } from './fogEngine.js';
+import { FogOfWarEngine, explorationKey } from './fogEngine.js';
 import { store } from './state.js';
+import { withRanges } from './visionRanges.js';
+import { FogBrush } from './fogBrush.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { canvasFont } from './fontSets.js';
 import { seeThrough, windowSides, SEE_TOKENS_FROM } from './windows.js';
@@ -778,11 +780,15 @@ export class CanvasEngine {
     const t = Math.max(0, Math.min(1, (now - d.start) / d.dur)), ease = t * t * (3 - 2 * t);
     return d.from + (d.to - d.from) * ease;
   }
+  // The tokens of this scene as the vision, lighting and fog read them: their sight, light and
+  // vibration ranges converted from metres to this map's pixels (v2.63.0, visionRanges.js).
   visionTokens() {
-    return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId);
+    const map = store.getActiveMap();
+    return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId).map(token => withRanges(token, map));
   }
   initEvents() {
     this.freehand = new FreehandTool(this, store, network, notify);
+    this.fogBrush = new FogBrush(this, store);
     this.mapClipboard = new MapClipboard(store, network, this, notify);
     this.tokenUnsubscribe = store.subscribe(() => this.reconcileTokenDrag());
     // A token healed shows a small green effect (v2.43.1): on every screen, for tokens it can see.
@@ -1053,6 +1059,7 @@ export class CanvasEngine {
 
       if (e.button === 0) {
         if (this.freehand.start(world)) return;
+        if (this.fogBrush.start(world)) return;
         if (state.activeTool === 'select') store.update({ selectedDrawingId: null });
         this.preDragSnapshot = undoManager.captureSnapshot('Acción Táctica');
         // Alt + Click triggers tactical ping
@@ -1655,6 +1662,7 @@ export class CanvasEngine {
       }
 
       if (this.freehand.move(world)) return;
+      if (this.fogBrush.move(world)) return;
       if (this.gridCalibStart && state.activeTool === 'grid_scale') {
         this.gridCalibCurrent = { x: world.x, y: world.y };
         return;
@@ -1956,6 +1964,7 @@ export class CanvasEngine {
     // MOUSE UP
     window.addEventListener('mouseup', (e) => {
       if (this.freehand.finish()) return;
+      if (this.fogBrush.finish()) return;
       const state = store.getState();
       if (this.gridCalibStart) {
         if (this.gridCalibCurrent) {
@@ -2882,7 +2891,7 @@ export class CanvasEngine {
     // party and the tokens that player controls. Enemies' and NPCs' cones are the Keeper's only
     // (v2.27.9: not while out of sight; v2.29.2: never, user decision).
     const lightShown = t => state.userRole !== 'player' || sharesSight(t);
-    let viewers = [], previewOnly = false;
+    let viewers = [];
     if (state.userRole === 'player') {
       // Only the party's eyes: an enemy the player selects (to attack it) never sees for them.
       viewers = activeTokens.filter(partyEyes);
@@ -2894,21 +2903,25 @@ export class CanvasEngine {
       // so the player cannot scan ahead into undiscovered areas.
       viewers = viewers.map(v => this.draggedToken?.id === v.id ? (this.draggedTokenOrigX != null ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v) : seenAt(v));
     } else {
-      // Keeper mode: use player tokens to stamp exploration and show visibility
-      viewers = activeTokens.filter(partyEyes);
-      // Without the party on the scene, the Keeper previews the selected token's sight; an
-      // enemy's sight is never remembered as explored (that memory is sent to the players).
-      if (viewers.length === 0 && state.selectedTokenId) {
-        const sel = activeTokens.find(t => t.id === state.selectedTokenId);
-        if (sel) { viewers = [sel]; previewOnly = !sharesSight(sel); }
-      }
-      viewers = viewers.map(drawnAt);
+      // Keeper: the party's eyes explore the map (that memory is sent to the players). Every other
+      // token's sight is shown on the Keeper's screen only and never explores (v2.63.0, user: «los
+      // tokens no jugadores no emiten foco de visión para los jugadores; sí lo puede ver el Keeper
+      // en su visión»). Up to v2.62 it took selecting the NPC on a scene without the party.
+      const others = activeTokens.filter(t => !partyEyes(t) && !isEncounterMarker(t)).map(t => ({ ...t, hidden: false, preview: true }));
+      viewers = [...activeTokens.filter(partyEyes), ...others].map(drawnAt);
     }
 
-    const darkness = this.sceneDarkness(map, now, state.fogOfWar !== false);
+    // One fog (v2.64.4, user decision): the scene's darkness, as it looked with the old «fog of war»
+    // switch off, now remembering what the party discovered. Without a time in Clima, a scene keeps
+    // its ambient light (the Bridge's 0.25 is 75 % dark), as before.
+    const darkness = this.sceneDarkness(map, now, false);
+    const fullMapId = `${state.campaignId}:${map.id}`;
+    const night = darkness >= DAYLIGHT_BELOW;
     // With fog of war, what the characters see is lit for this screen: their sight clears the
     // scene's darkness, as before, even without a light of their own.
-    const sightLights = state.fogOfWar !== false ? viewers.filter(v => !v.hidden).map(v => ({ x: v.x, y: v.y, radius: v.visionRange || (v.hasLight ? v.lightRadius : 360), facingAngle: v.facingAngle ?? 0, visionAngle: v.visionAngle ?? 90 })) : [];
+    // In the dark a character makes out its dark range (5 m by default) in front of it; the rest is
+    // shown by the lights (v2.64.0 rule).
+    const sightLights = viewers.filter(v => !v.hidden && v.darkRange > 0).map(v => ({ x: v.x, y: v.y, radius: v.darkRange, facingAngle: v.facingAngle ?? 0, visionAngle: v.visionAngle ?? 90 }));
     if (state.layerVisibility.walls_lights !== false) {
       // A token's own light goes where the token is drawn: while it is dragged into place and
       // while it slides to a new place. (Vision and fog keep the confirmed position.)
@@ -2921,7 +2934,9 @@ export class CanvasEngine {
         // explored veil and no scene darkness is laid on top of them. The scene's darkness (Clima
         // or the scene's ambient light) is drawn only without fog; with fog, night limits what each
         // character sees instead.
-        ambientLight: state.fogOfWar !== false ? 1 : 1 - darkness * (isKeeperGM ? 0.55 : 1),
+        ambientLight: 1 - darkness * (isKeeperGM ? 0.55 : 1),
+        // What was discovered stays at the explored veil instead of the full darkness.
+        explored: { canvas: this.knownArea(fullMapId, state), veil: map.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.5, version: this.fog.exploredVersion },
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
         lights: (map.lights || []).filter(l => !l.off),
@@ -2930,24 +2945,29 @@ export class CanvasEngine {
         time: now * 0.001
       });
       // Lava lights itself through the darkness.
-      if (state.layerVisibility.water !== false && state.fogOfWar === false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
+      if (state.layerVisibility.water !== false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
     }
 
     // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)
-    if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
-      const fullMapId = `${state.campaignId}:${map.id}`;
+    // B. The memory of what was discovered (no layer of its own since v2.64.4): loaded, merged with
+    // the table's and stamped with what the party sees; the darkness above uses it.
+    if (state.layerVisibility.walls_lights !== false) {
       // The table's exploration reaches every screen: loaded the first time, then merged each time
       // the Keeper saves more of it; a reset or a reveal (its own mark) applies to all.
       this.fogApplied ??= new Map();
       const applied = this.fogApplied.get(fullMapId), resetMark = map.fogResetAt || 0;
-      const fogData = typeof map.fogExplored === 'object' && map.fogExplored ? `${map.fogExplored.cols}x${map.fogExplored.rows}:${map.fogExplored.bits}` : map.fogExplored;
+      const fogData = explorationKey(map.fogExplored);
       if (!this.fog.isExplorationLoaded(fullMapId) && map.fogExplored) {
         this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
-        this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
-      } else if (!applied || applied.data !== fogData || applied.reset !== resetMark) {
-        if (applied && applied.reset !== resetMark && map.fogExplored === 'none') this.fog.resetExploration(fullMapId);
+        this.fogApplied.set(fullMapId, { data: fogData, reset: Math.max(resetMark, applied?.reset || 0) });
+      } else if (!applied || applied.data !== fogData || resetMark > applied.reset) {
+        // A new mark (reset, reveal, or the Keeper's fog brush darkening explored areas, v2.63.0)
+        // replaces this screen's memory with the table's; otherwise the table's is added to it.
+        // Only a newer mark replaces it (v2.64.2): a map that arrives late, or without the mark, never
+        // swaps what this screen has seen for an older copy; it is added to it.
+        if (applied && resetMark > applied.reset) this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored || 'none');
         else if (map.fogExplored) this.fog.mergeExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
-        this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
+        this.fogApplied.set(fullMapId, { data: fogData, reset: Math.max(resetMark, applied?.reset || 0) });
       }
 
       this.fog.renderFogOfWar({
@@ -2963,18 +2983,22 @@ export class CanvasEngine {
           return { x: at.x, y: at.y, radius: t.lightRadius, facingAngle: t.facingAngle, visionAngle: t.visionAngle ?? 90 };
         })],
         darkness,
-        // Day (whole line of sight) only when the Keeper set the scene's time in Clima.
-        daylight: Number.isFinite(map.darkness) && darkness < DAYLIGHT_BELOW,
+        // Night (v2.64.0): in the dark a character makes out only its dark range; lit areas up to its
+        // vision range. By day, or with no time set in Clima, up to its vision range.
+        night,
+        // The Keeper's screen also remembers what the NPCs saw (never sent to the players).
+        keeperMemory: state.userRole === 'keeper' && store.sessionRole !== 'player',
         viewers,
         lightingEngine: this.lighting,
-        exploredOpacity: state.fogExploredOpacity ?? 0.50,
+        // Each scene can set its own veil (v2.64.0, the Keeper's fog panel); otherwise Ajustes.
+        exploredOpacity: map.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.50,
         isKeeperGM: isKeeperGM,
-        stamp: !this.draggedToken && !previewOnly
+        stamp: !this.draggedToken
       });
 
       // Authoritative Keeper exploration persistence debounced sync
       // Only when the exploration memory has changed since it was last saved.
-      if (state.userRole === 'keeper' && !this.draggedToken && !this._fogSyncTimer && this._fogSavedVersion !== `${fullMapId}:${this.fog.exploredVersion}`) {
+      if (state.userRole === 'keeper' && !this.draggedToken && !this.fogBrush.stroke && !this._fogSyncTimer && this._fogSavedVersion !== `${fullMapId}:${this.fog.exploredVersion}`) {
         this._fogSavedVersion = `${fullMapId}:${this.fog.exploredVersion}`;
         this._fogSyncTimer = setTimeout(() => {
           this._fogSyncTimer = null;
@@ -3077,6 +3101,7 @@ export class CanvasEngine {
     }
 
     this.renderMovementPreview(overlay, map);
+    this.fogBrush.render(overlay);
     vision?.flush();
     ctx.restore();
 
@@ -3393,152 +3418,67 @@ export class CanvasEngine {
     }
     if (viewers.length === 0) return false;
 
-    // 4. Test if ANY viewer has facing line-of-sight to targetTok
-    for (const viewer of viewers) {
-      if (viewer.hidden) continue;
-      const vx = viewer.x;
-      const vy = viewer.y;
-      const tx = targetTok.x;
-      const ty = targetTok.y;
+    return this.partySees(viewers, targetTok.x, targetTok.y, map);
+  }
 
-      const dist = Math.hypot(tx - vx, ty - vy);
-      const vRange = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 400);
+  // What this screen knows as discovered (the table's memory, and on the Keeper's screen what the
+  // NPCs saw): the darkness is lifted to the explored veil there. None without a real canvas.
+  knownArea(fullMapId, state = store.state) {
+    try { return this.fog.knownCanvas(fullMapId, this.mapImage.width, this.mapImage.height, state.userRole === 'keeper' && store.sessionRole !== 'player'); }
+    catch { return null; }
+  }
 
-      // Beyond max perception range -> cannot see
-      if (dist > vRange) continue;
+  // Night (v2.64.0): the scene is 50 % dark or more (Clima, or its ambient light). By day a
+  // character sees up to its vision range.
+  isNight(map) {
+    return this.sceneDarkness(map, undefined, false) >= DAYLIGHT_BELOW;
+  }
 
-      // Vision angle (FOV) test (standard 90° for Veilfarers)
-      const vAngle = viewer.visionAngle ?? 90;
-      if (vAngle < 360) {
-        const fAngle = viewer.facingAngle ?? 0;
-        const angleToTarget = Math.atan2(ty - vy, tx - vx);
-        let diff = angleToTarget - fAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        const halfFov = (vAngle * Math.PI) / 360;
-        if (Math.abs(diff) > halfFov) {
-          // Viewer is not facing this token!
-          continue;
-        }
-      }
-
-      // Line of Sight obstruction test against walls and closed doors
-      let losBlocked = false;
-      for (const wall of (map.walls || [])) {
-        const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        // A window lets the party make out who is behind it from a side clear enough (v2.29.2).
-        if (wallType === 'window' && seeThrough(wall, vx, vy) >= SEE_TOKENS_FROM) continue;
-        if (wallType === 'door' && wall.isOpen) continue; // Open doors do not block LOS
-
-        // Solid walls, closed doors, and secret doors block LOS
-        if (this.checkLineIntersection(vx, vy, tx, ty, wall.x1, wall.y1, wall.x2, wall.y2)) {
-          losBlocked = true;
-          break;
-        }
-      }
-
-      if (!losBlocked) {
-        // At least one player is facing the target with direct LOS!
-        return true;
-      }
-    }
-
-    // 5. A light lets the party see an enemy beyond their own vision range, but only one that a
-    // character is looking at with nothing in between (v2.27.8): a lit room behind a wall, or
-    // behind their back, shows the room, never who is in it.
-    const blocked = (ax, ay, bx, by) => (map.walls || []).some(wall => {
+  // Whether the party sees a point (v2.64.0, user decision; Foundry VTT's detection modes as the
+  // reference): a character facing it with nothing in between and within its vision range; at
+  // night, also within its dark range or where a light shines on it. Up to v2.63 a lit point was
+  // seen at any distance (v2.27.8), so a large light made a cone without end.
+  partySees(viewers, x, y, map) {
+    const walls = map.walls || [];
+    const blocked = (ax, ay, bx, by, forLight = false) => walls.some(wall => {
       const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-      if ((wallType === 'window' && seeThrough(wall, ax, ay) >= SEE_TOKENS_FROM) || (wallType === 'door' && wall.isOpen)) return false;
+      if (wallType === 'door' && wall.isOpen) return false; // open doors do not block
+      // A window lets light through, and lets the party make out who is behind it from a side
+      // clear enough (v2.29.2).
+      if (wallType === 'window' && (forLight || seeThrough(wall, ax, ay) >= SEE_TOKENS_FROM)) return false;
       return this.checkLineIntersection(ax, ay, bx, by, wall.x1, wall.y1, wall.x2, wall.y2);
     });
-    const facing = (v, x, y) => {
-      const vAngle = v.visionAngle ?? 90;
-      if (vAngle >= 360) return true;
-      let diff = Math.atan2(y - v.y, x - v.x) - (v.facingAngle ?? 0);
+    const within = (cx, cy, facing, angle, px, py) => {
+      if (!(angle < 360)) return true;
+      let diff = Math.atan2(py - cy, px - cx) - (facing ?? 0);
       while (diff < -Math.PI) diff += Math.PI * 2;
       while (diff > Math.PI) diff -= Math.PI * 2;
-      return Math.abs(diff) <= (vAngle * Math.PI) / 360;
+      return Math.abs(diff) <= (angle * Math.PI) / 360;
     };
-    const watched = viewers.some(v => !v.hidden && facing(v, targetTok.x, targetTok.y) && !blocked(v.x, v.y, targetTok.x, targetTok.y));
-    if (!watched) return false;
-    const fullMapId = `${state.campaignId}:${map.id}`;
-    for (const light of (map.lights || [])) {
-      if (light.enabled === false || light.off) continue; // a light that is off shows nobody
-      if (!this.fog.isPointExplored(light.x, light.y, fullMapId)) continue;
-
-      const lx = light.x;
-      const ly = light.y;
-      const tx = targetTok.x;
-      const ty = targetTok.y;
-      const dist = Math.hypot(tx - lx, ty - ly);
-      const lRadius = light.radius || 200;
-      if (dist > lRadius) continue;
-
-      const lAngle = light.visionAngle ?? 360;
-      if (lAngle < 360) {
-        const fAngle = light.facingAngle ?? 0;
-        const angleToTarget = Math.atan2(ty - ly, tx - lx);
-        let diff = angleToTarget - fAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        const halfFov = (lAngle * Math.PI) / 360;
-        if (Math.abs(diff) > halfFov) continue;
-      }
-
-      let losBlocked = false;
-      for (const wall of (map.walls || [])) {
-        const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        if (wallType === 'window') continue;
-        if (wallType === 'door' && wall.isOpen) continue;
-        if (this.checkLineIntersection(lx, ly, tx, ty, wall.x1, wall.y1, wall.x2, wall.y2)) {
-          losBlocked = true;
-          break;
-        }
-      }
-
-      if (!losBlocked) {
-        return true;
-      }
+    const night = this.isNight(map);
+    // At night: the map's lights that are on and the party's own lights (an enemy's lamp is the
+    // Keeper's only, v2.29.2).
+    const lights = !night ? [] : [
+      ...(map.lights || []).filter(l => l.enabled !== false && !l.off).map(l => ({ x: l.x, y: l.y, radius: l.radius || 200, facing: l.facingAngle, angle: l.visionAngle ?? 360 })),
+      ...this.visionTokens().filter(t => partyEyes(t) && t.hasLight && !t.hidden && t.lightRadius > 0).map(t => ({ x: t.x, y: t.y, radius: t.lightRadius, facing: t.facingAngle, angle: t.visionAngle ?? 90 })),
+    ];
+    const lit = () => lights.some(l => Math.hypot(x - l.x, y - l.y) <= l.radius && within(l.x, l.y, l.facing, l.angle, x, y) && !blocked(l.x, l.y, x, y, true));
+    for (const viewer of viewers) {
+      if (viewer.hidden) continue;
+      const { visionRange, darkRange } = withRanges(viewer, map);
+      const dist = Math.hypot(x - viewer.x, y - viewer.y);
+      if (dist > visionRange) continue;
+      if (!within(viewer.x, viewer.y, viewer.facingAngle, viewer.visionAngle ?? 90, x, y)) continue;
+      if (blocked(viewer.x, viewer.y, x, y)) continue;
+      if (!night || dist <= darkRange || lit()) return true;
     }
-
     return false;
   }
 
   // --- Check if a point is within active vision/light of any player token ---
   isPointInPlayerVision(x, y, allTokens, map) {
     if (store.sessionRole === 'player') allTokens = this.visionTokens();
-    let viewers = allTokens.filter(partyEyes);
-    for (const viewer of viewers) {
-      if (viewer.hidden) continue;
-      const vx = viewer.x;
-      const vy = viewer.y;
-      const dist = Math.hypot(x - vx, y - vy);
-      const vRange = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 400);
-      if (dist > vRange) continue;
-
-      const vAngle = viewer.visionAngle ?? 90;
-      if (vAngle < 360) {
-        const fAngle = viewer.facingAngle ?? 0;
-        const angleToTarget = Math.atan2(y - vy, x - vx);
-        let diff = angleToTarget - fAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        if (Math.abs(diff) > (vAngle * Math.PI) / 360) continue;
-      }
-
-      let losBlocked = false;
-      for (const wall of (map.walls || [])) {
-        const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        if (wallType === 'window' && seeThrough(wall, vx, vy) >= SEE_TOKENS_FROM) continue;
-        if (wallType === 'door' && wall.isOpen) continue;
-        if (this.checkLineIntersection(vx, vy, x, y, wall.x1, wall.y1, wall.x2, wall.y2)) {
-          losBlocked = true;
-          break;
-        }
-      }
-      if (!losBlocked) return true;
-    }
-    return false;
+    return this.partySees(allTokens.filter(partyEyes), x, y, map);
   }
 
   // --- Distance & Projection from Point to Segment Helper ---
@@ -3582,6 +3522,7 @@ export class CanvasEngine {
   renderWalls(ctx, walls, isEditor = true) {
     const state = store.getState();
     const isKeeper = state.userRole === 'keeper';
+    const sceneIsDark = this.isNight(store.getActiveMap());
 
     ctx.save();
     for (const w of walls) {
@@ -3597,9 +3538,10 @@ export class CanvasEngine {
       // Wall lines are ONLY visible for the Keeper.
       // Players see no wall lines (the walls block LOS and movement without drawing neon lines).
       // Secret doors are completely hidden from players.
-      // In Fog of War: Unexplored walls, doors and windows are completely hidden from players.
+      // In the dark (v2.64.4, the one fog) undiscovered walls, doors and windows are hidden from
+      // the players; by day, or once discovered, a door shows.
       if (!isKeeper || !state.gmVision) {
-        if (state.fogOfWar !== false) {
+        if (sceneIsDark) {
           const fullMapId = `${state.campaignId}:${state.activeMapId}`;
           if (!this.fog.isWallExplored(w, fullMapId)) continue;
         }
@@ -3771,7 +3713,7 @@ export class CanvasEngine {
   switchAt(map, world, keeper) {
     const fullMapId = `${store.state.campaignId}:${map.id}`;
     return (map.switches || []).find(sw => Math.hypot(world.x - sw.x, world.y - sw.y) <= 18
-      && (keeper || (!sw.secret && (store.state.fogOfWar === false || this.fog.isPointExplored(sw.x, sw.y, fullMapId))))) || null;
+      && (keeper || (!sw.secret && (!this.isNight(map) || this.fog.isPointExplored(sw.x, sw.y, fullMapId))))) || null;
   }
   // Pressing a switch: a locked one only tells so; a connected player asks the table.
   useSwitch(sw) {
@@ -3796,7 +3738,7 @@ export class CanvasEngine {
     ctx.save();
     for (const raw of list) {
       const sw = this.draggedSwitch?.sw?.id === raw.id ? this.draggedSwitch.sw : raw;
-      if (!keeper && (sw.secret || (state.fogOfWar !== false && !this.fog.isPointExplored(sw.x, sw.y, fullMapId)))) continue;
+      if (!keeper && (sw.secret || (this.isNight(map) && !this.fog.isPointExplored(sw.x, sw.y, fullMapId)))) continue;
       const selected = keeper && state.selectedSwitchId === sw.id;
       // The lights it controls, while selected.
       if (selected) {
