@@ -1,6 +1,14 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.64.2', date: '2026-11-27', title: 'V3 · La niebla explorada no se pierde en partidas online',
+    sections: [
+      { title: 'Niebla', items: [
+        'Lo que tu pantalla ya ha explorado solo se sustituye por la copia de la mesa cuando hay un reinicio, un «Revelar» o un trazo del pincel más recientes. Desde la v2.63.0 bastaba una marca distinta (por ejemplo, un mapa que llega tarde en una partida online) para cambiar lo explorado por una copia anterior, y lo recién visto volvía a negro.',
+      ] },
+    ],
+  },
+  {
     version: '2.64.1', date: '2026-11-27', title: 'V3 · Lo que ven los PNJ queda explorado en la pantalla del Keeper',
     sections: [
       { title: 'Niebla', items: [

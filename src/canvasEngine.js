@@ -2949,13 +2949,15 @@ export class CanvasEngine {
       const fogData = explorationKey(map.fogExplored);
       if (!this.fog.isExplorationLoaded(fullMapId) && map.fogExplored) {
         this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
-        this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
-      } else if (!applied || applied.data !== fogData || applied.reset !== resetMark) {
+        this.fogApplied.set(fullMapId, { data: fogData, reset: Math.max(resetMark, applied?.reset || 0) });
+      } else if (!applied || applied.data !== fogData || resetMark > applied.reset) {
         // A new mark (reset, reveal, or the Keeper's fog brush darkening explored areas, v2.63.0)
         // replaces this screen's memory with the table's; otherwise the table's is added to it.
-        if (applied && applied.reset !== resetMark) this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored || 'none');
+        // Only a newer mark replaces it (v2.64.2): a map that arrives late, or without the mark, never
+        // swaps what this screen has seen for an older copy; it is added to it.
+        if (applied && resetMark > applied.reset) this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored || 'none');
         else if (map.fogExplored) this.fog.mergeExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
-        this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
+        this.fogApplied.set(fullMapId, { data: fogData, reset: Math.max(resetMark, applied?.reset || 0) });
       }
 
       this.fog.renderFogOfWar({

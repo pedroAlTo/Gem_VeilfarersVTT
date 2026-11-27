@@ -1,10 +1,18 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.64.1**.
-Paquete: `VeilFarers_VTT_v2.64.1.zip`.
+Versión actual del VTT: **v2.64.2**.
+Paquete: `VeilFarers_VTT_v2.64.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.64.2] — 2026-11-27
+
+V3 · La niebla explorada no se pierde en partidas online
+
+### Niebla
+
+- Lo que tu pantalla ya ha explorado solo se sustituye por la copia de la mesa cuando hay un reinicio, un «Revelar» o un trazo del pincel más recientes. Desde la v2.63.0 bastaba una marca distinta (por ejemplo, un mapa que llega tarde en una partida online) para cambiar lo explorado por una copia anterior, y lo recién visto volvía a negro.
 
 ## [2.64.1] — 2026-11-27
 
