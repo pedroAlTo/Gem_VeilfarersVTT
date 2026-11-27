@@ -81,9 +81,10 @@ class StateStore {
       selectedTemplateId: null,
 
       // UI / Interaction
-      activeTool: 'select', // 'select', 'measure', 'template', 'wall', 'light', 'water', 'fx', 'ping'
+      activeTool: 'select', // 'select', 'measure', 'template', 'wall', 'light', 'water', 'fog_brush', 'fx', 'ping'
       waterDrawMode: 'box',
       waterKind: 'water', // V3: the Clima tool draws water or lava zones
+      fogBrushMode: 'hide', fogBrushSize: 2, // v2.63.0: the Keeper's fog brush (darken or explore, radius in squares)
       activeFxType: 'lightning', // 'lightning', 'sparkle', 'explosion', 'radiant', 'void_rift', 'emp'
       templateShape: 'circle', // 'circle', 'cone', 'line', 'box'
       templateRadius: 4, // grid units

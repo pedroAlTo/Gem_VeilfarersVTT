@@ -1,6 +1,26 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.63.0', date: '2026-11-27', title: 'V3 · Niebla de guerra arreglada, visión en metros, pincel de niebla y dossieres en dos partes',
+    sections: [
+      { title: 'Niebla de guerra', items: [
+        'La visión de los tokens se mide en metros y cada escena la convierte con su escala (Escenas → rejilla): en un mapa grande el cono de visión ya no se queda en un par de casillas. Por defecto, 25 m de visión (Far), 10 m de luz propia y 10 m de vibración; se cambian en la ficha del token.',
+        'Ya no hay «dos nieblas»: la exploración guardada (la que se envía a los jugadores y se recupera al recargar) salía en escalones de 32 px junto al borde suave de lo visto en directo. Ahora usa celdas que siguen el tamaño del mapa y bordes suaves.',
+        'En la pantalla del Keeper, la visión de los PNJ y enemigos despeja la niebla (solo en su pantalla y sin explorar el mapa); los jugadores siguen sin ver lo que ven ellos.',
+        'Nuevo pincel de niebla para el Keeper (botón «Pincel» en la barra de herramientas): «Oscurecer» devuelve a la niebla zonas ya descubiertas y «Descubrir» las descubre, con radio de 1, 2, 4 u 8 casillas. Los jugadores lo ven al soltar.',
+        'Las puertas en el borde de lo visto se muestran siempre que se haya visto uno de sus lados.',
+      ] },
+      { title: 'Dossieres', items: [
+        'Cada dossier tiene dos partes: la de los jugadores (la que se comparte y se transmite) y «Solo para Keeper», que nunca se envía. El Keeper las ve una al lado de la otra; el jugador, solo la suya.',
+        'El texto de un dossier ya no se corta: la ventana entera se desplaza (antes el texto quedaba en un recuadro de 260 px y parecía que faltaba). La imagen se ve completa.',
+      ] },
+      { title: 'Hearts in the Void', items: [
+        'Los dossieres de los PNJ se pueden compartir: la parte pública dice quiénes son, con su imagen; sus motivaciones y secretos van en «Solo para Keeper». El token de cada PNJ solo lleva la parte pública.',
+        'Botón «Actualizar módulo» en Dossieres: trae a una partida ya creada las imágenes, los dossieres y los PNJ nuevos del módulo sin tocar los mapas, las posiciones, los relojes ni los dossieres propios.',
+      ] },
+    ],
+  },
+  {
     version: '2.62.5', date: '2026-11-27', title: 'V3 · Personajes de Hearts in the Void como retratos',
     sections: [
       { title: 'Retratos', items: [

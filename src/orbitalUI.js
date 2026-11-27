@@ -21,6 +21,7 @@ const icons = {
   undo: 'M9 5L3 10l6 5 M3 10h11a6 6 0 0 1 0 12',
   redo: 'M15 5l6 5-6 5 M21 10h-11a6 6 0 0 0 0 12',
   snap: 'M5 4v10a7 7 0 0 0 14 0V4h-4v10a3 3 0 0 1-6 0V4z',
+  fogbrush: 'M14 4l6 6-8 8H6v-6z M11 7l6 6 M3 21q2-3 5-3',
 };
 const icon = (k) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${icons[k] || icons.template}"/></svg>`;
@@ -39,6 +40,7 @@ export function initOrbitalUI() {
     tool_grid_scale: ['grid', 'Scale'],
     toggle_gm_vision: ['eye', 'Vision'],
     toggle_fog_of_war: ['water', 'Fog'],
+    tool_fog_brush: ['fogbrush', 'Pincel'],
     toggle_grid: ['grid', 'Grid'],
     toggle_snap: ['snap', 'Snap'],
     tool_undo: ['undo', 'Undo'],

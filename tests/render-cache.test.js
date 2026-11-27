@@ -68,3 +68,23 @@ test('steady lights are drawn once; animated lights at most thirty times a secon
   for (let i = 0; i < 60; i++) frame([{ ...lamp, effect: 'pulse' }], 1 + i / 60);
   assert.ok(polygons >= 28 && polygons <= 33, `one second of a pulsing light at 60 fps redraws about 30 times (${polygons})`);
 });
+
+test('a preview viewer (an NPC on the Keeper’s screen) is shown but never explores the map (v2.63.0)', () => {
+  const fog = new FogOfWarEngine(), lighting = new LightingEngine();
+  const memory = fog.getExploredCanvas('pv', 800, 600).getContext('2d');
+  let fills = 0; memory.fill = () => { fills++; };
+  const frame = viewers => fog.renderFogOfWar({ ctx: context(), mapWidth: 800, mapHeight: 600, mapId: 'pv', walls: [], lights: [], viewers, lightingEngine: lighting, exploredOpacity: 0.5 });
+  const npc = { x: 400, y: 300, visionRange: 200, visionAngle: 90, facingAngle: 0, preview: true };
+  assert.equal(frame([npc]).length, 1, 'its sight is drawn on this screen');
+  assert.equal(fills, 0, 'and not remembered as explored');
+  frame([npc, { x: 100, y: 100, visionRange: 200, visionAngle: 360, facingAngle: 0 }]);
+  assert.ok(fills > 0, 'the party explores');
+});
+
+test('the saved exploration uses cells that follow the map size (v2.63.0)', async () => {
+  const { explorationCell, explorationKey } = await import('../src/fogEngine.js');
+  assert.equal(explorationCell(1376, 768), 8);
+  assert.equal(explorationCell(4128, 2304), 16);
+  assert.equal(explorationKey({ cols: 2, rows: 3, bits: 'AA==' }), '2x3:AA==');
+  assert.equal(explorationKey('all'), 'all');
+});

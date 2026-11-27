@@ -364,10 +364,20 @@ function updateKeeperUIVisibility(isKeeper) {
 
 // --- Toolbar Events ---
 function setupToolbarEvents() {
-  const tools = ['select', 'measure', 'template', 'fx', 'ping', 'wall', 'light', 'fx_emitter', 'water', 'draw', 'erase_draw'];
+  const tools = ['select', 'measure', 'template', 'fx', 'ping', 'wall', 'light', 'fx_emitter', 'water', 'fog_brush', 'draw', 'erase_draw'];
   const templateFlyout = document.getElementById('template_flyout');
   const fxFlyout = document.getElementById('fx_flyout');
   const waterFlyout = document.getElementById('water_flyout');
+  // Fog brush (v2.63.0): mode and radius.
+  const fogBrushFlyout = document.getElementById('fog_brush_flyout');
+  fogBrushFlyout?.querySelectorAll('[data-fog-brush-mode]').forEach(button => button.onclick = () => {
+    store.update({ fogBrushMode: button.dataset.fogBrushMode });
+    fogBrushFlyout.querySelectorAll('[data-fog-brush-mode]').forEach(b => b.classList.toggle('active', b === button));
+  });
+  fogBrushFlyout?.querySelectorAll('[data-fog-brush-size]').forEach(button => button.onclick = () => {
+    store.update({ fogBrushSize: Number(button.dataset.fogBrushSize) });
+    fogBrushFlyout.querySelectorAll('[data-fog-brush-size]').forEach(b => b.classList.toggle('active', b === button));
+  });
   const drawingFlyout = document.getElementById('drawing_flyout');
   const drawingColor = document.getElementById('drawing_color');
   drawingColor.onclick = () => openColorPickerPopover(drawingColor, store.state.drawingColor || '#00dfff', color => {
@@ -401,6 +411,12 @@ function setupToolbarEvents() {
         }
         if (waterFlyout) {
           waterFlyout.style.display = toolName === 'water' ? 'flex' : 'none';
+        }
+        if (fogBrushFlyout) {
+          fogBrushFlyout.style.display = toolName === 'fog_brush' ? 'flex' : 'none';
+          if (toolName === 'fog_brush') fogBrushFlyout.style.top = `${Math.max(8, btn.offsetTop - 24)}px`;
+          // The brush works on the fog: turn it on if it was off.
+          if (toolName === 'fog_brush' && store.state.fogOfWar === false) store.toggleFogOfWar();
         }
       };
     }

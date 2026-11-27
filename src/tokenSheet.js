@@ -1,4 +1,5 @@
 import { isEncounterMarker } from './bestiaryProfiles.js';
+import { tokenSenses } from './visionRanges.js';
 import { actorPortrait } from './tokenAvatars.js';
 import { openActorPortrait } from './portraitPicker.js';
 import { adversaryDescription } from './adversaryDescription.js';
@@ -611,6 +612,9 @@ export class TokenHUD {
   }
 
   openTokenSettingsModal(token) {
+    // Sight, light and vibration in metres (v2.63.0); each scene converts them with its scale.
+    const senses = tokenSenses(token);
+    const metersOf = (selector, fallback) => { const v = parseFloat(modal.querySelector(selector)?.value); return Number.isFinite(v) && v >= 0 ? Math.min(1000, v) : fallback; };
     if (isEncounterMarker(token)) return this.openCharacterSheetModal(token);
     if(store.sessionRole==='player'){notify('The Keeper manages character dossiers. Use your assigned character’s quick controls.');return;}
     const modal = document.createElement('div');
@@ -790,8 +794,8 @@ export class TokenHUD {
                   </vf-select>
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 100px;">
-                  <label>Alcance Visión (px)</label>
-                  <input type="number" id="sheet_vision_range" class="hud-input" min="60" max="1200" step="20" value="${token.visionRange || 280}" />
+                  <label>Alcance de visión (m)</label>
+                  <input type="number" id="sheet_vision_range" class="hud-input" min="0" max="1000" step="1" value="${senses.vision}" title="En metros: cada escena lo convierte con su escala (Escenas → rejilla)" />
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 110px;">
                   <label>Ángulo FOV</label>
@@ -816,8 +820,8 @@ export class TokenHUD {
                   </label>
                 </div>
                 <div class="form-group" style="flex: 1; min-width: 110px;">
-                  <label>Radio Vibración (px)</label>
-                  <input type="number" id="sheet_vibration_radius" class="hud-input" min="40" max="1200" step="20" value="${token.vibrationRadius || 260}" />
+                  <label>Radio de vibración (m)</label>
+                  <input type="number" id="sheet_vibration_radius" class="hud-input" min="0" max="1000" step="1" value="${senses.vibration}" />
                 </div>
               </div>
 
@@ -831,8 +835,8 @@ export class TokenHUD {
                   </label>
                 </div>
                 <div class="form-group">
-                  <label>Radio de Luz (px)</label>
-                  <input type="number" id="sheet_light_rad" class="hud-input" value="${token.lightRadius || 260}" />
+                  <label>Radio de luz (m)</label>
+                  <input type="number" id="sheet_light_rad" class="hud-input" min="0" max="1000" step="1" value="${senses.light}" />
                 </div>
                 <div class="form-group">
                   <label>Color de Luz</label>
@@ -1077,13 +1081,13 @@ export class TokenHUD {
         traits,
         subtraits,
         visionMode: modal.querySelector('#sheet_vision_mode').value,
-        visionRange: parseInt(modal.querySelector('#sheet_vision_range').value, 10) || 280,
+        visionMeters: metersOf('#sheet_vision_range', senses.vision),
         visionAngle: parseInt(modal.querySelector('#sheet_vision_angle').value, 10) || 360,
         isFlying: modal.querySelector('#sheet_is_flying').checked,
         hasVibrationVision: modal.querySelector('#sheet_has_vibration')?.checked ?? false,
-        vibrationRadius: parseInt(modal.querySelector('#sheet_vibration_radius')?.value, 10) || 260,
+        vibrationMeters: metersOf('#sheet_vibration_radius', senses.vibration),
         hasLight: modal.querySelector('#sheet_has_light').checked,
-        lightRadius: parseInt(modal.querySelector('#sheet_light_rad').value, 10),
+        lightMeters: metersOf('#sheet_light_rad', senses.light),
         lightColor: modal.querySelector('#sheet_light_col_val').value,
         lightEffect: modal.querySelector('#sheet_light_fx').value,
         color: modal.querySelector('#sheet_token_color_val')?.value || token.color || '#00f3ff',

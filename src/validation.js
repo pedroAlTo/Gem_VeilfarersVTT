@@ -130,7 +130,7 @@ export function validateCampaign(data) {
       'Invalid clock.'
     );
   for (const h of data.handouts)
-    assert(typeof h.title === 'string' && typeof h.contentHtml === 'string', 'Invalid dossier.');
+    assert(typeof h.title === 'string' && typeof h.contentHtml === 'string' && (h.keeperHtml == null || (typeof h.keeperHtml === 'string' && h.keeperHtml.length <= 500000)), 'Invalid dossier.');
   assert(finite(data.fear, 0, 12) && Number.isInteger(data.fear), 'Fear must be between 0 and 12.');
   if (data.starship) {
     const s = data.starship;

@@ -203,3 +203,72 @@ test('the user’s characters are portrait options of their ancestry, the pregen
   assert.equal(file.handouts.find(h => h.id === 'hv_npc_zara').imageUrl, '/campaigns/hearts-in-the-void/characters/zara.webp');
   assert.equal(file.handouts.find(h => h.id === 'hv_p_portraits').imageUrl, '/campaigns/hearts-in-the-void/characters/alexei.webp');
 });
+
+test('NPC dossiers can be shared: the crew gets who they are, the Keeper keeps the rest (v2.63.0)', async () => {
+  const korren = file.handouts.find(h => h.id === 'hv_npc_korren');
+  assert.equal(korren.keeperOnly, false);
+  assert.equal(korren.imageUrl, '/campaigns/hearts-in-the-void/characters/korren.webp');
+  assert.ok(korren.keeperHtml.includes('Aurelian') && !korren.contentHtml.includes('Aurelian'), 'the debt is the Keeper’s');
+  const token = file.tokens.find(t => t.id === 'tok_hv_korren');
+  assert.ok(!token.description.includes('Aurelian'), 'the token (seen by the players) does not tell it either');
+  for (const d of file.handouts.filter(h => h.id.startsWith('hv_npc_'))) assert.ok(d.contentHtml.includes('data-lang="en"') && d.keeperHtml, d.title);
+  // Shared and transmitted, the players never get the Keeper's part.
+  const state = store.normalizeCampaign(structuredClone(file));
+  state.handouts = state.handouts.map(h => h.id === 'hv_npc_korren' ? { ...h, sharedWithPlayers: true } : h);
+  const saved = structuredClone(store.state);
+  Object.assign(store.state, state, { isHosting: true });
+  try {
+    const n = new NetworkManager();
+    const sent = n.snapshotFor('guest').handouts;
+    assert.deepEqual(sent.map(h => h.id), ['hv_npc_korren']);
+    assert.equal(sent[0].keeperHtml, undefined);
+    const out = []; n.connections.set('guest', { open: true, send: m => out.push(m) });
+    n.broadcast({ type: 'TRANSMISSION', handout: state.handouts.find(h => h.id === 'hv_npc_korren') });
+    assert.equal(out.length, 1);
+    assert.ok(!JSON.stringify(out[0]).includes('Aurelian'));
+    n.connections.clear(); n.disconnect();
+  } finally { Object.assign(store.state, saved); }
+  // The Keeper reads both parts side by side; a player only the public one.
+  const { HandoutManager } = await import('../src/handoutManager.js');
+  const pane = document.createElement('div'); document.body.append(pane);
+  const manager = new HandoutManager(pane);
+  store.update({ userRole: 'keeper' });
+  manager.displayTransmissionPopup(korren);
+  let popup = document.getElementById('active_transmission_popup');
+  assert.ok(popup.querySelector('.has-keeper-part .transmission-keeper').textContent.includes('Aurelian'));
+  assert.ok(popup.querySelector('.transmission-attached-img'));
+  popup.remove();
+  store.update({ userRole: 'player' });
+  manager.displayTransmissionPopup(korren);
+  popup = document.getElementById('active_transmission_popup');
+  assert.equal(popup.querySelector('.transmission-keeper'), null);
+  popup.remove(); pane.remove();
+  store.update({ userRole: 'keeper' });
+});
+
+test('a room made before the images is brought up to date without touching the table (v2.63.0)', async () => {
+  const { mergeModule, roomModule } = await import('../src/moduleUpdate.js');
+  const old = structuredClone(file);
+  // As the room was in v2.62.0: a private NPC note without image, a generic portrait, no new NPCs.
+  old.handouts = old.handouts.filter(h => h.id !== 'hv_npc_maximus').map(h => h.id === 'hv_npc_zara' ? { ...h, keeperOnly: true, imageUrl: '', keeperHtml: undefined, contentHtml: '<p>old</p>' } : h);
+  old.handouts.push({ id: 'doc_mine', title: 'Mis notas', sender: 'Keeper', timestamp: '', contentHtml: '<p>mía</p>', imageUrl: '', sharedWithPlayers: true });
+  old.handouts = old.handouts.map(h => h.id === 'hv_p_mission' ? { ...h, sharedWithPlayers: true } : h);
+  old.tokens = old.tokens.filter(t => t.id !== 'tok_hv_maximus').map(t => t.id === 'tok_hv_zara' ? { ...t, avatarUrl: '/assets/tokens/crew/human-f-pilot.webp', description: 'secreto', mapId: 'hv_map_plate_5', x: 321, y: 654, inReserve: false }
+    : t.id === 'tok_hv_korren' ? { ...t, avatarUrl: 'https://example.com/mi-korren.png' } : t);
+  assert.equal(roomModule(old), 'hearts-in-the-void');
+  const { handouts, tokens, arcs, counts } = mergeModule(old, file, 'hearts-in-the-void');
+  const zaraDoc = handouts.find(h => h.id === 'hv_npc_zara');
+  assert.equal(zaraDoc.imageUrl, '/campaigns/hearts-in-the-void/characters/zara.webp');
+  assert.ok(zaraDoc.keeperHtml && !zaraDoc.keeperOnly && zaraDoc.contentHtml !== '<p>old</p>');
+  assert.ok(handouts.some(h => h.id === 'hv_npc_maximus' && !h.sharedWithPlayers), 'new dossiers arrive unshared');
+  assert.equal(handouts.find(h => h.id === 'doc_mine').contentHtml, '<p>mía</p>');
+  assert.equal(handouts.find(h => h.id === 'hv_p_mission').sharedWithPlayers, true, 'shared stays shared');
+  const zara = tokens.find(t => t.id === 'tok_hv_zara');
+  assert.deepEqual([zara.avatarUrl, zara.mapId, zara.x, zara.y], ['/assets/tokens/hiv/zara.webp', 'hv_map_plate_5', 321, 654]);
+  assert.notEqual(zara.description, 'secreto');
+  assert.equal(tokens.find(t => t.id === 'tok_hv_korren').avatarUrl, 'https://example.com/mi-korren.png', 'the Keeper’s own image stays');
+  assert.ok(tokens.some(t => t.id === 'tok_hv_maximus') && arcs.find(a => a.id === 'hv_arc_crossroads').tokenIds.includes('tok_hv_maximus'));
+  assert.ok(counts.docsAdded >= 1 && counts.docsUpdated >= 1 && counts.tokensAdded === 1);
+  store.normalizeCampaign({ ...structuredClone(old), handouts, tokens, arcs });
+  assert.deepEqual(mergeModule({ ...old, handouts, tokens, arcs }, file, 'hearts-in-the-void').counts, { docsAdded: 0, docsUpdated: 0, tokensAdded: 0, tokensUpdated: 0 }, 'a second run changes nothing');
+});

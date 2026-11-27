@@ -11,6 +11,40 @@ const MASK_CELL = 4; // map pixels per cell of the exploration mask
 export const DAYLIGHT_BELOW = 0.5;
 const tracePolygon = (c, poly) => { c.beginPath(); c.moveTo(poly[0].x, poly[0].y); for (let i = 1; i < poly.length; i++) c.lineTo(poly[i].x, poly[i].y); c.closePath(); };
 
+// The exploration saved for the table (and sent to the players) is a grid of cells. Up to v2.62 they
+// were always 32 px and were drawn as squares: next to the smooth edge of what a screen had seen
+// live they made stairs, a second-looking fog (user report, v2.63.0). Now the cell follows the map
+// (about 40 000 cells: 8 px on a 1376×768 map, 16 px on a 4K plate) and the grid is drawn one pixel
+// per cell and enlarged with smoothing, so its edges are soft like the rest of the fog.
+export const explorationCell = (width, height) => Math.max(8, Math.ceil(Math.sqrt((width * height) / 40000)));
+// A short key of a saved exploration, to tell whether a screen already applied it.
+export const explorationKey = f => (typeof f === 'object' && f ? `${f.cols}x${f.rows}:${f.bits}` : f);
+const decodeBits = bits => {
+  if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(bits, 'base64'));
+  const binary = globalThis.atob(bits), bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+function drawCells(ctx, fogExplored) {
+  const cell = fogExplored.cellSize || 32, cols = fogExplored.cols, rows = fogExplored.rows;
+  const bytes = decodeBits(fogExplored.bits);
+  const on = index => (index >> 3) < bytes.length && (bytes[index >> 3] & (1 << (index & 7)));
+  try {
+    const small = document.createElement('canvas'); small.width = cols; small.height = rows;
+    const sctx = small.getContext('2d'), image = sctx.createImageData(cols, rows);
+    if (image?.data?.length === cols * rows * 4) {
+      for (let i = 0; i < cols * rows; i++) if (on(i)) image.data.fill(255, i * 4, i * 4 + 4);
+      sctx.putImageData(image, 0, 0);
+      ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(small, 0, 0, cols * cell, rows * cell);
+      ctx.restore();
+      return;
+    }
+  } catch { /* no real canvas here: squares below */ }
+  ctx.fillStyle = '#ffffff';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (on(r * cols + c)) ctx.fillRect(c * cell, r * cell, cell, cell);
+}
+
 export class FogOfWarEngine {
   constructor() {
     this.fogCanvas = document.createElement('canvas');
@@ -134,7 +168,7 @@ export class FogOfWarEngine {
   /**
    * Serializes exploration memory into a compact grid bitmask for persistence and network sync
    */
-  serializeExploration(mapId, mapWidth, mapHeight, cellSize = 32) {
+  serializeExploration(mapId, mapWidth, mapHeight, cellSize = explorationCell(mapWidth, mapHeight)) {
     const canvas = this.exploredCanvases.get(mapId);
     if (!canvas) return 'none';
     const ctx = canvas.getContext('2d');
@@ -182,15 +216,7 @@ export class FogOfWarEngine {
     if (fogExplored === 'all') { this.revealAll(mapId, mapWidth, mapHeight); return; }
     if (!fogExplored.bits || !fogExplored.cols) return;
     const canvas = this.getExploredCanvas(mapId, mapWidth, mapHeight), ctx = canvas.getContext('2d');
-    const cell = fogExplored.cellSize || 32, cols = fogExplored.cols, rows = fogExplored.rows;
-    let bytes;
-    if (typeof Buffer !== 'undefined') bytes = new Uint8Array(Buffer.from(fogExplored.bits, 'base64'));
-    else { const binary = globalThis.atob(fogExplored.bits); bytes = new Uint8Array(binary.length); for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i); }
-    ctx.fillStyle = '#ffffff';
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      const index = r * cols + c;
-      if (bytes[index >> 3] & (1 << (index & 7))) ctx.fillRect(c * cell, r * cell, cell, cell);
-    }
+    drawCells(ctx, fogExplored);
     this.exploredVersion++;
   }
 
@@ -212,30 +238,21 @@ export class FogOfWarEngine {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, mapWidth, mapHeight);
 
-      const cellSize = fogExplored.cellSize || 32;
-      const cols = fogExplored.cols;
-      const rows = fogExplored.rows;
-      let bytes;
-      if (typeof Buffer !== 'undefined') {
-        bytes = new Uint8Array(Buffer.from(fogExplored.bits, 'base64'));
-      } else {
-        const binary = globalThis.atob(fogExplored.bits);
-        bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      }
-
-      ctx.fillStyle = '#ffffff';
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const index = r * cols + c;
-          const byteIndex = Math.floor(index / 8);
-          const bitIndex = index % 8;
-          if (byteIndex < bytes.length && (bytes[byteIndex] & (1 << bitIndex))) {
-            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
-          }
-        }
-      }
+      drawCells(ctx, fogExplored);
     }
+  }
+
+  // The Keeper's fog brush (v2.63.0, user request: «permite al Keeper dibujar niebla de guerra en
+  // zonas descubiertas para volver a oscurecerlas»): a circle of the memory is forgotten (or, with
+  // `reveal`, explored).
+  brushExploration(mapId, mapWidth, mapHeight, x, y, radius, reveal = false) {
+    const ctx = this.getExploredCanvas(mapId, mapWidth, mapHeight).getContext('2d');
+    ctx.save();
+    ctx.globalCompositeOperation = reveal ? 'source-over' : 'destination-out';
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    this.exploredVersion++;
   }
 
   /**
@@ -288,7 +305,12 @@ export class FogOfWarEngine {
     if (this.isPointExplored(wall.x2, wall.y2, mapId)) return true;
     const midX = (wall.x1 + wall.x2) / 2;
     const midY = (wall.y1 + wall.y2) / 2;
-    return this.isPointExplored(midX, midY, mapId);
+    if (this.isPointExplored(midX, midY, mapId)) return true;
+    // A door sits on the edge of what was seen (the sight stops at its wall): look a little to
+    // each side of it too (v2.63.0), so a door seen from one side is shown.
+    const length = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1) || 1, side = 10;
+    const nx = -(wall.y2 - wall.y1) / length * side, ny = (wall.x2 - wall.x1) / length * side;
+    return this.isPointExplored(midX + nx, midY + ny, mapId) || this.isPointExplored(midX - nx, midY - ny, mapId);
   }
 
   /**
@@ -321,7 +343,7 @@ export class FogOfWarEngine {
 
     // Nothing the fog depends on has changed since the last frame: draw the same fog again.
     const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, daylight ? 1 : 0,
-      ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.visionRange || 0, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
+      ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.preview ? 1 : 0, v.visionRange || 0, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
       -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360, l.intensity ?? 0.8, l.fixture ? 1 : 0]),
       -2, ...wallValues(walls)]);
     if (key === this.fogKey && this.fogKeyVersion === this.exploredVersion) {
@@ -358,11 +380,13 @@ export class FogOfWarEngine {
         const quad = windowShadow(w, viewer.x, viewer.y, sightRange * 2);
         if (quad) shadows.push({ quad, keep: t / 100 });
       }
-      visionShapes.push({ los, x: viewer.x, y: viewer.y, own, shadows });
+      visionShapes.push({ los, x: viewer.x, y: viewer.y, own, shadows, preview: !!viewer.preview });
     }
     // The seen area, painted with `paint` (fog: cut out; memory: white).
-    const paintSeen = (final, paint) => {
-      for (const { los, x, y, own, shadows } of visionShapes) {
+    // A `preview` viewer (on the Keeper's screen, a token that is not the party's) shows what it sees
+    // there and is never remembered as explored: that memory goes to the players.
+    const paintSeen = (final, paint, shapes = visionShapes) => {
+      for (const { los, x, y, own, shadows } of shapes) {
         // Behind a half-see-through window the view is drawn apart and thinned to the window's
         // transparency, then laid on the fog (or the memory) like any other view.
         const target = shadows.length ? this.scratchContext(mapWidth, mapHeight) : final;
@@ -390,9 +414,10 @@ export class FogOfWarEngine {
     // solo si se ve»). A lit area is part of each viewer's sight above (`lit`): behind a wall it
     // stays in the fog, and through a window it is seen with the transparency of the viewer's side.
     // Up to v2.29.3 every light that was on cleared its whole area, seen or not (v2.26.1).
-    if (stamp && visionShapes.length) {
+    const explorers = visionShapes.filter(shape => !shape.preview);
+    if (stamp && explorers.length) {
       this.exploredVersion++;
-      paintSeen(expCtx, '#ffffff');
+      paintSeen(expCtx, '#ffffff', explorers);
     }
 
     // 2. Prepare fog canvas

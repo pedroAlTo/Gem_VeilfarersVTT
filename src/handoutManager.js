@@ -7,6 +7,8 @@ import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js'
 import { store } from './state.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
+import { publicDossier } from './dossierPrivacy.js';
+import { MODULES, roomModule, mergeModule } from './moduleUpdate.js';
 
 export class HandoutManager {
   constructor(containerElement) {
@@ -48,6 +50,7 @@ export class HandoutManager {
                 <span class="handout-title" data-no-i18n>${e(doc.title)}</span>
                 ${doc.imageUrl ? '<span class="handout-img-indicator">📷 IMAGE</span>' : ''}
                 ${isKeeper && doc.keeperOnly ? '<span class="handout-badge">🔒 SOLO KEEPER</span>' : ''}
+                ${isKeeper && !doc.keeperOnly && doc.keeperHtml ? '<span class="handout-badge keeper-notes" title="Tiene una parte «Solo para Keeper» que no se envía">+ NOTAS KEEPER</span>' : ''}
                 ${isKeeper && doc.sharedWithPlayers && !doc.keeperOnly ? '<span class="handout-badge shared">COMPARTIDO</span>' : ''}
               </div>
               <div class="handout-meta">
@@ -71,6 +74,7 @@ export class HandoutManager {
           <span class="sidebar-title">TRANSMISSIONS & DOSSIERS (${handouts.length})</span>
           ${isKeeper ? `
             <button class="hud-btn hud-btn-xs hud-btn-primary" id="new_handout_btn">+ NEW DOSSIER</button>
+            ${store.sessionRole !== 'player' && roomModule(state) ? `<button class="hud-btn hud-btn-xs" id="module_update_btn" title="Trae las imágenes, los dossieres y los PNJ nuevos de ${e(MODULES[roomModule(state)].name)} sin tocar tus mapas, posiciones ni relojes">⟳ ACTUALIZAR MÓDULO</button>` : ''}
           ` : ''}
         </div>
 
@@ -127,6 +131,10 @@ export class HandoutManager {
         newBtn.onclick = () => this.openEditorModal();
       }
 
+      // A room made from a module, brought up to date (v2.63.0).
+      const updateBtn = this.container.querySelector('#module_update_btn');
+      if (updateBtn) updateBtn.onclick = () => this.updateFromModule(updateBtn);
+
       // Edit Handout
       this.container.querySelectorAll('.edit-handout-btn').forEach(btn => {
         btn.onclick = () => {
@@ -162,7 +170,7 @@ export class HandoutManager {
           if (doc && !doc.keeperOnly) {
             network.broadcast({
               type: 'TRANSMISSION',
-              handout: doc
+              handout: publicDossier(doc)
             });
             audio.playPing();
             this.displayTransmissionPopup(doc);
@@ -178,12 +186,33 @@ export class HandoutManager {
     }
   }
 
+  async updateFromModule(button) {
+    const id = roomModule(store.state);
+    if (!id) return;
+    const name = MODULES[id].name;
+    if (!await confirmAction(`Actualizar esta partida con la última versión de ${name}: imágenes, dossieres y PNJ nuevos. Los dossieres del módulo se sustituyen por su versión actual (si editaste alguno, se pierde ese cambio). Tus mapas, las posiciones, los relojes y tus propios dossieres no se tocan.`)) return;
+    button.disabled = true;
+    try {
+      const response = await fetch(`/campaigns/${id}.json`);
+      if (!response.ok) throw new Error('No se ha podido descargar el módulo. Comprueba la conexión.');
+      const { handouts, tokens, arcs, counts } = mergeModule(store.state, await response.json(), id);
+      if (!counts.docsAdded && !counts.docsUpdated && !counts.tokensAdded && !counts.tokensUpdated) { notify(`${name}: la partida ya estaba al día.`); return; }
+      store.update({ handouts, tokens, arcs });
+      network.syncAll?.();
+      notify(`${name} actualizado: ${counts.docsUpdated} dossieres al día y ${counts.docsAdded} nuevos; ${counts.tokensUpdated} PNJ con retrato o descripción al día y ${counts.tokensAdded} nuevos en la reserva.`);
+    } catch (err) {
+      notify(err.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   openEditorModal(existingDoc = null) {
     const isEdit = !!existingDoc;
     const modal = document.createElement('div');
     modal.className = 'veil-modal-backdrop';
     modal.innerHTML = sanitizeHTML(`
-      <div class="veil-modal-box sheet-modal-box">
+      <div class="veil-modal-box sheet-modal-box dossier-editor-box">
         <div class="veil-modal-header">
           <h3>${isEdit ? 'EDIT TRANSMISSION FILE' : 'CREATE CLASSIFIED DOSSIER'}</h3>
           <button class="modal-close-btn">&times;</button>
@@ -204,7 +233,7 @@ export class HandoutManager {
               <label>Carpeta</label>
               <input type="text" id="doc_folder" class="hud-input" placeholder="p. ej. Jugadores · Documentos" value="${e(existingDoc?.folder || '')}" />
             </div>
-            <label class="checkbox-label" style="flex: 1; align-self: end;"><input type="checkbox" id="doc_keeper_only" ${existingDoc?.keeperOnly ? 'checked' : ''}> Solo Keeper (no se transmite ni se comparte)</label>
+            <label class="checkbox-label" style="flex: 1; align-self: end;"><input type="checkbox" id="doc_keeper_only" ${existingDoc?.keeperOnly ? 'checked' : ''}> Todo el dossier es solo para el Keeper (no se transmite ni se comparte)</label>
           </div>
 
           <div class="form-group">
@@ -218,9 +247,16 @@ export class HandoutManager {
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Enriched Content / Briefing Text (HTML / Markdown supported)</label>
-            <textarea id="doc_content" class="hud-input" rows="9" style="font-family: monospace; font-size: 12px; line-height: 1.4;">${existingDoc ? existingDoc.contentHtml : `<h2>TACTICAL BRIEFING</h2>\n<p>Enter the classified transmission content here...</p>\n<blockquote>Key objective or dangerous warning.</blockquote>`}</textarea>
+          <!-- Two parts (v2.63.0, user request): what the players get, and what only the Keeper reads. -->
+          <div class="dossier-editor-parts">
+            <div class="form-group">
+              <label for="doc_content">Para los jugadores <small>(se comparte y se transmite · HTML)</small></label>
+              <textarea id="doc_content" class="hud-input" rows="12" style="font-family: monospace; font-size: 12px; line-height: 1.4;"></textarea>
+            </div>
+            <div class="form-group dossier-keeper-part">
+              <label for="doc_keeper">🔒 Solo para Keeper <small>(nunca se envía a los jugadores)</small></label>
+              <textarea id="doc_keeper" class="hud-input" rows="12" placeholder="Secretos, motivaciones, qué pasa si…" style="font-family: monospace; font-size: 12px; line-height: 1.4;"></textarea>
+            </div>
           </div>
 
           <div class="modal-actions-row">
@@ -234,6 +270,9 @@ export class HandoutManager {
     `);
 
     document.body.appendChild(modal);
+    // Set as values (not inside the markup): the HTML of a dossier is text to edit here.
+    modal.querySelector('#doc_content').value = existingDoc ? existingDoc.contentHtml : '<h2>TACTICAL BRIEFING</h2>\n<p>Enter the classified transmission content here...</p>\n<blockquote>Key objective or dangerous warning.</blockquote>';
+    modal.querySelector('#doc_keeper').value = existingDoc?.keeperHtml || '';
 
     modal.querySelector('.modal-close-btn').onclick = () => modal.remove();
     modal.querySelector('.modal-cancel-btn').onclick = () => modal.remove();
@@ -284,14 +323,15 @@ export class HandoutManager {
       const sender = modal.querySelector('#doc_sender').value.trim() || 'Command';
       const imageUrl = urlInput.value.trim();
       const contentHtml = modal.querySelector('#doc_content').value.trim();
+      const keeperHtml = modal.querySelector('#doc_keeper').value.trim();
       const folder = modal.querySelector('#doc_folder').value.trim();
       const keeperOnly = modal.querySelector('#doc_keeper_only').checked;
 
       if (isEdit) {
-        store.updateHandout(existingDoc.id, { title, sender, imageUrl, contentHtml, folder, keeperOnly, ...(keeperOnly ? { sharedWithPlayers: false } : {}) });
+        store.updateHandout(existingDoc.id, { title, sender, imageUrl, contentHtml, keeperHtml, folder, keeperOnly, ...(keeperOnly ? { sharedWithPlayers: false } : {}) });
       } else {
         const doc = store.addHandout({ title, sender, imageUrl, contentHtml });
-        store.updateHandout(doc.id, { folder, keeperOnly });
+        store.updateHandout(doc.id, { folder, keeperOnly, keeperHtml });
       }
 
       modal.remove();
@@ -319,7 +359,7 @@ export class HandoutManager {
       button.onclick = () => show(lang);
       bar.append(button);
     }
-    popup.querySelector('.transmission-content-area').before(bar);
+    (popup.querySelector('.transmission-columns') || popup.querySelector('.transmission-content-area')).before(bar);
     show(langs.includes(currentLanguage()) ? currentLanguage() : langs[0]);
   }
 
@@ -333,30 +373,43 @@ export class HandoutManager {
     const popup = document.createElement('div');
     popup.id = 'active_transmission_popup';
     popup.className = 'veil-modal-backdrop';
+    // The Keeper reads the two parts side by side: for the players, and «Solo para Keeper» (v2.63.0).
+    // A player's copy never carries the second one (dossierPrivacy).
+    const keeperPart = store.state.userRole === 'keeper' && store.sessionRole !== 'player' && !!doc.keeperHtml?.trim();
     popup.innerHTML = sanitizeHTML(`
-      <div class="veil-modal-box transmission-popup-box">
+      <div class="veil-modal-box transmission-popup-box ${keeperPart ? 'has-keeper-part' : ''}">
         <div class="veil-modal-header" style="background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 100%); border-bottom: 2px solid var(--cyan-pearl);">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="color: var(--cyan-pearl); font-size: 16px;">📡</span>
-            <h3 style="color: var(--cyan-pearl);">${doc.title.toUpperCase()}</h3>
+            <h3 style="color: var(--cyan-pearl);" data-no-i18n>${e(doc.title.toUpperCase())}</h3>
           </div>
           <button class="modal-close-btn">&times;</button>
         </div>
 
         <div class="veil-modal-body transmission-body">
           <div class="transmission-header-bar">
-            <span><strong>ORIGIN:</strong> ${doc.sender || 'Tactical Net'}</span>
-            <span><strong>TIMESTAMP:</strong> ${doc.timestamp}</span>
+            <span><strong>ORIGIN:</strong> <span data-no-i18n>${e(doc.sender || 'Tactical Net')}</span></span>
+            ${doc.timestamp ? `<span><strong>TIMESTAMP:</strong> <span data-no-i18n>${e(doc.timestamp)}</span></span>` : ''}
           </div>
 
-          ${doc.imageUrl ? `
-            <div class="transmission-image-frame">
-              <img src="${doc.imageUrl}" class="transmission-attached-img" alt="Imagen adjunta del dossier" />
-            </div>
-          ` : ''}
-
-          <div class="transmission-content-area">
-            ${doc.contentHtml}
+          <div class="transmission-columns">
+            <section class="transmission-public">
+              ${keeperPart ? '<h4 class="transmission-part-label">PARA LOS JUGADORES</h4>' : ''}
+              ${doc.imageUrl ? `
+                <div class="transmission-image-frame">
+                  <img src="${e(doc.imageUrl)}" class="transmission-attached-img" alt="Imagen adjunta del dossier" />
+                </div>
+              ` : ''}
+              <div class="transmission-content-area">
+                ${doc.contentHtml}
+              </div>
+            </section>
+            ${keeperPart ? `
+              <section class="transmission-keeper">
+                <h4 class="transmission-part-label">🔒 SOLO PARA KEEPER</h4>
+                <div class="transmission-content-area">${doc.keeperHtml}</div>
+              </section>
+            ` : ''}
           </div>
 
           <div class="modal-actions-row" style="margin-top: 14px;">

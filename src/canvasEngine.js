@@ -15,8 +15,10 @@ import { frameById, frameGeometry, frameBody, frameLight } from './tokenFrames.j
 import { drawTokenConditions, getHoveredCondition } from './conditions.js';
 import { FXEngine } from './fxEngine.js';
 import { healedTokens } from './healFX.js';
-import { FogOfWarEngine } from './fogEngine.js';
+import { FogOfWarEngine, explorationKey } from './fogEngine.js';
 import { store } from './state.js';
+import { withRanges } from './visionRanges.js';
+import { FogBrush } from './fogBrush.js';
 import { isPartyToken } from './tokenPermissions.js';
 import { canvasFont } from './fontSets.js';
 import { seeThrough, windowSides, SEE_TOKENS_FROM } from './windows.js';
@@ -778,11 +780,15 @@ export class CanvasEngine {
     const t = Math.max(0, Math.min(1, (now - d.start) / d.dur)), ease = t * t * (3 - 2 * t);
     return d.from + (d.to - d.from) * ease;
   }
+  // The tokens of this scene as the vision, lighting and fog read them: their sight, light and
+  // vibration ranges converted from metres to this map's pixels (v2.63.0, visionRanges.js).
   visionTokens() {
-    return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId);
+    const map = store.getActiveMap();
+    return (store.confirmedTokens?.() || store.state.tokens).filter(token => token.mapId === store.state.activeMapId).map(token => withRanges(token, map));
   }
   initEvents() {
     this.freehand = new FreehandTool(this, store, network, notify);
+    this.fogBrush = new FogBrush(this, store);
     this.mapClipboard = new MapClipboard(store, network, this, notify);
     this.tokenUnsubscribe = store.subscribe(() => this.reconcileTokenDrag());
     // A token healed shows a small green effect (v2.43.1): on every screen, for tokens it can see.
@@ -1053,6 +1059,7 @@ export class CanvasEngine {
 
       if (e.button === 0) {
         if (this.freehand.start(world)) return;
+        if (this.fogBrush.start(world)) return;
         if (state.activeTool === 'select') store.update({ selectedDrawingId: null });
         this.preDragSnapshot = undoManager.captureSnapshot('Acción Táctica');
         // Alt + Click triggers tactical ping
@@ -1655,6 +1662,7 @@ export class CanvasEngine {
       }
 
       if (this.freehand.move(world)) return;
+      if (this.fogBrush.move(world)) return;
       if (this.gridCalibStart && state.activeTool === 'grid_scale') {
         this.gridCalibCurrent = { x: world.x, y: world.y };
         return;
@@ -1956,6 +1964,7 @@ export class CanvasEngine {
     // MOUSE UP
     window.addEventListener('mouseup', (e) => {
       if (this.freehand.finish()) return;
+      if (this.fogBrush.finish()) return;
       const state = store.getState();
       if (this.gridCalibStart) {
         if (this.gridCalibCurrent) {
@@ -2882,7 +2891,7 @@ export class CanvasEngine {
     // party and the tokens that player controls. Enemies' and NPCs' cones are the Keeper's only
     // (v2.27.9: not while out of sight; v2.29.2: never, user decision).
     const lightShown = t => state.userRole !== 'player' || sharesSight(t);
-    let viewers = [], previewOnly = false;
+    let viewers = [];
     if (state.userRole === 'player') {
       // Only the party's eyes: an enemy the player selects (to attack it) never sees for them.
       viewers = activeTokens.filter(partyEyes);
@@ -2894,15 +2903,12 @@ export class CanvasEngine {
       // so the player cannot scan ahead into undiscovered areas.
       viewers = viewers.map(v => this.draggedToken?.id === v.id ? (this.draggedTokenOrigX != null ? { ...v, x: this.draggedTokenOrigX, y: this.draggedTokenOrigY } : v) : seenAt(v));
     } else {
-      // Keeper mode: use player tokens to stamp exploration and show visibility
-      viewers = activeTokens.filter(partyEyes);
-      // Without the party on the scene, the Keeper previews the selected token's sight; an
-      // enemy's sight is never remembered as explored (that memory is sent to the players).
-      if (viewers.length === 0 && state.selectedTokenId) {
-        const sel = activeTokens.find(t => t.id === state.selectedTokenId);
-        if (sel) { viewers = [sel]; previewOnly = !sharesSight(sel); }
-      }
-      viewers = viewers.map(drawnAt);
+      // Keeper: the party's eyes explore the map (that memory is sent to the players). Every other
+      // token's sight is shown on the Keeper's screen only and never explores (v2.63.0, user: «los
+      // tokens no jugadores no emiten foco de visión para los jugadores; sí lo puede ver el Keeper
+      // en su visión»). Up to v2.62 it took selecting the NPC on a scene without the party.
+      const others = activeTokens.filter(t => !partyEyes(t) && !isEncounterMarker(t)).map(t => ({ ...t, hidden: false, preview: true }));
+      viewers = [...activeTokens.filter(partyEyes), ...others].map(drawnAt);
     }
 
     const darkness = this.sceneDarkness(map, now, state.fogOfWar !== false);
@@ -2940,12 +2946,14 @@ export class CanvasEngine {
       // the Keeper saves more of it; a reset or a reveal (its own mark) applies to all.
       this.fogApplied ??= new Map();
       const applied = this.fogApplied.get(fullMapId), resetMark = map.fogResetAt || 0;
-      const fogData = typeof map.fogExplored === 'object' && map.fogExplored ? `${map.fogExplored.cols}x${map.fogExplored.rows}:${map.fogExplored.bits}` : map.fogExplored;
+      const fogData = explorationKey(map.fogExplored);
       if (!this.fog.isExplorationLoaded(fullMapId) && map.fogExplored) {
         this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
         this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
       } else if (!applied || applied.data !== fogData || applied.reset !== resetMark) {
-        if (applied && applied.reset !== resetMark && map.fogExplored === 'none') this.fog.resetExploration(fullMapId);
+        // A new mark (reset, reveal, or the Keeper's fog brush darkening explored areas, v2.63.0)
+        // replaces this screen's memory with the table's; otherwise the table's is added to it.
+        if (applied && applied.reset !== resetMark) this.fog.loadExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored || 'none');
         else if (map.fogExplored) this.fog.mergeExploration(fullMapId, this.mapImage.width, this.mapImage.height, map.fogExplored);
         this.fogApplied.set(fullMapId, { data: fogData, reset: resetMark });
       }
@@ -2969,12 +2977,12 @@ export class CanvasEngine {
         lightingEngine: this.lighting,
         exploredOpacity: state.fogExploredOpacity ?? 0.50,
         isKeeperGM: isKeeperGM,
-        stamp: !this.draggedToken && !previewOnly
+        stamp: !this.draggedToken
       });
 
       // Authoritative Keeper exploration persistence debounced sync
       // Only when the exploration memory has changed since it was last saved.
-      if (state.userRole === 'keeper' && !this.draggedToken && !this._fogSyncTimer && this._fogSavedVersion !== `${fullMapId}:${this.fog.exploredVersion}`) {
+      if (state.userRole === 'keeper' && !this.draggedToken && !this.fogBrush.stroke && !this._fogSyncTimer && this._fogSavedVersion !== `${fullMapId}:${this.fog.exploredVersion}`) {
         this._fogSavedVersion = `${fullMapId}:${this.fog.exploredVersion}`;
         this._fogSyncTimer = setTimeout(() => {
           this._fogSyncTimer = null;
@@ -3077,6 +3085,7 @@ export class CanvasEngine {
     }
 
     this.renderMovementPreview(overlay, map);
+    this.fogBrush.render(overlay);
     vision?.flush();
     ctx.restore();
 
@@ -3402,7 +3411,7 @@ export class CanvasEngine {
       const ty = targetTok.y;
 
       const dist = Math.hypot(tx - vx, ty - vy);
-      const vRange = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 400);
+      const vRange = withRanges(viewer, map).visionRange;
 
       // Beyond max perception range -> cannot see
       if (dist > vRange) continue;
@@ -3513,7 +3522,7 @@ export class CanvasEngine {
       const vx = viewer.x;
       const vy = viewer.y;
       const dist = Math.hypot(x - vx, y - vy);
-      const vRange = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 400);
+      const vRange = withRanges(viewer, map).visionRange;
       if (dist > vRange) continue;
 
       const vAngle = viewer.visionAngle ?? 90;

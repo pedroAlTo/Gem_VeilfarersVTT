@@ -1,6 +1,7 @@
 // Hearts in the Void · the people (v2.62.0). Each entry becomes a token in the reserve (its
-// description is the dossier the Keeper opens from the token) and a private Keeper dossier with the
-// full profile. Ancestry and look follow the module; the portrait is the closest crew preset.
+// description is what the crew can know) and a dossier: the public part can be shared with the
+// players; the full profile is in «Solo para Keeper» (v2.63.0). Ancestry and look follow the module;
+// the portrait is the user's art or the closest crew preset.
 import { bi, ul } from './html.mjs';
 
 // [es, en] pairs for the profile sections.
@@ -17,7 +18,36 @@ const profile = ({ who, wants, fears, changes, ignored, odd, voice }) => {
   return bi(part('es', 0), part('en', 1));
 };
 // Plain text for the token's dossier (the token description is text, not HTML).
-const plain = ({ who, wants }) => `${who[0]}${wants ? ' Quiere: ' + wants[0] : ''}\n\n— EN —\n${who[1]}${wants ? ' Wants: ' + wants[1] : ''}`;
+// Only what the crew can know: the token is seen by the players (v2.63.0).
+const plain = ({ pub }) => `${pub[0]}\n\n— EN —\n${pub[1]}`.replace(/<\/?em>/g, '');
+
+// What the crew sees and can learn on meeting each person (v2.63.0, user request: «haz versiones que
+// puedan ser compartidas con los PJ, no incluyas información solo para Keeper»). This is the public
+// part of the dossier and the token's description; the full profile goes in «Solo para Keeper».
+const PUBLIC = {
+  zara: ['Capitana y dueña registrada de la nave de los Iron Hearts. Humana menuda, con una risa demasiado grande para su cuerpo, manos de piloto y la costumbre de ponerse entre su gente y el peligro. Habla de Alexei con un cuidado que no consigue esconder.', 'Captain and registered owner of the Iron Hearts’ ship. A small human woman with a laugh too large for her body, a pilot’s hands and the habit of standing between her people and danger. She speaks about Alexei with a care she cannot hide.'],
+  korren: ['Ingeniero de los Iron Hearts. Un kryllian ancho, de exoesqueleto lleno de cicatrices y pintado con llamas desteñidas. Arregla cualquier cosa con sus cuatro manos y tiene una mala suerte legendaria. Su comunicador vibra a menudo; él finge que no.', 'The Iron Hearts’ engineer. A broad Kryllian whose scarred exoskeleton is painted with faded flames. He fixes anything with his four hands and has legendary bad luck. His communicator vibrates often; he pretends it did not.'],
+  thex: ['Ethereal de los Iron Hearts que brilla en un oro codicioso cuando trama, es decir, casi siempre. Lleva joyas que asegura valiosísimas y siempre tiene una inversión que ofrecer.', 'An Ethereal with the Iron Hearts who glows an acquisitive gold when scheming, which is most of the time. Wears jewelry they swear is priceless and always has an investment to offer.'],
+  brix: ['Kryx enorme de pelaje gris y cicatrices, de los Iron Hearts. Habla poco y vigila mucho; cuando llega el peligro, ya se ha puesto delante.', 'A huge, grey-furred, scarred Kryx with the Iron Hearts. He says little and watches much; when danger comes, he is already in front.'],
+  alexei: ['Alexei Joric, veintitrés años, heredero de la Casa Joric y prometido de Lydia Valerius. Su desaparición llena las noticias de las Casas. De cerca es un joven educado y nervioso, mucho menos frío que su retrato oficial.', 'Alexei Joric, twenty-three, heir of House Joric and betrothed to Lydia Valerius. His disappearance fills the House newsfeeds. Up close he is a polite, nervous young man, far less cold than his official portrait.'],
+  silk: ['Madame Silk, líder de contrato de los Credit’s Whispers: una rift spinner alta y cristalina, de modales impecables y voz tranquila. Su equipo cobra caro y no deja cabos sueltos.', 'Madame Silk, contract leader of the Credit’s Whispers: a tall, crystalline Rift Spinner with impeccable manners and a calm voice. Her team charges a great deal and leaves no loose ends.'],
+  scalpel: ['Especialista médico de los Credit’s Whispers: un bloomstrider modificado cuyas extremidades se despliegan en instrumentos quirúrgicos. Su voz es cálida y paciente.', 'The Credit’s Whispers’ medical specialist: a modified Bloomstrider whose limbs unfold into surgical instruments. Their voice is warm and patient.'],
+  maya: ['Agente de campo de la Casa Amaranth. Parece alguien que lleva treinta años tramitando permisos bajo mala luz. Hace preguntas sencillas, recuerda todas las respuestas y contrata criterio, no obediencia.', 'A House Amaranth field agent. She looks like someone who has spent thirty years processing permits under bad lighting. She asks simple questions, remembers every answer, and hires judgment, not obedience.'],
+  nyx: ['Ailuran que aparece donde nadie la esperaba y dice ser la última residente de Charon’s Refuge. Habla en voz baja, observa a todo el mundo y lo va narrando en un dispositivo. Su cara está tranquila; su cola, no.', 'An Ailuran who turns up where nobody expected her and says she is the last resident of Charon’s Refuge. She speaks quietly, watches everyone and narrates it all into a device. Her face is calm; her tail is not.'],
+  aria: ['Robot de limpieza y mantenimiento de Charon’s Refuge. No entiende el conflicto: solo entiende que todo el mundo está ensuciando la estación.', 'Charon’s Refuge’s cleaning and maintenance robot. It does not understand the conflict: it only understands that everyone is making the station dirtier.'],
+  maximus: ['Lord Comandante de la Casa Joric y padre de Alexei. Su comunicado oficial habla de «terroristas» y ofrece una recompensa de 10 Créditos por la recuperación de su hijo.', 'Lord Commander of House Joric and Alexei’s father. His official statement speaks of “terrorists” and offers a 10-Credit reward for his son’s recovery.'],
+  lydia: ['Heredera de la Casa Valerius y prometida de Alexei. Su matrimonio debía sellar la alianza entre las Casas Joric y Valerius; en las noticias aparece serena y en silencio.', 'Heir of House Valerius and Alexei’s betrothed. Their marriage was meant to seal the alliance between Houses Joric and Valerius; in the newsfeeds she appears composed and silent.'],
+  joric_officer: ['Oficial de la Casa Joric al mando de un equipo de recuperación: armadura de la Casa, insignia roja y órdenes de llevar a Alexei a casa.', 'A House Joric officer leading a recovery team: House armor, red insignia, and orders to bring Alexei home.'],
+  sella: ['Bróker de naves en Harrow Dock. Humana de cara estrecha y abrigo plateado cuyos puños siguen inexplicablemente limpios. Vende naves con historia: la <em>Maribel</em>, la <em>Slow Mercy</em> y la <em>Terms Pending</em>.', 'A ship broker at Harrow Dock. A narrow-faced human woman in a silver coat whose cuffs remain inexplicably clean. She sells ships with history: the <em>Maribel</em>, the <em>Slow Mercy</em> and the <em>Terms Pending</em>.'],
+  parel: ['Taquillero de salidas. Kryllian con cuatro manos, tres terminales activos y la mirada agotada de quien explica todo el turno que «salir cerca del sistema» no es «atracar exactamente allí». Uniforme impecable salvo una manga manchada de tinta; huele a té y a horno.', 'A booking clerk. A Kryllian with four hands, three active terminals and the exhausted stare of someone explaining all shift that “departing near the system” is not “docking exactly there.” Immaculate uniform except one ink-stained sleeve; smells of tea and ovens.'],
+  orla: ['Capitana del carguero del Gremio <em>Morrow’s Due</em>: ofrece pasaje práctico y honrado hacia Tenebris Secundus.', 'Captain of the Guild hauler <em>Morrow’s Due</em>: she offers practical, honest passage toward Tenebris Secundus.'],
+  elian: ['Mayordomo del crucero de la Casa Valerius <em>Vesper Crown</em>: lujo, cortesía y una atención impecable a cada pasajero.', 'Steward of the House Valerius liner <em>Vesper Crown</em>: luxury, courtesy and impeccable attention to every passenger.'],
+  ratko: ['Jefe de los Bone Dogs en Dock K-17. Flaco, cetrino, con un abrigo blindado que imita al de un oficial de Casa. Su ojo cibernético rojo parpadea. Habla alto para que la sala oiga la obediencia.', 'Boss of the Bone Dogs at Dock K-17. Lean, sallow, in an armored coat imitating a House officer’s. His red cybernetic eye flickers. He speaks loudly so the room hears obedience.'],
+  grond: ['Músculo de los Bone Dogs. Enorme incluso para un kryx, con placas de armadura desparejadas. Huele a pelaje frío y a aceite de armas. Mira las manos, no las caras.', 'Bone Dogs muscle. Massive even for a Kryx, in mismatched armor plates. Smells of cold fur and weapon oil. He watches hands rather than faces.'],
+  vek: ['Mecánico de los Bone Dogs. Va y viene entre <em>The Collector</em> y los sistemas del hangar con tres herramientas, dos datapads y la postura de quien espera que le culpen del próximo ruido.', 'Bone Dogs mechanic. Moves between <em>The Collector</em> and the hangar systems with three tools, two datapads and the posture of someone expecting blame for the next sound.'],
+  jotann: ['Mecánico de Harrow Dock. Sintético robusto con un brazo desparejado que mastica cable aislado mientras piensa. Conoce el muelle como nadie.', 'A Harrow Dock mechanic. A stocky Synthetic with one mismatched arm who chews insulated wire while thinking. Knows the dock like nobody else.'],
+  blue: ['Contrabandista celestiari que lleva lentes espejadas incluso en interiores y nunca da la espalda a una ruta abierta.', 'A Celestiari smuggler who wears mirrored lenses even indoors and never stands with their back to an open route.'],
+};
 
 export const NPCS = [
   { key: 'zara', art: '/assets/tokens/hiv/zara.webp', full: '/campaigns/hearts-in-the-void/characters/zara.webp', name: 'Zara “Starwind” Kaine', role: 'Capitana de los Iron Hearts · Iron Hearts captain', species: 'Human', portrait: ['human', 'f', 'pilot'], arcs: ['charon', 'epilogue'], color: '#f97316',
@@ -114,10 +144,14 @@ export const NPCS = [
     voice: ['“Pay.”', '“Move.”', '“The animal is not mine.” (The animal is sitting on his boot.)'] },
   { key: 'vek', name: 'Vek', role: 'Mecánico de los Bone Dogs · Bone Dogs mechanic', species: 'Human', portrait: ['human', 'n', 'engineer'], arcs: ['crossroads'], color: '#a8a29e',
     who: ['Va y viene entre <em>The Collector</em> y los sistemas del hangar con tres herramientas, dos datapads y la postura de quien espera que le culpen del próximo ruido. En una pelea, se queda congelado medio segundo y luego elige bando.', 'Moves between <em>The Collector</em> and the hangar systems with three tools, two datapads and the posture of someone expecting blame for the next sound. In a fight he freezes for half a second, then chooses a side.'] },
-  { key: 'jotann', name: 'Jo Tann', role: 'Mecánica de Harrow Dock · Harrow Dock mechanic', species: 'Synthetic', portrait: ['synthetic', 'm', 'engineer'], arcs: ['crossroads'], color: '#22d3ee',
+  { key: 'jotann', name: 'Jo Tann', role: 'Mecánico de Harrow Dock · Harrow Dock mechanic', species: 'Synthetic', portrait: ['synthetic', 'm', 'engineer'], arcs: ['crossroads'], color: '#22d3ee',
     who: ['Mecánico sintético robusto con un brazo desparejado que mastica cable aislado mientras piensa. Conoce los Bone Dogs y su rutina (y le deben un taller).', 'A stocky Synthetic mechanic with one mismatched arm who chews insulated wire while thinking. Knows the Bone Dogs and their routine (and they owe him a workshop).'] },
   { key: 'blue', name: 'Blue Casta', role: 'Contrabandista celestiari · Celestiari smuggler', species: 'Celestiari', art: '/assets/tokens/npc/blue-casta.webp', arcs: ['crossroads'], color: '#60a5fa',
     who: ['Contrabandista celestiari que lleva lentes espejadas en interiores y nunca da la espalda a una ruta abierta. Sabe cosas de Dock K-17 que cuestan algo.', 'A Celestiari smuggler who wears mirrored lenses indoors and never stands with their back to an open route. Knows things about Dock K-17 that cost something.'] },
-].map(n => ({ ...n, html: profile(n), text: plain(n) }));
+].map(n => ({ ...n, pub: PUBLIC[n.key] })).map(n => ({ ...n, html: profile(n), text: plain(n) }));
 
-export const npcDossier = n => ({ id: 'hv_npc_' + n.key, folder: 'Keeper · PNJ', keeperOnly: true, title: '🔒 ' + n.name, sender: n.role, timestamp: n.species, ...(n.full || n.art ? { imageUrl: n.full || n.art } : {}), contentHtml: `<h2>${n.name}</h2><p><em>${n.role}</em></p>` + n.html });
+// A dossier the Keeper can share (v2.63.0): who the person is, for the crew, and the full profile in
+// «Solo para Keeper» (`keeperHtml`), which never leaves the Keeper's screen.
+export const npcDossier = n => ({ id: 'hv_npc_' + n.key, folder: 'PNJ', keeperOnly: false, title: n.name, sender: n.role, timestamp: '', ...(n.full || n.art ? { imageUrl: n.full || n.art } : {}),
+  contentHtml: `<h2>${n.name}</h2><p><em>${n.role} · ${n.species}</em></p>` + bi(`<p>${n.pub[0]}</p>`, `<p>${n.pub[1]}</p>`),
+  keeperHtml: n.html });

@@ -455,6 +455,25 @@
           <button class="tool-btn keeper-only-tool active" id="toggle_fog_of_war" title="[Keeper] Toggle Fog of War / Niebla de Exploración [Shift+F]">
             <span>🌫️</span>
           </button>
+          <!-- Fog brush (v2.63.0): the Keeper darkens explored areas again, or explores them. -->
+          <button class="tool-btn keeper-only-tool" id="tool_fog_brush" data-tool="fog_brush" title="[Keeper] Pincel de niebla: vuelve a oscurecer zonas descubiertas o descúbrelas">
+            <span>🖌️</span>
+          </button>
+          <div class="tool-flyout-panel fog-brush-flyout" id="fog_brush_flyout">
+            <div class="flyout-section-title">NIEBLA // PINCEL</div>
+            <div class="flyout-btn-row">
+              <button class="flyout-btn active" type="button" data-fog-brush-mode="hide" title="Lo que pintes vuelve a la niebla para todos">🌑 Oscurecer</button>
+              <button class="flyout-btn" type="button" data-fog-brush-mode="reveal" title="Lo que pintes queda descubierto para todos">✨ Descubrir</button>
+            </div>
+            <div class="flyout-section-title" style="margin-top: 6px;">RADIO (CASILLAS)</div>
+            <div class="flyout-btn-row">
+              <button class="flyout-btn" type="button" data-fog-brush-size="1">1</button>
+              <button class="flyout-btn active" type="button" data-fog-brush-size="2">2</button>
+              <button class="flyout-btn" type="button" data-fog-brush-size="4">4</button>
+              <button class="flyout-btn" type="button" data-fog-brush-size="8">8</button>
+            </div>
+            <p class="water-draw-hint">Los jugadores lo ven al soltar. Lo que un personaje está mirando ahora se vuelve a descubrir.</p>
+          </div>
 
           <div class="toolbar-divider"></div>
 
