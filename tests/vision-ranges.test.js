@@ -15,7 +15,7 @@ test('the same character sees as far in metres on a sketch and on a 4K plate', (
 
 test('old pixel ranges are ignored: a token without metres uses the defaults', () => {
   const old = { id: 'o', visionRange: 280, lightRadius: 250, vibrationRadius: 260 };
-  assert.deepEqual(tokenSenses(old), { vision: DEFAULT_VISION_METERS, light: 10, vibration: 10 });
+  assert.deepEqual(tokenSenses(old), { vision: DEFAULT_VISION_METERS, dark: 5, light: 10, vibration: 10 });
   assert.equal(withRanges(old, { gridSize: 64, gridScaleMeters: 2 }).visionRange, DEFAULT_VISION_METERS * 32);
   assert.equal(tokenSenses({ visionMeters: 0 }).vision, 0, 'a blind token stays blind');
   assert.equal(tokenSenses({ visionMeters: -3 }).vision, DEFAULT_VISION_METERS);

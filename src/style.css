@@ -3005,6 +3005,9 @@ body, html {
 .weather-darkness { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 11px; color: #cbd5e1; }
 .weather-darkness span { display: flex; justify-content: space-between; }
 .weather-darkness b { color: #fde68a; font-weight: 600; }
+.fog-veil-row { display: flex; flex-direction: column; gap: 4px; margin: 2px 4px 4px; font-size: 11px; color: #cbd5e1; }
+.fog-veil-row span { display: flex; justify-content: space-between; }
+.fog-veil-row b { color: #fde68a; font-weight: 600; }
 .weather-note { margin-top: 4px; }
 /* V3: light switch inspector */
 .insp-switch-lights { display: flex; flex-wrap: wrap; gap: 4px 12px; max-height: 96px; overflow: auto; }

@@ -2120,6 +2120,13 @@ export const PAIRS = [
   ["Lo que pintes queda descubierto para todos", "What you paint is revealed for everyone"],
   ["[Keeper] Pincel de niebla: vuelve a oscurecer zonas descubiertas o descúbrelas", "[Keeper] Fog brush: darken explored areas again, or reveal them"],
   ["Pincel", "Brush"],
+  // Night vision and explored veil per scene (v2.64.0)
+  ["Visión en la oscuridad (m)", "Dark vision (m)"],
+  ["De noche (Clima al 50 % o más), lo que distingue sin luz; lo iluminado lo ve hasta su alcance de visión", "At night (Clima at 50 % or more), what it makes out without light; lit areas it sees up to its vision range"],
+  ["NIEBLA // LO EXPLORADO", "FOG // EXPLORED"],
+  ["Oscurecimiento", "Darkening"],
+  ["Oscurecimiento de las zonas ya exploradas en esta escena", "Darkening of the explored areas in this scene"],
+  ["Sin ajustar, la escena se ve como siempre. De día (o sin ajustar) cada personaje ve hasta su alcance de visión; de noche, en lo oscuro solo distingue su visión en la oscuridad y lo iluminado lo ve hasta su alcance.", "Unset, the scene looks as always. By day (or unset) each character sees up to its vision range; at night, in the dark it only makes out its dark vision, and lit areas up to its range."],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

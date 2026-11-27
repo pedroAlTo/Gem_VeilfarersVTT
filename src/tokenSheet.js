@@ -797,6 +797,10 @@ export class TokenHUD {
                   <label>Alcance de visión (m)</label>
                   <input type="number" id="sheet_vision_range" class="hud-input" min="0" max="1000" step="1" value="${senses.vision}" title="En metros: cada escena lo convierte con su escala (Escenas → rejilla)" />
                 </div>
+                <div class="form-group" style="flex: 1; min-width: 100px;">
+                  <label>Visión en la oscuridad (m)</label>
+                  <input type="number" id="sheet_dark_range" class="hud-input" min="0" max="1000" step="1" value="${senses.dark}" title="De noche (Clima al 50 % o más), lo que distingue sin luz; lo iluminado lo ve hasta su alcance de visión" />
+                </div>
                 <div class="form-group" style="flex: 1; min-width: 110px;">
                   <label>Ángulo FOV</label>
                   <vf-select id="sheet_vision_angle" class="hud-select">
@@ -1082,6 +1086,7 @@ export class TokenHUD {
         subtraits,
         visionMode: modal.querySelector('#sheet_vision_mode').value,
         visionMeters: metersOf('#sheet_vision_range', senses.vision),
+        darkMeters: metersOf('#sheet_dark_range', senses.dark),
         visionAngle: parseInt(modal.querySelector('#sheet_vision_angle').value, 10) || 360,
         isFlying: modal.querySelector('#sheet_is_flying').checked,
         hasVibrationVision: modal.querySelector('#sheet_has_vibration')?.checked ?? false,

@@ -374,6 +374,20 @@ function setupToolbarEvents() {
     store.update({ fogBrushMode: button.dataset.fogBrushMode });
     fogBrushFlyout.querySelectorAll('[data-fog-brush-mode]').forEach(b => b.classList.toggle('active', b === button));
   });
+  // The explored veil of this scene (v2.64.0, user request: «en fog of war debería poder definir el
+  // % de oscurecimiento de las zonas ya exploradas»): the Keeper sets it for everyone at the table.
+  const veil = document.getElementById('fog_veil'), veilValue = document.getElementById('fog_veil_value');
+  const showVeil = () => {
+    if (!veil) return;
+    const value = Math.round((store.getActiveMap()?.fogExploredOpacity ?? store.state.fogExploredOpacity ?? 0.5) * 100);
+    if (document.activeElement !== veil) veil.value = value;
+    veilValue.textContent = `${value} %`;
+  };
+  if (veil) {
+    veil.oninput = () => { veilValue.textContent = `${veil.value} %`; store.updateActiveMap({ fogExploredOpacity: Number(veil.value) / 100 }); };
+    store.subscribe((state, keys) => { if (!Array.isArray(keys) || keys.includes('maps') || keys.includes('activeMapId') || keys.includes('fogExploredOpacity')) showVeil(); });
+    showVeil();
+  }
   fogBrushFlyout?.querySelectorAll('[data-fog-brush-size]').forEach(button => button.onclick = () => {
     store.update({ fogBrushSize: Number(button.dataset.fogBrushSize) });
     fogBrushFlyout.querySelectorAll('[data-fog-brush-size]').forEach(b => b.classList.toggle('active', b === button));

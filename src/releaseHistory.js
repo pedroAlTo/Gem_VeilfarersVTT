@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.64.0', date: '2026-11-27', title: 'V3 · Visión con límite de día y de noche, degradado y velo de lo explorado por escena',
+    sections: [
+      { title: 'Visión', items: [
+        'Nada se ve más allá del alcance de visión del token (25 m por defecto). Antes, una zona iluminada se veía a cualquier distancia: con luces grandes el cono llegaba al final del mapa.',
+        'De noche (Clima al 50 % o más), en lo oscuro cada personaje solo distingue su «visión en la oscuridad» (5 m por defecto, en la ficha del token); lo iluminado lo ve hasta su alcance. De día, o sin ajustar el Clima, ve hasta su alcance. Es el modelo de Foundry VTT (Basic Sight y Light Perception), con la luz limitada al alcance.',
+        'El cono se degrada con la distancia: nítido cerca del personaje y, al final de su alcance, igual que una zona ya explorada. Nunca queda más oscuro que el velo de lo explorado.',
+        'Los enemigos que ve el jugador siguen la misma regla.',
+      ] },
+      { title: 'Niebla', items: [
+        'El Keeper fija el oscurecimiento de las zonas ya exploradas de cada escena desde el panel del pincel de niebla (o desde Capas tácticas); se aplica a todos en esa escena. Ajustes queda como valor por defecto.',
+      ] },
+    ],
+  },
+  {
     version: '2.63.0', date: '2026-11-27', title: 'V3 · Niebla de guerra arreglada, visión en metros, pincel de niebla y dossieres en dos partes',
     sections: [
       { title: 'Niebla de guerra', items: [

@@ -162,8 +162,8 @@ export class LayerManagerHUD {
                 </button>
               </div>
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 10px; color: #94a3b8;">
-                <span id="lbl_fow_opacity">Atenuación Explorada (${Math.round((state.fogExploredOpacity ?? 0.50) * 100)}%):</span>
-                <input type="range" id="input_fow_opacity" min="10" max="90" step="5" value="${Math.round((state.fogExploredOpacity ?? 0.50) * 100)}" style="width: 75px; accent-color: #00f3ff; cursor: pointer;">
+                <span id="lbl_fow_opacity">Atenuación Explorada (${Math.round((store.getActiveMap()?.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.50) * 100)}%):</span>
+                <input type="range" id="input_fow_opacity" min="10" max="90" step="5" value="${Math.round((store.getActiveMap()?.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.50) * 100)}" style="width: 75px; accent-color: #00f3ff; cursor: pointer;">
               </div>
               <div style="display: flex; gap: 6px;">
                 <button class="hud-btn hud-btn-xs" id="btn_reset_fow" style="flex: 1; font-size: 9px; padding: 4px;" title="Reiniciar exploración (todo el mapa oscuro)">
@@ -268,7 +268,8 @@ export class LayerManagerHUD {
       fowSlider.oninput = (e) => {
         const val = parseInt(e.target.value, 10);
         if (fowLabel) fowLabel.textContent = `Atenuación Explorada (${val}%):`;
-        store.setFogExploredOpacity(val / 100);
+        // For this scene and everyone at the table (v2.64.0), as in the fog panel of the toolbar.
+        store.updateActiveMap({ fogExploredOpacity: val / 100 });
       };
     }
 

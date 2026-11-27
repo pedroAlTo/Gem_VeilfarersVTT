@@ -1,10 +1,25 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.63.0**.
-Paquete: `VeilFarers_VTT_v2.63.0.zip`.
+Versión actual del VTT: **v2.64.0**.
+Paquete: `VeilFarers_VTT_v2.64.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.64.0] — 2026-11-27
+
+V3 · Visión con límite de día y de noche, degradado y velo de lo explorado por escena
+
+### Visión
+
+- Nada se ve más allá del alcance de visión del token (25 m por defecto). Antes, una zona iluminada se veía a cualquier distancia: con luces grandes el cono llegaba al final del mapa.
+- De noche (Clima al 50 % o más), en lo oscuro cada personaje solo distingue su «visión en la oscuridad» (5 m por defecto, en la ficha del token); lo iluminado lo ve hasta su alcance. De día, o sin ajustar el Clima, ve hasta su alcance. Es el modelo de Foundry VTT (Basic Sight y Light Perception), con la luz limitada al alcance.
+- El cono se degrada con la distancia: nítido cerca del personaje y, al final de su alcance, igual que una zona ya explorada. Nunca queda más oscuro que el velo de lo explorado.
+- Los enemigos que ve el jugador siguen la misma regla.
+
+### Niebla
+
+- El Keeper fija el oscurecimiento de las zonas ya exploradas de cada escena desde el panel del pincel de niebla (o desde Capas tácticas); se aplica a todos en esa escena. Ajustes queda como valor por defecto.
 
 ## [2.63.0] — 2026-11-27
 

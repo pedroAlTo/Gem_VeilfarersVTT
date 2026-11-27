@@ -332,18 +332,21 @@ export class FogOfWarEngine {
     isKeeperGM = false,
     stamp = true,
     darkness = 0,
-    daylight = false
+    night = false
   }) {
     this.resize(mapWidth, mapHeight);
     const fCtx = this.fogCtx;
     const exploredCanvas = this.getExploredCanvas(mapId, mapWidth, mapHeight);
     const expCtx = exploredCanvas.getContext('2d');
-    // Daylight (the scene's darkness under half, Foundry's «global illumination»): a token sees
-    // everything in its line of sight. At night it sees its own vision and whatever a light shows.
+    // Two ranges, as Foundry VTT's detection modes (v2.64.0, user decision): nothing is seen beyond
+    // a viewer's vision range. By day, or with no time set in Clima, it sees everything up to that
+    // range. At night (Clima at 50 % or more) it makes out the dark only up to its dark range, and
+    // lit areas up to its vision range. Up to v2.63 a lit area was seen at any distance (Foundry's
+    // default «Light Perception»): with large lights a cone reached the end of the map.
 
     // Nothing the fog depends on has changed since the last frame: draw the same fog again.
-    const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, daylight ? 1 : 0,
-      ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.preview ? 1 : 0, v.visionRange || 0, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
+    const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, night ? 1 : 0,
+      ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.preview ? 1 : 0, v.visionRange || 0, v.darkRange ?? -1, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
       -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360, l.intensity ?? 0.8, l.fixture ? 1 : 0]),
       -2, ...wallValues(walls)]);
     if (key === this.fogKey && this.fogKeyVersion === this.exploredVersion) {
@@ -354,11 +357,11 @@ export class FogOfWarEngine {
       return this.lastVision;
     }
 
-    // 1. What each viewer sees: its line of sight (walls, facing), lit by daylight, by its own
-    // vision or by a light. Only what is seen is remembered as explored: a light the party has
-    // no line of sight to reveals nothing.
+    // 1. What each viewer sees: its line of sight (walls, facing) up to its vision range, in the
+    // dark up to its dark range at night, and lit areas. Only what is seen is remembered as
+    // explored: a light the party has no line of sight to reveals nothing.
     const sightRange = Math.hypot(mapWidth, mapHeight);
-    const lit = daylight ? [] : (lights || []).map(light => ({
+    const lit = !night ? [] : (lights || []).map(light => ({
       poly: lightingEngine.computeVisibilityPolygon(light.x, light.y, light.radius || 200, walls, light.facingAngle ?? null, light.visionAngle ?? 360),
       x: light.x, y: light.y, radius: light.radius || 200
     })).filter(l => l.poly && l.poly.length >= 3);
@@ -366,9 +369,10 @@ export class FogOfWarEngine {
     for (const viewer of viewers) {
       if (viewer.hidden) continue;
       const own = viewer.visionRange || (viewer.hasLight ? viewer.lightRadius : 360);
+      const dark = night ? Math.max(0, Math.min(own, viewer.darkRange ?? own)) : own;
       const facingAngle = viewer.facingAngle ?? 0;
       const visionAngle = viewer.visionAngle ?? 90;
-      const los = lightingEngine.computeVisibilityPolygon(viewer.x, viewer.y, daylight ? sightRange : Math.max(own, ...lit.map(l => Math.hypot(l.x - viewer.x, l.y - viewer.y) + l.radius), 1), walls, facingAngle, visionAngle);
+      const los = lightingEngine.computeVisibilityPolygon(viewer.x, viewer.y, Math.max(own, 1), walls, facingAngle, visionAngle);
       if (!los || los.length < 3) continue;
       currentVisionPolygons.push(los);
       // Windows half-see-through from this viewer's side dim what lies behind them (v2.29.2).
@@ -380,24 +384,28 @@ export class FogOfWarEngine {
         const quad = windowShadow(w, viewer.x, viewer.y, sightRange * 2);
         if (quad) shadows.push({ quad, keep: t / 100 });
       }
-      visionShapes.push({ los, x: viewer.x, y: viewer.y, own, shadows, preview: !!viewer.preview });
+      visionShapes.push({ los, x: viewer.x, y: viewer.y, own, dark, shadows, preview: !!viewer.preview });
     }
     // The seen area, painted with `paint` (fog: cut out; memory: white).
     // A `preview` viewer (on the Keeper's screen, a token that is not the party's) shows what it sees
     // there and is never remembered as explored: that memory goes to the players.
     const paintSeen = (final, paint, shapes = visionShapes) => {
-      for (const { los, x, y, own, shadows } of shapes) {
+      for (const { los, x, y, own, dark, shadows } of shapes) {
         // Behind a half-see-through window the view is drawn apart and thinned to the window's
         // transparency, then laid on the fog (or the memory) like any other view.
         const target = shadows.length ? this.scratchContext(mapWidth, mapHeight) : final;
         target.save();
         tracePolygon(target, los); target.clip();
-        if (daylight) { target.fillStyle = paint === 'cut' ? 'rgba(0, 0, 0, 1)' : '#ffffff'; target.fillRect(0, 0, mapWidth, mapHeight); }
-        else {
-          // Own vision fades towards the end of its range; a light shows its whole lit area.
-          target.fillStyle = paint === 'cut' ? visionFill(target, x, y, own) : '#ffffff';
-          target.beginPath(); target.arc(x, y, own, 0, Math.PI * 2); target.fill();
-          for (const l of lit) { tracePolygon(target, l.poly); target.fillStyle = paint === 'cut' ? 'rgba(0, 0, 0, 1)' : '#ffffff'; target.fill(); }
+        // What it makes out without light: by day its vision range, fading with distance into the
+        // explored veil; at night its short dark range, which only fades at its edge.
+        if (dark > 0) {
+          target.fillStyle = paint === 'cut' ? visionFill(target, x, y, dark, !night) : '#ffffff';
+          target.beginPath(); target.arc(x, y, dark, 0, Math.PI * 2); target.fill();
+        }
+        // At night, what the lights show, never beyond the vision range (fading at its end too).
+        if (lit.length) {
+          target.beginPath(); target.arc(x, y, own, 0, Math.PI * 2); target.clip();
+          for (const l of lit) { tracePolygon(target, l.poly); target.fillStyle = paint === 'cut' ? visionFill(target, x, y, own, true) : '#ffffff'; target.fill(); }
         }
         target.restore();
         if (target === final) continue;

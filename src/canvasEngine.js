@@ -2971,11 +2971,13 @@ export class CanvasEngine {
           return { x: at.x, y: at.y, radius: t.lightRadius, facingAngle: t.facingAngle, visionAngle: t.visionAngle ?? 90 };
         })],
         darkness,
-        // Day (whole line of sight) only when the Keeper set the scene's time in Clima.
-        daylight: Number.isFinite(map.darkness) && darkness < DAYLIGHT_BELOW,
+        // Night (v2.64.0): in the dark a character makes out only its dark range; lit areas up to its
+        // vision range. By day, or with no time set in Clima, up to its vision range.
+        night: Number.isFinite(map.darkness) && darkness >= DAYLIGHT_BELOW,
         viewers,
         lightingEngine: this.lighting,
-        exploredOpacity: state.fogExploredOpacity ?? 0.50,
+        // Each scene can set its own veil (v2.64.0, the Keeper's fog panel); otherwise Ajustes.
+        exploredOpacity: map.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.50,
         isKeeperGM: isKeeperGM,
         stamp: !this.draggedToken
       });
@@ -3402,152 +3404,60 @@ export class CanvasEngine {
     }
     if (viewers.length === 0) return false;
 
-    // 4. Test if ANY viewer has facing line-of-sight to targetTok
-    for (const viewer of viewers) {
-      if (viewer.hidden) continue;
-      const vx = viewer.x;
-      const vy = viewer.y;
-      const tx = targetTok.x;
-      const ty = targetTok.y;
+    return this.partySees(viewers, targetTok.x, targetTok.y, map);
+  }
 
-      const dist = Math.hypot(tx - vx, ty - vy);
-      const vRange = withRanges(viewer, map).visionRange;
+  // Night (v2.64.0): the Keeper set the scene's time in Clima at 50 % darkness or more. By day, or
+  // with no time set, a character sees up to its vision range.
+  isNight(map) {
+    return Number.isFinite(map?.darkness) && this.sceneDarkness(map, undefined, store.state.fogOfWar !== false) >= DAYLIGHT_BELOW;
+  }
 
-      // Beyond max perception range -> cannot see
-      if (dist > vRange) continue;
-
-      // Vision angle (FOV) test (standard 90° for Veilfarers)
-      const vAngle = viewer.visionAngle ?? 90;
-      if (vAngle < 360) {
-        const fAngle = viewer.facingAngle ?? 0;
-        const angleToTarget = Math.atan2(ty - vy, tx - vx);
-        let diff = angleToTarget - fAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        const halfFov = (vAngle * Math.PI) / 360;
-        if (Math.abs(diff) > halfFov) {
-          // Viewer is not facing this token!
-          continue;
-        }
-      }
-
-      // Line of Sight obstruction test against walls and closed doors
-      let losBlocked = false;
-      for (const wall of (map.walls || [])) {
-        const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        // A window lets the party make out who is behind it from a side clear enough (v2.29.2).
-        if (wallType === 'window' && seeThrough(wall, vx, vy) >= SEE_TOKENS_FROM) continue;
-        if (wallType === 'door' && wall.isOpen) continue; // Open doors do not block LOS
-
-        // Solid walls, closed doors, and secret doors block LOS
-        if (this.checkLineIntersection(vx, vy, tx, ty, wall.x1, wall.y1, wall.x2, wall.y2)) {
-          losBlocked = true;
-          break;
-        }
-      }
-
-      if (!losBlocked) {
-        // At least one player is facing the target with direct LOS!
-        return true;
-      }
-    }
-
-    // 5. A light lets the party see an enemy beyond their own vision range, but only one that a
-    // character is looking at with nothing in between (v2.27.8): a lit room behind a wall, or
-    // behind their back, shows the room, never who is in it.
-    const blocked = (ax, ay, bx, by) => (map.walls || []).some(wall => {
+  // Whether the party sees a point (v2.64.0, user decision; Foundry VTT's detection modes as the
+  // reference): a character facing it with nothing in between and within its vision range; at
+  // night, also within its dark range or where a light shines on it. Up to v2.63 a lit point was
+  // seen at any distance (v2.27.8), so a large light made a cone without end.
+  partySees(viewers, x, y, map) {
+    const walls = map.walls || [];
+    const blocked = (ax, ay, bx, by, forLight = false) => walls.some(wall => {
       const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-      if ((wallType === 'window' && seeThrough(wall, ax, ay) >= SEE_TOKENS_FROM) || (wallType === 'door' && wall.isOpen)) return false;
+      if (wallType === 'door' && wall.isOpen) return false; // open doors do not block
+      // A window lets light through, and lets the party make out who is behind it from a side
+      // clear enough (v2.29.2).
+      if (wallType === 'window' && (forLight || seeThrough(wall, ax, ay) >= SEE_TOKENS_FROM)) return false;
       return this.checkLineIntersection(ax, ay, bx, by, wall.x1, wall.y1, wall.x2, wall.y2);
     });
-    const facing = (v, x, y) => {
-      const vAngle = v.visionAngle ?? 90;
-      if (vAngle >= 360) return true;
-      let diff = Math.atan2(y - v.y, x - v.x) - (v.facingAngle ?? 0);
+    const within = (cx, cy, facing, angle, px, py) => {
+      if (!(angle < 360)) return true;
+      let diff = Math.atan2(py - cy, px - cx) - (facing ?? 0);
       while (diff < -Math.PI) diff += Math.PI * 2;
       while (diff > Math.PI) diff -= Math.PI * 2;
-      return Math.abs(diff) <= (vAngle * Math.PI) / 360;
+      return Math.abs(diff) <= (angle * Math.PI) / 360;
     };
-    const watched = viewers.some(v => !v.hidden && facing(v, targetTok.x, targetTok.y) && !blocked(v.x, v.y, targetTok.x, targetTok.y));
-    if (!watched) return false;
-    const fullMapId = `${state.campaignId}:${map.id}`;
-    for (const light of (map.lights || [])) {
-      if (light.enabled === false || light.off) continue; // a light that is off shows nobody
-      if (!this.fog.isPointExplored(light.x, light.y, fullMapId)) continue;
-
-      const lx = light.x;
-      const ly = light.y;
-      const tx = targetTok.x;
-      const ty = targetTok.y;
-      const dist = Math.hypot(tx - lx, ty - ly);
-      const lRadius = light.radius || 200;
-      if (dist > lRadius) continue;
-
-      const lAngle = light.visionAngle ?? 360;
-      if (lAngle < 360) {
-        const fAngle = light.facingAngle ?? 0;
-        const angleToTarget = Math.atan2(ty - ly, tx - lx);
-        let diff = angleToTarget - fAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        const halfFov = (lAngle * Math.PI) / 360;
-        if (Math.abs(diff) > halfFov) continue;
-      }
-
-      let losBlocked = false;
-      for (const wall of (map.walls || [])) {
-        const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        if (wallType === 'window') continue;
-        if (wallType === 'door' && wall.isOpen) continue;
-        if (this.checkLineIntersection(lx, ly, tx, ty, wall.x1, wall.y1, wall.x2, wall.y2)) {
-          losBlocked = true;
-          break;
-        }
-      }
-
-      if (!losBlocked) {
-        return true;
-      }
+    const night = this.isNight(map);
+    // At night: the map's lights that are on and the party's own lights (an enemy's lamp is the
+    // Keeper's only, v2.29.2).
+    const lights = !night ? [] : [
+      ...(map.lights || []).filter(l => l.enabled !== false && !l.off).map(l => ({ x: l.x, y: l.y, radius: l.radius || 200, facing: l.facingAngle, angle: l.visionAngle ?? 360 })),
+      ...this.visionTokens().filter(t => partyEyes(t) && t.hasLight && !t.hidden && t.lightRadius > 0).map(t => ({ x: t.x, y: t.y, radius: t.lightRadius, facing: t.facingAngle, angle: t.visionAngle ?? 90 })),
+    ];
+    const lit = () => lights.some(l => Math.hypot(x - l.x, y - l.y) <= l.radius && within(l.x, l.y, l.facing, l.angle, x, y) && !blocked(l.x, l.y, x, y, true));
+    for (const viewer of viewers) {
+      if (viewer.hidden) continue;
+      const { visionRange, darkRange } = withRanges(viewer, map);
+      const dist = Math.hypot(x - viewer.x, y - viewer.y);
+      if (dist > visionRange) continue;
+      if (!within(viewer.x, viewer.y, viewer.facingAngle, viewer.visionAngle ?? 90, x, y)) continue;
+      if (blocked(viewer.x, viewer.y, x, y)) continue;
+      if (!night || dist <= darkRange || lit()) return true;
     }
-
     return false;
   }
 
   // --- Check if a point is within active vision/light of any player token ---
   isPointInPlayerVision(x, y, allTokens, map) {
     if (store.sessionRole === 'player') allTokens = this.visionTokens();
-    let viewers = allTokens.filter(partyEyes);
-    for (const viewer of viewers) {
-      if (viewer.hidden) continue;
-      const vx = viewer.x;
-      const vy = viewer.y;
-      const dist = Math.hypot(x - vx, y - vy);
-      const vRange = withRanges(viewer, map).visionRange;
-      if (dist > vRange) continue;
-
-      const vAngle = viewer.visionAngle ?? 90;
-      if (vAngle < 360) {
-        const fAngle = viewer.facingAngle ?? 0;
-        const angleToTarget = Math.atan2(y - vy, x - vx);
-        let diff = angleToTarget - fAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        if (Math.abs(diff) > (vAngle * Math.PI) / 360) continue;
-      }
-
-      let losBlocked = false;
-      for (const wall of (map.walls || [])) {
-        const wallType = wall.wallType || (wall.isDoor ? 'door' : (wall.isWindow ? 'window' : 'wall'));
-        if (wallType === 'window' && seeThrough(wall, vx, vy) >= SEE_TOKENS_FROM) continue;
-        if (wallType === 'door' && wall.isOpen) continue;
-        if (this.checkLineIntersection(vx, vy, x, y, wall.x1, wall.y1, wall.x2, wall.y2)) {
-          losBlocked = true;
-          break;
-        }
-      }
-      if (!losBlocked) return true;
-    }
-    return false;
+    return this.partySees(allTokens.filter(partyEyes), x, y, map);
   }
 
   // --- Distance & Projection from Point to Segment Helper ---

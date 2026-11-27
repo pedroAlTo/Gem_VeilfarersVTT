@@ -474,3 +474,22 @@ test('cloud account & preferences: null-safe parameters', async () => {
   assert.equal(cleaned.unknownField, undefined);
   assert.ok(preferenceKeys.includes('fogExploredOpacity'));
 });
+
+test('what the party sees: nothing beyond the vision range; at night, the dark only up to the dark range (v2.64.0)', async () => {
+  const { CanvasEngine } = await import('../src/canvasEngine.js');
+  const proto = CanvasEngine.prototype;
+  // 64 px squares of 2 m: 25 m of vision = 800 px, 5 m in the dark = 160 px.
+  const map = { id: 'm', gridSize: 64, gridScaleMeters: 2, walls: [], lights: [] };
+  const hero = { id: 'h', isPlayer: true, x: 0, y: 0, facingAngle: 0, visionAngle: 90 };
+  const sees = (x, y, { night = false, lights = [], walls = [] } = {}) => proto.partySees.call({ isNight: () => night, visionTokens: () => [], checkLineIntersection: proto.checkLineIntersection }, [hero], x, y, { ...map, lights, walls });
+  assert.equal(sees(700, 0), true, 'by day, up to the vision range');
+  assert.equal(sees(900, 0), false, 'never beyond it, even by day');
+  assert.equal(sees(0, 300), false, 'outside the cone');
+  assert.equal(sees(120, 0, { night: true }), true, 'at night, close by in the dark');
+  assert.equal(sees(400, 0, { night: true }), false, 'at night, not farther in the dark');
+  const lamp = { x: 450, y: 0, radius: 200 };
+  assert.equal(sees(400, 0, { night: true, lights: [lamp] }), true, 'a lit spot within the vision range');
+  assert.equal(sees(1200, 0, { night: true, lights: [{ x: 1200, y: 0, radius: 5000 }] }), false, 'a large light does not stretch the sight past its range');
+  assert.equal(sees(400, 0, { night: true, lights: [{ ...lamp, off: true }] }), false, 'a light that is off shows nothing');
+  assert.equal(sees(400, 0, { night: true, lights: [lamp], walls: [{ x1: 300, y1: -50, x2: 300, y2: 50 }] }), false, 'nor through a wall');
+});

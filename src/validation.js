@@ -90,6 +90,8 @@ export function validateCampaign(data) {
       typeof m.name === 'string' && typeof m.imageUrl === 'string' && finite(m.gridSize, 1, 1000),
       'Invalid map name, image or grid.'
     );
+    // The explored veil of this scene (v2.64.0), set by the Keeper for everyone.
+    if (m.fogExploredOpacity != null) assert(finite(m.fogExploredOpacity, 0.05, 0.95), 'Invalid explored fog opacity.');
     for (const k of ['walls', 'lights', 'effects', 'waterZones', 'switches']) {
       assert(
         m[k] === undefined ||
