@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.64.0**.
-Paquete: `VeilFarers_VTT_v2.64.0.zip`.
+Versión actual del VTT: **v2.64.1**.
+Paquete: `VeilFarers_VTT_v2.64.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.64.1] — 2026-11-27
+
+V3 · Lo que ven los PNJ queda explorado en la pantalla del Keeper
+
+### Niebla
+
+- En la pantalla del Keeper, lo que ve un PNJ o un enemigo queda con el velo de lo explorado cuando deja de mirarlo (antes volvía a negro). Es una memoria solo del Keeper: no se guarda en la exploración de la mesa ni llega a los jugadores, que siguen explorando solo con los personajes del grupo.
+- Reiniciar la niebla y el pincel «Oscurecer» también la borran.
 
 ## [2.64.0] — 2026-11-27
 

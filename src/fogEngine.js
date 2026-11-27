@@ -52,6 +52,9 @@ export class FogOfWarEngine {
 
     // Persistent exploration maps: mapId -> HTMLCanvasElement (white = visited)
     this.exploredCanvases = new Map();
+    // What the Keeper's NPCs and enemies have seen (v2.64.1): shown on the Keeper's screen with the
+    // explored veil, never saved for the table nor sent to the players.
+    this.keeperCanvases = new Map();
 
     // Default explored shroud opacity (88% black transparency)
     this.defaultExploredOpacity = 0.88;
@@ -139,12 +142,20 @@ export class FogOfWarEngine {
     return ctx;
   }
   resetExploration(mapId) {
-    const canvas = this.exploredCanvases.get(mapId);
-    if (canvas) {
+    for (const canvas of [this.exploredCanvases.get(mapId), this.keeperCanvases.get(mapId)]) {
+      if (!canvas) continue;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     this.exploredVersion++;
+  }
+
+  // The Keeper's own memory of what the NPCs saw, the size of the map.
+  keeperCanvas(mapId, width, height) {
+    let canvas = this.keeperCanvases.get(mapId);
+    if (!canvas) { canvas = document.createElement('canvas'); this.keeperCanvases.set(mapId, canvas); }
+    if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+    return canvas;
   }
 
   /**
@@ -246,12 +257,16 @@ export class FogOfWarEngine {
   // zonas descubiertas para volver a oscurecerlas»): a circle of the memory is forgotten (or, with
   // `reveal`, explored).
   brushExploration(mapId, mapWidth, mapHeight, x, y, radius, reveal = false) {
-    const ctx = this.getExploredCanvas(mapId, mapWidth, mapHeight).getContext('2d');
-    ctx.save();
-    ctx.globalCompositeOperation = reveal ? 'source-over' : 'destination-out';
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+    const memories = [this.getExploredCanvas(mapId, mapWidth, mapHeight)];
+    if (!reveal && this.keeperCanvases.has(mapId)) memories.push(this.keeperCanvases.get(mapId)); // darkening forgets both
+    for (const canvas of memories) {
+      const ctx = canvas.getContext('2d');
+      ctx.save();
+      ctx.globalCompositeOperation = reveal ? 'source-over' : 'destination-out';
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
     this.exploredVersion++;
   }
 
@@ -332,7 +347,8 @@ export class FogOfWarEngine {
     isKeeperGM = false,
     stamp = true,
     darkness = 0,
-    night = false
+    night = false,
+    keeperMemory = false
   }) {
     this.resize(mapWidth, mapHeight);
     const fCtx = this.fogCtx;
@@ -345,7 +361,7 @@ export class FogOfWarEngine {
     // default «Light Perception»): with large lights a cone reached the end of the map.
 
     // Nothing the fog depends on has changed since the last frame: draw the same fog again.
-    const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, night ? 1 : 0,
+    const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, night ? 1 : 0, keeperMemory ? 1 : 0,
       ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.preview ? 1 : 0, v.visionRange || 0, v.darkRange ?? -1, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
       -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360, l.intensity ?? 0.8, l.fixture ? 1 : 0]),
       -2, ...wallValues(walls)]);
@@ -427,6 +443,15 @@ export class FogOfWarEngine {
       this.exploredVersion++;
       paintSeen(expCtx, '#ffffff', explorers);
     }
+    // On the Keeper's screen what an NPC has seen stays with the explored veil (v2.64.1, user report:
+    // «cuando miro una zona no descubierta y la descubro, luego vuelve a ser opaca 100 %»); it is
+    // kept apart, so it never reaches the table's exploration nor the players.
+    const previews = visionShapes.filter(shape => shape.preview);
+    const keeperMemoryCanvas = keeperMemory ? this.keeperCanvas(mapId, mapWidth, mapHeight) : null;
+    if (stamp && keeperMemoryCanvas && previews.length) {
+      this.exploredVersion++;
+      paintSeen(keeperMemoryCanvas.getContext('2d'), '#ffffff', previews);
+    }
 
     // 2. Prepare fog canvas
     fCtx.clearRect(0, 0, mapWidth, mapHeight);
@@ -438,6 +463,7 @@ export class FogOfWarEngine {
     // 3. Cut out explored areas from the 100% darkness
     fCtx.globalCompositeOperation = 'destination-out';
     fCtx.drawImage(exploredCanvas, 0, 0);
+    if (keeperMemoryCanvas) fCtx.drawImage(keeperMemoryCanvas, 0, 0);
 
     // 4. Fill behind the cutouts with the Explored Shroud opacity (default 50% darkness, adjustable)
     // Explored areas outside current FOV and outside lights will have this attenuation

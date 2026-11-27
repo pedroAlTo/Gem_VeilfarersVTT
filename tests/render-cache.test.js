@@ -88,3 +88,18 @@ test('the saved exploration uses cells that follow the map size (v2.63.0)', asyn
   assert.equal(explorationKey({ cols: 2, rows: 3, bits: 'AA==' }), '2x3:AA==');
   assert.equal(explorationKey('all'), 'all');
 });
+
+test('on the Keeper’s screen what an NPC saw stays explored, apart from the table’s memory (v2.64.1)', () => {
+  const fog = new FogOfWarEngine(), lighting = new LightingEngine();
+  const table = fog.getExploredCanvas('km', 800, 600).getContext('2d');
+  let tableFills = 0; table.fill = () => { tableFills++; };
+  const npc = { x: 400, y: 300, visionRange: 200, visionAngle: 90, facingAngle: 0, preview: true };
+  fog.renderFogOfWar({ ctx: context(), mapWidth: 800, mapHeight: 600, mapId: 'km', walls: [], lights: [], viewers: [npc], lightingEngine: lighting, exploredOpacity: 0.5, keeperMemory: true });
+  const keeper = fog.keeperCanvases.get('km').getContext('2d');
+  let keeperFills = 0; keeper.fill = () => { keeperFills++; };
+  fog.renderFogOfWar({ ctx: context(), mapWidth: 800, mapHeight: 600, mapId: 'km', walls: [], lights: [], viewers: [{ ...npc, facingAngle: Math.PI }], lightingEngine: lighting, exploredOpacity: 0.5, keeperMemory: true });
+  assert.ok(keeperFills > 0, 'the NPC’s sight is remembered for the Keeper');
+  assert.equal(tableFills, 0, 'and never in the table’s exploration (sent to the players)');
+  let cleared = 0; keeper.clearRect = () => { cleared++; };
+  fog.resetExploration('km'); assert.equal(cleared, 1, 'a reset forgets it too');
+});

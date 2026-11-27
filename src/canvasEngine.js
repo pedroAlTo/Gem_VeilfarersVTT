@@ -2974,6 +2974,8 @@ export class CanvasEngine {
         // Night (v2.64.0): in the dark a character makes out only its dark range; lit areas up to its
         // vision range. By day, or with no time set in Clima, up to its vision range.
         night: Number.isFinite(map.darkness) && darkness >= DAYLIGHT_BELOW,
+        // The Keeper's screen also remembers what the NPCs saw (never sent to the players).
+        keeperMemory: state.userRole === 'keeper' && store.sessionRole !== 'player',
         viewers,
         lightingEngine: this.lighting,
         // Each scene can set its own veil (v2.64.0, the Keeper's fog panel); otherwise Ajustes.

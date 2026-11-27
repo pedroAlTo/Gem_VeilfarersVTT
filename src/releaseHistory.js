@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.64.1', date: '2026-11-27', title: 'V3 · Lo que ven los PNJ queda explorado en la pantalla del Keeper',
+    sections: [
+      { title: 'Niebla', items: [
+        'En la pantalla del Keeper, lo que ve un PNJ o un enemigo queda con el velo de lo explorado cuando deja de mirarlo (antes volvía a negro). Es una memoria solo del Keeper: no se guarda en la exploración de la mesa ni llega a los jugadores, que siguen explorando solo con los personajes del grupo.',
+        'Reiniciar la niebla y el pincel «Oscurecer» también la borran.',
+      ] },
+    ],
+  },
+  {
     version: '2.64.0', date: '2026-11-27', title: 'V3 · Visión con límite de día y de noche, degradado y velo de lo explorado por escena',
     sections: [
       { title: 'Visión', items: [
