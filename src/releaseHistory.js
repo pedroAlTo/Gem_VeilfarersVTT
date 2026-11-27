@@ -1,6 +1,20 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.62.5', date: '2026-11-27', title: 'V3 · Personajes de Hearts in the Void como retratos',
+    sections: [
+      { title: 'Retratos', items: [
+        'Los personajes de Hearts in the Void que aporta el usuario son retratos de token: cada uno aparece también entre los de su ascendencia (por ejemplo, Rourke y Brix entre los Kryx; Lyra, Korren y Parel entre los Kryllian; Threnody y Madame Silk entre los Rift Spinner).',
+        'Dos colecciones nuevas en la selección de retrato: «Pregenerados · Hearts in the Void» (los diez pregenerados) y «PNJ», que ahora reúne a todos los personajes secundarios (Zara, Korren, Thex, Brix, Alexei con y sin uniforme de gala, Silk, Scalpel, Maya, Nyx, Maximus y Lydia, el oficial de la Casa Joric, Orla Venn, un piloto de carga, Parel y Blue).',
+        'Los pregenerados llevan su retrato: al elegir uno en «Elige tu personaje» su token sale ya con su cara, y la lista muestra la cara de cada pregenerado.',
+      ] },
+      { title: 'Hearts in the Void', items: [
+        'Los tokens de los PNJ llevan el retrato de su personaje y su dossier del Keeper muestra la imagen completa.',
+        'Tres PNJ nuevos con su token y su dossier: el Lord Comandante Maximus Joric, Lydia Valerius y un oficial de recuperación de la Casa Joric. El dossier «Dos imágenes de Alexei» muestra la imagen de Alexei con uniforme de gala.',
+      ] },
+    ],
+  },
+  {
     version: '2.62.4', date: '2026-11-27', title: 'V3 · Retratos de PNJ y más arte de Hearts in the Void',
     sections: [
       { title: 'Retratos', items: [

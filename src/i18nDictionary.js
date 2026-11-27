@@ -2088,6 +2088,12 @@ export const PAIRS = [
   ["El reloj aparece solo en las escenas marcadas (para el Keeper y, si es visible, para los jugadores).", "The clock appears only on the ticked scenes (for the Keeper and, when visible, for the players)."],
   ["Marca al menos una escena o «Todas las escenas».", "Tick at least one scene or “All scenes”."],
   ["(activa)", "(active)"],
+  // Hearts in the Void portraits (v2.62.5)
+  ["Pregenerados · Hearts in the Void", "Pregenerated · Hearts in the Void"],
+  ["Alexei Joric (uniforme de gala)", "Alexei Joric (dress uniform)"],
+  ["Lord Comandante Maximus Joric", "Lord Commander Maximus Joric"],
+  ["Oficial de recuperación Joric", "Joric recovery officer"],
+  ["Piloto de carga", "Cargo pilot"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

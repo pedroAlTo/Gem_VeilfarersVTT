@@ -153,7 +153,8 @@ test('the Keeper can pick a Refuge portrait, preview it and keep it when the tok
   document.querySelector('#sheet_portrait_picker').click();
   const picker = document.querySelector('.portrait-picker'), collection = picker.querySelector('[data-collection]');
   collection.value = 'rift_spinner'; collection.dispatchEvent(new Event('change'));
-  assert.equal(picker.querySelectorAll('.portrait-choice').length, 5);
+  // Five crew portraits and, since v2.62.5, the Rift Spinners the user drew (Threnody, Madame Silk).
+  assert.equal(picker.querySelectorAll('.portrait-choice').length, 7);
   assert.ok(picker.querySelector('.portrait-choice img').getAttribute('src').includes('rift_spinner'));
   collection.value = 'bestiary'; collection.dispatchEvent(new Event('change'));
   const choices = [...picker.querySelectorAll('.portrait-choice')];

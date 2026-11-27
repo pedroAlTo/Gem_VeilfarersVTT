@@ -62,6 +62,10 @@ export const PREGENS = [
     wound: 'Threnody saved the person they loved by allowing a stranger to take the same place in the pattern.', anchor: 'The unfinished amber sculpture.' },
 ];
 
+// Their portraits (v2.62.5, art provided by the user): the token starts with it.
+const PORTRAIT_FILES = { spark: 'spark', wall: 'marcus', whisper: 'whisper', lyra: 'lyra', flash: 'flash', shadow: 'shadow', kel: 'kel', senna: 'senna', rourke: 'rourke', threnody: 'threnody' };
+export const pregenPortrait = pregen => PORTRAIT_FILES[pregen?.id] ? `/assets/tokens/hiv/${PORTRAIT_FILES[pregen.id]}.webp` : '';
+
 // The creator's choices for one pregen.
 export function pregenState(pregen) {
   return { ...freshState(), ancestry: pregen.ancestry, subStrain: pregen.subStrain || null,

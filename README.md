@@ -1,8 +1,8 @@
-# VeilFarers VTT · v2.62.4
+# VeilFarers VTT · v2.62.5
 
 A local-first virtual tabletop for Veilfarers with scene travel, a player roster, shared drones, character creation and level-up, character JSON import, optional Firebase accounts and persistent rooms, and 3D Hope & Fear dice.
 
-Current release: **v2.62.4**. Download package: **VeilFarers_VTT_v2.62.4.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
+Current release: **v2.62.5**. Download package: **VeilFarers_VTT_v2.62.5.zip**. Open **AYUDA** in the top menu for the installed version, quick guide and changelog. The application version is independent of Corebook 12.06. [CHANGELOG.md](CHANGELOG.md) records numbered releases; [RELEASE_ORBITAL.md](RELEASE_ORBITAL.md) retains the original technical history.
 
 ## Run locally
 

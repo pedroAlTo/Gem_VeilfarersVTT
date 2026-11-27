@@ -6,16 +6,47 @@ export const ancestryNames = {
   human: 'Human', kryllian: 'Kryllian', kryx: 'Kryx', rift_spinner: 'Rift Spinner', synthetic: 'Synthetic',
 };
 const labels = { m: 'Masculino', f: 'Femenino', n: 'Neutro' };
-// Portraits of minor characters the user provided (v2.62.4, «algunos son PNJ no importantes, pero
-// ponlos como opciones de retrato»): any token can use them. Thumbnails by scripts/token-thumbs.py.
-export const NPC_PORTRAITS = [
-  ['parel-dho.webp', 'Parel Dho'],
-  ['blue-casta.webp', 'Blue Casta'],
-].map(([file, name]) => ({ name, url: '/assets/tokens/npc/' + file }));
+// The characters the user provided (v2.62.4–v2.62.5, «úsalos también para crear versiones de retrato
+// para tokens donde corresponda; si es un kryx, añade el retrato como opción de Kryx»): any token can
+// use them; each also appears with the portraits of its ancestry. [file, name, ancestry, group].
+// Thumbnails by scripts/token-thumbs.py.
+const CHARACTER_PORTRAITS = [
+  ['hiv/spark.webp', '“Spark” Meridian Kess', 'human', 'pregens'],
+  ['hiv/marcus.webp', 'Marcus “Wall” Steele', 'human', 'pregens'],
+  ['hiv/whisper.webp', 'Whisper-of-Ancient-Winds', 'ethereal', 'pregens'],
+  ['hiv/lyra.webp', 'Dr. Lyra Voss', 'kryllian', 'pregens'],
+  ['hiv/flash.webp', '“Flash” Kira Tal-Ven', 'celestiari', 'pregens'],
+  ['hiv/shadow.webp', '“Shadow” Val Corrigan', 'synthetic', 'pregens'],
+  ['hiv/kel.webp', 'Kel of the Hollow Channel', 'ailuran', 'pregens'],
+  ['hiv/senna.webp', 'Senna of the Quiet Grove', 'bloomstrider', 'pregens'],
+  ['hiv/rourke.webp', 'Rourke Ashfang', 'kryx', 'pregens'],
+  ['hiv/threnody.webp', 'Threnody-in-Amber', 'rift_spinner', 'pregens'],
+  ['hiv/zara.webp', 'Zara “Starwind” Kaine', 'human', 'npc'],
+  ['hiv/korren.webp', 'Korren “Iron Hammer” Vex', 'kryllian', 'npc'],
+  ['hiv/thex.webp', 'Thex Vain-Glory', 'ethereal', 'npc'],
+  ['hiv/brix.webp', 'Brix “Coal-Heart” Stonehammer', 'kryx', 'npc'],
+  ['hiv/alexei-civil.webp', 'Alexei Joric', 'human', 'npc'],
+  ['hiv/alexei.webp', 'Alexei Joric (uniforme de gala)', 'human', 'npc'],
+  ['hiv/silk.webp', 'Madame Silk', 'rift_spinner', 'npc'],
+  ['hiv/scalpel.webp', '“Scalpel” Kaine', 'bloomstrider', 'npc'],
+  ['hiv/maya.webp', 'Maya Santos', 'human', 'npc'],
+  ['hiv/nyx.webp', 'Nyx of the Last Account', 'ailuran', 'npc'],
+  ['hiv/maximus-joric.webp', 'Lord Comandante Maximus Joric', 'human', 'npc'],
+  ['hiv/lydia-valerius.webp', 'Lydia Valerius', 'human', 'npc'],
+  ['hiv/joric-officer.webp', 'Oficial de recuperación Joric', 'human', 'npc'],
+  ['hiv/orla-venn.webp', 'Orla Venn', 'human', 'npc'],
+  ['hiv/pilot.webp', 'Piloto de carga', 'human', 'npc'],
+  ['npc/parel-dho.webp', 'Parel Dho', 'kryllian', 'npc'],
+  ['npc/blue-casta.webp', 'Blue Casta', 'celestiari', 'npc'],
+].map(([file, name, ancestry, group]) => ({ name, url: '/assets/tokens/' + file, ancestry, group }));
+export const NPC_PORTRAITS = CHARACTER_PORTRAITS.filter(p => p.group === 'npc').map(({ name, url }) => ({ name, url }));
+export const PREGEN_PORTRAITS = CHARACTER_PORTRAITS.filter(p => p.group === 'pregens').map(({ name, url }) => ({ name, url }));
+const ancestryCharacters = ancestry => CHARACTER_PORTRAITS.filter(p => p.ancestry === ancestry).map(({ name, url }) => ({ name, url }));
 export function portraitChoices(collection, cls = '') {
   if (collection === 'bestiary-2') return TIER_TWO_PORTRAITS;
   if (collection === 'bestiary') return TIER_ONE_PORTRAITS;
   if (collection === 'npc') return NPC_PORTRAITS;
+  if (collection === 'pregens') return PREGEN_PORTRAITS;
   if (collection === 'crew') return [
     ['captain_harker.jpg', 'Capt. Harker'], ['pilot_vea.jpg', 'Vea Kaelen'],
     ['engineer_he09.jpg', 'HE-09'], ['void_stalker.jpg', 'Void Stalker'],
@@ -24,13 +55,13 @@ export function portraitChoices(collection, cls = '') {
   if (TOKEN_CLASSES.includes(cls)) return PORTRAIT_GENDERS.map(gender => ({
     name: labels[gender], url: classPortraitPath(collection, cls, gender),
   }));
-  return [['f', 'soldier'], ['m', 'soldier'], ['f', 'pilot'], ['m', 'pilot'], ['n', '']].map(([gender, role]) => ({
+  return [...[['f', 'soldier'], ['m', 'soldier'], ['f', 'pilot'], ['m', 'pilot'], ['n', '']].map(([gender, role]) => ({
     name: labels[gender] + (role === 'soldier' ? ' · Campo' : role ? ' · Estación' : ''),
     url: crewPortraitPath(collection, gender, role),
-  }));
+  })), ...ancestryCharacters(collection)];
 }
 const presets = new Map();
-for (const collection of ['bestiary', 'bestiary-2', 'crew', 'npc', ...ANCESTRY_IDS]) {
+for (const collection of ['bestiary', 'bestiary-2', 'crew', ...ANCESTRY_IDS, 'pregens', 'npc']) {
   const classes = ANCESTRY_IDS.includes(collection) ? ['', ...TOKEN_CLASSES] : [''];
   for (const cls of classes) for (const { url } of portraitChoices(collection, cls)) presets.set(url, { collection, cls });
 }

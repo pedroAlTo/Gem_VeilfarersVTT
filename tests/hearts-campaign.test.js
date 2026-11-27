@@ -166,10 +166,10 @@ test('the room’s clocks live on their plates and the user’s art is linked (v
 test('the user’s minor characters are portrait options, and Parel Dho and Blue Casta wear them (v2.62.4)', async () => {
   const { portraitChoices, isPresetPortrait, isPlayerPortrait, presetLocation } = await import('../src/portraitCatalog.js');
   const npc = portraitChoices('npc');
-  assert.deepEqual(npc.map(p => p.name), ['Parel Dho', 'Blue Casta']);
+  assert.ok(['Parel Dho', 'Blue Casta', 'Zara “Starwind” Kaine', 'Lydia Valerius'].every(name => npc.some(p => p.name === name)));
   for (const { url } of npc) {
     assert.ok(isPresetPortrait(url) && isPlayerPortrait(url), url);
-    assert.equal(presetLocation(url).collection, 'npc');
+    assert.ok(['npc', 'pregens'].includes(presetLocation(url).collection) || presetLocation(url).cls === '');
     assert.ok(readFileSync(new URL('../public' + url, import.meta.url)).length > 10000, url);
   }
   const token = name => file.tokens.find(t => t.name === name);
@@ -178,4 +178,28 @@ test('the user’s minor characters are portrait options, and Parel Dho and Blue
   assert.equal(file.handouts.find(h => h.id === 'hv_npc_parel').imageUrl, '/assets/tokens/npc/parel-dho.webp');
   const picker = readFileSync(new URL('../src/portraitPicker.js', import.meta.url), 'utf8');
   assert.match(picker, /\['npc', 'PNJ'\]/);
+});
+
+test('the user’s characters are portrait options of their ancestry, the pregens wear theirs (v2.62.5)', async () => {
+  const { portraitChoices, PREGEN_PORTRAITS } = await import('../src/portraitCatalog.js');
+  const names = ancestry => portraitChoices(ancestry).map(p => p.name);
+  assert.ok(names('kryx').includes('Rourke Ashfang') && names('kryx').includes('Brix “Coal-Heart” Stonehammer'), 'Kryx');
+  assert.ok(names('kryllian').includes('Dr. Lyra Voss') && names('kryllian').includes('Korren “Iron Hammer” Vex') && names('kryllian').includes('Parel Dho'));
+  assert.ok(names('rift_spinner').includes('Madame Silk') && names('ailuran').includes('Nyx of the Last Account') && names('ethereal').includes('Thex Vain-Glory'));
+  assert.equal(portraitChoices('kryx', 'soldier').length, 3, 'a class filter keeps its own three portraits');
+  assert.equal(PREGEN_PORTRAITS.length, 10);
+  for (const { url } of PREGEN_PORTRAITS) assert.ok(readFileSync(new URL('../public' + url, import.meta.url)).length > 10000, url);
+  const { PREGENS, pregenPortrait } = await import('../src/pregens.js');
+  assert.ok(PREGENS.every(p => pregenPortrait(p).startsWith('/assets/tokens/hiv/')));
+  const { pregenToken } = await import('../src/playerActionBar.js');
+  const rourke = await pregenToken('rourke');
+  assert.equal(rourke.avatarUrl, '/assets/tokens/hiv/rourke.webp');
+  assert.equal(rourke.portraitOverride, true);
+  // The room: the people wear their portraits; the Keeper’s dossier shows the full figure.
+  const token = name => file.tokens.find(t => t.name === name);
+  assert.equal(token('Zara “Starwind” Kaine').avatarUrl, '/assets/tokens/hiv/zara.webp');
+  assert.equal(token('Alexei Joric').avatarUrl, '/assets/tokens/hiv/alexei-civil.webp');
+  assert.ok(token('Lord Comandante Maximus Joric') && token('Lydia Valerius') && token('Oficial de recuperación Joric'));
+  assert.equal(file.handouts.find(h => h.id === 'hv_npc_zara').imageUrl, '/campaigns/hearts-in-the-void/characters/zara.webp');
+  assert.equal(file.handouts.find(h => h.id === 'hv_p_portraits').imageUrl, '/campaigns/hearts-in-the-void/characters/alexei.webp');
 });

@@ -1,10 +1,25 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.62.4**.
-Paquete: `VeilFarers_VTT_v2.62.4.zip`.
+Versión actual del VTT: **v2.62.5**.
+Paquete: `VeilFarers_VTT_v2.62.5.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.62.5] — 2026-11-27
+
+V3 · Personajes de Hearts in the Void como retratos
+
+### Retratos
+
+- Los personajes de Hearts in the Void que aporta el usuario son retratos de token: cada uno aparece también entre los de su ascendencia (por ejemplo, Rourke y Brix entre los Kryx; Lyra, Korren y Parel entre los Kryllian; Threnody y Madame Silk entre los Rift Spinner).
+- Dos colecciones nuevas en la selección de retrato: «Pregenerados · Hearts in the Void» (los diez pregenerados) y «PNJ», que ahora reúne a todos los personajes secundarios (Zara, Korren, Thex, Brix, Alexei con y sin uniforme de gala, Silk, Scalpel, Maya, Nyx, Maximus y Lydia, el oficial de la Casa Joric, Orla Venn, un piloto de carga, Parel y Blue).
+- Los pregenerados llevan su retrato: al elegir uno en «Elige tu personaje» su token sale ya con su cara, y la lista muestra la cara de cada pregenerado.
+
+### Hearts in the Void
+
+- Los tokens de los PNJ llevan el retrato de su personaje y su dossier del Keeper muestra la imagen completa.
+- Tres PNJ nuevos con su token y su dossier: el Lord Comandante Maximus Joric, Lydia Valerius y un oficial de recuperación de la Casa Joric. El dossier «Dos imágenes de Alexei» muestra la imagen de Alexei con uniforme de gala.
 
 ## [2.62.4] — 2026-11-27
 
