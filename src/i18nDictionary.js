@@ -2106,6 +2106,14 @@ export const PAIRS = [
   ["PARA LOS JUGADORES", "FOR THE PLAYERS"],
   ["🔒 SOLO PARA KEEPER", "🔒 KEEPER ONLY"],
   ["⟳ ACTUALIZAR MÓDULO", "⟳ UPDATE MODULE"],
+  // Module notice in the dossier list (v2.64.5)
+  ["tiene contenido nuevo para esta partida:", "has new content for this game:"],
+  ["dossieres con su versión actual: imagen, parte pública y «Solo para Keeper»", "dossiers with their current version: image, public part and «Keeper only»"],
+  ["dossieres nuevos", "new dossiers"],
+  ["PNJ con retrato o descripción al día", "NPCs with an updated portrait or description"],
+  ["PNJ nuevos en la reserva", "new NPCs in the reserve"],
+  ["Niebla de guerra activada", "Fog of war turned on"],
+  ["Ahora no", "Not now"],
   ["Trae las imágenes, los dossieres y los PNJ nuevos de Hearts in the Void sin tocar tus mapas, posiciones ni relojes", "Brings the new images, dossiers and NPCs of Hearts in the Void without touching your maps, positions or clocks"],
   ["Alcance de visión (m)", "Vision range (m)"],
   ["Radio de vibración (m)", "Vibration radius (m)"],
@@ -2387,4 +2395,5 @@ export const PATTERNS = [
   ["Escenas del reloj: {_a}", "Clock scenes: {_a}"],
   ["{_n} escenas", "{_n} scenes"],
   ["EN OTRAS ESCENAS · {_n}", "ON OTHER SCENES · {_n}"],
+  ["{_a}: {_n} dossieres con su imagen.", "{_a}: {_n} dossiers with their image."],
 ];

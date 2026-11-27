@@ -8,7 +8,21 @@ import { store } from './state.js';
 import { network } from './networkManager.js';
 import { audio } from './audioEngine.js';
 import { publicDossier } from './dossierPrivacy.js';
-import { MODULES, roomModule, mergeModule } from './moduleUpdate.js';
+import { MODULES, roomModule, mergeModule, moduleImages, pendingUpdate } from './moduleUpdate.js';
+
+// The prepared modules' files, fetched once per session (v2.64.5).
+const moduleFiles = new Map();
+function loadModule(id) {
+  if (!moduleFiles.has(id)) {
+    moduleFiles.set(id, fetch(`/campaigns/${id}.json`).then(response => {
+      if (!response.ok) throw new Error('No se ha podido descargar el módulo. Comprueba la conexión.');
+      return response.json();
+    }).catch(err => { moduleFiles.delete(id); throw err; }));
+  }
+  return moduleFiles.get(id);
+}
+const readLocal = key => { try { return localStorage.getItem(key); } catch { return null; } };
+const writeLocal = (key, value) => { try { localStorage.setItem(key, value); } catch {} };
 
 export class HandoutManager {
   constructor(containerElement) {
@@ -18,9 +32,68 @@ export class HandoutManager {
       if (keys.includes('handouts') || keys.includes('userRole') || keys.includes('activeTransmission')) {
         this.render();
       }
+      if (keys.includes('campaignId') || keys.includes('userRole') || keys.includes('handouts')) this.scheduleModuleCheck();
     });
+    Promise.resolve(store.ready).then(() => this.scheduleModuleCheck()).catch(() => {});
 
     this.initGlobalTransmissionListener();
+  }
+
+  // A room made from a prepared module (v2.64.5, user report: «no veo las imágenes aplicadas a los
+  // dossiers»). On the Keeper's screen the module's images go into the dossiers that have none, once
+  // per room on this device, and the list says when «Actualizar módulo» still has something to bring.
+  scheduleModuleCheck() {
+    clearTimeout(this.moduleTimer);
+    this.moduleTimer = setTimeout(() => this.checkModule().catch(() => {}), 400);
+  }
+
+  async checkModule() {
+    const state = store.state, id = roomModule(state), campaignId = state.campaignId;
+    if (!id || state.userRole !== 'keeper' || store.sessionRole === 'player' || typeof fetch !== 'function') return this.setPending(null);
+    const module = await loadModule(id);
+    if (store.state.campaignId !== campaignId || roomModule(store.state) !== id || store.sessionRole === 'player') return;
+    const imagesKey = `veil.moduleImages.${campaignId}`;
+    if (!readLocal(imagesKey)) {
+      writeLocal(imagesKey, '1');
+      const { handouts, filled } = moduleImages(store.state, module, id);
+      if (filled) {
+        store.update({ handouts });
+        network.syncAll?.();
+        notify(`${MODULES[id].name}: ${filled} dossieres con su imagen.`);
+      }
+    }
+    const counts = pendingUpdate(store.state, module, id);
+    this.setPending(counts ? { id, campaignId, counts } : null);
+  }
+
+  setPending(pending) {
+    if (JSON.stringify(pending ?? null) === JSON.stringify(this.pending ?? null)) return;
+    this.pending = pending;
+    this.render();
+  }
+
+  // The notice above the list while the module has something new; «Ahora no» hides it until there is more.
+  moduleBanner(state) {
+    const pending = this.pending;
+    if (!pending || pending.campaignId !== state.campaignId || store.sessionRole === 'player') return '';
+    if (readLocal(`veil.moduleUpdateSeen.${pending.campaignId}`) === JSON.stringify(pending.counts)) return '';
+    const { docsUpdated, docsAdded, tokensUpdated, tokensAdded, fogOn } = pending.counts;
+    const line = (n, text) => n ? `<li><b>${n}</b> <span>${text}</span></li>` : '';
+    return `
+        <div class="module-update-banner" role="status">
+          <strong>${e(MODULES[pending.id].name)}</strong> <span>tiene contenido nuevo para esta partida:</span>
+          <ul>
+            ${line(docsUpdated, 'dossieres con su versión actual: imagen, parte pública y «Solo para Keeper»')}
+            ${line(docsAdded, 'dossieres nuevos')}
+            ${line(tokensUpdated, 'PNJ con retrato o descripción al día')}
+            ${line(tokensAdded, 'PNJ nuevos en la reserva')}
+            ${fogOn ? '<li><span>Niebla de guerra activada</span></li>' : ''}
+          </ul>
+          <div class="module-update-actions">
+            <button class="hud-btn hud-btn-xs hud-btn-primary" id="module_update_banner_btn">⟳ ACTUALIZAR MÓDULO</button>
+            <button class="hud-btn hud-btn-xs" id="module_update_later">Ahora no</button>
+          </div>
+        </div>`;
   }
 
   initGlobalTransmissionListener() {
@@ -45,10 +118,10 @@ export class HandoutManager {
     }
     this.openFolders ??= new Set([...folders.keys()].slice(0, 1));
     const card = doc => `
-            <div class="handout-card glass-panel ${doc.keeperOnly ? 'keeper-only' : ''}" data-id="${e(doc.id)}" data-search="${e(`${doc.title} ${doc.sender || ''} ${doc.folder || ''}`.toLowerCase())}">
+            <div class="handout-card glass-panel ${doc.keeperOnly ? 'keeper-only' : ''} ${doc.imageUrl ? 'has-thumb' : ''}" data-id="${e(doc.id)}" data-search="${e(`${doc.title} ${doc.sender || ''} ${doc.folder || ''}`.toLowerCase())}">
+              ${doc.imageUrl ? `<img class="handout-thumb" src="${e(doc.imageUrl)}" alt="" loading="lazy" decoding="async" />` : ''}
               <div class="handout-header">
                 <span class="handout-title" data-no-i18n>${e(doc.title)}</span>
-                ${doc.imageUrl ? '<span class="handout-img-indicator">📷 IMAGE</span>' : ''}
                 ${isKeeper && doc.keeperOnly ? '<span class="handout-badge">🔒 SOLO KEEPER</span>' : ''}
                 ${isKeeper && !doc.keeperOnly && doc.keeperHtml ? '<span class="handout-badge keeper-notes" title="Tiene una parte «Solo para Keeper» que no se envía">+ NOTAS KEEPER</span>' : ''}
                 ${isKeeper && doc.sharedWithPlayers && !doc.keeperOnly ? '<span class="handout-badge shared">COMPARTIDO</span>' : ''}
@@ -77,6 +150,7 @@ export class HandoutManager {
             ${store.sessionRole !== 'player' && roomModule(state) ? `<button class="hud-btn hud-btn-xs" id="module_update_btn" title="Trae las imágenes, los dossieres y los PNJ nuevos de ${e(MODULES[roomModule(state)].name)} sin tocar tus mapas, posiciones ni relojes">⟳ ACTUALIZAR MÓDULO</button>` : ''}
           ` : ''}
         </div>
+        ${isKeeper ? this.moduleBanner(state) : ''}
 
         <p class="modal-intro" style="margin: 8px 0;">
           Classified intelligence reports, star charts, mission briefings, and decoded alien archives.
@@ -134,6 +208,13 @@ export class HandoutManager {
       // A room made from a module, brought up to date (v2.63.0).
       const updateBtn = this.container.querySelector('#module_update_btn');
       if (updateBtn) updateBtn.onclick = () => this.updateFromModule(updateBtn);
+      const bannerBtn = this.container.querySelector('#module_update_banner_btn');
+      if (bannerBtn) bannerBtn.onclick = () => this.updateFromModule(bannerBtn);
+      const later = this.container.querySelector('#module_update_later');
+      if (later) later.onclick = () => {
+        if (this.pending) writeLocal(`veil.moduleUpdateSeen.${this.pending.campaignId}`, JSON.stringify(this.pending.counts));
+        this.render();
+      };
 
       // Edit Handout
       this.container.querySelectorAll('.edit-handout-btn').forEach(btn => {
@@ -193,12 +274,11 @@ export class HandoutManager {
     if (!await confirmAction(`Actualizar esta partida con la última versión de ${name}: imágenes, dossieres y PNJ nuevos. Los dossieres del módulo se sustituyen por su versión actual (si editaste alguno, se pierde ese cambio). Tus mapas, las posiciones, los relojes y tus propios dossieres no se tocan.`)) return;
     button.disabled = true;
     try {
-      const response = await fetch(`/campaigns/${id}.json`);
-      if (!response.ok) throw new Error('No se ha podido descargar el módulo. Comprueba la conexión.');
-      const { handouts, tokens, arcs, counts, fogOfWar } = mergeModule(store.state, await response.json(), id);
+      const { handouts, tokens, arcs, counts, fogOfWar } = mergeModule(store.state, await loadModule(id), id);
       if (!counts.docsAdded && !counts.docsUpdated && !counts.tokensAdded && !counts.tokensUpdated && !counts.fogOn) { notify(`${name}: la partida ya estaba al día.`); return; }
       store.update({ handouts, tokens, arcs, ...(fogOfWar ? { fogOfWar } : {}) });
       network.syncAll?.();
+      this.scheduleModuleCheck();
       notify(`${name} actualizado: ${counts.docsUpdated} dossieres al día y ${counts.docsAdded} nuevos; ${counts.tokensUpdated} PNJ con retrato o descripción al día y ${counts.tokensAdded} nuevos en la reserva.${counts.fogOn ? ' Niebla de guerra activada.' : ''}`);
     } catch (err) {
       notify(err.message, 'error');

@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.64.4**.
-Paquete: `VeilFarers_VTT_v2.64.4.zip`.
+Versión actual del VTT: **v2.64.5**.
+Paquete: `VeilFarers_VTT_v2.64.5.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.64.5] — 2026-11-27
+
+V3 · Las imágenes de los dossieres llegan solas
+
+### Dossieres
+
+- En una partida creada desde un módulo antes de que tuviera imágenes, al abrirla el Keeper sus dossieres reciben la imagen del módulo. Solo se rellenan los que no tienen imagen: los textos y las imágenes propias no cambian.
+- Si el módulo trae algo más (la parte pública y «Solo para Keeper» de los PNJ, dossieres o PNJ nuevos), un aviso encima de la lista lo resume y ofrece «⟳ Actualizar módulo». «Ahora no» lo oculta hasta que haya algo distinto.
+- Cada dossier con imagen la muestra en miniatura en la lista, en lugar del distintivo «📷 IMAGE».
 
 ## [2.64.4] — 2026-11-27
 

@@ -2080,6 +2080,15 @@ body, html {
 .handout-folder > .handout-card { margin-top: 6px; }
 .handout-folder[hidden], .handout-card[hidden] { display: none !important; }
 .handout-card.keeper-only { border-left-color: #f5b942; }
+/* The dossier's image beside its card (v2.64.5): the images are seen in the list, not only when opened. */
+.handout-card.has-thumb { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 10px; }
+.handout-card.has-thumb > :not(.handout-thumb) { grid-column: 2; }
+.handout-thumb { grid-column: 1; grid-row: 1 / span 3; width: 48px; height: 64px; object-fit: cover; object-position: top; border-radius: 3px; border: 1px solid rgba(0, 243, 255, 0.25); background: rgba(13, 4, 32, 0.6); }
+/* A room made from a module that has something new (v2.64.5). */
+.module-update-banner { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--cyan-pearl); border-radius: 4px; background: rgba(0, 243, 255, 0.08); font-size: 12px; line-height: 1.4; }
+.module-update-banner ul { margin: 6px 0; padding-left: 18px; }
+.module-update-banner b { color: var(--cyan-pearl); }
+.module-update-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .handout-header { flex-wrap: wrap; gap: 4px; }
 .handout-badge { font-size: 9px; letter-spacing: .08em; padding: 1px 5px; border: 1px solid #f5b942; color: #f5b942; border-radius: 3px; }
 .handout-badge.shared { border-color: #34d399; color: #34d399; }
@@ -2095,14 +2104,6 @@ body, html {
   font-size: 13px;
   font-weight: 700;
   color: #fff;
-}
-
-.handout-img-indicator {
-  font-size: 10px;
-  color: var(--cyan-pearl);
-  background: rgba(0, 243, 255, 0.15);
-  padding: 1px 4px;
-  border-radius: 2px;
 }
 
 .handout-meta {
