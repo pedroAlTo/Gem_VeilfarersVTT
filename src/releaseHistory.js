@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.64.3', date: '2026-11-27', title: 'V3 · Hearts in the Void con niebla de guerra',
+    sections: [
+      { title: 'Hearts in the Void', items: [
+        'La aventura se crea con la niebla de guerra activada. Desde la v2.62.0 venía apagada por error: de noche solo se veía lo iluminado y lo descubierto no se recordaba (al girar al personaje volvía la oscuridad).',
+        '«⟳ Actualizar módulo» activa la niebla en las partidas que ya se crearon así.',
+      ] },
+    ],
+  },
+  {
     version: '2.64.2', date: '2026-11-27', title: 'V3 · La niebla explorada no se pierde en partidas online',
     sections: [
       { title: 'Niebla', items: [

@@ -143,7 +143,9 @@ const base = structuredClone(store.initialCampaign);
 const campaign = store.normalizeCampaign({
   ...base, campaignId: 'hearts-in-the-void', campaignName: 'Hearts in the Void',
   maps, activeMapId: maps[0].id, arcs, tokens, clocks, handouts, logs: [], chatMessages: [], keeperPortrait: '',
-  fear: 0, fogOfWar: false, starship: { ...base.starship, name: 'Nave sin asignar', visible: false },
+  // Fog of war on (v2.64.3): with it off, at night only what is lit shows and nothing is remembered
+  // as explored (user report: «lo descubro y luego vuelve a ser opaca 100 %»).
+  fear: 0, fogOfWar: true, starship: { ...base.starship, name: 'Nave sin asignar', visible: false },
 });
 delete campaign.savedAt;
 const out = fileURLToPath(new URL('../public/campaigns/hearts-in-the-void.json', import.meta.url));

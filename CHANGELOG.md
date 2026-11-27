@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.64.2**.
-Paquete: `VeilFarers_VTT_v2.64.2.zip`.
+Versión actual del VTT: **v2.64.3**.
+Paquete: `VeilFarers_VTT_v2.64.3.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.64.3] — 2026-11-27
+
+V3 · Hearts in the Void con niebla de guerra
+
+### Hearts in the Void
+
+- La aventura se crea con la niebla de guerra activada. Desde la v2.62.0 venía apagada por error: de noche solo se veía lo iluminado y lo descubierto no se recordaba (al girar al personaje volvía la oscuridad).
+- «⟳ Actualizar módulo» activa la niebla en las partidas que ya se crearon así.
 
 ## [2.64.2] — 2026-11-27
 

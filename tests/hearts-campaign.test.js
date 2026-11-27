@@ -29,6 +29,7 @@ test('the room passes the campaign rules: scenes per plate, arcs, people, advers
   validateBoss(queen.boss);
   assert.deepEqual(queen.boss.states.map(s => [s.stats.hp, s.stats.evasion, s.stats.armor]), [[10, 8, 3], [8, 12, 0]]);
   assert.ok(campaign.tokens.every(t => t.actorType !== 'adversary' || t.hidden), 'adversaries start hidden');
+  assert.equal(campaign.fogOfWar, true, 'the adventure plays with fog of war (v2.64.3)');
   assert.equal(campaign.clocks.length, 6);
   assert.ok(campaign.clocks.every(c => c.isKeeperOnly), 'clocks start hidden');
   assert.equal(campaign.clocks.find(c => /Korren/.test(c.title)).filled, 1);
@@ -269,6 +270,7 @@ test('a room made before the images is brought up to date without touching the t
   assert.equal(tokens.find(t => t.id === 'tok_hv_korren').avatarUrl, 'https://example.com/mi-korren.png', 'the Keeper’s own image stays');
   assert.ok(tokens.some(t => t.id === 'tok_hv_maximus') && arcs.find(a => a.id === 'hv_arc_crossroads').tokenIds.includes('tok_hv_maximus'));
   assert.ok(counts.docsAdded >= 1 && counts.docsUpdated >= 1 && counts.tokensAdded === 1);
+  assert.equal(mergeModule({ ...old, fogOfWar: false }, file, 'hearts-in-the-void').fogOfWar, true, 'a room made with the fog off gets it back');
   store.normalizeCampaign({ ...structuredClone(old), handouts, tokens, arcs });
-  assert.deepEqual(mergeModule({ ...old, handouts, tokens, arcs }, file, 'hearts-in-the-void').counts, { docsAdded: 0, docsUpdated: 0, tokensAdded: 0, tokensUpdated: 0 }, 'a second run changes nothing');
+  assert.deepEqual(mergeModule({ ...old, fogOfWar: true, handouts, tokens, arcs }, file, 'hearts-in-the-void').counts, { docsAdded: 0, docsUpdated: 0, tokensAdded: 0, tokensUpdated: 0 }, 'a second run changes nothing');
 });

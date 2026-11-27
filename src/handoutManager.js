@@ -195,11 +195,11 @@ export class HandoutManager {
     try {
       const response = await fetch(`/campaigns/${id}.json`);
       if (!response.ok) throw new Error('No se ha podido descargar el módulo. Comprueba la conexión.');
-      const { handouts, tokens, arcs, counts } = mergeModule(store.state, await response.json(), id);
-      if (!counts.docsAdded && !counts.docsUpdated && !counts.tokensAdded && !counts.tokensUpdated) { notify(`${name}: la partida ya estaba al día.`); return; }
-      store.update({ handouts, tokens, arcs });
+      const { handouts, tokens, arcs, counts, fogOfWar } = mergeModule(store.state, await response.json(), id);
+      if (!counts.docsAdded && !counts.docsUpdated && !counts.tokensAdded && !counts.tokensUpdated && !counts.fogOn) { notify(`${name}: la partida ya estaba al día.`); return; }
+      store.update({ handouts, tokens, arcs, ...(fogOfWar ? { fogOfWar } : {}) });
       network.syncAll?.();
-      notify(`${name} actualizado: ${counts.docsUpdated} dossieres al día y ${counts.docsAdded} nuevos; ${counts.tokensUpdated} PNJ con retrato o descripción al día y ${counts.tokensAdded} nuevos en la reserva.`);
+      notify(`${name} actualizado: ${counts.docsUpdated} dossieres al día y ${counts.docsAdded} nuevos; ${counts.tokensUpdated} PNJ con retrato o descripción al día y ${counts.tokensAdded} nuevos en la reserva.${counts.fogOn ? ' Niebla de guerra activada.' : ''}`);
     } catch (err) {
       notify(err.message, 'error');
     } finally {

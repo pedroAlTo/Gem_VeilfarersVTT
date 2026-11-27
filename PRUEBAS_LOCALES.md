@@ -2,7 +2,7 @@
 
 ## Versión instalada y changelog
 
-El paquete de esta entrega se llama **VeilFarers_VTT_v2.64.2.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.64.2**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.64.2** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.64.2.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
+El paquete de esta entrega se llama **VeilFarers_VTT_v2.64.3.zip**. Abre **AYUDA** en el menú superior y comprueba que muestra **VTT v2.64.3**, separado de **Corebook 12.06**. Cambia a **Changelog · v2.64.3** para consultar los cambios y descargar **VeilFarers_VTT_Changelog_v2.64.3.md**. La ayuda está disponible tanto para Keeper como para jugadores y funciona sin conexión a Firebase.
 
 `npm run release:check` comprueba que la versión de la aplicación, el historial y el changelog generado coinciden. El build ejecuta esta comprobación automáticamente.
 
@@ -207,6 +207,7 @@ El paquete de esta entrega se llama **VeilFarers_VTT_v2.64.2.zip**. Abre **AYUDA
 192. **(V3) Visión de día y de noche.** En una escena con niebla y luces grandes (p. ej. la lámina B con sus «Tactical Light»), pon el Clima en Noche: el cono de un PJ ya no llega al final del mapa, se queda en 25 m; en lo oscuro solo despeja unos 5 m alrededor y lo iluminado hasta 25 m. Cambia «Visión en la oscuridad (m)» en su ficha y el círculo oscuro crece. Pon Día: ve hasta 25 m. El cono se degrada con la distancia y al final queda igual que lo explorado, sin una banda más oscura. En el panel del Pincel, mueve «Oscurecimiento» de lo explorado: cambia para todos en esa escena y no en las demás. Un enemigo a 40 m en una zona iluminada no aparece para el jugador; a 20 m iluminado, sí.
 193. **(V3) Lo que ven los PNJ, en la pantalla del Keeper.** Como Keeper, pon un PNJ (p. ej. Madame Silk) en una zona sin explorar y gíralo hacia un lado y luego hacia el otro: lo que vio primero queda con el velo de lo explorado, no en negro. Pasa a la vista de Jugador (o mira la pantalla de un jugador conectado): esa zona sigue sin explorar. Reinicia la niebla: también se borra en la pantalla del Keeper.
 194. **(V3) Lo explorado no se pierde en una partida online.** En una partida online, con un PJ, mira una zona sin explorar unos segundos y gíralo dos veces: lo visto queda con el velo (no vuelve a negro), también tras esperar un rato y al cambiar de escena y volver. Con un jugador conectado, lo mismo en su pantalla.
+195. **(V3) Hearts in the Void con niebla.** Crea la partida de Hearts in the Void: el botón 🌫️ (Niebla) de la barra del Keeper está activo. En una partida creada antes, pulsa «⟳ Actualizar módulo» en Dossiers: el aviso dice «Niebla de guerra activada» y lo que descubre un PJ queda con el velo al girarlo.
 
 Verificación automatizada de V2: `npm test` y `npm run build`, ambos en verde; con emulador, `npm run test:account` y `npm run test:rooms`. El ataque, el daño en 3D, la pila de resultados y la niebla se han revisado en un navegador en local. **No se ha probado una partida online con dos navegadores reales** ni el guardado contra el proyecto Firebase de producción.
 

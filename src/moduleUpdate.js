@@ -61,5 +61,8 @@ export function mergeModule(state, module, moduleId) {
     return ids.length === (a.tokenIds || []).length ? a : { ...a, tokenIds: ids };
   });
 
-  return { handouts, tokens, arcs, counts };
+  // The module plays with fog of war (v2.64.3); rooms made before had it off by mistake.
+  const fogOn = state.fogOfWar === false && module.fogOfWar !== false;
+  if (fogOn) counts.fogOn = true;
+  return { handouts, tokens, arcs, counts, ...(fogOn ? { fogOfWar: true } : {}) };
 }
