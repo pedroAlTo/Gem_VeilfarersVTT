@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.64.4', date: '2026-11-27', title: 'V3 · Una sola niebla, que recuerda lo descubierto',
+    sections: [
+      { title: 'Niebla', items: [
+        'Hay una sola niebla: la oscuridad de la escena (Clima o su luz ambiente), que ya funcionaba con las luces y las linternas. Ahora recuerda lo descubierto: lo que un personaje ve queda con el % de oscurecimiento elegido en vez de volver a negro.',
+        'Se elimina la «niebla de guerra» que se activaba con el botón: dibujaba una segunda capa encima que no funcionaba bien y se veía peor.',
+        'El botón «Niebla» de la barra del Keeper abre sus herramientas: pintar niebla (vuelve a estar sin descubrir) o borrar niebla (queda descubierto) con radio de 1 a 8 casillas, el % de oscurecimiento de lo descubierto y «Borrar todo lo descubierto». El botón «Pincel» aparte desaparece; Shift+F abre el panel.',
+        'De noche, las puertas e interruptores sin descubrir no se ven; de día o una vez descubiertos, sí.',
+      ] },
+    ],
+  },
+  {
     version: '2.64.3', date: '2026-11-27', title: 'V3 · Hearts in the Void con niebla de guerra',
     sections: [
       { title: 'Hearts in the Void', items: [

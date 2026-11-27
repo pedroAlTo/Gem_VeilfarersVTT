@@ -452,21 +452,20 @@
           <button class="tool-btn keeper-only-tool active" id="toggle_gm_vision" title="[Keeper] Toggle GM Vision / Player Perspective">
             <span>👁️</span>
           </button>
-          <button class="tool-btn keeper-only-tool active" id="toggle_fog_of_war" title="[Keeper] Toggle Fog of War / Niebla de Exploración [Shift+F]">
+          <!-- The fog (v2.64.4, user design): there is one fog, the scene's darkness, which remembers
+               what the party discovered. This button opens its tools; the old «fog of war» switch drew
+               a second layer and was removed. -->
+          <button class="tool-btn keeper-only-tool" id="tool_fog_brush" data-tool="fog_brush" title="[Keeper] Niebla: pintar o borrar niebla, oscurecimiento de lo descubierto y borrar todo lo descubierto [Shift+F]">
             <span>🌫️</span>
           </button>
-          <!-- Fog brush (v2.63.0): the Keeper darkens explored areas again, or explores them. -->
-          <button class="tool-btn keeper-only-tool" id="tool_fog_brush" data-tool="fog_brush" title="[Keeper] Pincel de niebla: vuelve a oscurecer zonas descubiertas o descúbrelas">
-            <span>🖌️</span>
-          </button>
           <div class="tool-flyout-panel fog-brush-flyout" id="fog_brush_flyout">
-            <div class="flyout-section-title">NIEBLA // LO EXPLORADO</div>
+            <div class="flyout-section-title">NIEBLA // LO DESCUBIERTO</div>
             <label class="fog-veil-row"><span>Oscurecimiento <b id="fog_veil_value">50 %</b></span>
-              <input type="range" id="fog_veil" min="5" max="95" step="5" value="50" class="hud-slider" aria-label="Oscurecimiento de las zonas ya exploradas en esta escena" /></label>
+              <input type="range" id="fog_veil" min="5" max="95" step="5" value="50" class="hud-slider" aria-label="Oscurecimiento de las zonas ya descubiertas en esta escena" /></label>
             <div class="flyout-section-title" style="margin-top: 6px;">NIEBLA // PINCEL</div>
             <div class="flyout-btn-row">
-              <button class="flyout-btn active" type="button" data-fog-brush-mode="hide" title="Lo que pintes vuelve a la niebla para todos">🌑 Oscurecer</button>
-              <button class="flyout-btn" type="button" data-fog-brush-mode="reveal" title="Lo que pintes queda descubierto para todos">✨ Descubrir</button>
+              <button class="flyout-btn active" type="button" data-fog-brush-mode="hide" title="Lo que pintes vuelve a estar sin descubrir, para todos">🌑 Pintar niebla</button>
+              <button class="flyout-btn" type="button" data-fog-brush-mode="reveal" title="Lo que pintes queda descubierto, para todos">✨ Borrar niebla</button>
             </div>
             <div class="flyout-section-title" style="margin-top: 6px;">RADIO (CASILLAS)</div>
             <div class="flyout-btn-row">
@@ -475,7 +474,10 @@
               <button class="flyout-btn" type="button" data-fog-brush-size="4">4</button>
               <button class="flyout-btn" type="button" data-fog-brush-size="8">8</button>
             </div>
-            <p class="water-draw-hint">Los jugadores lo ven al soltar. Lo que un personaje está mirando ahora se vuelve a descubrir.</p>
+            <div class="flyout-btn-row" style="margin-top: 6px;">
+              <button class="flyout-btn" type="button" id="fog_clear_all" title="Toda la escena vuelve a estar sin descubrir, para todos">🗑️ Borrar todo lo descubierto</button>
+            </div>
+            <p class="water-draw-hint">Arrastra sobre el mapa para pintar o borrar. Los jugadores lo ven al soltar; lo que un personaje está mirando ahora se vuelve a descubrir.</p>
           </div>
 
           <div class="toolbar-divider"></div>

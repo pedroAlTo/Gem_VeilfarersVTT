@@ -88,7 +88,7 @@ export function openAccount(options = {}) {
       <label><input type="checkbox" id="pref_snap" ${store.state.gridSnap ? 'checked' : ''}> Ajustar a la cuadrícula</label>
       <label><input type="checkbox" id="pref_motion" ${store.state.reducedMotion ? 'checked' : ''}> Reducir animaciones</label>
       <label><input type="checkbox" id="pref_dice3d" ${store.state.dice3d !== false ? 'checked' : ''}> Bandeja de dados 3D</label>
-      <label><input type="checkbox" id="pref_fog" ${store.state.fogOfWar !== false ? 'checked' : ''}> Niebla de guerra</label>
+
     </div>
     <div style="margin-top: 10px;">
       <label class="dossier-field">Opacidad de la niebla explorada (${Math.round((store.state.fogExploredOpacity ?? 0.5) * 100)}%)
@@ -308,7 +308,7 @@ export function openAccount(options = {}) {
         snapToGrid: modal.querySelector('#pref_snap').checked,
         reducedMotion: modal.querySelector('#pref_motion').checked,
         dice3d: modal.querySelector('#pref_dice3d').checked,
-        fogOfWar: modal.querySelector('#pref_fog').checked,
+
         fogExploredOpacity: fogOpVal
       };
       store.update(sessionPreferences(values));

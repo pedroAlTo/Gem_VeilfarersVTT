@@ -150,6 +150,23 @@ export class FogOfWarEngine {
     this.exploredVersion++;
   }
 
+  // What this screen knows as discovered: the table's memory and, on the Keeper's screen, what the
+  // NPCs saw (v2.64.1). The darkness is lifted to the explored veil there (lightingEngine).
+  knownCanvas(mapId, width, height, withKeeper = false) {
+    const table = this.getExploredCanvas(mapId, width, height), keeper = withKeeper ? this.keeperCanvases.get(mapId) : null;
+    if (!keeper) return table;
+    if (!this.unionCanvas) this.unionCanvas = document.createElement('canvas');
+    const union = this.unionCanvas, key = `${mapId}:${this.exploredVersion}:${width}x${height}`;
+    if (union.key !== key) {
+      if (union.width !== width || union.height !== height) { union.width = width; union.height = height; }
+      const ctx = union.getContext('2d');
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(table, 0, 0); ctx.drawImage(keeper, 0, 0);
+      union.key = key;
+    }
+    return union;
+  }
+
   // The Keeper's own memory of what the NPCs saw, the size of the map.
   keeperCanvas(mapId, width, height) {
     let canvas = this.keeperCanvases.get(mapId);
@@ -350,8 +367,8 @@ export class FogOfWarEngine {
     night = false,
     keeperMemory = false
   }) {
-    this.resize(mapWidth, mapHeight);
-    const fCtx = this.fogCtx;
+    // Since v2.64.4 this only updates the memory of what was seen (no layer is drawn): `ctx`,
+    // `exploredOpacity` and `isKeeperGM` are no longer used.
     const exploredCanvas = this.getExploredCanvas(mapId, mapWidth, mapHeight);
     const expCtx = exploredCanvas.getContext('2d');
     // Two ranges, as Foundry VTT's detection modes (v2.64.0, user decision): nothing is seen beyond
@@ -360,18 +377,12 @@ export class FogOfWarEngine {
     // lit areas up to its vision range. Up to v2.63 a lit area was seen at any distance (Foundry's
     // default «Light Perception»): with large lights a cone reached the end of the map.
 
-    // Nothing the fog depends on has changed since the last frame: draw the same fog again.
+    // Nothing the memory depends on has changed since the last frame: nothing to stamp.
     const key = fingerprint([mapId, mapWidth, mapHeight, exploredOpacity, isKeeperGM, stamp, night ? 1 : 0, keeperMemory ? 1 : 0,
       ...viewers.flatMap(v => [v.x, v.y, v.hidden, v.preview ? 1 : 0, v.visionRange || 0, v.darkRange ?? -1, v.hasLight, v.lightRadius || 0, v.facingAngle ?? 0, v.visionAngle ?? 90]),
       -1, ...(lights || []).flatMap(l => [l.x, l.y, l.radius || 200, l.facingAngle ?? -9, l.visionAngle ?? 360, l.intensity ?? 0.8, l.fixture ? 1 : 0]),
       -2, ...wallValues(walls)]);
-    if (key === this.fogKey && this.fogKeyVersion === this.exploredVersion) {
-      ctx.save();
-      if (isKeeperGM) ctx.globalAlpha = 0.32;
-      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS, this.fogVersion);
-      ctx.restore();
-      return this.lastVision;
-    }
+    if (key === this.fogKey && this.fogKeyVersion === this.exploredVersion) return this.lastVision;
 
     // 1. What each viewer sees: its line of sight (walls, facing) up to its vision range, in the
     // dark up to its dark range at night, and lit areas. Only what is seen is remembered as
@@ -453,44 +464,11 @@ export class FogOfWarEngine {
       paintSeen(keeperMemoryCanvas.getContext('2d'), '#ffffff', previews);
     }
 
-    // 2. Prepare fog canvas
-    fCtx.clearRect(0, 0, mapWidth, mapHeight);
-
-    // Fill entire fogCanvas with 100% UNEXPLORED DARKNESS (pitch black)
-    fCtx.fillStyle = 'rgba(5, 8, 15, 1.0)';
-    fCtx.fillRect(0, 0, mapWidth, mapHeight);
-
-    // 3. Cut out explored areas from the 100% darkness
-    fCtx.globalCompositeOperation = 'destination-out';
-    fCtx.drawImage(exploredCanvas, 0, 0);
-    if (keeperMemoryCanvas) fCtx.drawImage(keeperMemoryCanvas, 0, 0);
-
-    // 4. Fill behind the cutouts with the Explored Shroud opacity (default 50% darkness, adjustable)
-    // Explored areas outside current FOV and outside lights will have this attenuation
-    const shroudAlpha = Math.max(0.05, Math.min(0.95, exploredOpacity ?? 0.50));
-    fCtx.globalCompositeOperation = 'destination-over';
-    fCtx.fillStyle = `rgba(5, 8, 15, ${shroudAlpha})`;
-    fCtx.fillRect(0, 0, mapWidth, mapHeight);
-
-    // 5. Cut out what the viewers see right now (0% fog).
-    fCtx.globalCompositeOperation = 'destination-out';
-    paintSeen(fCtx, 'cut');
-
-    // Reset composite operation to normal
-    fCtx.globalCompositeOperation = 'source-over';
-
-    // 6. Draw Fog of War onto tactical canvas
-    ctx.save();
-    if (isKeeperGM) {
-      // Keeper GM Vision: show explored vs unexplored with subtle 30% overlay
-      ctx.globalAlpha = 0.32;
-      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS, ++this.fogVersion);
-    } else {
-      // Player Perspective: Full strict Fog of War, with feathered edges
-      drawSoftened(ctx, this.fogCanvas, FOG_SOFTNESS, ++this.fogVersion);
-    }
-    ctx.restore();
-
+    // Up to v2.64.3 a second layer was drawn here: black where unexplored, the explored veil, and
+    // the current sight cut out of it. The user removed it (v2.64.4): «ya hay una niebla de guerra
+    // que funciona (la de la noche); la segunda nunca ha funcionado y el renderizado es mucho peor».
+    // The one fog is the scene's darkness (lightingEngine); this engine only keeps the memory of what
+    // was seen, which lifts that darkness to the explored veil (knownCanvas).
     // Stamping the same shapes again changes nothing, so this frame can be reused as is.
     this.fogKey = key; this.fogKeyVersion = this.exploredVersion; this.lastVision = currentVisionPolygons;
     return currentVisionPolygons;

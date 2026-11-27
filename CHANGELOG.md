@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.64.3**.
-Paquete: `VeilFarers_VTT_v2.64.3.zip`.
+Versión actual del VTT: **v2.64.4**.
+Paquete: `VeilFarers_VTT_v2.64.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.64.4] — 2026-11-27
+
+V3 · Una sola niebla, que recuerda lo descubierto
+
+### Niebla
+
+- Hay una sola niebla: la oscuridad de la escena (Clima o su luz ambiente), que ya funcionaba con las luces y las linternas. Ahora recuerda lo descubierto: lo que un personaje ve queda con el % de oscurecimiento elegido en vez de volver a negro.
+- Se elimina la «niebla de guerra» que se activaba con el botón: dibujaba una segunda capa encima que no funcionaba bien y se veía peor.
+- El botón «Niebla» de la barra del Keeper abre sus herramientas: pintar niebla (vuelve a estar sin descubrir) o borrar niebla (queda descubierto) con radio de 1 a 8 casillas, el % de oscurecimiento de lo descubierto y «Borrar todo lo descubierto». El botón «Pincel» aparte desaparece; Shift+F abre el panel.
+- De noche, las puertas e interruptores sin descubrir no se ven; de día o una vez descubiertos, sí.
 
 ## [2.64.3] — 2026-11-27
 

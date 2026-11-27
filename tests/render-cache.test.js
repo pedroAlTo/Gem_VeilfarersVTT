@@ -103,3 +103,19 @@ test('on the Keeper’s screen what an NPC saw stays explored, apart from the ta
   let cleared = 0; keeper.clearRect = () => { cleared++; };
   fog.resetExploration('km'); assert.equal(cleared, 1, 'a reset forgets it too');
 });
+
+test('one fog: the darkness is lifted to the explored veil where the party discovered the map (v2.64.4)', () => {
+  const lighting = new LightingEngine();
+  const draws = [];
+  const lctx = lighting.lightCtx;
+  lctx.drawImage = (image) => draws.push({ image, alpha: lctx.globalAlpha, op: lctx.globalCompositeOperation });
+  const memory = { width: 800, height: 600 };
+  lighting.renderLighting({ ctx: context(), mapWidth: 800, mapHeight: 600, ambientLight: 0, walls: [], lights: [], tokens: [], time: 0, explored: { canvas: memory, veil: 0.5, version: 1 } });
+  const lift = draws.find(d => d.image === memory);
+  assert.ok(lift, 'the memory is cut out of the darkness');
+  assert.equal(lift.op, 'destination-out');
+  assert.equal(lift.alpha, 0.5, 'full darkness lifted to a 50 % veil');
+  draws.length = 0;
+  lighting.renderLighting({ ctx: context(), mapWidth: 800, mapHeight: 600, ambientLight: 0.7, walls: [], lights: [], tokens: [], time: 0, explored: { canvas: memory, veil: 0.5, version: 2 } });
+  assert.equal(draws.find(d => d.image === memory), undefined, 'a scene lighter than the veil: nothing to lift');
+});

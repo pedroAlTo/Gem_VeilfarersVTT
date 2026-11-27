@@ -125,10 +125,9 @@ test('layer manager HUD: displays Fog of War and Weather Overlay sections distin
   // Fog of War elements
   const fowSection = container.querySelector('.layer-fow-section');
   assert.ok(fowSection, 'Fog of War section should exist');
-  assert.match(fowSection.textContent, /NIEBLA DE COMBATE/);
-
-  const fowToggle = container.querySelector('#btn_toggle_fow_layer');
-  assert.ok(fowToggle, 'Toggle FOW button should exist');
+  assert.match(fowSection.textContent, /NIEBLA \(LO DESCUBIERTO\)/);
+  // One fog since v2.64.4 (user decision): no switch for a second layer.
+  assert.equal(container.querySelector('#btn_toggle_fow_layer'), null);
 
   const fowSlider = container.querySelector('#input_fow_opacity');
   assert.ok(fowSlider, 'FOW explored opacity slider should exist');

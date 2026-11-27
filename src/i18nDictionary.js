@@ -2127,6 +2127,19 @@ export const PAIRS = [
   ["Oscurecimiento", "Darkening"],
   ["Oscurecimiento de las zonas ya exploradas en esta escena", "Darkening of the explored areas in this scene"],
   ["Sin ajustar, la escena se ve como siempre. De día (o sin ajustar) cada personaje ve hasta su alcance de visión; de noche, en lo oscuro solo distingue su visión en la oscuridad y lo iluminado lo ve hasta su alcance.", "Unset, the scene looks as always. By day (or unset) each character sees up to its vision range; at night, in the dark it only makes out its dark vision, and lit areas up to its range."],
+  // One fog with memory (v2.64.4)
+  ["NIEBLA // LO DESCUBIERTO", "FOG // DISCOVERED"],
+  ["Oscurecimiento de las zonas ya descubiertas en esta escena", "Darkening of the discovered areas in this scene"],
+  ["🌑 Pintar niebla", "🌑 Paint fog"],
+  ["✨ Borrar niebla", "✨ Erase fog"],
+  ["Lo que pintes vuelve a estar sin descubrir, para todos", "What you paint is undiscovered again, for everyone"],
+  ["Lo que pintes queda descubierto, para todos", "What you paint is discovered, for everyone"],
+  ["🗑️ Borrar todo lo descubierto", "🗑️ Clear everything discovered"],
+  ["Toda la escena vuelve a estar sin descubrir, para todos", "The whole scene is undiscovered again, for everyone"],
+  ["Arrastra sobre el mapa para pintar o borrar. Los jugadores lo ven al soltar; lo que un personaje está mirando ahora se vuelve a descubrir.", "Drag over the map to paint or erase. Players see it when you release; whatever a character is looking at right now is discovered again."],
+  ["[Keeper] Niebla: pintar o borrar niebla, oscurecimiento de lo descubierto y borrar todo lo descubierto [Shift+F]", "[Keeper] Fog: paint or erase fog, darkening of what was discovered and clear everything discovered [Shift+F]"],
+  ["¿Borrar todo lo descubierto en esta escena? Vuelve a estar a oscuras para todos los jugadores.", "Clear everything discovered in this scene? It goes dark again for every player."],
+  ["🌫️ NIEBLA (LO DESCUBIERTO)", "🌫️ FOG (DISCOVERED)"],
 ];
 
 // Strings with numbers or names inside. {name} is a value kept as it is, but translated too if

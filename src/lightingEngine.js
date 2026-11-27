@@ -285,7 +285,8 @@ export class LightingEngine {
     lights = [],
     tokens = [],
     sights = [],
-    time = 0
+    time = 0,
+    explored = null
   }) {
     this.resize(mapWidth, mapHeight);
     const lCtx = this.lightCtx;
@@ -351,7 +352,9 @@ export class LightingEngine {
     // Steady lights that have not moved draw the same mask as last frame: reuse it. Lights
     // that pulse, flicker or strobe change with time and are always redrawn.
     const animated = allLights.some(light => { const effect = light.effect || (light.flicker ? 'flicker' : 'steady'); return effect !== 'steady'; });
-    const key = animated ? null : fingerprint([mapWidth, mapHeight, darknessAlpha,
+    // What the party has discovered lifts the darkness to the explored veil (v2.64.4, the one fog).
+    const veil = explored?.canvas ? Math.max(0, Math.min(1, explored.veil ?? 0.5)) : 1;
+    const key = animated ? null : fingerprint([mapWidth, mapHeight, darknessAlpha, veil, explored?.version ?? -1,
       ...allLights.flatMap(l => [l.x, l.y, l.radius || 200, l.intensity ?? 0.8, l.facingAngle ?? -9, l.visionAngle ?? 360]), -1, ...wallValues(walls)]);
     // Animated lights are redrawn 30 times a second, not on every frame: the eye cannot tell
     // and the mask (one visibility polygon per light) is the costly part.
@@ -367,6 +370,15 @@ export class LightingEngine {
       if (darknessAlpha > 0.01) {
         lCtx.fillStyle = `rgba(5, 8, 15, ${darknessAlpha})`;
         lCtx.fillRect(0, 0, mapWidth, mapHeight);
+        // Discovered areas keep only the veil's darkness (never more than the scene's): the
+        // memory is white where explored, so cutting it out at this strength leaves the veil.
+        if (veil < darknessAlpha) {
+          lCtx.save();
+          lCtx.globalCompositeOperation = 'destination-out';
+          lCtx.globalAlpha = 1 - veil / darknessAlpha;
+          lCtx.drawImage(explored.canvas, 0, 0);
+          lCtx.restore();
+        }
       }
     }
 

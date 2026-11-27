@@ -429,8 +429,6 @@ function setupToolbarEvents() {
         if (fogBrushFlyout) {
           fogBrushFlyout.style.display = toolName === 'fog_brush' ? 'flex' : 'none';
           if (toolName === 'fog_brush') fogBrushFlyout.style.top = `${Math.max(8, btn.offsetTop - 24)}px`;
-          // The brush works on the fog: turn it on if it was off.
-          if (toolName === 'fog_brush' && store.state.fogOfWar === false) store.toggleFogOfWar();
         }
       };
     }
@@ -541,18 +539,13 @@ function setupToolbarEvents() {
     };
   }
 
-  // Fog of War Toggle
-  const fogBtn = document.getElementById('toggle_fog_of_war');
-  if (fogBtn) {
-    fogBtn.onclick = () => {
-      const state = store.getState();
-      const newVal = !state.fogOfWar;
-      store.update({ fogOfWar: newVal });
-      fogBtn.classList.toggle('active', newVal);
-      fogBtn.title = newVal ? '[Keeper] Fog of War Activa (Zonas inexploradas oscuras) [Shift+F]' : '[Keeper] Fog of War Desactivada [Shift+F]';
-      audio.playClockTick();
-    };
-  }
+  // «Borrar todo lo descubierto» (v2.64.4): the whole scene undiscovered again, for everyone.
+  const fogClearAll = document.getElementById('fog_clear_all');
+  if (fogClearAll) fogClearAll.onclick = async () => {
+    if (!await confirmAction('¿Borrar todo lo descubierto en esta escena? Vuelve a estar a oscuras para todos los jugadores.')) return;
+    store.resetMapFog();
+    audio.playClockTick();
+  };
 
   // Grid Toggle
   const gridBtn = document.getElementById('toggle_grid');
@@ -806,7 +799,7 @@ function setupKeyboardShortcuts() {
       return;
     }
     if (e.shiftKey && key === 'f' && store.getState().userRole === 'keeper') {
-      document.getElementById('toggle_fog_of_war')?.click();
+      document.getElementById('tool_fog_brush')?.click();
       return;
     }
     if (key === 'g') document.getElementById('toggle_grid')?.click();

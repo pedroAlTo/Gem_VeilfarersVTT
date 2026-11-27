@@ -17,7 +17,7 @@ export class FogBrush {
 
   active() {
     const s = this.store.state;
-    return s.activeTool === 'fog_brush' && s.userRole === 'keeper' && this.store.sessionRole !== 'player' && s.fogOfWar !== false;
+    return s.activeTool === 'fog_brush' && s.userRole === 'keeper' && this.store.sessionRole !== 'player';
   }
 
   radius() {

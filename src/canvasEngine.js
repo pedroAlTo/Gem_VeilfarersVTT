@@ -2911,10 +2911,17 @@ export class CanvasEngine {
       viewers = [...activeTokens.filter(partyEyes), ...others].map(drawnAt);
     }
 
-    const darkness = this.sceneDarkness(map, now, state.fogOfWar !== false);
+    // One fog (v2.64.4, user decision): the scene's darkness, as it looked with the old «fog of war»
+    // switch off, now remembering what the party discovered. Without a time in Clima, a scene keeps
+    // its ambient light (the Bridge's 0.25 is 75 % dark), as before.
+    const darkness = this.sceneDarkness(map, now, false);
+    const fullMapId = `${state.campaignId}:${map.id}`;
+    const night = darkness >= DAYLIGHT_BELOW;
     // With fog of war, what the characters see is lit for this screen: their sight clears the
     // scene's darkness, as before, even without a light of their own.
-    const sightLights = state.fogOfWar !== false ? viewers.filter(v => !v.hidden).map(v => ({ x: v.x, y: v.y, radius: v.visionRange || (v.hasLight ? v.lightRadius : 360), facingAngle: v.facingAngle ?? 0, visionAngle: v.visionAngle ?? 90 })) : [];
+    // In the dark a character makes out its dark range (5 m by default) in front of it; the rest is
+    // shown by the lights (v2.64.0 rule).
+    const sightLights = viewers.filter(v => !v.hidden && v.darkRange > 0).map(v => ({ x: v.x, y: v.y, radius: v.darkRange, facingAngle: v.facingAngle ?? 0, visionAngle: v.visionAngle ?? 90 }));
     if (state.layerVisibility.walls_lights !== false) {
       // A token's own light goes where the token is drawn: while it is dragged into place and
       // while it slides to a new place. (Vision and fog keep the confirmed position.)
@@ -2927,7 +2934,9 @@ export class CanvasEngine {
         // explored veil and no scene darkness is laid on top of them. The scene's darkness (Clima
         // or the scene's ambient light) is drawn only without fog; with fog, night limits what each
         // character sees instead.
-        ambientLight: state.fogOfWar !== false ? 1 : 1 - darkness * (isKeeperGM ? 0.55 : 1),
+        ambientLight: 1 - darkness * (isKeeperGM ? 0.55 : 1),
+        // What was discovered stays at the explored veil instead of the full darkness.
+        explored: { canvas: this.knownArea(fullMapId, state), veil: map.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.5, version: this.fog.exploredVersion },
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
         lights: (map.lights || []).filter(l => !l.off),
@@ -2936,12 +2945,13 @@ export class CanvasEngine {
         time: now * 0.001
       });
       // Lava lights itself through the darkness.
-      if (state.layerVisibility.water !== false && state.fogOfWar === false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
+      if (state.layerVisibility.water !== false) for (const zone of (map.waterZones || [])) if (zone.kind === 'lava') drawLavaGlow(ctx, zone, now * 0.001, darkness * (isKeeperGM ? 0.55 : 1));
     }
 
     // B. Fog of War Pass (Unvisited 100% dark, Explored out-of-vision 50% shroud, Current FOV 0%)
-    if (state.fogOfWar !== false && state.layerVisibility.walls_lights !== false) {
-      const fullMapId = `${state.campaignId}:${map.id}`;
+    // B. The memory of what was discovered (no layer of its own since v2.64.4): loaded, merged with
+    // the table's and stamped with what the party sees; the darkness above uses it.
+    if (state.layerVisibility.walls_lights !== false) {
       // The table's exploration reaches every screen: loaded the first time, then merged each time
       // the Keeper saves more of it; a reset or a reveal (its own mark) applies to all.
       this.fogApplied ??= new Map();
@@ -2975,7 +2985,7 @@ export class CanvasEngine {
         darkness,
         // Night (v2.64.0): in the dark a character makes out only its dark range; lit areas up to its
         // vision range. By day, or with no time set in Clima, up to its vision range.
-        night: Number.isFinite(map.darkness) && darkness >= DAYLIGHT_BELOW,
+        night,
         // The Keeper's screen also remembers what the NPCs saw (never sent to the players).
         keeperMemory: state.userRole === 'keeper' && store.sessionRole !== 'player',
         viewers,
@@ -3411,10 +3421,17 @@ export class CanvasEngine {
     return this.partySees(viewers, targetTok.x, targetTok.y, map);
   }
 
-  // Night (v2.64.0): the Keeper set the scene's time in Clima at 50 % darkness or more. By day, or
-  // with no time set, a character sees up to its vision range.
+  // What this screen knows as discovered (the table's memory, and on the Keeper's screen what the
+  // NPCs saw): the darkness is lifted to the explored veil there. None without a real canvas.
+  knownArea(fullMapId, state = store.state) {
+    try { return this.fog.knownCanvas(fullMapId, this.mapImage.width, this.mapImage.height, state.userRole === 'keeper' && store.sessionRole !== 'player'); }
+    catch { return null; }
+  }
+
+  // Night (v2.64.0): the scene is 50 % dark or more (Clima, or its ambient light). By day a
+  // character sees up to its vision range.
   isNight(map) {
-    return Number.isFinite(map?.darkness) && this.sceneDarkness(map, undefined, store.state.fogOfWar !== false) >= DAYLIGHT_BELOW;
+    return this.sceneDarkness(map, undefined, false) >= DAYLIGHT_BELOW;
   }
 
   // Whether the party sees a point (v2.64.0, user decision; Foundry VTT's detection modes as the
@@ -3505,6 +3522,7 @@ export class CanvasEngine {
   renderWalls(ctx, walls, isEditor = true) {
     const state = store.getState();
     const isKeeper = state.userRole === 'keeper';
+    const sceneIsDark = this.isNight(store.getActiveMap());
 
     ctx.save();
     for (const w of walls) {
@@ -3520,9 +3538,10 @@ export class CanvasEngine {
       // Wall lines are ONLY visible for the Keeper.
       // Players see no wall lines (the walls block LOS and movement without drawing neon lines).
       // Secret doors are completely hidden from players.
-      // In Fog of War: Unexplored walls, doors and windows are completely hidden from players.
+      // In the dark (v2.64.4, the one fog) undiscovered walls, doors and windows are hidden from
+      // the players; by day, or once discovered, a door shows.
       if (!isKeeper || !state.gmVision) {
-        if (state.fogOfWar !== false) {
+        if (sceneIsDark) {
           const fullMapId = `${state.campaignId}:${state.activeMapId}`;
           if (!this.fog.isWallExplored(w, fullMapId)) continue;
         }
@@ -3694,7 +3713,7 @@ export class CanvasEngine {
   switchAt(map, world, keeper) {
     const fullMapId = `${store.state.campaignId}:${map.id}`;
     return (map.switches || []).find(sw => Math.hypot(world.x - sw.x, world.y - sw.y) <= 18
-      && (keeper || (!sw.secret && (store.state.fogOfWar === false || this.fog.isPointExplored(sw.x, sw.y, fullMapId))))) || null;
+      && (keeper || (!sw.secret && (!this.isNight(map) || this.fog.isPointExplored(sw.x, sw.y, fullMapId))))) || null;
   }
   // Pressing a switch: a locked one only tells so; a connected player asks the table.
   useSwitch(sw) {
@@ -3719,7 +3738,7 @@ export class CanvasEngine {
     ctx.save();
     for (const raw of list) {
       const sw = this.draggedSwitch?.sw?.id === raw.id ? this.draggedSwitch.sw : raw;
-      if (!keeper && (sw.secret || (state.fogOfWar !== false && !this.fog.isPointExplored(sw.x, sw.y, fullMapId)))) continue;
+      if (!keeper && (sw.secret || (this.isNight(map) && !this.fog.isPointExplored(sw.x, sw.y, fullMapId)))) continue;
       const selected = keeper && state.selectedSwitchId === sw.id;
       // The lights it controls, while selected.
       if (selected) {
