@@ -1,10 +1,23 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.62.3**.
-Paquete: `VeilFarers_VTT_v2.62.3.zip`.
+Versión actual del VTT: **v2.62.4**.
+Paquete: `VeilFarers_VTT_v2.62.4.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.62.4] — 2026-11-27
+
+V3 · Retratos de PNJ y más arte de Hearts in the Void
+
+### Retratos
+
+- Nueva colección «PNJ» en la selección de retrato, con los personajes secundarios que aporta el usuario (por ahora Parel Dho y Blue Casta). Cualquier token puede usarlos.
+
+### Hearts in the Void
+
+- Parel Dho y Blue Casta llevan su retrato en el token y en su ficha del Keeper.
+- Más arte en los dossieres: el Nexus Inferior con su músico, la hoja de registros experimentales («Deprivation increases aggression…») en el Archivo Kurogane y la pantalla del comunicador de Korren.
 
 ## [2.62.3] — 2026-11-27
 

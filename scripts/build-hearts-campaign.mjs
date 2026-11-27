@@ -37,7 +37,7 @@ const maps = [
 const reserve = (data, id) => ({ ...createActor({ hidden: false, hasLight: false, ...data }, 'reserve'), id: 'tok_hv_' + id, inReserve: true });
 const people = NPCS.map(n => reserve({
   actorType: 'npc', isPlayer: false, name: n.name, roleTag: n.role, species: n.species, color: n.color, description: n.text,
-  avatarUrl: n.bestiary ? bestiaryPortrait(n.bestiary) : crewPortraitPath(n.portrait[0], n.portrait[1], n.portrait[2]), portraitOverride: true,
+  avatarUrl: n.art || (n.bestiary ? bestiaryPortrait(n.bestiary) : crewPortraitPath(n.portrait[0], n.portrait[1], n.portrait[2])), portraitOverride: true,
 }, n.key));
 const weaverText = `Hearts in the Void 1.0 · Scene 3\n\nHunger Weaver - Tier 1 Standard (Biological, Veil-Touched)\nFeed-Line Lash - Action: Melee or Very Close attack with +2. On a hit, 1d8 Physical.\nHypnotic Illusions - Fear 1: one creature within Close that can see the Weaver makes a Presence Reaction Roll, DC 15; on a failure it becomes Stunned.\nWall-Runner - Passive: moves on vertical and inverted surfaces; can enter through any crawlway, vent or conduit.\n\n— ES —\nLatigazo de alimentación (Acción): ataque cuerpo a cuerpo o Muy Cerca con +2; al impactar, 1d8 Physical.\nIlusiones hipnóticas (Fear 1): una criatura a Cerca que lo vea tira Presence Reaction CD 15; si falla, queda Stunned.\nCorredor de paredes (Pasiva): se mueve por paredes y techos y puede entrar por cualquier conducto o rejilla.`;
 const weaver = n => reserve({
@@ -132,10 +132,10 @@ const original = chapters.map((c, i) => ({
 // ── Dossiers ──────────────────────────────────────────────────────────────────────────────────
 // The user's art (v2.62.0, «te voy a pasar material gráfico»): public/campaigns/hearts-in-the-void/
 // <name>.webp; a dossier shows it when the file is there.
-const ART = { hv_p_nexus: 'musician', hv_p_signs: 'props', hv_p_commercial: 'props', hv_p_wrist_terminal: 'technician', hv_p_sterilize: 'sterilize', hv_p_core_lost: 'sterilize', hv_p_queen_lair: 'queen-lair',
+const ART = { hv_p_nexus: 'nexus', hv_p_kurogane_archive: 'experimental-records', hv_p_korren_comm: 'korren-comm', hv_p_signs: 'props', hv_p_commercial: 'props', hv_p_wrist_terminal: 'technician', hv_p_sterilize: 'sterilize', hv_p_core_lost: 'sterilize', hv_p_queen_lair: 'queen-lair',
   hv_p_rec_room: 'last-game', hv_p_poetry: 'notebook', hv_p_dock_k17: 'dock-k17', hv_p_pack: 'pack' };
 const art = id => ART[id] && existsSync(fileURLToPath(new URL(`../public/campaigns/hearts-in-the-void/${ART[id]}.webp`, import.meta.url))) ? `/campaigns/hearts-in-the-void/${ART[id]}.webp` : '';
-const stamp = d => ({ imageUrl: art(d.id), sharedWithPlayers: false, keeperOnly: false, ...d });
+const stamp = d => ({ sharedWithPlayers: false, keeperOnly: false, ...d, imageUrl: d.imageUrl || art(d.id) });
 const handouts = [...GUIDE_DOCS, ...SCENE_DOCS, ...NPCS.map(npcDossier), ...PLAYER_DOCS, ...original].map(stamp);
 
 // ── The campaign, through the app's own normalisation and validation ─────────────────────────

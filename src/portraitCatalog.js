@@ -6,9 +6,16 @@ export const ancestryNames = {
   human: 'Human', kryllian: 'Kryllian', kryx: 'Kryx', rift_spinner: 'Rift Spinner', synthetic: 'Synthetic',
 };
 const labels = { m: 'Masculino', f: 'Femenino', n: 'Neutro' };
+// Portraits of minor characters the user provided (v2.62.4, «algunos son PNJ no importantes, pero
+// ponlos como opciones de retrato»): any token can use them. Thumbnails by scripts/token-thumbs.py.
+export const NPC_PORTRAITS = [
+  ['parel-dho.webp', 'Parel Dho'],
+  ['blue-casta.webp', 'Blue Casta'],
+].map(([file, name]) => ({ name, url: '/assets/tokens/npc/' + file }));
 export function portraitChoices(collection, cls = '') {
   if (collection === 'bestiary-2') return TIER_TWO_PORTRAITS;
   if (collection === 'bestiary') return TIER_ONE_PORTRAITS;
+  if (collection === 'npc') return NPC_PORTRAITS;
   if (collection === 'crew') return [
     ['captain_harker.jpg', 'Capt. Harker'], ['pilot_vea.jpg', 'Vea Kaelen'],
     ['engineer_he09.jpg', 'HE-09'], ['void_stalker.jpg', 'Void Stalker'],
@@ -23,7 +30,7 @@ export function portraitChoices(collection, cls = '') {
   }));
 }
 const presets = new Map();
-for (const collection of ['bestiary', 'bestiary-2', 'crew', ...ANCESTRY_IDS]) {
+for (const collection of ['bestiary', 'bestiary-2', 'crew', 'npc', ...ANCESTRY_IDS]) {
   const classes = ANCESTRY_IDS.includes(collection) ? ['', ...TOKEN_CLASSES] : [''];
   for (const cls of classes) for (const { url } of portraitChoices(collection, cls)) presets.set(url, { collection, cls });
 }

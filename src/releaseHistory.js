@@ -1,6 +1,18 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.62.4', date: '2026-11-27', title: 'V3 · Retratos de PNJ y más arte de Hearts in the Void',
+    sections: [
+      { title: 'Retratos', items: [
+        'Nueva colección «PNJ» en la selección de retrato, con los personajes secundarios que aporta el usuario (por ahora Parel Dho y Blue Casta). Cualquier token puede usarlos.',
+      ] },
+      { title: 'Hearts in the Void', items: [
+        'Parel Dho y Blue Casta llevan su retrato en el token y en su ficha del Keeper.',
+        'Más arte en los dossieres: el Nexus Inferior con su músico, la hoja de registros experimentales («Deprivation increases aggression…») en el Archivo Kurogane y la pantalla del comunicador de Korren.',
+      ] },
+    ],
+  },
+  {
     version: '2.62.3', date: '2026-11-27', title: 'V3 · Relojes por escena e imágenes de Hearts in the Void',
     sections: [
       { title: 'Relojes por escena', items: [

@@ -156,8 +156,26 @@ test('the room’s clocks live on their plates and the user’s art is linked (v
   assert.deepEqual(clocks.core, [plate(4)]);
   assert.deepEqual(clocks.structure, [plate(4), plate(1), plate(2), plate(5)]);
   const art = Object.fromEntries(file.handouts.filter(h => h.imageUrl).map(h => [h.id, h.imageUrl]));
-  for (const [id, name] of [['hv_p_rec_room', 'last-game'], ['hv_p_poetry', 'notebook'], ['hv_p_dock_k17', 'dock-k17'], ['hv_p_pack', 'pack'], ['hv_p_signs', 'props'], ['hv_p_commercial', 'props']]) {
+  for (const [id, name] of [['hv_p_rec_room', 'last-game'], ['hv_p_poetry', 'notebook'], ['hv_p_dock_k17', 'dock-k17'], ['hv_p_pack', 'pack'], ['hv_p_signs', 'props'], ['hv_p_commercial', 'props'],
+    ['hv_p_nexus', 'nexus'], ['hv_p_kurogane_archive', 'experimental-records'], ['hv_p_korren_comm', 'korren-comm']]) {
     assert.equal(art[id], `/campaigns/hearts-in-the-void/${name}.webp`, id);
     assert.ok(readFileSync(new URL(`../public${art[id]}`, import.meta.url)).length > 10000, name);
   }
+});
+
+test('the user’s minor characters are portrait options, and Parel Dho and Blue Casta wear them (v2.62.4)', async () => {
+  const { portraitChoices, isPresetPortrait, isPlayerPortrait, presetLocation } = await import('../src/portraitCatalog.js');
+  const npc = portraitChoices('npc');
+  assert.deepEqual(npc.map(p => p.name), ['Parel Dho', 'Blue Casta']);
+  for (const { url } of npc) {
+    assert.ok(isPresetPortrait(url) && isPlayerPortrait(url), url);
+    assert.equal(presetLocation(url).collection, 'npc');
+    assert.ok(readFileSync(new URL('../public' + url, import.meta.url)).length > 10000, url);
+  }
+  const token = name => file.tokens.find(t => t.name === name);
+  assert.equal(token('Parel Dho').avatarUrl, '/assets/tokens/npc/parel-dho.webp');
+  assert.equal(token('Blue Casta').avatarUrl, '/assets/tokens/npc/blue-casta.webp');
+  assert.equal(file.handouts.find(h => h.id === 'hv_npc_parel').imageUrl, '/assets/tokens/npc/parel-dho.webp');
+  const picker = readFileSync(new URL('../src/portraitPicker.js', import.meta.url), 'utf8');
+  assert.match(picker, /\['npc', 'PNJ'\]/);
 });

@@ -45,7 +45,7 @@ export function openPortraitPicker({ title = 'Elegir retrato', current = '', col
   const preset = collection === 'scene' ? null : presetLocation(current);
   collection = preset?.collection || collection;
   const collections = [...(sceneTokens.length ? [['scene', 'Tokens de la escena']] : []),
-    ...ANCESTRY_IDS.map(id => [id, ancestryNames[id]]), ['bestiary', 'Bestiario · Tier 1'], ['bestiary-2', 'Bestiario · Tier 2'], ['crew', 'Tripulación conocida']];
+    ...ANCESTRY_IDS.map(id => [id, ancestryNames[id]]), ['bestiary', 'Bestiario · Tier 1'], ['bestiary-2', 'Bestiario · Tier 2'], ['crew', 'Tripulación conocida'], ['npc', 'PNJ']];
   const modal = dossierDialog(title, `
     <div class="portrait-filters"><label class="dossier-field"><span>Colección</span><vf-select class="hud-select" data-collection>${collections.map(([id, label]) => option(id, label, collection)).join('')}</vf-select></label>
     <label class="dossier-field" data-class-filter><span>Insignia de clase</span><vf-select class="hud-select" data-class>${option('', 'Sin insignia', '')}${TOKEN_CLASSES.map(id => option(id, id[0].toUpperCase() + id.slice(1))).join('')}</vf-select></label></div>
