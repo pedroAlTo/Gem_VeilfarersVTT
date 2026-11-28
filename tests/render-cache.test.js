@@ -119,3 +119,36 @@ test('one fog: the darkness is lifted to the explored veil where the party disco
   lighting.renderLighting({ ctx: context(), mapWidth: 800, mapHeight: 600, ambientLight: 0.7, walls: [], lights: [], tokens: [], time: 0, explored: { canvas: memory, veil: 0.5, version: 2 } });
   assert.equal(draws.find(d => d.image === memory), undefined, 'a scene lighter than the veil: nothing to lift');
 });
+
+test('a light shows only where the party sees or has discovered; GM vision sees them all (v2.64.6)', () => {
+  const lighting = new LightingEngine(), lctx = lighting.lightCtx, steps = [];
+  lctx.drawImage = () => steps.push(`image ${lctx.globalCompositeOperation}`);
+  lctx.fill = () => steps.push(`light ${lctx.globalCompositeOperation}`);
+  lctx.fillRect = () => steps.push(`dark ${lctx.globalCompositeOperation}`);
+  const memory = { width: 800, height: 600 }, lamp = { x: 400, y: 300, radius: 150, intensity: 0.8 };
+  const frame = (onlySeen, version) => {
+    steps.length = 0;
+    lighting.renderLighting({ ctx: context(), mapWidth: 800, mapHeight: 600, ambientLight: 0, walls: [], lights: [lamp], tokens: [], sights: [{ x: 100, y: 100, radius: 50 }], time: 0, explored: { canvas: memory, veil: 0.5, version }, onlySeen });
+    return [...steps];
+  };
+  const seen = frame(true, 1);
+  assert.deepEqual(seen.slice(0, 4), ['light source-over', 'image destination-in', 'dark source-out', 'image destination-out'], 'the lamp is kept only where the map is known, and the darkness is laid around it');
+  assert.deepEqual(seen.slice(4), ['light destination-out'], 'what the characters see right now is cut afterwards, never held back');
+  const all = frame(false, 2);
+  assert.ok(!all.includes('image destination-in'), 'GM vision: every light shows');
+  assert.deepEqual(all.filter(s => s.startsWith('light')), ['light destination-out', 'light destination-out']);
+});
+
+test('the table’s exploration is merged once: only the cells a screen lacks are drawn (v2.64.6)', () => {
+  const fog = new FogOfWarEngine();
+  const ctx = fog.getExploredCanvas('mg', 40, 20).getContext('2d');
+  let cells = 0; ctx.fillRect = () => { cells++; };
+  const grid = byte => ({ status: 'custom', cols: 4, rows: 2, cellSize: 10, bits: Buffer.from([byte]).toString('base64') });
+  fog.mergeExploration('mg', 40, 20, grid(0b0011)); assert.equal(cells, 2);
+  fog.mergeExploration('mg', 40, 20, grid(0b0011)); assert.equal(cells, 2, 'the same grid again: nothing redrawn (its soft edges stay soft)');
+  fog.mergeExploration('mg', 40, 20, grid(0b0111)); assert.equal(cells, 3, 'only the new cell');
+  fog.noteMerged('mg', grid(0b1111));
+  fog.mergeExploration('mg', 40, 20, grid(0b1111)); assert.equal(cells, 3, 'a screen’s own save is not merged back');
+  fog.resetExploration('mg');
+  fog.mergeExploration('mg', 40, 20, grid(0b0011)); assert.equal(cells, 5, 'after a reset the grid is drawn again');
+});

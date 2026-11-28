@@ -24,6 +24,8 @@ Thumbs.db
 # Large PDF documents (exceeding standard GitHub quotas)
 System/*.pdf
 *.pdf
+# Except the project documents the user keeps in the repository (28 nov 2026).
+!PROJECTARES/*.pdf
 
 
 # Local Firebase emulator state/logs

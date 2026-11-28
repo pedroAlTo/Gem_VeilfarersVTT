@@ -66,3 +66,25 @@ export function mergeModule(state, module, moduleId) {
   if (fogOn) counts.fogOn = true;
   return { handouts, tokens, arcs, counts, ...(fogOn ? { fogOfWar: true } : {}) };
 }
+
+// The module's images for the room's dossiers that have none (v2.64.5, user report: «no veo las
+// imágenes aplicadas a los dossiers»: the room was made before them and «Actualizar módulo» had not
+// been pressed). It only fills empty images, so it is applied on its own when the Keeper opens the room.
+export function moduleImages(state, module, moduleId) {
+  const { docPrefix } = MODULES[moduleId];
+  const images = new Map((module.handouts || []).filter(h => h.id?.startsWith(docPrefix) && h.imageUrl).map(h => [h.id, h.imageUrl]));
+  let filled = 0;
+  const handouts = (state.handouts || []).map(h => {
+    const url = images.get(h.id);
+    if (!url || h.imageUrl) return h;
+    filled++;
+    return { ...h, imageUrl: url };
+  });
+  return { handouts, filled };
+}
+
+// What «Actualizar módulo» would still change, or null when the room is up to date (v2.64.5).
+export function pendingUpdate(state, module, moduleId) {
+  const { counts } = mergeModule(state, module, moduleId);
+  return counts.docsAdded || counts.docsUpdated || counts.tokensAdded || counts.tokensUpdated || counts.fogOn ? counts : null;
+}

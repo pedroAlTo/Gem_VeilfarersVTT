@@ -274,3 +274,46 @@ test('a room made before the images is brought up to date without touching the t
   store.normalizeCampaign({ ...structuredClone(old), handouts, tokens, arcs });
   assert.deepEqual(mergeModule({ ...old, fogOfWar: true, handouts, tokens, arcs }, file, 'hearts-in-the-void').counts, { docsAdded: 0, docsUpdated: 0, tokensAdded: 0, tokensUpdated: 0 }, 'a second run changes nothing');
 });
+
+test('a room made before the images gets them on the Keeper’s screen, and the list says what the module still brings (v2.64.5)', async () => {
+  const { moduleImages, pendingUpdate, mergeModule } = await import('../src/moduleUpdate.js');
+  const old = structuredClone(file);
+  old.handouts = old.handouts.map(h => h.id === 'hv_npc_zara' ? { ...h, imageUrl: '', contentHtml: '<p>old</p>' }
+    : h.id === 'hv_p_nexus' ? { ...h, imageUrl: 'https://example.com/mio.png' } : h);
+  const { handouts, filled } = moduleImages(old, file, 'hearts-in-the-void');
+  assert.equal(filled, 1);
+  const zara = handouts.find(h => h.id === 'hv_npc_zara');
+  assert.deepEqual([zara.imageUrl, zara.contentHtml], ['/campaigns/hearts-in-the-void/characters/zara.webp', '<p>old</p>'], 'only the image changes');
+  assert.equal(handouts.find(h => h.id === 'hv_p_nexus').imageUrl, 'https://example.com/mio.png', 'the Keeper’s own image stays');
+  assert.ok(pendingUpdate({ ...old, handouts }, file, 'hearts-in-the-void').docsUpdated >= 1, 'the old text is still to update');
+  const merged = mergeModule(old, file, 'hearts-in-the-void');
+  assert.equal(pendingUpdate({ ...old, handouts: merged.handouts, tokens: merged.tokens, arcs: merged.arcs }, file, 'hearts-in-the-void'), null);
+
+  // On the Keeper's screen: the images go on by themselves, the notice offers the rest, «Ahora no» hides it.
+  const { HandoutManager } = await import('../src/handoutManager.js');
+  const saved = structuredClone(store.state), realFetch = globalThis.fetch, campaignId = `hv-images-${Date.now()}`;
+  globalThis.fetch = async url => ({ ok: String(url).endsWith('/campaigns/hearts-in-the-void.json'), json: async () => structuredClone(file) });
+  const pane = document.createElement('div'); document.body.append(pane);
+  const manager = new HandoutManager(pane);
+  try {
+    Object.assign(store.state, store.normalizeCampaign(structuredClone(old)), { campaignId, userRole: 'keeper' });
+    await manager.checkModule();
+    assert.equal(store.state.handouts.find(h => h.id === 'hv_npc_zara').imageUrl, '/campaigns/hearts-in-the-void/characters/zara.webp');
+    assert.ok(pane.querySelector('.module-update-banner #module_update_banner_btn'), 'the notice is shown');
+    assert.ok(pane.querySelector('.handout-card[data-id="hv_npc_zara"] .handout-thumb'), 'the image is seen in the list');
+    pane.querySelector('#module_update_later').click();
+    assert.equal(pane.querySelector('.module-update-banner'), null);
+    await manager.checkModule();
+    assert.equal(pane.querySelector('.module-update-banner'), null, '«Ahora no» lasts until the module brings something else');
+    // A player's screen never changes the room nor sees the notice.
+    localStorage.removeItem(`veil.moduleUpdateSeen.${campaignId}`);
+    store.state.userRole = 'player';
+    await manager.checkModule();
+    assert.equal(manager.pending, null);
+  } finally {
+    clearTimeout(manager.moduleTimer);
+    globalThis.fetch = realFetch;
+    Object.assign(store.state, saved);
+    pane.remove();
+  }
+});

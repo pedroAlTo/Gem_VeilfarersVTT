@@ -286,7 +286,8 @@ export class LightingEngine {
     tokens = [],
     sights = [],
     time = 0,
-    explored = null
+    explored = null,
+    onlySeen = false
   }) {
     this.resize(mapWidth, mapHeight);
     const lCtx = this.lightCtx;
@@ -354,7 +355,14 @@ export class LightingEngine {
     const animated = allLights.some(light => { const effect = light.effect || (light.flicker ? 'flicker' : 'steady'); return effect !== 'steady'; });
     // What the party has discovered lifts the darkness to the explored veil (v2.64.4, the one fog).
     const veil = explored?.canvas ? Math.max(0, Math.min(1, explored.veil ?? 0.5)) : 1;
-    const key = animated ? null : fingerprint([mapWidth, mapHeight, darknessAlpha, veil, explored?.version ?? -1,
+    // Lights show only where the party sees or has discovered (v2.64.6, user report: «si los muros
+    // bloquean la visión de la luz, las zonas iluminadas no se ven aunque están las luces encendidas,
+    // si todavía no han sido descubiertas»). It is the v2.29.4 rule «luz solo si se ve», lost in
+    // v2.64.4 when the second fog went away: a lit room behind walls was seen from anywhere. What the
+    // party sees is stamped into the memory on every frame (fogEngine), so a lit area shows as soon as
+    // a character looks at it. The Keeper's GM vision still sees every light.
+    const masked = onlySeen && !!explored?.canvas;
+    const key = animated ? null : fingerprint([mapWidth, mapHeight, darknessAlpha, veil, explored?.version ?? -1, masked ? 1 : 0,
       ...allLights.flatMap(l => [l.x, l.y, l.radius || 200, l.intensity ?? 0.8, l.facingAngle ?? -9, l.visionAngle ?? 360]), -1, ...wallValues(walls)]);
     // Animated lights are redrawn 30 times a second, not on every frame: the eye cannot tell
     // and the mask (one visibility polygon per light) is the costly part.
@@ -363,11 +371,38 @@ export class LightingEngine {
     const reuse = sameSize && (key !== null ? key === this.lightKey : (this.lightKey === null && !due));
     this.lightKey = key; this.lightSize = `${mapWidth}x${mapHeight}`;
     if (!reuse) this.lightDrawnAt = time;
+    // A light's lit area, painted with the light's strength (fading only near its edge).
+    const cut = light => {
+      const polygon = this.computeVisibilityPolygon(light.x, light.y, light.shownRadius, walls, light.facingAngle, light.visionAngle ?? 360);
+      if (polygon.length < 3) return;
+      lCtx.save();
+      lCtx.beginPath();
+      lCtx.moveTo(polygon[0].x, polygon[0].y);
+      for (let i = 1; i < polygon.length; i++) lCtx.lineTo(polygon[i].x, polygon[i].y);
+      lCtx.closePath();
+      // Even across its area, softening only near the edge: a light lights its whole area.
+      const grad = lCtx.createRadialGradient(light.x, light.y, 0, light.x, light.y, light.shownRadius);
+      const strength = light.noGlow ? 1 : lightStrength(light.shownIntensity);
+      grad.addColorStop(0, `rgba(0, 0, 0, ${strength})`);
+      grad.addColorStop(0.8, `rgba(0, 0, 0, ${strength})`);
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      lCtx.fillStyle = grad;
+      lCtx.fill();
+      lCtx.restore();
+    };
     if (!reuse) {
       this.lightVersion = (this.lightVersion || 0) + 1;
       lCtx.globalCompositeOperation = 'source-over';
       lCtx.clearRect(0, 0, mapWidth, mapHeight);
       if (darknessAlpha > 0.01) {
+        if (masked) {
+          // The lit areas first, kept only where the map is known; the darkness is then laid around
+          // them (source-out), which leaves it exactly as cutting each light out of it would.
+          for (const light of shaped) if (light.id !== 'sight') cut(light);
+          lCtx.globalCompositeOperation = 'destination-in';
+          lCtx.drawImage(explored.canvas, 0, 0);
+          lCtx.globalCompositeOperation = 'source-out';
+        }
         lCtx.fillStyle = `rgba(5, 8, 15, ${darknessAlpha})`;
         lCtx.fillRect(0, 0, mapWidth, mapHeight);
         // Discovered areas keep only the veil's darkness (never more than the scene's): the
@@ -380,46 +415,10 @@ export class LightingEngine {
           lCtx.restore();
         }
       }
-    }
-
-    // 2. Cut out light shapes from darkness using destination-out
-    lCtx.globalCompositeOperation = 'destination-out';
-
-    for (const light of reuse ? [] : shaped) {
-      const currentRadius = light.shownRadius, currentIntensity = light.shownIntensity;
-      const polygon = this.computeVisibilityPolygon(
-        light.x,
-        light.y,
-        currentRadius,
-        walls,
-        light.facingAngle,
-        light.visionAngle ?? 360
-      );
-      if (polygon.length < 3) continue;
-
-      // Draw light cutout
-      lCtx.save();
-      lCtx.beginPath();
-      lCtx.moveTo(polygon[0].x, polygon[0].y);
-      for (let i = 1; i < polygon.length; i++) {
-        lCtx.lineTo(polygon[i].x, polygon[i].y);
-      }
-      lCtx.closePath();
-
-      // Radial gradient for smooth falloff
-      const grad = lCtx.createRadialGradient(
-        light.x, light.y, 0,
-        light.x, light.y, currentRadius
-      );
-      // Even across its area, softening only near the edge: a light lights its whole area.
-      const strength = light.noGlow ? 1 : lightStrength(currentIntensity);
-      grad.addColorStop(0, `rgba(0, 0, 0, ${strength})`);
-      grad.addColorStop(0.8, `rgba(0, 0, 0, ${strength})`);
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-      lCtx.fillStyle = grad;
-      lCtx.fill();
-      lCtx.restore();
+      // 2. Cut out light shapes from darkness using destination-out. What the characters see right
+      // now (their dark range) is never held back.
+      lCtx.globalCompositeOperation = 'destination-out';
+      for (const light of shaped) if (!masked || light.id === 'sight') cut(light);
     }
 
     // 2b. Window Opacity Shadow Attenuation Pass
@@ -472,15 +471,12 @@ export class LightingEngine {
       }
     }
 
-    // 3. Additive color glow pass on top of lighted areas
     lCtx.globalCompositeOperation = 'source-over';
-    
-    // Draw back the ambient light map onto the main game canvas with multiply / blend
-    ctx.save();
-    // Feathered: the shadow a wall cuts into a light ends in a gradient, not in a line.
-    drawSoftened(ctx, this.lightCanvas, LIGHT_SOFTNESS, this.lightVersion);
 
-    // Subtle colored glows around light centers
+    // 3. The lights' colour (tint and glow) goes on the map under the darkness (v2.64.6): it shows
+    // where the darkness is cut, and behind a wall or in an undiscovered area the darkness covers it.
+    // Up to v2.64.5 it was drawn on top, so the glow crossed walls and coloured unseen rooms.
+    ctx.save();
     const wallsKey = fingerprint(wallValues(walls));
     ctx.globalCompositeOperation = 'screen';
     for (const light of shaped) {
@@ -518,6 +514,8 @@ export class LightingEngine {
       grad.addColorStop(1, 'transparent');
 
       ctx.save();
+      // The glow stays inside the light's area too: walls stop it.
+      if (area.length >= 3) { ctx.beginPath(); ctx.moveTo(area[0].x, area[0].y); for (let i = 1; i < area.length; i++) ctx.lineTo(area[i].x, area[i].y); ctx.closePath(); ctx.clip(); }
       ctx.globalAlpha = Math.min(1.0, light.shownIntensity * 0.35 * glowScale * Math.min(1, tint / 0.3));
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -525,6 +523,12 @@ export class LightingEngine {
       ctx.fill();
       ctx.restore();
     }
+    ctx.restore();
+
+    // The darkness over the map. Feathered: the shadow a wall cuts into a light ends in a gradient,
+    // not in a line.
+    ctx.save();
+    drawSoftened(ctx, this.lightCanvas, LIGHT_SOFTNESS, this.lightVersion);
     ctx.restore();
   }
 }
