@@ -402,6 +402,18 @@ export class NetworkManager {
     const memberId = this.members.get(peerId)?.id || peerId;
     return {
       ...this.store.serializeCampaign(),
+      // La parte «Solo para Keeper» del combate espacial no debe llegar a los jugadores (PROJECT ARES):
+      // casco, Evasion, Armor Slots y armas enemigas se resuelven en la mesa.
+      starship: (() => {
+        const ship = structuredClone(this.store.state.starship);
+        if (ship?.combat) {
+          ship.combat.contacts = (ship.combat.contacts || []).map((c) => ({
+            id: c.id, name: c.name, band: c.band, heading: c.heading ?? 0,
+            sensorLock: !!c.sensorLock, visibleDamage: !!c.visibleDamage, burning: !!c.burning,
+          }));
+        }
+        return ship;
+      })(),
       logs: (s.logs || []).filter(entry => entry.visibility !== 'keeper').map(entry => structuredClone(entry)),
       keeperPortrait: s.keeperPortrait || '',
       chatMessages: chatHistoryFor(s.chatMessages, memberId),
