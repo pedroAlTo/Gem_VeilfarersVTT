@@ -20,6 +20,7 @@ import { mountHeaderControls, mountStatusbarLanguage } from './languageUI.js';
 import './colorPicker.css';
 import { openColorPickerPopover } from './colorPicker.js';
 import './chat.css';
+import './spaceCombat.css';
 import { ChatPanel, entersTableChat } from './chatPanel.js';
 import { initWaterControls } from './waterControls.js';
 import './waterControls.css';
@@ -154,6 +155,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Starship tab inside sidebar
   const shipPane = document.getElementById('tab_pane_ship');
   if (shipPane) new StarshipManager(shipPane);
+
+  // PROJECT ARES — pestaña de combate espacial 3D (carga perezosa: three.js solo al abrir la pestaña)
+  const aresPane = document.getElementById('tab_pane_ares');
+  if (aresPane) {
+    import('./spaceCombatUI.js').then(({ SpaceCombatUI }) => { window.veilSpaceCombat = new SpaceCombatUI(aresPane); })
+      .catch((error) => console.warn('Space combat unavailable:', error));
+  }
 
   // Clocks tab inside sidebar
   const clocksPane = document.getElementById('tab_pane_clocks');
@@ -670,6 +678,7 @@ function setupSidebarTabNavigation() {
     sheet: document.getElementById('tab_pane_sheet'),
     clocks: document.getElementById('tab_pane_clocks'),
     ship: document.getElementById('tab_pane_ship'),
+    ares: document.getElementById('tab_pane_ares'),
     roster: document.getElementById('tab_pane_roster'),
     scenes: document.getElementById('tab_pane_scenes'),
     handouts: document.getElementById('tab_pane_handouts'),
