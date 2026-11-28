@@ -1,3 +1,4 @@
+import { createEncounter, NAVAL_SKY } from './naval/encounter.js';
 import { store } from './state.js';
 import { account, cloudConfigured, storageConfigured } from './cloudAccount.js';
 import { openAccount } from './accountUI.js';
@@ -14,12 +15,20 @@ export function imageDimensions(src) {
     image.src = src;
   });
 }
+export function createNavalScene(name, arcId) {
+  if (store.sessionRole === 'player' || store.state.userRole !== 'keeper') throw new Error('Solo el Keeper puede crear una escena.');
+  const state = store.state;
+  return store.addMap({ name: name?.trim() || 'Vagrant Star · Crimson Skarrh', arcId,
+    imageUrl: NAVAL_SKY, width: 1600, height: 900, naval: createEncounter(state.tokens, state.activeMapId, state.selectedTokenId) });
+}
+
 export function openSceneCreator({ arcId } = {}) {
   if (store.sessionRole === 'player') return;
   const cConfig = getCloudinaryConfig();
   const modal = dossierDialog('CREATE A SCENE', `
     <span class="dossier-eyebrow">SCENE / NEW DESTINATION</span><h2>Set the next encounter.</h2><p class="dossier-muted">Your party travels with you. Enemies stay in their own scene.</p>
     <form id="scene_form"><label class="dossier-field">Scene name<input class="hud-input" id="scene_name" required maxlength="200" placeholder="Derelict station · Hangar 04"></label>
+    <button type="button" class="hud-btn" id="scene_naval">Crear escena de combate espacial 3D</button>
     <label class="dossier-drop"><strong>Map image</strong><span>PNG, JPEG o WebP · hasta 50 MB (100 MB con Cloudinary) · hasta 8192 × 8192 px</span><input id="scene_file" type="file" accept="image/png,image/jpeg,image/webp"></label>
     <label class="dossier-field">Or an image URL<input class="hud-input" id="scene_url" type="url" placeholder="https://…"></label>
     <div class="session-options" style="background: rgba(0, 243, 255, 0.08); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(0, 243, 255, 0.3); margin: 8px 0;">
@@ -47,6 +56,9 @@ export function openSceneCreator({ arcId } = {}) {
     <h3>Your server scenes</h3><div id="cloud_scenes">${account.user ? 'Loading…' : 'Sign in to reuse a saved scene.'}</div><button class="hud-btn" id="scene_refresh">Refresh library</button>
   `);
   const fileInput = modal.querySelector('#scene_file'), status = modal.querySelector('#scene_progress'), error = modal.querySelector('.dossier-error');
+  modal.querySelector('#scene_naval').onclick = () => {
+    if (createNavalScene(modal.querySelector('#scene_name').value, arcId)) modal.remove();
+  };
   let previewURL;
   const observer = new MutationObserver(() => { if (!modal.isConnected) { if (previewURL) URL.revokeObjectURL(previewURL); observer.disconnect(); } });
   observer.observe(document.body, { childList: true });

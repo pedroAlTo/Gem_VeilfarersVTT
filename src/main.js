@@ -101,6 +101,20 @@ window.addEventListener('DOMContentLoaded', async () => {
   const canvasEl = document.getElementById('tactical_canvas');
   const canvasEngine = new CanvasEngine(canvasEl);
   window.veilCanvas = canvasEngine;
+  // Load the naval HUD and its renderer only when the selected scene needs them.
+  let navalView = null, navalScene = null;
+  const syncNaval = () => {
+    const map = store.getActiveMap(), id = map?.naval ? map.id : null;
+    if (navalScene === id) return;
+    navalScene = id;
+    navalView?.dispose(); navalView = null;
+    if (!id) return;
+    import('./naval/screen.js').then(({ mountNavalScreen }) => {
+      if (navalScene === id && !navalView) navalView = mountNavalScreen(document.getElementById('canvas_viewport_root'), store, network);
+    }).catch(error => { if (navalScene === id) { navalScene = null; notify(error.message, 'error'); } });
+  };
+  store.subscribe((_s, keys) => { if (keys.includes('maps') || keys.includes('activeMapId')) syncNaval(); });
+  syncNaval();
 
   // 2. Initialize Header Fear Meter
   const fearContainer = document.getElementById('fear_meter_container');

@@ -1,6 +1,15 @@
 import DiceBox from './dice-box.es.min.js';
 import DisplayResults from './display-results.js';
 
+// DiceBox's resizeWorld registers a window listener. Its non-WebGL world has no canvas.
+class TableDiceBox extends DiceBox {
+  resizeWorld() {
+    if (!this.canvas || this.resizeBound) return;
+    this.resizeBound = true;
+    super.resizeWorld();
+  }
+}
+let lastCanvasSize = '';
 const THEME_COLORS = {
   vfHope: '#f4c542', vfFear: '#8b5cf6', vfDamage: '#c92a38', vfNeutral: '#168ca8',
   vfBioHope: '#ffffff', vfBioFear: '#ffffff', vfBioDamage: '#ffffff', vfDiscarded: '#ffffff',
@@ -144,8 +153,14 @@ function scheduleResize(){
   resizeRaf=requestAnimationFrame(()=>{
     syncStageBounds();
     requestAnimationFrame(()=>{
-      try { box && typeof box.resizeWorld === 'function' && box.resizeWorld(); }
-      catch(error){ console.warn('3D dice resize failed:', error); }
+      const canvas = box?.canvas;
+      if (canvas?.clientWidth && canvas.clientHeight) {
+        const size = canvas.clientWidth + 'x' + canvas.clientHeight;
+        if (size !== lastCanvasSize) {
+          lastCanvasSize = size;
+          window.dispatchEvent(new Event('resize'));
+        }
+      }
       scheduleCueRefresh();
     });
   });
@@ -235,13 +250,14 @@ async function init(){
   initPromise=(async()=>{
     await assertWebAssemblyExecutionAllowed();
     syncStageBounds();
-    box=new DiceBox({
+    const candidate=new TableDiceBox({
       container:'#vf-dice3d-box', assetPath:ASSET_PATH, origin:'', theme:'vfNeutral', preloadThemes:PRELOAD_THEMES,
       scale:5.2, gravity:3.6, mass:1.4, friction:0.95, restitution:0.12, spinForce:4.0, throwForce:4.8,
       startingHeight:8.0, settleTimeout:9500, delay:10, lightIntensity:1.15, enableShadows:true,
       shadowTransparency:0.72, offscreen:false
     });
-    await box.init();
+    await candidate.init();
+    box=candidate;
     scheduleResize();
     lastError=null;
     return box;

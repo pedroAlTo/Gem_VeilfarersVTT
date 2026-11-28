@@ -1,4 +1,4 @@
-import { sanitizeHTML, escapeHTML as esc } from './ui.js';
+import { sanitizeHTML, escapeHTML as esc, notify } from './ui.js';
 // src/fearMeter.js
 // Futuristic 12-Cell Global Fear Meter Widget with GSAP High-Impact Animations
 
@@ -161,7 +161,12 @@ export class FearMeterHUD {
         controlsEl.querySelector('#fear_spend_menu_btn').onclick = () => {
           this.openSpendModal();
         };
-        controlsEl.querySelector('#next_spotlight_round').onclick = () => nextSpotlightRound(store);
+        controlsEl.querySelector('#next_spotlight_round').onclick = () => {
+          const map = store.getActiveMap();
+          if (!map?.naval) return nextSpotlightRound(store);
+          return network.requestAction({ type: 'NAVAL_KEEPER', order: 'round', mapId: map.id,
+            round: map.naval.round, revision: map.naval.revision }).catch(error => notify(error.message,'error'));
+        };
         controlsEl.querySelector('#fear_session_reset_btn').onclick = () => {
           store.resetFearSession();
           network.broadcast({ type: 'FEAR_UPDATE', fear: store.getState().fear });

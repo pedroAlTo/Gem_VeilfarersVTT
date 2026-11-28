@@ -4,6 +4,16 @@
 // in both languages, as the books print them. Book content (Powers, abilities, modules, names)
 // is not here: it is the text of the books.
 export const PAIRS = [
+  ['Crear escena de combate espacial 3D','Create 3D space combat scene'], ['Combate espacial','Space combat'],
+  ['Cenital','Top-down'], ['Asignar puestos','Assign stations'], ['Puesto sin asignar','Unassigned station'],
+  ['Tirar maniobra','Roll maneuver'], ['Fijar blanco','Lock target'], ['Sin fijar','Unlocked'],
+  ['Daños visibles','Visible damage'], ['Sin daños visibles','No visible damage'], ['Spotlight usado','Spotlight used'],
+  ['Aproximación agresiva','Aggressive approach'], ['Cerrar distancia','Close range'], ['Abrir distancia','Open range'],
+  ['Patrón evasivo','Evasive pattern'], ['Flanqueo','Flank'], ['Andanada','Broadside'], ['Cerrar ronda','End round'],
+  ['Turno enemigo','Enemy turn'], ['Enfriar sistemas','Cool systems'], ['Ventilar','Vent heat'],
+  ['En alcance','In range'], ['Fuera de alcance','Out of range'], ['Altura visual','Visual altitude'],
+  ['Sala en pausa · esperando al Keeper','Room paused · waiting for the Keeper'],
+  ['Los puestos y el turno enemigo se gestionan en el mapa.','Manage the crew stations and enemy turn on the map.'],
   ['Texto de la carta', 'Card text'],
   ['Gastar 1 dado de Resolve', 'Spend 1 Resolve die'], ['Recuperar 1 dado de Resolve', 'Regain 1 Resolve die'],
   ['Sin escudos', 'No shields'], ['Confirmar escudos', 'Confirm shields'],

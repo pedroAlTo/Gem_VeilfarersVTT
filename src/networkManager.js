@@ -1,3 +1,4 @@
+import { publicEncounter } from './naval/encounter.js';
 import { publicDossier } from './dossierPrivacy.js';
 import { isEncounterMarker } from './bestiaryProfiles.js';
 import { LanPeer } from './lanPeer.js';
@@ -382,6 +383,7 @@ export class NetworkManager {
   snapshotFor(peerId) {
     const s = this.store.getState(),
       map = structuredClone(this.store.getActiveMap());
+    if (map.naval) map.naval = publicEncounter(map.naval);
     map.walls = (map.walls || []).map((w) =>
       w.isSecret
         ? {
@@ -1219,7 +1221,7 @@ export class NetworkManager {
           data.action?.visibility === 'keeper' || !owns(data.action?.actorId) ||
           // Card actions resolve here too: the table pays their costs (they were missing, so a
           // connected player's card was refused as "not assigned").
-          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS', 'ARCHIVE_EDIT', 'REACTION_PAY', 'POWER_USE', 'LUCKY_BREAK', 'CARD_DURATION', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL', 'GEAR_INSTALL', 'GEAR_REMOVE', 'GEAR_WEAR', 'WEAPON_READY', 'WEAPON_FOLLOWUP', 'WEAPON_AREA', 'CARD_EFFECT'].includes(data.action?.type)
+          !['CHECK', 'EFFORT', 'RESOLVE', 'CONDITION', 'CARD_PLAY', 'CARD_RECALL', 'CARD_LEARN', 'UNCANNY_ACCESS', 'ARCHIVE_EDIT', 'REACTION_PAY', 'POWER_USE', 'LUCKY_BREAK', 'CARD_DURATION', 'REST_CHOICE', 'LIFE_TURN', 'STABILIZE', 'FTL', 'NAVAL_STATION', 'GEAR_INSTALL', 'GEAR_REMOVE', 'GEAR_WEAR', 'WEAPON_READY', 'WEAPON_FOLLOWUP', 'WEAPON_AREA', 'CARD_EFFECT'].includes(data.action?.type)
         )
           throw new Error('This character is not assigned to you.');
         // A player's action never carries the Keeper's hand (v2.60.0).

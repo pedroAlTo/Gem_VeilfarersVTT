@@ -24,7 +24,8 @@ export function rollCalc(result, extra = []) {
   }
   if (result.advVal) lines.push(`Ventaja d6: + ${result.advVal}`);
   if (result.disadvVal) lines.push(`Desventaja d6: − ${result.disadvVal}`);
-  lines.push(`Total ${result.total} contra ${result.attack ? 'Evasion' : 'DC'} ${result.dc} → ${result.outcomeTitle || ''}`.trim());
+  const target = result.concealDC ? '' : ` contra ${result.attack ? 'Evasion' : 'DC'} ${result.dc}`;
+  lines.push(`Total ${result.total}${target} → ${result.outcomeTitle || ''}`.trim());
   if (!result.keeperD20 && result.hopeVal === result.fearVal) lines.push('Dados iguales: éxito crítico.');
   for (const line of extra) if (line) lines.push(String(line));
   if (result.pathPayout) lines.push(result.pathPayout);

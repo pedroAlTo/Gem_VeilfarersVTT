@@ -10,6 +10,8 @@ import { validateInventory } from './equipment.js';
 import { validateChatHistory } from './chat.js';
 import { isPlayerPortrait, isPortraitSource } from './portraitCatalog.js';
 
+import { validEncounter } from './naval/encounter.js';
+
 export const CAMPAIGN_KEYS = [
   'campaignId',
   'campaignName',
@@ -91,6 +93,7 @@ export function validateCampaign(data) {
       'Invalid map name, image or grid.'
     );
     // The explored veil of this scene (v2.64.0), set by the Keeper for everyone.
+    if (m.naval != null) assert(validEncounter(m.naval), 'Invalid naval encounter.');
     if (m.fogExploredOpacity != null) assert(finite(m.fogExploredOpacity, 0.05, 0.95), 'Invalid explored fog opacity.');
     for (const k of ['walls', 'lights', 'effects', 'waterZones', 'switches']) {
       assert(
