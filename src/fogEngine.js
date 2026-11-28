@@ -25,9 +25,8 @@ const decodeBits = bits => {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 };
-function drawCells(ctx, fogExplored) {
+function drawCells(ctx, fogExplored, bytes = decodeBits(fogExplored.bits)) {
   const cell = fogExplored.cellSize || 32, cols = fogExplored.cols, rows = fogExplored.rows;
-  const bytes = decodeBits(fogExplored.bits);
   const on = index => (index >> 3) < bytes.length && (bytes[index >> 3] & (1 << (index & 7)));
   try {
     const small = document.createElement('canvas'); small.width = cols; small.height = rows;
@@ -52,6 +51,8 @@ export class FogOfWarEngine {
 
     // Persistent exploration maps: mapId -> HTMLCanvasElement (white = visited)
     this.exploredCanvases = new Map();
+    // The table's cells already drawn into each memory (v2.64.6): a merge draws only the new ones.
+    this.mergedCells = new Map();
     // What the Keeper's NPCs and enemies have seen (v2.64.1): shown on the Keeper's screen with the
     // explored veil, never saved for the table nor sent to the players.
     this.keeperCanvases = new Map();
@@ -142,6 +143,7 @@ export class FogOfWarEngine {
     return ctx;
   }
   resetExploration(mapId) {
+    this.mergedCells.delete(mapId);
     for (const canvas of [this.exploredCanvases.get(mapId), this.keeperCanvases.get(mapId)]) {
       if (!canvas) continue;
       const ctx = canvas.getContext('2d');
@@ -239,13 +241,27 @@ export class FogOfWarEngine {
 
   // Adds the table's exploration (the Keeper's saved memory) to this screen's, without erasing
   // what this screen has seen: every player ends up with the same explored map.
+  // Only the cells this memory has not received yet are drawn (v2.64.6): each save sends the whole
+  // grid, and drawing its softened edges again and again hardened them into steps, which showed as
+  // a jagged edge where a lit area meets the unexplored dark.
   mergeExploration(mapId, mapWidth, mapHeight, fogExplored) {
     if (!fogExplored || fogExplored === 'none') return;
     if (fogExplored === 'all') { this.revealAll(mapId, mapWidth, mapHeight); return; }
     if (!fogExplored.bits || !fogExplored.cols) return;
+    const bytes = decodeBits(fogExplored.bits), before = this.mergedCells.get(mapId);
+    const same = before && before.cols === fogExplored.cols && before.rows === fogExplored.rows && before.cellSize === fogExplored.cellSize;
+    const fresh = same ? bytes.map((b, i) => b & ~(before.bytes[i] || 0)) : bytes;
+    this.noteMerged(mapId, fogExplored, same ? bytes.map((b, i) => b | (before.bytes[i] || 0)) : bytes);
+    if (!fresh.some(Boolean)) return;
     const canvas = this.getExploredCanvas(mapId, mapWidth, mapHeight), ctx = canvas.getContext('2d');
-    drawCells(ctx, fogExplored);
+    drawCells(ctx, fogExplored, fresh);
     this.exploredVersion++;
+  }
+
+  // Records the table's cells as already in this memory (a load, or this screen's own save).
+  noteMerged(mapId, fogExplored, bytes = fogExplored?.bits ? decodeBits(fogExplored.bits) : null) {
+    if (!bytes || !fogExplored?.cols) { this.mergedCells.delete(mapId); return; }
+    this.mergedCells.set(mapId, { cols: fogExplored.cols, rows: fogExplored.rows, cellSize: fogExplored.cellSize, bytes: Uint8Array.from(bytes) });
   }
 
   /**
@@ -267,6 +283,7 @@ export class FogOfWarEngine {
       ctx.clearRect(0, 0, mapWidth, mapHeight);
 
       drawCells(ctx, fogExplored);
+      this.noteMerged(mapId, fogExplored);
     }
   }
 

@@ -68,6 +68,7 @@ export class FogBrush {
     // This screen already shows the stroke: it must not reload its memory from the saved grid.
     engine.fogApplied ??= new Map();
     engine.fogApplied.set(fullMapId, { data: explorationKey(fogExplored), reset: fogResetAt });
+    engine.fog.noteMerged?.(fullMapId, fogExplored);
     engine._fogSavedVersion = `${fullMapId}:${engine.fog.exploredVersion}`;
     this.store.updateMap(map.id, { fogExplored, fogResetAt });
   }

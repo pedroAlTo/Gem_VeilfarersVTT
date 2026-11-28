@@ -2937,6 +2937,9 @@ export class CanvasEngine {
         ambientLight: 1 - darkness * (isKeeperGM ? 0.55 : 1),
         // What was discovered stays at the explored veil instead of the full darkness.
         explored: { canvas: this.knownArea(fullMapId, state), veil: map.fogExploredOpacity ?? state.fogExploredOpacity ?? 0.5, version: this.fog.exploredVersion },
+        // A light shows only where the party sees or has discovered (v2.64.6, user report); the
+        // Keeper's GM vision sees them all.
+        onlySeen: !isKeeperGM,
         ambientColor: map.ambientColor ?? '#0a1220',
         walls: map.walls || [],
         lights: (map.lights || []).filter(l => !l.off),
@@ -3005,6 +3008,12 @@ export class CanvasEngine {
           if (this.fog && this.mapImage && map) {
             const serialized = this.fog.serializeExploration(fullMapId, this.mapImage.width, this.mapImage.height);
             if (serialized && JSON.stringify(serialized) !== JSON.stringify(map.fogExplored)) {
+              // This screen already holds what it saves: the saved grid is not merged back into it
+              // (v2.64.6; merging it again and again hardened the soft edges into steps).
+              this.fogApplied ??= new Map();
+              const before = this.fogApplied.get(fullMapId);
+              this.fogApplied.set(fullMapId, { data: explorationKey(serialized), reset: before?.reset ?? (map.fogResetAt || 0) });
+              this.fog.noteMerged(fullMapId, serialized);
               store.updateMap(map.id, { fogExplored: serialized });
               import('./networkManager.js').then(({ network }) => {
                 network.broadcast?.({ type: 'FOG_SYNC', mapId: map.id, fogExplored: serialized });

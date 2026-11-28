@@ -1,6 +1,16 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.64.6', date: '2026-11-28', title: 'V3 · La luz solo se ve donde el grupo ve',
+    sections: [
+      { title: 'Niebla y luces', items: [
+        'Una zona iluminada que el grupo no ha descubierto y que queda tras los muros ya no se ve aunque su luz esté encendida: aparece cuando un personaje la ve (y queda descubierta) o si ya estaba descubierta. Es la regla «luz solo si se ve» de la v2.29.4, que se perdió en la v2.64.4 al dejar una sola niebla. Con la visión de Keeper (GM) se siguen viendo todas las luces.',
+        'El color y el brillo de las luces ya no atraviesan los muros ni tiñen salas sin descubrir: se dibujan bajo la oscuridad.',
+        'El borde de lo descubierto ya no se vuelve escalonado con el tiempo: cada pantalla añade solo las casillas nuevas de lo explorado y no vuelve a mezclar lo que ella misma guarda.',
+      ] },
+    ],
+  },
+  {
     version: '2.64.5', date: '2026-11-27', title: 'V3 · Las imágenes de los dossieres llegan solas',
     sections: [
       { title: 'Dossieres', items: [
