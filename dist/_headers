@@ -1,0 +1,10 @@
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+
+# Images, sounds and the build's hashed files (v2.61.2): kept a day, then served at once while the
+# browser checks for a newer copy. Before, every image was asked for again on each visit.
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
