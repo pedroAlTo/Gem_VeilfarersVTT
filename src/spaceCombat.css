@@ -1,0 +1,21 @@
+/* PROJECT ARES — Pantalla de combate espacial 3D (HUD por puesto + escena). */
+.space-combat-root { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 420px; color: #dbe7f5; }
+.sc-topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; background: rgba(10,16,28,.85); border: 1px solid rgba(0,243,255,.25); border-radius: 6px; }
+.sc-title { font-family: var(--font-hud, monospace); font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--cyan-pearl, #00f3ff); margin-right: 6px; }
+.sc-chip { font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(31,58,82,.7); border: 1px solid #2a4a66; }
+.sc-chip small { color: #9ab2c5; font-weight: 500; }
+.sc-chip.locked { color: #f5c04e; border-color: #f5c04e; background: rgba(245,192,78,.12); }
+.sc-scene { position: relative; flex: 1; min-height: 260px; border: 1px solid rgba(0,243,255,.2); border-radius: 6px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #0d1b30 0%, #050a14 70%); }
+.sc-scene canvas { display: block; }
+.sc-scene-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: #6d8298; font-size: 12px; text-align: center; padding: 12px; }
+.sc-bar { display: flex; flex-wrap: wrap; gap: 4px; }
+.sc-station.active { outline: 2px solid var(--cyan-pearl, #00f3ff); outline-offset: 1px; }
+.sc-preview { background: rgba(10,16,28,.75); border: 1px solid rgba(0,243,255,.25); border-left: 3px solid var(--cyan-pearl, #00f3ff); border-radius: 4px; padding: 8px 10px; font-size: 12px; line-height: 1.5; }
+.sc-preview.keeper { border-left-color: #c84a5e; border-color: rgba(200,74,94,.4); }
+.sc-outcomes { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 10.5px; color: #9ab2c5; padding: 2px 4px; }
+.sc-outcomes span::before { content: '▸ '; color: #4a6a86; }
+.sc-outcomes .hl { color: #fff; font-weight: 700; }
+.sc-outcomes.warn { color: #ffb347; }
+.sc-outcomes.keeper span::before { color: #c84a5e; }
+.sc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px; background: rgba(10,16,28,.85); border: 1px solid #29394f; border-radius: 6px; }
+.sc-arc.active { outline: 2px solid #39d98a; outline-offset: 1px; }
