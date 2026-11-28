@@ -7,13 +7,14 @@ import { network } from './networkManager.js';
 import { nextSpotlightRound, roundKey } from './combatState.js';
 import { shipWithChanges } from './starshipJump.js';
 import { audio } from './audioEngine.js';
+import { crewEvasion, ROLES } from './naval/encounter.js';
 
 export class StarshipManager {
   constructor(containerElement) {
     this.container = containerElement;
     this.render();
     store.subscribe((state, keys) => {
-      if (keys.includes('starship') || keys.includes('userRole')) {
+      if (keys.includes('starship') || keys.includes('userRole') || keys.includes('activeMapId') || (keys.includes('tokens') && store.getActiveMap()?.naval)) {
         this.render();
       }
     });
@@ -41,7 +42,21 @@ export class StarshipManager {
         maxPerArc: 4
       }
     };
-    const isKeeper = state.userRole === 'keeper';
+    const isKeeper = state.userRole === 'keeper' && store.sessionRole !== 'player';
+    const encounter = store.getActiveMap()?.naval;
+    if (encounter) {
+      const seats = Object.entries(ROLES).map(([station, label]) => {
+        const character = state.tokens.find(t => t.id === encounter.crew[station]);
+        return '<div class="nv-side-row"><span>' + label + '</span><b>' + esc(character?.name || 'Sin asignar') + '</b></div>';
+      }).join('');
+      this.container.innerHTML = sanitizeHTML('<section class="nv-ship-report"><small>NAVE</small><h3>' + esc(ship.name) +
+        '</h3><p>' + esc(ship.hullClass) + '</p><div class="nv-side-row"><span>Evasión</span><b>' +
+        crewEvasion(ship,encounter,state.tokens) + '</b></div><div class="nv-side-row"><span>Mount Rating</span><b>×' + ship.mountRating +
+        '</b></div><h4>Tripulación</h4>' + seats + '<h4>Sistemas</h4>' + Object.entries(ship.systems || {}).map(([system,value]) =>
+          '<div class="nv-side-row"><span>' + esc(system) + '</span><b>' + Number(value) + '/3</b></div>').join('') +
+        '<p>Los puestos y el turno enemigo se gestionan en el mapa.</p></section>');
+      return;
+    }
 
     const hullPct = Math.max(0, Math.min(100, (ship.hull / ship.maxHull) * 100));
     const heatPct = Math.max(0, Math.min(100, (ship.heat / ship.heatCap) * 100));
@@ -53,6 +68,7 @@ export class StarshipManager {
           <span class="badge badge-cyan">${ship.hullClass}</span>
         </div>
 
+        ${isKeeper ? '<button data-create-naval class="hud-btn hud-btn-primary">Crear escena de combate espacial 3D</button>' : ''}
         <div class="ship-instruments">
           ${[{label:'HULL',value:ship.hull,max:ship.maxHull,color:'#78cfdf'},{label:'HEAT',value:ship.heat,max:ship.heatCap,color:'#c885c1'},{label:'PEARLS',value:ship.pearls,max:Math.max(3,ship.pearls),color:'#8fa4e7'}].map(m=>`<div class="instrument"><div class="instrument-ring" style="--value:${Math.min(100,m.value/m.max*100)};--ring:${m.color}"><div class="instrument-value">${m.value}<small>/ ${m.max}</small></div></div><span>${m.label}</span></div>`).join('')}
         </div>
@@ -207,6 +223,10 @@ export class StarshipManager {
       </div>
     `);
 
+    this.container.querySelector('[data-create-naval]')?.addEventListener('click', async () => {
+      try { const { createNavalScene } = await import('./sceneCreator.js'); createNavalScene(); }
+      catch (err) { notify(err.message, 'error'); }
+    });
     this.attachEvents(ship);
     if(store.sessionRole==='player')this.container.querySelectorAll('button:not(.maneuver-btn):not(#ftl_jump_btn),input:not(#ftl_destination):not(#ftl_under_fire),vf-select').forEach(el=>el.disabled=true);
   }

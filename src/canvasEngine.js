@@ -824,6 +824,7 @@ export class CanvasEngine {
     // Keyboard Hotkeys
     window.addEventListener('keydown', (e) => {
     if(e.defaultPrevented || e.target.closest?.('vf-select,.orbital-listbox,.veil-modal-backdrop,[contenteditable="true"]'))return;
+      if (store.getActiveMap()?.naval) return;
       if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
       if (e.target.closest?.('button') && (e.key === 'Enter' || e.code === 'Space')) return;
       if (this.mapClipboard.keydown(e)) return;
@@ -2800,6 +2801,7 @@ export class CanvasEngine {
   }
 
   render(now) {
+    if (store.getActiveMap()?.naval) { this.lastTime = now; return; }
     const dt = (now - this.lastTime) / 1000;
     this.lastTime = now;
     this.activeHoveredCondition = null;

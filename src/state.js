@@ -858,6 +858,7 @@ class StateStore {
     const newMap = {
       id: 'map_' + newId(),
       storagePath: mapData.storagePath || '',
+      ...(mapData.naval ? { naval: mapData.naval } : {}),
       name: mapData.name || 'New Tactical Map',
       imageUrl: mapData.imageUrl,
       width: mapData.width || 2000,

@@ -12,6 +12,7 @@ import { weaponRangeBand, rollAdversaryCheck, distanceInfo, rangeCheck, isMeleeA
 import { finite } from './validation.js';
 import { normalizeConditions, specialState, SPECIAL_PREFIX, visibleConditions } from './conditions.js';
 import { isPartyToken } from './tokenPermissions.js';
+import { resolveNavalAction } from './naval/actions.js';
 import { resolveJump } from './starshipJump.js';
 import { checkEdge, disciplinedDefense, markMeleeDefense, requireActive, lifeStage, lifePatch, roundKey, canReceiveHealing, BLAZE_CHOICES, LIFE_STATES, helplessTarget, rangedTargetBlock } from './combatState.js';
 import { validFaces, facesRoller } from './tableDice.js';
@@ -62,7 +63,8 @@ export function performGameAction(action, store = defaultStore) {
   store.tableActing = store.sessionRole !== 'player' || !!before;
   try { return resolveGameAction(action, store); } finally { store.tableActing = before; }
 }
-function resolveGameAction(action, store) {
+function resolveGameAction(action, store, navalCheck = {}) {
+  if (action.type === 'NAVAL_STATION' || action.type === 'NAVAL_KEEPER') return resolveNavalAction(store, action, resolveGameAction);
   // Rests: the Keeper starts or cancels one; each character chooses its two moves; the last
   // choice applies the rest to everybody and play goes on.
   if (action.type === 'REST_FINISH') {
@@ -706,11 +708,12 @@ function resolveGameAction(action, store) {
     const ranged = !!target && !isMeleeAttack(weapon, distanceInfo(actor, target, store.getActiveMap?.() || {}).band);
     const hiddenBlock = target && target.id !== actor.id ? rangedTargetBlock(target, ranged) : '';
     if (hiddenBlock) throw new Error(hiddenBlock);
-    const edge = checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty || !!heavy?.disadvantage, o.traitId, { ranged, reaction: !!action.cardReplyId });
+    const edge = navalCheck.unmodified ? { advantage: false, disadvantage: !!o.hasDisadvantage } : checkEdge(actor, target, o.hasAdvantage || !!context, o.hasDisadvantage || !!guard?.penalty || !!heavy?.disadvantage, o.traitId, { ranged, reaction: !!action.cardReplyId });
     const keeperRoll = !player;
     // Powers in effect (Velocity Surge +2 Agility) and those armed for this roll (Silver Tongue,
     // Vector Calculus: a bonus and a Hope die that counts higher).
-    const surge = player ? rollBonus(actor, o.traitId) : 0, armed = player ? armedRoll(actor, o.traitId) : null;
+    const personalBonuses = player && !navalCheck.unmodified;
+    const surge = personalBonuses ? rollBonus(actor, o.traitId) : 0, armed = personalBonuses ? armedRoll(actor, o.traitId) : null;
     const powerNotes = [];
     if (surge) powerNotes.push(`+${surge} por Poderes activos`);
     let forcedHope = o.forcedHope;
@@ -742,13 +745,13 @@ function resolveGameAction(action, store) {
       useResolve: !!resolve,
       resolveDieType: actor.resolve?.dieType || 'd4',
       experienceMod: exp,
-      customMod: (o.customMod || 0) + (actor.pendingCheckBonus || 0) + powerMod,
+      customMod: (o.customMod || 0) + (navalCheck.unmodified ? 0 : actor.pendingCheckBonus || 0) + powerMod,
       forcedHope,
       forcedFear: o.forcedFear,
       forcedAdv: o.forcedAdv,
       forcedResolve: o.forcedResolve,
     });
-    const patch = { pendingCheckBonus: 0, pendingAdvantage: false };
+    const patch = navalCheck.unmodified ? {} : { pendingCheckBonus: 0, pendingAdvantage: false };
     if (armed) patch.effectClocks = (actor.effectClocks || []).filter(c => c.id !== armed.clock.id);
     if (powerNotes.length) result.outcomeDesc = `${result.outcomeDesc || ''} ${powerNotes.join('. ')}.`.trim();
     if (resolve) patch.resolve = { ...actor.resolve, current: actor.resolve.current - 1 };
@@ -849,8 +852,8 @@ function resolveGameAction(action, store) {
     if (target && target.id !== actor.id && actor.effectClocks?.some(c => c.nextAttack)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAttack);
     // Stagger and Disorienting: the next action of any kind has Disadvantage and spends them
     // (a Reaction Roll is not an action). So does the plain Dazed condition (v2.53.0).
-    if (!action.cardReplyId && actor.effectClocks?.some(c => c.nextAction)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAction);
-    if (!action.cardReplyId && (patch.conditions || actor.conditions || []).includes('Dazed')) patch.conditions = (patch.conditions || actor.conditions).filter(c => c !== 'Dazed');
+    if (!navalCheck.unmodified && !action.cardReplyId && actor.effectClocks?.some(c => c.nextAction)) patch.effectClocks = (patch.effectClocks || actor.effectClocks).filter(c => !c.nextAction);
+    if (!navalCheck.unmodified && !action.cardReplyId && (patch.conditions || actor.conditions || []).includes('Dazed')) patch.conditions = (patch.conditions || actor.conditions).filter(c => c !== 'Dazed');
     // Brittle on the target: this Physical hit deals +1d6 and Brittle ends.
     const brittle = hit && target?.effectClocks?.find(c => c.brittle);
     if (brittle && (!weapon || damageTypeOf(weapon) === 'physical')) {
@@ -872,16 +875,17 @@ function resolveGameAction(action, store) {
     const record = { id: newId(), actorId: actor.id, ...result,
       ...(cast ? { cardPlayId: cast.id, ...(cast.replyId ? { cardReplyId: cast.replyId } : {}) } : {}),
       ...(ownAttack ? { hitTarget: hit ? target.id : null, attackTargetId: target.id, mapId: store.state.activeMapId, pathId: state?.id || null, closedPath: !!action.closingId, damageRiders } : {}), ...(secret ? { visibility: 'keeper' } : {}) };
-    lastRoll.set(rollKey, record);
+    if (navalCheck.naval) lastRoll.delete(rollKey); // the ship action and its outcome have already settled together
+    else lastRoll.set(rollKey, record);
     const log = {
       sender: actor.name,
       ...(secret ? { visibility: 'keeper' } : {}),
       type: 'CHECK',
       title: `${actor.name}: ${result.outcomeTitle}`,
-      details: `${checkMath(result)} vs DC ${result.dc}. ${result.pathPayout}${weaponNotes.length ? ' ' + weaponNotes.join(' ') : ''}`,
+      details: `${checkMath(result)}${navalCheck.concealDC ? '' : ' vs DC ' + result.dc}. ${result.pathPayout}${weaponNotes.length ? ' ' + weaponNotes.join(' ') : ''}`,
       resultType: result.resultType,
       // The full calculation, shown under «Ver cálculo» (v2.51.0).
-      calc: rollCalc({ ...result, attack: !!ownAttack }, [...(edge.advantage ? ['Ventaja por: ' + (o.hasAdvantage ? 'elegida' : 'efectos o condiciones')] : []), ...(edge.disadvantage ? ['Desventaja por: ' + (o.hasDisadvantage ? 'elegida o alcance' : 'efectos, condiciones o el arma')] : []), ...powerNotes, ...weaponNotes]),
+      calc: rollCalc({ ...result, attack: !!ownAttack, concealDC: navalCheck.concealDC }, [...(edge.advantage ? ['Ventaja por: ' + (o.hasAdvantage ? 'elegida' : 'efectos o condiciones')] : []), ...(edge.disadvantage ? ['Desventaja por: ' + (o.hasDisadvantage ? 'elegida o alcance' : 'efectos, condiciones o el arma')] : []), ...powerNotes, ...weaponNotes]),
     };
     store.addLog(log);
     return { ...record, log };
