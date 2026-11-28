@@ -160,6 +160,24 @@ export function validateCampaign(data) {
         Object.values(s.systems).every((n) => Number.isInteger(n) && finite(n, 0, 3)),
         'Invalid system Integrity.'
       );
+    // PROJECT ARES — estado de combate espacial 3D (state.starship.combat).
+    if (s.combat != null) {
+      const c = s.combat;
+      assert(typeof c === 'object' && !Array.isArray(c), 'Invalid combat state.');
+      assert(finite(c.round, 1, 100000) || c.round === undefined, 'Invalid combat round.');
+      assert(c.engineMode == null || ['Cruise', 'Combat', 'Overdrive'].includes(c.engineMode), 'Invalid engine mode.');
+      assert(c.stationsDone == null || (Array.isArray(c.stationsDone) && c.stationsDone.every((x) => typeof x === 'string')), 'Invalid stations list.');
+      assert(c.exposedArcs == null || (Array.isArray(c.exposedArcs) && c.exposedArcs.length <= 50 && c.exposedArcs.every((e) => e && typeof e.shipId === 'string' && ['fore', 'aft', 'port', 'starboard'].includes(e.arc))), 'Invalid exposed arcs.');
+      assert(c.contacts == null || (Array.isArray(c.contacts) && c.contacts.length <= 20), 'Invalid contacts list.');
+      for (const ct of c.contacts || []) {
+        assert(ct && typeof ct.id === 'string' && typeof ct.name === 'string' && ct.name.length <= 200 &&
+          ['Adjacent', 'Engagement', 'Standard', 'Long', 'Extreme'].includes(ct.band) &&
+          finite(ct.hull ?? 0, 0, 10000) && finite(ct.maxHull ?? 1, 1, 10000) &&
+          (ct.armorSlots == null || ['fore', 'aft', 'port', 'starboard', 'maxPerArc'].every((k) => finite(ct.armorSlots[k] ?? 0, 0, 10000))) &&
+          (ct.weapons == null || (Array.isArray(ct.weapons) && ct.weapons.length <= 20 && ct.weapons.every((w) => w && typeof w.name === 'string'))),
+          'Invalid contact data.');
+      }
+    }
   } else throw new Error('Missing starship data.');
   if (data.rest !== undefined) assert(validRest(data.rest), 'Invalid rest.');
   if (data.logs !== undefined) assert(Array.isArray(data.logs) && data.logs.length <= 150 && data.logs.every(x => x && typeof x === 'object'), 'Invalid session log.');
