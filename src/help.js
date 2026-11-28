@@ -1,4 +1,4 @@
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e } from './ui.js';
 import { APP_LABEL, APP_VERSION, CHANGELOG_FILENAME } from './version.js';
 import { RELEASES, LEGACY_HISTORY } from './releaseHistory.js';

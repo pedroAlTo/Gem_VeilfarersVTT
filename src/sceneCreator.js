@@ -1,7 +1,7 @@
 import { store } from './state.js';
 import { account, cloudConfigured, storageConfigured } from './cloudAccount.js';
 import { openAccount } from './accountUI.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 

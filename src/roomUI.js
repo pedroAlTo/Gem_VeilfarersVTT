@@ -3,7 +3,7 @@ import { account } from './cloudAccount.js';
 import { roomError, roomOnline } from './roomService.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { openAccount, initAccount, useCharacter } from './accountUI.js';
 import { mountSessionNavigation } from './sessionNavigation.js';
 import { openCharacterImport } from './characterManager.js';

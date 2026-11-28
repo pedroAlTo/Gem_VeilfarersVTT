@@ -1,7 +1,7 @@
 import { equipmentThumbnail } from './equipmentArtwork.js';
 // The drone console: build a drone from a Grade and Modules (Corebook ch. 14), and run it at
 // the table (signal, link mode, Lost protocol, operator, modules offline, complications).
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
 import { store } from './state.js';
 import { network } from './networkManager.js';

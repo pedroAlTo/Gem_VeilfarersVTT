@@ -1,10 +1,40 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.64.6**.
-Paquete: `VeilFarers_VTT_v2.64.6.zip`.
+Versión actual del VTT: **v2.65.2**.
+Paquete: `VeilFarers_VTT_v2.65.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.65.2] — 2026-11-28
+
+V4 · Menos código al entrar en la mesa
+
+### Carga
+
+- La ficha del personaje y su panel de equipo se descargan la primera vez que se abren, no al entrar. Las ventanas que solo usaban su diálogo genérico ya no arrastran la ficha entera.
+- El panel de la Nave se carga al abrir su pestaña (de ahí colgará el combate espacial 3D).
+- El motor de los dados 3D (unos 200 KB) se descarga cuando los dados arrancan, sin frenar la carga de la página.
+- El paquete principal baja de 614 a 579 KB comprimidos; con una línea lenta (1,5 Mbps) y la CPU cuatro veces más lenta, la mesa queda lista en unos 9,1 s en vez de 9,6 s.
+
+## [2.65.1] — 2026-11-28
+
+V4 · Prueba en navegador de la niebla y las luces
+
+### Para desarrollar
+
+- Nueva prueba npm run test:visual: abre la mesa en un navegador real con una sala cerrada (puerta, lámpara e interruptor) y un personaje fuera, de noche, y mide lo que se ve en puntos fijos en 11 casos: la sala sin descubrir sigue a oscuras con la luz encendida, el brillo no cruza los muros, la visión en la oscuridad de 5 m, la visión de Keeper ve todas las luces, al abrir la puerta la sala iluminada se ve y sigue a la vista al girarse, el velo de lo descubierto (50 % y 80 %), lo nunca visto en negro y «Borrar todo lo descubierto».
+- Detecta los fallos que hubo: probada contra la v2.64.5, marca los tres casos que esa versión hacía mal. Con VISUAL_SHOTS=<carpeta> guarda una captura de cada caso.
+
+## [2.65.0] — 2026-11-28
+
+V4 · El motor del mapa, en módulos
+
+### Para desarrollar
+
+- El motor del mapa (canvasEngine.js, más de 5.000 líneas) se divide en módulos dentro de src/canvas/: entrada, teclado, ratón (pulsar, mover, soltar), soltar archivos y menú, táctil, movimiento de tokens, acciones, visión, capas de la escena, tokens, plantillas y superposiciones. El núcleo queda en unas 760 líneas.
+- No cambia nada en la mesa: cada parte se movió tal cual y se comprobó que el texto de todos los métodos es idéntico al original. Los tests, los recorridos de clics y las pruebas en el navegador dan lo mismo que antes.
+- Así se puede trabajar en una parte del mapa sin tocar las demás (por ejemplo, el combate espacial en su propia rama).
 
 ## [2.64.6] — 2026-11-28
 

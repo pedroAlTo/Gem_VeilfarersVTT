@@ -1,7 +1,7 @@
 import { account, cleanPreferences } from './cloudAccount.js';
 import { store } from './state.js';
 import { audio } from './audioEngine.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
 import { openCharacterImport } from './characterManager.js';
 import { network } from './networkManager.js';

@@ -1,6 +1,6 @@
 import { store } from './state.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { openCharacterImport } from './characterManager.js';
 import { mountSessionNavigation } from './sessionNavigation.js';
 

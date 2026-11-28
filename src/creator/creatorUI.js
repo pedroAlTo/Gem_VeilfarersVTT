@@ -5,7 +5,7 @@ import { powerArt } from '../loadoutCards.js';
 import { escapeHTML as e, notify } from '../ui.js';
 import { store } from '../state.js';
 import { newId } from '../persistence.js';
-import { dossierDialog } from '../dossierUI.js';
+import { dossierDialog } from '../dossierDialog.js';
 import { parseCharacterJSON, downloadJSON } from '../characterImport.js';
 import { portraitGenderOptions } from '../portraitPicker.js';
 import { actorPortrait, listAncestryArchetypeTokens } from '../tokenAvatars.js';

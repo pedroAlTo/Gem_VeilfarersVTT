@@ -1,5 +1,5 @@
 import { store } from './state.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e, notify } from './ui.js';
 import { activeEnvironmentFeatures, environmentActivation, isKeeper, IMPACT_TYPES } from './encounterRules.js';
 

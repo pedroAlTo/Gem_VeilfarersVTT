@@ -1,4 +1,5 @@
-import DiceBox from './dice-box.es.min.js';
+// The dice engine (~200 KB) is fetched the first time the dice start (v2.65.2), not with the page.
+const loadDiceBox = () => import('./dice-box.es.min.js').then(module => module.default);
 import DisplayResults from './display-results.js';
 
 const THEME_COLORS = {
@@ -234,6 +235,7 @@ async function init(){
   ensureStage();
   initPromise=(async()=>{
     await assertWebAssemblyExecutionAllowed();
+    const DiceBox = await loadDiceBox();
     syncStageBounds();
     box=new DiceBox({
       container:'#vf-dice3d-box', assetPath:ASSET_PATH, origin:'', theme:'vfNeutral', preloadThemes:PRELOAD_THEMES,

@@ -1,4 +1,4 @@
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { store } from './state.js';
 import { escapeHTML as esc, notify } from './ui.js';
 import { bestiaryPortrait } from './bestiaryPortraits.js';

@@ -1,6 +1,6 @@
 import { store } from './state.js';
 import { network } from './networkManager.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as esc } from './ui.js';
 import { LIFE_STATES } from './combatState.js';
 import { renderLifeControls } from './lifeControls.js';
