@@ -1,6 +1,15 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.65.1', date: '2026-11-28', title: 'V4 · Prueba en navegador de la niebla y las luces',
+    sections: [
+      { title: 'Para desarrollar', items: [
+        'Nueva prueba npm run test:visual: abre la mesa en un navegador real con una sala cerrada (puerta, lámpara e interruptor) y un personaje fuera, de noche, y mide lo que se ve en puntos fijos en 11 casos: la sala sin descubrir sigue a oscuras con la luz encendida, el brillo no cruza los muros, la visión en la oscuridad de 5 m, la visión de Keeper ve todas las luces, al abrir la puerta la sala iluminada se ve y sigue a la vista al girarse, el velo de lo descubierto (50 % y 80 %), lo nunca visto en negro y «Borrar todo lo descubierto».',
+        'Detecta los fallos que hubo: probada contra la v2.64.5, marca los tres casos que esa versión hacía mal. Con VISUAL_SHOTS=<carpeta> guarda una captura de cada caso.',
+      ] },
+    ],
+  },
+  {
     version: '2.65.0', date: '2026-11-28', title: 'V4 · El motor del mapa, en módulos',
     sections: [
       { title: 'Para desarrollar', items: [

@@ -1,10 +1,19 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.65.0**.
-Paquete: `VeilFarers_VTT_v2.65.0.zip`.
+Versión actual del VTT: **v2.65.1**.
+Paquete: `VeilFarers_VTT_v2.65.1.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.65.1] — 2026-11-28
+
+V4 · Prueba en navegador de la niebla y las luces
+
+### Para desarrollar
+
+- Nueva prueba npm run test:visual: abre la mesa en un navegador real con una sala cerrada (puerta, lámpara e interruptor) y un personaje fuera, de noche, y mide lo que se ve en puntos fijos en 11 casos: la sala sin descubrir sigue a oscuras con la luz encendida, el brillo no cruza los muros, la visión en la oscuridad de 5 m, la visión de Keeper ve todas las luces, al abrir la puerta la sala iluminada se ve y sigue a la vista al girarse, el velo de lo descubierto (50 % y 80 %), lo nunca visto en negro y «Borrar todo lo descubierto».
+- Detecta los fallos que hubo: probada contra la v2.64.5, marca los tres casos que esa versión hacía mal. Con VISUAL_SHOTS=<carpeta> guarda una captura de cada caso.
 
 ## [2.65.0] — 2026-11-28
 
