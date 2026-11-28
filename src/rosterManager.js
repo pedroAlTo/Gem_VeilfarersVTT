@@ -1,6 +1,6 @@
 import { actorPortrait } from './tokenAvatars.js';
 import { openCharacterImport } from './characterManager.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { openDroneConsole } from './droneUI.js';
 import { sanitizeHTML, escapeHTML, notify, confirmAction } from './ui.js';
 import { isDrone } from './tokenPermissions.js';

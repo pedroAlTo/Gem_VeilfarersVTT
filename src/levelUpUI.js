@@ -3,7 +3,7 @@ import { escapeHTML as e, notify } from './ui.js';
 import { store } from './state.js';
 import { validateActor } from './validation.js';
 import { TRAIT_IDS } from './characterImport.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { ADVANCEMENT_OPTIONS, MAX_LEVEL, applyLevelUp, awaken, awakeningDomains, availablePowers, availableResolveMoves, multiclassMoves, experienceSlots, isTierAchievement, levelGrants, multiclassChoices, nextSubclassFeature, optionBlocked, tierOf } from './advancement.js';
 
 export function canLevelUp(token) {

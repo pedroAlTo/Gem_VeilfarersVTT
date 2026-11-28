@@ -2,7 +2,7 @@ import { tagLabel, weaponTagList } from './weaponTags.js';
 import { tagInfo } from './weaponGlossary.js';
 const tagLine = row => weaponTagList(row).map(tagLabel).join(', ');
 import { store } from './state.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as esc, sanitizeHTML, notify } from './ui.js';
 import { tokenInventory, validateInventory } from './equipment.js';
 import { newId } from './persistence.js';

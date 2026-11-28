@@ -1,6 +1,17 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
+    version: '2.65.2', date: '2026-11-28', title: 'V4 · Menos código al entrar en la mesa',
+    sections: [
+      { title: 'Carga', items: [
+        'La ficha del personaje y su panel de equipo se descargan la primera vez que se abren, no al entrar. Las ventanas que solo usaban su diálogo genérico ya no arrastran la ficha entera.',
+        'El panel de la Nave se carga al abrir su pestaña (de ahí colgará el combate espacial 3D).',
+        'El motor de los dados 3D (unos 200 KB) se descarga cuando los dados arrancan, sin frenar la carga de la página.',
+        'El paquete principal baja de 614 a 579 KB comprimidos; con una línea lenta (1,5 Mbps) y la CPU cuatro veces más lenta, la mesa queda lista en unos 9,1 s en vez de 9,6 s.',
+      ] },
+    ],
+  },
+  {
     version: '2.65.1', date: '2026-11-28', title: 'V4 · Prueba en navegador de la niebla y las luces',
     sections: [
       { title: 'Para desarrollar', items: [

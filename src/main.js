@@ -60,7 +60,6 @@ import { LayerManagerHUD } from './layerManager.js';
 import { HandoutManager } from './handoutManager.js';
 import { ElementInspectorHUD } from './inspectorHUD.js';
 import { GridScalerHUD } from './gridScalerHUD.js';
-import { StarshipManager } from './starshipManager.js';
 import { RulesCompendiumModal } from './rulesCompendium.js';
 import { undoManager } from './undoManager.js';
 
@@ -151,9 +150,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   new CombatLogView(logPane);
   new ChatPanel(document.getElementById('tab_pane_chat'));
 
-  // Starship tab inside sidebar
+  // Starship tab inside sidebar: its panel loads the first time the tab is opened (v2.65.2; the 3D
+  // ship combat will hang from it too, and nobody needs it to enter the table).
   const shipPane = document.getElementById('tab_pane_ship');
-  if (shipPane) new StarshipManager(shipPane);
+  if (shipPane) window.veilMountShip = () => (window.veilShipReady ??= import('./starshipManager.js').then(({ StarshipManager }) => new StarshipManager(shipPane)));
 
   // Clocks tab inside sidebar
   const clocksPane = document.getElementById('tab_pane_clocks');
@@ -735,6 +735,7 @@ function setupSidebarTabNavigation() {
       tabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       const targetKey = tab.dataset.tab;
+      if (targetKey === 'ship') window.veilMountShip?.();
 
       Object.keys(panes).forEach(k => {
         if (panes[k]) {

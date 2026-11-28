@@ -1,6 +1,6 @@
 import { isEncounterMarker } from './bestiaryProfiles.js';
 import { store } from './state.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e, notify } from './ui.js';
 import { validateActor } from './validation.js';
 import { isKeeper, validateBoss, applyBossStats, advanceBoss, phaseReady } from './encounterRules.js';

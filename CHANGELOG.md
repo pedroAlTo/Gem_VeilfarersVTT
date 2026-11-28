@@ -1,10 +1,21 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.65.1**.
-Paquete: `VeilFarers_VTT_v2.65.1.zip`.
+Versión actual del VTT: **v2.65.2**.
+Paquete: `VeilFarers_VTT_v2.65.2.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.65.2] — 2026-11-28
+
+V4 · Menos código al entrar en la mesa
+
+### Carga
+
+- La ficha del personaje y su panel de equipo se descargan la primera vez que se abren, no al entrar. Las ventanas que solo usaban su diálogo genérico ya no arrastran la ficha entera.
+- El panel de la Nave se carga al abrir su pestaña (de ahí colgará el combate espacial 3D).
+- El motor de los dados 3D (unos 200 KB) se descarga cuando los dados arrancan, sin frenar la carga de la página.
+- El paquete principal baja de 614 a 579 KB comprimidos; con una línea lenta (1,5 Mbps) y la CPU cuatro veces más lenta, la mesa queda lista en unos 9,1 s en vez de 9,6 s.
 
 ## [2.65.1] — 2026-11-28
 

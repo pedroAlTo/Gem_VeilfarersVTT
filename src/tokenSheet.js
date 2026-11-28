@@ -4,7 +4,6 @@ import { actorPortrait } from './tokenAvatars.js';
 import { openActorPortrait } from './portraitPicker.js';
 import { adversaryDescription } from './adversaryDescription.js';
 import { conditionBadges, openConditions } from './conditionUI.js';
-import { openDossier } from './dossierUI.js';
 import { validateActor, pickPlayerFields } from './validation.js';
 import { statGaugeHTML } from './tokenVitals.js';
 import { tokenInventory } from './equipment.js';
@@ -44,6 +43,9 @@ export const AVAILABLE_STATS = [
 ];
 
 import { openColorPickerPopover } from './colorPicker.js';
+// The character sheet (and its equipment panel) loads the first time it is opened (v2.65.2): it is
+// not needed to enter the table, and it is a large part of the code.
+const openDossier = (...args) => import('./dossierUI.js').then(({ openDossier: open }) => open(...args));
 export { openColorPickerPopover };
 
 function quickStat(key, label, current, max, canEdit, spend, gain, color = key) {

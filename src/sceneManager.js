@@ -3,7 +3,7 @@
 
 import { openSceneCreator } from './sceneCreator.js';
 import { sanitizeHTML, escapeHTML as e, confirmAction, notify } from './ui.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { getCloudinaryConfig, uploadToCloudinary } from './cloudinaryService.js';
 import { account } from './cloudAccount.js';
 import { store } from './state.js';

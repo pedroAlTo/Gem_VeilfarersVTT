@@ -3,7 +3,7 @@ import { store } from './state.js';
 import { cloudConfigured } from './cloudAccount.js';
 import { network, getInvitedSessions, removeInvitedSession, getActiveSession } from './networkManager.js';
 import { LOCAL_ONLY, LAN_SESSIONS, connectionDisplay } from './runtimeMode.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { escapeHTML as e, sanitizeHTML, notify, confirmAction } from './ui.js';
 import { openCharacterImport } from './characterManager.js';
 import { openAccount, useCharacter, initAccount } from './accountUI.js';

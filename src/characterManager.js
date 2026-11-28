@@ -1,6 +1,6 @@
 import { actorPortrait } from './tokenAvatars.js';
 import { escapeHTML as e, sanitizeHTML, notify } from './ui.js';
-import { dossierDialog } from './dossierUI.js';
+import { dossierDialog } from './dossierDialog.js';
 import { parseCharacterJSON, characterKey, initializeImportedResources } from './characterImport.js';
 import { createActor } from './actors.js';
 import { store } from './state.js';
