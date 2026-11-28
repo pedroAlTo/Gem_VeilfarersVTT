@@ -1,10 +1,20 @@
 # VeilFarers VTT — Changelog
 
-Versión actual del VTT: **v2.64.6**.
-Paquete: `VeilFarers_VTT_v2.64.6.zip`.
+Versión actual del VTT: **v2.65.0**.
+Paquete: `VeilFarers_VTT_v2.65.0.zip`.
 Reglas de referencia: **Corebook 12.06** (numeración independiente).
 
 Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial anterior conserva sus nombres Orbital; no se le asignan versiones retroactivamente.
+
+## [2.65.0] — 2026-11-28
+
+V3 · El motor del mapa, en módulos
+
+### Para desarrollar
+
+- El motor del mapa (canvasEngine.js, más de 5.000 líneas) se divide en módulos dentro de src/canvas/: entrada, teclado, ratón (pulsar, mover, soltar), soltar archivos y menú, táctil, movimiento de tokens, acciones, visión, capas de la escena, tokens, plantillas y superposiciones. El núcleo queda en unas 760 líneas.
+- No cambia nada en la mesa: cada parte se movió tal cual y se comprobó que el texto de todos los métodos es idéntico al original. Los tests, los recorridos de clics y las pruebas en el navegador dan lo mismo que antes.
+- Así se puede trabajar en una parte del mapa sin tocar las demás (por ejemplo, el combate espacial en su propia rama).
 
 ## [2.64.6] — 2026-11-28
 
