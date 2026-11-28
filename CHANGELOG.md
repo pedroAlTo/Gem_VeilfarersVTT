@@ -8,7 +8,7 @@ Las entregas con nombre de archivo versionado comienzan en v1.1.0. El historial 
 
 ## [2.65.0] — 2026-11-28
 
-V3 · El motor del mapa, en módulos
+V4 · El motor del mapa, en módulos
 
 ### Para desarrollar
 

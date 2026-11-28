@@ -1,7 +1,7 @@
 // Keep published entries unchanged. Prepend a new entry when package.json changes.
 export const RELEASES = [
   {
-    version: '2.65.0', date: '2026-11-28', title: 'V3 · El motor del mapa, en módulos',
+    version: '2.65.0', date: '2026-11-28', title: 'V4 · El motor del mapa, en módulos',
     sections: [
       { title: 'Para desarrollar', items: [
         'El motor del mapa (canvasEngine.js, más de 5.000 líneas) se divide en módulos dentro de src/canvas/: entrada, teclado, ratón (pulsar, mover, soltar), soltar archivos y menú, táctil, movimiento de tokens, acciones, visión, capas de la escena, tokens, plantillas y superposiciones. El núcleo queda en unas 760 líneas.',
